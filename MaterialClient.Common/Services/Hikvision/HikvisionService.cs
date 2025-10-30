@@ -61,6 +61,42 @@ public sealed class HikvisionService
 		}
 	}
 
+	public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError, int quality = 90)
+	{
+		lastError = 0;
+		ArgumentNullException.ThrowIfNull(config);
+		if (string.IsNullOrWhiteSpace(saveFullPath)) throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+		EnsureInitialized();
+
+		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
+
+		if (!TryLogin(config, out var userId))
+		{
+			lastError = NET_DVR.NET_DVR_GetLastError();
+			return false;
+		}
+
+		try
+		{
+			NET_DVR.NET_DVR_JPEGPARA para = new NET_DVR.NET_DVR_JPEGPARA
+			{
+				wPicQuality = (ushort)Math.Clamp(quality, 1, 100),
+				wPicSize = 0xFF,
+			};
+			var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
+			bool ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
+			if (!ok)
+			{
+				lastError = NET_DVR.NET_DVR_GetLastError();
+			}
+			return ok;
+		}
+		finally
+		{
+			NET_DVR.NET_DVR_Logout(userId);
+		}
+	}
+
 	// Placeholder for real-time stream obtaining. In many apps this returns a handle or starts a callback.
 	public bool TryOpenRealStream(HikvisionDeviceConfig config, int channel)
 	{

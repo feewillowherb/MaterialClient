@@ -28,20 +28,25 @@ public class UnitTest1
         var fullPath = Path.Combine(captureDir, fileName);
 
         // 先断言在线，避免后续抓拍因登录失败而混淆
-        Assert.True(service.IsOnline(config), "Device is not online or login failed.");
+        var online = service.IsOnline(config);
+        if (!online)
+        {
+            var err = HikvisionService.GetLastErrorCode();
+            Assert.True(online, $"Device is not online or login failed. HCNetSDK error={err}");
+        }
 
         // 尝试常见通道号：配置中的第一个、1、33、101
         var candidates = new int[] { config.Channels[0], 1, 33, 101 };
         bool ok = false;
+        uint lastErr = 0;
         foreach (var ch in candidates)
         {
-            ok = service.CaptureJpeg(config, ch, fullPath);
+            ok = service.CaptureJpeg(config, ch, fullPath, out lastErr);
             if (ok) break;
         }
         if (!ok)
         {
-            var err = HikvisionService.GetLastErrorCode();
-            Assert.True(ok, $"CaptureJpeg failed. HCNetSDK error={err}");
+            Assert.True(ok, $"CaptureJpeg failed. HCNetSDK error={lastErr}");
         }
         Assert.True(File.Exists(fullPath), "Captured file not found.");
         var size = new FileInfo(fullPath).Length;
