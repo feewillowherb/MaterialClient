@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ensure native dlls are copied into test output for runtime P/Invoke -->
+    <None Include="..\MaterialClient.Common\Native\HCNetSDK\win64\*.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

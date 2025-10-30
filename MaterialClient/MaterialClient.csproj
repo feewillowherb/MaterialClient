@@ -6,6 +6,7 @@
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>
 
     <ItemGroup>
@@ -27,5 +28,9 @@
 
     <ItemGroup>
       <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="..\MaterialClient.Common\Native\HCNetSDK\win64\*.dll" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>
