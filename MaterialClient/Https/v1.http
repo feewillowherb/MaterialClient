@@ -1,0 +1,39 @@
+﻿### CarLicenseController CallDeviceMessage 接口测试
+
+### 变量定义
+@baseUrl = http://192.168.3.112:9960
+
+### 1. 测试 CallDeviceMessage - 进场拍摄
+POST {{baseUrl}}/api/CarLicense/CallDeviceMessage
+Content-Type: application/json
+
+{
+  "AlarmInfoPlate": {
+    "channel": 0,
+    "deviceName": "CarLicense500W_In",
+    "ipaddr": "192.168.3.192",
+    "result": {
+      "PlateResult": {
+        "license": "云A2T226"
+      }
+    }
+  }
+}
+
+
+### 1. 测试 CallDeviceMessage - 出场拍摄
+POST {{baseUrl}}/api/CarLicense/CallDeviceMessage
+Content-Type: application/json
+
+{
+  "AlarmInfoPlate": {
+    "channel": 0,
+    "deviceName": "CarLicense500W_Out",
+    "ipaddr": "192.168.3.193",
+    "result": {
+      "PlateResult": {
+        "license": "浙A2T081"
+      }
+    }
+  }
+}
