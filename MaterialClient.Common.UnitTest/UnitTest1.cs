@@ -12,12 +12,12 @@ public class UnitTest1
 		var service = new HikvisionService();
 		var config = new HikvisionDeviceConfig
 		{
-			Ip = "192.168.1.2",
+			Ip = "192.168.3.3",
 			Username = "admin",
-			Password = "admin",
-			Port = 8050,
+			Password = "fdkj123456",
+			Port = 8000,
 			StreamType = 0,
-			Channels = new[] { 1 }
+			Channels = [1]
 		};
 
 		service.AddOrUpdateDevice(config);
