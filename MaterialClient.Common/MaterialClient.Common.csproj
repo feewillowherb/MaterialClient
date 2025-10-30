@@ -4,6 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +18,13 @@
     <PackageReference Include="SQLitePCLRaw.bundle_zetetic" Version="2.1.11" />
     <PackageReference Include="Volo.Abp.Ddd.Domain" Version="9.3.6" />
     <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite" Version="9.3.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Place Hikvision native dlls under Native/HCNetSDK/win64 inside this project directory -->
+    <None Include="Native\HCNetSDK\win64\*.dll" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Copy componentized SDK folder side-by-side with HCNetSDK.dll -->
+    <None Include="Native\HCNetSDK\win64\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
