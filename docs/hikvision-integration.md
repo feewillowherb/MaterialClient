@@ -75,6 +75,8 @@ bool ok = service.CaptureJpeg(config, 1, path, quality: 90);
  dotnet test .\MaterialClient.sln -c Debug
 ```
 
+注意：在持续集成环境中默认跳过该测试（需要真实设备与 SDK 运行时）。如需本地手动验证，请在 IDE 中启用/运行被 Skip 的测试用例，或临时移除 Skip 标记后运行。
+
 常见问题：
 - “找不到 HCNetSDK.dll”/依赖缺失：确认上述最小集 DLL 已放置到 `Native/HCNetSDK/win64/`。
 - 登录失败：检查 IP/端口、账号口令与网络连通性（VPN/防火墙/子网）。

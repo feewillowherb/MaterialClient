@@ -6,7 +6,7 @@ namespace MaterialClient.Common.UnitTest;
 
 public class UnitTest1
 {
-    [Fact]
+    [Fact(Skip = "Manual-only: Requires physical Hikvision device and SDK runtime.")]
     public void Capture_Jpeg_From_Hikvision()
     {
         var service = new HikvisionService();
