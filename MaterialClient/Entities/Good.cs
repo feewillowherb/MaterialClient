@@ -7,4 +7,6 @@ public class Good
     public string Name { get; set; }
 
     public decimal Price { get; set; }
+
+    public  string  unit { get; set; }
 }
