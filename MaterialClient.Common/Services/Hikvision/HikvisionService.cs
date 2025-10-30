@@ -10,6 +10,8 @@ public sealed class HikvisionService
 {
 	private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
 
+	public static uint GetLastErrorCode() => NET_DVR.NET_DVR_GetLastError();
+
 	public void AddOrUpdateDevice(HikvisionDeviceConfig config)
 	{
 		ArgumentNullException.ThrowIfNull(config);
@@ -193,6 +195,9 @@ internal static class NET_DVR
 
 	[DllImport("HCNetSDK.dll")]
 	internal static extern bool NET_DVR_CaptureJPEGPicture(int lUserID, int lChannel, ref NET_DVR_JPEGPARA lpJpegPara, byte[] sPicFileName);
+
+	[DllImport("HCNetSDK.dll")]
+	internal static extern uint NET_DVR_GetLastError();
 }
 
 
