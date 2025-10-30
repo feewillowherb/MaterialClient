@@ -23,6 +23,8 @@
   <ItemGroup>
     <!-- Place Hikvision native dlls under Native/HCNetSDK/win64 inside this project directory -->
     <None Include="Native\HCNetSDK\win64\*.dll" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Copy componentized SDK folder side-by-side with HCNetSDK.dll -->
+    <None Include="Native\HCNetSDK\win64\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -61,7 +61,7 @@ public sealed class HikvisionService
 		}
 	}
 
-	public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError, int quality = 90)
+	public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError, int quality = 1)
 	{
 		lastError = 0;
 		ArgumentNullException.ThrowIfNull(config);
@@ -85,7 +85,7 @@ public sealed class HikvisionService
 			};
 			var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
 			bool ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
-			if (!ok)
+			if (!ok) 
 			{
 				lastError = NET_DVR.NET_DVR_GetLastError();
 			}

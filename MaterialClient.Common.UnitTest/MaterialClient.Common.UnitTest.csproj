@@ -26,6 +26,8 @@
   <ItemGroup>
     <!-- Ensure native dlls are copied into test output for runtime P/Invoke -->
     <None Include="..\MaterialClient.Common\Native\HCNetSDK\win64\*.dll" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Ensure componentized SDK folder is copied side-by-side with HCNetSDK.dll -->
+    <None Include="..\MaterialClient.Common\Native\HCNetSDK\win64\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
