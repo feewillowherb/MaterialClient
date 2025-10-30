@@ -9,7 +9,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
-    <PackageReference Include="Volo.Abp.Ddd.Domain" Version="10.0.0-rc.1" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="8.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_zetetic" Version="2.1.11" />
+    <PackageReference Include="Volo.Abp.Ddd.Domain" Version="9.3.6" />
     <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite" Version="9.3.6" />
   </ItemGroup>
 

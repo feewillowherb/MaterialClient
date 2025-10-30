@@ -23,9 +23,6 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.10" />
-        <PackageReference Include="Refit.HttpClientFactory" Version="8.0.0" />
-        <PackageReference Include="SQLitePCLRaw.bundle_zetetic" Version="2.1.11" />
     </ItemGroup>
 
     <ItemGroup>
