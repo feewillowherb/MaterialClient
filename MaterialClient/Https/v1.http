@@ -37,3 +37,70 @@ Content-Type: application/json
     }
   }
 }
+
+
+
+
+### 2. Speaker
+POST 192.168.3.151:8888
+Content-Type: application/json
+
+
+{
+  "name": "priority_task_play",
+  "sn": "ls20://0201F938AFE5",
+  "type": "req",
+  "Params": {
+    "uid": "0",
+    "vol": 80,
+    "count": 1,
+    "length": 0,
+    "name": "task_20250101120000",
+    "tid": "550e8400-e29b-41d4-a716-446655440000",
+    "type": 0,
+    "level": 10000,
+    "urls": [
+      {
+        "name": "speakText",
+        "udp": true,
+        "uri": "http://192.168.3.112:10008/tts_xf.single?text=车辆已下磅，称重已完成。&voice_name=xiaoyan&speed=50&volume=100&origin=http://192.168.3.112:10008"
+      }
+    ]
+  }
+}
+
+
+### "http://192.168.3.112:10008/tts_xf.single?text=车辆已下磅，称重已完成。&voice_name=xiaoyan&speed=50&volume=60&origin=http://192.168.3.112:10008"
+### "ls20://0201F938AFE5"
+### { "result": -1, "msg": "没有body信息" }
+
+
+### 3. Speaker
+POST 192.168.3.151:8888
+Content-Type: application/json
+
+{
+  "name": "priority_task_play",
+  "sn": "ls20://0201F938AFE5",
+  "type": "req",
+  "params": {
+    "uid": "0",
+    "vol": 80,
+    "urls": [
+      {
+        "name": "speakText",
+        "udp": true,
+        "uri": "http://192.168.3.112:10008/tts_xf.single?text=车辆已下磅，称重已完成。&voice_name=xiaoyan&speed=50&volume=100&origin=http://192.168.3.112:10008"
+      }
+    ],
+    "level": 10000,
+    "name": "task_20251103102632",
+    "count": 1,
+    "length": 0,
+    "type": 5,
+    "tid": "387cd3b6-ac06-418a-a4f3-720ece878b93"
+  }
+}
+
+
+### {"code":0,"type":"resp","msg":"","name":"priority_task_play"}

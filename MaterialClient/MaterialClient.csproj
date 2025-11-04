@@ -31,7 +31,5 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Include="..\MaterialClient.Common\Native\HCNetSDK\win64\*.dll" CopyToOutputDirectory="PreserveNewest" />
-      <None Include="..\MaterialClient.Common\Native\HCNetSDK\win64\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>
