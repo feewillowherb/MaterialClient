@@ -41,9 +41,23 @@
 - 依赖注入：统一使用 IoC 管理依赖，首选 Autofac；类构造函数依赖可使用 AutoConstructor 源生成器以减少样板代码。
 - HTTP 客户端：统一使用 Refit 生成类型安全的 REST 客户端接口，与 `HttpClientFactory` 集成以获得连接复用与可配置的处理管线。
 - 数据访问：
-  - 使用 ABP 的 EntityFrameworkCore 集成提供 `DbContext` 与仓储（Repository）模式；
-  - `DbContext` 与仓储均需支持 ABP 风格的集成测试（含内存替身/SQLite 模式、事务隔离与测试基类约定）。
-- 实体模型：业务实体应继承 ABP 提供的基类（如 `Entity`、`RootAuditEntity`/审计根聚合类型），以获得主键、审计字段与领域一致性约束。
+  - **ABP EntityFrameworkCore Sqlite 包**：必须引用 `Volo.Abp.EntityFrameworkCore.Sqlite` 包（当前版本：9.3.6），用于提供 SQLite 数据库的 ABP 集成支持。
+  - **DbContext 基类**：`DbContext` 应继承自 `Volo.Abp.EntityFrameworkCore.AbpDbContext<TDbContext>`，以获得 ABP 的审计、多租户、软删除等特性支持。
+  - **仓储模式**：使用 `Volo.Abp.Domain.Repositories.IRepository<TEntity, TKey>` 接口访问数据，避免直接使用 `DbContext`。通过 ABP 的依赖注入容器自动提供仓储实现。
+  - **SQLite 配置**：
+    - 使用 `AddAbpDbContext<TDbContext>(options => options.UseSqlite(...))` 进行配置；
+    - 数据库文件路径应在应用配置中可配置，默认使用相对路径或用户数据目录；
+    - 支持数据库加密（如 SQLCipher），连接字符串中应包含密码配置。
+  - **集成测试**：`DbContext` 与仓储均需支持 ABP 风格的集成测试（含内存替身/SQLite 模式、事务隔离与测试基类约定）。
+- 领域驱动设计（DDD）与实体模型：
+  - **ABP Domain 包**：必须引用 `Volo.Abp.Ddd.Domain` 包（当前版本：9.3.6），提供领域驱动设计基础设施。
+  - **命名空间**：使用 `Volo.Abp.Domain.Entities` 命名空间下的基类。
+  - **实体基类**：
+    - 普通实体：继承 `Volo.Abp.Domain.Entities.Entity<TKey>`，提供主键（Id）和领域一致性约束；
+    - 审计实体：继承 `Volo.Abp.Domain.Entities.Auditing.FullAuditedEntity<TKey>`，提供创建时间、修改时间、删除时间等审计字段；
+    - 聚合根：继承 `Volo.Abp.Domain.Entities.Auditing.FullAuditedAggregateRoot<TKey>`，用于需要审计追踪的聚合根实体。
+  - **领域服务**：业务逻辑应封装在领域服务中，使用 `Volo.Abp.Domain.Services.DomainService` 基类或实现 `IDomainService` 接口。
+  - **领域事件**：使用 `Volo.Abp.Domain.Entities.Events.EntityChangedEventData<TEntity>` 或其派生类来发布领域事件。
 
 ### Architecture
 
