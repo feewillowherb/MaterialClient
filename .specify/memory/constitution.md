@@ -33,6 +33,14 @@
 - Windows 桌面客户端：采用 WPF 或 Avalonia，目标平台仅限 Windows（不要求跨平台）。
 - 本地数据持久化：使用 SQLite 作为嵌入式数据库；若数据库文件不存在，首次启动时应自动创建。
 - 后台任务：实现一个后台轮询作业，每 1 分钟批量读取待同步数据并通过 HTTP 客户端上报到 Web 服务端；需具备失败重试与基本可观测性（日志、计数）。
+- **代码字符约束（NON-NEGOTIABLE）**：
+  - 代码中变量名和字段必须是英文字符，禁止使用中文字符。
+  - 代码中除了注释，不能出现中文字符。
+  - 遇到中文字符，需要为其转换为相应的英文词汇。
+- **命名约定（NON-NEGOTIABLE）**：
+  - 当遇到未知命名前缀如`My`时，应将其替换为项目名称`MaterialClient`。
+  - 例如：`MyDbContext` 应命名为 `MaterialClientDbContext`。
+  - 此规则适用于所有类名、接口名、命名空间等标识符。
 
 ## Architecture & Technology Principles
 
