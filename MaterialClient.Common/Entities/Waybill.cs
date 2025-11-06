@@ -1,0 +1,122 @@
+using Volo.Abp.Domain.Entities.Auditing;
+using MaterialClient.Common.Entities.Enums;
+
+namespace MaterialClient.Common.Entities;
+
+/// <summary>
+/// 运单实体
+/// </summary>
+public class Waybill : FullAuditedEntity<long>
+{
+    /// <summary>
+    /// 供应商ID (FK to Provider)
+    /// </summary>
+    public int ProviderId { get; set; }
+
+    /// <summary>
+    /// 订单号
+    /// </summary>
+    public string OrderNo { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 订单类型
+    /// </summary>
+    public int? OrderType { get; set; }
+
+    /// <summary>
+    /// 配送类型
+    /// </summary>
+    public int? DeliveryType { get; set; }
+
+    /// <summary>
+    /// 车牌号
+    /// </summary>
+    public string? PlateNumber { get; set; }
+
+    /// <summary>
+    /// 进场时间
+    /// </summary>
+    public DateTime? JoinTime { get; set; }
+
+    /// <summary>
+    /// 出场时间
+    /// </summary>
+    public DateTime? OutTime { get; set; }
+
+    /// <summary>
+    /// 备注
+    /// </summary>
+    public string? Remark { get; set; }
+
+    /// <summary>
+    /// 计划重量
+    /// </summary>
+    public decimal OrderPlanOnWeight { get; set; }
+
+    /// <summary>
+    /// 计划件数
+    /// </summary>
+    public decimal OrderPlanOnPcs { get; set; }
+
+    /// <summary>
+    /// 实际件数
+    /// </summary>
+    public decimal OrderPcs { get; set; }
+
+    /// <summary>
+    /// 总重量
+    /// </summary>
+    public decimal? OrderTotalWeight { get; set; }
+
+    /// <summary>
+    /// 车辆重量
+    /// </summary>
+    public decimal? OrderTruckWeight { get; set; }
+
+    /// <summary>
+    /// 货物重量
+    /// </summary>
+    public decimal? OrderGoodsWeight { get; set; }
+
+    /// <summary>
+    /// 最后同步时间
+    /// </summary>
+    public DateTime? LastSyncTime { get; set; }
+
+    /// <summary>
+    /// 是否预警
+    /// </summary>
+    public bool IsEarlyWarn { get; set; } = false;
+
+    /// <summary>
+    /// 打印次数
+    /// </summary>
+    public int PrintCount { get; set; } = 0;
+
+    /// <summary>
+    /// 中止原因
+    /// </summary>
+    public string? AbortReason { get; set; }
+
+    /// <summary>
+    /// 偏移结果
+    /// </summary>
+    public OffsetResultType OffsetResult { get; set; } = OffsetResultType.Default;
+
+    /// <summary>
+    /// 预警类型
+    /// </summary>
+    public string? EarlyWarnType { get; set; }
+
+    /// <summary>
+    /// 订单来源
+    /// </summary>
+    public OrderSource OrderSource { get; set; }
+
+    // Navigation properties
+    /// <summary>
+    /// 供应商导航属性
+    /// </summary>
+    public Provider? Provider { get; set; }
+}
+
