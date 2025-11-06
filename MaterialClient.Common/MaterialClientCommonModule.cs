@@ -21,10 +21,11 @@ public class MaterialClientCommonModule : AbpModule
         var services = context.Services;
         var configuration = context.Services.GetConfiguration();
 
-        // Register DbContext
+        // Register DbContext with default repositories
         services.AddAbpDbContext<MaterialClientDbContext>(options =>
         {
-            // DbContext options will be configured via AbpDbContextOptions
+            // Enable default repositories for all entities
+            options.AddDefaultRepositories(includeAllEntities: true);
         });
 
         // Configure SQLite connection from configuration

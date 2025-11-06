@@ -1,7 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:entities="using:MaterialClient.Common.Entities"
+        xmlns:vm="using:MaterialClient.ViewModels"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         x:Class="MaterialClient.Views.AttendedWeighingWindow"
+        x:DataType="vm:AttendedWeighingViewModel"
         Title="有人值守"
         Width="1200" Height="800">
   <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
@@ -83,7 +86,7 @@
               <ScrollViewer MaxHeight="300">
                 <ItemsControl ItemsSource="{Binding VehiclePhotos}">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="System:String">
+                    <DataTemplate x:DataType="sys:String">
                       <Border BorderBrush="#D1D5DB" BorderThickness="1" Margin="0,0,0,8" Padding="4">
                         <Image Source="{Binding}" MaxWidth="200" MaxHeight="150" Stretch="Uniform"/>
                       </Border>
