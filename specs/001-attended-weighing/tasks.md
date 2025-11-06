@@ -163,12 +163,12 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 
 **Tasks**:
 
-- [ ] T036 [US3] Create WeighingMatchingService class in MaterialClient.Common/Services/WeighingMatchingService.cs
-- [ ] T037 [US3] Implement matching rule 1 logic in WeighingMatchingService.cs (same plate number + time window, select shortest interval if multiple candidates)
-- [ ] T038 [US3] Implement matching rule 2 logic in WeighingMatchingService.cs (time order + weight relationship based on DeliveryType)
-- [ ] T039 [US3] Implement Waybill creation logic in WeighingMatchingService.cs (generate OrderNo from Guid, extract Provider/Material, handle null values)
-- [ ] T040 [US3] Implement WeighingRecord.RecordType update logic in WeighingMatchingService.cs (mark as Join/Out after matching)
-- [ ] T041 [US3] Register WeighingMatchingService in MaterialClientCommonModule.cs
+- [x] T036 [US3] Create WeighingMatchingService class in MaterialClient.Common/Services/WeighingMatchingService.cs
+- [x] T037 [US3] Implement matching rule 1 logic in WeighingMatchingService.cs (same plate number + time window, select shortest interval if multiple candidates)
+- [x] T038 [US3] Implement matching rule 2 logic in WeighingMatchingService.cs (time order + weight relationship based on DeliveryType)
+- [x] T039 [US3] Implement Waybill creation logic in WeighingMatchingService.cs (generate OrderNo from Guid, extract Provider/Material, handle null values)
+- [x] T040 [US3] Implement WeighingRecord.RecordType update logic in WeighingMatchingService.cs (mark as Join/Out after matching)
+- [x] T041 [US3] Register WeighingMatchingService in MaterialClientCommonModule.cs
 - [ ] T042 [US3] Write integration tests for WeighingMatchingService in MaterialClient.Common.Tests/WeighingMatchingServiceTests.cs (test matching rules, Waybill creation, multiple candidates selection)
 
 ---
@@ -191,10 +191,10 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 
 **Tasks**:
 
-- [ ] T043 [US4] Create TruckScaleWeightController in MaterialClient.Common/Controllers/TruckScaleWeightController.cs (GET/POST /api/hardware/truck-scale/weight)
-- [ ] T044 [US4] [P] Create PlateNumberController in MaterialClient.Common/Controllers/PlateNumberController.cs (GET/POST /api/hardware/plate-number)
-- [ ] T045 [US4] [P] Create VehiclePhotoController in MaterialClient.Common/Controllers/VehiclePhotoController.cs (GET /api/hardware/vehicle-photos)
-- [ ] T046 [US4] [P] Create BillPhotoController in MaterialClient.Common/Controllers/BillPhotoController.cs (GET /api/hardware/bill-photo)
+- [x] T043 [US4] Create TruckScaleWeightController in MaterialClient.Common/Controllers/TruckScaleWeightController.cs (GET/POST /api/hardware/truck-scale/weight)
+- [x] T044 [US4] [P] Create PlateNumberController in MaterialClient.Common/Controllers/PlateNumberController.cs (GET/POST /api/hardware/plate-number)
+- [x] T045 [US4] [P] Create VehiclePhotoController in MaterialClient.Common/Controllers/VehiclePhotoController.cs (GET /api/hardware/vehicle-photo)
+- [x] T046 [US4] [P] Create BillPhotoController in MaterialClient.Common/Controllers/BillPhotoController.cs (GET /api/hardware/bill-photo)
 
 ---
 

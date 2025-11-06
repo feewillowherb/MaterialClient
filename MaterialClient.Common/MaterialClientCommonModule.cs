@@ -46,6 +46,7 @@ public class MaterialClientCommonModule : AbpModule
         services.AddSingleton<ITruckScaleWeightService, Services.Hardware.TruckScaleWeightService>();
         services.AddSingleton<IPlateNumberCaptureService, Services.Hardware.PlateNumberCaptureService>();
         services.AddSingleton<IVehiclePhotoService, Services.Hardware.VehiclePhotoService>();
+        services.AddSingleton<IBillPhotoService, Services.Hardware.BillPhotoService>();
 
         // Register WeighingService (transient, registered via ITransientDependency)
         // No need to register explicitly, ABP will auto-register it
