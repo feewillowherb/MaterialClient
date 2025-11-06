@@ -141,7 +141,7 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 - [x] T032 [US2] Implement weight stability tracking in WeighingService.cs (timer-based stable duration check)
 - [x] T033 [US2] Implement WeighingRecord creation logic in WeighingService.cs (call hardware services, handle failures gracefully)
 - [x] T034 [US2] Register hardware services and WeighingService in MaterialClientCommonModule.cs
-- [ ] T035 [US2] Write integration tests for WeighingService in MaterialClient.Common.Tests/WeighingServiceTests.cs (test state transitions, record creation, failure handling)
+- [x] T035 [US2] Write integration tests for WeighingService in MaterialClient.Common.Tests/WeighingServiceSteps.cs (BDD tests using Reqnroll.NUnit with WeighingService.feature)
 
 ---
 
@@ -170,7 +170,7 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 - [x] T039 [US3] Implement Waybill creation logic in WeighingMatchingService.cs (generate OrderNo from Guid, extract Provider/Material, handle null values)
 - [x] T040 [US3] Implement WeighingRecord.RecordType update logic in WeighingMatchingService.cs (mark as Join/Out after matching)
 - [x] T041 [US3] Register WeighingMatchingService in MaterialClientCommonModule.cs
-- [ ] T042 [US3] Write integration tests for WeighingMatchingService in MaterialClient.Common.Tests/WeighingMatchingServiceTests.cs (test matching rules, Waybill creation, multiple candidates selection)
+- [x] T042 [US3] Write integration tests for WeighingMatchingService in MaterialClient.Common.Tests/WeighingMatchingServiceSteps.cs (BDD tests using Reqnroll.NUnit with WeighingMatchingService.feature)
 
 ---
 
