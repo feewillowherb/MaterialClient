@@ -2,7 +2,7 @@
 using System.IO;
 using MaterialClient.Common.Services.Hikvision;
 
-namespace MaterialClient.Common.UnitTest;
+namespace MaterialClient.Common.Test;
 
 public class UnitTest1
 {
