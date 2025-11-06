@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient", "MaterialC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Common", "MaterialClient.Common\MaterialClient.Common.csproj", "{139138C2-0E2F-43D5-AC04-16F7B5BE1F42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Common.Test", "MaterialClient.Common.Test\MaterialClient.Common.Test.csproj", "{773F21A6-62E6-41BB-9B56-CBC385C12B6D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Common.Tests", "MaterialClient.Common.Tests\MaterialClient.Common.Tests.csproj", "{773F21A6-62E6-41BB-9B56-CBC385C12B6D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

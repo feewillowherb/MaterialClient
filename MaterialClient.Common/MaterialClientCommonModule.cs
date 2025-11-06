@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.Modularity;
 using Volo.Abp.EntityFrameworkCore;
-using MaterialClient.Common.EFCore;
+using MaterialClient.EFCore;
 using MaterialClient.Common.Services.Hikvision;
 
 namespace MaterialClient.Common;

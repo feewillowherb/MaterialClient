@@ -1,32 +1,32 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# MaterialClient Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Architecture-First
+- 采用清晰的分层架构：UI（Avalonia）、应用服务、领域、基础设施（EF Core/SQLite、Refit 客户端）。
+- 各层职责明确，禁止跨层依赖（除经 DTO/接口透传）。
+- 使用 ABP 框架提供的基础设施（依赖注入、领域驱动设计、数据访问等）。
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. ABP Framework Integration
+- 统一使用 ABP 框架（版本 9.3.6）提供的核心功能。
+- 依赖注入使用 Autofac（通过 ABP Autofac 模块）。
+- 数据访问使用 ABP EntityFrameworkCore 集成。
+- 领域驱动设计使用 ABP Domain 包。
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Test-First (NON-NEGOTIABLE)
+- TDD 强制要求：测试先行编写 → 用户批准 → 测试失败 → 然后实现；严格遵循 Red-Green-Refactor 循环。
+- 集成测试风格：采用 ABP 集成测试框架，使用内存 SQLite 进行数据库测试，支持事务隔离与数据种子。
+- BDD 测试：使用 Reqnroll.NUnit 进行行为驱动开发，通过 `.feature` 文件和 `Steps.cs` 定义测试场景。
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Integration Testing
+- 集成测试重点领域：新库契约测试、契约变更、服务间通信、共享模式。
+- 测试项目结构：所有测试统一在 `MaterialClient.Common.Tests` 项目中，包含 TestBase、EntityFrameworkCore、Domain 三个测试层次。
+- 测试基础设施：基于 ABP TestBase 模块，提供统一的测试环境、配置和基类。
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Observability & Simplicity
+- 可观测性：对关键路径（后台同步、HTTP 调用、数据库写入）记录结构化日志与指标，便于追踪与告警。
+- 测试中使用 Serilog 进行日志记录，支持详细调试信息。
+- 简单性原则：遵循 YAGNI（You Aren't Gonna Need It）原则，从简单开始，避免过度设计。
 
 ## Additional Constraints
 
@@ -56,7 +56,16 @@
     - 使用 `AddAbpDbContext<TDbContext>(options => options.UseSqlite(...))` 进行配置；
     - 数据库文件路径应在应用配置中可配置，默认使用相对路径或用户数据目录；
     - 支持数据库加密（如 SQLCipher），连接字符串中应包含密码配置。
-  - **集成测试**：`DbContext` 与仓储均需支持 ABP 风格的集成测试（含内存替身/SQLite 模式、事务隔离与测试基类约定）。
+  - **集成测试**：
+    - `DbContext` 与仓储均需支持 ABP 风格的集成测试（含内存替身/SQLite 模式、事务隔离与测试基类约定）。
+    - 测试项目统一命名为 `MaterialClient.Common.Tests`，合并所有测试类型（Domain、EntityFrameworkCore、TestBase）。
+    - 使用 ABP 集成测试框架（`AbpIntegratedTest<TStartupModule>`）作为测试基类。
+    - 测试模块应继承自 `MaterialClientTestBaseModule`，提供统一的测试环境配置（禁用后台任务、允许所有授权、数据种子等）。
+    - EntityFrameworkCore 测试使用内存 SQLite（`:memory:`），通过 `MaterialClientEntityFrameworkCoreTestModule` 配置。
+    - Domain 测试使用 `MaterialClientDomainTestModule`，集成 Serilog 日志记录。
+    - 使用 Reqnroll.NUnit 进行 BDD 风格测试，通过 `Steps.cs` 定义测试步骤。
+    - 测试中使用 `FakeCurrentPrincipalAccessor` 模拟当前用户上下文。
+    - 使用 `WithUnitOfWorkAsync` 方法进行工作单元测试，确保事务隔离。
 - 领域驱动设计（DDD）与实体模型：
   - **ABP Domain 包**：必须引用 `Volo.Abp.Ddd.Domain` 包（当前版本：9.3.6），提供领域驱动设计基础设施。
   - **命名空间**：使用 `Volo.Abp.Domain.Entities` 命名空间下的基类。
@@ -78,13 +87,19 @@
   - 领域与应用服务需具备可替换依赖以便于单元/集成测试；
   - Refit 与仓储接口在测试中可替换为内存实现或测试替身；
   - `DbContext` 测试支持迁移/种子与事务性回滚。
+  - 测试基础设施：
+    - 测试基类：`MaterialClientTestBase<TStartupModule>` 提供 ABP 集成测试基础功能。
+    - EntityFrameworkCore 测试基类：`MaterialClientEntityFrameworkCoreTestBase` 用于数据库相关测试。
+    - Domain 测试基类：`MaterialClientDomainTestBase<TStartupModule>` 用于领域层测试。
+    - 测试配置文件：`appsettings.json` 和 `appsettings.secrets.json` 用于测试环境配置。
+    - 测试依赖项：使用 NSubstitute 进行模拟、Shouldly 进行断言、Reqnroll.NUnit 进行 BDD 测试。
 - 可观测性：对关键路径（后台同步、HTTP 调用、数据库写入）记录结构化日志与指标，便于追踪与告警。
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- Constitution 优先于所有其他实践；修改需要文档、批准和迁移计划。
+- 所有 PR/审查必须验证合规性；复杂性必须得到合理说明。
+- 测试代码必须遵循与生产代码相同的代码字符约束和命名约定。
+- 集成测试必须使用统一的测试基础设施，确保测试的一致性和可维护性。
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-27
