@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2025-11-05
 
 ## Active Technologies
+- C# / .NET 9.0 (001-attended-weighing)
+- SQLite (embedded database, stored locally) (001-attended-weighing)
 
 - C# .NET 9.0 + Volo.Abp.Ddd.Domain 9.3.6, Volo.Abp.EntityFrameworkCore.Sqlite 9.3.6, Microsoft.EntityFrameworkCore.Sqlite 9.0.10 (001-entity-init)
 
@@ -22,6 +24,7 @@ tests/
 C# .NET 9.0: Follow standard conventions
 
 ## Recent Changes
+- 001-attended-weighing: Added C# / .NET 9.0
 
 - 001-entity-init: Added C# .NET 9.0 + Volo.Abp.Ddd.Domain 9.3.6, Volo.Abp.EntityFrameworkCore.Sqlite 9.3.6, Microsoft.EntityFrameworkCore.Sqlite 9.0.10
 
