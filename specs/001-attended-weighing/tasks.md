@@ -53,9 +53,9 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 
 **Tasks**:
 
-- [ ] T001 Add required NuGet packages to MaterialClient.Common.csproj (Volo.Abp.AspNetCore, Volo.Abp.Autofac, Swashbuckle.AspNetCore)
-- [ ] T002 Verify existing dependencies (ABP Framework 9.3.6, Avalonia 11.3.6, EF Core 9.0.10)
-- [ ] T003 Create Configuration folder structure in MaterialClient.Common/Configuration/
+- [x] T001 Add required NuGet packages to MaterialClient.Common.csproj (Volo.Abp.AspNetCore, Volo.Abp.Autofac, Swashbuckle.AspNetCore)
+- [x] T002 Verify existing dependencies (ABP Framework 9.3.6, Avalonia 11.3.6, EF Core 9.0.10)
+- [x] T003 Create Configuration folder structure in MaterialClient.Common/Configuration/
 
 ---
 
@@ -67,18 +67,18 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 
 **Tasks**:
 
-- [ ] T004 Create VehicleWeightStatus enum in MaterialClient.Common/Entities/Enums/VehicleWeightStatus.cs
-- [ ] T005 Create DeliveryType enum in MaterialClient.Common/Entities/Enums/DeliveryType.cs
-- [ ] T006 Create WeighingRecordType enum in MaterialClient.Common/Entities/Enums/WeighingRecordType.cs
-- [ ] T007 [P] Modify WeighingRecord entity to add RecordType property in MaterialClient.Common/Entities/WeighingRecord.cs
-- [ ] T008 [P] Create WeighingConfiguration class in MaterialClient.Common/Configuration/WeighingConfiguration.cs
-- [ ] T009 Create EF Core migration to add RecordType column in MaterialClient.Common/EntityFrameworkCore/
-- [ ] T010 Apply database migration using dotnet ef database update
-- [ ] T011 [P] Create MaterialClientHttpHostModule in MaterialClient/HttpHost/MaterialClientHttpHostModule.cs
-- [ ] T012 [P] Modify Program.cs to configure and start ABP HTTP Host in background thread in MaterialClient/Program.cs
-- [ ] T013 [P] Configure Swagger in MaterialClientHttpHostModule for API documentation
-- [ ] T014 [P] Add WeighingConfiguration to appsettings.json with default values
-- [ ] T015 Update MaterialClientDbContext to configure WeighingRecord.RecordType in MaterialClient.Common/EntityFrameworkCore/MaterialClientDbContext.cs
+- [x] T004 Create VehicleWeightStatus enum in MaterialClient.Common/Entities/Enums/VehicleWeightStatus.cs
+- [x] T005 Create DeliveryType enum in MaterialClient.Common/Entities/Enums/DeliveryType.cs
+- [x] T006 Create WeighingRecordType enum in MaterialClient.Common/Entities/Enums/WeighingRecordType.cs
+- [x] T007 [P] Modify WeighingRecord entity to add RecordType property in MaterialClient.Common/Entities/WeighingRecord.cs
+- [x] T008 [P] Create WeighingConfiguration class in MaterialClient.Common/Configuration/WeighingConfiguration.cs
+- [ ] T009 Create EF Core migration to add RecordType column in MaterialClient.Common/EntityFrameworkCore/ (Note: Design-time factory created, but migration creation needs SQLite bundle initialization fix)
+- [ ] T010 Apply database migration using dotnet ef database update (Blocked by T009)
+- [x] T011 [P] Create MaterialClientHttpHostModule in MaterialClient/HttpHost/MaterialClientHttpHostModule.cs
+- [x] T012 [P] Modify Program.cs to configure and start ABP HTTP Host in background thread in MaterialClient/Program.cs
+- [x] T013 [P] Configure Swagger in MaterialClientHttpHostModule for API documentation
+- [x] T014 [P] Add WeighingConfiguration to appsettings.json with default values
+- [x] T015 Update MaterialClientDbContext to configure WeighingRecord.RecordType in MaterialClient.Common/EntityFrameworkCore/MaterialClientDbContext.cs
 
 ---
 
@@ -100,14 +100,14 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 
 **Tasks**:
 
-- [ ] T016 [US1] Create AttendedWeighingWindow.axaml UI layout in MaterialClient/Views/AttendedWeighingWindow.axaml (参考assets/中的设计文件，不使用MainWindow.xaml的布局错误)
-- [ ] T017 [US1] Create AttendedWeighingWindow.axaml.cs code-behind in MaterialClient/Views/AttendedWeighingWindow.axaml.cs
-- [ ] T018 [US1] Create AttendedWeighingViewModel class in MaterialClient/ViewModels/AttendedWeighingViewModel.cs
-- [ ] T019 [US1] [P] Implement data binding for unmatched records list in AttendedWeighingViewModel.cs using IRepository<WeighingRecord, long>
-- [ ] T020 [US1] [P] Implement data binding for completed waybills list in AttendedWeighingViewModel.cs using IRepository<Waybill, long>
-- [ ] T021 [US1] Implement detail view display logic in AttendedWeighingViewModel.cs (show weight, join time for WeighingRecord; full info for Waybill)
-- [ ] T022 [US1] Implement vehicle photo display in AttendedWeighingWindow.axaml (reference join_out_camera.png design)
-- [ ] T023 [US1] Implement bill photo display in AttendedWeighingWindow.axaml (reference bill.png design)
+- [x] T016 [US1] Create AttendedWeighingWindow.axaml UI layout in MaterialClient/Views/AttendedWeighingWindow.axaml (参考assets/中的设计文件，不使用MainWindow.xaml的布局错误)
+- [x] T017 [US1] Create AttendedWeighingWindow.axaml.cs code-behind in MaterialClient/Views/AttendedWeighingWindow.axaml.cs
+- [x] T018 [US1] Create AttendedWeighingViewModel class in MaterialClient/ViewModels/AttendedWeighingViewModel.cs
+- [x] T019 [US1] [P] Implement data binding for unmatched records list in AttendedWeighingViewModel.cs using IRepository<WeighingRecord, long>
+- [x] T020 [US1] [P] Implement data binding for completed waybills list in AttendedWeighingViewModel.cs using IRepository<Waybill, long>
+- [x] T021 [US1] Implement detail view display logic in AttendedWeighingViewModel.cs (show weight, join time for WeighingRecord; full info for Waybill)
+- [x] T022 [US1] Implement vehicle photo display in AttendedWeighingWindow.axaml (reference join_out_camera.png design)
+- [x] T023 [US1] Implement bill photo display in AttendedWeighingWindow.axaml (reference bill.png design)
 
 ---
 
