@@ -5,9 +5,9 @@
 
 ## Task Summary
 
-- **Total Tasks**: 47
+- **Total Tasks**: 48
 - **Phase 1 (Setup)**: 3 tasks
-- **Phase 2 (Foundational)**: 12 tasks
+- **Phase 2 (Foundational)**: 13 tasks
 - **Phase 3 (User Story 1 - UI)**: 8 tasks
 - **Phase 4 (User Story 2 - Weighing)**: 12 tasks
 - **Phase 5 (User Story 3 - Matching)**: 7 tasks
@@ -72,8 +72,9 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 - [x] T006 Create WeighingRecordType enum in MaterialClient.Common/Entities/Enums/WeighingRecordType.cs
 - [x] T007 [P] Modify WeighingRecord entity to add RecordType property in MaterialClient.Common/Entities/WeighingRecord.cs
 - [x] T008 [P] Create WeighingConfiguration class in MaterialClient.Common/Configuration/WeighingConfiguration.cs
-- [ ] T009 Create EF Core migration to add RecordType column in MaterialClient.Common/EntityFrameworkCore/ (Note: Design-time factory created, but migration creation needs SQLite bundle initialization fix)
-- [ ] T010 Apply database migration using dotnet ef database update (Blocked by T009)
+- [x] T008a Remove SQLite encryption package (SQLitePCLRaw.bundle_zetetic) from MaterialClient.Common/MaterialClient.Common.csproj (current version does not need SQLite encryption)
+- [x] T009 Create EF Core migration to add RecordType column in MaterialClient.Common/EntityFrameworkCore/
+- [x] T010 Apply database migration using dotnet ef database update
 - [x] T011 [P] Create MaterialClientHttpHostModule in MaterialClient/HttpHost/MaterialClientHttpHostModule.cs
 - [x] T012 [P] Modify Program.cs to configure and start ABP HTTP Host in background thread in MaterialClient/Program.cs
 - [x] T013 [P] Configure Swagger in MaterialClientHttpHostModule for API documentation
