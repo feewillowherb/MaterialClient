@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
@@ -27,6 +28,7 @@ public class WeighingService : ITransientDependency
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly Lazy<WeighingMatchingService> _matchingService;
     private readonly WeighingConfiguration _configuration;
     private readonly ILogger<WeighingService>? _logger;
 
@@ -44,6 +46,7 @@ public class WeighingService : ITransientDependency
         IRepository<WeighingRecordAttachment, int> weighingRecordAttachmentRepository,
         IRepository<AttachmentFile, int> attachmentFileRepository,
         IUnitOfWorkManager unitOfWorkManager,
+        IServiceProvider serviceProvider,
         IConfiguration configuration,
         ILogger<WeighingService>? logger = null)
     {
@@ -55,6 +58,10 @@ public class WeighingService : ITransientDependency
         _attachmentFileRepository = attachmentFileRepository;
         _unitOfWorkManager = unitOfWorkManager;
         _logger = logger;
+
+        // Lazy load matching service to avoid circular dependency
+        _matchingService = new Lazy<WeighingMatchingService>(() => 
+            serviceProvider.GetRequiredService<WeighingMatchingService>());
 
         // Load configuration
         var configSection = configuration.GetSection("Weighing");
@@ -217,6 +224,21 @@ public class WeighingService : ITransientDependency
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "WeighingService: Failed to capture vehicle photos, continuing without them");
+            }
+
+            // Try to match with existing records and create waybills
+            // Use default DeliveryType (Delivery) - can be configured later
+            try
+            {
+                var waybillsCreated = await _matchingService.Value.TryMatchAndCreateWaybillsAsync(DeliveryType.Delivery);
+                if (waybillsCreated > 0)
+                {
+                    _logger?.LogInformation($"WeighingService: Created {waybillsCreated} waybill(s) after matching");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "WeighingService: Failed to match records, will retry later");
             }
         }
         catch (Exception ex)

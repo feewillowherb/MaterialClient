@@ -204,7 +204,7 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 
 **Tasks**:
 
-- [ ] T047 Verify all integration tests pass and update UI to reflect matching results in real-time in AttendedWeighingViewModel.cs
+- [x] T047 Verify all integration tests pass and update UI to reflect matching results in real-time in AttendedWeighingViewModel.cs
 
 ---
 

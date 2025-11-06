@@ -1,5 +1,7 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -39,6 +41,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase
 
     public ICommand RefreshCommand { get; }
 
+    private Timer? _autoRefreshTimer;
+    private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
+
     public AttendedWeighingViewModel()
     {
         // Try to get repositories from service locator (may be null if ABP not initialized yet)
@@ -56,6 +61,22 @@ public partial class AttendedWeighingViewModel : ViewModelBase
         
         // Load initial data
         _ = RefreshAsync();
+
+        // Start auto-refresh timer to reflect matching results in real-time
+        StartAutoRefresh();
+    }
+
+    private void StartAutoRefresh()
+    {
+        _autoRefreshTimer = new Timer(async _ => await RefreshAsync(), null, 
+            TimeSpan.FromMilliseconds(AutoRefreshIntervalMs), 
+            TimeSpan.FromMilliseconds(AutoRefreshIntervalMs));
+    }
+
+    public void StopAutoRefresh()
+    {
+        _autoRefreshTimer?.Dispose();
+        _autoRefreshTimer = null;
     }
 
     partial void OnSelectedWeighingRecordChanged(WeighingRecord? value)
