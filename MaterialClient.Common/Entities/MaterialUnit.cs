@@ -8,7 +8,7 @@ namespace MaterialClient.Common.Entities;
 public class MaterialUnit : Entity<int>
 {
     /// <summary>
-    /// 物料ID (FK to MaterialDefinition)
+    /// 物料ID (FK to Material)
     /// </summary>
     public int MaterialId { get; set; }
 
@@ -36,7 +36,7 @@ public class MaterialUnit : Entity<int>
     /// <summary>
     /// 物料定义导航属性
     /// </summary>
-    public MaterialDefinition? Material { get; set; }
+    public Material? Material { get; set; }
 
     /// <summary>
     /// 供应商导航属性

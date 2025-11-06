@@ -23,7 +23,7 @@ public class WeighingRecord : FullAuditedEntity<long>
     public int? ProviderId { get; set; }
 
     /// <summary>
-    /// 物料ID (FK to MaterialDefinition, optional)
+    /// 物料ID (FK to Material, optional)
     /// </summary>
     public int? MaterialId { get; set; }
 
@@ -36,6 +36,6 @@ public class WeighingRecord : FullAuditedEntity<long>
     /// <summary>
     /// 物料定义导航属性
     /// </summary>
-    public MaterialDefinition? Material { get; set; }
+    public Material? Material { get; set; }
 }
 

@@ -5,7 +5,7 @@ namespace MaterialClient.Common.Entities;
 /// <summary>
 /// 物料定义实体
 /// </summary>
-public class MaterialDefinition : Entity<int>
+public class Material : Entity<int>
 {
     /// <summary>
     /// 物料名称

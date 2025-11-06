@@ -12,7 +12,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     }
 
     // DbSets
-    public DbSet<MaterialDefinition> MaterialDefinitions { get; set; }
+    public DbSet<Material> Materials { get; set; }
     public DbSet<MaterialUnit> MaterialUnits { get; set; }
     public DbSet<Provider> Providers { get; set; }
     public DbSet<Waybill> Waybills { get; set; }
@@ -25,8 +25,8 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     {
         base.OnModelCreating(modelBuilder);
         
-        // Configure MaterialDefinition relationships
-        modelBuilder.Entity<MaterialDefinition>(entity =>
+        // Configure Material relationships
+        modelBuilder.Entity<Material>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired();
