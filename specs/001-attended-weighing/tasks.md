@@ -129,17 +129,17 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1) + Phase 4 (US2) [pa
 
 **Tasks**:
 
-- [ ] T024 [US2] Create ITruckScaleWeightService interface in MaterialClient.Common/Services/Hardware/ITruckScaleWeightService.cs
-- [ ] T025 [US2] [P] Create TruckScaleWeightService implementation in MaterialClient.Common/Services/Hardware/TruckScaleWeightService.cs (返回固定测试值，添加"待对接设备"备注)
-- [ ] T026 [US2] [P] Create IPlateNumberCaptureService interface in MaterialClient.Common/Services/Hardware/IPlateNumberCaptureService.cs
-- [ ] T027 [US2] [P] Create PlateNumberCaptureService implementation in MaterialClient.Common/Services/Hardware/PlateNumberCaptureService.cs (返回固定测试值，添加"待对接设备"备注)
-- [ ] T028 [US2] [P] Create IVehiclePhotoService interface in MaterialClient.Common/Services/Hardware/IVehiclePhotoService.cs
-- [ ] T029 [US2] [P] Create VehiclePhotoService implementation in MaterialClient.Common/Services/Hardware/VehiclePhotoService.cs (返回4张固定图片，添加"待对接设备"备注)
-- [ ] T030 [US2] Create WeighingService class in MaterialClient.Common/Services/WeighingService.cs
-- [ ] T031 [US2] Implement state machine logic in WeighingService.cs (OffScale → OnScale → Weighing transitions with boundary value handling)
-- [ ] T032 [US2] Implement weight stability tracking in WeighingService.cs (timer-based stable duration check)
-- [ ] T033 [US2] Implement WeighingRecord creation logic in WeighingService.cs (call hardware services, handle failures gracefully)
-- [ ] T034 [US2] Register hardware services and WeighingService in MaterialClientCommonModule.cs
+- [x] T024 [US2] Create ITruckScaleWeightService interface in MaterialClient.Common/Services/Hardware/ITruckScaleWeightService.cs
+- [x] T025 [US2] [P] Create TruckScaleWeightService implementation in MaterialClient.Common/Services/Hardware/TruckScaleWeightService.cs (返回固定测试值，添加"待对接设备"备注)
+- [x] T026 [US2] [P] Create IPlateNumberCaptureService interface in MaterialClient.Common/Services/Hardware/IPlateNumberCaptureService.cs
+- [x] T027 [US2] [P] Create PlateNumberCaptureService implementation in MaterialClient.Common/Services/Hardware/PlateNumberCaptureService.cs (返回固定测试值，添加"待对接设备"备注)
+- [x] T028 [US2] [P] Create IVehiclePhotoService interface in MaterialClient.Common/Services/Hardware/IVehiclePhotoService.cs
+- [x] T029 [US2] [P] Create VehiclePhotoService implementation in MaterialClient.Common/Services/Hardware/VehiclePhotoService.cs (返回4张固定图片，添加"待对接设备"备注)
+- [x] T030 [US2] Create WeighingService class in MaterialClient.Common/Services/WeighingService.cs
+- [x] T031 [US2] Implement state machine logic in WeighingService.cs (OffScale → OnScale → Weighing transitions with boundary value handling)
+- [x] T032 [US2] Implement weight stability tracking in WeighingService.cs (timer-based stable duration check)
+- [x] T033 [US2] Implement WeighingRecord creation logic in WeighingService.cs (call hardware services, handle failures gracefully)
+- [x] T034 [US2] Register hardware services and WeighingService in MaterialClientCommonModule.cs
 - [ ] T035 [US2] Write integration tests for WeighingService in MaterialClient.Common.Tests/WeighingServiceTests.cs (test state transitions, record creation, failure handling)
 
 ---

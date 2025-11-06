@@ -6,6 +6,7 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
 using MaterialClient.EFCore;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Services.Hardware;
 
 namespace MaterialClient.Common;
 
@@ -40,6 +41,14 @@ public class MaterialClientCommonModule : AbpModule
 
         // Register Services
         services.AddSingleton<HikvisionService>();
+
+        // Register Hardware Services (singleton for test value persistence)
+        services.AddSingleton<ITruckScaleWeightService, Services.Hardware.TruckScaleWeightService>();
+        services.AddSingleton<IPlateNumberCaptureService, Services.Hardware.PlateNumberCaptureService>();
+        services.AddSingleton<IVehiclePhotoService, Services.Hardware.VehiclePhotoService>();
+
+        // Register WeighingService (transient, registered via ITransientDependency)
+        // No need to register explicitly, ABP will auto-register it
 
         // Repositories are automatically registered by ABP framework
         // when using IRepository<TEntity, TKey> interface
