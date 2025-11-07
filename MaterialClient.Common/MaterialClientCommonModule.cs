@@ -1,30 +1,56 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore.Sqlite;
 using MaterialClient.EFCore;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Services.Hardware;
 
 namespace MaterialClient.Common;
 
 [DependsOn(
-    typeof(AbpEntityFrameworkCoreModule)
+    typeof(AbpEntityFrameworkCoreModule),
+    typeof(AbpEntityFrameworkCoreSqliteModule)
 )]
 public class MaterialClientCommonModule : AbpModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         var services = context.Services;
+        var configuration = context.Services.GetConfiguration();
 
-        // Register DbContext
-        // Note: Connection string and SQLite options should be configured in the application startup module
+        // Register DbContext with default repositories
         services.AddAbpDbContext<MaterialClientDbContext>(options =>
         {
-            // DbContext options configuration will be done in the application startup
-            // Example: options.UseSqlite(connectionString)
+            // Enable default repositories for all entities
+            options.AddDefaultRepositories(includeAllEntities: true);
+        });
+
+        // Configure SQLite connection from configuration
+        var connectionString = configuration.GetConnectionString("Default") 
+            ?? "Data Source=MaterialClient.db";
+        
+        services.Configure<AbpDbContextOptions>(options =>
+        {
+            options.Configure(context =>
+            {
+                context.DbContextOptions.UseSqlite(connectionString);
+            });
         });
 
         // Register Services
         services.AddSingleton<HikvisionService>();
+
+        // Register Hardware Services (singleton for test value persistence)
+        services.AddSingleton<ITruckScaleWeightService, Services.Hardware.TruckScaleWeightService>();
+        services.AddSingleton<IPlateNumberCaptureService, Services.Hardware.PlateNumberCaptureService>();
+        services.AddSingleton<IVehiclePhotoService, Services.Hardware.VehiclePhotoService>();
+        services.AddSingleton<IBillPhotoService, Services.Hardware.BillPhotoService>();
+
+        // Register WeighingService (transient, registered via ITransientDependency)
+        // No need to register explicitly, ABP will auto-register it
 
         // Repositories are automatically registered by ABP framework
         // when using IRepository<TEntity, TKey> interface

@@ -1,4 +1,5 @@
 using Volo.Abp.Domain.Entities.Auditing;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Entities;
 
@@ -26,6 +27,11 @@ public class WeighingRecord : FullAuditedEntity<long>
     /// 物料ID (FK to Material, optional)
     /// </summary>
     public int? MaterialId { get; set; }
+
+    /// <summary>
+    /// 记录类型（Unmatch/Join/Out）
+    /// </summary>
+    public WeighingRecordType RecordType { get; set; } = WeighingRecordType.Unmatch;
 
     // Navigation properties
     /// <summary>
