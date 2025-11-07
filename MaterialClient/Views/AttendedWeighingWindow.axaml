@@ -16,12 +16,7 @@
       <Grid ColumnDefinitions="Auto,*,Auto">
         <!-- Logo and Title -->
         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-          <Image Source="/Assets/Indexlogo.png" Width="32" Height="32" Stretch="Uniform"/>
-          <TextBlock Text="凡东物料验收系统" 
-                     Foreground="White" 
-                     FontSize="18" 
-                     FontWeight="SemiBold"
-                     VerticalAlignment="Center"/>
+          <Image Source="/Assets/Indexlogo.png" Width="210" Height="32" Stretch="Uniform"/>
         </StackPanel>
         
         <!-- Menu Items (Center) -->
@@ -52,12 +47,6 @@
                   Padding="8,4"/>
         </StackPanel>
         
-        <!-- Current Time -->
-        <TextBlock Grid.Column="2" 
-                   Text="{Binding CurrentTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" 
-                   Foreground="White" 
-                   FontSize="14"
-                   VerticalAlignment="Center"/>
       </Grid>
     </Border>
 
@@ -651,21 +640,26 @@
                   CornerRadius="8,8,0,0" 
                   BorderBrush="#E5E7EB" 
                   BorderThickness="1,1,1,0">
-            <StackPanel Orientation="Horizontal" Spacing="0">
+            <UniformGrid Rows="1" Columns="2">
               <Button Content="进场照片" 
                       Background="#4169E1"
                       Foreground="White"
                       BorderThickness="0"
                       CornerRadius="8,0,0,0"
                       Padding="32,12"
-                      FontSize="14"/>
+                      FontSize="14"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"/>
               <Button Content="出场照片" 
                       Background="White"
                       Foreground="#666"
                       BorderThickness="0"
+                      CornerRadius="0,8,0,0"
                       Padding="32,12"
-                      FontSize="14"/>
-            </StackPanel>
+                      FontSize="14"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"/>
+            </UniformGrid>
           </Border>
           
           <!-- Camera Grid -->
@@ -732,32 +726,6 @@
                       Command="{Binding TakeBillPhotoCommand}"/>
             </Grid>
           </Border>
-          
-          <!-- Bottom Buttons -->
-          <Grid Grid.Row="5" 
-                ColumnDefinitions="*,*" 
-                ColumnSpacing="12"
-                Margin="0,20,0,0">
-            <Button Content="保存" 
-                    Background="#4169E1"
-                    Foreground="White"
-                    BorderThickness="0"
-                    CornerRadius="6"
-                    Padding="0,12"
-                    FontSize="16"
-                    HorizontalAlignment="Stretch"
-                    Command="{Binding SaveCommand}"/>
-            <Button Grid.Column="1" 
-                    Content="关闭" 
-                    Background="#6B7280"
-                    Foreground="White"
-                    BorderThickness="0"
-                    CornerRadius="6"
-                    Padding="0,12"
-                    FontSize="16"
-                    HorizontalAlignment="Stretch"
-                    Command="{Binding CloseCommand}"/>
-          </Grid>
         </Grid>
       </Border>
       
