@@ -1,5 +1,7 @@
+using System.Threading;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
+using MaterialClient.Common.EntityFrameworkCore;
 using MaterialClient.Common.Services.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -13,7 +15,7 @@ namespace MaterialClient.Common.Tests;
 /// 授权服务集成测试
 /// This test will be implemented after LicenseService is created in Phase 3.2
 /// </summary>
-public class LicenseServiceIntegrationTests : MaterialClientTestBase
+public class LicenseServiceIntegrationTests : MaterialClientEntityFrameworkCoreTestBase
 {
     private readonly IBasePlatformApi _mockBasePlatformApi;
     private readonly IMachineCodeService _machineCodeService;
@@ -45,7 +47,7 @@ public class LicenseServiceIntegrationTests : MaterialClientTestBase
             MachineCode = await _machineCodeService.GetMachineCodeAsync()
         };
 
-        _mockBasePlatformApi.GetAuthClientLicense(Arg.Any<LicenseRequestDto>())
+        _mockBasePlatformApi.GetAuthClientLicenseAsync(Arg.Any<LicenseRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(new HttpResult<LicenseInfoDto>
             {
                 Code = 200,
@@ -74,7 +76,7 @@ public class LicenseServiceIntegrationTests : MaterialClientTestBase
         // Arrange
         var authCode = "invalid-code";
 
-        _mockBasePlatformApi.GetAuthClientLicense(Arg.Any<LicenseRequestDto>())
+        _mockBasePlatformApi.GetAuthClientLicenseAsync(Arg.Any<LicenseRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(new HttpResult<LicenseInfoDto>
             {
                 Code = 400,
@@ -112,7 +114,7 @@ public class LicenseServiceIntegrationTests : MaterialClientTestBase
             MachineCode = await _machineCodeService.GetMachineCodeAsync()
         };
 
-        _mockBasePlatformApi.GetAuthClientLicense(Arg.Any<LicenseRequestDto>())
+        _mockBasePlatformApi.GetAuthClientLicenseAsync(Arg.Any<LicenseRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(new HttpResult<LicenseInfoDto>
             {
                 Code = 200,
@@ -144,7 +146,7 @@ public class LicenseServiceIntegrationTests : MaterialClientTestBase
             MachineCode = await _machineCodeService.GetMachineCodeAsync()
         };
 
-        _mockBasePlatformApi.GetAuthClientLicense(Arg.Any<LicenseRequestDto>())
+        _mockBasePlatformApi.GetAuthClientLicenseAsync(Arg.Any<LicenseRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(new HttpResult<LicenseInfoDto>
             {
                 Code = 200,

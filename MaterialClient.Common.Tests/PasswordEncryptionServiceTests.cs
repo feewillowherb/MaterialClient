@@ -1,5 +1,7 @@
 using MaterialClient.Common.Services.Authentication;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using Shouldly;
 using Xunit;
 
@@ -22,7 +24,8 @@ public class PasswordEncryptionServiceTests
             })
             .Build();
 
-        _encryptionService = new PasswordEncryptionService(configuration);
+        var logger = Substitute.For<ILogger<PasswordEncryptionService>>();
+        _encryptionService = new PasswordEncryptionService(configuration, logger);
     }
 
     [Fact]
@@ -143,8 +146,10 @@ public class PasswordEncryptionServiceTests
             .AddInMemoryCollection(new Dictionary<string, string>())
             .Build();
 
+        var logger = Substitute.For<ILogger<PasswordEncryptionService>>();
+
         // Act & Assert
-        Should.Throw<ArgumentNullException>(() => new PasswordEncryptionService(configuration));
+        Should.Throw<InvalidOperationException>(() => new PasswordEncryptionService(configuration, logger));
     }
 
     [Fact]
