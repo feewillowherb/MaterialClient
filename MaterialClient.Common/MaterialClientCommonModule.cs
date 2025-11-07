@@ -7,6 +7,10 @@ using Volo.Abp.EntityFrameworkCore.Sqlite;
 using MaterialClient.EFCore;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.Authentication;
+using MaterialClient.Common.Api;
+using Refit;
+using Polly;
 
 namespace MaterialClient.Common;
 
@@ -39,6 +43,26 @@ public class MaterialClientCommonModule : AbpModule
                 context.DbContextOptions.UseSqlite(connectionString);
             });
         });
+
+        // Register Refit API Client with retry policy and timeout
+        var basePlatformUrl = configuration["BasePlatform:BaseUrl"] 
+            ?? "http://base.publicapi.findong.com";
+        
+        services.AddRefitClient<IBasePlatformApi>()
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri(basePlatformUrl);
+                c.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .AddTransientHttpErrorPolicy(policy =>
+                policy.WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                ));
+
+        // Register Authentication Services
+        services.AddSingleton<IMachineCodeService, MachineCodeService>();
+        services.AddSingleton<IPasswordEncryptionService, PasswordEncryptionService>();
 
         // Register Services
         services.AddSingleton<HikvisionService>();
