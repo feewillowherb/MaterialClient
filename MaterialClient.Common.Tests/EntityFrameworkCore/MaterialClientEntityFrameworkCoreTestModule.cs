@@ -1,8 +1,10 @@
+using MaterialClient.Common.Services.BasePlatformApi;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Volo.Abp;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
@@ -25,6 +27,13 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
         context.Services.AddAlwaysDisableUnitOfWorkTransaction();
 
         ConfigureInMemorySqlite(context.Services);
+        
+        // Register mock API for testing
+        context.Services.AddSingleton<IBasePlatformApi>(sp =>
+        {
+            var mockApi = Substitute.For<IBasePlatformApi>();
+            return mockApi;
+        });
     }
 
     private void ConfigureInMemorySqlite(IServiceCollection services)
