@@ -1,7 +1,7 @@
-using MaterialClient.Common.Dtos;
+using MaterialClient.Common.Api;
+using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Services.Authentication;
-using MaterialClient.Common.Services.BasePlatformApi;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Reqnroll;

@@ -1,4 +1,4 @@
-using MaterialClient.Common.Services.BasePlatformApi;
+using MaterialClient.Common.Api;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
