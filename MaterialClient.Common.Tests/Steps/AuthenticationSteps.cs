@@ -2,6 +2,7 @@ using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Services.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Reqnroll;
@@ -55,13 +56,13 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
             var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
             
             // Create a valid license
-            var license = new LicenseInfo
-            {
-                ProjectId = Guid.NewGuid(),
-                AuthorizationToken = "test-auth-token-123",
-                AuthorizationEndTime = DateTime.UtcNow.AddMonths(6), // Valid for 6 months
-                MachineCode = "test-machine-code"
-            };
+            var license = new LicenseInfo(
+                id: Guid.NewGuid(),
+                projectId: Guid.NewGuid(),
+                authToken: Guid.NewGuid(),
+                authEndTime: DateTime.UtcNow.AddMonths(6), // Valid for 6 months
+                machineCode: "test-machine-code"
+            );
             
             await dbContext.LicenseInfos.AddAsync(license);
             await dbContext.SaveChangesAsync();
@@ -89,13 +90,17 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
         _mockApi!.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
         {
             Success = true,
+            Code = 0,
+            Msg = "成功",
             Data = new LoginUserDto
             {
-                UserId = Guid.NewGuid(),
-                Username = "testuser",
-                AccessToken = "test-access-token",
-                RefreshToken = "test-refresh-token",
-                ExpiresIn = 3600
+                UserId = 1,
+                UserName = "testuser",
+                Token = "test-access-token",
+                TrueName = "测试用户",
+                ProductName = "测试产品",
+                CoName = "测试公司",
+                Url = "http://test.com"
             }
         });
         
@@ -131,13 +136,16 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
         {
             var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
             
+            // Get the license first
+            var license = await dbContext.LicenseInfos.FirstAsync();
+            
             var encryptionService = GetRequiredService<IPasswordEncryptionService>();
-            var credential = new UserCredential
-            {
-                Username = "olduser",
-                EncryptedPassword = encryptionService.Encrypt("OldPass@123"),
-                RememberMe = true
-            };
+            var credential = new UserCredential(
+                id: Guid.NewGuid(),
+                projectId: license.ProjectId,
+                username: "olduser",
+                encryptedPassword: encryptionService.Encrypt("OldPass@123")
+            );
             
             await dbContext.UserCredentials.AddAsync(credential);
             await dbContext.SaveChangesAsync();
@@ -197,8 +205,9 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
                 _mockApi!.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
                 {
                     Success = false,
-                    ErrorCode = "AUTH_FAILED",
-                    ErrorMsg = "用户名或密码错误"
+                    Code = -1,
+                    Msg = "用户名或密码错误",
+                    Data = null!
                 });
             }
             else
@@ -206,13 +215,17 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
                 _mockApi!.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
                 {
                     Success = true,
+                    Code = 0,
+                    Msg = "成功",
                     Data = new LoginUserDto
                     {
-                        UserId = Guid.NewGuid(),
-                        Username = _username,
-                        AccessToken = "test-access-token",
-                        RefreshToken = "test-refresh-token",
-                        ExpiresIn = 3600
+                        UserId = 1,
+                        UserName = _username,
+                        Token = "test-access-token",
+                        TrueName = "测试用户",
+                        ProductName = "测试产品",
+                        CoName = "测试公司",
+                        Url = "http://test.com"
                     }
                 });
             }
@@ -286,7 +299,6 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
             
             sessions.ShouldNotBeEmpty();
             var session = sessions.First();
-            session.Username.ShouldBe(_username);
             session.AccessToken.ShouldNotBeNullOrEmpty();
         });
     }
@@ -301,7 +313,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
             
             credential.ShouldNotBeNull();
             credential.Username.ShouldBe(_username);
-            credential.RememberMe.ShouldBeTrue();
+            credential.EncryptedPassword.ShouldNotBeNullOrEmpty();
         });
     }
 
@@ -425,11 +437,11 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
     [Then("应该加载保存的用户名和密码")]
     public async Task ThenShouldLoadSavedCredentials()
     {
-        var credential = await _authService!.LoadCredentialAsync();
+        var credential = await _authService!.GetSavedCredentialAsync();
         
         credential.ShouldNotBeNull();
-        credential.Username.ShouldNotBeNullOrEmpty();
-        credential.Password.ShouldNotBeNullOrEmpty();
+        credential.Value.username.ShouldNotBeNullOrEmpty();
+        credential.Value.password.ShouldNotBeNullOrEmpty();
     }
 
     [Then(@"应该显示友好的错误消息 ""([^""]*)""")]
