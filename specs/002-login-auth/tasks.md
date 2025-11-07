@@ -142,7 +142,7 @@ Based on plan.md structure:
 
 ### 4.1: Tests for User Story 2 (TDD - RED Phase)
 
-- [ ] T045 [P] [US2] Write BDD feature file in MaterialClient.Common.Tests/Features/Authentication.feature with login scenarios
+- [x] T045 [P] [US2] Write BDD feature file in MaterialClient.Common.Tests/Features/Authentication.feature with login scenarios
 - [x] T046 [P] [US2] Create unit test for PasswordEncryptionService in MaterialClient.Common.Tests/PasswordEncryptionServiceTests.cs (encrypt/decrypt)
 - [ ] T047 [P] [US2] Create integration test for AuthenticationService.LoginAsync in MaterialClient.Common.Tests/AuthenticationServiceTests.cs
 - [ ] T048 [P] [US2] Create integration test for credential storage in MaterialClient.Common.Tests/CredentialStorageTests.cs
