@@ -62,14 +62,22 @@
     </Border>
 
     <!-- Blue Gradient Weight Display Area -->
-    <Border Grid.Row="1" Padding="24,32">
-      <Border.Background>
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-          <GradientStop Color="#4169E1" Offset="0"/>
-          <GradientStop Color="#3155C5" Offset="1"/>
-        </LinearGradientBrush>
-      </Border.Background>
-      <Grid ColumnDefinitions="Auto,*,Auto">
+    <Grid Grid.Row="1" Background="#4A85F9">
+      <!-- Background Image Layer -->
+      <Border>
+        <Border.Background>
+          <ImageBrush Source="/Assets/Indexbanner.png" 
+                      Stretch="UniformToFill"
+                      AlignmentX="Center"
+                      AlignmentY="Center"/>
+        </Border.Background>
+      </Border>
+      
+      <!-- Content Layer with Margin -->
+      <Grid ColumnDefinitions="Auto,*,Auto" 
+            Margin="24,32"
+            HorizontalAlignment="Stretch" 
+            VerticalAlignment="Stretch">
         <!-- Province Selector -->
         <Border Background="#5A7FE6" 
                 CornerRadius="8" 
@@ -155,7 +163,7 @@
                    FontSize="18"
                    VerticalAlignment="Center"/>
       </Grid>
-    </Border>
+    </Grid>
 
     <!-- Main Content Area (White Background, Three Columns) -->
     <Grid Grid.Row="2" Background="White" ColumnDefinitions="300,*,380" Margin="0">
@@ -652,12 +660,6 @@
                       Padding="32,12"
                       FontSize="14"/>
               <Button Content="出场照片" 
-                      Background="White"
-                      Foreground="#666"
-                      BorderThickness="0"
-                      Padding="32,12"
-                      FontSize="14"/>
-              <Button Content="实时监控" 
                       Background="White"
                       Foreground="#666"
                       BorderThickness="0"
