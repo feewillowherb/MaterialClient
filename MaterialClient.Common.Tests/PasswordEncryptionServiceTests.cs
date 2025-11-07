@@ -13,7 +13,8 @@ namespace MaterialClient.Common.Tests;
 public class PasswordEncryptionServiceTests
 {
     private readonly IPasswordEncryptionService _encryptionService;
-    private const string TestKey = "TestKeyForUnitTests1234567890123=";
+    // 32-byte key encoded as Base64 (for AES-256)
+    private const string TestKey = "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=";
 
     public PasswordEncryptionServiceTests()
     {
@@ -71,7 +72,7 @@ public class PasswordEncryptionServiceTests
     }
 
     [Fact]
-    public void Encrypt_SameInputShouldProduceSameOutput()
+    public void Encrypt_SameInputShouldProduceDifferentOutput()
     {
         // Arrange
         var plainText = "test-password-123";
@@ -80,34 +81,32 @@ public class PasswordEncryptionServiceTests
         var encrypted1 = _encryptionService.Encrypt(plainText);
         var encrypted2 = _encryptionService.Encrypt(plainText);
 
-        // Assert - deterministic encryption (same IV)
-        encrypted1.ShouldBe(encrypted2);
+        // Assert - non-deterministic encryption (random IV for security)
+        encrypted1.ShouldNotBe(encrypted2);
+        
+        // But both should decrypt to the same plaintext
+        _encryptionService.Decrypt(encrypted1).ShouldBe(plainText);
+        _encryptionService.Decrypt(encrypted2).ShouldBe(plainText);
     }
 
     [Fact]
-    public void Encrypt_EmptyString_ShouldReturnEmptyString()
+    public void Encrypt_EmptyString_ShouldThrowException()
     {
         // Arrange
         var plainText = string.Empty;
 
-        // Act
-        var encrypted = _encryptionService.Encrypt(plainText);
-
-        // Assert
-        encrypted.ShouldBe(string.Empty);
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => _encryptionService.Encrypt(plainText));
     }
 
     [Fact]
-    public void Decrypt_EmptyString_ShouldReturnEmptyString()
+    public void Decrypt_EmptyString_ShouldThrowException()
     {
         // Arrange
         var cipherText = string.Empty;
 
-        // Act
-        var decrypted = _encryptionService.Decrypt(cipherText);
-
-        // Assert
-        decrypted.ShouldBe(string.Empty);
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => _encryptionService.Decrypt(cipherText));
     }
 
     [Fact]
@@ -159,7 +158,7 @@ public class PasswordEncryptionServiceTests
         var invalidCipherText = "this-is-not-valid-base64-encrypted-data";
 
         // Act & Assert
-        Should.Throw<FormatException>(() => _encryptionService.Decrypt(invalidCipherText));
+        Should.Throw<InvalidOperationException>(() => _encryptionService.Decrypt(invalidCipherText));
     }
 }
 
