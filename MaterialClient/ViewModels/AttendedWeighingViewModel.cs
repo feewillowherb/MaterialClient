@@ -36,10 +36,88 @@ public partial class AttendedWeighingViewModel : ViewModelBase
     [ObservableProperty]
     private string? billPhotoPath;
 
+    // New properties for the updated UI
+    [ObservableProperty]
+    private DateTime currentTime = DateTime.Now;
+
+    [ObservableProperty]
+    private decimal currentWeight = 0.00m;
+
+    [ObservableProperty]
+    private bool isReceiving = true;
+
+    [ObservableProperty]
+    private bool showAllRecords = true;
+
+    [ObservableProperty]
+    private bool showUnmatched = false;
+
+    [ObservableProperty]
+    private bool showCompleted = false;
+
+    [ObservableProperty]
+    private ObservableCollection<object> displayRecords = new();
+
+    [ObservableProperty]
+    private object? selectedRecord;
+
+    // Photo properties for current photos
+    [ObservableProperty]
+    private string? currentEntryPhoto1;
+
+    [ObservableProperty]
+    private string? currentEntryPhoto2;
+
+    [ObservableProperty]
+    private string? currentEntryPhoto3;
+
+    [ObservableProperty]
+    private string? currentEntryPhoto4;
+
+    // Photo properties for previous vehicle
+    [ObservableProperty]
+    private string? entryPhoto1;
+
+    [ObservableProperty]
+    private string? entryPhoto2;
+
+    [ObservableProperty]
+    private string? entryPhoto3;
+
+    [ObservableProperty]
+    private string? entryPhoto4;
+
+    [ObservableProperty]
+    private string? exitPhoto1;
+
+    [ObservableProperty]
+    private string? exitPhoto2;
+
+    [ObservableProperty]
+    private string? exitPhoto3;
+
+    [ObservableProperty]
+    private string? exitPhoto4;
+
+    [ObservableProperty]
+    private string? materialInfo;
+
+    [ObservableProperty]
+    private string? offsetInfo;
+
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
 
     public ICommand RefreshCommand { get; }
+    public ICommand SetReceivingCommand { get; }
+    public ICommand SetSendingCommand { get; }
+    public ICommand ShowAllRecordsCommand { get; }
+    public ICommand ShowUnmatchedCommand { get; }
+    public ICommand ShowCompletedCommand { get; }
+    public ICommand SelectRecordCommand { get; }
+    public ICommand TakeBillPhotoCommand { get; }
+    public ICommand SaveCommand { get; }
+    public ICommand CloseCommand { get; }
 
     private Timer? _autoRefreshTimer;
     private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
@@ -58,12 +136,88 @@ public partial class AttendedWeighingViewModel : ViewModelBase
         }
 
         RefreshCommand = new RelayCommand(async () => await RefreshAsync());
+        SetReceivingCommand = new RelayCommand(() => IsReceiving = true);
+        SetSendingCommand = new RelayCommand(() => IsReceiving = false);
+        ShowAllRecordsCommand = new RelayCommand(() => SetDisplayMode(0));
+        ShowUnmatchedCommand = new RelayCommand(() => SetDisplayMode(1));
+        ShowCompletedCommand = new RelayCommand(() => SetDisplayMode(2));
+        SelectRecordCommand = new RelayCommand<object>(OnRecordSelected);
+        TakeBillPhotoCommand = new RelayCommand(OnTakeBillPhoto);
+        SaveCommand = new RelayCommand(OnSave);
+        CloseCommand = new RelayCommand(OnClose);
         
         // Load initial data
         _ = RefreshAsync();
 
         // Start auto-refresh timer to reflect matching results in real-time
         StartAutoRefresh();
+        StartTimeUpdateTimer();
+    }
+
+    private void SetDisplayMode(int mode)
+    {
+        ShowAllRecords = mode == 0;
+        ShowUnmatched = mode == 1;
+        ShowCompleted = mode == 2;
+        UpdateDisplayRecords();
+    }
+
+    private void UpdateDisplayRecords()
+    {
+        DisplayRecords.Clear();
+        
+        if (ShowAllRecords)
+        {
+            foreach (var record in UnmatchedWeighingRecords)
+            {
+                DisplayRecords.Add(record);
+            }
+            foreach (var waybill in CompletedWaybills)
+            {
+                DisplayRecords.Add(waybill);
+            }
+        }
+        else if (ShowUnmatched)
+        {
+            foreach (var record in UnmatchedWeighingRecords)
+            {
+                DisplayRecords.Add(record);
+            }
+        }
+        else if (ShowCompleted)
+        {
+            foreach (var waybill in CompletedWaybills)
+            {
+                DisplayRecords.Add(waybill);
+            }
+        }
+    }
+
+    private void OnRecordSelected(object? record)
+    {
+        SelectedRecord = record;
+        // TODO: Load photos for the selected record
+    }
+
+    private void OnTakeBillPhoto()
+    {
+        // TODO: Implement bill photo capture
+    }
+
+    private void OnSave()
+    {
+        // TODO: Implement save logic
+    }
+
+    private void OnClose()
+    {
+        // TODO: Implement close logic
+    }
+
+    private void StartTimeUpdateTimer()
+    {
+        var timeTimer = new Timer(_ => CurrentTime = DateTime.Now, null, 
+            TimeSpan.Zero, TimeSpan.FromSeconds(1));
     }
 
     private void StartAutoRefresh()
@@ -225,6 +379,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase
                     CompletedWaybills.Add(waybill);
                 }
             }
+            
+            // Update display records after refresh
+            UpdateDisplayRecords();
         }
         catch
         {
