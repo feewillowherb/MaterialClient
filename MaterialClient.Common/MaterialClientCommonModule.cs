@@ -63,6 +63,7 @@ public class MaterialClientCommonModule : AbpModule
         // Register Authentication Services
         services.AddSingleton<IMachineCodeService, MachineCodeService>();
         services.AddSingleton<IPasswordEncryptionService, PasswordEncryptionService>();
+        // ILicenseService and IAuthenticationService are auto-registered by ABP (ITransientDependency)
 
         // Register Services
         services.AddSingleton<HikvisionService>();

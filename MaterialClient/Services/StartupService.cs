@@ -1,0 +1,122 @@
+using System;
+using System.Threading.Tasks;
+using MaterialClient.Common.Services.Authentication;
+using MaterialClient.Views;
+using MaterialClient.ViewModels;
+
+namespace MaterialClient.Services;
+
+/// <summary>
+/// 应用启动服务
+/// 负责协调授权检查、登录流程和主窗口显示
+/// </summary>
+public class StartupService
+{
+    private readonly ILicenseService _licenseService;
+    private readonly IAuthenticationService _authenticationService;
+
+    public StartupService(
+        ILicenseService licenseService,
+        IAuthenticationService authenticationService)
+    {
+        _licenseService = licenseService;
+        _authenticationService = authenticationService;
+    }
+
+    /// <summary>
+    /// 执行启动流程
+    /// 1. 检查授权状态
+    /// 2. 如果无授权或授权过期，显示授权窗口
+    /// 3. 显示登录窗口
+    /// 4. 成功登录后显示主窗口
+    /// </summary>
+    public async Task<MainWindow?> StartupAsync()
+    {
+        try
+        {
+            // Step 1: Check license
+            var isLicenseValid = await _licenseService.IsLicenseValidAsync();
+            
+            if (!isLicenseValid)
+            {
+                // No license or expired license - show authorization window
+                var authResult = await ShowAuthorizationWindowAsync();
+                if (!authResult)
+                {
+                    // User closed authorization window or authorization failed
+                    // Application will exit
+                    return null;
+                }
+            }
+
+            // Step 2: Check for active session
+            var hasActiveSession = await _authenticationService.HasActiveSessionAsync();
+            
+            if (!hasActiveSession)
+            {
+                // No active session - show login window
+                var loginResult = await ShowLoginWindowAsync();
+                if (!loginResult)
+                {
+                    // User closed login window or login failed
+                    // Application will exit
+                    return null;
+                }
+            }
+
+            // Step 3: Show main window
+            var mainWindow = new MainWindow
+            {
+                DataContext = new MainWindowViewModel()
+            };
+
+            return mainWindow;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Startup failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    private async Task<bool> ShowAuthorizationWindowAsync()
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        var authWindow = new AuthCodeWindow
+        {
+            DataContext = new AuthCodeWindowViewModel(_licenseService)
+        };
+
+        authWindow.Closed += (sender, args) =>
+        {
+            var viewModel = authWindow.DataContext as AuthCodeWindowViewModel;
+            tcs.SetResult(viewModel?.IsVerified ?? false);
+        };
+
+        authWindow.Show();
+
+        return await tcs.Task;
+    }
+
+    private async Task<bool> ShowLoginWindowAsync()
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        var loginWindow = new LoginWindow
+        {
+            DataContext = new LoginWindowViewModel(_authenticationService)
+        };
+
+        loginWindow.Closed += (sender, args) =>
+        {
+            var viewModel = loginWindow.DataContext as LoginWindowViewModel;
+            tcs.SetResult(viewModel?.IsLoginSuccessful ?? false);
+        };
+
+        loginWindow.Show();
+
+        return await tcs.Task;
+    }
+}
+

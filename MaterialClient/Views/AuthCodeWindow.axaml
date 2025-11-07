@@ -1,0 +1,136 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:MaterialClient.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="630" d:DesignHeight="250"
+        x:Class="MaterialClient.Views.AuthCodeWindow"
+        x:DataType="vm:AuthCodeWindowViewModel"
+        Title="软件授权"
+        Width="630"
+        Height="250"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="White"
+        Icon="/Assets/avalonia-logo.ico">
+    
+    <Design.DataContext>
+        <vm:AuthCodeWindowViewModel />
+    </Design.DataContext>
+
+    <Grid>
+        <!-- Border -->
+        <Border BorderBrush="#CCCCCC" BorderThickness="1"/>
+        
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Title Bar -->
+            <Grid Grid.Row="0" Background="#6498FE">
+                <TextBlock Text="软件授权"
+                          FontSize="14"
+                          Foreground="White"
+                          VerticalAlignment="Center"
+                          Margin="20,0,0,0"/>
+                
+                <Button Content="×"
+                        FontSize="30"
+                        Foreground="White"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        HorizontalAlignment="Right"
+                        Height="35"
+                        Width="35"
+                        Click="OnCloseButtonClick"
+                        Cursor="Hand"/>
+            </Grid>
+            
+            <!-- Content Area -->
+            <Grid Grid.Row="1" Margin="0,30,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Input Row -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="30,0,30,5">
+                    <TextBlock Text="授权码"
+                              FontSize="14"
+                              Width="100"
+                              VerticalAlignment="Center"
+                              Padding="10"/>
+                    
+                    <TextBox x:Name="AuthCodeTextBox"
+                             Text="{Binding AuthorizationCode}"
+                             Watermark="请填写授权码"
+                             Width="168"
+                             Height="35"
+                             BorderBrush="#E6E6E6"
+                             BorderThickness="1"
+                             FontSize="16"
+                             VerticalContentAlignment="Center"
+                             IsEnabled="{Binding !IsVerifying}"/>
+                    
+                    <TextBlock Text="{Binding StatusMessage}"
+                              Foreground="{Binding StatusMessageColor}"
+                              FontSize="14"
+                              Width="250"
+                              VerticalAlignment="Center"
+                              Padding="10"
+                              TextWrapping="Wrap"/>
+                </StackPanel>
+                
+                <!-- Loading Indicator -->
+                <StackPanel Grid.Row="1" 
+                           Orientation="Horizontal" 
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding IsVerifying}"
+                           Margin="0,10,0,0">
+                    <TextBlock Text="正在验证授权码..."
+                              FontSize="12"
+                              Foreground="#6498FE"/>
+                </StackPanel>
+                
+                <!-- Spacer -->
+                <Border Grid.Row="2"/>
+                
+                <!-- Button Row -->
+                <StackPanel Grid.Row="3" 
+                           Orientation="Horizontal" 
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,20">
+                    <Button Content="确定"
+                            Command="{Binding VerifyCommand}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Padding="30,8"
+                            FontSize="14"
+                            Background="#6498FE"
+                            Foreground="White"
+                            BorderBrush="#6498FE"
+                            IsEnabled="{Binding !IsVerifying}"
+                            Cursor="Hand"/>
+                    
+                    <Button Content="重试"
+                            Command="{Binding RetryCommand}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Padding="30,8"
+                            FontSize="14"
+                            Background="#FF9800"
+                            Foreground="White"
+                            BorderBrush="#FF9800"
+                            IsVisible="{Binding ShowRetryButton}"
+                            Margin="10,0,0,0"
+                            Cursor="Hand"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
+

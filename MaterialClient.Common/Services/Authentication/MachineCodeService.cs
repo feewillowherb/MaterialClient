@@ -1,115 +1,92 @@
+using System;
+using System.Linq;
 using System.Management;
-using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Authentication;
 
 /// <summary>
 /// 机器码服务实现
 /// </summary>
-public class MachineCodeService : IMachineCodeService
+public class MachineCodeService : IMachineCodeService, ITransientDependency
 {
-    private readonly ILogger<MachineCodeService> _logger;
-    
-    public MachineCodeService(ILogger<MachineCodeService> logger)
+    public async Task<string> GetMachineCodeAsync()
     {
-        _logger = logger;
+        return await Task.Run(() =>
+        {
+            var cpuId = GetCpuId();
+            var boardId = GetBoardId();
+            var macAddress = GetMacAddress();
+
+            var combinedString = $"{cpuId}-{boardId}-{macAddress}";
+            using (var sha256 = SHA256.Create())
+            {
+                var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(combinedString));
+                return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+            }
+        });
     }
-    
-    /// <summary>
-    /// 获取机器码（CPU ID + 主板序列号 + MAC地址的SHA256哈希）
-    /// </summary>
-    public string GetMachineCode()
-    {
-        var cpuId = GetCpuId();
-        var boardSerial = GetBoardSerialNumber();
-        var macAddress = GetFirstMacAddress();
-        
-        var combined = $"{cpuId}|{boardSerial}|{macAddress}";
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
-        
-        var machineCode = Convert.ToBase64String(hash);
-        
-        _logger.LogInformation("Machine code generated successfully (length: {Length})", machineCode.Length);
-        
-        return machineCode;
-    }
-    
+
     private string GetCpuId()
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT ProcessorId FROM Win32_Processor");
-            
-            foreach (var obj in searcher.Get())
+            using (var searcher = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor"))
             {
-                var cpuId = obj["ProcessorId"]?.ToString() ?? string.Empty;
-                if (!string.IsNullOrEmpty(cpuId))
+                foreach (var obj in searcher.Get())
                 {
-                    _logger.LogDebug("CPU ID retrieved successfully");
-                    return cpuId;
+                    return obj["ProcessorId"]?.ToString() ?? string.Empty;
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.LogWarning(ex, "Failed to retrieve CPU ID, using empty string");
+            // Fallback to environment processor ID
+            return Environment.ProcessorCount.ToString();
         }
-        
         return string.Empty;
     }
-    
-    private string GetBoardSerialNumber()
+
+    private string GetBoardId()
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT SerialNumber FROM Win32_BaseBoard");
-            
-            foreach (var obj in searcher.Get())
+            using (var searcher = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BaseBoard"))
             {
-                var serial = obj["SerialNumber"]?.ToString() ?? string.Empty;
-                if (!string.IsNullOrEmpty(serial))
+                foreach (var obj in searcher.Get())
                 {
-                    _logger.LogDebug("Board serial number retrieved successfully");
-                    return serial;
+                    return obj["SerialNumber"]?.ToString() ?? string.Empty;
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.LogWarning(ex, "Failed to retrieve board serial number, using empty string");
+            // Fallback to machine name
+            return Environment.MachineName;
         }
-        
         return string.Empty;
     }
-    
-    private string GetFirstMacAddress()
+
+    private string GetMacAddress()
     {
         try
         {
-            var nics = NetworkInterface.GetAllNetworkInterfaces()
-                .Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback
-                         && n.OperationalStatus == OperationalStatus.Up)
-                .OrderBy(n => n.Name)
-                .ToList();
-            
-            if (nics.Any())
+            using (var searcher = new ManagementObjectSearcher("SELECT MACAddress FROM Win32_NetworkAdapter WHERE MACAddress IS NOT NULL"))
             {
-                var macAddress = nics.First().GetPhysicalAddress().ToString();
-                _logger.LogDebug("MAC address retrieved successfully");
-                return macAddress;
+                foreach (var obj in searcher.Get())
+                {
+                    return obj["MACAddress"]?.ToString() ?? string.Empty;
+                }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.LogWarning(ex, "Failed to retrieve MAC address, using empty string");
+            // Fallback to user name
+            return Environment.UserName;
         }
-        
         return string.Empty;
     }
 }
-

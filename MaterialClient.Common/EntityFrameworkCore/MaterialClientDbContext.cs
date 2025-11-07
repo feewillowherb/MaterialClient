@@ -20,6 +20,11 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     public DbSet<AttachmentFile> AttachmentFiles { get; set; }
     public DbSet<WaybillAttachment> WaybillAttachments { get; set; }
     public DbSet<WeighingRecordAttachment> WeighingRecordAttachments { get; set; }
+    
+    // Authentication DbSets
+    public DbSet<LicenseInfo> LicenseInfos { get; set; }
+    public DbSet<UserCredential> UserCredentials { get; set; }
+    public DbSet<UserSession> UserSessions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,6 +142,64 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             // Composite unique constraint
             entity.HasIndex(e => new { e.WeighingRecordId, e.AttachmentFileId })
                 .IsUnique();
+        });
+
+        // Configure LicenseInfo
+        modelBuilder.Entity<LicenseInfo>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.AuthEndTime).IsRequired();
+            entity.Property(e => e.MachineCode).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            
+            // Only one license should exist at a time
+            entity.HasIndex(e => e.ProjectId);
+        });
+
+        // Configure UserCredential
+        modelBuilder.Entity<UserCredential>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EncryptedPassword).IsRequired().HasMaxLength(512);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            
+            entity.HasOne(e => e.LicenseInfo)
+                .WithMany()
+                .HasForeignKey(e => e.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // One credential per project
+            entity.HasIndex(e => e.ProjectId).IsUnique();
+        });
+
+        // Configure UserSession
+        modelBuilder.Entity<UserSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.TrueName).HasMaxLength(100);
+            entity.Property(e => e.ClientId).IsRequired();
+            entity.Property(e => e.AccessToken).IsRequired().HasMaxLength(512);
+            entity.Property(e => e.ProductName).HasMaxLength(200);
+            entity.Property(e => e.CompanyName).HasMaxLength(200);
+            entity.Property(e => e.ApiUrl).HasMaxLength(500);
+            entity.Property(e => e.LoginTime).IsRequired();
+            entity.Property(e => e.LastActivityTime).IsRequired();
+            
+            entity.HasOne(e => e.LicenseInfo)
+                .WithMany()
+                .HasForeignKey(e => e.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // One active session per project
+            entity.HasIndex(e => e.ProjectId).IsUnique();
         });
     }
 }
