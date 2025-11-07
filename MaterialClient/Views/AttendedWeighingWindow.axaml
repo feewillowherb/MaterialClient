@@ -231,32 +231,90 @@
           </Border>
           
           <!-- Search Box -->
-          <Grid Grid.Row="1" 
-                Background="White" 
-                Margin="12,12,12,8"
-                ColumnDefinitions="Auto,*,Auto,Auto">
-            <TextBlock Text="进场时间" 
-                       VerticalAlignment="Center" 
-                       Margin="0,0,8,0"
-                       FontSize="13"
-                       Foreground="#666"/>
-            <DatePicker Grid.Column="1" 
-                        VerticalAlignment="Center"
-                        Margin="0,0,8,0"/>
-            <Button Grid.Column="2" 
-                    Content="搜索" 
-                    Background="#4169E1"
-                    Foreground="White"
-                    BorderThickness="0"
-                    Padding="16,6"
-                    Margin="0,0,4,0"/>
-            <Button Grid.Column="3" 
-                    Content="重置" 
-                    Background="#E5E7EB"
-                    Foreground="#333"
-                    BorderThickness="0"
-                    Padding="16,6"/>
-          </Grid>
+          <Border Grid.Row="1" 
+                  Background="White" 
+                  Margin="12,12,12,8"
+                  Padding="12">
+            <Grid RowDefinitions="Auto,Auto,Auto">
+            
+            <!-- Row 1: 进场时间 + 两个日期框 -->
+            <Grid Grid.Row="0" 
+                  ColumnDefinitions="Auto,Auto,Auto"
+                  Margin="0,0,0,8">
+              <TextBlock Text="进场时间" 
+                         VerticalAlignment="Center" 
+                         Margin="0,0,8,0"
+                         FontSize="13"
+                         Foreground="#666"/>
+              <Border Grid.Column="1" 
+                      BorderBrush="#E5E7EB" 
+                      BorderThickness="1"
+                      CornerRadius="4"
+                      Padding="8,4"
+                      Margin="0,0,8,0">
+                <CalendarDatePicker Width="80"
+                                    BorderThickness="0"
+                                    Background="Transparent"
+                                    FontSize="10"
+                                    Watermark="YYYY/MM/DD"/>
+              </Border>
+              <Border Grid.Column="2" 
+                      BorderBrush="#E5E7EB" 
+                      BorderThickness="1"
+                      CornerRadius="4"
+                      Padding="8,4">
+                <CalendarDatePicker Width="80"
+                                    BorderThickness="0"
+                                    Background="Transparent"
+                                    FontSize="10"
+                                    Watermark="YYYY/MM/DD"/>
+              </Border>
+            </Grid>
+            
+            <!-- Row 2: 车牌号码 + 输入框 -->
+            <Grid Grid.Row="1" 
+                  ColumnDefinitions="Auto,Auto"
+                  Margin="0,0,0,8">
+              <TextBlock Text="车牌号码" 
+                         VerticalAlignment="Center" 
+                         Margin="0,0,8,0"
+                         FontSize="13"
+                         Foreground="#666"/>
+              <Border Grid.Column="1" 
+                      BorderBrush="#E5E7EB" 
+                      BorderThickness="1"
+                      CornerRadius="4"
+                      Padding="8,4">
+                <TextBox Width="100"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         FontSize="13"/>
+              </Border>
+            </Grid>
+            
+            <!-- Row 3: 搜索 + 重置按钮 -->
+            <Grid Grid.Row="2" 
+                  ColumnDefinitions="Auto,Auto">
+              <Button Grid.Column="0" 
+                      Content="搜索" 
+                      Background="#4169E1"
+                      Foreground="White"
+                      BorderThickness="0"
+                      CornerRadius="4"
+                      Padding="20,6"
+                      FontSize="13"
+                      Margin="0,0,4,0"/>
+              <Button Grid.Column="1" 
+                      Content="重置" 
+                      Background="#E5E7EB"
+                      Foreground="#333"
+                      BorderThickness="0"
+                      CornerRadius="4"
+                      Padding="20,6"
+                      FontSize="13"/>
+            </Grid>
+            </Grid>
+          </Border>
           
           <!-- Record List -->
           <Border Grid.Row="2" Background="White" Margin="12,0,12,12">
