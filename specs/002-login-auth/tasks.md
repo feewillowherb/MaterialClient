@@ -86,47 +86,47 @@ Based on plan.md structure:
 
 > **TDD流程**: 先写测试 → 测试失败(RED) → 实现代码 → 测试通过(GREEN) → 重构
 
-- [ ] T019 [P] [US1] Write BDD feature file in MaterialClient.Common.Tests/Features/Authorization.feature with scenarios for valid/invalid auth codes
-- [ ] T020 [P] [US1] Create unit test for MachineCodeService in MaterialClient.Common.Tests/MachineCodeServiceTests.cs (verify hash generation)
-- [ ] T021 [P] [US1] Create integration test for AuthorizationService.VerifyAuthCodeAsync in MaterialClient.Common.Tests/AuthorizationServiceTests.cs
-- [ ] T022 [P] [US1] Create integration test for AuthorizationService.CheckLicenseStatusAsync in MaterialClient.Common.Tests/AuthorizationServiceTests.cs
+- [x] T019 [P] [US1] Write BDD feature file in MaterialClient.Common.Tests/Features/Authorization.feature with scenarios for valid/invalid auth codes
+- [x] T020 [P] [US1] Create unit test for MachineCodeService in MaterialClient.Common.Tests/MachineCodeServiceTests.cs (verify hash generation)
+- [x] T021 [P] [US1] Create integration test for LicenseService in MaterialClient.Common.Tests/LicenseServiceIntegrationTests.cs
+- [x] T022 [P] [US1] Create unit test for PasswordEncryptionService in MaterialClient.Common.Tests/PasswordEncryptionServiceTests.cs
 
 **⚠️ Verify all tests FAIL before proceeding to implementation**
 
 ### 3.2: Data Model for User Story 1 (GREEN Phase)
 
-- [ ] T023 [US1] Create LicenseInfo entity in MaterialClient.Common/Entities/LicenseInfo.cs inheriting FullAuditedEntity<Guid>
-- [ ] T024 [US1] Add LicenseInfos DbSet to MaterialClientDbContext in MaterialClient.Common/EntityFrameworkCore/MaterialClientDbContext.cs
-- [ ] T025 [US1] Configure LicenseInfo entity mapping in MaterialClientDbContext.OnModelCreating with indexes and constraints
-- [ ] T026 [US1] Create EF Core migration: cd MaterialClient.Common && dotnet ef migrations add AddAuthenticationEntities
+- [x] T023 [US1] Create LicenseInfo entity in MaterialClient.Common/Entities/LicenseInfo.cs inheriting Entity<Guid>
+- [x] T024 [US1] Add LicenseInfos DbSet to MaterialClientDbContext in MaterialClient.Common/EntityFrameworkCore/MaterialClientDbContext.cs
+- [x] T025 [US1] Configure LicenseInfo entity mapping in MaterialClientDbContext.OnModelCreating with indexes and constraints
+- [x] T026 [US1] Configure database auto-migration in HttpHost module OnApplicationInitialization
 
 ### 3.3: Services for User Story 1 (GREEN Phase)
 
-- [ ] T027 [P] [US1] Create IAuthorizationService interface in MaterialClient.Common/Services/Authorization/IAuthorizationService.cs
-- [ ] T028 [US1] Implement AuthorizationService.CheckLicenseStatusAsync in MaterialClient.Common/Services/Authorization/AuthorizationService.cs
-- [ ] T029 [US1] Implement AuthorizationService.VerifyAuthCodeAsync in MaterialClient.Common/Services/Authorization/AuthorizationService.cs
-- [ ] T030 [US1] Register IAuthorizationService in MaterialClientCommonModule.ConfigureServices
+- [x] T027 [P] [US1] Create ILicenseService interface in MaterialClient.Common/Services/Authentication/ILicenseService.cs
+- [x] T028 [US1] Implement LicenseService in MaterialClient.Common/Services/Authentication/LicenseService.cs
+- [x] T029 [US1] Implement MachineCodeService in MaterialClient.Common/Services/Authentication/MachineCodeService.cs
+- [x] T030 [US1] Register authentication services in MaterialClientCommonModule.ConfigureServices
 
 ### 3.4: UI for User Story 1 (GREEN Phase)
 
-- [ ] T031 [P] [US1] Create AuthCodeWindow.axaml in MaterialClient/Views/AuthCodeWindow.axaml with authorization code input UI
-- [ ] T032 [P] [US1] Create AuthCodeWindow.axaml.cs code-behind in MaterialClient/Views/AuthCodeWindow.axaml.cs
-- [ ] T033 [US1] Create AuthCodeWindowViewModel in MaterialClient/ViewModels/AuthCodeWindowViewModel.cs with CommunityToolkit.Mvvm attributes
-- [ ] T034 [US1] Implement VerifyCommand in AuthCodeWindowViewModel to call AuthorizationService
-- [ ] T035 [US1] Add error handling and user feedback in AuthCodeWindowViewModel (ErrorMessage, HasError properties)
+- [x] T031 [P] [US1] Create AuthCodeWindow.axaml in MaterialClient/Views/AuthCodeWindow.axaml with authorization code input UI
+- [x] T032 [P] [US1] Create AuthCodeWindow.axaml.cs code-behind in MaterialClient/Views/AuthCodeWindow.axaml.cs
+- [x] T033 [US1] Create AuthCodeWindowViewModel in MaterialClient/ViewModels/AuthCodeWindowViewModel.cs with ReactiveUI
+- [x] T034 [US1] Implement VerifyCommand in AuthCodeWindowViewModel to call LicenseService
+- [x] T035 [US1] Add error handling and user feedback in AuthCodeWindowViewModel (ErrorMessage, StatusMessage properties)
 
 ### 3.5: Startup Integration for User Story 1 (GREEN Phase)
 
-- [ ] T036 [US1] Create IStartupService interface in MaterialClient/Services/IStartupService.cs
-- [ ] T037 [US1] Implement StartupService.DetermineStartupWindowAsync in MaterialClient/Services/StartupService.cs to check license status
-- [ ] T038 [US1] Modify App.axaml.cs OnFrameworkInitializationCompleted to use StartupService for window determination
-- [ ] T039 [US1] Configure ABP application initialization in App.axaml.cs with Autofac integration
-- [ ] T040 [US1] Register StartupService and AuthCodeWindow in dependency injection container
+- [x] T036 [US1] Create StartupService in MaterialClient/Services/StartupService.cs (no interface needed)
+- [x] T037 [US1] Implement StartupService.StartupAsync to check license status and show appropriate window
+- [x] T038 [US1] Modify App.axaml.cs OnFrameworkInitializationCompleted to use StartupService for window determination
+- [x] T039 [US1] Wait for ABP ServiceLocator initialization in App.axaml.cs
+- [x] T040 [US1] Services auto-registered via ABP dependency injection (ITransientDependency)
 
 ### 3.6: Verification & Refactoring
 
-- [ ] T041 [US1] Run all User Story 1 tests and verify they pass (GREEN phase complete)
-- [ ] T042 [US1] Apply database migration: cd MaterialClient.Common && dotnet ef database update
+- [x] T041 [US1] Build verification completed (MaterialClient.Common builds successfully)
+- [ ] T042 [US1] Run tests: cd MaterialClient.Common.Tests && dotnet test
 - [ ] T043 [US1] Manual test: Launch app, verify authorization window appears, test valid/invalid codes
 - [ ] T044 [US1] Refactor: Review code for duplication, improve naming, add XML comments
 
@@ -143,7 +143,7 @@ Based on plan.md structure:
 ### 4.1: Tests for User Story 2 (TDD - RED Phase)
 
 - [ ] T045 [P] [US2] Write BDD feature file in MaterialClient.Common.Tests/Features/Authentication.feature with login scenarios
-- [ ] T046 [P] [US2] Create unit test for PasswordEncryptionService in MaterialClient.Common.Tests/PasswordEncryptionServiceTests.cs (encrypt/decrypt)
+- [x] T046 [P] [US2] Create unit test for PasswordEncryptionService in MaterialClient.Common.Tests/PasswordEncryptionServiceTests.cs (encrypt/decrypt)
 - [ ] T047 [P] [US2] Create integration test for AuthenticationService.LoginAsync in MaterialClient.Common.Tests/AuthenticationServiceTests.cs
 - [ ] T048 [P] [US2] Create integration test for credential storage in MaterialClient.Common.Tests/CredentialStorageTests.cs
 
@@ -151,36 +151,36 @@ Based on plan.md structure:
 
 ### 4.2: Data Model for User Story 2 (GREEN Phase)
 
-- [ ] T049 [P] [US2] Create UserCredential entity in MaterialClient.Common/Entities/UserCredential.cs
-- [ ] T050 [P] [US2] Create UserSession entity in MaterialClient.Common/Entities/UserSession.cs
-- [ ] T051 [US2] Add UserCredentials and UserSessions DbSets to MaterialClientDbContext
-- [ ] T052 [US2] Configure UserCredential and UserSession entity mappings in MaterialClientDbContext.OnModelCreating with unique constraints
-- [ ] T053 [US2] Create and apply EF Core migration for UserCredential and UserSession tables
+- [x] T049 [P] [US2] Create UserCredential entity in MaterialClient.Common/Entities/UserCredential.cs
+- [x] T050 [P] [US2] Create UserSession entity in MaterialClient.Common/Entities/UserSession.cs
+- [x] T051 [US2] Add UserCredentials and UserSessions DbSets to MaterialClientDbContext
+- [x] T052 [US2] Configure UserCredential and UserSession entity mappings in MaterialClientDbContext.OnModelCreating with unique constraints
+- [x] T053 [US2] Auto-migration configured (same as T026)
 
 ### 4.3: Services for User Story 2 (GREEN Phase)
 
-- [ ] T054 [P] [US2] Create IAuthenticationService interface in MaterialClient.Common/Services/Authentication/IAuthenticationService.cs
-- [ ] T055 [US2] Implement AuthenticationService.LoginAsync in MaterialClient.Common/Services/Authentication/AuthenticationService.cs
-- [ ] T056 [US2] Implement AuthenticationService.SaveCredentialAsync for "remember password" in AuthenticationService.cs
-- [ ] T057 [US2] Implement AuthenticationService.LoadCredentialAsync to auto-fill login form in AuthenticationService.cs
-- [ ] T058 [US2] Implement AuthenticationService.ClearCredentialAsync for login failure handling in AuthenticationService.cs
-- [ ] T059 [US2] Register IAuthenticationService in MaterialClientCommonModule.ConfigureServices
+- [x] T054 [P] [US2] Create IAuthenticationService interface in MaterialClient.Common/Services/Authentication/IAuthenticationService.cs
+- [x] T055 [US2] Implement AuthenticationService.LoginAsync in MaterialClient.Common/Services/Authentication/AuthenticationService.cs
+- [x] T056 [US2] Implement credential save logic in AuthenticationService.LoginAsync for "remember password"
+- [x] T057 [US2] Implement AuthenticationService.GetSavedCredentialAsync to auto-fill login form
+- [x] T058 [US2] Implement AuthenticationService.ClearSavedCredentialAsync for login failure handling
+- [x] T059 [US2] IAuthenticationService auto-registered via ABP (ITransientDependency)
 
 ### 4.4: UI for User Story 2 (GREEN Phase)
 
-- [ ] T060 [P] [US2] Create LoginWindow.axaml in MaterialClient/Views/LoginWindow.axaml with login form UI (username, password, remember checkbox)
-- [ ] T061 [P] [US2] Create LoginWindow.axaml.cs code-behind in MaterialClient/Views/LoginWindow.axaml.cs
-- [ ] T062 [US2] Create LoginWindowViewModel in MaterialClient/ViewModels/LoginWindowViewModel.cs with login properties
-- [ ] T063 [US2] Implement LoginCommand in LoginWindowViewModel to call AuthenticationService.LoginAsync
-- [ ] T064 [US2] Implement auto-fill logic in LoginWindowViewModel.OnInitialized using LoadCredentialAsync
-- [ ] T065 [US2] Add error handling and credential clearing on login failure in LoginWindowViewModel
-- [ ] T066 [US2] Implement window navigation from LoginWindow to AttendedWeighingWindow on success
+- [x] T060 [P] [US2] Create LoginWindow.axaml in MaterialClient/Views/LoginWindow.axaml with login form UI (username, password, remember checkbox)
+- [x] T061 [P] [US2] Create LoginWindow.axaml.cs code-behind in MaterialClient/Views/LoginWindow.axaml.cs
+- [x] T062 [US2] Create LoginWindowViewModel in MaterialClient/ViewModels/LoginWindowViewModel.cs with login properties
+- [x] T063 [US2] Implement LoginCommand in LoginWindowViewModel to call AuthenticationService.LoginAsync
+- [x] T064 [US2] Implement auto-fill logic in LoginWindowViewModel constructor using GetSavedCredentialAsync
+- [x] T065 [US2] Add error handling and credential clearing on login failure in LoginWindowViewModel
+- [x] T066 [US2] Implement window auto-close on success using ReactiveUI property observation
 
 ### 4.5: Integration with User Story 1
 
-- [ ] T067 [US2] Update StartupService.DetermineStartupWindowAsync to return LoginWindow when license is valid
-- [ ] T068 [US2] Update AuthCodeWindowViewModel to navigate to LoginWindow after successful authorization
-- [ ] T069 [US2] Register LoginWindow in dependency injection container
+- [x] T067 [US2] StartupService.StartupAsync shows LoginWindow when license is valid
+- [x] T068 [US2] AuthCodeWindow closes and StartupService shows LoginWindow after successful authorization
+- [x] T069 [US2] Windows created directly in StartupService (no DI registration needed)
 
 ### 4.6: Verification & Refactoring
 

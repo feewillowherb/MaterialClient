@@ -111,10 +111,8 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
             StatusMessage = "授权成功！";
             StatusMessageColor = "#4CAF50"; // Green
             ShowRetryButton = false;
-
-            // Close window after a short delay
-            await Task.Delay(1000);
-            // Window will be closed by the caller
+            
+            // Window will be closed automatically by the View after detecting IsVerified = true
         }
         catch (BusinessException ex)
         {
