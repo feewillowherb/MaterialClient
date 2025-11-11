@@ -41,6 +41,10 @@
   - 当遇到未知命名前缀如`My`时，应将其替换为项目名称`MaterialClient`。
   - 例如：`MyDbContext` 应命名为 `MaterialClientDbContext`。
   - 此规则适用于所有类名、接口名、命名空间等标识符。
+- **接口与实现文件组织约定（NON-NEGOTIABLE）**：
+  - 如果一个 CS 文件代码行数小于 1000 行，Interface 可以和 Impl 放在同一个 CS 文件里。
+  - 文件名为 Impl 的名称（例如：`AuthenticationService.cs` 包含 `IAuthenticationService` 接口和 `AuthenticationService` 实现类）。
+  - 在文件里 Interface 应该放在 Impl 前面（先定义接口，后定义实现类）。
 
 ## Architecture & Technology Principles
 
@@ -102,4 +106,4 @@
 - 测试代码必须遵循与生产代码相同的代码字符约束和命名约定。
 - 集成测试必须使用统一的测试基础设施，确保测试的一致性和可维护性。
 
-**Version**: 1.0.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-27
+**Version**: 1.1.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-30
