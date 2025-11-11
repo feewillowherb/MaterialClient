@@ -15,7 +15,16 @@ public class WaybillAttachment : Entity<int>
     }
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public WaybillAttachment(long waybillId, int attachmentFileId)
+    {
+        WaybillId = waybillId;
+        AttachmentFileId = attachmentFileId;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
     /// </summary>
     public WaybillAttachment(int id, long waybillId, int attachmentFileId)
         : base(id)

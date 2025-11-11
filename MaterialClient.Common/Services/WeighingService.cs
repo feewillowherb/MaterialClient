@@ -191,7 +191,7 @@ public class WeighingService : DomainService
             using var uow = _unitOfWorkManager.Begin();
             
             // Create weighing record
-            var weighingRecord = new WeighingRecord(0, weight) // Id will be auto-generated
+            var weighingRecord = new WeighingRecord(weight) // Id will be auto-generated
             {
                 PlateNumber = null, // Will be set if capture succeeds
                 RecordType = WeighingRecordType.Unmatch
@@ -256,7 +256,7 @@ public class WeighingService : DomainService
             {
                 // Create attachment file
                 var fileName = Path.GetFileName(photoPath);
-                var attachmentFile = new AttachmentFile(0, fileName, photoPath, AttachType.EntryPhoto) // Id will be auto-generated
+                var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.EntryPhoto) // Id will be auto-generated
                 {
                     // Vehicle photos are entry photos
                 };
@@ -264,7 +264,7 @@ public class WeighingService : DomainService
                 await _attachmentFileRepository.InsertAsync(attachmentFile);
 
                 // Create weighing record attachment
-                var weighingRecordAttachment = new WeighingRecordAttachment(0, weighingRecordId, attachmentFile.Id); // Id will be auto-generated
+                var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id); // Id will be auto-generated
 
                 await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment);
             }

@@ -15,7 +15,16 @@ public class WeighingRecordAttachment : Entity<int>
     }
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public WeighingRecordAttachment(long weighingRecordId, int attachmentFileId)
+    {
+        WeighingRecordId = weighingRecordId;
+        AttachmentFileId = attachmentFileId;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
     /// </summary>
     public WeighingRecordAttachment(int id, long weighingRecordId, int attachmentFileId)
         : base(id)

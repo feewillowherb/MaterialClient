@@ -168,20 +168,26 @@ public class TestService : DomainService, ITestService
         string? unitName = null,
         decimal unitRate = 1)
     {
-        var materialId = id ?? 0; // Will be auto-generated if 0
-        var material = new Material(materialId, name, coId)
+        Material material;
+        if (id.HasValue)
         {
-            Brand = brand,
-            Size = size,
-            UpperLimit = upperLimit,
-            LowerLimit = lowerLimit,
-            BasicUnit = basicUnit,
-            Code = code,
-            Specifications = specifications,
-            ProId = proId,
-            UnitName = unitName,
-            UnitRate = unitRate
-        };
+            material = new Material(id.Value, name, coId);
+        }
+        else
+        {
+            material = new Material(name, coId);
+        }
+
+        material.Brand = brand;
+        material.Size = size;
+        material.UpperLimit = upperLimit;
+        material.LowerLimit = lowerLimit;
+        material.BasicUnit = basicUnit;
+        material.Code = code;
+        material.Specifications = specifications;
+        material.ProId = proId;
+        material.UnitName = unitName;
+        material.UnitRate = unitRate;
 
         return await _materialRepository.InsertAsync(material);
     }
@@ -194,12 +200,18 @@ public class TestService : DomainService, ITestService
         int? providerId = null,
         string? rateName = null)
     {
-        var materialUnitId = id ?? 0; // Will be auto-generated if 0
-        var materialUnit = new MaterialUnit(materialUnitId, materialId, unitName, rate)
+        MaterialUnit materialUnit;
+        if (id.HasValue)
         {
-            ProviderId = providerId,
-            RateName = rateName
-        };
+            materialUnit = new MaterialUnit(id.Value, materialId, unitName, rate);
+        }
+        else
+        {
+            materialUnit = new MaterialUnit(materialId, unitName, rate);
+        }
+
+        materialUnit.ProviderId = providerId;
+        materialUnit.RateName = rateName;
 
         return await _materialUnitRepository.InsertAsync(materialUnit);
     }
@@ -211,12 +223,18 @@ public class TestService : DomainService, ITestService
         string? contactName = null,
         string? contactPhone = null)
     {
-        var providerId = id ?? 0; // Will be auto-generated if 0
-        var provider = new Provider(providerId, providerType, providerName)
+        Provider provider;
+        if (id.HasValue)
         {
-            ContactName = contactName,
-            ContactPhone = contactPhone
-        };
+            provider = new Provider(id.Value, providerType, providerName);
+        }
+        else
+        {
+            provider = new Provider(providerType, providerName);
+        }
+
+        provider.ContactName = contactName;
+        provider.ContactPhone = contactPhone;
 
         return await _providerRepository.InsertAsync(provider);
     }

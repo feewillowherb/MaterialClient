@@ -15,7 +15,17 @@ public class MaterialUnit : Entity<int>
     }
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public MaterialUnit(int materialId, string unitName, decimal rate)
+    {
+        MaterialId = materialId;
+        UnitName = unitName;
+        Rate = rate;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
     /// </summary>
     public MaterialUnit(int id, int materialId, string unitName, decimal rate)
         : base(id)

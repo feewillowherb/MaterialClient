@@ -15,7 +15,16 @@ public class Material : Entity<int>
     }
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public Material(string name, int coId)
+    {
+        Name = name;
+        CoId = coId;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
     /// </summary>
     public Material(int id, string name, int coId)
         : base(id)

@@ -16,7 +16,17 @@ public class AttachmentFile : FullAuditedEntity<int>
     }
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public AttachmentFile(string fileName, string localPath, AttachType attachType)
+    {
+        FileName = fileName;
+        LocalPath = localPath;
+        AttachType = attachType;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
     /// </summary>
     public AttachmentFile(int id, string fileName, string localPath, AttachType attachType)
         : base(id)

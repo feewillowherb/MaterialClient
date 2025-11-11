@@ -16,7 +16,16 @@ public class Waybill : FullAuditedEntity<long>
     }
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public Waybill(string orderNo, int providerId)
+    {
+        OrderNo = orderNo;
+        ProviderId = providerId;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
     /// </summary>
     public Waybill(long id, string orderNo, int providerId)
         : base(id)

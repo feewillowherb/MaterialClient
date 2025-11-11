@@ -15,7 +15,16 @@ public class Provider : Entity<int>
     }
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public Provider(int providerType, string providerName)
+    {
+        ProviderType = providerType;
+        ProviderName = providerName;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
     /// </summary>
     public Provider(int id, int providerType, string providerName)
         : base(id)

@@ -198,7 +198,7 @@ public class WeighingMatchingService : DomainService
         // Create waybill
         var orderNo = Guid.NewGuid().ToString(); // Generate OrderNo from Guid
         var providerId = joinRecord.ProviderId ?? outRecord.ProviderId ?? 0;
-        var waybill = new Waybill(0, orderNo, providerId) // Id will be auto-generated
+        var waybill = new Waybill(orderNo, providerId) // Id will be auto-generated
         {
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
             JoinTime = joinRecord.CreationTime,
