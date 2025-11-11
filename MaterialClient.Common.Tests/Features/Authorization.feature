@@ -3,6 +3,9 @@ Feature: 软件授权验证
     我想输入授权码激活软件
     以便能够使用系统功能
 
+Background:
+    Given 已初始化通用测试数据
+
 Scenario: 首次使用输入有效授权码
     Given 本地数据库中没有授权信息
     When 用户启动应用程序

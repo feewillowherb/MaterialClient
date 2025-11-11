@@ -26,5 +26,22 @@ public class Provider : Entity<int>
     /// 联系人电话
     /// </summary>
     public string? ContactPhone { get; set; }
+
+    /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected Provider()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public Provider(int id, int providerType, string providerName)
+        : base(id)
+    {
+        ProviderType = providerType;
+        ProviderName = providerName;
+    }
 }
 

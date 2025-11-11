@@ -66,5 +66,22 @@ public class Material : Entity<int>
     /// 单位换算率
     /// </summary>
     public decimal UnitRate { get; set; } = 1;
+
+    /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected Material()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public Material(int id, string name, int coId)
+        : base(id)
+    {
+        Name = name;
+        CoId = coId;
+    }
 }
 

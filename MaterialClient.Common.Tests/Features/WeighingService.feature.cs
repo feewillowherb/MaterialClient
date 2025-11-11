@@ -109,18 +109,24 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   #line hidden
 #line 7
-    await testRunner.GivenAsync("the weighing configuration has offset range from -1.0 to 1.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("系统已完成授权激活", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 8
-    await testRunner.AndAsync("the weighing configuration has stable duration of 2000 ms", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("已初始化通用测试数据", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 9
-    await testRunner.AndAsync("the truck scale weight service is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the weighing configuration has offset range from -1.0 to 1.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 10
-    await testRunner.AndAsync("the plate number capture service is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the weighing configuration has stable duration of 2000 ms", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 11
+    await testRunner.AndAsync("the truck scale weight service is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 12
+    await testRunner.AndAsync("the plate number capture service is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 13
     await testRunner.AndAsync("the vehicle photo service is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
         }
@@ -140,7 +146,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Vehicle enters scale and weight becomes stable", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 13
+#line 15
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -153,25 +159,25 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 14
+#line 16
     await testRunner.GivenAsync("the truck scale is in OffScale state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 15
+#line 17
     await testRunner.AndAsync("the current weight is 0.5 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 16
+#line 18
     await testRunner.WhenAsync("the weight changes to 5.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 17
+#line 19
     await testRunner.AndAsync("the weight remains stable for 2000 ms", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 18
+#line 20
     await testRunner.ThenAsync("the system state should be Weighing", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 19
+#line 21
     await testRunner.AndAsync("a weighing record should be created with weight 5.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 20
+#line 22
     await testRunner.AndAsync("the weighing record should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -188,7 +194,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Vehicle enters scale but leaves before stable", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 22
+#line 24
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -201,22 +207,22 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 23
+#line 25
     await testRunner.GivenAsync("the truck scale is in OffScale state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 24
+#line 26
     await testRunner.AndAsync("the current weight is 0.5 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 25
+#line 27
     await testRunner.WhenAsync("the weight changes to 5.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 26
+#line 28
     await testRunner.AndAsync("the weight changes back to 0.5 kg before stable duration", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 27
+#line 29
     await testRunner.ThenAsync("the system state should be OffScale", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 28
+#line 30
     await testRunner.AndAsync("no weighing record should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -233,7 +239,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Vehicle leaves scale after weighing", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 30
+#line 32
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -246,16 +252,16 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 31
+#line 33
     await testRunner.GivenAsync("the truck scale is in Weighing state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 32
+#line 34
     await testRunner.AndAsync("a weighing record exists with weight 5.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 33
+#line 35
     await testRunner.WhenAsync("the weight changes to 0.5 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 34
+#line 36
     await testRunner.ThenAsync("the system state should be OffScale", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -272,7 +278,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Plate number capture succeeds", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 36
+#line 38
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -285,16 +291,16 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 37
+#line 39
     await testRunner.GivenAsync("the truck scale is in OffScale state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 38
+#line 40
     await testRunner.AndAsync("the plate number capture service returns \"京A12345\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 39
+#line 41
     await testRunner.WhenAsync("a weighing record is created", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 40
+#line 42
     await testRunner.ThenAsync("the weighing record should have plate number \"京A12345\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -311,7 +317,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Plate number capture fails", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 42
+#line 44
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -324,19 +330,19 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 43
+#line 45
     await testRunner.GivenAsync("the truck scale is in OffScale state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 44
+#line 46
     await testRunner.AndAsync("the plate number capture service throws an exception", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 45
+#line 47
     await testRunner.WhenAsync("a weighing record is created", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 46
+#line 48
     await testRunner.ThenAsync("the weighing record should be created successfully", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 47
+#line 49
     await testRunner.AndAsync("the weighing record should have empty plate number", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -353,7 +359,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Vehicle photo capture succeeds", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 49
+#line 51
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -366,16 +372,16 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 50
+#line 52
     await testRunner.GivenAsync("the truck scale is in OffScale state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 51
+#line 53
     await testRunner.AndAsync("the vehicle photo service returns 4 photos", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 52
+#line 54
     await testRunner.WhenAsync("a weighing record is created", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 53
+#line 55
     await testRunner.ThenAsync("the weighing record should have 4 vehicle photo attachments", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -392,7 +398,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Vehicle photo capture fails", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 55
+#line 57
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -405,19 +411,19 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 56
+#line 58
     await testRunner.GivenAsync("the truck scale is in OffScale state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 57
+#line 59
     await testRunner.AndAsync("the vehicle photo service throws an exception", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 58
+#line 60
     await testRunner.WhenAsync("a weighing record is created", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 59
+#line 61
     await testRunner.ThenAsync("the weighing record should be created successfully", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 60
+#line 62
     await testRunner.AndAsync("the weighing record should have no vehicle photo attachments", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }

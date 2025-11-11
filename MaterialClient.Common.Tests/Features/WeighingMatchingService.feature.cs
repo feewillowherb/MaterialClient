@@ -109,12 +109,18 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   #line hidden
 #line 7
-    await testRunner.GivenAsync("the weighing configuration has match duration of 3 hours", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("系统已完成授权激活", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 8
-    await testRunner.AndAsync("the weighing record repository is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("已初始化通用测试数据", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 9
+    await testRunner.AndAsync("the weighing configuration has match duration of 3 hours", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 10
+    await testRunner.AndAsync("the weighing record repository is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 11
     await testRunner.AndAsync("the waybill repository is available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
         }
@@ -134,7 +140,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Match two records with same plate number within time window - Delivery type", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 11
+#line 13
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -147,51 +153,51 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 12
+#line 14
     await testRunner.GivenAsync("there are 2 unmatched weighing records", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 13
+#line 15
     await testRunner.AndAsync("record 1 has plate number \"京A12345\" and weight 10.0 kg created at \"2025-01-01 10:" +
                         "00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 14
+#line 16
     await testRunner.AndAsync("record 2 has plate number \"京A12345\" and weight 15.0 kg created at \"2025-01-01 10:" +
                         "30:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 15
+#line 17
     await testRunner.AndAsync("the delivery type is Delivery", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 16
+#line 18
     await testRunner.WhenAsync("matching is performed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 17
+#line 19
     await testRunner.ThenAsync("1 waybill should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 18
+#line 20
     await testRunner.AndAsync("record 1 should have RecordType Join", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 19
+#line 21
     await testRunner.AndAsync("record 2 should have RecordType Out", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 20
+#line 22
     await testRunner.AndAsync("the waybill should have OrderNo generated from Guid", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 21
+#line 23
     await testRunner.AndAsync("the waybill should have plate number \"京A12345\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 22
+#line 24
     await testRunner.AndAsync("the waybill should have JoinTime \"2025-01-01 10:00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 23
+#line 25
     await testRunner.AndAsync("the waybill should have OutTime \"2025-01-01 10:30:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 24
+#line 26
     await testRunner.AndAsync("the waybill should have OrderTruckWeight 10.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 25
+#line 27
     await testRunner.AndAsync("the waybill should have OrderTotalWeight 15.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 26
+#line 28
     await testRunner.AndAsync("the waybill should have OrderGoodsWeight 5.0 kg", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -208,7 +214,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Match two records with same plate number within time window - Receiving type", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 28
+#line 30
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -221,30 +227,30 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 29
+#line 31
     await testRunner.GivenAsync("there are 2 unmatched weighing records", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 30
+#line 32
     await testRunner.AndAsync("record 1 has plate number \"京A12345\" and weight 15.0 kg created at \"2025-01-01 10:" +
                         "00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 31
+#line 33
     await testRunner.AndAsync("record 2 has plate number \"京A12345\" and weight 10.0 kg created at \"2025-01-01 10:" +
                         "30:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 32
+#line 34
     await testRunner.AndAsync("the delivery type is Receiving", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 33
+#line 35
     await testRunner.WhenAsync("matching is performed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 34
+#line 36
     await testRunner.ThenAsync("1 waybill should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 35
+#line 37
     await testRunner.AndAsync("record 1 should have RecordType Join", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 36
+#line 38
     await testRunner.AndAsync("record 2 should have RecordType Out", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -261,7 +267,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Match fails when weight relationship does not match - Delivery type", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 38
+#line 40
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -274,30 +280,30 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 39
+#line 41
     await testRunner.GivenAsync("there are 2 unmatched weighing records", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 40
+#line 42
     await testRunner.AndAsync("record 1 has plate number \"京A12345\" and weight 15.0 kg created at \"2025-01-01 10:" +
                         "00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 41
+#line 43
     await testRunner.AndAsync("record 2 has plate number \"京A12345\" and weight 10.0 kg created at \"2025-01-01 10:" +
                         "30:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 42
+#line 44
     await testRunner.AndAsync("the delivery type is Delivery", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 43
+#line 45
     await testRunner.WhenAsync("matching is performed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 44
+#line 46
     await testRunner.ThenAsync("0 waybills should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 45
+#line 47
     await testRunner.AndAsync("record 1 should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 46
+#line 48
     await testRunner.AndAsync("record 2 should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -314,7 +320,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Match fails when time window is exceeded", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 48
+#line 50
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -327,30 +333,30 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 49
+#line 51
     await testRunner.GivenAsync("there are 2 unmatched weighing records", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 50
+#line 52
     await testRunner.AndAsync("record 1 has plate number \"京A12345\" and weight 10.0 kg created at \"2025-01-01 10:" +
                         "00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 51
+#line 53
     await testRunner.AndAsync("record 2 has plate number \"京A12345\" and weight 15.0 kg created at \"2025-01-01 14:" +
                         "00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 52
+#line 54
     await testRunner.AndAsync("the delivery type is Delivery", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 53
+#line 55
     await testRunner.WhenAsync("matching is performed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 54
+#line 56
     await testRunner.ThenAsync("0 waybills should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 55
+#line 57
     await testRunner.AndAsync("record 1 should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 56
+#line 58
     await testRunner.AndAsync("record 2 should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -367,7 +373,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Match fails when plate numbers are different", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 58
+#line 60
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -380,30 +386,30 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 59
+#line 61
     await testRunner.GivenAsync("there are 2 unmatched weighing records", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 60
+#line 62
     await testRunner.AndAsync("record 1 has plate number \"京A12345\" and weight 10.0 kg created at \"2025-01-01 10:" +
                         "00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 61
+#line 63
     await testRunner.AndAsync("record 2 has plate number \"京B67890\" and weight 15.0 kg created at \"2025-01-01 10:" +
                         "30:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 62
+#line 64
     await testRunner.AndAsync("the delivery type is Delivery", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 63
+#line 65
     await testRunner.WhenAsync("matching is performed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 64
+#line 66
     await testRunner.ThenAsync("0 waybills should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 65
+#line 67
     await testRunner.AndAsync("record 1 should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 66
+#line 68
     await testRunner.AndAsync("record 2 should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -420,7 +426,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Select shortest time interval when multiple candidates exist", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 68
+#line 70
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -433,34 +439,34 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 69
+#line 71
     await testRunner.GivenAsync("there are 3 unmatched weighing records with same plate number \"京A12345\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 70
+#line 72
     await testRunner.AndAsync("record 1 has weight 10.0 kg created at \"2025-01-01 10:00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 71
+#line 73
     await testRunner.AndAsync("record 2 has weight 15.0 kg created at \"2025-01-01 10:30:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 72
+#line 74
     await testRunner.AndAsync("record 3 has weight 20.0 kg created at \"2025-01-01 11:00:00\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 73
+#line 75
     await testRunner.AndAsync("the delivery type is Delivery", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 74
+#line 76
     await testRunner.WhenAsync("matching is performed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 75
+#line 77
     await testRunner.ThenAsync("1 waybill should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 76
+#line 78
     await testRunner.AndAsync("record 1 should have RecordType Join", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 77
+#line 79
     await testRunner.AndAsync("record 2 should have RecordType Out", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 78
+#line 80
     await testRunner.AndAsync("record 3 should have RecordType Unmatch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -477,7 +483,7 @@ namespace MaterialClient.Common.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Extract Provider from Join or Out record", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 80
+#line 82
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -490,25 +496,25 @@ namespace MaterialClient.Common.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 81
+#line 83
     await testRunner.GivenAsync("there are 2 unmatched weighing records", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 82
+#line 84
     await testRunner.AndAsync("record 1 has plate number \"京A12345\" and weight 10.0 kg and ProviderId 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 83
+#line 85
     await testRunner.AndAsync("record 2 has plate number \"京A12345\" and weight 15.0 kg and ProviderId null", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 84
+#line 86
     await testRunner.AndAsync("the delivery type is Delivery", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 85
+#line 87
     await testRunner.WhenAsync("matching is performed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 86
+#line 88
     await testRunner.ThenAsync("1 waybill should be created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 87
+#line 89
     await testRunner.AndAsync("the waybill should have ProviderId 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
