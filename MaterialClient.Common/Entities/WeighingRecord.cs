@@ -9,6 +9,22 @@ namespace MaterialClient.Common.Entities;
 public class WeighingRecord : FullAuditedEntity<long>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected WeighingRecord()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public WeighingRecord(long id, decimal weight)
+        : base(id)
+    {
+        Weight = weight;
+    }
+
+    /// <summary>
     /// 重量
     /// </summary>
     public decimal Weight { get; set; }

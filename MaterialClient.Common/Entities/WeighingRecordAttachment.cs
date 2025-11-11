@@ -8,6 +8,23 @@ namespace MaterialClient.Common.Entities;
 public class WeighingRecordAttachment : Entity<int>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected WeighingRecordAttachment()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public WeighingRecordAttachment(int id, long weighingRecordId, int attachmentFileId)
+        : base(id)
+    {
+        WeighingRecordId = weighingRecordId;
+        AttachmentFileId = attachmentFileId;
+    }
+
+    /// <summary>
     /// 称重记录ID (FK to WeighingRecord)
     /// </summary>
     public long WeighingRecordId { get; set; }

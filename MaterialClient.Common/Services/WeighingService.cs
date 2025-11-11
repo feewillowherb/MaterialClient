@@ -191,9 +191,8 @@ public class WeighingService : DomainService
             using var uow = _unitOfWorkManager.Begin();
             
             // Create weighing record
-            var weighingRecord = new WeighingRecord
+            var weighingRecord = new WeighingRecord(0, weight) // Id will be auto-generated
             {
-                Weight = weight,
                 PlateNumber = null, // Will be set if capture succeeds
                 RecordType = WeighingRecordType.Unmatch
             };
@@ -256,21 +255,16 @@ public class WeighingService : DomainService
             foreach (var photoPath in photoPaths)
             {
                 // Create attachment file
-                var attachmentFile = new AttachmentFile
+                var fileName = Path.GetFileName(photoPath);
+                var attachmentFile = new AttachmentFile(0, fileName, photoPath, AttachType.EntryPhoto) // Id will be auto-generated
                 {
-                    FileName = Path.GetFileName(photoPath),
-                    LocalPath = photoPath,
-                    AttachType = AttachType.EntryPhoto // Vehicle photos are entry photos
+                    // Vehicle photos are entry photos
                 };
 
                 await _attachmentFileRepository.InsertAsync(attachmentFile);
 
                 // Create weighing record attachment
-                var weighingRecordAttachment = new WeighingRecordAttachment
-                {
-                    WeighingRecordId = weighingRecordId,
-                    AttachmentFileId = attachmentFile.Id
-                };
+                var weighingRecordAttachment = new WeighingRecordAttachment(0, weighingRecordId, attachmentFile.Id); // Id will be auto-generated
 
                 await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment);
             }

@@ -9,6 +9,24 @@ namespace MaterialClient.Common.Entities;
 public class AttachmentFile : FullAuditedEntity<int>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected AttachmentFile()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public AttachmentFile(int id, string fileName, string localPath, AttachType attachType)
+        : base(id)
+    {
+        FileName = fileName;
+        LocalPath = localPath;
+        AttachType = attachType;
+    }
+
+    /// <summary>
     /// 文件名
     /// </summary>
     public string FileName { get; set; } = string.Empty;

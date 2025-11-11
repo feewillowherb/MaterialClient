@@ -13,6 +13,56 @@ namespace MaterialClient.Common.Entities;
 public class UserSession : Entity<Guid>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    private UserSession()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public UserSession(
+        Guid id,
+        Guid projectId,
+        long userId,
+        string username,
+        string trueName,
+        Guid clientId,
+        string accessToken,
+        bool isAdmin,
+        bool isCompany,
+        int productType,
+        long fromProductId,
+        long productId,
+        string productName,
+        int companyId,
+        string companyName,
+        string apiUrl,
+        DateTime? authEndTime)
+        : base(id)
+    {
+        ProjectId = projectId;
+        UserId = userId;
+        Username = username;
+        TrueName = trueName;
+        ClientId = clientId;
+        AccessToken = accessToken;
+        IsAdmin = isAdmin;
+        IsCompany = isCompany;
+        ProductType = productType;
+        FromProductId = fromProductId;
+        ProductId = productId;
+        ProductName = productName;
+        CompanyId = companyId;
+        CompanyName = companyName;
+        ApiUrl = apiUrl;
+        AuthEndTime = authEndTime;
+        LoginTime = DateTime.Now;
+        LastActivityTime = DateTime.Now;
+    }
+
+    /// <summary>
     /// 项目ID（关联到 LicenseInfo）
     /// </summary>
     [Required]
@@ -131,56 +181,6 @@ public class UserSession : Entity<Guid>
     /// </summary>
     [ForeignKey(nameof(ProjectId))]
     public virtual LicenseInfo LicenseInfo { get; set; }
-
-    /// <summary>
-    /// 构造函数（用于EF Core）
-    /// </summary>
-    private UserSession()
-    {
-    }
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    public UserSession(
-        Guid id,
-        Guid projectId,
-        long userId,
-        string username,
-        string trueName,
-        Guid clientId,
-        string accessToken,
-        bool isAdmin,
-        bool isCompany,
-        int productType,
-        long fromProductId,
-        long productId,
-        string productName,
-        int companyId,
-        string companyName,
-        string apiUrl,
-        DateTime? authEndTime)
-        : base(id)
-    {
-        ProjectId = projectId;
-        UserId = userId;
-        Username = username;
-        TrueName = trueName;
-        ClientId = clientId;
-        AccessToken = accessToken;
-        IsAdmin = isAdmin;
-        IsCompany = isCompany;
-        ProductType = productType;
-        FromProductId = fromProductId;
-        ProductId = productId;
-        ProductName = productName;
-        CompanyId = companyId;
-        CompanyName = companyName;
-        ApiUrl = apiUrl;
-        AuthEndTime = authEndTime;
-        LoginTime = DateTime.Now;
-        LastActivityTime = DateTime.Now;
-    }
 
     /// <summary>
     /// 更新最后活动时间

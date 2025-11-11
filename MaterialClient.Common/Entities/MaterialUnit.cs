@@ -8,6 +8,24 @@ namespace MaterialClient.Common.Entities;
 public class MaterialUnit : Entity<int>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected MaterialUnit()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public MaterialUnit(int id, int materialId, string unitName, decimal rate)
+        : base(id)
+    {
+        MaterialId = materialId;
+        UnitName = unitName;
+        Rate = rate;
+    }
+
+    /// <summary>
     /// 物料ID (FK to Material)
     /// </summary>
     public int MaterialId { get; set; }
@@ -42,23 +60,5 @@ public class MaterialUnit : Entity<int>
     /// 供应商导航属性
     /// </summary>
     public Provider? Provider { get; set; }
-
-    /// <summary>
-    /// 构造函数（用于EF Core）
-    /// </summary>
-    protected MaterialUnit()
-    {
-    }
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    public MaterialUnit(int id, int materialId, string unitName, decimal rate)
-        : base(id)
-    {
-        MaterialId = materialId;
-        UnitName = unitName;
-        Rate = rate;
-    }
 }
 

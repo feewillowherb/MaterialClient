@@ -61,10 +61,9 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var record = new WeighingRecord
+            var record = new WeighingRecord(0, weight) // Id will be auto-generated
             {
                 PlateNumber = plateNumber,
-                Weight = weight,
                 RecordType = WeighingRecordType.Unmatch
             };
 
