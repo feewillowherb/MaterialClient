@@ -15,6 +15,7 @@ using MaterialClient.EFCore;
 namespace MaterialClient.Common.EntityFrameworkCore;
 
 [DependsOn(
+    typeof(MaterialClientTestBaseModule),
     typeof(MaterialClientCommonModule),
     typeof(AbpEntityFrameworkCoreSqliteModule)
 )]

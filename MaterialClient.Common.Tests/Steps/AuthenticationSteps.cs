@@ -1,6 +1,7 @@
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.EntityFrameworkCore;
 using MaterialClient.Common.Services.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,11 +16,11 @@ namespace MaterialClient.Common.Tests.Steps;
 /// 用户认证步骤定义
 /// </summary>
 [Binding]
-public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonModule>
+public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
 {
-    private IAuthenticationService? _authService;
-    private ILicenseService? _licenseService;
-    private IBasePlatformApi? _mockApi;
+    private readonly IAuthenticationService _authService;
+    private readonly ILicenseService _licenseService;
+    private readonly IBasePlatformApi _mockApi;
     
     private string _username = string.Empty;
     private string _password = string.Empty;
@@ -31,17 +32,16 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
     
     public AuthenticationSteps()
     {
-    }
-
-    [BeforeScenario]
-    public void SetupServices()
-    {
         _authService = GetRequiredService<IAuthenticationService>();
         _licenseService = GetRequiredService<ILicenseService>();
         
         // Get the mock API that was registered in the test module
         _mockApi = GetRequiredService<IBasePlatformApi>();
-        
+    }
+
+    [BeforeScenario]
+    public void SetupScenario()
+    {
         // Reset all mocks for this scenario
         _mockApi.ClearReceivedCalls();
     }
@@ -87,7 +87,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
         await GivenSystemIsAuthorized();
         
         // Setup mock API response
-        _mockApi!.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+        _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
         {
             Success = true,
             Code = 0,
@@ -104,7 +104,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
             }
         });
         
-        await _authService!.LoginAsync("testuser", "Test@123", true);
+        await _authService.LoginAsync("testuser", "Test@123", true);
     }
 
     [Given("用户会话存在于数据库")]
@@ -202,7 +202,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
             // Setup mock API response
             if (_password == "wrongpassword")
             {
-                _mockApi!.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+                _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
                 {
                     Success = false,
                     Code = -1,
@@ -212,7 +212,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
             }
             else
             {
-                _mockApi!.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+                _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
                 {
                     Success = true,
                     Code = 0,
@@ -230,7 +230,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
                 });
             }
             
-            var result = await _authService!.LoginAsync(_username, _password, _rememberMe);
+            var result = await _authService.LoginAsync(_username, _password, _rememberMe);
             _loginSuccessful = result != null;
             
             if (!_loginSuccessful)
@@ -248,7 +248,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
     [When("检查是否有活跃会话")]
     public async Task WhenCheckingForActiveSession()
     {
-        var hasSession = await _authService!.HasActiveSessionAsync();
+        var hasSession = await _authService.HasActiveSessionAsync();
         
         if (hasSession)
         {
@@ -437,7 +437,7 @@ public class AuthenticationSteps : MaterialClientTestBase<MaterialClientCommonMo
     [Then("应该加载保存的用户名和密码")]
     public async Task ThenShouldLoadSavedCredentials()
     {
-        var credential = await _authService!.GetSavedCredentialAsync();
+        var credential = await _authService.GetSavedCredentialAsync();
         
         credential.ShouldNotBeNull();
         credential.Value.username.ShouldNotBeNullOrEmpty();
