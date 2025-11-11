@@ -8,6 +8,8 @@ using Volo.Abp.AspNetCore;
 using Volo.Abp.Modularity;
 using Volo.Abp;
 using MaterialClient.Common;
+using MaterialClient.EFCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace MaterialClient.HttpHost;
 
@@ -53,6 +55,13 @@ public class MaterialClientHttpHostModule : AbpModule
     {
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
+
+        // Auto-migrate database on startup
+        using (var scope = context.ServiceProvider.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<MaterialClientDbContext>();
+            dbContext.Database.Migrate();
+        }
 
         // Configure Swagger
         app.UseSwagger();
