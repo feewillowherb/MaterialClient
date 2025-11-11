@@ -7,15 +7,15 @@ using MaterialClient.Common.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Volo.Abp;
-using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Services;
 
 namespace MaterialClient.Common.Services.Authentication;
 
 /// <summary>
 /// 授权许可服务实现
 /// </summary>
-public class LicenseService : ILicenseService, ITransientDependency
+public class LicenseService : DomainService, ILicenseService
 {
     private readonly IBasePlatformApi _basePlatformApi;
     private readonly IMachineCodeService _machineCodeService;

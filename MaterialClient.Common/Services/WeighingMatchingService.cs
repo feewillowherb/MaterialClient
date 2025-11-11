@@ -8,15 +8,15 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
-using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
 /// <summary>
 /// Service for matching weighing records and creating waybills
 /// </summary>
-public class WeighingMatchingService : ITransientDependency
+public class WeighingMatchingService : DomainService
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;

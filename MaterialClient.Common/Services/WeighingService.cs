@@ -11,15 +11,15 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
-using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
 /// <summary>
 /// Weighing service for monitoring truck scale and creating weighing records
 /// </summary>
-public class WeighingService : ITransientDependency
+public class WeighingService : DomainService
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IPlateNumberCaptureService _plateNumberCaptureService;

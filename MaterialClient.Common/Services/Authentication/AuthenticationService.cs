@@ -6,15 +6,15 @@ using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp;
-using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Services;
 
 namespace MaterialClient.Common.Services.Authentication;
 
 /// <summary>
 /// 用户认证服务实现
 /// </summary>
-public class AuthenticationService : IAuthenticationService, ITransientDependency
+public class AuthenticationService : DomainService, IAuthenticationService
 {
     private readonly IBasePlatformApi _basePlatformApi;
     private readonly ILicenseService _licenseService;
