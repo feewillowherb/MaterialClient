@@ -17,11 +17,18 @@
 - TDD 强制要求：测试先行编写 → 用户批准 → 测试失败 → 然后实现；严格遵循 Red-Green-Refactor 循环。
 - 集成测试风格：采用 ABP 集成测试框架，使用内存 SQLite 进行数据库测试，支持事务隔离与数据种子。
 - BDD 测试：使用 Reqnroll.NUnit 进行行为驱动开发，通过 `.feature` 文件和 `Steps.cs` 定义测试场景。
+- **Feature Background 数据初始化（NON-NEGOTIABLE）**：
+  - Feature 中的 Background 最好初始化当前 feature 需要用到的一些通用数据，如 Material、MaterialUnit、Provider 等环境数据。
+  - 避免在业务测试中找不到对应的环境数据，确保测试场景的完整性和可重复性。
 
 ### IV. Integration Testing
 - 集成测试重点领域：新库契约测试、契约变更、服务间通信、共享模式。
 - 测试项目结构：所有测试统一在 `MaterialClient.Common.Tests` 项目中，包含 TestBase、EntityFrameworkCore、Domain 三个测试层次。
 - 测试基础设施：基于 ABP TestBase 模块，提供统一的测试环境、配置和基类。
+- **数据持久化操作封装（NON-NEGOTIABLE）**：
+  - 集成测试中，所有涉及数据持久化的操作尽量封装到其对应的 DomainService 中。
+  - 避免在测试步骤中直接操作仓储或 DbContext，通过领域服务进行数据操作，确保测试代码与生产代码的一致性。
+  - 如果业务中没用到仅测试中使用到的接口，必须显式使用 `ITestService` 接口实现，表示只能在测试中使用该接口。
 
 ### V. Observability & Simplicity
 - 可观测性：对关键路径（后台同步、HTTP 调用、数据库写入）记录结构化日志与指标，便于追踪与告警。
@@ -106,4 +113,4 @@
 - 测试代码必须遵循与生产代码相同的代码字符约束和命名约定。
 - 集成测试必须使用统一的测试基础设施，确保测试的一致性和可维护性。
 
-**Version**: 1.1.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-30
+**Version**: 1.2.1 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-31
