@@ -5,9 +5,9 @@ namespace MaterialClient.Views;
 
 public partial class AttendedWeighingWindow : Window
 {
-    public AttendedWeighingWindow()
+    public AttendedWeighingWindow(AttendedWeighingViewModel viewModel)
     {
         InitializeComponent();
-        DataContext = new AttendedWeighingViewModel();
+        DataContext = viewModel;
     }
 }

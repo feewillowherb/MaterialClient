@@ -7,16 +7,17 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.Services;
 using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
 public class AttendedWeighingViewModel : ViewModelBase
 {
-    private readonly IRepository<WeighingRecord, long>? _weighingRecordRepository;
-    private readonly IRepository<Waybill, long>? _waybillRepository;
+    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IServiceProvider _serviceProvider;
 
     private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
     private ObservableCollection<Waybill> _completedWaybills = new();
@@ -232,18 +233,14 @@ public class AttendedWeighingViewModel : ViewModelBase
     private Timer? _autoRefreshTimer;
     private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
 
-    public AttendedWeighingViewModel()
+    public AttendedWeighingViewModel(
+        IRepository<WeighingRecord, long> weighingRecordRepository,
+        IRepository<Waybill, long> waybillRepository,
+        IServiceProvider serviceProvider)
     {
-        // Try to get repositories from service locator (may be null if ABP not initialized yet)
-        try
-        {
-            _weighingRecordRepository = ServiceLocator.GetService<IRepository<WeighingRecord, long>>();
-            _waybillRepository = ServiceLocator.GetService<IRepository<Waybill, long>>();
-        }
-        catch
-        {
-            // ServiceLocator not initialized yet, will retry when Refresh is called
-        }
+        _weighingRecordRepository = weighingRecordRepository;
+        _waybillRepository = waybillRepository;
+        _serviceProvider = serviceProvider;
 
         RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
         SetReceivingCommand = ReactiveCommand.Create(() => IsReceiving = true);
@@ -400,7 +397,7 @@ public class AttendedWeighingViewModel : ViewModelBase
     {
         try
         {
-            var attachmentRepository = ServiceLocator.GetService<IRepository<WeighingRecordAttachment, int>>();
+            var attachmentRepository = _serviceProvider.GetService<IRepository<WeighingRecordAttachment, int>>();
             if (attachmentRepository != null)
             {
                 var attachments = await attachmentRepository.GetListAsync(
@@ -439,7 +436,7 @@ public class AttendedWeighingViewModel : ViewModelBase
     {
         try
         {
-            var waybillAttachmentRepository = ServiceLocator.GetService<IRepository<WaybillAttachment, int>>();
+            var waybillAttachmentRepository = _serviceProvider.GetService<IRepository<WaybillAttachment, int>>();
             if (waybillAttachmentRepository != null)
             {
                 var attachments = await waybillAttachmentRepository.GetListAsync(

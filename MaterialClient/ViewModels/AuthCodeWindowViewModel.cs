@@ -21,14 +21,6 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
     private bool _showRetryButton = false;
     private bool _isVerified = false;
 
-    public AuthCodeWindowViewModel()
-    {
-        // Design-time constructor
-        _licenseService = null!;
-        VerifyCommand = ReactiveCommand.Create(() => { });
-        RetryCommand = ReactiveCommand.Create(() => { });
-    }
-
     public AuthCodeWindowViewModel(ILicenseService licenseService)
     {
         _licenseService = licenseService;

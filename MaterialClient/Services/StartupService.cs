@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Views;
 using MaterialClient.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.Services;
 
@@ -14,13 +15,16 @@ public class StartupService
 {
     private readonly ILicenseService _licenseService;
     private readonly IAuthenticationService _authenticationService;
+    private readonly IServiceProvider _serviceProvider;
 
     public StartupService(
         ILicenseService licenseService,
-        IAuthenticationService authenticationService)
+        IAuthenticationService authenticationService,
+        IServiceProvider serviceProvider)
     {
         _licenseService = licenseService;
         _authenticationService = authenticationService;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -65,10 +69,8 @@ public class StartupService
             }
 
             // Step 3: Show main window
-            var mainWindow = new MainWindow
-            {
-                DataContext = new MainWindowViewModel()
-            };
+            // Resolve Window from Autofac container (ViewModel is injected via constructor)
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
 
             return mainWindow;
         }
@@ -83,10 +85,8 @@ public class StartupService
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        var authWindow = new AuthCodeWindow
-        {
-            DataContext = new AuthCodeWindowViewModel(_licenseService)
-        };
+        // Resolve Window from Autofac container (ViewModel is injected via constructor)
+        var authWindow = _serviceProvider.GetRequiredService<AuthCodeWindow>();
 
         authWindow.Closed += (sender, args) =>
         {
@@ -103,10 +103,8 @@ public class StartupService
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        var loginWindow = new LoginWindow
-        {
-            DataContext = new LoginWindowViewModel(_authenticationService)
-        };
+        // Resolve Window from Autofac container (ViewModel is injected via constructor)
+        var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
 
         loginWindow.Closed += (sender, args) =>
         {

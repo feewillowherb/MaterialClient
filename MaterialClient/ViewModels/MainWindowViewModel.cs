@@ -17,7 +17,7 @@ public class MainWindowViewModel : ViewModelBase
 
     private void OpenAttendedWeighing()
     {
-        var window = new AttendedWeighingWindow();
+        var window = new AttendedWeighingWindow(new AttendedWeighingViewModel());
         window.Show();
     }
 }
