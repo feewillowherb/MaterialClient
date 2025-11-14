@@ -61,10 +61,9 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var record = new WeighingRecord
+            var record = new WeighingRecord(weight) // Id will be auto-generated
             {
                 PlateNumber = plateNumber,
-                Weight = weight,
                 RecordType = WeighingRecordType.Unmatch
             };
 
@@ -89,10 +88,9 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var record = new WeighingRecord
+            var record = new WeighingRecord(weight) // Id will be auto-generated
             {
                 PlateNumber = plateNumber,
-                Weight = weight,
                 RecordType = WeighingRecordType.Unmatch,
                 ProviderId = providerId == 0 ? null : providerId
             };
@@ -115,10 +113,9 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var record = new WeighingRecord
+            var record = new WeighingRecord(weight) // Id will be auto-generated
             {
                 PlateNumber = plateNumber,
-                Weight = weight,
                 RecordType = WeighingRecordType.Unmatch,
                 MaterialId = materialId == 0 ? null : materialId
             };
@@ -148,10 +145,9 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var record = new WeighingRecord
+            var record = new WeighingRecord(weight) // Id will be auto-generated
             {
                 PlateNumber = "京A12345", // Same plate number for all records
-                Weight = weight,
                 RecordType = WeighingRecordType.Unmatch
             };
 

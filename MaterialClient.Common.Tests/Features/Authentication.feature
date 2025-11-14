@@ -6,6 +6,7 @@ Feature: 用户登录和会话管理
 Background:
     Given 系统已完成授权激活
     And 授权未过期
+    And 已初始化通用测试数据
 
 Scenario: 使用正确的用户名和密码登录成功
     Given 用户在登录页面

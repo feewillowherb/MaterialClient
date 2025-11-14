@@ -8,6 +8,32 @@ namespace MaterialClient.Common.Entities;
 public class Provider : Entity<int>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected Provider()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public Provider(int providerType, string providerName)
+    {
+        ProviderType = providerType;
+        ProviderName = providerName;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
+    /// </summary>
+    public Provider(int id, int providerType, string providerName)
+        : base(id)
+    {
+        ProviderType = providerType;
+        ProviderName = providerName;
+    }
+
+    /// <summary>
     /// 供应商类型
     /// </summary>
     public int ProviderType { get; set; }

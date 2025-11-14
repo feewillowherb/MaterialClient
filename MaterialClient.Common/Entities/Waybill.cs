@@ -9,6 +9,32 @@ namespace MaterialClient.Common.Entities;
 public class Waybill : FullAuditedEntity<long>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected Waybill()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public Waybill(string orderNo, int providerId)
+    {
+        OrderNo = orderNo;
+        ProviderId = providerId;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
+    /// </summary>
+    public Waybill(long id, string orderNo, int providerId)
+        : base(id)
+    {
+        OrderNo = orderNo;
+        ProviderId = providerId;
+    }
+
+    /// <summary>
     /// 供应商ID (FK to Provider)
     /// </summary>
     public int ProviderId { get; set; }

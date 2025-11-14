@@ -13,6 +13,30 @@ namespace MaterialClient.Common.Entities;
 public class UserCredential : Entity<Guid>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    private UserCredential()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public UserCredential(
+        Guid id,
+        Guid projectId,
+        string username,
+        string encryptedPassword)
+        : base(id)
+    {
+        ProjectId = projectId;
+        Username = username;
+        EncryptedPassword = encryptedPassword;
+        CreatedAt = DateTime.Now;
+        UpdatedAt = DateTime.Now;
+    }
+
+    /// <summary>
     /// 项目ID（关联到 LicenseInfo）
     /// </summary>
     [Required]
@@ -49,30 +73,6 @@ public class UserCredential : Entity<Guid>
     /// </summary>
     [ForeignKey(nameof(ProjectId))]
     public virtual LicenseInfo LicenseInfo { get; set; }
-
-    /// <summary>
-    /// 构造函数（用于EF Core）
-    /// </summary>
-    private UserCredential()
-    {
-    }
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    public UserCredential(
-        Guid id,
-        Guid projectId,
-        string username,
-        string encryptedPassword)
-        : base(id)
-    {
-        ProjectId = projectId;
-        Username = username;
-        EncryptedPassword = encryptedPassword;
-        CreatedAt = DateTime.Now;
-        UpdatedAt = DateTime.Now;
-    }
 
     /// <summary>
     /// 更新密码

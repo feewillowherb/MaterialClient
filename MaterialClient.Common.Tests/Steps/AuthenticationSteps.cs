@@ -3,11 +3,12 @@ using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.EntityFrameworkCore;
 using MaterialClient.Common.Services.Authentication;
-using Microsoft.EntityFrameworkCore;
+using MaterialClient.Common.Tests.Services;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Reqnroll;
 using Shouldly;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Tests.Steps;
@@ -20,7 +21,10 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
 {
     private readonly IAuthenticationService _authService;
     private readonly ILicenseService _licenseService;
+    private readonly ITestService _testService;
     private readonly IBasePlatformApi _mockApi;
+    private readonly IRepository<UserSession, Guid> _sessionRepository;
+    private readonly IRepository<UserCredential, Guid> _credentialRepository;
     
     private string _username = string.Empty;
     private string _password = string.Empty;
@@ -34,6 +38,9 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         _authService = GetRequiredService<IAuthenticationService>();
         _licenseService = GetRequiredService<ILicenseService>();
+        _testService = GetRequiredService<ITestService>();
+        _sessionRepository = GetRequiredService<IRepository<UserSession, Guid>>();
+        _credentialRepository = GetRequiredService<IRepository<UserCredential, Guid>>();
         
         // Get the mock API that was registered in the test module
         _mockApi = GetRequiredService<IBasePlatformApi>();
@@ -53,19 +60,9 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            
-            // Create a valid license
-            var license = new LicenseInfo(
-                id: Guid.NewGuid(),
-                projectId: Guid.NewGuid(),
-                authToken: Guid.NewGuid(),
-                authEndTime: DateTime.UtcNow.AddMonths(6), // Valid for 6 months
-                machineCode: "test-machine-code"
+            await _testService.CreateLicenseInfoAsync(
+                authEndTime: DateTime.UtcNow.AddMonths(6) // Valid for 6 months
             );
-            
-            await dbContext.LicenseInfos.AddAsync(license);
-            await dbContext.SaveChangesAsync();
         });
     }
 
@@ -118,13 +115,13 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            
-            var session = await dbContext.UserSessions.FindAsync((long)1);
+            var session = await _sessionRepository.FirstOrDefaultAsync();
             if (session != null)
             {
-                session.LastActivityTime = DateTime.UtcNow.AddHours(-hoursAgo);
-                await dbContext.SaveChangesAsync();
+                await _testService.UpdateUserSessionLastActivityTimeAsync(
+                    session.Id,
+                    DateTime.UtcNow.AddHours(-hoursAgo)
+                );
             }
         });
     }
@@ -134,21 +131,43 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            
-            // Get the license first
-            var license = await dbContext.LicenseInfos.FirstAsync();
-            
             var encryptionService = GetRequiredService<IPasswordEncryptionService>();
-            var credential = new UserCredential(
-                id: Guid.NewGuid(),
-                projectId: license.ProjectId,
+            await _testService.CreateUserCredentialAsync(
                 username: "olduser",
                 encryptedPassword: encryptionService.Encrypt("OldPass@123")
             );
-            
-            await dbContext.UserCredentials.AddAsync(credential);
-            await dbContext.SaveChangesAsync();
+        });
+    }
+
+    [Given("已初始化通用测试数据")]
+    public async Task GivenCommonTestDataInitialized()
+    {
+        await WithUnitOfWorkAsync(async () =>
+        {
+            // Create test Material
+            await _testService.CreateMaterialAsync(
+                name: "测试物料",
+                code: "MAT001",
+                coId: 1
+            );
+
+            // Create test MaterialUnit
+            var materialRepository = GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<Material, int>>();
+            var material = await materialRepository.FirstOrDefaultAsync();
+            if (material != null)
+            {
+                await _testService.CreateMaterialUnitAsync(
+                    materialId: material.Id,
+                    unitName: "kg",
+                    rate: 1
+                );
+            }
+
+            // Create test Provider
+            await _testService.CreateProviderAsync(
+                providerName: "测试供应商",
+                providerType: 1
+            );
         });
     }
 
@@ -254,8 +273,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         {
             _currentSession = await WithUnitOfWorkAsync(async () =>
             {
-                var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-                return await dbContext.UserSessions.FindAsync((long)1);
+                return await _sessionRepository.FirstOrDefaultAsync();
             });
         }
     }
@@ -294,8 +312,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var sessions = dbContext.UserSessions.ToList();
+            var sessions = await _sessionRepository.GetListAsync();
             
             sessions.ShouldNotBeEmpty();
             var session = sessions.First();
@@ -308,8 +325,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var credential = dbContext.UserCredentials.FirstOrDefault();
+            var credential = await _credentialRepository.FirstOrDefaultAsync();
             
             credential.ShouldNotBeNull();
             credential.Username.ShouldBe(_username);
@@ -322,8 +338,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var credentials = dbContext.UserCredentials.ToList();
+            var credentials = await _credentialRepository.GetListAsync();
             
             credentials.ShouldBeEmpty();
         });
@@ -334,8 +349,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var credentials = dbContext.UserCredentials.ToList();
+            var credentials = await _credentialRepository.GetListAsync();
             
             // Should either be empty or not contain the old credentials
             var oldCredential = credentials.FirstOrDefault(c => c.Username == "olduser");
@@ -348,8 +362,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var credentials = dbContext.UserCredentials.ToList();
+            var credentials = await _credentialRepository.GetListAsync();
             
             credentials.ShouldBeEmpty();
         });
@@ -393,8 +406,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var sessions = dbContext.UserSessions.ToList();
+            var sessions = await _sessionRepository.GetListAsync();
             
             sessions.ShouldBeEmpty();
         });
@@ -405,8 +417,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var credential = dbContext.UserCredentials.FirstOrDefault();
+            var credential = await _credentialRepository.FirstOrDefaultAsync();
             
             credential.ShouldNotBeNull();
             credential.EncryptedPassword.ShouldNotBe(_password);
@@ -423,8 +434,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var credential = dbContext.UserCredentials.FirstOrDefault();
+            var credential = await _credentialRepository.FirstOrDefaultAsync();
             
             credential.ShouldNotBeNull();
             
@@ -455,8 +465,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var sessions = dbContext.UserSessions.ToList();
+            var sessions = await _sessionRepository.GetListAsync();
             
             sessions.ShouldBeEmpty();
         });

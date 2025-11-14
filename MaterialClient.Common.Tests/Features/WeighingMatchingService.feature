@@ -4,7 +4,9 @@ Feature: WeighingMatchingService - Automatic Matching and Waybill Creation
   So that complete delivery/receiving records can be generated
 
   Background:
-    Given the weighing configuration has match duration of 3 hours
+    Given 系统已完成授权激活
+    And 已初始化通用测试数据
+    And the weighing configuration has match duration of 3 hours
     And the weighing record repository is available
     And the waybill repository is available
 

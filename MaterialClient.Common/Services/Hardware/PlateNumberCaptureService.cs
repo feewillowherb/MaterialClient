@@ -1,6 +1,18 @@
 namespace MaterialClient.Common.Services.Hardware;
 
 /// <summary>
+/// Plate number capture service interface
+/// </summary>
+public interface IPlateNumberCaptureService
+{
+    /// <summary>
+    /// Capture plate number from vehicle
+    /// </summary>
+    /// <returns>Plate number string (can be empty if capture fails)</returns>
+    Task<string?> CapturePlateNumberAsync();
+}
+
+/// <summary>
 /// Plate number capture service implementation
 /// Returns fixed test value for hardware simulation
 /// TODO: Replace with actual hardware integration when device is available

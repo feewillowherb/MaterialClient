@@ -8,15 +8,15 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
-using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
 /// <summary>
 /// Service for matching weighing records and creating waybills
 /// </summary>
-public class WeighingMatchingService : ITransientDependency
+public class WeighingMatchingService : DomainService
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
@@ -196,17 +196,15 @@ public class WeighingMatchingService : ITransientDependency
         }
 
         // Create waybill
-        var waybill = new Waybill
+        var orderNo = Guid.NewGuid().ToString(); // Generate OrderNo from Guid
+        var providerId = joinRecord.ProviderId ?? outRecord.ProviderId ?? 0;
+        var waybill = new Waybill(orderNo, providerId) // Id will be auto-generated
         {
-            OrderNo = Guid.NewGuid().ToString(), // Generate OrderNo from Guid
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
             JoinTime = joinRecord.CreationTime,
             OutTime = outRecord.CreationTime,
             DeliveryType = (int)deliveryType,
             OrderSource = OrderSource.MannedStation,
-            // Extract Provider from Join or Out records (any non-null)
-            // Note: Waybill.ProviderId is int (not nullable), so we use 0 if both records have null ProviderId
-            ProviderId = joinRecord.ProviderId ?? outRecord.ProviderId ?? 0,
             OrderTruckWeight = joinRecord.Weight,
             OrderTotalWeight = outRecord.Weight,
             OrderGoodsWeight = outRecord.Weight - joinRecord.Weight

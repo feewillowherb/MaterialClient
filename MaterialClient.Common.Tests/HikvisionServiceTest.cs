@@ -6,15 +6,15 @@ namespace MaterialClient.Common.Tests;
 
 public class UnitTest1
 {
-    [Fact(Skip = "Manual-only: Requires physical Hikvision device and SDK runtime.")]
+    [Fact]
     public void Capture_Jpeg_From_Hikvision()
     {
         var service = new HikvisionService();
         var config = new HikvisionDeviceConfig
         {
-            Ip = "192.168.3.3",
+            Ip = "192.168.3.245",
             Username = "admin",
-            Password = "fdkj123456",
+            Password = "fdkj112233",
             Port = 8000,
             StreamType = 0,
             Channels = [1]
@@ -44,12 +44,32 @@ public class UnitTest1
             ok = service.CaptureJpeg(config, ch, fullPath, out lastErr);
             if (ok) break;
         }
+
         if (!ok)
         {
             Assert.True(ok, $"CaptureJpeg failed. HCNetSDK error={lastErr}");
         }
+
         Assert.True(File.Exists(fullPath), "Captured file not found.");
         var size = new FileInfo(fullPath).Length;
         Assert.True(size > 0, "Captured file size should be greater than 0.");
+    }
+
+
+    [Fact(Skip = "Manual-only: Requires physical Hikvision device and SDK runtime.")]
+    public void CaptureJpegFromHikvisionMain()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.3.3",
+            Username = "admin",
+            Password = "fdkj123456",
+            Port = 8000,
+            StreamType = 0,
+            Channels = [1]
+        };
+
+        service.AddOrUpdateDevice(config);
     }
 }

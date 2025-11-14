@@ -1,4 +1,5 @@
 using MaterialClient.Common.Api;
+using MaterialClient.Common.Tests.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -35,6 +36,9 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
             var mockApi = Substitute.For<IBasePlatformApi>();
             return mockApi;
         });
+
+        // Register test service for test-only data persistence operations
+        context.Services.AddTransient<ITestService, TestService>();
     }
 
     private void ConfigureInMemorySqlite(IServiceCollection services)

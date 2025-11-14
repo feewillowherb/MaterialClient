@@ -4,7 +4,9 @@ Feature: WeighingService - Automatic Weighing Detection and Record Creation
   So that vehicles can be weighed without manual intervention
 
   Background:
-    Given the weighing configuration has offset range from -1.0 to 1.0 kg
+    Given 系统已完成授权激活
+    And 已初始化通用测试数据
+    And the weighing configuration has offset range from -1.0 to 1.0 kg
     And the weighing configuration has stable duration of 2000 ms
     And the truck scale weight service is available
     And the plate number capture service is available

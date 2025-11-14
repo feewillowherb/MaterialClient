@@ -13,6 +13,32 @@ namespace MaterialClient.Common.Entities;
 public class LicenseInfo : Entity<Guid>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    private LicenseInfo()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public LicenseInfo(
+        Guid id,
+        Guid projectId,
+        Guid? authToken,
+        DateTime authEndTime,
+        string machineCode)
+        : base(id)
+    {
+        ProjectId = projectId;
+        AuthToken = authToken;
+        AuthEndTime = authEndTime;
+        MachineCode = machineCode;
+        CreatedAt = DateTime.Now;
+        UpdatedAt = DateTime.Now;
+    }
+
+    /// <summary>
     /// 项目ID（从基础平台获取）
     /// </summary>
     [Required]
@@ -57,32 +83,6 @@ public class LicenseInfo : Entity<Guid>
     /// 检查授权是否即将过期（7天内）
     /// </summary>
     public bool IsExpiringSoon => !IsExpired && (AuthEndTime - DateTime.Now).TotalDays <= 7;
-
-    /// <summary>
-    /// 构造函数（用于EF Core）
-    /// </summary>
-    private LicenseInfo()
-    {
-    }
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    public LicenseInfo(
-        Guid id,
-        Guid projectId,
-        Guid? authToken,
-        DateTime authEndTime,
-        string machineCode)
-        : base(id)
-    {
-        ProjectId = projectId;
-        AuthToken = authToken;
-        AuthEndTime = authEndTime;
-        MachineCode = machineCode;
-        CreatedAt = DateTime.Now;
-        UpdatedAt = DateTime.Now;
-    }
 
     /// <summary>
     /// 更新授权信息

@@ -8,6 +8,32 @@ namespace MaterialClient.Common.Entities;
 public class Material : Entity<int>
 {
     /// <summary>
+    /// 构造函数（用于EF Core）
+    /// </summary>
+    protected Material()
+    {
+    }
+
+    /// <summary>
+    /// 构造函数（用于自增主键）
+    /// </summary>
+    public Material(string name, int coId)
+    {
+        Name = name;
+        CoId = coId;
+    }
+
+    /// <summary>
+    /// 构造函数（用于指定Id）
+    /// </summary>
+    public Material(int id, string name, int coId)
+        : base(id)
+    {
+        Name = name;
+        CoId = coId;
+    }
+
+    /// <summary>
     /// 物料名称
     /// </summary>
     public string Name { get; set; } = string.Empty;

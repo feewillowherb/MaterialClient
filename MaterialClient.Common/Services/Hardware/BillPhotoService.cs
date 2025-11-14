@@ -1,6 +1,18 @@
 namespace MaterialClient.Common.Services.Hardware;
 
 /// <summary>
+/// Bill photo service interface
+/// </summary>
+public interface IBillPhotoService
+{
+    /// <summary>
+    /// Capture bill photo
+    /// </summary>
+    /// <returns>Photo file path (can be empty if capture fails)</returns>
+    Task<string?> CaptureBillPhotoAsync();
+}
+
+/// <summary>
 /// Bill photo service implementation
 /// Returns fixed test file path for hardware simulation
 /// TODO: Replace with actual hardware integration when device is available

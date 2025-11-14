@@ -11,15 +11,15 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
-using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
 /// <summary>
 /// Weighing service for monitoring truck scale and creating weighing records
 /// </summary>
-public class WeighingService : ITransientDependency
+public class WeighingService : DomainService
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IPlateNumberCaptureService _plateNumberCaptureService;
@@ -191,9 +191,8 @@ public class WeighingService : ITransientDependency
             using var uow = _unitOfWorkManager.Begin();
             
             // Create weighing record
-            var weighingRecord = new WeighingRecord
+            var weighingRecord = new WeighingRecord(weight) // Id will be auto-generated
             {
-                Weight = weight,
                 PlateNumber = null, // Will be set if capture succeeds
                 RecordType = WeighingRecordType.Unmatch
             };
@@ -256,21 +255,16 @@ public class WeighingService : ITransientDependency
             foreach (var photoPath in photoPaths)
             {
                 // Create attachment file
-                var attachmentFile = new AttachmentFile
+                var fileName = Path.GetFileName(photoPath);
+                var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.EntryPhoto) // Id will be auto-generated
                 {
-                    FileName = Path.GetFileName(photoPath),
-                    LocalPath = photoPath,
-                    AttachType = AttachType.EntryPhoto // Vehicle photos are entry photos
+                    // Vehicle photos are entry photos
                 };
 
                 await _attachmentFileRepository.InsertAsync(attachmentFile);
 
                 // Create weighing record attachment
-                var weighingRecordAttachment = new WeighingRecordAttachment
-                {
-                    WeighingRecordId = weighingRecordId,
-                    AttachmentFileId = attachmentFile.Id
-                };
+                var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id); // Id will be auto-generated
 
                 await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment);
             }
