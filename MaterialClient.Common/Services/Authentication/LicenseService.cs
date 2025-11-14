@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services.Authentication;
 
@@ -30,7 +31,7 @@ public interface ILicenseService
     /// 获取当前授权信息
     /// </summary>
     /// <returns>授权信息，如果不存在则返回 null</returns>
-    Task<LicenseInfo> GetCurrentLicenseAsync();
+    Task<LicenseInfo?> GetCurrentLicenseAsync();
 
     /// <summary>
     /// 检查授权是否有效（存在且未过期）
@@ -55,6 +56,7 @@ public partial class LicenseService : DomainService, ILicenseService
     private readonly IRepository<LicenseInfo, Guid> _licenseRepository;
     private readonly IConfiguration _configuration;
 
+    [UnitOfWork]
     public async Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode)
     {
         if (string.IsNullOrWhiteSpace(authorizationCode))
@@ -142,11 +144,12 @@ public partial class LicenseService : DomainService, ILicenseService
         return license;
     }
 
-    public async Task<LicenseInfo> GetCurrentLicenseAsync()
+    public async Task<LicenseInfo?> GetCurrentLicenseAsync()
     {
         return await _licenseRepository.FirstOrDefaultAsync();
     }
 
+    [UnitOfWork]
     public async Task<bool> IsLicenseValidAsync()
     {
         var license = await GetCurrentLicenseAsync();
@@ -158,7 +161,7 @@ public partial class LicenseService : DomainService, ILicenseService
         // Check if expired
         return !license.IsExpired;
     }
-
+    [UnitOfWork]
     public async Task ClearLicenseAsync()
     {
         var license = await GetCurrentLicenseAsync();
