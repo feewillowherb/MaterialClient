@@ -30,11 +30,19 @@
     <PackageReference Include="System.Management" Version="9.0.1" />
   </ItemGroup>
 
+
   <ItemGroup>
-    <!-- Place Hikvision native dlls under Native/HCNetSDK/win64 inside this project directory -->
-    <None Include="HCNetSDK\win64\*.*" CopyToOutputDirectory="PreserveNewest" />
-    <!-- Copy componentized SDK folder side-by-side with HCNetSDK.dll -->
-    <None Include="HCNetSDK\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- 将 HCNetSDK 根目录下的 dll 和 lib 直接输出到输出目录根目录 -->
+  <None Include="HCNetSDK\*.dll" CopyToOutputDirectory="PreserveNewest">
+    <Link>%(Filename)%(Extension)</Link>
+  </None>
+  <None Include="HCNetSDK\*.lib" CopyToOutputDirectory="PreserveNewest">
+    <Link>%(Filename)%(Extension)</Link>
+  </None>
+  <!-- HCNetSDKCom 文件夹保持相对路径结构（与 HCNetSDK.dll 同级） -->
+  <None Include="HCNetSDK\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest">
+    <Link>HCNetSDKCom\%(RecursiveDir)%(Filename)%(Extension)</Link>
+  </None>
+</ItemGroup>
 
 </Project>
