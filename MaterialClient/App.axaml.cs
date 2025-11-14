@@ -11,7 +11,6 @@ using MaterialClient.ViewModels;
 using MaterialClient.Views;
 using MaterialClient.Services;
 using Volo.Abp;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient;
@@ -35,17 +34,11 @@ public partial class App : Application
 
             try
             {
-                // Load configuration from appsettings.json
-                var builder = new ConfigurationBuilder()
-                    .SetBasePath(AppContext.BaseDirectory)
-                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-                var configuration = builder.Build();
-
                 // Create and initialize ABP application with Autofac
+                // ABP framework will automatically load appsettings.json from the application base directory
                 _abpApplication = await AbpApplicationFactory.CreateAsync<MaterialClientModule>(options =>
                 {
                     options.UseAutofac();
-                    options.Services.ReplaceConfiguration(configuration);
                 });
 
                 await _abpApplication.InitializeAsync();
