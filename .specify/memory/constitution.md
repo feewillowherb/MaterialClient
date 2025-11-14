@@ -52,6 +52,8 @@
   - 如果一个 CS 文件代码行数小于 1000 行，Interface 可以和 Impl 放在同一个 CS 文件里。
   - 文件名为 Impl 的名称（例如：`AuthenticationService.cs` 包含 `IAuthenticationService` 接口和 `AuthenticationService` 实现类）。
   - 在文件里 Interface 应该放在 Impl 前面（先定义接口，后定义实现类）。
+- **数据绑定框架约束（NON-NEGOTIABLE）**：
+  - 所有数据绑定强制使用 ReactiveUI，不要使用 CommunityToolkit.Mvvm。
 
 ## Architecture & Technology Principles
 

@@ -1,13 +1,20 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿using System.Windows.Input;
 using MaterialClient.Views;
+using ReactiveUI;
 
 namespace MaterialClient.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public class MainWindowViewModel : ViewModelBase
 {
     public string Greeting { get; } = "Welcome to Avalonia!";
 
-    [RelayCommand]
+    public ICommand OpenAttendedWeighingCommand { get; }
+
+    public MainWindowViewModel()
+    {
+        OpenAttendedWeighingCommand = ReactiveCommand.Create(OpenAttendedWeighing);
+    }
+
     private void OpenAttendedWeighing()
     {
         var window = new AttendedWeighingWindow();
