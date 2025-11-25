@@ -82,25 +82,18 @@ public sealed class PlayM4Decoder : IDisposable
 			return PlayM4.PlayM4_SetPicQuality(_port, highQuality);
 		}
 	}
+	
 
 	/// <summary>
-	/// 设置 JPEG 质量
+	/// 设置全局 JPEG 质量（适用于所有端口）
 	/// </summary>
 	/// <param name="quality">质量值，通常范围 0-100，值越大质量越高</param>
 	/// <returns>是否成功</returns>
-	public bool SetJpegQuality(int quality)
+	public static bool SetGlobalJpegQuality(long quality)
 	{
-		lock (_lockObject)
-		{
-			if (_port < 0)
-			{
-				return false;
-			}
-
-			// 限制质量值在合理范围内
-			quality = Math.Clamp(quality, 0, 100);
-			return PlayM4.PlayM4_SetJpegQuality(_port, quality);
-		}
+		// 限制质量值在合理范围内
+		quality = Math.Clamp(quality, 0, 100);
+		return PlayM4.PlayM4_SetJpegQuality(quality);
 	}
 
 	/// <summary>
@@ -166,7 +159,7 @@ public sealed class PlayM4Decoder : IDisposable
 
 			// 打开流接口
 			// 参数：端口号、系统头数据、系统头大小、缓冲区大小（1MB）
-			if (!PlayM4.PlayM4_OpenStream(_port, systemHeader, headerSize, 1024 * 1024))
+			if (!PlayM4.PlayM4_OpenStream(_port, systemHeader, headerSize, 1024 * 1024 * 10))
 			{
 				return false;
 			}
@@ -244,6 +237,8 @@ public sealed class PlayM4Decoder : IDisposable
 			{
 				return false;
 			}
+
+			SetGlobalJpegQuality(100);
 			
 			// 分配缓冲区用于存储 JPEG 数据（通常 1MB 足够）
 			const int bufferSize = 1024 * 1024 * 10;
@@ -412,14 +407,13 @@ internal static class PlayM4
 	/// <returns>是否成功</returns>
 	[DllImport(DllName)]
 	internal static extern bool PlayM4_SetPicQuality(int nPort, bool bHighQuality);
-
+	
 	/// <summary>
-	/// 设置 JPEG 质量
+	/// 设置全局 JPEG 质量（适用于所有端口）
 	/// </summary>
-	/// <param name="nPort">端口号</param>
 	/// <param name="nQuality">质量值，通常范围 0-100，值越大质量越高</param>
 	/// <returns>是否成功</returns>
 	[DllImport(DllName)]
-	internal static extern bool PlayM4_SetJpegQuality(int nPort, int nQuality);
+	internal static extern bool PlayM4_SetJpegQuality(long nQuality);
 }
 

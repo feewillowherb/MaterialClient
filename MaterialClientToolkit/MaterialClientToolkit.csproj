@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <!-- 自包含部署：包含 .NET 运行时，目标机器无需安装 .NET -->
+        <SelfContained>true</SelfContained>
+        <!-- 单文件发布：将所有文件打包成一个可执行文件 -->
+        <PublishSingleFile>true</PublishSingleFile>
+        <!-- 包含所有依赖项 -->
+        <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+        <!-- 运行时标识符：Windows x64 -->
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <!-- 发布时裁剪未使用的代码（可选，减小文件大小） -->
+        <PublishTrimmed>false</PublishTrimmed>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.5" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="appsettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <!-- 单文件发布时，将 appsettings.json 作为独立文件，不打包到单文件中 -->
+            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        </None>
+    </ItemGroup>
+
+</Project>
