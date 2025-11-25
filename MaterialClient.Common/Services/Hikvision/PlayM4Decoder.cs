@@ -244,18 +244,9 @@ public sealed class PlayM4Decoder : IDisposable
 			{
 				return false;
 			}
-
-			var q = GetPictureQuality();
-
-
-			if (q == false)
-			{
-				SetPictureQuality(true);
-			}
 			
-
 			// 分配缓冲区用于存储 JPEG 数据（通常 1MB 足够）
-			const int bufferSize = 10240 * 1024;
+			const int bufferSize = 1024 * 1024 * 10;
 			IntPtr buffer = Marshal.AllocHGlobal(bufferSize);
 			try
 			{
