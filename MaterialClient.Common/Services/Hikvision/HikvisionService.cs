@@ -130,37 +130,138 @@ public sealed class HikvisionService : IHikvisionService
 		}
 
 		int lRealHandle = -1;
+		// 当 hPlayWnd 为 NULL 时，需要设置回调函数来处理码流数据
+		// 参考文档：hPlayWnd 为 NULL 时仅取流不解码，需要手动解码（使用播放库 PlayM4）
+		// 使用 PlayM4Decoder 进行手动解码
+		IntPtr hPlayWnd = IntPtr.Zero; // NULL - 仅取流不解码，需要手动解码
+		
+		// 创建 PlayM4 解码器实例
+		PlayM4Decoder? decoder = null;
+		object streamLock = new object();
+		
+		// 回调函数用于接收码流数据（当 hPlayWnd 为 NULL 时）
+		// 数据类型：NET_DVR_SYSHEAD(系统头), NET_DVR_STREAMDATA(码流数据) 等
+		// 使用 PlayM4Decoder 进行手动解码
+		NET_DVR.REALDATACALLBACK realDataCallback = (handle, dataType, buffer, bufSize, user) =>
+		{
+			lock (streamLock)
+			{
+				switch (dataType)
+				{
+					case NET_DVR.NET_DVR_SYSHEAD: // 系统头数据
+						if (bufSize > 0 && decoder != null && !decoder.IsInitialized)
+						{
+							// 使用系统头数据初始化播放库
+							// 获取桌面窗口句柄用于播放（即使不显示，也需要有效句柄）
+							IntPtr hWnd = NET_DVR.GetDesktopWindow();
+							if (!decoder.OpenStream(buffer, bufSize, hWnd))
+							{
+								// 初始化失败，记录错误
+								// 可以根据需要记录日志或抛出异常
+							}
+						}
+						break;
+						
+					case NET_DVR.NET_DVR_STREAMDATA: // 码流数据
+						if (bufSize > 0 && decoder != null && decoder.IsPlaying)
+						{
+							// 将码流数据输入到播放库进行解码
+							decoder.InputData(buffer, bufSize);
+						}
+						break;
+						
+					case NET_DVR.NET_DVR_AUDIOSTREAMDATA: // 音频数据
+						if (bufSize > 0)
+						{
+							// 音频数据处理（如果需要）
+							// PlayM4 也可以处理音频数据
+							if (decoder != null && decoder.IsPlaying)
+							{
+								decoder.InputData(buffer, bufSize);
+							}
+						}
+						break;
+						
+					case NET_DVR.NET_DVR_PRIVATE_DATA: // 私有数据（包括智能信息）
+						if (bufSize > 0)
+						{
+							// 收到私有数据，可能包含智能分析信息
+							// 可以根据需要处理这些数据
+						}
+						break;
+						
+					default:
+						// 其他类型的数据，也尝试输入到播放库
+						if (bufSize > 0 && decoder != null && decoder.IsPlaying)
+						{
+							decoder.InputData(buffer, bufSize);
+						}
+						break;
+				}
+			}
+		};
+		
 		try
 		{
+			// 创建 PlayM4 解码器实例
+			decoder = new PlayM4Decoder();
+			
 			// 启动实时预览
+			// hPlayWnd 为 NULL 时仅取流不解码，需要手动解码；设为有效值则 SDK 自动解码
 			NET_DVR.NET_DVR_PREVIEWINFO previewInfo = new NET_DVR.NET_DVR_PREVIEWINFO
 			{
 				lChannel = channel,
 				dwStreamType = 0, // 主码流
 				dwLinkMode = 0, // TCP模式
-				hPlayWnd = IntPtr.Zero,
+				hPlayWnd = hPlayWnd, // NULL - 仅取流不解码，需要手动解码
 				bBlocked = true, // 阻塞取流
+				bPassbackRecord = false, // 不启用录像回传
 				byPreviewMode = 0, // 正常预览
+				byStreamID = new byte[32],
 				byProtoType = 0, // 私有协议
+				byRes1 = 0,
+				byVideoCodingType = 0, // 通用编码数据
 				dwDisplayBufNum = 1, // 播放缓冲区最大缓冲帧数
+				byNPQMode = 0, // 直连模式
+				byRes = new byte[215]
 			};
 
-			lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, null, IntPtr.Zero);
+			// 当 hPlayWnd 为 NULL 时，必须设置回调函数来处理码流数据
+			// 回调函数签名：void CALLBACK fRealDataCallBack(LONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
+			lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, realDataCallback, IntPtr.Zero);
 			if (lRealHandle < 0)
 			{
 				return false;
 			}
 
-			// 等待一帧数据
-			//System.Threading.Thread.Sleep(500);
+			// 等待解码器初始化和第一帧数据
+			// 等待系统头数据被处理，解码器初始化完成
+			int waitCount = 0;
+			while (!decoder.IsPlaying && waitCount < 50) // 最多等待5秒
+			{
+				System.Threading.Thread.Sleep(100);
+				waitCount++;
+			}
 
-			// 从实时流中捕获JPEG图片
-			bool ok = NET_DVR.NET_DVR_CapturePicture(lRealHandle, saveFullPath);
+			if (!decoder.IsPlaying)
+			{
+				// 解码器初始化失败
+				return false;
+			}
+
+			// 等待一帧数据解码完成
+			System.Threading.Thread.Sleep(500);
+
+			// 使用 PlayM4_GetJPEG 捕获当前帧为 JPEG 图片
+			bool ok = decoder.CaptureJpeg(saveFullPath);
 			
 			return ok;
 		}
 		finally
 		{
+			// 释放解码器资源
+			decoder?.Dispose();
+			
 			if (lRealHandle >= 0)
 			{
 				NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
@@ -222,6 +323,12 @@ internal static class NET_DVR
 {
 	internal static bool _initialized;
 	private const int STREAM_ID_LEN = 32;
+
+	// 码流数据类型定义
+	internal const uint NET_DVR_SYSHEAD = 1; // 系统头数据
+	internal const uint NET_DVR_STREAMDATA = 2; // 码流数据
+	internal const uint NET_DVR_AUDIOSTREAMDATA = 3; // 音频数据
+	internal const uint NET_DVR_PRIVATE_DATA = 112; // 私有数据，包括智能信息
 
 	[StructLayout(LayoutKind.Sequential)]
 	internal struct NET_DVR_DEVICEINFO_V30
@@ -330,6 +437,9 @@ internal static class NET_DVR
 
 	[DllImport(@".\HCNetSDK.dll")]
 	internal static extern bool NET_DVR_CapturePicture(Int32 lRealHandle, string sPicFileName);
+
+	[DllImport("user32.dll")]
+	internal static extern IntPtr GetDesktopWindow();
 
 	internal delegate void REALDATACALLBACK(int lRealHandle, uint dwDataType, IntPtr pBuffer, uint dwBufSize, IntPtr pUser);
 }
