@@ -6,7 +6,17 @@ using System.Text;
 
 namespace MaterialClient.Common.Services.Hikvision;
 
-public sealed class HikvisionService
+public interface IHikvisionService
+{
+	void AddOrUpdateDevice(HikvisionDeviceConfig config);
+	bool IsOnline(HikvisionDeviceConfig config);
+	bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90);
+	bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError, int quality = 1);
+	bool TryOpenRealStream(HikvisionDeviceConfig config, int channel);
+	bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath);
+}
+
+public sealed class HikvisionService : IHikvisionService
 {
 	private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
 
@@ -106,6 +116,59 @@ public sealed class HikvisionService
 		return IsOnline(config);
 	}
 
+	public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath)
+	{
+		ArgumentNullException.ThrowIfNull(config);
+		if (string.IsNullOrWhiteSpace(saveFullPath)) throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+		EnsureInitialized();
+
+		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
+
+		if (!TryLogin(config, out var userId))
+		{
+			return false;
+		}
+
+		int lRealHandle = -1;
+		try
+		{
+			// 启动实时预览
+			NET_DVR.NET_DVR_PREVIEWINFO previewInfo = new NET_DVR.NET_DVR_PREVIEWINFO
+			{
+				lChannel = channel,
+				dwStreamType = 0, // 主码流
+				dwLinkMode = 0, // TCP模式
+				hPlayWnd = IntPtr.Zero,
+				bBlocked = true, // 阻塞取流
+				byPreviewMode = 0, // 正常预览
+				byProtoType = 0, // 私有协议
+				dwDisplayBufNum = 1, // 播放缓冲区最大缓冲帧数
+			};
+
+			lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, null, IntPtr.Zero);
+			if (lRealHandle < 0)
+			{
+				return false;
+			}
+
+			// 等待一帧数据
+			//System.Threading.Thread.Sleep(500);
+
+			// 从实时流中捕获JPEG图片
+			bool ok = NET_DVR.NET_DVR_CapturePicture(lRealHandle, saveFullPath);
+			
+			return ok;
+		}
+		finally
+		{
+			if (lRealHandle >= 0)
+			{
+				NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
+			}
+			NET_DVR.NET_DVR_Logout(userId);
+		}
+	}
+
 	private static string BuildDeviceKey(HikvisionDeviceConfig config)
 		=> $"{config.Ip}:{config.Port}:{config.Username}";
 
@@ -158,6 +221,7 @@ public sealed class HikvisionDeviceConfig
 internal static class NET_DVR
 {
 	internal static bool _initialized;
+	private const int STREAM_ID_LEN = 32;
 
 	[StructLayout(LayoutKind.Sequential)]
 	internal struct NET_DVR_DEVICEINFO_V30
@@ -234,6 +298,40 @@ internal static class NET_DVR
 
 	[DllImport("HCNetSDK.dll")]
 	internal static extern uint NET_DVR_GetLastError();
+
+	[StructLayout(LayoutKind.Sequential)]
+	internal struct NET_DVR_PREVIEWINFO
+	{
+		public Int32 lChannel; // 通道号
+		public uint dwStreamType; // 码流类型，0-主码流，1-子码流，2-码流3，3-码流4 等以此类推
+		public uint dwLinkMode; // 0：TCP方式,1：UDP方式,2：多播方式,3 - RTP方式，4-RTP/RTSP,5-RSTP/HTTP
+		public IntPtr hPlayWnd; // 播放窗口的句柄,为NULL表示不播放图象
+		[MarshalAs(UnmanagedType.Bool)]
+		public bool bBlocked; // 0-非阻塞取流, 1-阻塞取流, 如果阻塞SDK内部connect失败将会有5s的超时才能够返回,不适合于轮询取流操作.
+		[MarshalAs(UnmanagedType.Bool)]
+		public bool bPassbackRecord; // 0-不启用录像回传,1启用录像回传
+		public byte byPreviewMode; // 预览模式，0-正常预览，1-延迟预览
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = STREAM_ID_LEN, ArraySubType = UnmanagedType.I1)]
+		public byte[] byStreamID; // 流ID，lChannel为0xffffffff时启用此参数
+		public byte byProtoType; // 应用层取流协议，0-私有协议，1-RTSP协议
+		public byte byRes1;
+		public byte byVideoCodingType; // 码流数据编解码类型 0-通用编码数据 1-热成像探测器产生的原始数据（温度数据的加密信息，通过去加密运算，将原始数据算出真实的温度值）
+		public uint dwDisplayBufNum; // 播放库播放缓冲区最大缓冲帧数，范围1-50，置0时默认为1
+		public byte byNPQMode; // NPQ是直连模式，还是过流媒体 0-直连 1-过流媒体
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 215, ArraySubType = UnmanagedType.I1)]
+		public byte[] byRes;
+	}
+
+	[DllImport("HCNetSDK.dll")]
+	internal static extern int NET_DVR_RealPlay_V40(int lUserID, ref NET_DVR_PREVIEWINFO lpPreviewInfo, NET_DVR.REALDATACALLBACK fRealDataCallBack, IntPtr pUser);
+
+	[DllImport("HCNetSDK.dll")]
+	internal static extern bool NET_DVR_StopRealPlay(int lRealHandle);
+
+	[DllImport(@".\HCNetSDK.dll")]
+	internal static extern bool NET_DVR_CapturePicture(Int32 lRealHandle, string sPicFileName);
+
+	internal delegate void REALDATACALLBACK(int lRealHandle, uint dwDataType, IntPtr pBuffer, uint dwBufSize, IntPtr pUser);
 }
 
 
