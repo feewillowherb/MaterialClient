@@ -38,9 +38,9 @@ public sealed class PlayM4Decoder : IDisposable
     /// 获取最后一个错误码
     /// </summary>
     /// <returns>错误码</returns>
-    public static int GetLastError()
+    public int GetLastError()
     {
-        return PlayM4.PlayM4_GetLastError();
+        return PlayM4.PlayM4_GetLastError(_port);
     }
 
     /// <summary>
@@ -377,7 +377,7 @@ internal static class PlayM4
     /// </summary>
     /// <returns>错误码</returns>
     [DllImport(DllName)]
-    internal static extern int PlayM4_GetLastError();
+    internal static extern int PlayM4_GetLastError(int nPort);
 
     /// <summary>
     /// 获取图片质量

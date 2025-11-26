@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace MaterialClient.Common.Services.Hikvision;
 
@@ -14,6 +17,8 @@ public interface IHikvisionService
 	bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError, int quality = 1);
 	bool TryOpenRealStream(HikvisionDeviceConfig config, int channel);
 	bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath);
+	bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint hcNetSdkError, out int playM4Error);
+	Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests);
 }
 
 public sealed class HikvisionService : IHikvisionService
@@ -118,6 +123,14 @@ public sealed class HikvisionService : IHikvisionService
 
 	public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath)
 	{
+		return CaptureJpegFromStream(config, channel, saveFullPath, out _, out _);
+	}
+
+	public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint hcNetSdkError, out int playM4Error)
+	{
+		hcNetSdkError = 0;
+		playM4Error = 0;
+		
 		ArgumentNullException.ThrowIfNull(config);
 		if (string.IsNullOrWhiteSpace(saveFullPath)) throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
 		EnsureInitialized();
@@ -126,6 +139,7 @@ public sealed class HikvisionService : IHikvisionService
 
 		if (!TryLogin(config, out var userId))
 		{
+			hcNetSdkError = GetLastErrorCode();
 			return false;
 		}
 
@@ -231,6 +245,7 @@ public sealed class HikvisionService : IHikvisionService
 			lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, realDataCallback, IntPtr.Zero);
 			if (lRealHandle < 0)
 			{
+				hcNetSdkError = GetLastErrorCode();
 				return false;
 			}
 
@@ -245,7 +260,12 @@ public sealed class HikvisionService : IHikvisionService
 
 			if (!decoder.IsPlaying)
 			{
-				// 解码器初始化失败
+				// 解码器初始化失败，在释放前获取错误
+				if (decoder != null)
+				{
+					playM4Error = decoder.GetLastError();
+				}
+				hcNetSdkError = GetLastErrorCode();
 				return false;
 			}
 
@@ -255,10 +275,23 @@ public sealed class HikvisionService : IHikvisionService
 			// 使用 PlayM4_GetJPEG 捕获当前帧为 JPEG 图片
 			bool ok = decoder.CaptureJpeg(saveFullPath);
 			
+			if (!ok && decoder != null)
+			{
+				// 捕获失败，获取错误信息
+				playM4Error = decoder.GetLastError();
+				hcNetSdkError = GetLastErrorCode();
+			}
+			
 			return ok;
 		}
 		finally
 		{
+			// 在释放解码器之前，如果还没有获取错误，尝试获取
+			if (decoder != null && playM4Error == 0)
+			{
+				playM4Error = decoder.GetLastError();
+			}
+			
 			// 释放解码器资源
 			decoder?.Dispose();
 			
@@ -268,6 +301,78 @@ public sealed class HikvisionService : IHikvisionService
 			}
 			NET_DVR.NET_DVR_Logout(userId);
 		}
+	}
+
+	public async Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests)
+	{
+		if (requests == null || requests.Count == 0)
+		{
+			return new List<BatchCaptureResult>();
+		}
+
+		// 使用并发处理多个设备
+		var tasks = requests.Select(async request =>
+		{
+			var result = new BatchCaptureResult
+			{
+				Request = request,
+				Success = false,
+				HcNetSdkError = 0,
+				PlayM4Error = 0,
+				ErrorMessage = null,
+				FileSize = 0
+			};
+
+			try
+			{
+				// 在后台线程中执行拍照操作（因为 CaptureJpegFromStream 是同步的阻塞操作）
+				await Task.Run(() =>
+				{
+					uint hcNetSdkError = 0;
+					int playM4Error = 0;
+					
+					result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath, 
+						out hcNetSdkError, out playM4Error);
+					
+					result.HcNetSdkError = hcNetSdkError;
+					result.PlayM4Error = playM4Error;
+					
+					if (!result.Success)
+					{
+						result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
+					}
+					else
+					{
+						// 验证文件
+						if (File.Exists(request.SaveFullPath))
+						{
+							var fileInfo = new FileInfo(request.SaveFullPath);
+							result.FileSize = fileInfo.Length;
+							if (fileInfo.Length == 0)
+							{
+								result.Success = false;
+								result.ErrorMessage = "文件大小为0";
+							}
+						}
+						else
+						{
+							result.Success = false;
+							result.ErrorMessage = "文件未创建";
+						}
+					}
+				});
+			}
+			catch (Exception ex)
+			{
+				result.Success = false;
+				result.ErrorMessage = ex.Message;
+			}
+
+			return result;
+		});
+
+		var results = await Task.WhenAll(tasks);
+		return results.ToList();
 	}
 
 	private static string BuildDeviceKey(HikvisionDeviceConfig config)
@@ -309,7 +414,7 @@ public sealed class HikvisionService : IHikvisionService
 	}
 }
 
-public sealed class HikvisionDeviceConfig
+	public sealed class HikvisionDeviceConfig
 {
 	public string Ip { get; set; } = string.Empty;
 	public string Username { get; set; } = string.Empty;
@@ -317,6 +422,24 @@ public sealed class HikvisionDeviceConfig
 	public int Port { get; set; }
 	public int StreamType { get; set; }
 	public int[] Channels { get; set; } = Array.Empty<int>();
+}
+
+public sealed class BatchCaptureRequest
+{
+	public HikvisionDeviceConfig Config { get; set; } = null!;
+	public int Channel { get; set; }
+	public string SaveFullPath { get; set; } = string.Empty;
+	public string DeviceKey { get; set; } = string.Empty; // 用于标识设备，如 "192.168.1.100:8000"
+}
+
+public sealed class BatchCaptureResult
+{
+	public BatchCaptureRequest Request { get; set; } = null!;
+	public bool Success { get; set; }
+	public uint HcNetSdkError { get; set; }
+	public int PlayM4Error { get; set; }
+	public string? ErrorMessage { get; set; }
+	public long FileSize { get; set; }
 }
 
 internal static class NET_DVR

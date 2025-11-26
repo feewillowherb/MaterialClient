@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using MaterialClient.Common.Services.Hikvision;
 
@@ -7,78 +10,104 @@ namespace MaterialClientToolkit;
 
 class Program
 {
-	static int Main(string[] args)
+	static async Task<int> Main(string[] args)
 	{
 		try
 		{
 			// 从 appsettings.json 加载配置
-			var config = LoadConfiguration();
+			var deviceConfigs = LoadConfigurations();
 			
-			// 命令行参数可以覆盖配置文件的值
-			ApplyCommandLineArguments(config, args);
+			// 命令行参数可以覆盖配置文件的值（如果只有一个设备）
+			if (deviceConfigs.Count == 1)
+			{
+				ApplyCommandLineArguments(deviceConfigs[0], args);
+			}
 			
 			// 创建服务实例
 			var service = new HikvisionService();
-			service.AddOrUpdateDevice(config);
+			foreach (var config in deviceConfigs)
+			{
+				service.AddOrUpdateDevice(config);
+			}
 
 			// 创建 captures 文件夹（与工具目录相同）
-			// 对于单文件发布，使用 Environment.ProcessPath 获取可执行文件所在目录
 			var toolDirectory = GetToolDirectory();
 			var captureDir = Path.Combine(toolDirectory, "captures");
 			Directory.CreateDirectory(captureDir);
 
-			// 生成文件名
-			var fileName = $"hik_stream_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
-			var fullPath = Path.Combine(captureDir, fileName);
-
-			Console.WriteLine($"开始捕获图片...");
-			Console.WriteLine($"设备: {config.Ip}:{config.Port}");
-			Console.WriteLine($"通道: {config.Channels[0]}");
-			Console.WriteLine($"保存路径: {fullPath}");
-
-			// 尝试捕获图片
-			bool ok = false;
-			foreach (var ch in config.Channels)
+			// 为每个设备的每个通道创建拍照请求
+			var requests = new List<BatchCaptureRequest>();
+			var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+			
+			foreach (var config in deviceConfigs)
 			{
-				ok = service.CaptureJpegFromStream(config, ch, fullPath);
-				if (ok)
+				var deviceKey = $"{config.Ip}:{config.Port}";
+				foreach (var channel in config.Channels)
 				{
-					break;
+					var fileName = $"hik_{config.Ip.Replace(".", "_")}_ch{channel}_{timestamp}.jpg";
+					var fullPath = Path.Combine(captureDir, fileName);
+					
+					requests.Add(new BatchCaptureRequest
+					{
+						Config = config,
+						Channel = channel,
+						SaveFullPath = fullPath,
+						DeviceKey = deviceKey
+					});
+				}
+			}
+
+			Console.WriteLine($"开始批量捕获图片...");
+			Console.WriteLine($"设备数量: {deviceConfigs.Count}");
+			Console.WriteLine($"总任务数: {requests.Count}");
+			Console.WriteLine($"保存目录: {captureDir}");
+			Console.WriteLine();
+
+			// 执行批量拍照
+			var startTime = DateTime.Now;
+			var results = await service.CaptureJpegFromStreamBatchAsync(requests);
+			var endTime = DateTime.Now;
+			var duration = (endTime - startTime).TotalSeconds;
+
+			// 显示结果
+			Console.WriteLine($"批量捕获完成，耗时: {duration:F2} 秒");
+			Console.WriteLine();
+
+			var successCount = results.Count(r => r.Success);
+			var failCount = results.Count - successCount;
+
+			Console.WriteLine($"成功: {successCount}, 失败: {failCount}");
+			Console.WriteLine();
+
+			// 显示详细信息
+			foreach (var result in results)
+			{
+				var deviceInfo = $"{result.Request.Config.Ip}:{result.Request.Config.Port}";
+				var channelInfo = $"通道 {result.Request.Channel}";
+				
+				if (result.Success)
+				{
+					Console.WriteLine($"✓ {deviceInfo} {channelInfo} - 成功");
+					Console.WriteLine($"  文件: {Path.GetFileName(result.Request.SaveFullPath)}");
+					Console.WriteLine($"  大小: {result.FileSize} 字节");
 				}
 				else
 				{
-					var hcError = HikvisionService.GetLastErrorCode();
-					var playM4Error = PlayM4Decoder.GetLastError();
-					Console.WriteLine($"通道 {ch} 捕获失败 - HCNetSDK错误: {hcError}, PlayM4错误: {playM4Error}");
+					Console.WriteLine($"✗ {deviceInfo} {channelInfo} - 失败");
+					if (!string.IsNullOrEmpty(result.ErrorMessage))
+					{
+						Console.WriteLine($"  错误: {result.ErrorMessage}");
+					}
+					else
+					{
+						Console.WriteLine($"  HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}");
+					}
 				}
+				Console.WriteLine();
 			}
 
-			if (!ok)
-			{
-				var hcError = HikvisionService.GetLastErrorCode();
-				var playM4Error = PlayM4Decoder.GetLastError();
-				Console.Error.WriteLine($"捕获失败 - HCNetSDK错误: {hcError}, PlayM4错误: {playM4Error}");
-				return 1;
-			}
-
-			// 验证文件
-			if (!File.Exists(fullPath))
-			{
-				Console.Error.WriteLine("错误: 文件未创建");
-				return 1;
-			}
-
-			var fileInfo = new FileInfo(fullPath);
-			if (fileInfo.Length == 0)
-			{
-				Console.Error.WriteLine("错误: 文件大小为0");
-				return 1;
-			}
-
-			Console.WriteLine($"捕获成功!");
-			Console.WriteLine($"文件大小: {fileInfo.Length} 字节");
-			Console.WriteLine($"文件路径: {fullPath}");
-			return 0;
+			// 返回状态码：如果有失败则返回1，全部成功返回0
+			return failCount > 0 ? 1 : 0;
 		}
 		catch (Exception ex)
 		{
@@ -88,7 +117,7 @@ class Program
 		}
 	}
 
-	static HikvisionDeviceConfig LoadConfiguration()
+	static List<HikvisionDeviceConfig> LoadConfigurations()
 	{
 		// 使用可执行文件所在目录，而不是临时解压目录
 		var basePath = GetToolDirectory();
@@ -98,8 +127,56 @@ class Program
 
 		var configuration = builder.Build();
 
+		var configs = new List<HikvisionDeviceConfig>();
+
+		// 首先尝试读取 HikvisionDeviceList（多个设备）
+		var deviceListSection = configuration.GetSection("HikvisionDeviceList");
+		if (deviceListSection.Exists())
+		{
+			foreach (var deviceSection in deviceListSection.GetChildren())
+			{
+				var config = ParseDeviceConfig(deviceSection);
+				if (config != null)
+				{
+					configs.Add(config);
+				}
+			}
+		}
+
+		// 如果没有找到设备列表，尝试读取单个设备配置（向后兼容）
+		if (configs.Count == 0)
+		{
+			var section = configuration.GetSection("HikvisionDevice");
+			if (section.Exists())
+			{
+				var config = ParseDeviceConfig(section);
+				if (config != null)
+				{
+					configs.Add(config);
+				}
+			}
+		}
+
+		// 如果还是没有配置，使用默认值
+		if (configs.Count == 0)
+		{
+			configs.Add(new HikvisionDeviceConfig
+			{
+				Ip = "192.168.3.245",
+				Username = "admin",
+				Password = "fdkj112233",
+				Port = 8000,
+				StreamType = 0,
+				Channels = [1]
+			});
+		}
+
+		return configs;
+	}
+
+	static HikvisionDeviceConfig? ParseDeviceConfig(IConfigurationSection section)
+	{
 		var config = new HikvisionDeviceConfig();
-		var section = configuration.GetSection("HikvisionDevice");
 
 		config.Ip = section["Ip"] ?? "192.168.3.245";
 		config.Username = section["Username"] ?? "admin";

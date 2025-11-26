@@ -91,7 +91,6 @@ public class UnitTest1
         foreach (var ch in candidates)
         {
             ok = service.CaptureJpegFromStream(config, ch, fullPath);
-            var err = PlayM4Decoder.GetLastError();
             if (ok) break;
         }
 
