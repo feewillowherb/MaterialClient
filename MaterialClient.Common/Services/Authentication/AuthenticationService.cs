@@ -220,10 +220,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
             throw new BusinessException("AUTH:EMPTY_PASSWORD", "密码不能为空");
         }
 
-        // 固定的测试 ProjectId，与 VerifyAuthorizationCodeTestAsync 保持一致
-        var testProjectId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-
-        // 获取或创建授权信息（确保外键约束满足）
+        // 获取当前授权信息（确保外键约束满足）
         var license = await _licenseService.GetCurrentLicenseAsync();
         if (license == null)
         {
@@ -232,8 +229,8 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
             throw new BusinessException("AUTH:NO_LICENSE", "未找到授权信息，请先进行授权激活");
         }
 
-        // 确保使用固定的测试 ProjectId（与 VerifyAuthorizationCodeTestAsync 一致）
-        var projectId = testProjectId;
+        // 使用 LicenseInfo 的主键 ID 作为外键值（外键 ProjectId 实际指向 LicenseInfo.Id）
+        var projectId = license.Id;
 
         // 保存或更新用户凭证（如果需要记住密码）
         if (rememberMe)

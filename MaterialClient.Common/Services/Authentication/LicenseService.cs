@@ -168,20 +168,29 @@ public partial class LicenseService : DomainService, ILicenseService
         // 获取机器码
         var machineCode = _machineCodeService.GetMachineCode();
 
-        // 检查是否已存在授权信息
-        var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
-
         // 创建固定的测试授权信息
+        var testLicenseId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // 固定的测试授权ID（主键）
         var testProjectId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // 固定的测试项目ID
         var testAuthToken = Guid.Parse("11111111-1111-1111-1111-111111111111"); // 固定的测试令牌
         var testAuthEndTime = DateTime.Now.AddYears(1); // 有效期1年
 
+        // 检查是否已存在授权信息
+        var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
+
         LicenseInfo license;
+        
+        // 如果存在授权信息但ID不是固定的测试ID，先删除它（会级联删除关联的会话和凭证）
+        if (existingLicense != null && existingLicense.Id != testLicenseId)
+        {
+            await _licenseRepository.DeleteAsync(existingLicense);
+            existingLicense = null;
+        }
+
         if (existingLicense == null)
         {
-            // 创建新的测试授权信息
+            // 创建新的测试授权信息，使用固定的ID
             license = new LicenseInfo(
-                Guid.NewGuid(),
+                testLicenseId, // 使用固定的ID，确保外键约束能够匹配
                 testProjectId,
                 testAuthToken,
                 testAuthEndTime,
@@ -191,7 +200,7 @@ public partial class LicenseService : DomainService, ILicenseService
         }
         else
         {
-            // 更新现有授权信息为测试数据
+            // 更新现有授权信息为测试数据（ID已经是固定的testLicenseId）
             existingLicense.ProjectId = testProjectId;
             existingLicense.Update(testAuthToken, testAuthEndTime, machineCode);
             license = await _licenseRepository.UpdateAsync(existingLicense);
