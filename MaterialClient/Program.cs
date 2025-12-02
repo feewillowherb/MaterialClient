@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using Avalonia;
+using Avalonia.ReactiveUI;
 
 namespace MaterialClient;
 
@@ -20,5 +21,6 @@ sealed class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace();
+            .LogToTrace()
+            .UseReactiveUI();
 }

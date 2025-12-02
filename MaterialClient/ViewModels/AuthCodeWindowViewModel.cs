@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Media;
+using Avalonia.ReactiveUI;
 using MaterialClient.Common.Services.Authentication;
 using ReactiveUI;
 using Volo.Abp;
@@ -25,9 +26,15 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
     {
         _licenseService = licenseService;
         
-        // Create commands
-        VerifyCommand = ReactiveCommand.CreateFromTask(VerifyAuthorizationCodeAsync);
-        RetryCommand = ReactiveCommand.Create(ResetForm);
+        // Create commands with UI thread scheduler to ensure all notifications happen on UI thread
+        VerifyCommand = ReactiveCommand.CreateFromTask(
+            VerifyAuthorizationCodeAsync,
+            outputScheduler: AvaloniaScheduler.Instance
+        );
+        RetryCommand = ReactiveCommand.Create(
+            ResetForm,
+            outputScheduler: AvaloniaScheduler.Instance
+        );
     }
 
     #region Properties
