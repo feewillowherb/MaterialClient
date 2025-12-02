@@ -28,12 +28,10 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
         
         // Create commands with UI thread scheduler to ensure all notifications happen on UI thread
         VerifyCommand = ReactiveCommand.CreateFromTask(
-            VerifyAuthorizationCodeAsync,
-            outputScheduler: AvaloniaScheduler.Instance
+            VerifyAuthorizationCodeAsync
         );
         RetryCommand = ReactiveCommand.Create(
-            ResetForm,
-            outputScheduler: AvaloniaScheduler.Instance
+            ResetForm
         );
     }
 

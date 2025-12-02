@@ -30,7 +30,6 @@ public partial class AuthCodeWindow : Window
                     // Watch for successful authorization
                     _authSuccessSubscription = viewModel
                         .WhenAnyValue(vm => vm.IsVerified)
-                        .ObserveOn(AvaloniaScheduler.Instance)
                         .Subscribe(async isVerified =>
                         {
                             if (isVerified){
