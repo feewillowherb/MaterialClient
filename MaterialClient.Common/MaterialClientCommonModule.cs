@@ -40,7 +40,9 @@ public class MaterialClientCommonModule : AbpModule
         {
             options.Configure(context =>
             {
-                context.DbContextOptions.UseSqlite(connectionString);
+                context.DbContextOptions.UseSqlite(connectionString)
+                    .EnableDetailedErrors() // 启用详细的错误信息
+                    .EnableSensitiveDataLogging(); // 启用敏感数据日志记录（包含参数值）
             });
         });
 

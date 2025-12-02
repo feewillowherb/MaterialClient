@@ -101,7 +101,7 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
         try
         {
             // Call license service to verify
-            //await _licenseService.VerifyAuthorizationCodeTestAsync(AuthorizationCode);
+            await _licenseService.VerifyAuthorizationCodeTestAsync(AuthorizationCode);
 
             // Success
             IsVerified = true;

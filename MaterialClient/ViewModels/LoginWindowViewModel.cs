@@ -139,7 +139,7 @@ public class LoginWindowViewModel : ReactiveViewModelBase
         try
         {
             // Call authentication service to login
-            await _authenticationService.LoginAsync(Username, Password, RememberMe);
+            await _authenticationService.LoginTestAsync(Username, Password, RememberMe);
 
             // Success
             IsLoginSuccessful = true;

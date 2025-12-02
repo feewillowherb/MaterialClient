@@ -41,6 +41,8 @@ public class StartupService
             // Step 1: Check license
             var isLicenseValid = await _licenseService.IsLicenseValidAsync();
             
+            bool licenseWasInvalid = !isLicenseValid;
+            
             if (!isLicenseValid)
             {
                 // No license or expired license - show authorization window
@@ -54,6 +56,12 @@ public class StartupService
             }
 
             // Step 2: Check for active session
+            // 如果刚刚完成授权验证，清除旧的会话，要求重新登录
+            if (licenseWasInvalid)
+            {
+                await _authenticationService.LogoutAsync();
+            }
+            
             var hasActiveSession = await _authenticationService.HasActiveSessionAsync();
             
             if (!hasActiveSession)
