@@ -32,9 +32,9 @@ public class StartupService
     /// 1. 检查授权状态
     /// 2. 如果无授权或授权过期，显示授权窗口
     /// 3. 显示登录窗口
-    /// 4. 成功登录后显示主窗口
+    /// 4. 成功登录后显示有人值守过磅窗口
     /// </summary>
-    public async Task<MainWindow?> StartupAsync()
+    public async Task<AttendedWeighingWindow?> StartupAsync()
     {
         try
         {
@@ -76,11 +76,11 @@ public class StartupService
                 }
             }
 
-            // Step 3: Show main window
+            // Step 3: Show attended weighing window (有人值守过磅窗口)
             // Resolve Window from Autofac container (ViewModel is injected via constructor)
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            var attendedWeighingWindow = _serviceProvider.GetRequiredService<AttendedWeighingWindow>();
 
-            return mainWindow;
+            return attendedWeighingWindow;
         }
         catch (Exception ex)
         {
