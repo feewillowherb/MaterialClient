@@ -28,6 +28,13 @@ public interface ILicenseService
     Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode);
 
     /// <summary>
+    /// 测试方法：验证授权码（不联网，返回固定有效的授权信息）
+    /// </summary>
+    /// <param name="authorizationCode">授权码（测试方法中不进行实际验证）</param>
+    /// <returns>固定的有效授权信息</returns>
+    Task<LicenseInfo> VerifyAuthorizationCodeTestAsync(string authorizationCode);
+
+    /// <summary>
     /// 获取当前授权信息
     /// </summary>
     /// <returns>授权信息，如果不存在则返回 null</returns>
@@ -138,6 +145,55 @@ public partial class LicenseService : DomainService, ILicenseService
         {
             // Update existing license
             existingLicense.Update(licenseDto.AuthToken, licenseDto.AuthEndTime, machineCode);
+            license = await _licenseRepository.UpdateAsync(existingLicense);
+        }
+
+        return license;
+    }
+
+    /// <summary>
+    /// 测试方法：验证授权码（不联网，返回固定有效的授权信息）
+    /// 仅用于测试阶段，总是返回一个有效期为1年的固定授权信息
+    /// </summary>
+    /// <param name="authorizationCode">授权码（测试方法中不进行实际验证）</param>
+    /// <returns>固定的有效授权信息</returns>
+    [UnitOfWork]
+    public async Task<LicenseInfo> VerifyAuthorizationCodeTestAsync(string authorizationCode)
+    {
+        if (string.IsNullOrWhiteSpace(authorizationCode))
+        {
+            throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
+        }
+
+        // 获取机器码
+        var machineCode = _machineCodeService.GetMachineCode();
+
+        // 检查是否已存在授权信息
+        var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
+
+        // 创建固定的测试授权信息
+        var testProjectId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // 固定的测试项目ID
+        var testAuthToken = Guid.Parse("11111111-1111-1111-1111-111111111111"); // 固定的测试令牌
+        var testAuthEndTime = DateTime.Now.AddYears(1); // 有效期1年
+
+        LicenseInfo license;
+        if (existingLicense == null)
+        {
+            // 创建新的测试授权信息
+            license = new LicenseInfo(
+                Guid.NewGuid(),
+                testProjectId,
+                testAuthToken,
+                testAuthEndTime,
+                machineCode
+            );
+            await _licenseRepository.InsertAsync(license);
+        }
+        else
+        {
+            // 更新现有授权信息为测试数据
+            existingLicense.ProjectId = testProjectId;
+            existingLicense.Update(testAuthToken, testAuthEndTime, machineCode);
             license = await _licenseRepository.UpdateAsync(existingLicense);
         }
 
