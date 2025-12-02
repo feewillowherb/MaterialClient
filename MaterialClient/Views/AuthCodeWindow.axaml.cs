@@ -1,6 +1,9 @@
 using System;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.ReactiveUI;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
 using ReactiveUI;
@@ -27,16 +30,12 @@ public partial class AuthCodeWindow : Window
                     // Watch for successful authorization
                     _authSuccessSubscription = viewModel
                         .WhenAnyValue(vm => vm.IsVerified)
-                        .Subscribe(isVerified =>
+                        .ObserveOn(AvaloniaScheduler.Instance)
+                        .Subscribe(async isVerified =>
                         {
-                            if (isVerified)
-                            {
-                                // Close window after a short delay to show success message
-                                Dispatcher.UIThread.Post(async () =>
-                                {
-                                    await System.Threading.Tasks.Task.Delay(1000);
-                                    Close();
-                                }, DispatcherPriority.Background);
+                            if (isVerified){
+                                await Task.Delay(1000);
+                                Close();
                             }
                         });
                 }

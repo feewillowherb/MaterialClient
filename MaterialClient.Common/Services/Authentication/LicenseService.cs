@@ -72,7 +72,7 @@ public partial class LicenseService : DomainService, ILicenseService
         }
 
         // Get machine code
-        var machineCode = await _machineCodeService.GetMachineCodeAsync();
+        var machineCode = _machineCodeService.GetMachineCode();
 
         // Call base platform API to verify authorization code
         var request = new LicenseRequestDto
@@ -101,7 +101,7 @@ public partial class LicenseService : DomainService, ILicenseService
         var licenseDto = response.Data;
 
         // Verify machine code matches (if provided by API)
-        if (!string.IsNullOrWhiteSpace(licenseDto.MachineCode) && 
+        if (!string.IsNullOrWhiteSpace(licenseDto.MachineCode) &&
             !string.Equals(licenseDto.MachineCode, machineCode, StringComparison.OrdinalIgnoreCase))
         {
             throw new BusinessException("AUTH:MACHINE_MISMATCH", "授权码与当前机器不匹配");
@@ -161,6 +161,7 @@ public partial class LicenseService : DomainService, ILicenseService
         // Check if expired
         return !license.IsExpired;
     }
+
     [UnitOfWork]
     public async Task ClearLicenseAsync()
     {
@@ -171,4 +172,3 @@ public partial class LicenseService : DomainService, ILicenseService
         }
     }
 }
-

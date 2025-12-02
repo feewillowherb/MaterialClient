@@ -20,7 +20,7 @@ public class MachineCodeServiceTests
     public async Task GetMachineCodeAsync_ShouldReturnNonEmptyString()
     {
         // Act
-        var machineCode = await _machineCodeService.GetMachineCodeAsync();
+        var machineCode = _machineCodeService.GetMachineCode();
 
         // Assert
         machineCode.ShouldNotBeNullOrEmpty();
@@ -31,7 +31,7 @@ public class MachineCodeServiceTests
     public async Task GetMachineCodeAsync_ShouldReturnHexString()
     {
         // Act
-        var machineCode = await _machineCodeService.GetMachineCodeAsync();
+        var machineCode = _machineCodeService.GetMachineCode();
 
         // Assert - should be valid hex string (SHA256 = 64 hex chars)
         machineCode.Length.ShouldBe(64);
@@ -42,8 +42,8 @@ public class MachineCodeServiceTests
     public async Task GetMachineCodeAsync_ShouldReturnConsistentValue()
     {
         // Act - call multiple times
-        var machineCode1 = await _machineCodeService.GetMachineCodeAsync();
-        var machineCode2 = await _machineCodeService.GetMachineCodeAsync();
+        var machineCode1 = _machineCodeService.GetMachineCode();
+        var machineCode2 = _machineCodeService.GetMachineCode();
 
         // Assert - should return same value for same machine
         machineCode1.ShouldBe(machineCode2);
@@ -57,11 +57,10 @@ public class MachineCodeServiceTests
         var service2 = new MachineCodeService();
 
         // Act
-        var code1 = await service1.GetMachineCodeAsync();
-        var code2 = await service2.GetMachineCodeAsync();
+        var code1 = service1.GetMachineCode();
+        var code2 = service2.GetMachineCode();
 
         // Assert - multiple instances should return same code for same machine
         code1.ShouldBe(code2);
     }
 }
-
