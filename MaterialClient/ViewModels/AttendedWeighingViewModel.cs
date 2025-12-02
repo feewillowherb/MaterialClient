@@ -1,109 +1,220 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.Services;
+using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
-public partial class AttendedWeighingViewModel : ViewModelBase
+public class AttendedWeighingViewModel : ViewModelBase
 {
-    private readonly IRepository<WeighingRecord, long>? _weighingRecordRepository;
-    private readonly IRepository<Waybill, long>? _waybillRepository;
+    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IServiceProvider _serviceProvider;
 
-    [ObservableProperty]
-    private ObservableCollection<WeighingRecord> unmatchedWeighingRecords = new();
+    private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
+    private ObservableCollection<Waybill> _completedWaybills = new();
+    private WeighingRecord? _selectedWeighingRecord;
+    private Waybill? _selectedWaybill;
+    private ObservableCollection<string> _vehiclePhotos = new();
+    private string? _billPhotoPath;
+    private DateTime _currentTime = DateTime.Now;
+    private decimal _currentWeight = 0.00m;
+    private bool _isReceiving = true;
+    private bool _showAllRecords = true;
+    private bool _showUnmatched = false;
+    private bool _showCompleted = false;
+    private ObservableCollection<object> _displayRecords = new();
+    private object? _selectedRecord;
+    private string? _currentEntryPhoto1;
+    private string? _currentEntryPhoto2;
+    private string? _currentEntryPhoto3;
+    private string? _currentEntryPhoto4;
+    private string? _entryPhoto1;
+    private string? _entryPhoto2;
+    private string? _entryPhoto3;
+    private string? _entryPhoto4;
+    private string? _exitPhoto1;
+    private string? _exitPhoto2;
+    private string? _exitPhoto3;
+    private string? _exitPhoto4;
+    private string? _materialInfo;
+    private string? _offsetInfo;
 
-    [ObservableProperty]
-    private ObservableCollection<Waybill> completedWaybills = new();
+    public ObservableCollection<WeighingRecord> UnmatchedWeighingRecords
+    {
+        get => _unmatchedWeighingRecords;
+        set => this.RaiseAndSetIfChanged(ref _unmatchedWeighingRecords, value);
+    }
 
-    [ObservableProperty]
-    private WeighingRecord? selectedWeighingRecord;
+    public ObservableCollection<Waybill> CompletedWaybills
+    {
+        get => _completedWaybills;
+        set => this.RaiseAndSetIfChanged(ref _completedWaybills, value);
+    }
 
-    [ObservableProperty]
-    private Waybill? selectedWaybill;
+    public WeighingRecord? SelectedWeighingRecord
+    {
+        get => _selectedWeighingRecord;
+        set => this.RaiseAndSetIfChanged(ref _selectedWeighingRecord, value);
+    }
 
-    [ObservableProperty]
-    private ObservableCollection<string> vehiclePhotos = new();
+    public Waybill? SelectedWaybill
+    {
+        get => _selectedWaybill;
+        set => this.RaiseAndSetIfChanged(ref _selectedWaybill, value);
+    }
 
-    [ObservableProperty]
-    private string? billPhotoPath;
+    public ObservableCollection<string> VehiclePhotos
+    {
+        get => _vehiclePhotos;
+        set => this.RaiseAndSetIfChanged(ref _vehiclePhotos, value);
+    }
 
-    // New properties for the updated UI
-    [ObservableProperty]
-    private DateTime currentTime = DateTime.Now;
+    public string? BillPhotoPath
+    {
+        get => _billPhotoPath;
+        set => this.RaiseAndSetIfChanged(ref _billPhotoPath, value);
+    }
 
-    [ObservableProperty]
-    private decimal currentWeight = 0.00m;
+    public DateTime CurrentTime
+    {
+        get => _currentTime;
+        set => this.RaiseAndSetIfChanged(ref _currentTime, value);
+    }
 
-    [ObservableProperty]
-    private bool isReceiving = true;
+    public decimal CurrentWeight
+    {
+        get => _currentWeight;
+        set => this.RaiseAndSetIfChanged(ref _currentWeight, value);
+    }
 
-    [ObservableProperty]
-    private bool showAllRecords = true;
+    public bool IsReceiving
+    {
+        get => _isReceiving;
+        set => this.RaiseAndSetIfChanged(ref _isReceiving, value);
+    }
 
-    [ObservableProperty]
-    private bool showUnmatched = false;
+    public bool ShowAllRecords
+    {
+        get => _showAllRecords;
+        set => this.RaiseAndSetIfChanged(ref _showAllRecords, value);
+    }
 
-    [ObservableProperty]
-    private bool showCompleted = false;
+    public bool ShowUnmatched
+    {
+        get => _showUnmatched;
+        set => this.RaiseAndSetIfChanged(ref _showUnmatched, value);
+    }
 
-    [ObservableProperty]
-    private ObservableCollection<object> displayRecords = new();
+    public bool ShowCompleted
+    {
+        get => _showCompleted;
+        set => this.RaiseAndSetIfChanged(ref _showCompleted, value);
+    }
 
-    [ObservableProperty]
-    private object? selectedRecord;
+    public ObservableCollection<object> DisplayRecords
+    {
+        get => _displayRecords;
+        set => this.RaiseAndSetIfChanged(ref _displayRecords, value);
+    }
 
-    // Photo properties for current photos
-    [ObservableProperty]
-    private string? currentEntryPhoto1;
+    public object? SelectedRecord
+    {
+        get => _selectedRecord;
+        set => this.RaiseAndSetIfChanged(ref _selectedRecord, value);
+    }
 
-    [ObservableProperty]
-    private string? currentEntryPhoto2;
+    public string? CurrentEntryPhoto1
+    {
+        get => _currentEntryPhoto1;
+        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto1, value);
+    }
 
-    [ObservableProperty]
-    private string? currentEntryPhoto3;
+    public string? CurrentEntryPhoto2
+    {
+        get => _currentEntryPhoto2;
+        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto2, value);
+    }
 
-    [ObservableProperty]
-    private string? currentEntryPhoto4;
+    public string? CurrentEntryPhoto3
+    {
+        get => _currentEntryPhoto3;
+        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto3, value);
+    }
 
-    // Photo properties for previous vehicle
-    [ObservableProperty]
-    private string? entryPhoto1;
+    public string? CurrentEntryPhoto4
+    {
+        get => _currentEntryPhoto4;
+        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto4, value);
+    }
 
-    [ObservableProperty]
-    private string? entryPhoto2;
+    public string? EntryPhoto1
+    {
+        get => _entryPhoto1;
+        set => this.RaiseAndSetIfChanged(ref _entryPhoto1, value);
+    }
 
-    [ObservableProperty]
-    private string? entryPhoto3;
+    public string? EntryPhoto2
+    {
+        get => _entryPhoto2;
+        set => this.RaiseAndSetIfChanged(ref _entryPhoto2, value);
+    }
 
-    [ObservableProperty]
-    private string? entryPhoto4;
+    public string? EntryPhoto3
+    {
+        get => _entryPhoto3;
+        set => this.RaiseAndSetIfChanged(ref _entryPhoto3, value);
+    }
 
-    [ObservableProperty]
-    private string? exitPhoto1;
+    public string? EntryPhoto4
+    {
+        get => _entryPhoto4;
+        set => this.RaiseAndSetIfChanged(ref _entryPhoto4, value);
+    }
 
-    [ObservableProperty]
-    private string? exitPhoto2;
+    public string? ExitPhoto1
+    {
+        get => _exitPhoto1;
+        set => this.RaiseAndSetIfChanged(ref _exitPhoto1, value);
+    }
 
-    [ObservableProperty]
-    private string? exitPhoto3;
+    public string? ExitPhoto2
+    {
+        get => _exitPhoto2;
+        set => this.RaiseAndSetIfChanged(ref _exitPhoto2, value);
+    }
 
-    [ObservableProperty]
-    private string? exitPhoto4;
+    public string? ExitPhoto3
+    {
+        get => _exitPhoto3;
+        set => this.RaiseAndSetIfChanged(ref _exitPhoto3, value);
+    }
 
-    [ObservableProperty]
-    private string? materialInfo;
+    public string? ExitPhoto4
+    {
+        get => _exitPhoto4;
+        set => this.RaiseAndSetIfChanged(ref _exitPhoto4, value);
+    }
 
-    [ObservableProperty]
-    private string? offsetInfo;
+    public string? MaterialInfo
+    {
+        get => _materialInfo;
+        set => this.RaiseAndSetIfChanged(ref _materialInfo, value);
+    }
+
+    public string? OffsetInfo
+    {
+        get => _offsetInfo;
+        set => this.RaiseAndSetIfChanged(ref _offsetInfo, value);
+    }
 
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
@@ -122,30 +233,45 @@ public partial class AttendedWeighingViewModel : ViewModelBase
     private Timer? _autoRefreshTimer;
     private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
 
-    public AttendedWeighingViewModel()
+    public AttendedWeighingViewModel(
+        IRepository<WeighingRecord, long> weighingRecordRepository,
+        IRepository<Waybill, long> waybillRepository,
+        IServiceProvider serviceProvider)
     {
-        // Try to get repositories from service locator (may be null if ABP not initialized yet)
-        try
-        {
-            _weighingRecordRepository = ServiceLocator.GetService<IRepository<WeighingRecord, long>>();
-            _waybillRepository = ServiceLocator.GetService<IRepository<Waybill, long>>();
-        }
-        catch
-        {
-            // ServiceLocator not initialized yet, will retry when Refresh is called
-        }
+        _weighingRecordRepository = weighingRecordRepository;
+        _waybillRepository = waybillRepository;
+        _serviceProvider = serviceProvider;
 
-        RefreshCommand = new RelayCommand(async () => await RefreshAsync());
-        SetReceivingCommand = new RelayCommand(() => IsReceiving = true);
-        SetSendingCommand = new RelayCommand(() => IsReceiving = false);
-        ShowAllRecordsCommand = new RelayCommand(() => SetDisplayMode(0));
-        ShowUnmatchedCommand = new RelayCommand(() => SetDisplayMode(1));
-        ShowCompletedCommand = new RelayCommand(() => SetDisplayMode(2));
-        SelectRecordCommand = new RelayCommand<object>(OnRecordSelected);
-        TakeBillPhotoCommand = new RelayCommand(OnTakeBillPhoto);
-        SaveCommand = new RelayCommand(OnSave);
-        CloseCommand = new RelayCommand(OnClose);
-        
+        RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
+        SetReceivingCommand = ReactiveCommand.Create(() => IsReceiving = true);
+        SetSendingCommand = ReactiveCommand.Create(() => IsReceiving = false);
+        ShowAllRecordsCommand = ReactiveCommand.Create(() => SetDisplayMode(0));
+        ShowUnmatchedCommand = ReactiveCommand.Create(() => SetDisplayMode(1));
+        ShowCompletedCommand = ReactiveCommand.Create(() => SetDisplayMode(2));
+        SelectRecordCommand = ReactiveCommand.Create<object>(OnRecordSelected);
+        TakeBillPhotoCommand = ReactiveCommand.Create(OnTakeBillPhoto);
+        SaveCommand = ReactiveCommand.Create(OnSave);
+        CloseCommand = ReactiveCommand.Create(OnClose);
+
+        // Subscribe to SelectedWeighingRecord changes
+        this.WhenAnyValue(x => x.SelectedWeighingRecord)
+            .Subscribe(OnSelectedWeighingRecordChanged);
+
+        // Subscribe to SelectedWaybill changes
+        this.WhenAnyValue(x => x.SelectedWaybill)
+            .Subscribe(OnSelectedWaybillChanged);
+
+        // Subscribe to display mode changes to update IsWeighingRecordSelected and IsWaybillSelected
+        this.WhenAnyValue(
+                x => x.SelectedWeighingRecord,
+                x => x.SelectedWaybill,
+                (record, waybill) => (record, waybill))
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
+                this.RaisePropertyChanged(nameof(IsWaybillSelected));
+            });
+
         // Load initial data
         _ = RefreshAsync();
 
@@ -233,7 +359,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase
         _autoRefreshTimer = null;
     }
 
-    partial void OnSelectedWeighingRecordChanged(WeighingRecord? value)
+    private void OnSelectedWeighingRecordChanged(WeighingRecord? value)
     {
         // Clear waybill selection when weighing record is selected
         if (value != null)
@@ -246,11 +372,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase
             VehiclePhotos.Clear();
             BillPhotoPath = null;
         }
-        OnPropertyChanged(nameof(IsWeighingRecordSelected));
-        OnPropertyChanged(nameof(IsWaybillSelected));
+        this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
+        this.RaisePropertyChanged(nameof(IsWaybillSelected));
     }
 
-    partial void OnSelectedWaybillChanged(Waybill? value)
+    private void OnSelectedWaybillChanged(Waybill? value)
     {
         // Clear weighing record selection when waybill is selected
         if (value != null)
@@ -263,15 +389,15 @@ public partial class AttendedWeighingViewModel : ViewModelBase
             VehiclePhotos.Clear();
             BillPhotoPath = null;
         }
-        OnPropertyChanged(nameof(IsWeighingRecordSelected));
-        OnPropertyChanged(nameof(IsWaybillSelected));
+        this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
+        this.RaisePropertyChanged(nameof(IsWaybillSelected));
     }
 
     private async Task LoadWeighingRecordPhotos(WeighingRecord record)
     {
         try
         {
-            var attachmentRepository = ServiceLocator.GetService<IRepository<WeighingRecordAttachment, int>>();
+            var attachmentRepository = _serviceProvider.GetService<IRepository<WeighingRecordAttachment, int>>();
             if (attachmentRepository != null)
             {
                 var attachments = await attachmentRepository.GetListAsync(
@@ -310,7 +436,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase
     {
         try
         {
-            var waybillAttachmentRepository = ServiceLocator.GetService<IRepository<WaybillAttachment, int>>();
+            var waybillAttachmentRepository = _serviceProvider.GetService<IRepository<WaybillAttachment, int>>();
             if (waybillAttachmentRepository != null)
             {
                 var attachments = await waybillAttachmentRepository.GetListAsync(

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Views;
 using MaterialClient.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.Services;
 
@@ -14,13 +15,16 @@ public class StartupService
 {
     private readonly ILicenseService _licenseService;
     private readonly IAuthenticationService _authenticationService;
+    private readonly IServiceProvider _serviceProvider;
 
     public StartupService(
         ILicenseService licenseService,
-        IAuthenticationService authenticationService)
+        IAuthenticationService authenticationService,
+        IServiceProvider serviceProvider)
     {
         _licenseService = licenseService;
         _authenticationService = authenticationService;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -28,14 +32,16 @@ public class StartupService
     /// 1. 检查授权状态
     /// 2. 如果无授权或授权过期，显示授权窗口
     /// 3. 显示登录窗口
-    /// 4. 成功登录后显示主窗口
+    /// 4. 成功登录后显示有人值守过磅窗口
     /// </summary>
-    public async Task<MainWindow?> StartupAsync()
+    public async Task<AttendedWeighingWindow?> StartupAsync()
     {
         try
         {
             // Step 1: Check license
             var isLicenseValid = await _licenseService.IsLicenseValidAsync();
+            
+            bool licenseWasInvalid = !isLicenseValid;
             
             if (!isLicenseValid)
             {
@@ -50,6 +56,12 @@ public class StartupService
             }
 
             // Step 2: Check for active session
+            // 如果刚刚完成授权验证，清除旧的会话，要求重新登录
+            if (licenseWasInvalid)
+            {
+                await _authenticationService.LogoutAsync();
+            }
+            
             var hasActiveSession = await _authenticationService.HasActiveSessionAsync();
             
             if (!hasActiveSession)
@@ -64,13 +76,11 @@ public class StartupService
                 }
             }
 
-            // Step 3: Show main window
-            var mainWindow = new MainWindow
-            {
-                DataContext = new MainWindowViewModel()
-            };
+            // Step 3: Show attended weighing window (有人值守过磅窗口)
+            // Resolve Window from Autofac container (ViewModel is injected via constructor)
+            var attendedWeighingWindow = _serviceProvider.GetRequiredService<AttendedWeighingWindow>();
 
-            return mainWindow;
+            return attendedWeighingWindow;
         }
         catch (Exception ex)
         {
@@ -83,10 +93,8 @@ public class StartupService
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        var authWindow = new AuthCodeWindow
-        {
-            DataContext = new AuthCodeWindowViewModel(_licenseService)
-        };
+        // Resolve Window from Autofac container (ViewModel is injected via constructor)
+        var authWindow = _serviceProvider.GetRequiredService<AuthCodeWindow>();
 
         authWindow.Closed += (sender, args) =>
         {
@@ -103,10 +111,8 @@ public class StartupService
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        var loginWindow = new LoginWindow
-        {
-            DataContext = new LoginWindowViewModel(_authenticationService)
-        };
+        // Resolve Window from Autofac container (ViewModel is injected via constructor)
+        var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
 
         loginWindow.Closed += (sender, args) =>
         {

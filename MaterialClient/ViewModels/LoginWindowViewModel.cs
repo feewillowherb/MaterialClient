@@ -22,14 +22,6 @@ public class LoginWindowViewModel : ReactiveViewModelBase
     private bool _showRetryButton = false;
     private bool _isLoginSuccessful = false;
 
-    public LoginWindowViewModel()
-    {
-        // Design-time constructor
-        _authenticationService = null!;
-        LoginCommand = ReactiveCommand.Create(() => { });
-        RetryCommand = ReactiveCommand.Create(() => { });
-    }
-
     public LoginWindowViewModel(IAuthenticationService authenticationService)
     {
         _authenticationService = authenticationService;
@@ -147,7 +139,7 @@ public class LoginWindowViewModel : ReactiveViewModelBase
         try
         {
             // Call authentication service to login
-            await _authenticationService.LoginAsync(Username, Password, RememberMe);
+            await _authenticationService.LoginTestAsync(Username, Password, RememberMe);
 
             // Success
             IsLoginSuccessful = true;

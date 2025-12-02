@@ -11,9 +11,10 @@ public partial class LoginWindow : Window
 {
     private IDisposable? _loginSuccessSubscription;
 
-    public LoginWindow()
+    public LoginWindow(LoginWindowViewModel viewModel)
     {
         InitializeComponent();
+        DataContext = viewModel;
         
         // Subscribe to DataContext changes
         this.WhenAnyValue(x => x.DataContext)

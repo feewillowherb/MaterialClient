@@ -47,7 +47,12 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
 
         services.Configure<AbpDbContextOptions>(options =>
         {
-            options.Configure(context => { context.DbContextOptions.UseSqlite(_sqliteConnection); });
+            options.Configure(context => 
+            { 
+                context.DbContextOptions.UseSqlite(_sqliteConnection)
+                    .EnableDetailedErrors() // 启用详细的错误信息
+                    .EnableSensitiveDataLogging(); // 启用敏感数据日志记录（包含参数值）
+            });
         });
     }
 
@@ -63,6 +68,8 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
 
         var options = new DbContextOptionsBuilder<MaterialClientDbContext>()
             .UseSqlite(connection)
+            .EnableDetailedErrors() // 启用详细的错误信息
+            .EnableSensitiveDataLogging() // 启用敏感数据日志记录（包含参数值）
             .Options;
 
         using (var context = new MaterialClientDbContext(options))

@@ -10,6 +10,8 @@ using Volo.Abp;
 using MaterialClient.Common;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
+using MaterialClient.Services;
+using MaterialClient.ViewModels;
 
 namespace MaterialClient.HttpHost;
 
@@ -49,6 +51,16 @@ public class MaterialClientHttpHostModule : AbpModule
                        .AllowAnyHeader();
             });
         });
+
+        // Register Avalonia UI services
+        services.AddTransient<StartupService>();
+        
+        // Register ViewModels for dependency injection
+        // ViewModels are transient as they are bound to specific UI instances
+        services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<AuthCodeWindowViewModel>();
+        services.AddTransient<LoginWindowViewModel>();
+        services.AddTransient<AttendedWeighingViewModel>();
     }
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)

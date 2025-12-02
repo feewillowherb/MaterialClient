@@ -1,17 +1,16 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using ReactiveUI;
+﻿using ReactiveUI;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
-/// Base class for ViewModels using CommunityToolkit.Mvvm
+/// Base class for ViewModels using ReactiveUI
 /// </summary>
-public class ViewModelBase : ObservableObject
+public class ViewModelBase : ReactiveObject
 {
 }
 
 /// <summary>
-/// Base class for ViewModels using ReactiveUI
+/// Alias for ViewModelBase using ReactiveUI
 /// </summary>
 public class ReactiveViewModelBase : ReactiveObject
 {

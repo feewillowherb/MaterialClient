@@ -17,7 +17,7 @@ public interface IMachineCodeService
     /// 获取当前机器的机器码（基于硬件标识的SHA256哈希）
     /// </summary>
     /// <returns>机器码（十六进制格式的SHA256哈希值）</returns>
-    Task<string> GetMachineCodeAsync();
+    string GetMachineCode();
 }
 
 /// <summary>
@@ -25,21 +25,16 @@ public interface IMachineCodeService
 /// </summary>
 public class MachineCodeService : IMachineCodeService, ITransientDependency
 {
-    public async Task<string> GetMachineCodeAsync()
+    public string GetMachineCode()
     {
-        return await Task.Run(() =>
-        {
-            var cpuId = GetCpuId();
-            var boardId = GetBoardId();
-            var macAddress = GetMacAddress();
+        var cpuId = GetCpuId();
+        var boardId = GetBoardId();
+        var macAddress = GetMacAddress();
 
-            var combinedString = $"{cpuId}-{boardId}-{macAddress}";
-            using (var sha256 = SHA256.Create())
-            {
-                var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(combinedString));
-                return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-            }
-        });
+        var combinedString = $"{cpuId}-{boardId}-{macAddress}";
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(combinedString));
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 
     private string GetCpuId()
@@ -59,6 +54,7 @@ public class MachineCodeService : IMachineCodeService, ITransientDependency
             // Fallback to environment processor ID
             return Environment.ProcessorCount.ToString();
         }
+
         return string.Empty;
     }
 
@@ -79,6 +75,7 @@ public class MachineCodeService : IMachineCodeService, ITransientDependency
             // Fallback to machine name
             return Environment.MachineName;
         }
+
         return string.Empty;
     }
 
@@ -86,7 +83,9 @@ public class MachineCodeService : IMachineCodeService, ITransientDependency
     {
         try
         {
-            using (var searcher = new ManagementObjectSearcher("SELECT MACAddress FROM Win32_NetworkAdapter WHERE MACAddress IS NOT NULL"))
+            using (var searcher =
+                   new ManagementObjectSearcher(
+                       "SELECT MACAddress FROM Win32_NetworkAdapter WHERE MACAddress IS NOT NULL"))
             {
                 foreach (var obj in searcher.Get())
                 {
@@ -99,6 +98,7 @@ public class MachineCodeService : IMachineCodeService, ITransientDependency
             // Fallback to user name
             return Environment.UserName;
         }
+
         return string.Empty;
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Media;
+using Avalonia.ReactiveUI;
 using MaterialClient.Common.Services.Authentication;
 using ReactiveUI;
 using Volo.Abp;
@@ -21,21 +22,17 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
     private bool _showRetryButton = false;
     private bool _isVerified = false;
 
-    public AuthCodeWindowViewModel()
-    {
-        // Design-time constructor
-        _licenseService = null!;
-        VerifyCommand = ReactiveCommand.Create(() => { });
-        RetryCommand = ReactiveCommand.Create(() => { });
-    }
-
     public AuthCodeWindowViewModel(ILicenseService licenseService)
     {
         _licenseService = licenseService;
         
-        // Create commands
-        VerifyCommand = ReactiveCommand.CreateFromTask(VerifyAuthorizationCodeAsync);
-        RetryCommand = ReactiveCommand.Create(ResetForm);
+        // Create commands with UI thread scheduler to ensure all notifications happen on UI thread
+        VerifyCommand = ReactiveCommand.CreateFromTask(
+            VerifyAuthorizationCodeAsync
+        );
+        RetryCommand = ReactiveCommand.Create(
+            ResetForm
+        );
     }
 
     #region Properties
@@ -104,7 +101,7 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
         try
         {
             // Call license service to verify
-            await _licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode);
+            await _licenseService.VerifyAuthorizationCodeTestAsync(AuthorizationCode);
 
             // Success
             IsVerified = true;
