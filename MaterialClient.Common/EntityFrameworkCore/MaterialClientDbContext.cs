@@ -25,6 +25,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     public DbSet<LicenseInfo> LicenseInfos { get; set; }
     public DbSet<UserCredential> UserCredentials { get; set; }
     public DbSet<UserSession> UserSessions { get; set; }
+    
+    // Settings DbSet
+    public DbSet<SettingsEntity> Settings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -200,6 +203,20 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             
             // One active session per project
             entity.HasIndex(e => e.ProjectId).IsUnique();
+        });
+
+        // Configure SettingsEntity
+        modelBuilder.Entity<SettingsEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ScaleSettingsJson).IsRequired();
+            entity.Property(e => e.DocumentScannerConfigJson).IsRequired();
+            entity.Property(e => e.SystemSettingsJson).IsRequired();
+            entity.Property(e => e.CameraConfigsJson).IsRequired();
+            entity.Property(e => e.LicensePlateRecognitionConfigsJson).IsRequired();
+            
+            // Only one settings record should exist
+            entity.HasIndex(e => e.Id).IsUnique();
         });
     }
 }

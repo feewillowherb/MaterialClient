@@ -1,0 +1,320 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.ViewModels"
+        xmlns:entities="using:MaterialClient.Common.Entities.Enums"
+        x:Class="MaterialClient.Views.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Title="系统设置"
+        Width="800" Height="700"
+        WindowStartupLocation="CenterScreen">
+  
+  <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+    
+    <!-- Title -->
+    <TextBlock Text="系统设置" 
+               FontSize="24" 
+               FontWeight="Bold"
+               Margin="0,0,0,16"/>
+    
+    <!-- Content ScrollViewer -->
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16">
+      <StackPanel Spacing="24">
+        
+        <!-- Scale Settings Group -->
+        <Border Background="#F8F9FA" 
+                BorderBrush="#E5E7EB" 
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16">
+          <StackPanel Spacing="12">
+            <TextBlock Text="地磅设置" 
+                       FontSize="18" 
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8"/>
+            
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12" ColumnSpacing="12">
+              <TextBlock Text="串口:" 
+                         Grid.Row="0" 
+                         Grid.Column="0"
+                         VerticalAlignment="Center"
+                         Width="120"/>
+              <TextBox Text="{Binding ScaleSerialPort}" 
+                       Grid.Row="0" 
+                       Grid.Column="1"
+                       Watermark="COM3"/>
+              
+              <TextBlock Text="波特率:" 
+                         Grid.Row="1" 
+                         Grid.Column="0"
+                         VerticalAlignment="Center"/>
+              <TextBox Text="{Binding ScaleBaudRate}" 
+                       Grid.Row="1" 
+                       Grid.Column="1"
+                       Watermark="9600"/>
+              
+              <TextBlock Text="通讯方式:" 
+                         Grid.Row="2" 
+                         Grid.Column="0"
+                         VerticalAlignment="Center"/>
+              <TextBox Text="{Binding ScaleCommunicationMethod}" 
+                       Grid.Row="2" 
+                       Grid.Column="1"
+                       Watermark="TF0"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+        
+        <!-- Camera Settings Group -->
+        <Border Background="#F8F9FA" 
+                BorderBrush="#E5E7EB" 
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16">
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="摄像头设置" 
+                         FontSize="18" 
+                         FontWeight="SemiBold"
+                         Grid.Column="0"/>
+              <Button Content="添加" 
+                      Command="{Binding AddCameraCommand}"
+                      Grid.Column="1"
+                      Padding="12,6"
+                      Background="#4169E1"
+                      Foreground="White"
+                      BorderThickness="0"
+                      CornerRadius="4"/>
+            </Grid>
+            
+            <ItemsControl ItemsSource="{Binding CameraConfigs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CameraConfigViewModel">
+                  <Border Background="White" 
+                          BorderBrush="#E5E7EB" 
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="12"
+                          Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="12">
+                      <TextBlock Text="名称:" 
+                                 Grid.Row="0" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"
+                                 Width="80"/>
+                      <TextBox Text="{Binding Name}" 
+                               Grid.Row="0" 
+                               Grid.Column="1"
+                               Watermark="camera_1"/>
+                      
+                      <TextBlock Text="IP地址:" 
+                                 Grid.Row="1" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"/>
+                      <TextBox Text="{Binding Ip}" 
+                               Grid.Row="1" 
+                               Grid.Column="1"
+                               Watermark="192.168.3.245"/>
+                      
+                      <TextBlock Text="端口:" 
+                                 Grid.Row="2" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"/>
+                      <TextBox Text="{Binding Port}" 
+                               Grid.Row="2" 
+                               Grid.Column="1"
+                               Watermark="8000"/>
+                      
+                      <TextBlock Text="通道:" 
+                                 Grid.Row="3" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"/>
+                      <TextBox Text="{Binding Channel}" 
+                               Grid.Row="3" 
+                               Grid.Column="1"
+                               Watermark="1"/>
+                      
+                      <TextBlock Text="用户名:" 
+                                 Grid.Row="4" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"/>
+                      <TextBox Text="{Binding UserName}" 
+                               Grid.Row="4" 
+                               Grid.Column="1"
+                               Watermark="admin"/>
+                      
+                      <TextBlock Text="密码:" 
+                                 Grid.Row="5" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"/>
+                      <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="*,Auto">
+                        <TextBox Text="{Binding Password}" 
+                                 Grid.Column="0"
+                                 Watermark="fdkj112233"
+                                 PasswordChar="*"/>
+                        <Button Content="删除" 
+                                Grid.Column="1"
+                                Command="{Binding $parent[ItemsControl].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
+                                CommandParameter="{Binding}"
+                                Margin="8,0,0,0"
+                                Padding="12,6"
+                                Background="#DC3545"
+                                Foreground="White"
+                                BorderThickness="0"
+                                CornerRadius="4"/>
+                      </Grid>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+        
+        <!-- Document Scanner Settings Group -->
+        <Border Background="#F8F9FA" 
+                BorderBrush="#E5E7EB" 
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16">
+          <StackPanel Spacing="12">
+            <TextBlock Text="高拍仪设置" 
+                       FontSize="18" 
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8"/>
+            
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+              <TextBlock Text="USB设备:" 
+                         Grid.Column="0"
+                         VerticalAlignment="Center"
+                         Width="120"/>
+              <TextBox Text="{Binding DocumentScannerUsbDevice}" 
+                       Grid.Column="1"
+                       Watermark="USB设备标识"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+        
+        <!-- License Plate Recognition Settings Group -->
+        <Border Background="#F8F9FA" 
+                BorderBrush="#E5E7EB" 
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16">
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="车牌识别设置" 
+                         FontSize="18" 
+                         FontWeight="SemiBold"
+                         Grid.Column="0"/>
+              <Button Content="添加" 
+                      Command="{Binding AddLicensePlateRecognitionCommand}"
+                      Grid.Column="1"
+                      Padding="12,6"
+                      Background="#4169E1"
+                      Foreground="White"
+                      BorderThickness="0"
+                      CornerRadius="4"/>
+            </Grid>
+            
+            <ItemsControl ItemsSource="{Binding LicensePlateRecognitionConfigs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LicensePlateRecognitionConfigViewModel">
+                  <Border Background="White" 
+                          BorderBrush="#E5E7EB" 
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="12"
+                          Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="12">
+                      <TextBlock Text="名称:" 
+                                 Grid.Row="0" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"
+                                 Width="80"/>
+                      <TextBox Text="{Binding Name}" 
+                               Grid.Row="0" 
+                               Grid.Column="1"
+                               Watermark="camera_1"/>
+                      
+                      <TextBlock Text="IP地址:" 
+                                 Grid.Row="1" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"/>
+                      <TextBox Text="{Binding Ip}" 
+                               Grid.Row="1" 
+                               Grid.Column="1"
+                               Watermark="192.168.3.245"/>
+                      
+                      <TextBlock Text="方向:" 
+                                 Grid.Row="2" 
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"/>
+                      <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto">
+                        <ComboBox SelectedIndex="{Binding DirectionIndex}"
+                                  Grid.Column="0">
+                          <ComboBoxItem Content="进场"/>
+                          <ComboBoxItem Content="出场"/>
+                        </ComboBox>
+                        <Button Content="删除" 
+                                Grid.Column="1"
+                                Command="{Binding $parent[ItemsControl].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
+                                CommandParameter="{Binding}"
+                                Margin="8,0,0,0"
+                                Padding="12,6"
+                                Background="#DC3545"
+                                Foreground="White"
+                                BorderThickness="0"
+                                CornerRadius="4"/>
+                      </Grid>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+        
+        <!-- System Settings Group -->
+        <Border Background="#F8F9FA" 
+                BorderBrush="#E5E7EB" 
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16">
+          <StackPanel Spacing="12">
+            <TextBlock Text="系统设置" 
+                       FontSize="18" 
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8"/>
+            
+            <CheckBox Content="开机自动启动" 
+                      IsChecked="{Binding EnableAutoStart}"/>
+          </StackPanel>
+        </Border>
+        
+      </StackPanel>
+    </ScrollViewer>
+    
+    <!-- Bottom Buttons -->
+    <Grid Grid.Row="2" 
+          ColumnDefinitions="*,Auto,Auto"
+          ColumnSpacing="12">
+      <Button Content="取消" 
+              Grid.Column="1"
+              Command="{Binding CancelCommand}"
+              Padding="24,8"
+              Background="#E5E7EB"
+              Foreground="#333"
+              BorderThickness="0"
+              CornerRadius="4"/>
+      <Button Content="保存" 
+              Grid.Column="2"
+              Command="{Binding SaveCommand}"
+              Padding="24,8"
+              Background="#4169E1"
+              Foreground="White"
+              BorderThickness="0"
+              CornerRadius="4"/>
+    </Grid>
+    
+  </Grid>
+</Window>

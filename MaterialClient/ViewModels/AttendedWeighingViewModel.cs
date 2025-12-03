@@ -229,6 +229,7 @@ public class AttendedWeighingViewModel : ViewModelBase
     public ICommand TakeBillPhotoCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand CloseCommand { get; }
+    public ICommand OpenSettingsCommand { get; }
 
     private Timer? _autoRefreshTimer;
     private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
@@ -252,6 +253,7 @@ public class AttendedWeighingViewModel : ViewModelBase
         TakeBillPhotoCommand = ReactiveCommand.Create(OnTakeBillPhoto);
         SaveCommand = ReactiveCommand.Create(OnSave);
         CloseCommand = ReactiveCommand.Create(OnClose);
+        OpenSettingsCommand = ReactiveCommand.Create(OnOpenSettings);
 
         // Subscribe to SelectedWeighingRecord changes
         this.WhenAnyValue(x => x.SelectedWeighingRecord)
@@ -338,6 +340,19 @@ public class AttendedWeighingViewModel : ViewModelBase
     private void OnClose()
     {
         // TODO: Implement close logic
+    }
+
+    private void OnOpenSettings()
+    {
+        try
+        {
+            var settingsWindow = _serviceProvider.GetRequiredService<Views.SettingsWindow>();
+            settingsWindow.Show();
+        }
+        catch
+        {
+            // Handle error opening settings window
+        }
     }
 
     private void StartTimeUpdateTimer()

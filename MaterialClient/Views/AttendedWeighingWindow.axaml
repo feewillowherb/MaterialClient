@@ -34,7 +34,8 @@
                   Foreground="White" 
                   Background="Transparent"
                   BorderThickness="0"
-                  Padding="8,4"/>
+                  Padding="8,4"
+                  Command="{Binding OpenSettingsCommand}"/>
           <Button Content="项目信息" 
                   Foreground="White" 
                   Background="Transparent"

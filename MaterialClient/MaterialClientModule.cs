@@ -27,12 +27,14 @@ public class MaterialClientModule : AbpModule
         services.AddTransient<LoginWindow>();
         services.AddTransient<AuthCodeWindow>();
         services.AddTransient<AttendedWeighingWindow>();
+        services.AddTransient<SettingsWindow>();
 
         // Register ViewModels (transient as they are bound to specific UI instances)
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<LoginWindowViewModel>();
         services.AddTransient<AuthCodeWindowViewModel>();
         services.AddTransient<AttendedWeighingViewModel>();
+        services.AddTransient<SettingsWindowViewModel>();
 
         // Register startup service
         services.AddTransient<StartupService>();

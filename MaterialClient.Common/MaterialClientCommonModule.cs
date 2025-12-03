@@ -8,6 +8,7 @@ using MaterialClient.EFCore;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Authentication;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Api;
 using Refit;
 using Polly;
@@ -77,6 +78,9 @@ public class MaterialClientCommonModule : AbpModule
         services.AddSingleton<IBillPhotoService, Services.Hardware.BillPhotoService>();
 
         // Register WeighingService (transient, registered via ITransientDependency)
+        // No need to register explicitly, ABP will auto-register it
+
+        // Register SettingsService (transient, registered via ITransientDependency)
         // No need to register explicitly, ABP will auto-register it
 
         // Repositories are automatically registered by ABP framework
