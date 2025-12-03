@@ -38,6 +38,11 @@ public interface ITruckScaleWeightService : IDisposable
     void Close();
 
     /// <summary>
+    /// Restart the truck scale service with current settings
+    /// </summary>
+    Task<bool> RestartAsync();
+
+    /// <summary>
     /// Set weight for testing purposes (for hardware simulation API)
     /// </summary>
     void SetWeight(decimal weight);
@@ -380,6 +385,27 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     public void Close()
     {
         CloseInternal();
+    }
+
+    /// <summary>
+    /// Restart the truck scale service with current settings
+    /// </summary>
+    public async Task<bool> RestartAsync()
+    {
+        try
+        {
+            // Close existing connection
+            CloseInternal();
+
+            // Get current settings and reinitialize
+            var settings = await _settingsService.GetSettingsAsync();
+            return await InitializeAsync(settings.ScaleSettings);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"Error restarting truck scale service: {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>

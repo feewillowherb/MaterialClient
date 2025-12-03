@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Hardware;
 using ReactiveUI;
 
 namespace MaterialClient.ViewModels;
@@ -16,6 +18,7 @@ namespace MaterialClient.ViewModels;
 public class SettingsWindowViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
+    private readonly ITruckScaleWeightService _truckScaleWeightService;
     
     // Scale settings
     private string _scaleSerialPort = "COM3";
@@ -34,9 +37,12 @@ public class SettingsWindowViewModel : ViewModelBase
     // License plate recognition configs
     private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs = new();
 
-    public SettingsWindowViewModel(ISettingsService settingsService)
+    public SettingsWindowViewModel(
+        ISettingsService settingsService,
+        ITruckScaleWeightService truckScaleWeightService)
     {
         _settingsService = settingsService;
+        _truckScaleWeightService = truckScaleWeightService;
         
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync);
         CancelCommand = ReactiveCommand.Create(OnCancel);
@@ -119,6 +125,15 @@ public class SettingsWindowViewModel : ViewModelBase
     public ICommand RemoveCameraCommand { get; }
     public ICommand AddLicensePlateRecognitionCommand { get; }
     public ICommand RemoveLicensePlateRecognitionCommand { get; }
+
+    #endregion
+
+    #region Events
+
+    /// <summary>
+    /// Event raised when the window should be closed
+    /// </summary>
+    public event EventHandler? CloseRequested;
 
     #endregion
 
@@ -212,8 +227,11 @@ public class SettingsWindowViewModel : ViewModelBase
             
             await _settingsService.SaveSettingsAsync(settings);
             
+            // Restart truck scale service with new settings
+            await _truckScaleWeightService.RestartAsync();
+            
             // Close window after saving
-            OnCancel();
+            CloseRequested?.Invoke(this, EventArgs.Empty);
         }
         catch
         {
@@ -223,7 +241,8 @@ public class SettingsWindowViewModel : ViewModelBase
 
     private void OnCancel()
     {
-        // Window will be closed by the caller
+        // Raise close requested event
+        CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void AddCamera()
