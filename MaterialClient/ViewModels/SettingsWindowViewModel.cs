@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -24,6 +25,7 @@ public class SettingsWindowViewModel : ViewModelBase
     private string _scaleSerialPort = "COM3";
     private string _scaleBaudRate = "9600";
     private string _scaleCommunicationMethod = "TF0";
+    private ObservableCollection<string> _availableSerialPorts = new();
     
     // Document scanner settings
     private string? _documentScannerUsbDevice;
@@ -51,6 +53,9 @@ public class SettingsWindowViewModel : ViewModelBase
         AddLicensePlateRecognitionCommand = ReactiveCommand.Create(AddLicensePlateRecognition);
         RemoveLicensePlateRecognitionCommand = ReactiveCommand.Create<LicensePlateRecognitionConfigViewModel>(RemoveLicensePlateRecognition);
         
+        // Load available serial ports
+        RefreshAvailableSerialPorts();
+        
         // Load settings
         _ = LoadSettingsAsync();
     }
@@ -73,6 +78,12 @@ public class SettingsWindowViewModel : ViewModelBase
     {
         get => _scaleCommunicationMethod;
         set => this.RaiseAndSetIfChanged(ref _scaleCommunicationMethod, value);
+    }
+
+    public ObservableCollection<string> AvailableSerialPorts
+    {
+        get => _availableSerialPorts;
+        set => this.RaiseAndSetIfChanged(ref _availableSerialPorts, value);
     }
 
     #endregion
@@ -139,6 +150,32 @@ public class SettingsWindowViewModel : ViewModelBase
 
     #region Methods
 
+    /// <summary>
+    /// Refresh available serial ports from system
+    /// </summary>
+    private void RefreshAvailableSerialPorts()
+    {
+        try
+        {
+            var ports = SerialPort.GetPortNames().OrderBy(p => p).ToList();
+            AvailableSerialPorts.Clear();
+            foreach (var port in ports)
+            {
+                AvailableSerialPorts.Add(port);
+            }
+            
+            // If current selected port is not in the list, add it (might be disconnected)
+            if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
+            {
+                AvailableSerialPorts.Insert(0, ScaleSerialPort);
+            }
+        }
+        catch
+        {
+            // If getting ports fails, keep existing list
+        }
+    }
+
     private async Task LoadSettingsAsync()
     {
         try
@@ -149,6 +186,12 @@ public class SettingsWindowViewModel : ViewModelBase
             ScaleSerialPort = settings.ScaleSettings.SerialPort;
             ScaleBaudRate = settings.ScaleSettings.BaudRate;
             ScaleCommunicationMethod = settings.ScaleSettings.CommunicationMethod;
+            
+            // Ensure the loaded serial port is in the available list
+            if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
+            {
+                AvailableSerialPorts.Insert(0, ScaleSerialPort);
+            }
             
             // Load document scanner settings
             DocumentScannerUsbDevice = settings.DocumentScannerConfig.UsbDevice;

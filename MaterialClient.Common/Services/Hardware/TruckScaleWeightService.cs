@@ -285,50 +285,86 @@ public class TruckScaleWeightService : ITruckScaleWeightService
 
     /// <summary>
     /// Parse weight from HEX data
-    /// Format: 0x02 [weight bytes] 0x03
-    /// Weight bytes are typically BCD encoded or ASCII
+    /// Format: 0x02 [sign] [weight bytes as ASCII] [other] 0x03
+    /// Example: 02 2B 30 30 30 32 30 35 32 31 45 03
+    ///          STX '+' "0002" "05" "21" 'E' ETX = 2.05
     /// </summary>
     private void ParseHexWeight(byte[] buffer)
     {
         try
         {
-            // Extract weight bytes (skip 0x02 and 0x03)
-            // Assuming weight is in bytes 1-10 (12 bytes total: 0x02 + 10 weight bytes + 0x03)
-            // Common format: BCD encoded weight
-            // Example: 0x02 0x01 0x23 0x45 0x67 0x89 0x00 0x00 0x00 0x00 0x00 0x03 = 12345.67
-            
             if (buffer.Length < 12) return;
 
-            // Try to parse as BCD (Binary Coded Decimal)
-            // Bytes 1-6 might contain weight digits
+            // Check frame format: 0x02 at start, 0x03 at end
+            if (buffer[0] != 0x02 || buffer[buffer.Length - 1] != 0x03)
+            {
+                _logger?.LogWarning($"Invalid frame format: STX={buffer[0]:X2}, ETX={buffer[buffer.Length - 1]:X2}");
+                return;
+            }
+
+            // Parse sign byte (byte 1): 0x2B = '+', 0x2D = '-'
+            bool isNegative = buffer[1] == 0x2D;
+            
+            // Extract ASCII weight digits (bytes 2 onwards until we find 'E')
+            // Format: 4 digits (integer part) + 2 digits (decimal part) = 6 digits total
+            // Example: "000205" -> 2.05
             var weightString = string.Empty;
-            for (int i = 1; i < 7; i++)
+            int startIndex = 2; // Skip STX and sign
+            
+            // Read ASCII digits until we encounter 'E' (0x45) or reach 6 digits
+            for (int i = startIndex; i < buffer.Length - 1; i++) // -1 to skip ETX
             {
                 byte b = buffer[i];
-                // Convert BCD to decimal
-                int high = (b >> 4) & 0x0F;
-                int low = b & 0x0F;
-                if (high <= 9 && low <= 9)
+                
+                // Stop at 'E' marker (0x45)
+                if (b == 0x45)
                 {
-                    weightString += high.ToString();
-                    weightString += low.ToString();
+                    break;
+                }
+                
+                // Convert ASCII to character
+                char c = (char)b;
+                
+                // Only include digits, and limit to 6 digits (4 integer + 2 decimal)
+                if (char.IsDigit(c) && weightString.Length < 6)
+                {
+                    weightString += c;
                 }
             }
 
-            if (!string.IsNullOrEmpty(weightString))
+            if (!string.IsNullOrEmpty(weightString) && weightString.Length >= 1)
             {
-                // Parse as decimal with 2 decimal places
-                if (decimal.TryParse(weightString, out decimal weight))
+                // Parse the weight string
+                // Format: "000205" -> 2.05 (assuming 2 decimal places)
+                // The string contains integer part + decimal part without decimal point
+                if (decimal.TryParse(weightString, out decimal weightInt))
                 {
-                    decimal parsedWeight = weight / 100m; // Convert from integer to decimal (e.g., 1234567 -> 12345.67)
+                    // Convert from integer to decimal (e.g., "000205" -> 2.05)
+                    // Assuming 2 decimal places (last 2 digits are decimal part)
+                    decimal parsedWeight = weightInt / 100m;
+                    
+                    // Apply sign
+                    if (isNegative)
+                    {
+                        parsedWeight = -parsedWeight;
+                    }
+                    
                     lock (_lockObject)
                     {
                         _currentWeight = parsedWeight;
                     }
-                    _logger?.LogDebug($"Parsed HEX weight: {parsedWeight} kg");
+                    _logger?.LogDebug($"Parsed HEX weight: {parsedWeight} kg (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
                     // Push weight update to Rx stream
                     _weightSubject.OnNext(parsedWeight);
                 }
+                else
+                {
+                    _logger?.LogWarning($"Failed to parse weight string: {weightString}");
+                }
+            }
+            else
+            {
+                _logger?.LogWarning($"No weight digits found in buffer");
             }
         }
         catch (Exception ex)

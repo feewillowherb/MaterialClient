@@ -41,10 +41,11 @@
                          VerticalAlignment="Center"
                          Foreground="Black"
                          Width="120"/>
-              <TextBox Text="{Binding ScaleSerialPort}" 
-                       Grid.Row="0" 
-                       Grid.Column="1"
-                       Watermark="COM3"/>
+              <ComboBox ItemsSource="{Binding AvailableSerialPorts}"
+                        SelectedItem="{Binding ScaleSerialPort}"
+                        Grid.Row="0" 
+                        Grid.Column="1"
+                        PlaceholderText="请选择串口"/>
               
               <TextBlock Text="波特率:" 
                          Grid.Row="1" 
