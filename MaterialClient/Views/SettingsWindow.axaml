@@ -14,6 +14,7 @@
     <TextBlock Text="系统设置" 
                FontSize="24" 
                FontWeight="Bold"
+               Foreground="Black"
                Margin="0,0,0,16"/>
     
     <!-- Content ScrollViewer -->
@@ -30,6 +31,7 @@
             <TextBlock Text="地磅设置" 
                        FontSize="18" 
                        FontWeight="SemiBold"
+                       Foreground="Black"
                        Margin="0,0,0,8"/>
             
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12" ColumnSpacing="12">
@@ -37,6 +39,7 @@
                          Grid.Row="0" 
                          Grid.Column="0"
                          VerticalAlignment="Center"
+                         Foreground="Black"
                          Width="120"/>
               <TextBox Text="{Binding ScaleSerialPort}" 
                        Grid.Row="0" 
@@ -46,7 +49,8 @@
               <TextBlock Text="波特率:" 
                          Grid.Row="1" 
                          Grid.Column="0"
-                         VerticalAlignment="Center"/>
+                         VerticalAlignment="Center"
+                         Foreground="Black"/>
               <TextBox Text="{Binding ScaleBaudRate}" 
                        Grid.Row="1" 
                        Grid.Column="1"
@@ -55,7 +59,8 @@
               <TextBlock Text="通讯方式:" 
                          Grid.Row="2" 
                          Grid.Column="0"
-                         VerticalAlignment="Center"/>
+                         VerticalAlignment="Center"
+                         Foreground="Black"/>
               <TextBox Text="{Binding ScaleCommunicationMethod}" 
                        Grid.Row="2" 
                        Grid.Column="1"
@@ -75,6 +80,7 @@
               <TextBlock Text="摄像头设置" 
                          FontSize="18" 
                          FontWeight="SemiBold"
+                         Foreground="Black"
                          Grid.Column="0"/>
               <Button Content="添加" 
                       Command="{Binding AddCameraCommand}"
@@ -100,6 +106,7 @@
                                  Grid.Row="0" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
+                                 Foreground="Black"
                                  Width="80"/>
                       <TextBox Text="{Binding Name}" 
                                Grid.Row="0" 
@@ -109,7 +116,8 @@
                       <TextBlock Text="IP地址:" 
                                  Grid.Row="1" 
                                  Grid.Column="0"
-                                 VerticalAlignment="Center"/>
+                                 VerticalAlignment="Center"
+                                 Foreground="Black"/>
                       <TextBox Text="{Binding Ip}" 
                                Grid.Row="1" 
                                Grid.Column="1"
@@ -118,7 +126,8 @@
                       <TextBlock Text="端口:" 
                                  Grid.Row="2" 
                                  Grid.Column="0"
-                                 VerticalAlignment="Center"/>
+                                 VerticalAlignment="Center"
+                                 Foreground="Black"/>
                       <TextBox Text="{Binding Port}" 
                                Grid.Row="2" 
                                Grid.Column="1"
@@ -127,7 +136,8 @@
                       <TextBlock Text="通道:" 
                                  Grid.Row="3" 
                                  Grid.Column="0"
-                                 VerticalAlignment="Center"/>
+                                 VerticalAlignment="Center"
+                                 Foreground="Black"/>
                       <TextBox Text="{Binding Channel}" 
                                Grid.Row="3" 
                                Grid.Column="1"
@@ -136,7 +146,8 @@
                       <TextBlock Text="用户名:" 
                                  Grid.Row="4" 
                                  Grid.Column="0"
-                                 VerticalAlignment="Center"/>
+                                 VerticalAlignment="Center"
+                                 Foreground="Black"/>
                       <TextBox Text="{Binding UserName}" 
                                Grid.Row="4" 
                                Grid.Column="1"
@@ -145,7 +156,8 @@
                       <TextBlock Text="密码:" 
                                  Grid.Row="5" 
                                  Grid.Column="0"
-                                 VerticalAlignment="Center"/>
+                                 VerticalAlignment="Center"
+                                 Foreground="Black"/>
                       <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="*,Auto">
                         <TextBox Text="{Binding Password}" 
                                  Grid.Column="0"
@@ -180,12 +192,14 @@
             <TextBlock Text="高拍仪设置" 
                        FontSize="18" 
                        FontWeight="SemiBold"
+                       Foreground="Black"
                        Margin="0,0,0,8"/>
             
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
               <TextBlock Text="USB设备:" 
                          Grid.Column="0"
                          VerticalAlignment="Center"
+                         Foreground="Black"
                          Width="120"/>
               <TextBox Text="{Binding DocumentScannerUsbDevice}" 
                        Grid.Column="1"
@@ -205,6 +219,7 @@
               <TextBlock Text="车牌识别设置" 
                          FontSize="18" 
                          FontWeight="SemiBold"
+                         Foreground="Black"
                          Grid.Column="0"/>
               <Button Content="添加" 
                       Command="{Binding AddLicensePlateRecognitionCommand}"
@@ -230,6 +245,7 @@
                                  Grid.Row="0" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
+                                 Foreground="Black"
                                  Width="80"/>
                       <TextBox Text="{Binding Name}" 
                                Grid.Row="0" 
@@ -239,7 +255,8 @@
                       <TextBlock Text="IP地址:" 
                                  Grid.Row="1" 
                                  Grid.Column="0"
-                                 VerticalAlignment="Center"/>
+                                 VerticalAlignment="Center"
+                                 Foreground="Black"/>
                       <TextBox Text="{Binding Ip}" 
                                Grid.Row="1" 
                                Grid.Column="1"
@@ -248,7 +265,8 @@
                       <TextBlock Text="方向:" 
                                  Grid.Row="2" 
                                  Grid.Column="0"
-                                 VerticalAlignment="Center"/>
+                                 VerticalAlignment="Center"
+                                 Foreground="Black"/>
                       <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto">
                         <ComboBox SelectedIndex="{Binding DirectionIndex}"
                                   Grid.Column="0">
@@ -284,6 +302,7 @@
             <TextBlock Text="系统设置" 
                        FontSize="18" 
                        FontWeight="SemiBold"
+                       Foreground="Black"
                        Margin="0,0,0,8"/>
             
             <CheckBox Content="开机自动启动" 
