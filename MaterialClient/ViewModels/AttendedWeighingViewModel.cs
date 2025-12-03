@@ -51,6 +51,7 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private string? _exitPhoto4;
     private string? _materialInfo;
     private string? _offsetInfo;
+    private bool _isScaleOnline = false;
 
     public ObservableCollection<WeighingRecord> UnmatchedWeighingRecords
     {
@@ -220,6 +221,12 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _offsetInfo, value);
     }
 
+    public bool IsScaleOnline
+    {
+        get => _isScaleOnline;
+        set => this.RaiseAndSetIfChanged(ref _isScaleOnline, value);
+    }
+
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
 
@@ -298,6 +305,29 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         
         // Initialize truck scale service
         _ = InitializeTruckScaleAsync();
+        
+        // Start timer to check scale online status periodically
+        StartScaleStatusCheckTimer();
+    }
+    
+    /// <summary>
+    /// Start timer to periodically check scale online status
+    /// </summary>
+    private void StartScaleStatusCheckTimer()
+    {
+        var statusTimer = new Timer(_ =>
+        {
+            try
+            {
+                IsScaleOnline = _truckScaleWeightService.IsOnline;
+            }
+            catch
+            {
+                IsScaleOnline = false;
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2)); // Check every 2 seconds
+        
+        _disposables.Add(statusTimer);
     }
     
     /// <summary>

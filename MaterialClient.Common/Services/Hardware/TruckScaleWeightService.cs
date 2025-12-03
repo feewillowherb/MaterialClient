@@ -51,6 +51,11 @@ public interface ITruckScaleWeightService : IDisposable
     /// Get current weight synchronously (for testing)
     /// </summary>
     decimal GetCurrentWeight();
+
+    /// <summary>
+    /// Check if truck scale is online (serial port is open and connected)
+    /// </summary>
+    bool IsOnline { get; }
 }
 
 /// <summary>
@@ -87,6 +92,20 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     /// Observable stream of weight updates from truck scale
     /// </summary>
     public IObservable<decimal> WeightUpdates => _weightSubject.AsObservable();
+
+    /// <summary>
+    /// Check if truck scale is online (serial port is open and connected)
+    /// </summary>
+    public bool IsOnline
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _serialPort != null && _serialPort.IsOpen && !_isClosing;
+            }
+        }
+    }
 
     public TruckScaleWeightService(
         ISettingsService settingsService,
