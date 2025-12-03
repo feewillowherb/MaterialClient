@@ -308,6 +308,25 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         
         // Start timer to check scale online status periodically
         StartScaleStatusCheckTimer();
+        
+        // Start all devices when ViewModel is created
+        _ = StartAllDevicesAsync();
+    }
+    
+    /// <summary>
+    /// Start all devices
+    /// </summary>
+    private async Task StartAllDevicesAsync()
+    {
+        try
+        {
+            var deviceManagerService = _serviceProvider.GetRequiredService<MaterialClient.Common.Services.IDeviceManagerService>();
+            await deviceManagerService.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error starting devices: {ex.Message}");
+        }
     }
     
     /// <summary>
