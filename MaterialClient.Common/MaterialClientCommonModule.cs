@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp.Modularity;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
+using Volo.Abp.Uow;
 using MaterialClient.EFCore;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Hardware;
@@ -141,10 +142,14 @@ public class MaterialClientCommonModule : AbpModule
         // 尝试自动更新数据库迁移
         try
         {
+            var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
             var dbContextProvider =
                 context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
+
+            using var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false);
             using var dbContext = await dbContextProvider.GetDbContextAsync();
             await dbContext.Database.MigrateAsync();
+            await uow.CompleteAsync();
         }
         catch (Exception ex)
         {
