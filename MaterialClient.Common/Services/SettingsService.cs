@@ -46,10 +46,10 @@ public class SettingsService : DomainService, ISettingsService
     public async Task<SettingsEntity> GetSettingsAsync()
     {
         using var uow = _unitOfWorkManager.Begin();
-        
+
         var settingsList = await _settingsRepository.GetListAsync();
         var settings = settingsList.FirstOrDefault();
-        
+
         if (settings == null)
         {
             // Create default settings if none exist
@@ -59,24 +59,25 @@ public class SettingsService : DomainService, ISettingsService
                 new SystemSettings(),
                 new List<CameraConfig>(),
                 new List<LicensePlateRecognitionConfig>());
-            
+
             await _settingsRepository.InsertAsync(settings);
             await uow.CompleteAsync();
         }
-        
+
         return settings;
     }
 
     /// <summary>
     /// Save settings
     /// </summary>
+    [UnitOfWork]
     public async Task SaveSettingsAsync(SettingsEntity settings)
     {
         using var uow = _unitOfWorkManager.Begin();
-        
+
         var existingSettings = await _settingsRepository.GetListAsync();
         var existing = existingSettings.FirstOrDefault();
-        
+
         if (existing != null)
         {
             // Update existing settings
@@ -85,7 +86,7 @@ public class SettingsService : DomainService, ISettingsService
             existing.SystemSettings = settings.SystemSettings;
             existing.CameraConfigs = settings.CameraConfigs;
             existing.LicensePlateRecognitionConfigs = settings.LicensePlateRecognitionConfigs;
-            
+
             await _settingsRepository.UpdateAsync(existing);
         }
         else
@@ -93,9 +94,9 @@ public class SettingsService : DomainService, ISettingsService
             // Insert new settings
             await _settingsRepository.InsertAsync(settings);
         }
-        
+
         await uow.CompleteAsync();
-        
+
         // TODO: Restart all devices after saving settings
         // - Restart truck scale service with new scale settings
         // - Restart camera services with new camera configurations
