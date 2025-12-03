@@ -1,5 +1,7 @@
 using System;
 using System.IO.Ports;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,8 +14,13 @@ namespace MaterialClient.Common.Services.Hardware;
 /// <summary>
 /// Truck scale weight service interface
 /// </summary>
-public interface ITruckScaleWeightService
+public interface ITruckScaleWeightService : IDisposable
 {
+    /// <summary>
+    /// Observable stream of weight updates from truck scale
+    /// </summary>
+    IObservable<decimal> WeightUpdates { get; }
+
     /// <summary>
     /// Get current weight from truck scale
     /// </summary>
@@ -56,17 +63,25 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     private bool _isClosing = false;
     private readonly object _lockObject = new();
     private ScaleSettings? _currentSettings;
+    
+    // Rx Subject for weight updates
+    private readonly Subject<decimal> _weightSubject = new();
 
     // Receiving parameters
     private enum ReceType
     {
-        HEX = 0,
+        Hex = 0,
         String = 1
     }
 
     private ReceType _receType = ReceType.String;
     private int _byteCount = 10;
     private string _endChar = "=";
+
+    /// <summary>
+    /// Observable stream of weight updates from truck scale
+    /// </summary>
+    public IObservable<decimal> WeightUpdates => _weightSubject.AsObservable();
 
     public TruckScaleWeightService(
         ISettingsService settingsService,
@@ -106,7 +121,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     // Determine receiving type based on communication method
                     if (settings.CommunicationMethod == "TF0")
                     {
-                        _receType = ReceType.HEX;
+                        _receType = ReceType.Hex;
                         _byteCount = 12;
                     }
                     else
@@ -166,7 +181,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
 
                 switch (_receType)
                 {
-                    case ReceType.HEX:
+                    case ReceType.Hex:
                         ReceiveHex();
                         break;
                     case ReceType.String:
@@ -281,8 +296,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 // Parse as decimal with 2 decimal places
                 if (decimal.TryParse(weightString, out decimal weight))
                 {
-                    _currentWeight = weight / 100m; // Convert from integer to decimal (e.g., 1234567 -> 12345.67)
-                    _logger?.LogDebug($"Parsed HEX weight: {_currentWeight} kg");
+                    decimal parsedWeight = weight / 100m; // Convert from integer to decimal (e.g., 1234567 -> 12345.67)
+                    lock (_lockObject)
+                    {
+                        _currentWeight = parsedWeight;
+                    }
+                    _logger?.LogDebug($"Parsed HEX weight: {parsedWeight} kg");
+                    // Push weight update to Rx stream
+                    _weightSubject.OnNext(parsedWeight);
                 }
             }
         }
@@ -307,8 +328,13 @@ public class TruckScaleWeightService : ITruckScaleWeightService
             // Try to parse as decimal
             if (decimal.TryParse(weightString, out decimal weight))
             {
-                _currentWeight = weight;
-                _logger?.LogDebug($"Parsed String weight: {_currentWeight} kg");
+                lock (_lockObject)
+                {
+                    _currentWeight = weight;
+                }
+                _logger?.LogDebug($"Parsed String weight: {weight} kg");
+                // Push weight update to Rx stream
+                _weightSubject.OnNext(weight);
             }
             else
             {
@@ -397,6 +423,15 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     }
 
     /// <summary>
+    /// Dispose resources
+    /// </summary>
+    public void Dispose()
+    {
+        Close();
+        _weightSubject?.Dispose();
+    }
+
+    /// <summary>
     /// Set weight for testing purposes (for hardware simulation API)
     /// </summary>
     public void SetWeight(decimal weight)
@@ -405,6 +440,8 @@ public class TruckScaleWeightService : ITruckScaleWeightService
         {
             _currentWeight = weight;
         }
+        // Push weight update to Rx stream
+        _weightSubject.OnNext(weight);
     }
 
     /// <summary>

@@ -1,23 +1,27 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services.Hardware;
 using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
-public class AttendedWeighingViewModel : ViewModelBase
+public class AttendedWeighingViewModel : ViewModelBase, IDisposable
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ITruckScaleWeightService _truckScaleWeightService;
+    private readonly CompositeDisposable _disposables = new();
 
     private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
     private ObservableCollection<Waybill> _completedWaybills = new();
@@ -237,11 +241,13 @@ public class AttendedWeighingViewModel : ViewModelBase
     public AttendedWeighingViewModel(
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IRepository<Waybill, long> waybillRepository,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ITruckScaleWeightService truckScaleWeightService)
     {
         _weighingRecordRepository = weighingRecordRepository;
         _waybillRepository = waybillRepository;
         _serviceProvider = serviceProvider;
+        _truckScaleWeightService = truckScaleWeightService;
 
         RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
         SetReceivingCommand = ReactiveCommand.Create(() => IsReceiving = true);
@@ -280,6 +286,44 @@ public class AttendedWeighingViewModel : ViewModelBase
         // Start auto-refresh timer to reflect matching results in real-time
         StartAutoRefresh();
         StartTimeUpdateTimer();
+        
+        // Subscribe to weight updates from truck scale
+        _truckScaleWeightService.WeightUpdates
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(weight =>
+            {
+                CurrentWeight = weight;
+            })
+            .DisposeWith(_disposables);
+        
+        // Initialize truck scale service
+        _ = InitializeTruckScaleAsync();
+    }
+    
+    /// <summary>
+    /// Initialize truck scale service
+    /// </summary>
+    private async Task InitializeTruckScaleAsync()
+    {
+        try
+        {
+            var settingsService = _serviceProvider.GetRequiredService<MaterialClient.Common.Services.ISettingsService>();
+            var settings = await settingsService.GetSettingsAsync();
+            await _truckScaleWeightService.InitializeAsync(settings.ScaleSettings);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error initializing truck scale: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Cleanup resources
+    /// </summary>
+    public void Dispose()
+    {
+        _disposables?.Dispose();
+        _autoRefreshTimer?.Dispose();
     }
 
     private void SetDisplayMode(int mode)
