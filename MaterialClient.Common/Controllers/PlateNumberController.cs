@@ -17,6 +17,9 @@ public class PlateNumberController : ControllerBase
         _plateNumberCaptureService = plateNumberCaptureService;
     }
 
+
+
+
     /// <summary>
     /// Get current captured plate number (for testing)
     /// </summary>
@@ -62,4 +65,3 @@ public class PlateNumberController : ControllerBase
         public string? PlateNumber { get; set; }
     }
 }
-
