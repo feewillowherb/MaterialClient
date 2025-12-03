@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Configuration;
 
 namespace MaterialClient.EFCore;
 
@@ -32,6 +33,13 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
+        // Ignore configuration classes - they are not entities, only used for JSON serialization
+        modelBuilder.Ignore<CameraConfig>();
+        modelBuilder.Ignore<LicensePlateRecognitionConfig>();
+        modelBuilder.Ignore<ScaleSettings>();
+        modelBuilder.Ignore<DocumentScannerConfig>();
+        modelBuilder.Ignore<SystemSettings>();
         
         // Configure Material relationships
         modelBuilder.Entity<Material>(entity =>
@@ -220,4 +228,3 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         });
     }
 }
-
