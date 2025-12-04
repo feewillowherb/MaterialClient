@@ -94,6 +94,9 @@ public class MaterialClientCommonModule : AbpModule
         // Register SettingsService (transient, registered via ITransientDependency)
         // No need to register explicitly, ABP will auto-register it
 
+        // Register AttendedWeighingService as singleton (needs to maintain state and listen continuously)
+        services.AddSingleton<AttendedWeighingService>();
+
         // Repositories are automatically registered by ABP framework
         // when using IRepository<TEntity, TKey> interface
         // No manual registration needed for repositories
@@ -156,6 +159,24 @@ public class MaterialClientCommonModule : AbpModule
             // 记录错误但不阻止应用启动
             var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
             logger?.LogError(ex, "数据库迁移失败");
+        }
+
+        // 启动 AttendedWeighingService
+        try
+        {
+            var attendedWeighingService = context.ServiceProvider.GetService<AttendedWeighingService>();
+            if (attendedWeighingService != null)
+            {
+                attendedWeighingService.Start();
+                var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
+                logger?.LogInformation("AttendedWeighingService 已自动启动");
+            }
+        }
+        catch (Exception ex)
+        {
+            // 记录错误但不阻止应用启动
+            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
+            logger?.LogError(ex, "启动 AttendedWeighingService 失败");
         }
     }
 
