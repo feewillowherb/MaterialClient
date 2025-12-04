@@ -588,7 +588,7 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 // Load unmatched weighing records (RecordType == Unmatch)
                 var allRecords = await _weighingRecordRepository.GetListAsync();
                 var unmatchedRecords = allRecords
-                    .Where(x => x.RecordType == WeighingRecordType.Unmatch)
+                    .Where(x => x.MatchedId == null)
                     .OrderByDescending(r => r.CreationTime)
                     .ToList();
 

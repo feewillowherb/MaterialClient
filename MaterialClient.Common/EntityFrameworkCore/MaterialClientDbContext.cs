@@ -91,20 +91,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Weight).IsRequired();
-            entity.Property(e => e.RecordType)
-                .HasConversion<int>()
-                .IsRequired()
-                .HasDefaultValue(WeighingRecordType.Unmatch);
-            
-            entity.HasOne(e => e.Provider)
-                .WithMany()
-                .HasForeignKey(e => e.ProviderId)
-                .OnDelete(DeleteBehavior.SetNull);
-            
-            entity.HasOne(e => e.Material)
-                .WithMany()
-                .HasForeignKey(e => e.MaterialId)
-                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure AttachmentFile relationships

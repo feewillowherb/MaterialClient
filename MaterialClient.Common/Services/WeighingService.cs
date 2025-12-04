@@ -194,7 +194,6 @@ public class WeighingService : DomainService
             var weighingRecord = new WeighingRecord(weight) // Id will be auto-generated
             {
                 PlateNumber = null, // Will be set if capture succeeds
-                RecordType = WeighingRecordType.Unmatch
             };
 
             // Try to capture plate number
