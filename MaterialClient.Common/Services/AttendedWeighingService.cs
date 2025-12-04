@@ -22,7 +22,7 @@ namespace MaterialClient.Common.Services;
 /// 有人值守称重服务
 /// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
 /// </summary>
-public class AttendedWeighingService : DomainService, IDisposable
+public class AttendedWeighingService : DomainService, IAsyncDisposable
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
@@ -31,15 +31,15 @@ public class AttendedWeighingService : DomainService, IDisposable
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
-    private readonly ILogger<AttendedWeighingService>? _logger;
+    private readonly ILogger<AttendedWeighingService> _logger;
 
     // Status management
     private AttendedWeighingStatus _currentStatus = AttendedWeighingStatus.OffScale;
     private readonly object _statusLock = new object();
 
     // 重量稳定判定
-    private const decimal WeightThreshold = 500m; // 0.5t = 500kg
-    private const decimal WeightStabilityTolerance = 100m; // 0.1t = 100kg
+    private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
+    private const decimal WeightStabilityTolerance = 0.1m; // 0.1t = 100kg
     private const int StabilityDurationMs = 3000; // 3秒
 
     private decimal _lastWeight = 0m;
@@ -62,7 +62,7 @@ public class AttendedWeighingService : DomainService, IDisposable
         IRepository<WeighingRecordAttachment, int> weighingRecordAttachmentRepository,
         IRepository<AttachmentFile, int> attachmentFileRepository,
         IUnitOfWorkManager unitOfWorkManager,
-        ILogger<AttendedWeighingService>? logger = null)
+        ILogger<AttendedWeighingService> logger = null)
     {
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
@@ -77,7 +77,7 @@ public class AttendedWeighingService : DomainService, IDisposable
     /// <summary>
     /// 启动监听
     /// </summary>
-    public void Start()
+    public async Task StartAsync()
     {
         lock (_statusLock)
         {
@@ -86,17 +86,28 @@ public class AttendedWeighingService : DomainService, IDisposable
                 return; // 已经启动
             }
 
+            // 重置状态
+            _currentStatus = AttendedWeighingStatus.OffScale;
+            _lastWeight = 0m;
+            _stableWeight = null;
+            _stabilityStartTime = null;
+            _stabilityBaseWeight = null;
+            _plateNumberCache.Clear();
+            _selectedPlateNumber = null;
+
             _weightSubscription = _truckScaleWeightService.WeightUpdates
                 .Subscribe(OnWeightChanged);
 
             _logger?.LogInformation("AttendedWeighingService: Started monitoring truck scale weight changes");
         }
+
+        await Task.CompletedTask;
     }
 
     /// <summary>
     /// 停止监听
     /// </summary>
-    public void Stop()
+    public async Task StopAsync()
     {
         lock (_statusLock)
         {
@@ -104,6 +115,8 @@ public class AttendedWeighingService : DomainService, IDisposable
             _weightSubscription = null;
             _logger?.LogInformation("AttendedWeighingService: Stopped monitoring truck scale weight changes");
         }
+
+        await Task.CompletedTask;
     }
 
     /// <summary>
@@ -134,7 +147,8 @@ public class AttendedWeighingService : DomainService, IDisposable
                 _currentStatus == AttendedWeighingStatus.WeightStabilized)
             {
                 _plateNumberCache.AddOrUpdate(plateNumber, 1, (key, oldValue) => oldValue + 1);
-                _logger?.LogDebug($"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber]})");
+                _logger?.LogDebug(
+                    $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber]})");
             }
         }
     }
@@ -152,7 +166,8 @@ public class AttendedWeighingService : DomainService, IDisposable
             // Log status changes
             if (_currentStatus != previousStatus)
             {
-                _logger?.LogInformation($"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}kg");
+                _logger?.LogInformation(
+                    $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}kg");
             }
         }
     }
@@ -174,12 +189,14 @@ public class AttendedWeighingService : DomainService, IDisposable
                     _stabilityStartTime = DateTime.UtcNow;
                     _stabilityBaseWeight = currentWeight;
                     _stableWeight = null;
-                    
+
                     // Select plate number (most frequent from cache)
                     SelectPlateNumberFromCache();
-                    
-                    _logger?.LogInformation($"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}kg");
+
+                    _logger.LogInformation(
+                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}kg");
                 }
+
                 break;
 
             case AttendedWeighingStatus.WaitingForStability:
@@ -190,31 +207,35 @@ public class AttendedWeighingService : DomainService, IDisposable
                     _stabilityStartTime = null;
                     _stabilityBaseWeight = null;
                     _stableWeight = null;
-                    
+
                     // Capture all cameras and log (no need to save photos)
                     _ = Task.Run(async () =>
                     {
                         var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
                         if (photos.Count == 0)
                         {
-                            _logger?.LogWarning($"AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
+                            _logger?.LogWarning(
+                                $"AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
                         }
                         else
                         {
-                            _logger?.LogInformation($"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
+                            _logger?.LogInformation(
+                                $"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
                         }
                     });
-                    
+
                     // Clear plate number cache
                     ClearPlateNumberCache();
-                    
-                    _logger?.LogWarning($"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}kg, triggered capture");
+
+                    _logger?.LogWarning(
+                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}kg, triggered capture");
                 }
                 else
                 {
                     // Check if weight is stable
                     CheckWeightStability(currentWeight);
                 }
+
                 break;
 
             case AttendedWeighingStatus.WeightStabilized:
@@ -224,15 +245,17 @@ public class AttendedWeighingService : DomainService, IDisposable
                     _currentStatus = AttendedWeighingStatus.OffScale;
                     _stabilityStartTime = null;
                     _stabilityBaseWeight = null;
-                    
+
                     // Check again if there are more frequent plate numbers, update if needed
                     UpdatePlateNumberIfNeeded();
-                    
+
                     // Clear plate number cache
                     ClearPlateNumberCache();
-                    
-                    _logger?.LogInformation($"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}kg");
+
+                    _logger?.LogInformation(
+                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}kg");
                 }
+
                 break;
         }
     }
@@ -271,15 +294,16 @@ public class AttendedWeighingService : DomainService, IDisposable
                 {
                     // Record weight value at the moment of entering stable state
                     _stableWeight = currentWeight;
-                    
+
                     // Select plate number (most frequent from cache)
                     SelectPlateNumberFromCache();
-                    
+
                     // State transition: WaitingForStability -> WeightStabilized
                     _currentStatus = AttendedWeighingStatus.WeightStabilized;
-                    
-                    _logger?.LogInformation($"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}kg");
-                    
+
+                    _logger?.LogInformation(
+                        $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}kg");
+
                     // When weight is stabilized, capture photos and create WeighingRecord
                     _ = Task.Run(async () => await OnWeightStabilizedAsync());
                 }
@@ -367,23 +391,27 @@ public class AttendedWeighingService : DomainService, IDisposable
 
             if (requests.Count == 0)
             {
-                _logger?.LogWarning($"AttendedWeighingService: No valid camera configurations, cannot capture ({reason})");
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: No valid camera configurations, cannot capture ({reason})");
                 return new List<string>();
             }
 
-            _logger?.LogInformation($"AttendedWeighingService: Starting capture for {requests.Count} cameras ({reason})");
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Starting capture for {requests.Count} cameras ({reason})");
 
             var results = await _hikvisionService.CaptureJpegFromStreamBatchAsync(requests);
 
             var successCount = results.Count(r => r.Success);
             var failCount = results.Count - successCount;
 
-            _logger?.LogInformation($"AttendedWeighingService: Capture completed, success: {successCount}, failed: {failCount} ({reason})");
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Capture completed, success: {successCount}, failed: {failCount} ({reason})");
 
             // Log detailed failure information
             foreach (var result in results.Where(r => !r.Success))
             {
-                _logger?.LogWarning($"AttendedWeighingService: Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
             }
 
             // Return list of successfully captured photo paths
@@ -394,7 +422,8 @@ public class AttendedWeighingService : DomainService, IDisposable
             // Log if photo list is empty
             if (photoPaths.Count == 0)
             {
-                _logger?.LogWarning($"AttendedWeighingService: Capture completed, but no photos were successfully obtained ({reason})");
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: Capture completed, but no photos were successfully obtained ({reason})");
             }
 
             return photoPaths;
@@ -422,7 +451,8 @@ public class AttendedWeighingService : DomainService, IDisposable
                 // Use weight value recorded at the moment of entering stable state
                 if (_stableWeight == null)
                 {
-                    _logger?.LogError("AttendedWeighingService: Cannot create WeighingRecord, stable weight value is null");
+                    _logger?.LogError(
+                        "AttendedWeighingService: Cannot create WeighingRecord, stable weight value is null");
                     return;
                 }
 
@@ -441,7 +471,8 @@ public class AttendedWeighingService : DomainService, IDisposable
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 
-            _logger?.LogInformation($"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
 
             // Save captured photos to WeighingRecordAttachment
             if (photoPaths != null && photoPaths.Count > 0)
@@ -450,7 +481,8 @@ public class AttendedWeighingService : DomainService, IDisposable
             }
             else
             {
-                _logger?.LogWarning($"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
             }
         }
         catch (Exception ex)
@@ -498,7 +530,8 @@ public class AttendedWeighingService : DomainService, IDisposable
             }
 
             await uow.CompleteAsync();
-            _logger?.LogInformation($"AttendedWeighingService: Saved {photoPaths.Count} photos to weighing record {weighingRecordId}");
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Saved {photoPaths.Count} photos to weighing record {weighingRecordId}");
         }
         catch (Exception ex)
         {
@@ -522,7 +555,8 @@ public class AttendedWeighingService : DomainService, IDisposable
             .FirstOrDefault();
 
         _selectedPlateNumber = mostFrequent.Key;
-        _logger?.LogInformation($"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
+        _logger?.LogInformation(
+            $"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
     }
 
     /// <summary>
@@ -540,10 +574,12 @@ public class AttendedWeighingService : DomainService, IDisposable
             .FirstOrDefault();
 
         if (!string.IsNullOrEmpty(mostFrequent.Key) &&
-            (string.IsNullOrEmpty(_selectedPlateNumber) || mostFrequent.Value > _plateNumberCache.GetValueOrDefault(_selectedPlateNumber, 0)))
+            (string.IsNullOrEmpty(_selectedPlateNumber) ||
+             mostFrequent.Value > _plateNumberCache.GetValueOrDefault(_selectedPlateNumber, 0)))
         {
             _selectedPlateNumber = mostFrequent.Key;
-            _logger?.LogInformation($"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
         }
     }
 
@@ -560,8 +596,8 @@ public class AttendedWeighingService : DomainService, IDisposable
     /// <summary>
     /// 释放资源
     /// </summary>
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        Stop();
+        await StopAsync();
     }
 }

@@ -167,7 +167,7 @@ public class MaterialClientCommonModule : AbpModule
             var attendedWeighingService = context.ServiceProvider.GetService<AttendedWeighingService>();
             if (attendedWeighingService != null)
             {
-                attendedWeighingService.Start();
+                await attendedWeighingService.StartAsync();
                 var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
                 logger?.LogInformation("AttendedWeighingService 已自动启动");
             }
