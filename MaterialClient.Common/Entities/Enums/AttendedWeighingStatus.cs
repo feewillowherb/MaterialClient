@@ -1,22 +1,22 @@
 namespace MaterialClient.Common.Entities.Enums;
 
 /// <summary>
-/// 有人值守称重状态枚举
+/// Attended weighing status enum
 /// </summary>
 public enum AttendedWeighingStatus
 {
     /// <summary>
-    /// 下称
+    /// Off scale
     /// </summary>
-    下称 = 0,
+    OffScale = 0,
 
     /// <summary>
-    /// 上称等待重量稳定
+    /// On scale waiting for weight stability
     /// </summary>
-    上称等待重量稳定 = 1,
+    WaitingForStability = 1,
 
     /// <summary>
-    /// 上称重量已稳定
+    /// Weight stabilized
     /// </summary>
-    上称重量已稳定 = 2
+    WeightStabilized = 2
 }
