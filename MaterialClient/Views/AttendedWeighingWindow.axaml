@@ -319,7 +319,7 @@
           
           <!-- Record List -->
           <Border Grid.Row="2" Background="White" Margin="12,0,12,12">
-            <Grid RowDefinitions="Auto,*">
+            <Grid RowDefinitions="Auto,*,Auto">
               <!-- List Header -->
               <Border Background="#F8F9FA" 
                       BorderBrush="#E5E7EB" 
@@ -333,8 +333,8 @@
               </Border>
               
               <!-- Scrollable List - Unmatched Records -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsShowCompleted}">
-                <ItemsControl ItemsSource="{Binding UnmatchedWeighingRecords}">
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowUnmatched}">
+                <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:WeighingRecord">
                       <Button Background="Transparent"
@@ -366,7 +366,7 @@
               
               <!-- Scrollable List - Completed Waybills -->
               <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowCompleted}">
-                <ItemsControl ItemsSource="{Binding CompletedWaybills}">
+                <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:Waybill">
                       <Button Background="Transparent"
@@ -395,6 +395,120 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </ScrollViewer>
+
+              <!-- 全部记录模式下的混合列表 -->
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowAllRecords}">
+                <StackPanel>
+                  <!-- 未完成记录 -->
+                  <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="entities:WeighingRecord">
+                        <Button Background="Transparent"
+                                BorderThickness="0,0,0,1"
+                                BorderBrush="#F0F0F0"
+                                Padding="12,12"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
+                                CommandParameter="{Binding}">
+                          <Grid ColumnDefinitions="80,*,*">
+                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
+                                       FontSize="13"
+                                       Foreground="#333"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding CreationTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                            <TextBlock Grid.Column="2" 
+                                       Text="-" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <!-- 已完成记录 -->
+                  <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="entities:Waybill">
+                        <Button Background="Transparent"
+                                BorderThickness="0,0,0,1"
+                                BorderBrush="#F0F0F0"
+                                Padding="12,12"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
+                                CommandParameter="{Binding}">
+                          <Grid ColumnDefinitions="80,*,*">
+                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
+                                       FontSize="13"
+                                       Foreground="#333"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                            <TextBlock Grid.Column="2" 
+                                       Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+              
+              <!-- Pagination Controls -->
+              <Border Grid.Row="2" 
+                      Background="#F8F9FA" 
+                      BorderBrush="#E5E7EB" 
+                      BorderThickness="0,1,0,0"
+                      Padding="12,8">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                  <!-- 总记录数信息 -->
+                  <TextBlock Grid.Column="0"
+                             Text="{Binding TotalCount, StringFormat='共 {0} 条'}"
+                             FontSize="12"
+                             Foreground="#666"
+                             VerticalAlignment="Center"
+                             Margin="0,0,12,0"/>
+                  
+                  <!-- 页码信息 -->
+                  <TextBlock Grid.Column="1"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             Text="{Binding PageInfoText}"
+                             FontSize="12"
+                             Foreground="#666"/>
+                  
+                  <!-- 上一页按钮 -->
+                  <Button Grid.Column="2"
+                          Content="上一页"
+                          Command="{Binding GoToPreviousPageCommand}"
+                          Background="White"
+                          Foreground="#4169E1"
+                          BorderBrush="#E5E7EB"
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="12,6"
+                          FontSize="12"
+                          Margin="0,0,8,0"/>
+                  
+                  <!-- 下一页按钮 -->
+                  <Button Grid.Column="3"
+                          Content="下一页"
+                          Command="{Binding GoToNextPageCommand}"
+                          Background="White"
+                          Foreground="#4169E1"
+                          BorderBrush="#E5E7EB"
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="12,6"
+                          FontSize="12"/>
+                </Grid>
+              </Border>
             </Grid>
           </Border>
         </Grid>
