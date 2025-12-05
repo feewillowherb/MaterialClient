@@ -44,12 +44,12 @@
 
   <ItemGroup>
   <!-- 将 HCNetSDK 根目录下的 dll 和 lib 直接输出到输出目录根目录 -->
-  <None Include="HCNetSDK\*.dll" CopyToOutputDirectory="PreserveNewest">
-    <Link>%(Filename)%(Extension)</Link>
-  </None>
-  <None Include="HCNetSDK\*.lib" CopyToOutputDirectory="PreserveNewest">
-    <Link>%(Filename)%(Extension)</Link>
-  </None>
+<!--  <None Include="HCNetSDK\*.dll" CopyToOutputDirectory="PreserveNewest">-->
+<!--    <Link>%(Filename)%(Extension)</Link>-->
+<!--  </None>-->
+<!--  <None Include="HCNetSDK\*.lib" CopyToOutputDirectory="PreserveNewest">-->
+<!--    <Link>%(Filename)%(Extension)</Link>-->
+<!--  </None>-->
   <!-- HCNetSDKCom 文件夹保持相对路径结构（与 HCNetSDK.dll 同级） -->
   <None Include="HCNetSDK\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest">
     <Link>HCNetSDKCom\%(RecursiveDir)%(Filename)%(Extension)</Link>

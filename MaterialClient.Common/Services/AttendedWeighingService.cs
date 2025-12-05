@@ -573,7 +573,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     {
         try
         {
-            if (photoPaths == null || photoPaths.Count == 0)
+            if (photoPaths.Count == 0)
             {
                 return;
             }
