@@ -148,7 +148,7 @@
         
         <!-- Right Side Info -->
         <TextBlock Grid.Column="2" 
-                   Text="预重已结束" 
+                   Text="{Binding CurrentWeighingStatusText}" 
                    Foreground="White" 
                    FontSize="18"
                    VerticalAlignment="Center"/>

@@ -89,6 +89,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private string? _mostFrequentPlateNumber;
 
+    private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
+
+    /// <summary>
+    /// 当前称重状态的中文文本
+    /// </summary>
+    public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
+
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
 
@@ -167,6 +174,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         // Start timer to update most frequent plate number periodically
         StartPlateNumberUpdateTimer();
+
+        // Start ReactiveUI observable to update weighing status
+        StartStatusObservable();
     }
 
     /// <summary>
@@ -524,6 +534,41 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(PlateNumberUpdateIntervalMs));
 
         _disposables.Add(_plateNumberUpdateTimer);
+    }
+
+    /// <summary>
+    /// Start ReactiveUI observable to update weighing status
+    /// </summary>
+    private void StartStatusObservable()
+    {
+        if (_attendedWeighingService == null)
+        {
+            return;
+        }
+
+        // Subscribe to status changes from service
+        _attendedWeighingService.StatusChanges
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(status =>
+            {
+                _currentWeighingStatus = status;
+                OnPropertyChanged(nameof(CurrentWeighingStatusText));
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    /// 获取状态的中文文本
+    /// </summary>
+    private static string GetStatusText(AttendedWeighingStatus status)
+    {
+        return status switch
+        {
+            AttendedWeighingStatus.OffScale => "预重已结束",
+            AttendedWeighingStatus.WaitingForStability => "等待稳定",
+            AttendedWeighingStatus.WeightStabilized => "重量已稳定",
+            _ => "未知状态"
+        };
     }
 
     private void HandleSelectedWeighingRecordChanged(WeighingRecord? value)

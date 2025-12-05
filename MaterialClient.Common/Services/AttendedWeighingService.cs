@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Concurrent;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
@@ -55,6 +58,11 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// 获取当前识别次数最大的车牌号
     /// </summary>
     string? GetMostFrequentPlateNumber();
+
+    /// <summary>
+    /// Observable stream of status changes
+    /// </summary>
+    IObservable<AttendedWeighingStatus> StatusChanges { get; }
 }
 
 /// <summary>
@@ -76,6 +84,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     // Status management
     private AttendedWeighingStatus _currentStatus = AttendedWeighingStatus.OffScale;
     private readonly object _statusLock = new object();
+    
+    // Rx Subject for status updates
+    private readonly Subject<AttendedWeighingStatus> _statusSubject = new();
 
     // 重量稳定判定
     private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
@@ -153,6 +164,11 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     }
 
     /// <summary>
+    /// Observable stream of status changes
+    /// </summary>
+    public IObservable<AttendedWeighingStatus> StatusChanges => _statusSubject;
+
+    /// <summary>
     /// 接收车牌识别结果
     /// </summary>
     public void OnPlateNumberRecognized(string plateNumber)
@@ -189,11 +205,14 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             var previousStatus = _currentStatus;
             ProcessWeightChange(weight);
 
-            // Log status changes
+            // Log status changes and notify observers
             if (_currentStatus != previousStatus)
             {
                 _logger?.LogInformation(
                     $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}kg");
+                
+                // Notify observers of status change
+                _statusSubject.OnNext(_currentStatus);
             }
         }
     }
@@ -652,5 +671,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
+        _statusSubject?.OnCompleted();
+        _statusSubject?.Dispose();
     }
 }
