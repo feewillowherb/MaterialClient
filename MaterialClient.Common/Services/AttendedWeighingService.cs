@@ -1,12 +1,4 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reactive.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
@@ -70,7 +62,7 @@ public interface IAttendedWeighingService : IAsyncDisposable
 /// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
 /// </summary>
 [AutoConstructor]
-public class AttendedWeighingService : DomainService, IAttendedWeighingService
+public partial class AttendedWeighingService : DomainService, IAttendedWeighingService
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
@@ -97,11 +89,12 @@ public class AttendedWeighingService : DomainService, IAttendedWeighingService
 
     // 车牌识别缓存
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
+
     private string? _selectedPlateNumber = null;
 
     // 订阅管理
     private IDisposable? _weightSubscription;
-    
+
 
     /// <summary>
     /// 启动监听
@@ -178,7 +171,8 @@ public class AttendedWeighingService : DomainService, IAttendedWeighingService
                 _plateNumberCache.AddOrUpdate(
                     plateNumber,
                     new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow },
-                    (key, oldValue) => new PlateNumberCacheRecord { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
+                    (key, oldValue) => new PlateNumberCacheRecord
+                        { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
                 _logger?.LogDebug(
                     $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
             }
@@ -606,11 +600,12 @@ public class AttendedWeighingService : DomainService, IAttendedWeighingService
             .FirstOrDefault();
 
         var currentCount = 0;
-        if (!string.IsNullOrEmpty(_selectedPlateNumber) && 
+        if (!string.IsNullOrEmpty(_selectedPlateNumber) &&
             _plateNumberCache.TryGetValue(_selectedPlateNumber, out var currentRecord))
         {
             currentCount = currentRecord.Count;
         }
+
         if (!string.IsNullOrEmpty(mostFrequent.Key) &&
             (string.IsNullOrEmpty(_selectedPlateNumber) ||
              (mostFrequent.Value?.Count ?? 0) > currentCount))
