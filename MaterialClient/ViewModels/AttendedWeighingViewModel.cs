@@ -322,7 +322,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void Dispose()
     {
-        _disposables?.Dispose();
+        _disposables.Dispose();
         _autoRefreshTimer?.Dispose();
         _plateNumberUpdateTimer?.Dispose();
     }

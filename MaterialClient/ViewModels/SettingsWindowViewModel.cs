@@ -34,7 +34,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
     [ObservableProperty] private string? _documentScannerUsbDevice;
 
     // System settings
-    [ObservableProperty] private bool _enableAutoStart = false;
+    [ObservableProperty] private bool _enableAutoStart;
 
     // Camera configs
     [ObservableProperty] private ObservableCollection<CameraConfigViewModel> _cameraConfigs = new();

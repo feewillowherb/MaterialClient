@@ -1,7 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Avalonia.Media;
-using Avalonia.ReactiveUI;
 using MaterialClient.Common.Services.Authentication;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,10 +10,8 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 /// 授权码输入窗口 ViewModel
 /// </summary>
-public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
+public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : ReactiveViewModelBase
 {
-    private readonly ILicenseService _licenseService;
-
     [ObservableProperty]
     private string _authorizationCode = string.Empty;
 
@@ -26,18 +22,13 @@ public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
     private string _statusMessageColor = "#000000";
 
     [ObservableProperty]
-    private bool _isVerifying = false;
+    private bool _isVerifying;
 
     [ObservableProperty]
-    private bool _showRetryButton = false;
+    private bool _showRetryButton;
 
     [ObservableProperty]
-    private bool _isVerified = false;
-
-    public AuthCodeWindowViewModel(ILicenseService licenseService)
-    {
-        _licenseService = licenseService;
-    }
+    private bool _isVerified;
 
     #region Commands
 
@@ -59,7 +50,7 @@ public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
         try
         {
             // Call license service to verify
-            await _licenseService.VerifyAuthorizationCodeTestAsync(AuthorizationCode);
+            await licenseService.VerifyAuthorizationCodeTestAsync(AuthorizationCode);
 
             // Success
             IsVerified = true;
