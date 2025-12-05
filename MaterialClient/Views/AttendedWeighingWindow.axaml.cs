@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using MaterialClient.ViewModels;
 
 namespace MaterialClient.Views;
@@ -22,6 +23,12 @@ public partial class AttendedWeighingWindow : Window
         {
             CameraStatusPopup.PlacementTarget = CameraStatusPanel;
         }
+    }
+
+    private void TestDetailWindow_Click(object? sender, RoutedEventArgs e)
+    {
+        var detailWindow = new DetailWindow();
+        detailWindow.Show();
     }
 
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)
