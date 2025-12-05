@@ -153,11 +153,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         // Subscribe to SelectedWeighingRecord changes
         this.WhenAnyValue(x => x.SelectedWeighingRecord)
-            .Subscribe(OnSelectedWeighingRecordChanged);
+            .Subscribe(HandleSelectedWeighingRecordChanged);
 
         // Subscribe to SelectedWaybill changes
         this.WhenAnyValue(x => x.SelectedWaybill)
-            .Subscribe(OnSelectedWaybillChanged);
+            .Subscribe(HandleSelectedWaybillChanged);
 
         // Subscribe to display mode changes to update IsWeighingRecordSelected and IsWaybillSelected
         this.WhenAnyValue(
@@ -434,19 +434,19 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void ShowAllRecords()
+    private void ShowAllRecordsCommand()
     {
         SetDisplayMode(0);
     }
 
     [RelayCommand]
-    private void ShowUnmatched()
+    private void ShowUnmatchedCommand()
     {
         SetDisplayMode(1);
     }
 
     [RelayCommand]
-    private void ShowCompleted()
+    private void ShowCompletedCommand()
     {
         SetDisplayMode(2);
     }
@@ -492,9 +492,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     private void SetDisplayMode(int mode)
     {
-        ShowAllRecords = mode == 0;
-        ShowUnmatched = mode == 1;
-        ShowCompleted = mode == 2;
+        _showAllRecords = mode == 0;
+        _showUnmatched = mode == 1;
+        _showCompleted = mode == 2;
+        OnPropertyChanged(nameof(ShowAllRecords));
+        OnPropertyChanged(nameof(ShowUnmatched));
+        OnPropertyChanged(nameof(ShowCompleted));
         UpdateDisplayRecords();
     }
 
@@ -579,7 +582,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         _disposables.Add(_plateNumberUpdateTimer);
     }
 
-    private void OnSelectedWeighingRecordChanged(WeighingRecord? value)
+    private void HandleSelectedWeighingRecordChanged(WeighingRecord? value)
     {
         // Clear waybill selection when weighing record is selected
         if (value != null)
@@ -596,7 +599,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(IsWaybillSelected));
     }
 
-    private void OnSelectedWaybillChanged(Waybill? value)
+    private void HandleSelectedWaybillChanged(Waybill? value)
     {
         // Clear weighing record selection when waybill is selected
         if (value != null)
