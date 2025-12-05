@@ -991,9 +991,9 @@
           <!-- Camera Status Popup -->
           <Popup Name="CameraStatusPopup"
                  PlacementMode="Bottom"
-                 IsLightDismissEnabled="True"
+                 IsLightDismissEnabled="False"
                  HorizontalOffset="0"
-                 VerticalOffset="5"
+                 VerticalOffset="2"
                  PointerEntered="CameraStatusPopup_OnPointerEntered"
                  PointerExited="CameraStatusPopup_OnPointerExited">
             <views:CameraStatusPopup DataContext="{Binding}"/>

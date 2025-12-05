@@ -10,6 +10,7 @@ namespace MaterialClient.Views;
 public partial class AttendedWeighingWindow : Window
 {
     private CancellationTokenSource? _closePopupCts;
+    private bool _isMouseOverPopup;
 
     public AttendedWeighingWindow(AttendedWeighingViewModel viewModel)
     {
@@ -37,26 +38,33 @@ public partial class AttendedWeighingWindow : Window
 
     private async void CameraStatusPanel_OnPointerExited(object? sender, PointerEventArgs e)
     {
-        // Delay closing to allow mouse to move to popup
-        _closePopupCts?.Cancel();
-        _closePopupCts = new CancellationTokenSource();
-        
-        try
+        // Only start closing timer if popup is open and mouse is not over popup
+        if (CameraStatusPopup?.IsOpen == true && !_isMouseOverPopup)
         {
-            await Task.Delay(200, _closePopupCts.Token);
-            if (CameraStatusPopup != null)
+            _closePopupCts?.Cancel();
+            _closePopupCts = new CancellationTokenSource();
+            
+            try
             {
-                CameraStatusPopup.IsOpen = false;
+                // Wait a bit to allow mouse to move to popup
+                await Task.Delay(150, _closePopupCts.Token);
+                // Only close if mouse is still not over popup
+                if (!_isMouseOverPopup && CameraStatusPopup != null)
+                {
+                    CameraStatusPopup.IsOpen = false;
+                }
             }
-        }
-        catch (TaskCanceledException)
-        {
-            // Cancelled, mouse moved back or to popup
+            catch (TaskCanceledException)
+            {
+                // Cancelled, mouse moved to popup
+            }
         }
     }
 
     private void CameraStatusPopup_OnPointerEntered(object? sender, PointerEventArgs e)
     {
+        _isMouseOverPopup = true;
+        
         // Cancel any pending close operation when mouse enters popup
         _closePopupCts?.Cancel();
         _closePopupCts = null;
@@ -64,14 +72,17 @@ public partial class AttendedWeighingWindow : Window
 
     private async void CameraStatusPopup_OnPointerExited(object? sender, PointerEventArgs e)
     {
+        _isMouseOverPopup = false;
+        
         // Delay closing when mouse leaves popup
         _closePopupCts?.Cancel();
         _closePopupCts = new CancellationTokenSource();
         
         try
         {
-            await Task.Delay(200, _closePopupCts.Token);
-            if (CameraStatusPopup != null)
+            await Task.Delay(150, _closePopupCts.Token);
+            // Only close if mouse is still not over popup
+            if (!_isMouseOverPopup && CameraStatusPopup != null)
             {
                 CameraStatusPopup.IsOpen = false;
             }
