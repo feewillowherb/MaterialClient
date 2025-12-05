@@ -6,6 +6,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
@@ -349,11 +350,22 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         {
             try
             {
-                IsScaleOnline = _truckScaleWeightService.IsOnline;
+                // Timer callback runs on thread pool, check status on background thread
+                var isOnline = _truckScaleWeightService.IsOnline;
+                
+                // Update property on UI thread to avoid blocking
+                Dispatcher.UIThread.Post(() =>
+                {
+                    IsScaleOnline = isOnline;
+                });
             }
             catch
             {
-                IsScaleOnline = false;
+                // Update property on UI thread
+                Dispatcher.UIThread.Post(() =>
+                {
+                    IsScaleOnline = false;
+                });
             }
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2)); // Check every 2 seconds
         
@@ -365,16 +377,24 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void StartCameraStatusCheckTimer()
     {
-        var statusTimer = new Timer(async _ =>
+        var statusTimer = new Timer(_ =>
         {
-            try
+            // Timer callback runs on thread pool, execute async check without blocking
+            _ = Task.Run(async () =>
             {
-                await CheckCameraOnlineStatusAsync();
-            }
-            catch
-            {
-                IsCameraOnline = false;
-            }
+                try
+                {
+                    await CheckCameraOnlineStatusAsync();
+                }
+                catch
+                {
+                    // Update property on UI thread
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        IsCameraOnline = false;
+                    });
+                }
+            });
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5)); // Check every 5 seconds
         
         _disposables.Add(statusTimer);
@@ -394,7 +414,11 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
             if (cameraConfigs == null || cameraConfigs.Count == 0)
             {
-                IsCameraOnline = false;
+                // Update property on UI thread
+                Dispatcher.UIThread.Post(() =>
+                {
+                    IsCameraOnline = false;
+                });
                 return;
             }
 
@@ -431,11 +455,19 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 }
             }
 
-            IsCameraOnline = anyOnline;
+            // Update property on UI thread
+            Dispatcher.UIThread.Post(() =>
+            {
+                IsCameraOnline = anyOnline;
+            });
         }
         catch
         {
-            IsCameraOnline = false;
+            // Update property on UI thread
+            Dispatcher.UIThread.Post(() =>
+            {
+                IsCameraOnline = false;
+            });
         }
     }
     
