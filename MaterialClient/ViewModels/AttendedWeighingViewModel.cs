@@ -112,8 +112,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     /// 页码信息文本
     /// </summary>
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
-    private Timer? _autoRefreshTimer;
-    private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
 
     public AttendedWeighingViewModel(
         IRepository<WeighingRecord, long> weighingRecordRepository,
@@ -154,8 +152,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         // Load initial data
         _ = RefreshAsync();
 
-        // Start auto-refresh timer to reflect matching results in real-time
-        StartAutoRefresh();
         StartTimeUpdateTimer();
 
         // Subscribe to weight updates from truck scale
@@ -318,7 +314,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _disposables.Dispose();
-        _autoRefreshTimer?.Dispose();
     }
 
     [RelayCommand]
@@ -645,19 +640,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         var timeTimer = new Timer(_ => CurrentTime = DateTime.Now, null,
             TimeSpan.Zero, TimeSpan.FromSeconds(1));
-    }
-
-    private void StartAutoRefresh()
-    {
-        _autoRefreshTimer = new Timer(async _ => await RefreshAsync(), null,
-            TimeSpan.FromMilliseconds(AutoRefreshIntervalMs),
-            TimeSpan.FromMilliseconds(AutoRefreshIntervalMs));
-    }
-
-    public void StopAutoRefresh()
-    {
-        _autoRefreshTimer?.Dispose();
-        _autoRefreshTimer = null;
     }
 
     /// <summary>
