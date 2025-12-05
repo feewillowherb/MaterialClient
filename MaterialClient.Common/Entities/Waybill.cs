@@ -1,3 +1,4 @@
+using System;
 using Volo.Abp.Domain.Entities.Auditing;
 using MaterialClient.Common.Entities.Enums;
 
@@ -18,10 +19,9 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 构造函数（用于自增主键）
     /// </summary>
-    public Waybill(string orderNo, int providerId)
+    public Waybill(string orderNo)
     {
         OrderNo = orderNo;
-        ProviderId = providerId;
     }
 
     /// <summary>

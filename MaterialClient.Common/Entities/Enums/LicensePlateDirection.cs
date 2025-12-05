@@ -1,18 +1,17 @@
 namespace MaterialClient.Common.Entities.Enums;
 
 /// <summary>
-/// Weighing record type enum
+/// License plate recognition direction enum
 /// </summary>
-public enum WeighingRecordMatchType
+public enum LicensePlateDirection
 {
     /// <summary>
-    /// 进场
+    /// In direction
     /// </summary>
-    Join = 0,
+    In = 0,
 
     /// <summary>
-    /// 出场
+    /// Out direction
     /// </summary>
     Out = 1
 }
-

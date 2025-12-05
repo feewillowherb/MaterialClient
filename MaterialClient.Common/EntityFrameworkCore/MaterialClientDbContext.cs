@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Configuration;
 
 namespace MaterialClient.EFCore;
 
@@ -25,10 +26,20 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     public DbSet<LicenseInfo> LicenseInfos { get; set; }
     public DbSet<UserCredential> UserCredentials { get; set; }
     public DbSet<UserSession> UserSessions { get; set; }
+    
+    // Settings DbSet
+    public DbSet<SettingsEntity> Settings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
+        // Ignore configuration classes - they are not entities, only used for JSON serialization
+        modelBuilder.Ignore<CameraConfig>();
+        modelBuilder.Ignore<LicensePlateRecognitionConfig>();
+        modelBuilder.Ignore<ScaleSettings>();
+        modelBuilder.Ignore<DocumentScannerConfig>();
+        modelBuilder.Ignore<SystemSettings>();
         
         // Configure Material relationships
         modelBuilder.Entity<Material>(entity =>
@@ -80,20 +91,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Weight).IsRequired();
-            entity.Property(e => e.RecordType)
-                .HasConversion<int>()
-                .IsRequired()
-                .HasDefaultValue(WeighingRecordType.Unmatch);
-            
-            entity.HasOne(e => e.Provider)
-                .WithMany()
-                .HasForeignKey(e => e.ProviderId)
-                .OnDelete(DeleteBehavior.SetNull);
-            
-            entity.HasOne(e => e.Material)
-                .WithMany()
-                .HasForeignKey(e => e.MaterialId)
-                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure AttachmentFile relationships
@@ -201,6 +198,19 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             // One active session per project
             entity.HasIndex(e => e.ProjectId).IsUnique();
         });
+
+        // Configure SettingsEntity
+        modelBuilder.Entity<SettingsEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ScaleSettingsJson).IsRequired();
+            entity.Property(e => e.DocumentScannerConfigJson).IsRequired();
+            entity.Property(e => e.SystemSettingsJson).IsRequired();
+            entity.Property(e => e.CameraConfigsJson).IsRequired();
+            entity.Property(e => e.LicensePlateRecognitionConfigsJson).IsRequired();
+            
+            // Only one settings record should exist
+            entity.HasIndex(e => e.Id).IsUnique();
+        });
     }
 }
-

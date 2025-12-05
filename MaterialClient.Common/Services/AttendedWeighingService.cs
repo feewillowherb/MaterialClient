@@ -1,0 +1,603 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.Hikvision;
+using Microsoft.Extensions.Logging;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Services;
+using Volo.Abp.Uow;
+
+namespace MaterialClient.Common.Services;
+
+/// <summary>
+/// 有人值守称重服务
+/// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
+/// </summary>
+public class AttendedWeighingService : DomainService, IAsyncDisposable
+{
+    private readonly ITruckScaleWeightService _truckScaleWeightService;
+    private readonly IHikvisionService _hikvisionService;
+    private readonly ISettingsService _settingsService;
+    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
+    private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
+    private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly ILogger<AttendedWeighingService> _logger;
+
+    // Status management
+    private AttendedWeighingStatus _currentStatus = AttendedWeighingStatus.OffScale;
+    private readonly object _statusLock = new object();
+
+    // 重量稳定判定
+    private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
+    private const decimal WeightStabilityTolerance = 0.1m; // 0.1t = 100kg
+    private const int StabilityDurationMs = 3000; // 3秒
+
+    private decimal _lastWeight = 0m;
+    private decimal? _stableWeight = null; // 进入稳定状态时的重量值
+    private DateTime? _stabilityStartTime = null;
+    private decimal? _stabilityBaseWeight = null; // 稳定判定的基准重量
+
+    // 车牌识别缓存
+    private readonly ConcurrentDictionary<string, int> _plateNumberCache = new();
+    private string? _selectedPlateNumber = null;
+
+    // 订阅管理
+    private IDisposable? _weightSubscription;
+
+    public AttendedWeighingService(
+        ITruckScaleWeightService truckScaleWeightService,
+        IHikvisionService hikvisionService,
+        ISettingsService settingsService,
+        IRepository<WeighingRecord, long> weighingRecordRepository,
+        IRepository<WeighingRecordAttachment, int> weighingRecordAttachmentRepository,
+        IRepository<AttachmentFile, int> attachmentFileRepository,
+        IUnitOfWorkManager unitOfWorkManager,
+        ILogger<AttendedWeighingService> logger = null)
+    {
+        _truckScaleWeightService = truckScaleWeightService;
+        _hikvisionService = hikvisionService;
+        _settingsService = settingsService;
+        _weighingRecordRepository = weighingRecordRepository;
+        _weighingRecordAttachmentRepository = weighingRecordAttachmentRepository;
+        _attachmentFileRepository = attachmentFileRepository;
+        _unitOfWorkManager = unitOfWorkManager;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// 启动监听
+    /// </summary>
+    public async Task StartAsync()
+    {
+        lock (_statusLock)
+        {
+            if (_weightSubscription != null)
+            {
+                return; // 已经启动
+            }
+
+            // 重置状态
+            _currentStatus = AttendedWeighingStatus.OffScale;
+            _lastWeight = 0m;
+            _stableWeight = null;
+            _stabilityStartTime = null;
+            _stabilityBaseWeight = null;
+            _plateNumberCache.Clear();
+            _selectedPlateNumber = null;
+
+            _weightSubscription = _truckScaleWeightService.WeightUpdates
+                .Subscribe(OnWeightChanged);
+
+            _logger?.LogInformation("AttendedWeighingService: Started monitoring truck scale weight changes");
+        }
+
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 停止监听
+    /// </summary>
+    public async Task StopAsync()
+    {
+        lock (_statusLock)
+        {
+            _weightSubscription?.Dispose();
+            _weightSubscription = null;
+            _logger?.LogInformation("AttendedWeighingService: Stopped monitoring truck scale weight changes");
+        }
+
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 获取当前状态
+    /// </summary>
+    public AttendedWeighingStatus GetCurrentStatus()
+    {
+        lock (_statusLock)
+        {
+            return _currentStatus;
+        }
+    }
+
+    /// <summary>
+    /// 接收车牌识别结果
+    /// </summary>
+    public void OnPlateNumberRecognized(string plateNumber)
+    {
+        if (string.IsNullOrWhiteSpace(plateNumber))
+        {
+            return;
+        }
+
+        lock (_statusLock)
+        {
+            // Cache plate number recognition results only during WaitingForStability and WeightStabilized states
+            if (_currentStatus == AttendedWeighingStatus.WaitingForStability ||
+                _currentStatus == AttendedWeighingStatus.WeightStabilized)
+            {
+                _plateNumberCache.AddOrUpdate(plateNumber, 1, (key, oldValue) => oldValue + 1);
+                _logger?.LogDebug(
+                    $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber]})");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 重量变化处理
+    /// </summary>
+    private void OnWeightChanged(decimal weight)
+    {
+        lock (_statusLock)
+        {
+            var previousStatus = _currentStatus;
+            ProcessWeightChange(weight);
+
+            // Log status changes
+            if (_currentStatus != previousStatus)
+            {
+                _logger?.LogInformation(
+                    $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}kg");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 处理重量变化
+    /// </summary>
+    private void ProcessWeightChange(decimal currentWeight)
+    {
+        _lastWeight = currentWeight;
+
+        switch (_currentStatus)
+        {
+            case AttendedWeighingStatus.OffScale:
+                // OffScale -> WaitingForStability: weight increases from <0.5t to >0.5t
+                if (currentWeight > WeightThreshold)
+                {
+                    _currentStatus = AttendedWeighingStatus.WaitingForStability;
+                    _stabilityStartTime = DateTime.UtcNow;
+                    _stabilityBaseWeight = currentWeight;
+                    _stableWeight = null;
+
+                    // Select plate number (most frequent from cache)
+                    SelectPlateNumberFromCache();
+
+                    _logger.LogInformation(
+                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}kg");
+                }
+
+                break;
+
+            case AttendedWeighingStatus.WaitingForStability:
+                if (currentWeight < WeightThreshold)
+                {
+                    // Unstable weighing flow: directly from WaitingForStability to OffScale
+                    _currentStatus = AttendedWeighingStatus.OffScale;
+                    _stabilityStartTime = null;
+                    _stabilityBaseWeight = null;
+                    _stableWeight = null;
+
+                    // Capture all cameras and log (no need to save photos)
+                    _ = Task.Run(async () =>
+                    {
+                        var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
+                        if (photos.Count == 0)
+                        {
+                            _logger?.LogWarning(
+                                $"AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
+                        }
+                        else
+                        {
+                            _logger?.LogInformation(
+                                $"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
+                        }
+                    });
+
+                    // Clear plate number cache
+                    ClearPlateNumberCache();
+
+                    _logger?.LogWarning(
+                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}kg, triggered capture");
+                }
+                else
+                {
+                    // Check if weight is stable
+                    CheckWeightStability(currentWeight);
+                }
+
+                break;
+
+            case AttendedWeighingStatus.WeightStabilized:
+                if (currentWeight < WeightThreshold)
+                {
+                    // WeightStabilized -> OffScale: normal flow
+                    _currentStatus = AttendedWeighingStatus.OffScale;
+                    _stabilityStartTime = null;
+                    _stabilityBaseWeight = null;
+
+                    // Check again if there are more frequent plate numbers, update if needed
+                    UpdatePlateNumberIfNeeded();
+
+                    // Clear plate number cache
+                    ClearPlateNumberCache();
+
+                    _logger?.LogInformation(
+                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}kg");
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>
+    /// 检查重量稳定性
+    /// </summary>
+    private void CheckWeightStability(decimal currentWeight)
+    {
+        if (_stabilityBaseWeight == null)
+        {
+            _stabilityBaseWeight = currentWeight;
+            _stabilityStartTime = DateTime.UtcNow;
+            return;
+        }
+
+        // 检查重量是否在稳定范围内（±0.1t）
+        var weightDifference = Math.Abs(currentWeight - _stabilityBaseWeight.Value);
+        if (weightDifference > WeightStabilityTolerance)
+        {
+            // 波动超过范围，重新计时
+            _stabilityBaseWeight = currentWeight;
+            _stabilityStartTime = DateTime.UtcNow;
+            _stableWeight = null;
+            return;
+        }
+
+        // 检查是否稳定了3秒
+        if (_stabilityStartTime.HasValue)
+        {
+            var elapsed = (DateTime.UtcNow - _stabilityStartTime.Value).TotalMilliseconds;
+            if (elapsed >= StabilityDurationMs)
+            {
+                // 进入稳定状态
+                if (_stableWeight == null)
+                {
+                    // Record weight value at the moment of entering stable state
+                    _stableWeight = currentWeight;
+
+                    // Select plate number (most frequent from cache)
+                    SelectPlateNumberFromCache();
+
+                    // State transition: WaitingForStability -> WeightStabilized
+                    _currentStatus = AttendedWeighingStatus.WeightStabilized;
+
+                    _logger?.LogInformation(
+                        $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}kg");
+
+                    // When weight is stabilized, capture photos and create WeighingRecord
+                    _ = Task.Run(async () => await OnWeightStabilizedAsync());
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 重量已稳定时的处理
+    /// </summary>
+    private async Task OnWeightStabilizedAsync()
+    {
+        try
+        {
+            // Capture all cameras
+            var photoPaths = await CaptureAllCamerasAsync("WeightStabilized");
+
+            // 创建WeighingRecord（传入照片路径）
+            await CreateWeighingRecordAsync(photoPaths);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while processing weight stabilization");
+        }
+    }
+
+    /// <summary>
+    /// 抓拍所有相机
+    /// </summary>
+    /// <returns>成功抓拍的照片路径列表</returns>
+    private async Task<List<string>> CaptureAllCamerasAsync(string reason)
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var cameraConfigs = settings.CameraConfigs;
+
+            if (cameraConfigs == null || cameraConfigs.Count == 0)
+            {
+                _logger?.LogWarning($"AttendedWeighingService: No cameras configured, cannot capture ({reason})");
+                return new List<string>();
+            }
+
+            // 转换为 BatchCaptureRequest
+            var requests = new List<BatchCaptureRequest>();
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var basePath = Path.Combine(AppContext.BaseDirectory, "Photos", timestamp);
+
+            foreach (var cameraConfig in cameraConfigs)
+            {
+                if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
+                    string.IsNullOrWhiteSpace(cameraConfig.Port) ||
+                    string.IsNullOrWhiteSpace(cameraConfig.Channel))
+                {
+                    continue;
+                }
+
+                if (!int.TryParse(cameraConfig.Port, out var port) ||
+                    !int.TryParse(cameraConfig.Channel, out var channel))
+                {
+                    _logger?.LogWarning($"AttendedWeighingService: Invalid camera configuration: {cameraConfig.Name}");
+                    continue;
+                }
+
+                var hikvisionConfig = new HikvisionDeviceConfig
+                {
+                    Ip = cameraConfig.Ip,
+                    Port = port,
+                    Username = cameraConfig.UserName,
+                    Password = cameraConfig.Password,
+                    Channels = new[] { channel }
+                };
+
+                var fileName = $"{cameraConfig.Name}_{channel}_{Guid.NewGuid():N}.jpg";
+                var savePath = Path.Combine(basePath, fileName);
+
+                requests.Add(new BatchCaptureRequest
+                {
+                    Config = hikvisionConfig,
+                    Channel = channel,
+                    SaveFullPath = savePath,
+                    DeviceKey = $"{cameraConfig.Ip}:{port}"
+                });
+            }
+
+            if (requests.Count == 0)
+            {
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: No valid camera configurations, cannot capture ({reason})");
+                return new List<string>();
+            }
+
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Starting capture for {requests.Count} cameras ({reason})");
+
+            var results = await _hikvisionService.CaptureJpegFromStreamBatchAsync(requests);
+
+            var successCount = results.Count(r => r.Success);
+            var failCount = results.Count - successCount;
+
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Capture completed, success: {successCount}, failed: {failCount} ({reason})");
+
+            // Log detailed failure information
+            foreach (var result in results.Where(r => !r.Success))
+            {
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
+            }
+
+            // Return list of successfully captured photo paths
+            var photoPaths = results.Where(r => r.Success && File.Exists(r.Request.SaveFullPath))
+                .Select(r => r.Request.SaveFullPath)
+                .ToList();
+
+            // Log if photo list is empty
+            if (photoPaths.Count == 0)
+            {
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: Capture completed, but no photos were successfully obtained ({reason})");
+            }
+
+            return photoPaths;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"AttendedWeighingService: Error occurred while capturing all cameras ({reason})");
+            _logger?.LogWarning($"AttendedWeighingService: Capture exception, returning empty photo list ({reason})");
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// 创建称重记录
+    /// </summary>
+    private async Task CreateWeighingRecordAsync(List<string> photoPaths)
+    {
+        try
+        {
+            decimal weight;
+            string? plateNumber;
+
+            lock (_statusLock)
+            {
+                // Use weight value recorded at the moment of entering stable state
+                if (_stableWeight == null)
+                {
+                    _logger?.LogError(
+                        "AttendedWeighingService: Cannot create WeighingRecord, stable weight value is null");
+                    return;
+                }
+
+                weight = _stableWeight.Value;
+                plateNumber = _selectedPlateNumber;
+            }
+
+            using var uow = _unitOfWorkManager.Begin();
+
+            // Create weighing record
+            var weighingRecord = new WeighingRecord(weight)
+            {
+                PlateNumber = plateNumber
+            };
+
+            await _weighingRecordRepository.InsertAsync(weighingRecord);
+            await uow.CompleteAsync();
+
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
+
+            // Save captured photos to WeighingRecordAttachment
+            if (photoPaths != null && photoPaths.Count > 0)
+            {
+                await SaveCapturePhotosAsync(weighingRecord.Id, photoPaths);
+            }
+            else
+            {
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while creating weighing record");
+        }
+    }
+
+    /// <summary>
+    /// 保存抓拍的照片
+    /// </summary>
+    private async Task SaveCapturePhotosAsync(long weighingRecordId, List<string> photoPaths)
+    {
+        try
+        {
+            if (photoPaths == null || photoPaths.Count == 0)
+            {
+                return;
+            }
+
+            using var uow = _unitOfWorkManager.Begin();
+
+            foreach (var photoPath in photoPaths)
+            {
+                try
+                {
+                    if (!File.Exists(photoPath))
+                    {
+                        _logger?.LogWarning($"AttendedWeighingService: Photo file does not exist: {photoPath}");
+                        continue;
+                    }
+
+                    var fileName = Path.GetFileName(photoPath);
+                    var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.EntryPhoto);
+
+                    await _attachmentFileRepository.InsertAsync(attachmentFile);
+
+                    var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
+                    await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, $"AttendedWeighingService: Failed to save photo: {photoPath}");
+                }
+            }
+
+            await uow.CompleteAsync();
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Saved {photoPaths.Count} photos to weighing record {weighingRecordId}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"AttendedWeighingService: Error occurred while saving captured photos");
+        }
+    }
+
+    /// <summary>
+    /// 从缓存中选择车牌（识别次数最多的）
+    /// </summary>
+    private void SelectPlateNumberFromCache()
+    {
+        if (_plateNumberCache.IsEmpty)
+        {
+            _selectedPlateNumber = null;
+            return;
+        }
+
+        var mostFrequent = _plateNumberCache
+            .OrderByDescending(kvp => kvp.Value)
+            .FirstOrDefault();
+
+        _selectedPlateNumber = mostFrequent.Key;
+        _logger?.LogInformation(
+            $"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
+    }
+
+    /// <summary>
+    /// 更新车牌（如果缓存中有更多次数的车牌）
+    /// </summary>
+    private void UpdatePlateNumberIfNeeded()
+    {
+        if (_plateNumberCache.IsEmpty)
+        {
+            return;
+        }
+
+        var mostFrequent = _plateNumberCache
+            .OrderByDescending(kvp => kvp.Value)
+            .FirstOrDefault();
+
+        if (!string.IsNullOrEmpty(mostFrequent.Key) &&
+            (string.IsNullOrEmpty(_selectedPlateNumber) ||
+             mostFrequent.Value > _plateNumberCache.GetValueOrDefault(_selectedPlateNumber, 0)))
+        {
+            _selectedPlateNumber = mostFrequent.Key;
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
+        }
+    }
+
+    /// <summary>
+    /// 清空车牌缓存
+    /// </summary>
+    private void ClearPlateNumberCache()
+    {
+        _plateNumberCache.Clear();
+        _selectedPlateNumber = null;
+        _logger?.LogDebug("AttendedWeighingService: Cleared plate number cache");
+    }
+
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+    }
+}

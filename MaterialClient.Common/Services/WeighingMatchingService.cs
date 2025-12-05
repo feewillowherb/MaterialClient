@@ -53,7 +53,7 @@ public class WeighingMatchingService : DomainService
             // Get all unmatched weighing records
             var allRecords = await _weighingRecordRepository.GetListAsync();
             var unmatchedRecords = allRecords
-                .Where(r => r.RecordType == WeighingRecordType.Unmatch)
+                .Where(r => r.MatchedId == null)
                 .OrderBy(r => r.CreationTime)
                 .ToList();
 
@@ -197,8 +197,7 @@ public class WeighingMatchingService : DomainService
 
         // Create waybill
         var orderNo = Guid.NewGuid().ToString(); // Generate OrderNo from Guid
-        var providerId = joinRecord.ProviderId ?? outRecord.ProviderId ?? 0;
-        var waybill = new Waybill(orderNo, providerId) // Id will be auto-generated
+        var waybill = new Waybill(orderNo) // Id will be auto-generated
         {
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
             JoinTime = joinRecord.CreationTime,
@@ -223,8 +222,6 @@ public class WeighingMatchingService : DomainService
 
         // Update WeighingRecord types
         using var uow2 = _unitOfWorkManager.Begin();
-        joinRecord.RecordType = WeighingRecordType.Join;
-        outRecord.RecordType = WeighingRecordType.Out;
 
         await _weighingRecordRepository.UpdateAsync(joinRecord);
         await _weighingRecordRepository.UpdateAsync(outRecord);
