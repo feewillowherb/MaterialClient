@@ -295,10 +295,10 @@ public partial class LicensePlateRecognitionConfigViewModel : ObservableObject
     /// </summary>
     public int DirectionIndex
     {
-        get => (int)_direction;
+        get => (int)Direction;
         set
         {
-            if (value >= 0 && value <= 1)
+            if (value is >= 0 and <= 1)
             {
                 Direction = (LicensePlateDirection)value;
             }

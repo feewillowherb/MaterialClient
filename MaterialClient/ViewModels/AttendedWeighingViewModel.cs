@@ -249,7 +249,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             var settings = await settingsService.GetSettingsAsync();
             var cameraConfigs = settings.CameraConfigs;
 
-            if (cameraConfigs == null || cameraConfigs.Count == 0)
+            if (cameraConfigs.Count == 0)
             {
                 // Update property on UI thread
                 Dispatcher.UIThread.Post(() => { IsCameraOnline = false; });
@@ -438,9 +438,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     private void SetDisplayMode(int mode)
     {
-        _showAllRecords = mode == 0;
-        _showUnmatched = mode == 1;
-        _showCompleted = mode == 2;
+        ShowAllRecords = mode == 0;
+        ShowUnmatched = mode == 1;
+        ShowCompleted = mode == 2;
         OnPropertyChanged(nameof(ShowAllRecords));
         OnPropertyChanged(nameof(ShowUnmatched));
         OnPropertyChanged(nameof(ShowCompleted));
