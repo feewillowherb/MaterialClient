@@ -51,7 +51,7 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
     public LoginWindowViewModel(IAuthenticationService authenticationService)
     {
         _authenticationService = authenticationService;
-        
+
         // Load saved credentials
         _ = LoadSavedCredentialsAsync();
     }
@@ -137,7 +137,7 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
     private void HandleLoginError(string errorMessage)
     {
         IsLoginSuccessful = false;
-        
+
         // Check if it's a network error
         if (errorMessage.Contains("网络") || errorMessage.Contains("连接"))
         {

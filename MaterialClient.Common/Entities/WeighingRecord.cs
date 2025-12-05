@@ -41,9 +41,9 @@ public class WeighingRecord : FullAuditedEntity<long>
     /// 车牌号
     /// </summary>
     public string? PlateNumber { get; set; }
-    
-    
-    
+
+
+
 
     /// <summary>
     /// 和匹配的Id

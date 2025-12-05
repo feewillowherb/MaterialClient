@@ -28,7 +28,7 @@ public class MaterialClientHttpHostModule : AbpModule
 
         // Configure controllers
         services.AddControllers();
-        
+
         // Configure Swagger/OpenAPI
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
@@ -54,7 +54,7 @@ public class MaterialClientHttpHostModule : AbpModule
 
         // Register Avalonia UI services
         services.AddTransient<StartupService>();
-        
+
         // Register ViewModels for dependency injection
         // ViewModels are transient as they are bound to specific UI instances
         services.AddTransient<MainWindowViewModel>();
@@ -85,10 +85,10 @@ public class MaterialClientHttpHostModule : AbpModule
 
         // Configure routing
         app.UseRouting();
-        
+
         // Configure CORS
         app.UseCors();
-        
+
         // Map controllers
         app.UseEndpoints(endpoints =>
         {

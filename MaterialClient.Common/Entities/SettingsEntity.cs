@@ -75,7 +75,7 @@ public class SettingsEntity : Entity<int>
         {
             if (string.IsNullOrEmpty(ScaleSettingsJson))
                 return new ScaleSettings();
-            
+
             try
             {
                 return JsonSerializer.Deserialize<ScaleSettings>(ScaleSettingsJson) ?? new ScaleSettings();
@@ -101,7 +101,7 @@ public class SettingsEntity : Entity<int>
         {
             if (string.IsNullOrEmpty(DocumentScannerConfigJson))
                 return new DocumentScannerConfig();
-            
+
             try
             {
                 return JsonSerializer.Deserialize<DocumentScannerConfig>(DocumentScannerConfigJson) ?? new DocumentScannerConfig();
@@ -127,7 +127,7 @@ public class SettingsEntity : Entity<int>
         {
             if (string.IsNullOrEmpty(SystemSettingsJson))
                 return new SystemSettings();
-            
+
             try
             {
                 return JsonSerializer.Deserialize<SystemSettings>(SystemSettingsJson) ?? new SystemSettings();
@@ -153,7 +153,7 @@ public class SettingsEntity : Entity<int>
         {
             if (string.IsNullOrEmpty(CameraConfigsJson))
                 return new List<CameraConfig>();
-            
+
             try
             {
                 return JsonSerializer.Deserialize<List<CameraConfig>>(CameraConfigsJson) ?? new List<CameraConfig>();
@@ -179,7 +179,7 @@ public class SettingsEntity : Entity<int>
         {
             if (string.IsNullOrEmpty(LicensePlateRecognitionConfigsJson))
                 return new List<LicensePlateRecognitionConfig>();
-            
+
             try
             {
                 return JsonSerializer.Deserialize<List<LicensePlateRecognitionConfig>>(LicensePlateRecognitionConfigsJson) ?? new List<LicensePlateRecognitionConfig>();

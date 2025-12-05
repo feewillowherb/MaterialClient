@@ -57,7 +57,7 @@ public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : R
             StatusMessage = "授权成功！";
             StatusMessageColor = "#4CAF50"; // Green
             ShowRetryButton = false;
-            
+
             // Window will be closed automatically by the View after detecting IsVerified = true
         }
         catch (BusinessException ex)
@@ -89,7 +89,7 @@ public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : R
     private void HandleVerificationError(string errorMessage)
     {
         IsVerified = false;
-        
+
         // Check if it's a network error
         if (errorMessage.Contains("网络") || errorMessage.Contains("连接"))
         {
@@ -101,7 +101,7 @@ public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : R
             StatusMessage = errorMessage;
             ShowRetryButton = false;
         }
-        
+
         StatusMessageColor = "#F44336"; // Red
     }
 

@@ -60,7 +60,7 @@ public class WeighingService : DomainService
         _logger = logger;
 
         // Lazy load matching service to avoid circular dependency
-        _matchingService = new Lazy<WeighingMatchingService>(() => 
+        _matchingService = new Lazy<WeighingMatchingService>(() =>
             serviceProvider.GetRequiredService<WeighingMatchingService>());
 
         // Load configuration
@@ -189,7 +189,7 @@ public class WeighingService : DomainService
         try
         {
             using var uow = _unitOfWorkManager.Begin();
-            
+
             // Create weighing record
             var weighingRecord = new WeighingRecord(weight) // Id will be auto-generated
             {

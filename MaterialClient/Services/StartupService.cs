@@ -40,9 +40,9 @@ public class StartupService
         {
             // Step 1: Check license
             var isLicenseValid = await _licenseService.IsLicenseValidAsync();
-            
+
             bool licenseWasInvalid = !isLicenseValid;
-            
+
             if (!isLicenseValid)
             {
                 // No license or expired license - show authorization window
@@ -61,9 +61,9 @@ public class StartupService
             {
                 await _authenticationService.LogoutAsync();
             }
-            
+
             var hasActiveSession = await _authenticationService.HasActiveSessionAsync();
-            
+
             if (!hasActiveSession)
             {
                 // No active session - show login window

@@ -72,7 +72,7 @@ public class WeighingMatchingService : DomainService
             foreach (var plateGroup in recordsByPlate)
             {
                 var records = plateGroup.OrderBy(r => r.CreationTime).ToList();
-                
+
                 // Find matching pairs using rule 1 (same plate + time window)
                 var matchingPairs = FindMatchingPairsByRule1(records);
 

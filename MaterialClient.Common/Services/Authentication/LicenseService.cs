@@ -178,7 +178,7 @@ public partial class LicenseService : DomainService, ILicenseService
         var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
 
         LicenseInfo license;
-        
+
         // 如果存在授权信息但ID不是固定的测试ID，先删除它（会级联删除关联的会话和凭证）
         if (existingLicense != null && existingLicense.Id != testLicenseId)
         {

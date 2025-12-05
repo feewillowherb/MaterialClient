@@ -18,7 +18,7 @@ public interface IBasePlatformApi
     Task<HttpResult<LicenseInfoDto>> GetAuthClientLicenseAsync(
         [Body] LicenseRequestDto request,
         CancellationToken cancellationToken = default);
-    
+
     /// <summary>
     /// 用户登录
     /// </summary>

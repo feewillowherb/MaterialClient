@@ -25,10 +25,10 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     private DeliveryType _deliveryType = DeliveryType.Delivery;
     private int _waybillsCreatedCount;
 
-    private IRepository<WeighingRecord, long> WeighingRecordRepository => 
+    private IRepository<WeighingRecord, long> WeighingRecordRepository =>
         GetRequiredService<IRepository<WeighingRecord, long>>();
 
-    private IRepository<Waybill, long> WaybillRepository => 
+    private IRepository<Waybill, long> WaybillRepository =>
         GetRequiredService<IRepository<Waybill, long>>();
 
     [Given(@"the weighing configuration has match duration of (.*) hours")]
@@ -67,7 +67,7 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
             };
 
             await WeighingRecordRepository.InsertAsync(record);
-            
+
             // Set CreationTime using reflection (since it's read-only from FullAuditedEntity)
             var creationTimeValue = DateTime.Parse(creationTime);
             var creationTimeProperty = typeof(Volo.Abp.Domain.Entities.Auditing.CreationAuditedEntity<long>)
@@ -77,7 +77,7 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
                 creationTimeProperty.SetValue(record, creationTimeValue);
                 await WeighingRecordRepository.UpdateAsync(record);
             }
-            
+
             _testRecords.Add(record);
         });
     }
@@ -93,14 +93,14 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
             };
 
             await WeighingRecordRepository.InsertAsync(record);
-            
+
             // Set CreationTime using EF Core Entry (since it's read-only from FullAuditedEntity)
             var creationTimeValue = DateTime.UtcNow.AddHours(-recordIndex);
             var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
             var entry = dbContext.Entry(record);
             entry.Property("CreationTime").CurrentValue = creationTimeValue;
             await dbContext.SaveChangesAsync();
-            
+
             _testRecords.Add(record);
         });
     }
@@ -116,14 +116,14 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
             };
 
             await WeighingRecordRepository.InsertAsync(record);
-            
+
             // Set CreationTime using EF Core Entry (since it's read-only from FullAuditedEntity)
             var creationTimeValue = DateTime.UtcNow.AddHours(-recordIndex);
             var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
             var entry = dbContext.Entry(record);
             entry.Property("CreationTime").CurrentValue = creationTimeValue;
             await dbContext.SaveChangesAsync();
-            
+
             _testRecords.Add(record);
         });
     }
@@ -146,7 +146,7 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
             };
 
             await WeighingRecordRepository.InsertAsync(record);
-            
+
             // Set CreationTime using reflection (since it's read-only from FullAuditedEntity)
             var creationTimeValue = DateTime.Parse(creationTime);
             var creationTimeProperty = typeof(Volo.Abp.Domain.Entities.Auditing.CreationAuditedEntity<long>)
@@ -156,7 +156,7 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
                 creationTimeProperty.SetValue(record, creationTimeValue);
                 await WeighingRecordRepository.UpdateAsync(record);
             }
-            
+
             _testRecords.Add(record);
         });
     }

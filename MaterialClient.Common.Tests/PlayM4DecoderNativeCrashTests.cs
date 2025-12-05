@@ -25,7 +25,7 @@ public class PlayM4DecoderNativeCrashTests
             // 使用无效的端口号（负数或超大值）调用 Native 方法
             int invalidPort = -1;
             bool result = PlayM4.PlayM4_Stop(invalidPort);
-            
+
             // 如果方法返回 false，说明检测到了错误，但没有崩溃
             // 如果方法崩溃，应该抛出异常
         }
@@ -81,13 +81,13 @@ public class PlayM4DecoderNativeCrashTests
             // 尝试初始化并获取端口
             int port = -1;
             bool gotPort = PlayM4.PlayM4_GetPort(ref port);
-            
+
             if (gotPort && port >= 0)
             {
                 // 使用空指针调用 OpenStream
                 IntPtr nullPointer = IntPtr.Zero;
                 bool result = PlayM4.PlayM4_OpenStream(port, nullPointer, 0, 1024);
-                
+
                 // 清理
                 PlayM4.PlayM4_FreePort(port);
             }
@@ -128,7 +128,7 @@ public class PlayM4DecoderNativeCrashTests
         try
         {
             var decoder = new PlayM4Decoder();
-            
+
             // 在未初始化的情况下尝试输入数据
             IntPtr dataPtr = Marshal.AllocHGlobal(1024);
             try
@@ -139,7 +139,7 @@ public class PlayM4DecoderNativeCrashTests
             {
                 Marshal.FreeHGlobal(dataPtr);
             }
-            
+
             decoder.Dispose();
         }
         catch (AccessViolationException ex)
@@ -178,7 +178,7 @@ public class PlayM4DecoderNativeCrashTests
         try
         {
             var decoder = new PlayM4Decoder();
-            
+
             if (decoder.Initialize())
             {
                 // 使用无效的数据大小（0 或超大值）
@@ -187,7 +187,7 @@ public class PlayM4DecoderNativeCrashTests
                 {
                     // 测试 0 大小
                     bool result1 = decoder.InputData(dataPtr, 0);
-                    
+
                     // 测试超大值（可能导致整数溢出或内存访问错误）
                     bool result2 = decoder.InputData(dataPtr, uint.MaxValue);
                 }
@@ -196,7 +196,7 @@ public class PlayM4DecoderNativeCrashTests
                     Marshal.FreeHGlobal(dataPtr);
                 }
             }
-            
+
             decoder.Dispose();
         }
         catch (AccessViolationException ex)
@@ -239,14 +239,14 @@ public class PlayM4DecoderNativeCrashTests
         try
         {
             var decoder = new PlayM4Decoder();
-            
+
             if (decoder.Initialize())
             {
                 int port = decoder.Port;
-                
+
                 // 释放端口
                 decoder.Dispose();
-                
+
                 // 尝试在已释放的端口上调用方法
                 // 如果 decoder 已经释放，再次调用应该安全返回 false
                 bool result = decoder.InputData(IntPtr.Zero, 0);
@@ -293,7 +293,7 @@ public class PlayM4DecoderNativeCrashTests
         try
         {
             var decoder = new PlayM4Decoder();
-            
+
             if (decoder.Initialize())
             {
                 // 尝试在没有播放流的情况下捕获 JPEG
@@ -311,7 +311,7 @@ public class PlayM4DecoderNativeCrashTests
                     }
                 }
             }
-            
+
             decoder.Dispose();
         }
         catch (AccessViolationException ex)
@@ -347,7 +347,7 @@ public class PlayM4DecoderNativeCrashTests
         // 这个测试需要实际调用可能导致访问违规的 Native 方法
         // 由于 PlayM4 方法可能已经做了参数验证，可能不会崩溃
         // 因此标记为 Skip，需要手动测试
-        
+
         bool exceptionCaught = false;
         Exception? caughtException = null;
 
@@ -356,7 +356,7 @@ public class PlayM4DecoderNativeCrashTests
             // 尝试可能导致访问违规的操作
             int port = 99999; // 无效端口
             IntPtr invalidPointer = new IntPtr(0xDEADBEEF); // 无效内存地址
-            
+
             bool result = PlayM4.PlayM4_OpenStream(port, invalidPointer, 0, 0);
         }
         catch (AccessViolationException ex)

@@ -13,7 +13,7 @@ namespace MaterialClient.Common.Controllers;
 [ApiController]
 [Route("api/hardware/plate-number")]
 [AutoConstructor]
-public class PlateNumberController : ControllerBase
+public partial class PlateNumberController : ControllerBase
 {
     private readonly IPlateNumberCaptureService _plateNumberCaptureService;
     private readonly IAttendedWeighingService _attendedWeighingService;

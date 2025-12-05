@@ -9,7 +9,7 @@ namespace MaterialClient.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IServiceProvider _serviceProvider;
-    
+
     public string Greeting { get; } = "Welcome to Avalonia!";
 
     [RelayCommand]
