@@ -1,8 +1,8 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using MaterialClient.Common.Services.Authentication;
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Volo.Abp;
 
 namespace MaterialClient.ViewModels;
@@ -10,113 +10,55 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 /// 登录窗口 ViewModel
 /// </summary>
-public class LoginWindowViewModel : ReactiveViewModelBase
+public partial class LoginWindowViewModel : ReactiveViewModelBase
 {
     private readonly IAuthenticationService _authenticationService;
+
+    [ObservableProperty]
     private string _username = string.Empty;
+
+    [ObservableProperty]
     private string _password = string.Empty;
+
+    [ObservableProperty]
     private bool _rememberMe = false;
+
+    [ObservableProperty]
     private bool _isLoggingIn = false;
-    private string _errorMessage = string.Empty;
+
+    [ObservableProperty]
     private bool _hasError = false;
+
+    [ObservableProperty]
     private bool _showRetryButton = false;
+
+    [ObservableProperty]
     private bool _isLoginSuccessful = false;
 
-    public LoginWindowViewModel(IAuthenticationService authenticationService)
-    {
-        _authenticationService = authenticationService;
-        
-        // Create commands
-        LoginCommand = ReactiveCommand.CreateFromTask(LoginAsync);
-        RetryCommand = ReactiveCommand.Create(ResetErrorState);
-        
-        // Load saved credentials
-        _ = LoadSavedCredentialsAsync();
-    }
-
-    #region Properties
-
-    public string Username
-    {
-        get => _username;
-        set => this.RaiseAndSetIfChanged(ref _username, value);
-    }
-
-    public string Password
-    {
-        get => _password;
-        set => this.RaiseAndSetIfChanged(ref _password, value);
-    }
-
-    public bool RememberMe
-    {
-        get => _rememberMe;
-        set => this.RaiseAndSetIfChanged(ref _rememberMe, value);
-    }
-
-    public bool IsLoggingIn
-    {
-        get => _isLoggingIn;
-        set => this.RaiseAndSetIfChanged(ref _isLoggingIn, value);
-    }
-
+    private string _errorMessage = string.Empty;
     public string ErrorMessage
     {
         get => _errorMessage;
         set
         {
-            this.RaiseAndSetIfChanged(ref _errorMessage, value);
-            HasError = !string.IsNullOrEmpty(value);
+            if (SetProperty(ref _errorMessage, value))
+            {
+                HasError = !string.IsNullOrEmpty(value);
+            }
         }
     }
 
-    public bool HasError
+    public LoginWindowViewModel(IAuthenticationService authenticationService)
     {
-        get => _hasError;
-        set => this.RaiseAndSetIfChanged(ref _hasError, value);
+        _authenticationService = authenticationService;
+        
+        // Load saved credentials
+        _ = LoadSavedCredentialsAsync();
     }
-
-    public bool ShowRetryButton
-    {
-        get => _showRetryButton;
-        set => this.RaiseAndSetIfChanged(ref _showRetryButton, value);
-    }
-
-    public bool IsLoginSuccessful
-    {
-        get => _isLoginSuccessful;
-        private set => this.RaiseAndSetIfChanged(ref _isLoginSuccessful, value);
-    }
-
-    #endregion
 
     #region Commands
 
-    public ICommand LoginCommand { get; }
-    public ICommand RetryCommand { get; }
-
-    #endregion
-
-    #region Methods
-
-    private async Task LoadSavedCredentialsAsync()
-    {
-        try
-        {
-            var savedCredential = await _authenticationService.GetSavedCredentialAsync();
-            if (savedCredential.HasValue)
-            {
-                Username = savedCredential.Value.username;
-                Password = savedCredential.Value.password;
-                RememberMe = true;
-            }
-        }
-        catch
-        {
-            // Ignore errors when loading saved credentials
-        }
-    }
-
+    [RelayCommand]
     private async Task LoginAsync()
     {
         // Validate input
@@ -161,6 +103,34 @@ public class LoginWindowViewModel : ReactiveViewModelBase
         finally
         {
             IsLoggingIn = false;
+        }
+    }
+
+    [RelayCommand]
+    private void Retry()
+    {
+        ResetErrorState();
+    }
+
+    #endregion
+
+    #region Methods
+
+    private async Task LoadSavedCredentialsAsync()
+    {
+        try
+        {
+            var savedCredential = await _authenticationService.GetSavedCredentialAsync();
+            if (savedCredential.HasValue)
+            {
+                Username = savedCredential.Value.username;
+                Password = savedCredential.Value.password;
+                RememberMe = true;
+            }
+        }
+        catch
+        {
+            // Ignore errors when loading saved credentials
         }
     }
 

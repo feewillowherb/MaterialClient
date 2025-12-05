@@ -1,10 +1,10 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using MaterialClient.Common.Services.Authentication;
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Volo.Abp;
 
 namespace MaterialClient.ViewModels;
@@ -12,78 +12,36 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 /// 授权码输入窗口 ViewModel
 /// </summary>
-public class AuthCodeWindowViewModel : ReactiveViewModelBase
+public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
 {
     private readonly ILicenseService _licenseService;
+
+    [ObservableProperty]
     private string _authorizationCode = string.Empty;
+
+    [ObservableProperty]
     private string _statusMessage = string.Empty;
+
+    [ObservableProperty]
     private string _statusMessageColor = "#000000";
+
+    [ObservableProperty]
     private bool _isVerifying = false;
+
+    [ObservableProperty]
     private bool _showRetryButton = false;
+
+    [ObservableProperty]
     private bool _isVerified = false;
 
     public AuthCodeWindowViewModel(ILicenseService licenseService)
     {
         _licenseService = licenseService;
-        
-        // Create commands with UI thread scheduler to ensure all notifications happen on UI thread
-        VerifyCommand = ReactiveCommand.CreateFromTask(
-            VerifyAuthorizationCodeAsync
-        );
-        RetryCommand = ReactiveCommand.Create(
-            ResetForm
-        );
     }
-
-    #region Properties
-
-    public string AuthorizationCode
-    {
-        get => _authorizationCode;
-        set => this.RaiseAndSetIfChanged(ref _authorizationCode, value);
-    }
-
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
-    }
-
-    public string StatusMessageColor
-    {
-        get => _statusMessageColor;
-        set => this.RaiseAndSetIfChanged(ref _statusMessageColor, value);
-    }
-
-    public bool IsVerifying
-    {
-        get => _isVerifying;
-        set => this.RaiseAndSetIfChanged(ref _isVerifying, value);
-    }
-
-    public bool ShowRetryButton
-    {
-        get => _showRetryButton;
-        set => this.RaiseAndSetIfChanged(ref _showRetryButton, value);
-    }
-
-    public bool IsVerified
-    {
-        get => _isVerified;
-        private set => this.RaiseAndSetIfChanged(ref _isVerified, value);
-    }
-
-    #endregion
 
     #region Commands
 
-    public ICommand VerifyCommand { get; }
-    public ICommand RetryCommand { get; }
-
-    #endregion
-
-    #region Methods
-
+    [RelayCommand]
     private async Task VerifyAuthorizationCodeAsync()
     {
         // Validate input
@@ -126,6 +84,16 @@ public class AuthCodeWindowViewModel : ReactiveViewModelBase
             IsVerifying = false;
         }
     }
+
+    [RelayCommand()]
+    private void Retry()
+    {
+        ResetForm();
+    }
+
+    #endregion
+
+    #region Methods
 
     private void HandleVerificationError(string errorMessage)
     {

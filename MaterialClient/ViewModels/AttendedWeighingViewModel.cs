@@ -5,7 +5,6 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -14,10 +13,12 @@ using MaterialClient.Common.Services.Hikvision;
 using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace MaterialClient.ViewModels;
 
-public class AttendedWeighingViewModel : ViewModelBase, IDisposable
+public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
@@ -26,238 +27,101 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private readonly MaterialClient.Common.Services.IAttendedWeighingService? _attendedWeighingService;
     private readonly CompositeDisposable _disposables = new();
 
+    [ObservableProperty]
     private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
+
+    [ObservableProperty]
     private ObservableCollection<Waybill> _completedWaybills = new();
+
+    [ObservableProperty]
     private WeighingRecord? _selectedWeighingRecord;
+
+    [ObservableProperty]
     private Waybill? _selectedWaybill;
+
+    [ObservableProperty]
     private ObservableCollection<string> _vehiclePhotos = new();
+
+    [ObservableProperty]
     private string? _billPhotoPath;
+
+    [ObservableProperty]
     private DateTime _currentTime = DateTime.Now;
+
+    [ObservableProperty]
     private decimal _currentWeight = 0.00m;
+
+    [ObservableProperty]
     private bool _isReceiving = true;
+
+    [ObservableProperty]
     private bool _showAllRecords = true;
+
+    [ObservableProperty]
     private bool _showUnmatched = false;
+
+    [ObservableProperty]
     private bool _showCompleted = false;
+
+    [ObservableProperty]
     private ObservableCollection<object> _displayRecords = new();
+
+    [ObservableProperty]
     private object? _selectedRecord;
+
+    [ObservableProperty]
     private string? _currentEntryPhoto1;
+
+    [ObservableProperty]
     private string? _currentEntryPhoto2;
+
+    [ObservableProperty]
     private string? _currentEntryPhoto3;
+
+    [ObservableProperty]
     private string? _currentEntryPhoto4;
+
+    [ObservableProperty]
     private string? _entryPhoto1;
+
+    [ObservableProperty]
     private string? _entryPhoto2;
+
+    [ObservableProperty]
     private string? _entryPhoto3;
+
+    [ObservableProperty]
     private string? _entryPhoto4;
+
+    [ObservableProperty]
     private string? _exitPhoto1;
+
+    [ObservableProperty]
     private string? _exitPhoto2;
+
+    [ObservableProperty]
     private string? _exitPhoto3;
+
+    [ObservableProperty]
     private string? _exitPhoto4;
+
+    [ObservableProperty]
     private string? _materialInfo;
+
+    [ObservableProperty]
     private string? _offsetInfo;
+
+    [ObservableProperty]
     private bool _isScaleOnline = false;
+
+    [ObservableProperty]
     private bool _isCameraOnline = false;
+
+    [ObservableProperty]
     private string? _mostFrequentPlateNumber;
-
-    public ObservableCollection<WeighingRecord> UnmatchedWeighingRecords
-    {
-        get => _unmatchedWeighingRecords;
-        set => this.RaiseAndSetIfChanged(ref _unmatchedWeighingRecords, value);
-    }
-
-    public ObservableCollection<Waybill> CompletedWaybills
-    {
-        get => _completedWaybills;
-        set => this.RaiseAndSetIfChanged(ref _completedWaybills, value);
-    }
-
-    public WeighingRecord? SelectedWeighingRecord
-    {
-        get => _selectedWeighingRecord;
-        set => this.RaiseAndSetIfChanged(ref _selectedWeighingRecord, value);
-    }
-
-    public Waybill? SelectedWaybill
-    {
-        get => _selectedWaybill;
-        set => this.RaiseAndSetIfChanged(ref _selectedWaybill, value);
-    }
-
-    public ObservableCollection<string> VehiclePhotos
-    {
-        get => _vehiclePhotos;
-        set => this.RaiseAndSetIfChanged(ref _vehiclePhotos, value);
-    }
-
-    public string? BillPhotoPath
-    {
-        get => _billPhotoPath;
-        set => this.RaiseAndSetIfChanged(ref _billPhotoPath, value);
-    }
-
-    public DateTime CurrentTime
-    {
-        get => _currentTime;
-        set => this.RaiseAndSetIfChanged(ref _currentTime, value);
-    }
-
-    public decimal CurrentWeight
-    {
-        get => _currentWeight;
-        set => this.RaiseAndSetIfChanged(ref _currentWeight, value);
-    }
-
-    public bool IsReceiving
-    {
-        get => _isReceiving;
-        set => this.RaiseAndSetIfChanged(ref _isReceiving, value);
-    }
-
-    public bool ShowAllRecords
-    {
-        get => _showAllRecords;
-        set => this.RaiseAndSetIfChanged(ref _showAllRecords, value);
-    }
-
-    public bool ShowUnmatched
-    {
-        get => _showUnmatched;
-        set => this.RaiseAndSetIfChanged(ref _showUnmatched, value);
-    }
-
-    public bool ShowCompleted
-    {
-        get => _showCompleted;
-        set => this.RaiseAndSetIfChanged(ref _showCompleted, value);
-    }
-
-    public ObservableCollection<object> DisplayRecords
-    {
-        get => _displayRecords;
-        set => this.RaiseAndSetIfChanged(ref _displayRecords, value);
-    }
-
-    public object? SelectedRecord
-    {
-        get => _selectedRecord;
-        set => this.RaiseAndSetIfChanged(ref _selectedRecord, value);
-    }
-
-    public string? CurrentEntryPhoto1
-    {
-        get => _currentEntryPhoto1;
-        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto1, value);
-    }
-
-    public string? CurrentEntryPhoto2
-    {
-        get => _currentEntryPhoto2;
-        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto2, value);
-    }
-
-    public string? CurrentEntryPhoto3
-    {
-        get => _currentEntryPhoto3;
-        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto3, value);
-    }
-
-    public string? CurrentEntryPhoto4
-    {
-        get => _currentEntryPhoto4;
-        set => this.RaiseAndSetIfChanged(ref _currentEntryPhoto4, value);
-    }
-
-    public string? EntryPhoto1
-    {
-        get => _entryPhoto1;
-        set => this.RaiseAndSetIfChanged(ref _entryPhoto1, value);
-    }
-
-    public string? EntryPhoto2
-    {
-        get => _entryPhoto2;
-        set => this.RaiseAndSetIfChanged(ref _entryPhoto2, value);
-    }
-
-    public string? EntryPhoto3
-    {
-        get => _entryPhoto3;
-        set => this.RaiseAndSetIfChanged(ref _entryPhoto3, value);
-    }
-
-    public string? EntryPhoto4
-    {
-        get => _entryPhoto4;
-        set => this.RaiseAndSetIfChanged(ref _entryPhoto4, value);
-    }
-
-    public string? ExitPhoto1
-    {
-        get => _exitPhoto1;
-        set => this.RaiseAndSetIfChanged(ref _exitPhoto1, value);
-    }
-
-    public string? ExitPhoto2
-    {
-        get => _exitPhoto2;
-        set => this.RaiseAndSetIfChanged(ref _exitPhoto2, value);
-    }
-
-    public string? ExitPhoto3
-    {
-        get => _exitPhoto3;
-        set => this.RaiseAndSetIfChanged(ref _exitPhoto3, value);
-    }
-
-    public string? ExitPhoto4
-    {
-        get => _exitPhoto4;
-        set => this.RaiseAndSetIfChanged(ref _exitPhoto4, value);
-    }
-
-    public string? MaterialInfo
-    {
-        get => _materialInfo;
-        set => this.RaiseAndSetIfChanged(ref _materialInfo, value);
-    }
-
-    public string? OffsetInfo
-    {
-        get => _offsetInfo;
-        set => this.RaiseAndSetIfChanged(ref _offsetInfo, value);
-    }
-
-    public bool IsScaleOnline
-    {
-        get => _isScaleOnline;
-        set => this.RaiseAndSetIfChanged(ref _isScaleOnline, value);
-    }
-
-    public bool IsCameraOnline
-    {
-        get => _isCameraOnline;
-        set => this.RaiseAndSetIfChanged(ref _isCameraOnline, value);
-    }
-
-    public string? MostFrequentPlateNumber
-    {
-        get => _mostFrequentPlateNumber;
-        set => this.RaiseAndSetIfChanged(ref _mostFrequentPlateNumber, value);
-    }
 
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
-
-    public ICommand RefreshCommand { get; }
-    public ICommand SetReceivingCommand { get; }
-    public ICommand SetSendingCommand { get; }
-    public ICommand ShowAllRecordsCommand { get; }
-    public ICommand ShowUnmatchedCommand { get; }
-    public ICommand ShowCompletedCommand { get; }
-    public ICommand SelectRecordCommand { get; }
-    public ICommand TakeBillPhotoCommand { get; }
-    public ICommand SaveCommand { get; }
-    public ICommand CloseCommand { get; }
-    public ICommand OpenSettingsCommand { get; }
 
     private Timer? _autoRefreshTimer;
     private Timer? _plateNumberUpdateTimer;
@@ -285,17 +149,7 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
             _attendedWeighingService = null;
         }
 
-        RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
-        SetReceivingCommand = ReactiveCommand.Create(() => IsReceiving = true);
-        SetSendingCommand = ReactiveCommand.Create(() => IsReceiving = false);
-        ShowAllRecordsCommand = ReactiveCommand.Create(() => SetDisplayMode(0));
-        ShowUnmatchedCommand = ReactiveCommand.Create(() => SetDisplayMode(1));
-        ShowCompletedCommand = ReactiveCommand.Create(() => SetDisplayMode(2));
-        SelectRecordCommand = ReactiveCommand.Create<object>(OnRecordSelected);
-        TakeBillPhotoCommand = ReactiveCommand.Create(OnTakeBillPhoto);
-        SaveCommand = ReactiveCommand.Create(OnSave);
-        CloseCommand = ReactiveCommand.Create(OnClose);
-        OpenSettingsCommand = ReactiveCommand.Create(OnOpenSettings);
+        // Commands are now generated by [RelayCommand] attributes
 
         // Subscribe to SelectedWeighingRecord changes
         this.WhenAnyValue(x => x.SelectedWeighingRecord)
@@ -521,6 +375,121 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         _plateNumberUpdateTimer?.Dispose();
     }
 
+    [RelayCommand]
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            if (_weighingRecordRepository != null)
+            {
+                // Load unmatched weighing records (RecordType == Unmatch)
+                var allRecords = await _weighingRecordRepository.GetListAsync();
+                var unmatchedRecords = allRecords
+                    .Where(x => x.MatchedId == null)
+                    .OrderByDescending(r => r.CreationTime)
+                    .ToList();
+
+                UnmatchedWeighingRecords.Clear();
+                foreach (var record in unmatchedRecords)
+                {
+                    UnmatchedWeighingRecords.Add(record);
+                }
+            }
+
+            if (_waybillRepository != null)
+            {
+                // Load completed waybills
+                var allWaybills = await _waybillRepository.GetListAsync();
+                var waybills = allWaybills
+                    .OrderByDescending(w => w.CreationTime)
+                    .ToList();
+
+                CompletedWaybills.Clear();
+                foreach (var waybill in waybills)
+                {
+                    CompletedWaybills.Add(waybill);
+                }
+            }
+            
+            // Update display records after refresh
+            UpdateDisplayRecords();
+        }
+        catch
+        {
+            // If repositories are not available, collections will remain empty
+            // This allows the UI to work even before ABP is fully initialized
+        }
+    }
+
+    [RelayCommand]
+    private void SetReceiving()
+    {
+        IsReceiving = true;
+    }
+
+    [RelayCommand]
+    private void SetSending()
+    {
+        IsReceiving = false;
+    }
+
+    [RelayCommand]
+    private void ShowAllRecords()
+    {
+        SetDisplayMode(0);
+    }
+
+    [RelayCommand]
+    private void ShowUnmatched()
+    {
+        SetDisplayMode(1);
+    }
+
+    [RelayCommand]
+    private void ShowCompleted()
+    {
+        SetDisplayMode(2);
+    }
+
+    [RelayCommand]
+    private void SelectRecord(object? record)
+    {
+        SelectedRecord = record;
+        // TODO: Load photos for the selected record
+    }
+
+    [RelayCommand]
+    private void TakeBillPhoto()
+    {
+        // TODO: Implement bill photo capture
+    }
+
+    [RelayCommand]
+    private void Save()
+    {
+        // TODO: Implement save logic
+    }
+
+    [RelayCommand]
+    private void Close()
+    {
+        // TODO: Implement close logic
+    }
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        try
+        {
+            var settingsWindow = _serviceProvider.GetRequiredService<Views.SettingsWindow>();
+            settingsWindow.Show();
+        }
+        catch
+        {
+            // Handle error opening settings window
+        }
+    }
+
     private void SetDisplayMode(int mode)
     {
         ShowAllRecords = mode == 0;
@@ -557,40 +526,6 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
             {
                 DisplayRecords.Add(waybill);
             }
-        }
-    }
-
-    private void OnRecordSelected(object? record)
-    {
-        SelectedRecord = record;
-        // TODO: Load photos for the selected record
-    }
-
-    private void OnTakeBillPhoto()
-    {
-        // TODO: Implement bill photo capture
-    }
-
-    private void OnSave()
-    {
-        // TODO: Implement save logic
-    }
-
-    private void OnClose()
-    {
-        // TODO: Implement close logic
-    }
-
-    private void OnOpenSettings()
-    {
-        try
-        {
-            var settingsWindow = _serviceProvider.GetRequiredService<Views.SettingsWindow>();
-            settingsWindow.Show();
-        }
-        catch
-        {
-            // Handle error opening settings window
         }
     }
 
@@ -756,48 +691,4 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async Task RefreshAsync()
-    {
-        try
-        {
-            if (_weighingRecordRepository != null)
-            {
-                // Load unmatched weighing records (RecordType == Unmatch)
-                var allRecords = await _weighingRecordRepository.GetListAsync();
-                var unmatchedRecords = allRecords
-                    .Where(x => x.MatchedId == null)
-                    .OrderByDescending(r => r.CreationTime)
-                    .ToList();
-
-                UnmatchedWeighingRecords.Clear();
-                foreach (var record in unmatchedRecords)
-                {
-                    UnmatchedWeighingRecords.Add(record);
-                }
-            }
-
-            if (_waybillRepository != null)
-            {
-                // Load completed waybills
-                var allWaybills = await _waybillRepository.GetListAsync();
-                var waybills = allWaybills
-                    .OrderByDescending(w => w.CreationTime)
-                    .ToList();
-
-                CompletedWaybills.Clear();
-                foreach (var waybill in waybills)
-                {
-                    CompletedWaybills.Add(waybill);
-                }
-            }
-            
-            // Update display records after refresh
-            UpdateDisplayRecords();
-        }
-        catch
-        {
-            // If repositories are not available, collections will remain empty
-            // This allows the UI to work even before ABP is fully initialized
-        }
-    }
 }
