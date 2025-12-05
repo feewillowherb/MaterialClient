@@ -9,6 +9,7 @@ using System.Windows.Input;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.Hikvision;
 using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,7 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private string? _materialInfo;
     private string? _offsetInfo;
     private bool _isScaleOnline = false;
+    private bool _isCameraOnline = false;
 
     public ObservableCollection<WeighingRecord> UnmatchedWeighingRecords
     {
@@ -227,6 +229,12 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isScaleOnline, value);
     }
 
+    public bool IsCameraOnline
+    {
+        get => _isCameraOnline;
+        set => this.RaiseAndSetIfChanged(ref _isCameraOnline, value);
+    }
+
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
 
@@ -309,6 +317,9 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         // Start timer to check scale online status periodically
         StartScaleStatusCheckTimer();
         
+        // Start timer to check camera online status periodically
+        StartCameraStatusCheckTimer();
+        
         // Start all devices when ViewModel is created
         _ = StartAllDevicesAsync();
     }
@@ -347,6 +358,85 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2)); // Check every 2 seconds
         
         _disposables.Add(statusTimer);
+    }
+
+    /// <summary>
+    /// Start timer to periodically check camera online status
+    /// </summary>
+    private void StartCameraStatusCheckTimer()
+    {
+        var statusTimer = new Timer(async _ =>
+        {
+            try
+            {
+                await CheckCameraOnlineStatusAsync();
+            }
+            catch
+            {
+                IsCameraOnline = false;
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5)); // Check every 5 seconds
+        
+        _disposables.Add(statusTimer);
+    }
+
+    /// <summary>
+    /// Check camera online status
+    /// </summary>
+    private async Task CheckCameraOnlineStatusAsync()
+    {
+        try
+        {
+            var settingsService = _serviceProvider.GetRequiredService<MaterialClient.Common.Services.ISettingsService>();
+            var hikvisionService = _serviceProvider.GetRequiredService<IHikvisionService>();
+            var settings = await settingsService.GetSettingsAsync();
+            var cameraConfigs = settings.CameraConfigs;
+
+            if (cameraConfigs == null || cameraConfigs.Count == 0)
+            {
+                IsCameraOnline = false;
+                return;
+            }
+
+            // Check if at least one camera is online
+            bool anyOnline = false;
+            foreach (var cameraConfig in cameraConfigs)
+            {
+                if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
+                    string.IsNullOrWhiteSpace(cameraConfig.Port) ||
+                    string.IsNullOrWhiteSpace(cameraConfig.UserName) ||
+                    string.IsNullOrWhiteSpace(cameraConfig.Password))
+                {
+                    continue;
+                }
+
+                if (!int.TryParse(cameraConfig.Port, out var port))
+                {
+                    continue;
+                }
+
+                var hikvisionConfig = new HikvisionDeviceConfig
+                {
+                    Ip = cameraConfig.Ip,
+                    Port = port,
+                    Username = cameraConfig.UserName,
+                    Password = cameraConfig.Password
+                };
+
+                var isOnline = await Task.Run(() => hikvisionService.IsOnline(hikvisionConfig));
+                if (isOnline)
+                {
+                    anyOnline = true;
+                    break; // At least one camera is online
+                }
+            }
+
+            IsCameraOnline = anyOnline;
+        }
+        catch
+        {
+            IsCameraOnline = false;
+        }
     }
     
     /// <summary>
