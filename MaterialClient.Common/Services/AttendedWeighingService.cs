@@ -621,7 +621,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             $"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
 
         // Notify observers of plate number update
-        _plateNumberSubject.OnNext(_selectedPlateNumber);
+        // _plateNumberSubject.OnNext(_selectedPlateNumber);
     }
 
     /// <summary>
@@ -654,7 +654,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 $"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
 
             // Notify observers of plate number update
-            _plateNumberSubject.OnNext(_selectedPlateNumber);
+            // _plateNumberSubject.OnNext(_selectedPlateNumber);
         }
     }
 
