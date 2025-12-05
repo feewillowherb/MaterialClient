@@ -73,7 +73,7 @@
                 CornerRadius="8" 
                 Padding="20,12"
                 VerticalAlignment="Center">
-          <TextBlock Text="浙 ▼" 
+          <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}" 
                      Foreground="White" 
                      FontSize="16"/>
         </Border>

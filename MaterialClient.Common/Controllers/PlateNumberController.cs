@@ -16,7 +16,7 @@ namespace MaterialClient.Common.Controllers;
 public class PlateNumberController : ControllerBase
 {
     private readonly IPlateNumberCaptureService _plateNumberCaptureService;
-    private readonly AttendedWeighingService? _attendedWeighingService;
+    private readonly IAttendedWeighingService _attendedWeighingService;
     private readonly ILogger<PlateNumberController> _logger;
 
     [HttpPost]
@@ -32,13 +32,13 @@ public class PlateNumberController : ControllerBase
             string ipAddress = data.AlarmInfoPlate.ipaddr;
             var plateResult = data.AlarmInfoPlate.result.PlateResult;
             string license = plateResult.license;
-            
+
             // 将车牌识别结果传递给 AttendedWeighingService
-            if (!string.IsNullOrWhiteSpace(license) && _attendedWeighingService != null)
+            if (!string.IsNullOrWhiteSpace(license))
             {
                 _attendedWeighingService.OnPlateNumberRecognized(license);
             }
-            
+
             result.Success = true;
             result.Msg = "完成";
         }
@@ -48,8 +48,8 @@ public class PlateNumberController : ControllerBase
             result.Msg = e.Message.ToString();
             _logger.LogError(e.StackTrace);
         }
-        
-        
+
+
         return Ok(result);
     }
 

@@ -23,6 +23,7 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IServiceProvider _serviceProvider;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
+    private readonly MaterialClient.Common.Services.IAttendedWeighingService? _attendedWeighingService;
     private readonly CompositeDisposable _disposables = new();
 
     private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
@@ -55,6 +56,7 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private string? _offsetInfo;
     private bool _isScaleOnline = false;
     private bool _isCameraOnline = false;
+    private string? _mostFrequentPlateNumber;
 
     public ObservableCollection<WeighingRecord> UnmatchedWeighingRecords
     {
@@ -236,6 +238,12 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isCameraOnline, value);
     }
 
+    public string? MostFrequentPlateNumber
+    {
+        get => _mostFrequentPlateNumber;
+        set => this.RaiseAndSetIfChanged(ref _mostFrequentPlateNumber, value);
+    }
+
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
 
@@ -252,7 +260,9 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     public ICommand OpenSettingsCommand { get; }
 
     private Timer? _autoRefreshTimer;
+    private Timer? _plateNumberUpdateTimer;
     private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
+    private const int PlateNumberUpdateIntervalMs = 1000; // Update every 1 second
 
     public AttendedWeighingViewModel(
         IRepository<WeighingRecord, long> weighingRecordRepository,
@@ -264,6 +274,16 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         _waybillRepository = waybillRepository;
         _serviceProvider = serviceProvider;
         _truckScaleWeightService = truckScaleWeightService;
+        
+        // Try to get IAttendedWeighingService (may be null if not registered)
+        try
+        {
+            _attendedWeighingService = _serviceProvider.GetService<MaterialClient.Common.Services.IAttendedWeighingService>();
+        }
+        catch
+        {
+            _attendedWeighingService = null;
+        }
 
         RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
         SetReceivingCommand = ReactiveCommand.Create(() => IsReceiving = true);
@@ -323,6 +343,9 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
         
         // Start all devices when ViewModel is created
         _ = StartAllDevicesAsync();
+        
+        // Start timer to update most frequent plate number periodically
+        StartPlateNumberUpdateTimer();
     }
     
     /// <summary>
@@ -495,6 +518,7 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         _disposables?.Dispose();
         _autoRefreshTimer?.Dispose();
+        _plateNumberUpdateTimer?.Dispose();
     }
 
     private void SetDisplayMode(int mode)
@@ -587,6 +611,37 @@ public class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         _autoRefreshTimer?.Dispose();
         _autoRefreshTimer = null;
+    }
+
+    /// <summary>
+    /// Start timer to update most frequent plate number periodically
+    /// </summary>
+    private void StartPlateNumberUpdateTimer()
+    {
+        if (_attendedWeighingService == null)
+        {
+            return;
+        }
+
+        _plateNumberUpdateTimer = new Timer(_ =>
+        {
+            try
+            {
+                var plateNumber = _attendedWeighingService.GetMostFrequentPlateNumber();
+                
+                // Update property on UI thread
+                Dispatcher.UIThread.Post(() =>
+                {
+                    MostFrequentPlateNumber = plateNumber;
+                });
+            }
+            catch
+            {
+                // Ignore errors, just don't update
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(PlateNumberUpdateIntervalMs));
+        
+        _disposables.Add(_plateNumberUpdateTimer);
     }
 
     private void OnSelectedWeighingRecordChanged(WeighingRecord? value)

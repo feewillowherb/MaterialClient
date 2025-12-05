@@ -19,10 +19,58 @@ using Volo.Abp.Uow;
 namespace MaterialClient.Common.Services;
 
 /// <summary>
+/// 车牌缓存记录
+/// </summary>
+public record PlateNumberCacheRecord
+{
+    /// <summary>
+    /// 识别次数
+    /// </summary>
+    public int Count { get; init; }
+
+    /// <summary>
+    /// 最后更新时间
+    /// </summary>
+    public DateTime LastUpdateTime { get; init; }
+}
+
+/// <summary>
+/// 有人值守称重服务接口
+/// </summary>
+public interface IAttendedWeighingService : IAsyncDisposable
+{
+    /// <summary>
+    /// 启动监听
+    /// </summary>
+    Task StartAsync();
+
+    /// <summary>
+    /// 停止监听
+    /// </summary>
+    Task StopAsync();
+
+    /// <summary>
+    /// 获取当前状态
+    /// </summary>
+    AttendedWeighingStatus GetCurrentStatus();
+
+    /// <summary>
+    /// 接收车牌识别结果
+    /// </summary>
+    void OnPlateNumberRecognized(string plateNumber);
+
+    /// <summary>
+    /// 获取当前识别次数最大的车牌号
+    /// </summary>
+    string? GetMostFrequentPlateNumber();
+}
+
+/// <summary>
 /// 有人值守称重服务
 /// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
 /// </summary>
-public class AttendedWeighingService : DomainService, IAsyncDisposable
+[AutoConstructor]
+public class AttendedWeighingService : DomainService, IAttendedWeighingService
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
@@ -48,31 +96,12 @@ public class AttendedWeighingService : DomainService, IAsyncDisposable
     private decimal? _stabilityBaseWeight = null; // 稳定判定的基准重量
 
     // 车牌识别缓存
-    private readonly ConcurrentDictionary<string, int> _plateNumberCache = new();
+    private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
     private string? _selectedPlateNumber = null;
 
     // 订阅管理
     private IDisposable? _weightSubscription;
-
-    public AttendedWeighingService(
-        ITruckScaleWeightService truckScaleWeightService,
-        IHikvisionService hikvisionService,
-        ISettingsService settingsService,
-        IRepository<WeighingRecord, long> weighingRecordRepository,
-        IRepository<WeighingRecordAttachment, int> weighingRecordAttachmentRepository,
-        IRepository<AttachmentFile, int> attachmentFileRepository,
-        IUnitOfWorkManager unitOfWorkManager,
-        ILogger<AttendedWeighingService> logger = null)
-    {
-        _truckScaleWeightService = truckScaleWeightService;
-        _hikvisionService = hikvisionService;
-        _settingsService = settingsService;
-        _weighingRecordRepository = weighingRecordRepository;
-        _weighingRecordAttachmentRepository = weighingRecordAttachmentRepository;
-        _attachmentFileRepository = attachmentFileRepository;
-        _unitOfWorkManager = unitOfWorkManager;
-        _logger = logger;
-    }
+    
 
     /// <summary>
     /// 启动监听
@@ -146,9 +175,12 @@ public class AttendedWeighingService : DomainService, IAsyncDisposable
             if (_currentStatus == AttendedWeighingStatus.WaitingForStability ||
                 _currentStatus == AttendedWeighingStatus.WeightStabilized)
             {
-                _plateNumberCache.AddOrUpdate(plateNumber, 1, (key, oldValue) => oldValue + 1);
+                _plateNumberCache.AddOrUpdate(
+                    plateNumber,
+                    new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow },
+                    (key, oldValue) => new PlateNumberCacheRecord { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
                 _logger?.LogDebug(
-                    $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber]})");
+                    $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
             }
         }
     }
@@ -551,12 +583,12 @@ public class AttendedWeighingService : DomainService, IAsyncDisposable
         }
 
         var mostFrequent = _plateNumberCache
-            .OrderByDescending(kvp => kvp.Value)
+            .OrderByDescending(kvp => kvp.Value.Count)
             .FirstOrDefault();
 
         _selectedPlateNumber = mostFrequent.Key;
         _logger?.LogInformation(
-            $"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
+            $"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
     }
 
     /// <summary>
@@ -570,16 +602,22 @@ public class AttendedWeighingService : DomainService, IAsyncDisposable
         }
 
         var mostFrequent = _plateNumberCache
-            .OrderByDescending(kvp => kvp.Value)
+            .OrderByDescending(kvp => kvp.Value.Count)
             .FirstOrDefault();
 
+        var currentCount = 0;
+        if (!string.IsNullOrEmpty(_selectedPlateNumber) && 
+            _plateNumberCache.TryGetValue(_selectedPlateNumber, out var currentRecord))
+        {
+            currentCount = currentRecord.Count;
+        }
         if (!string.IsNullOrEmpty(mostFrequent.Key) &&
             (string.IsNullOrEmpty(_selectedPlateNumber) ||
-             mostFrequent.Value > _plateNumberCache.GetValueOrDefault(_selectedPlateNumber, 0)))
+             (mostFrequent.Value?.Count ?? 0) > currentCount))
         {
             _selectedPlateNumber = mostFrequent.Key;
             _logger?.LogInformation(
-                $"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value})");
+                $"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
         }
     }
 
@@ -591,6 +629,26 @@ public class AttendedWeighingService : DomainService, IAsyncDisposable
         _plateNumberCache.Clear();
         _selectedPlateNumber = null;
         _logger?.LogDebug("AttendedWeighingService: Cleared plate number cache");
+    }
+
+    /// <summary>
+    /// 获取当前识别次数最大的车牌号
+    /// </summary>
+    public string? GetMostFrequentPlateNumber()
+    {
+        lock (_statusLock)
+        {
+            if (_plateNumberCache.IsEmpty)
+            {
+                return null;
+            }
+
+            var mostFrequent = _plateNumberCache
+                .OrderByDescending(kvp => kvp.Value.Count)
+                .FirstOrDefault();
+
+            return mostFrequent.Key;
+        }
     }
 
     /// <summary>
