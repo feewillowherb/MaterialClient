@@ -148,6 +148,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         // Subscribe to weight updates from truck scale
         _truckScaleWeightService.WeightUpdates
+            .DistinctUntilChanged()
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(weight => { CurrentWeight = weight; })
             .DisposeWith(_disposables);
