@@ -27,98 +27,67 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private readonly MaterialClient.Common.Services.IAttendedWeighingService? _attendedWeighingService;
     private readonly CompositeDisposable _disposables = new();
 
-    [ObservableProperty]
-    private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
+    [ObservableProperty] private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
 
-    [ObservableProperty]
-    private ObservableCollection<Waybill> _completedWaybills = new();
+    [ObservableProperty] private ObservableCollection<Waybill> _completedWaybills = new();
 
-    [ObservableProperty]
-    private WeighingRecord? _selectedWeighingRecord;
+    [ObservableProperty] private WeighingRecord? _selectedWeighingRecord;
 
-    [ObservableProperty]
-    private Waybill? _selectedWaybill;
+    [ObservableProperty] private Waybill? _selectedWaybill;
 
-    [ObservableProperty]
-    private ObservableCollection<string> _vehiclePhotos = new();
+    [ObservableProperty] private ObservableCollection<string> _vehiclePhotos = new();
 
-    [ObservableProperty]
-    private string? _billPhotoPath;
+    [ObservableProperty] private string? _billPhotoPath;
 
-    [ObservableProperty]
-    private DateTime _currentTime = DateTime.Now;
+    [ObservableProperty] private DateTime _currentTime = DateTime.Now;
 
-    [ObservableProperty]
-    private decimal _currentWeight = 0.00m;
+    [ObservableProperty] private decimal _currentWeight;
 
-    [ObservableProperty]
-    private bool _isReceiving = true;
+    [ObservableProperty] private bool _isReceiving = true;
 
-    [ObservableProperty]
-    private bool _showAllRecords = true;
+    [ObservableProperty] private bool _showAllRecords = true;
 
-    [ObservableProperty]
-    private bool _showUnmatched = false;
+    [ObservableProperty] private bool _showUnmatched;
 
-    [ObservableProperty]
-    private bool _showCompleted = false;
+    [ObservableProperty] private bool _showCompleted;
 
-    [ObservableProperty]
-    private ObservableCollection<object> _displayRecords = new();
+    [ObservableProperty] private ObservableCollection<object> _displayRecords = new();
 
-    [ObservableProperty]
-    private object? _selectedRecord;
+    [ObservableProperty] private object? _selectedRecord;
 
-    [ObservableProperty]
-    private string? _currentEntryPhoto1;
+    [ObservableProperty] private string? _currentEntryPhoto1;
 
-    [ObservableProperty]
-    private string? _currentEntryPhoto2;
+    [ObservableProperty] private string? _currentEntryPhoto2;
 
-    [ObservableProperty]
-    private string? _currentEntryPhoto3;
+    [ObservableProperty] private string? _currentEntryPhoto3;
 
-    [ObservableProperty]
-    private string? _currentEntryPhoto4;
+    [ObservableProperty] private string? _currentEntryPhoto4;
 
-    [ObservableProperty]
-    private string? _entryPhoto1;
+    [ObservableProperty] private string? _entryPhoto1;
 
-    [ObservableProperty]
-    private string? _entryPhoto2;
+    [ObservableProperty] private string? _entryPhoto2;
 
-    [ObservableProperty]
-    private string? _entryPhoto3;
+    [ObservableProperty] private string? _entryPhoto3;
 
-    [ObservableProperty]
-    private string? _entryPhoto4;
+    [ObservableProperty] private string? _entryPhoto4;
 
-    [ObservableProperty]
-    private string? _exitPhoto1;
+    [ObservableProperty] private string? _exitPhoto1;
 
-    [ObservableProperty]
-    private string? _exitPhoto2;
+    [ObservableProperty] private string? _exitPhoto2;
 
-    [ObservableProperty]
-    private string? _exitPhoto3;
+    [ObservableProperty] private string? _exitPhoto3;
 
-    [ObservableProperty]
-    private string? _exitPhoto4;
+    [ObservableProperty] private string? _exitPhoto4;
 
-    [ObservableProperty]
-    private string? _materialInfo;
+    [ObservableProperty] private string? _materialInfo;
 
-    [ObservableProperty]
-    private string? _offsetInfo;
+    [ObservableProperty] private string? _offsetInfo;
 
-    [ObservableProperty]
-    private bool _isScaleOnline = false;
+    [ObservableProperty] private bool _isScaleOnline;
 
-    [ObservableProperty]
-    private bool _isCameraOnline = false;
+    [ObservableProperty] private bool _isCameraOnline;
 
-    [ObservableProperty]
-    private string? _mostFrequentPlateNumber;
+    [ObservableProperty] private string? _mostFrequentPlateNumber;
 
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
@@ -138,11 +107,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         _waybillRepository = waybillRepository;
         _serviceProvider = serviceProvider;
         _truckScaleWeightService = truckScaleWeightService;
-        
+
         // Try to get IAttendedWeighingService (may be null if not registered)
         try
         {
-            _attendedWeighingService = _serviceProvider.GetService<MaterialClient.Common.Services.IAttendedWeighingService>();
+            _attendedWeighingService =
+                _serviceProvider.GetService<MaterialClient.Common.Services.IAttendedWeighingService>();
         }
         catch
         {
@@ -176,32 +146,29 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         // Start auto-refresh timer to reflect matching results in real-time
         StartAutoRefresh();
         StartTimeUpdateTimer();
-        
+
         // Subscribe to weight updates from truck scale
         _truckScaleWeightService.WeightUpdates
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(weight =>
-            {
-                CurrentWeight = weight;
-            })
+            .Subscribe(weight => { CurrentWeight = weight; })
             .DisposeWith(_disposables);
-        
+
         // Initialize truck scale service
         _ = InitializeTruckScaleAsync();
-        
+
         // Start timer to check scale online status periodically
         StartScaleStatusCheckTimer();
-        
+
         // Start timer to check camera online status periodically
         StartCameraStatusCheckTimer();
-        
+
         // Start all devices when ViewModel is created
         _ = StartAllDevicesAsync();
-        
+
         // Start timer to update most frequent plate number periodically
         StartPlateNumberUpdateTimer();
     }
-    
+
     /// <summary>
     /// Start all devices
     /// </summary>
@@ -209,7 +176,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var deviceManagerService = _serviceProvider.GetRequiredService<MaterialClient.Common.Services.IDeviceManagerService>();
+            var deviceManagerService =
+                _serviceProvider.GetRequiredService<MaterialClient.Common.Services.IDeviceManagerService>();
             await deviceManagerService.StartAsync();
         }
         catch (Exception ex)
@@ -217,7 +185,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             System.Diagnostics.Debug.WriteLine($"Error starting devices: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Start timer to periodically check scale online status
     /// </summary>
@@ -229,23 +197,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             {
                 // Timer callback runs on thread pool, check status on background thread
                 var isOnline = _truckScaleWeightService.IsOnline;
-                
+
                 // Update property on UI thread to avoid blocking
-                Dispatcher.UIThread.Post(() =>
-                {
-                    IsScaleOnline = isOnline;
-                });
+                Dispatcher.UIThread.Post(() => { IsScaleOnline = isOnline; });
             }
             catch
             {
                 // Update property on UI thread
-                Dispatcher.UIThread.Post(() =>
-                {
-                    IsScaleOnline = false;
-                });
+                Dispatcher.UIThread.Post(() => { IsScaleOnline = false; });
             }
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2)); // Check every 2 seconds
-        
+
         _disposables.Add(statusTimer);
     }
 
@@ -266,14 +228,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 catch
                 {
                     // Update property on UI thread
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        IsCameraOnline = false;
-                    });
+                    Dispatcher.UIThread.Post(() => { IsCameraOnline = false; });
                 }
             });
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5)); // Check every 5 seconds
-        
+
         _disposables.Add(statusTimer);
     }
 
@@ -284,7 +243,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var settingsService = _serviceProvider.GetRequiredService<MaterialClient.Common.Services.ISettingsService>();
+            var settingsService =
+                _serviceProvider.GetRequiredService<MaterialClient.Common.Services.ISettingsService>();
             var hikvisionService = _serviceProvider.GetRequiredService<IHikvisionService>();
             var settings = await settingsService.GetSettingsAsync();
             var cameraConfigs = settings.CameraConfigs;
@@ -292,10 +252,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             if (cameraConfigs == null || cameraConfigs.Count == 0)
             {
                 // Update property on UI thread
-                Dispatcher.UIThread.Post(() =>
-                {
-                    IsCameraOnline = false;
-                });
+                Dispatcher.UIThread.Post(() => { IsCameraOnline = false; });
                 return;
             }
 
@@ -333,21 +290,15 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             }
 
             // Update property on UI thread
-            Dispatcher.UIThread.Post(() =>
-            {
-                IsCameraOnline = anyOnline;
-            });
+            Dispatcher.UIThread.Post(() => { IsCameraOnline = anyOnline; });
         }
         catch
         {
             // Update property on UI thread
-            Dispatcher.UIThread.Post(() =>
-            {
-                IsCameraOnline = false;
-            });
+            Dispatcher.UIThread.Post(() => { IsCameraOnline = false; });
         }
     }
-    
+
     /// <summary>
     /// Initialize truck scale service
     /// </summary>
@@ -355,7 +306,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var settingsService = _serviceProvider.GetRequiredService<MaterialClient.Common.Services.ISettingsService>();
+            var settingsService =
+                _serviceProvider.GetRequiredService<MaterialClient.Common.Services.ISettingsService>();
             var settings = await settingsService.GetSettingsAsync();
             await _truckScaleWeightService.InitializeAsync(settings.ScaleSettings);
         }
@@ -364,7 +316,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             System.Diagnostics.Debug.WriteLine($"Error initializing truck scale: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Cleanup resources
     /// </summary>
@@ -380,37 +332,31 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            if (_weighingRecordRepository != null)
-            {
-                // Load unmatched weighing records (RecordType == Unmatch)
-                var allRecords = await _weighingRecordRepository.GetListAsync();
-                var unmatchedRecords = allRecords
-                    .Where(x => x.MatchedId == null)
-                    .OrderByDescending(r => r.CreationTime)
-                    .ToList();
+            // Load unmatched weighing records (RecordType == Unmatch)
+            var allRecords = await _weighingRecordRepository.GetListAsync();
+            var unmatchedRecords = allRecords
+                .Where(x => x.MatchedId == null)
+                .OrderByDescending(r => r.CreationTime)
+                .ToList();
 
-                UnmatchedWeighingRecords.Clear();
-                foreach (var record in unmatchedRecords)
-                {
-                    UnmatchedWeighingRecords.Add(record);
-                }
+            UnmatchedWeighingRecords.Clear();
+            foreach (var record in unmatchedRecords)
+            {
+                UnmatchedWeighingRecords.Add(record);
             }
 
-            if (_waybillRepository != null)
-            {
-                // Load completed waybills
-                var allWaybills = await _waybillRepository.GetListAsync();
-                var waybills = allWaybills
-                    .OrderByDescending(w => w.CreationTime)
-                    .ToList();
+            // Load completed waybills
+            var allWaybills = await _waybillRepository.GetListAsync();
+            var waybills = allWaybills
+                .OrderByDescending(w => w.CreationTime)
+                .ToList();
 
-                CompletedWaybills.Clear();
-                foreach (var waybill in waybills)
-                {
-                    CompletedWaybills.Add(waybill);
-                }
+            CompletedWaybills.Clear();
+            foreach (var waybill in waybills)
+            {
+                CompletedWaybills.Add(waybill);
             }
-            
+
             // Update display records after refresh
             UpdateDisplayRecords();
         }
@@ -504,13 +450,14 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private void UpdateDisplayRecords()
     {
         DisplayRecords.Clear();
-        
+
         if (ShowAllRecords)
         {
             foreach (var record in UnmatchedWeighingRecords)
             {
                 DisplayRecords.Add(record);
             }
+
             foreach (var waybill in CompletedWaybills)
             {
                 DisplayRecords.Add(waybill);
@@ -534,14 +481,14 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     private void StartTimeUpdateTimer()
     {
-        var timeTimer = new Timer(_ => CurrentTime = DateTime.Now, null, 
+        var timeTimer = new Timer(_ => CurrentTime = DateTime.Now, null,
             TimeSpan.Zero, TimeSpan.FromSeconds(1));
     }
 
     private void StartAutoRefresh()
     {
-        _autoRefreshTimer = new Timer(async _ => await RefreshAsync(), null, 
-            TimeSpan.FromMilliseconds(AutoRefreshIntervalMs), 
+        _autoRefreshTimer = new Timer(async _ => await RefreshAsync(), null,
+            TimeSpan.FromMilliseconds(AutoRefreshIntervalMs),
             TimeSpan.FromMilliseconds(AutoRefreshIntervalMs));
     }
 
@@ -566,19 +513,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             try
             {
                 var plateNumber = _attendedWeighingService.GetMostFrequentPlateNumber();
-                
+
                 // Update property on UI thread
-                Dispatcher.UIThread.Post(() =>
-                {
-                    MostFrequentPlateNumber = plateNumber;
-                });
+                Dispatcher.UIThread.Post(() => { MostFrequentPlateNumber = plateNumber; });
             }
             catch
             {
                 // Ignore errors, just don't update
             }
         }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(PlateNumberUpdateIntervalMs));
-        
+
         _disposables.Add(_plateNumberUpdateTimer);
     }
 
@@ -595,6 +539,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             VehiclePhotos.Clear();
             BillPhotoPath = null;
         }
+
         this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
         this.RaisePropertyChanged(nameof(IsWaybillSelected));
     }
@@ -612,6 +557,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             VehiclePhotos.Clear();
             BillPhotoPath = null;
         }
+
         this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
         this.RaisePropertyChanged(nameof(IsWaybillSelected));
     }
@@ -636,7 +582,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                     if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
                     {
                         // Determine if attachment is vehicle photo or bill photo based on AttachType
-                        if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto || 
+                        if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto ||
                             attachment.AttachmentFile.AttachType == AttachType.ExitPhoto)
                         {
                             VehiclePhotos.Add(attachment.AttachmentFile.LocalPath);
@@ -675,7 +621,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                     if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
                     {
                         // Determine if attachment is vehicle photo or bill photo based on AttachType
-                        if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto || 
+                        if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto ||
                             attachment.AttachmentFile.AttachType == AttachType.ExitPhoto)
                         {
                             VehiclePhotos.Add(attachment.AttachmentFile.LocalPath);
@@ -693,5 +639,4 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             // If repository is not available, photos will remain empty
         }
     }
-
 }
