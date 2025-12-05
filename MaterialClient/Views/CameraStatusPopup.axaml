@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MaterialClient.ViewModels"
+             x:Class="MaterialClient.Views.CameraStatusPopup"
+             x:DataType="vm:AttendedWeighingViewModel"
+             Background="White"
+             BorderBrush="#E5E7EB"
+             BorderThickness="1"
+             CornerRadius="8"
+             Padding="12"
+             MinWidth="300"
+             MaxHeight="400">
+  <ScrollViewer>
+    <StackPanel Spacing="8">
+      <TextBlock Text="摄像头在线状态" 
+                 FontSize="14" 
+                 FontWeight="SemiBold"
+                 Foreground="#333"
+                 Margin="0,0,0,4"/>
+      
+      <ItemsControl ItemsSource="{Binding CameraStatuses}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:CameraStatusViewModel">
+            <Border Background="#F8F9FA" 
+                    BorderBrush="#E5E7EB" 
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10,8"
+                    Margin="0,0,0,4">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Online Status Indicator -->
+                <Ellipse Width="8" 
+                         Height="8" 
+                         VerticalAlignment="Center"
+                         Margin="0,0,8,0"
+                         IsVisible="{Binding IsOnline}">
+                  <Ellipse.Fill>
+                    <SolidColorBrush Color="#10B981"/>
+                  </Ellipse.Fill>
+                </Ellipse>
+                
+                <!-- Offline Status Indicator -->
+                <Ellipse Width="8" 
+                         Height="8" 
+                         VerticalAlignment="Center"
+                         Margin="0,0,8,0"
+                         IsVisible="{Binding !IsOnline}">
+                  <Ellipse.Fill>
+                    <SolidColorBrush Color="#EF4444"/>
+                  </Ellipse.Fill>
+                </Ellipse>
+                
+                <!-- Camera Info -->
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="{Binding Name}" 
+                             FontSize="13" 
+                             FontWeight="SemiBold"
+                             Foreground="#333"/>
+                  <TextBlock Text="{Binding DisplayAddress, StringFormat='IP: {0}'}" 
+                             FontSize="11" 
+                             Foreground="#666"/>
+                </StackPanel>
+                
+                <!-- Online Status Text -->
+                <TextBlock Grid.Column="2" 
+                           Text="在线"
+                           FontSize="12"
+                           Foreground="#10B981"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding IsOnline}"/>
+                
+                <!-- Offline Status Text -->
+                <TextBlock Grid.Column="2" 
+                           Text="离线"
+                           FontSize="12"
+                           Foreground="#EF4444"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding !IsOnline}"/>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      
+      <!-- Empty State -->
+      <TextBlock Text="暂无摄像头配置" 
+                 FontSize="12" 
+                 Foreground="#999"
+                 HorizontalAlignment="Center"
+                 Padding="20"
+                 IsVisible="{Binding !HasCameraStatuses}"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

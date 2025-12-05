@@ -47,5 +47,8 @@
       <Compile Update="Views\SettingsWindow.axaml.cs">
         <DependentUpon>SettingsWindow.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Views\CameraStatusPopup.axaml.cs">
+        <DependentUpon>CameraStatusPopup.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>
