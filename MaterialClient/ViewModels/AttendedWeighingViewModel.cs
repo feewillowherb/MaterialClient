@@ -45,11 +45,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private bool _isReceiving = true;
 
-    [ObservableProperty] private bool _showAllRecords = true;
+    [ObservableProperty] private bool _isShowAllRecords = true;
 
-    [ObservableProperty] private bool _showUnmatched;
+    [ObservableProperty] private bool _isShowUnmatched;
 
-    [ObservableProperty] private bool _showCompleted;
+    [ObservableProperty] private bool _isShowCompleted;
 
     [ObservableProperty] private ObservableCollection<object> _displayRecords = new();
 
@@ -380,19 +380,19 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void ShowAllRecordsCommand()
+    private void ShowAllRecords()
     {
         SetDisplayMode(0);
     }
 
     [RelayCommand]
-    private void ShowUnmatchedCommand()
+    private void ShowUnmatched()
     {
         SetDisplayMode(1);
     }
 
     [RelayCommand]
-    private void ShowCompletedCommand()
+    private void ShowCompleted()
     {
         SetDisplayMode(2);
     }
@@ -438,10 +438,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     private void SetDisplayMode(int mode)
     {
-        ShowAllRecords = mode == 0;
-        ShowUnmatched = mode == 1;
-        ShowCompleted = mode == 2;
-        OnPropertyChanged(nameof(ShowAllRecords));
+        IsShowAllRecords = mode == 0;
+        IsShowUnmatched = mode == 1;
+        IsShowCompleted = mode == 2;
+        OnPropertyChanged(nameof(IsShowAllRecords));
         OnPropertyChanged(nameof(ShowUnmatched));
         OnPropertyChanged(nameof(ShowCompleted));
         UpdateDisplayRecords();
@@ -451,7 +451,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         DisplayRecords.Clear();
 
-        if (ShowAllRecords)
+        if (IsShowAllRecords)
         {
             foreach (var record in UnmatchedWeighingRecords)
             {
@@ -463,14 +463,14 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 DisplayRecords.Add(waybill);
             }
         }
-        else if (ShowUnmatched)
+        else if (IsShowUnmatched)
         {
             foreach (var record in UnmatchedWeighingRecords)
             {
                 DisplayRecords.Add(record);
             }
         }
-        else if (ShowCompleted)
+        else if (IsShowCompleted)
         {
             foreach (var waybill in CompletedWaybills)
             {

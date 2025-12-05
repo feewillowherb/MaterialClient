@@ -170,7 +170,7 @@
             <StackPanel Orientation="Horizontal" Spacing="0">
               <Button Content="全部记录" 
                       Classes="tab-button"
-                      Classes.active="{Binding ShowAllRecords}"
+                      Classes.active="{Binding IsShowAllRecords}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
@@ -190,7 +190,7 @@
               </Button>
               <Button Content="未完成" 
                       Classes="tab-button"
-                      Classes.active="{Binding ShowUnmatched}"
+                      Classes.active="{Binding IsShowUnmatched}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
@@ -210,7 +210,7 @@
               </Button>
               <Button Content="已完成" 
                       Classes="tab-button"
-                      Classes.active="{Binding ShowCompleted}"
+                      Classes.active="{Binding IsShowCompleted}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
@@ -333,7 +333,7 @@
               </Border>
               
               <!-- Scrollable List - Unmatched Records -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding !ShowCompleted}">
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsShowCompleted}">
                 <ItemsControl ItemsSource="{Binding UnmatchedWeighingRecords}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:WeighingRecord">
@@ -365,7 +365,7 @@
               </ScrollViewer>
               
               <!-- Scrollable List - Completed Waybills -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding ShowCompleted}">
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowCompleted}">
                 <ItemsControl ItemsSource="{Binding CompletedWaybills}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:Waybill">
