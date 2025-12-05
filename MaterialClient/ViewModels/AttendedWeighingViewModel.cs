@@ -100,9 +100,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
 
     private Timer? _autoRefreshTimer;
-    private Timer? _plateNumberUpdateTimer;
     private const int AutoRefreshIntervalMs = 5000; // Refresh every 5 seconds
-    private const int PlateNumberUpdateIntervalMs = 1000; // Update every 1 second
 
     public AttendedWeighingViewModel(
         IRepository<WeighingRecord, long> weighingRecordRepository,
@@ -172,8 +170,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         // Start all devices when ViewModel is created
         _ = StartAllDevicesAsync();
 
-        // Start timer to update most frequent plate number periodically
-        StartPlateNumberUpdateTimer();
+        // Start ReactiveUI observable to update most frequent plate number
+        StartPlateNumberObservable();
 
         // Start ReactiveUI observable to update weighing status
         StartStatusObservable();
@@ -334,7 +332,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         _disposables.Dispose();
         _autoRefreshTimer?.Dispose();
-        _plateNumberUpdateTimer?.Dispose();
     }
 
     [RelayCommand]
@@ -509,31 +506,23 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Start timer to update most frequent plate number periodically
+    /// Start ReactiveUI observable to update most frequent plate number
     /// </summary>
-    private void StartPlateNumberUpdateTimer()
+    private void StartPlateNumberObservable()
     {
         if (_attendedWeighingService == null)
         {
             return;
         }
 
-        _plateNumberUpdateTimer = new Timer(_ =>
-        {
-            try
+        // Subscribe to plate number changes from service
+        _attendedWeighingService.MostFrequentPlateNumberChanges
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(plateNumber =>
             {
-                var plateNumber = _attendedWeighingService.GetMostFrequentPlateNumber();
-
-                // Update property on UI thread
-                Dispatcher.UIThread.Post(() => { MostFrequentPlateNumber = plateNumber; });
-            }
-            catch
-            {
-                // Ignore errors, just don't update
-            }
-        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(PlateNumberUpdateIntervalMs));
-
-        _disposables.Add(_plateNumberUpdateTimer);
+                MostFrequentPlateNumber = plateNumber;
+            })
+            .DisposeWith(_disposables);
     }
 
     /// <summary>

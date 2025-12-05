@@ -63,6 +63,11 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// Observable stream of status changes
     /// </summary>
     IObservable<AttendedWeighingStatus> StatusChanges { get; }
+
+    /// <summary>
+    /// Observable stream of most frequent plate number changes
+    /// </summary>
+    IObservable<string?> MostFrequentPlateNumberChanges { get; }
 }
 
 /// <summary>
@@ -87,6 +92,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     
     // Rx Subject for status updates
     private readonly Subject<AttendedWeighingStatus> _statusSubject = new();
+    
+    // Rx Subject for plate number updates
+    private readonly Subject<string?> _plateNumberSubject = new();
 
     // 重量稳定判定
     private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
@@ -169,6 +177,11 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     public IObservable<AttendedWeighingStatus> StatusChanges => _statusSubject;
 
     /// <summary>
+    /// Observable stream of most frequent plate number changes
+    /// </summary>
+    public IObservable<string?> MostFrequentPlateNumberChanges => _plateNumberSubject;
+
+    /// <summary>
     /// 接收车牌识别结果
     /// </summary>
     public void OnPlateNumberRecognized(string plateNumber)
@@ -191,6 +204,10 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                         { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
                 _logger?.LogDebug(
                     $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
+                
+                // Notify observers of plate number update
+                var mostFrequent = GetMostFrequentPlateNumber();
+                _plateNumberSubject.OnNext(mostFrequent);
             }
         }
     }
@@ -602,6 +619,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         _selectedPlateNumber = mostFrequent.Key;
         _logger?.LogInformation(
             $"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
+        
+        // Notify observers of plate number update
+        _plateNumberSubject.OnNext(_selectedPlateNumber);
     }
 
     /// <summary>
@@ -632,6 +652,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             _selectedPlateNumber = mostFrequent.Key;
             _logger?.LogInformation(
                 $"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
+            
+            // Notify observers of plate number update
+            _plateNumberSubject.OnNext(_selectedPlateNumber);
         }
     }
 
@@ -643,6 +666,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         _plateNumberCache.Clear();
         _selectedPlateNumber = null;
         _logger?.LogDebug("AttendedWeighingService: Cleared plate number cache");
+        
+        // Notify observers that plate number is cleared
+        _plateNumberSubject.OnNext(null);
     }
 
     /// <summary>
@@ -673,5 +699,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         await StopAsync();
         _statusSubject?.OnCompleted();
         _statusSubject?.Dispose();
+        _plateNumberSubject?.OnCompleted();
+        _plateNumberSubject?.Dispose();
     }
 }
