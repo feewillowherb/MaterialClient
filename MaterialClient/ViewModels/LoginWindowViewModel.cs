@@ -21,19 +21,19 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
     private string _password = string.Empty;
 
     [ObservableProperty]
-    private bool _rememberMe = false;
+    private bool _rememberMe;
 
     [ObservableProperty]
-    private bool _isLoggingIn = false;
+    private bool _isLoggingIn;
 
     [ObservableProperty]
-    private bool _hasError = false;
+    private bool _hasError;
 
     [ObservableProperty]
-    private bool _showRetryButton = false;
+    private bool _showRetryButton;
 
     [ObservableProperty]
-    private bool _isLoginSuccessful = false;
+    private bool _isLoginSuccessful;
 
     private string _errorMessage = string.Empty;
     public string ErrorMessage
@@ -80,7 +80,7 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
 
         try
         {
-            // Call authentication service to login
+            // Call authentication service for login operation
             await _authenticationService.LoginTestAsync(Username, Password, RememberMe);
 
             // Success
