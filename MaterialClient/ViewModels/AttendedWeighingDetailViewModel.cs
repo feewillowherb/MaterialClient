@@ -30,128 +30,107 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     /// <summary>
     /// 称重记录ID
     /// </summary>
-    [ObservableProperty]
-    private long _weighingRecordId;
+    [ObservableProperty] private long _weighingRecordId;
 
     /// <summary>
     /// 毛重
     /// </summary>
-    [ObservableProperty]
-    private decimal _allWeight;
+    [ObservableProperty] private decimal _allWeight;
 
     /// <summary>
     /// 皮重
     /// </summary>
-    [ObservableProperty]
-    private decimal _truckWeight;
+    [ObservableProperty] private decimal _truckWeight;
 
     /// <summary>
     /// 净重
     /// </summary>
-    [ObservableProperty]
-    private decimal _goodsWeight;
+    [ObservableProperty] private decimal _goodsWeight;
 
     /// <summary>
     /// 车牌号
     /// </summary>
-    [ObservableProperty]
-    private string? _plateNumber;
+    [ObservableProperty] private string? _plateNumber;
 
     /// <summary>
     /// 供应商列表
     /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<ProviderDto> _providers = new();
+    [ObservableProperty] private ObservableCollection<ProviderDto> _providers = new();
 
     /// <summary>
     /// 选中的供应商
     /// </summary>
-    [ObservableProperty]
-    private ProviderDto? _selectedProvider;
+    [ObservableProperty] private ProviderDto? _selectedProvider;
 
     /// <summary>
     /// 选中的供应商ID
     /// </summary>
-    [ObservableProperty]
-    private int? _selectedProviderId;
+    [ObservableProperty] private int? _selectedProviderId;
 
     /// <summary>
     /// 材料列表
     /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<MaterialDto> _materials = new();
+    [ObservableProperty] private ObservableCollection<Material> _materials = new();
 
     /// <summary>
     /// 选中的材料
     /// </summary>
-    [ObservableProperty]
-    private MaterialDto? _selectedMaterial;
+    [ObservableProperty] private Material? _selectedMaterial;
 
     /// <summary>
     /// 选中的材料ID
     /// </summary>
-    [ObservableProperty]
-    private int? _selectedMaterialId;
+    [ObservableProperty] private int? _selectedMaterialId;
 
     /// <summary>
     /// 材料单位列表
     /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<MaterialUnitDto> _materialUnits = new();
+    [ObservableProperty] private ObservableCollection<MaterialUnitDto> _materialUnits = new();
 
     /// <summary>
     /// 选中的材料单位
     /// </summary>
-    [ObservableProperty]
-    private MaterialUnitDto? _selectedMaterialUnit;
+    [ObservableProperty] private MaterialUnitDto? _selectedMaterialUnit;
 
     /// <summary>
     /// 选中的材料单位ID
     /// </summary>
-    [ObservableProperty]
-    private int? _selectedMaterialUnitId;
+    [ObservableProperty] private int? _selectedMaterialUnitId;
 
     /// <summary>
     /// 运单数量
     /// </summary>
-    [ObservableProperty]
-    private string? _waybillQuantity;
+    [ObservableProperty] private string? _waybillQuantity;
 
     /// <summary>
     /// 备注
     /// </summary>
-    [ObservableProperty]
-    private string? _remark;
+    [ObservableProperty] private string? _remark;
 
     /// <summary>
     /// 进场时间
     /// </summary>
-    [ObservableProperty]
-    private DateTime? _joinTime;
+    [ObservableProperty] private DateTime? _joinTime;
 
     /// <summary>
     /// 出场时间
     /// </summary>
-    [ObservableProperty]
-    private DateTime? _outTime;
+    [ObservableProperty] private DateTime? _outTime;
 
     /// <summary>
     /// 收货员工
     /// </summary>
-    [ObservableProperty]
-    private string? _operator;
+    [ObservableProperty] private string? _operator;
 
     /// <summary>
     /// 是否显示匹配按钮（MatchedId为null时显示）
     /// </summary>
-    [ObservableProperty]
-    private bool _isMatchButtonVisible;
+    [ObservableProperty] private bool _isMatchButtonVisible;
 
     /// <summary>
     /// 运单数量验证错误信息
     /// </summary>
-    [ObservableProperty]
-    private string? _waybillQuantityError;
+    [ObservableProperty] private string? _waybillQuantityError;
 
     #endregion
 
@@ -302,16 +281,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             Materials.Clear();
             foreach (var material in materials.OrderBy(m => m.Name))
             {
-                Materials.Add(new MaterialDto
-                {
-                    Id = material.Id,
-                    Name = material.Name,
-                    Brand = material.Brand,
-                    Size = material.Size,
-                    Code = material.Code,
-                    UnitName = material.UnitName,
-                    UnitRate = material.UnitRate
-                });
+                Materials.Add(material);
             }
         }
         catch

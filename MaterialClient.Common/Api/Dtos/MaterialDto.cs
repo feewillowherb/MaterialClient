@@ -116,7 +116,7 @@ public class MaterialDto
     /// <summary>
     /// 转为领域实体 Material
     /// </summary>
-    public static Material ToEntity(MaterialGoodListResult dto)
+    public static Material ToEntity(MaterialDto dto)
     {
         var material = new Material(
             dto.GoodsId,
