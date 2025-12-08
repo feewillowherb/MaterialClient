@@ -6,7 +6,7 @@ namespace MaterialClient.Common.Api.Dtos;
 /// <summary>
 /// 物料列表返回项
 /// </summary>
-public class MaterialDto
+public class MaterialGoodListResultDto
 {
     /// <summary>
     /// 物料主键Id
@@ -116,7 +116,7 @@ public class MaterialDto
     /// <summary>
     /// 转为领域实体 Material
     /// </summary>
-    public static Material ToEntity(MaterialDto dto)
+    public static Material ToEntity(MaterialGoodListResultDto dto)
     {
         var material = new Material(
             dto.GoodsId,

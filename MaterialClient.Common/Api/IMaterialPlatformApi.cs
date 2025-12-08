@@ -7,9 +7,11 @@ namespace MaterialClient.Common.Api;
 public interface IMaterialPlatformApi
 {
     [Post("/api/Material/MaterialGoodList")]
-    Task<HttpResult<List<MaterialDto>>> GetMaterialGoodListAsync(
+    Task<HttpResult<List<MaterialGoodListResultDto>>> GetMaterialGoodListAsync(
         [Body] GetMaterialGoodListInput request,
         CancellationToken cancellationToken = default);
+    
+    
 }
 
 public record GetMaterialGoodListInput(
