@@ -16,47 +16,7 @@
     <converters:EqualityToColorConverter x:Key="EqualityToColorConverter"/>
   </Window.Resources>
   
-  <Window.Styles>
-    <!-- delivery-button 样式：收料/发料切换按钮 -->
-    <Style Selector="Button.delivery-button">
-      <Setter Property="Background" Value="Transparent"/>
-    </Style>
-    <!-- <Style Selector="Button.delivery-button:pointerover"> -->
-    <!--   <Setter Property="Background" Value="Transparent"/> -->
-    <!--   <Setter Property="Opacity" Value="1"/> -->
-    <!-- </Style> -->
-    <Style Selector="Button.delivery-button.selected">
-      <Setter Property="Background" Value="#E0E7FF"/>
-    </Style>
-    <Style Selector="Button.delivery-button.selected:pointerover">
-      <Setter Property="Background" Value="#E0E7FF"/>
-      <Setter Property="Opacity" Value="1"/>
-    </Style>
-  
-    <!-- tab-button 样式：标签页按钮 -->
-    <Style Selector="Button.tab-button">
-      <Setter Property="Background" Value="White"/>
-      <Setter Property="Foreground" Value="#666"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-    </Style>
-    <Style Selector="Button.tab-button:pointerover">
-      <Setter Property="Background" Value="White"/>
-      <Setter Property="Foreground" Value="#666"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="Opacity" Value="1"/>
-    </Style>
-    <Style Selector="Button.tab-button.active">
-      <Setter Property="Background" Value="#F0F7FF"/>
-      <Setter Property="Foreground" Value="#4169E1"/>
-      <Setter Property="BorderBrush" Value="#4169E1"/>
-    </Style>
-    <Style Selector="Button.tab-button.active:pointerover">
-      <Setter Property="Background" Value="#F0F7FF"/>
-      <Setter Property="Foreground" Value="#4169E1"/>
-      <Setter Property="BorderBrush" Value="#4169E1"/>
-      <Setter Property="Opacity" Value="1"/>
-    </Style>
-  </Window.Styles>
+  <!-- Window.Styles 已移至 App.axaml 全局样式 -->
   
   <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
     
@@ -75,25 +35,21 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center">
           <Button Content="数据管理" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"/>
           <Button Content="系统设置" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"
                   Command="{Binding OpenSettingsCommand}"/>
           <Button Content="项目信息" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"/>
           <Button Content="数据同步" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"/>
         </StackPanel>
         
@@ -225,7 +181,7 @@
           
           <!-- Search Box -->
           <Border Grid.Row="1" 
-                  Background="White" 
+                  Classes="card-border"
                   Margin="12,12,12,8"
                   Padding="12">
             <Grid RowDefinitions="Auto,Auto,Auto">
@@ -239,29 +195,15 @@
                          Margin="0,0,8,0"
                          FontSize="13"
                          Foreground="#666"/>
-              <Border Grid.Column="1" 
-                      BorderBrush="#E5E7EB" 
-                      BorderThickness="1"
-                      CornerRadius="4"
-                      Padding="8,4"
-                      Margin="0,0,8,0">
-                <CalendarDatePicker Width="80"
-                                    BorderThickness="0"
-                                    Background="Transparent"
-                                    FontSize="10"
-                                    Watermark="YYYY/MM/DD"/>
-              </Border>
-              <Border Grid.Column="2" 
-                      BorderBrush="#E5E7EB" 
-                      BorderThickness="1"
-                      CornerRadius="4"
-                      Padding="8,4">
-                <CalendarDatePicker Width="80"
-                                    BorderThickness="0"
-                                    Background="Transparent"
-                                    FontSize="10"
-                                    Watermark="YYYY/MM/DD"/>
-              </Border>
+              <CalendarDatePicker Grid.Column="1"
+                                  Width="80"
+                                  FontSize="10"
+                                  Watermark="YYYY/MM/DD"
+                                  Margin="0,0,8,0"/>
+              <CalendarDatePicker Grid.Column="2"
+                                  Width="80"
+                                  FontSize="10"
+                                  Watermark="YYYY/MM/DD"/>
             </Grid>
             
             <!-- Row 2: 车牌号码 + 输入框 -->
@@ -273,16 +215,9 @@
                          Margin="0,0,8,0"
                          FontSize="13"
                          Foreground="#666"/>
-              <Border Grid.Column="1" 
-                      BorderBrush="#E5E7EB" 
-                      BorderThickness="1"
-                      CornerRadius="4"
-                      Padding="8,4">
-                <TextBox Width="100"
-                         BorderThickness="0"
-                         Background="Transparent"
-                         FontSize="13"/>
-              </Border>
+              <TextBox Grid.Column="1"
+                       Width="100"
+                       FontSize="13"/>
             </Grid>
             
             <!-- Row 3: 搜索 + 重置按钮 -->
@@ -290,18 +225,14 @@
                   ColumnDefinitions="Auto,Auto">
               <Button Grid.Column="0" 
                       Content="搜索" 
-                      Background="#4169E1"
-                      Foreground="White"
-                      BorderThickness="0"
+                      Classes="primary-button"
                       CornerRadius="4"
                       Padding="20,6"
                       FontSize="13"
                       Margin="0,0,4,0"/>
               <Button Grid.Column="1" 
                       Content="重置" 
-                      Background="#E5E7EB"
-                      Foreground="#333"
-                      BorderThickness="0"
+                      Classes="secondary-button"
                       CornerRadius="4"
                       Padding="20,6"
                       FontSize="13"/>
@@ -310,7 +241,7 @@
           </Border>
           
           <!-- Record List -->
-          <Border Grid.Row="2" Background="White" Margin="12,0,12,12">
+          <Border Grid.Row="2" Classes="card-border" Margin="12,0,12,12">
             <Grid RowDefinitions="Auto,*,Auto">
               <!-- List Header -->
               <Border Background="#F8F9FA" 
@@ -329,7 +260,8 @@
                 <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:WeighingRecord">
-                      <Button BorderThickness="0,0,0,1"
+                      <Button Classes="transparent-button"
+                              BorderThickness="0,0,0,1"
                               BorderBrush="#F0F0F0"
                               Padding="12,12"
                               HorizontalAlignment="Stretch"
@@ -342,11 +274,11 @@
                             <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
                           </MultiBinding>
                         </Button.Background>
-                        <Button.Styles>
-                          <Style Selector="Button:pointerover">
-                            <Setter Property="Opacity" Value="0.8"/>
-                          </Style>
-                        </Button.Styles>
+                        <!-- <Button.Styles> -->
+                        <!--   <Style Selector="Button:pointerover"> -->
+                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
+                        <!--   </Style> -->
+                        <!-- </Button.Styles> -->
                         <Grid ColumnDefinitions="80,*,*">
                           <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
                                      FontSize="13"
@@ -371,7 +303,7 @@
                 <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:Waybill">
-                      <Button Background="Transparent"
+                      <Button Classes="transparent-button"
                               BorderThickness="0,0,0,1"
                               BorderBrush="#F0F0F0"
                               Padding="12,12"
@@ -405,7 +337,8 @@
                   <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="entities:WeighingRecord">
-                        <Button BorderThickness="0,0,0,1"
+                        <Button Classes="transparent-button"
+                                BorderThickness="0,0,0,1"
                                 BorderBrush="#F0F0F0"
                                 Padding="12,12"
                                 HorizontalAlignment="Stretch"
@@ -418,12 +351,12 @@
                               <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
                             </MultiBinding>
                           </Button.Background>
-                          <Button.Styles>
-                            <Style Selector="Button:pointerover">
-                              <Setter Property="Opacity" Value="0.8"/>
-                            </Style>
-                          </Button.Styles>
-                          <Grid ColumnDefinitions="80,*,*">
+                        <!-- <Button.Styles> -->
+                        <!--   <Style Selector="Button:pointerover"> -->
+                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
+                        <!--   </Style> -->
+                        <!-- </Button.Styles> -->
+                        <Grid ColumnDefinitions="80,*,*">
                             <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
                                        FontSize="13"
                                        Foreground="#333"/>
@@ -444,7 +377,7 @@
                   <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="entities:Waybill">
-                        <Button Background="Transparent"
+                        <Button Classes="transparent-button"
                                 BorderThickness="0,0,0,1"
                                 BorderBrush="#F0F0F0"
                                 Padding="12,12"
@@ -499,10 +432,7 @@
                   <Button Grid.Column="2"
                           Content="上一页"
                           Command="{Binding GoToPreviousPageCommand}"
-                          Background="White"
-                          Foreground="#4169E1"
-                          BorderBrush="#E5E7EB"
-                          BorderThickness="1"
+                          Classes="outline-button"
                           CornerRadius="4"
                           Padding="12,6"
                           FontSize="12"
@@ -512,10 +442,7 @@
                   <Button Grid.Column="3"
                           Content="下一页"
                           Command="{Binding GoToNextPageCommand}"
-                          Background="White"
-                          Foreground="#4169E1"
-                          BorderBrush="#E5E7EB"
-                          BorderThickness="1"
+                          Classes="outline-button"
                           CornerRadius="4"
                           Padding="12,6"
                           FontSize="12"/>
@@ -545,23 +472,20 @@
               Padding="20">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
           <!-- Camera Tabs -->
-          <Border Background="White" 
+          <Border Classes="card-border" 
                   CornerRadius="8,8,0,0" 
-                  BorderBrush="#E5E7EB" 
                   BorderThickness="1,1,1,0">
             <UniformGrid Rows="1" Columns="2">
               <Button Content="进场照片" 
-                      Background="#4169E1"
-                      Foreground="White"
-                      BorderThickness="0"
+                      Classes="primary-button"
                       CornerRadius="8,0,0,0"
                       Padding="32,12"
                       FontSize="14"
                       HorizontalAlignment="Stretch"
                       HorizontalContentAlignment="Center"/>
               <Button Content="出场照片" 
-                      Background="White"
                       Foreground="#666"
+                      Background="White"
                       BorderThickness="0"
                       CornerRadius="0,8,0,0"
                       Padding="32,12"
@@ -573,8 +497,7 @@
           
           <!-- Camera Grid -->
           <Border Grid.Row="1" 
-                  Background="White" 
-                  BorderBrush="#E5E7EB" 
+                  Classes="card-border"
                   BorderThickness="1,0,1,1"
                   CornerRadius="0,0,8,8"
                   Padding="16"
@@ -606,10 +529,7 @@
                      Margin="0,24,0,12"/>
           
           <Border Grid.Row="3" 
-                  Background="White" 
-                  BorderBrush="#E5E7EB" 
-                  BorderThickness="1"
-                  CornerRadius="8"
+                  Classes="card-border"
                   Height="240"
                   Padding="16">
             <Grid RowDefinitions="*,Auto">
@@ -625,9 +545,7 @@
               
               <Button Grid.Row="1" 
                       Content="拍照" 
-                      Background="#20C9A6"
-                      Foreground="White"
-                      BorderThickness="0"
+                      Classes="success-button"
                       CornerRadius="6"
                       Padding="48,8"
                       HorizontalAlignment="Center"
@@ -650,9 +568,7 @@
         <!-- Test Button -->
         <Button Grid.Column="0"
                 Content="测试详情窗口"
-                Background="#4169E1"
-                Foreground="White"
-                BorderThickness="0"
+                Classes="primary-button"
                 CornerRadius="4"
                 Padding="16,8"
                 FontSize="13"

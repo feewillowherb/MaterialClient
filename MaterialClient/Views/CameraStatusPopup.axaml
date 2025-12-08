@@ -3,10 +3,7 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              x:Class="MaterialClient.Views.CameraStatusPopup"
              x:DataType="vm:AttendedWeighingViewModel"
-             Background="White"
-             BorderBrush="#E5E7EB"
-             BorderThickness="1"
-             CornerRadius="8"
+             Classes="card-border"
              Padding="12"
              MinWidth="300"
              MaxHeight="400">
@@ -21,10 +18,7 @@
       <ItemsControl ItemsSource="{Binding CameraStatuses}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:CameraStatusViewModel">
-            <Border Background="#F8F9FA" 
-                    BorderBrush="#E5E7EB" 
-                    BorderThickness="1"
-                    CornerRadius="4"
+            <Border Classes="section-border"
                     Padding="10,8"
                     Margin="0,0,0,4">
               <Grid ColumnDefinitions="Auto,*,Auto">

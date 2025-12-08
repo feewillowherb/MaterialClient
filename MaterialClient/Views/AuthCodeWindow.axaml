@@ -37,10 +37,9 @@
                           Margin="20,0,0,0"/>
                 
                 <Button Content="×"
+                        Classes="transparent-button"
                         FontSize="30"
                         Foreground="White"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
                         HorizontalAlignment="Right"
                         Height="35"
                         Width="35"
@@ -70,8 +69,6 @@
                              Watermark="请填写授权码"
                              Width="168"
                              Height="35"
-                             BorderBrush="#E6E6E6"
-                             BorderThickness="1"
                              FontSize="16"
                              VerticalContentAlignment="Center"
                              IsEnabled="{Binding !IsVerifying}"/>
@@ -106,25 +103,21 @@
                            Margin="0,0,0,20">
                     <Button Content="确定"
                             Command="{Binding VerifyAuthorizationCodeCommand}"
+                            Classes="primary-button"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Padding="30,8"
                             FontSize="14"
-                            Background="#6498FE"
-                            Foreground="White"
-                            BorderBrush="#6498FE"
                             IsEnabled="{Binding !IsVerifying}"
                             Cursor="Hand"/>
                     
                     <Button Content="重试"
                             Command="{Binding RetryCommand}"
+                            Classes="warning-button"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Padding="30,8"
                             FontSize="14"
-                            Background="#FF9800"
-                            Foreground="White"
-                            BorderBrush="#FF9800"
                             IsVisible="{Binding ShowRetryButton}"
                             Margin="10,0,0,0"
                             Cursor="Hand"/>
