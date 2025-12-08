@@ -1,6 +1,5 @@
-﻿using System;
-using System.IO;
-using MaterialClient.Common.Services.Hikvision;
+﻿using MaterialClient.Common.Services.Hikvision;
+using Xunit;
 
 namespace MaterialClient.Common.Tests;
 
