@@ -4,12 +4,17 @@
         xmlns:vm="using:MaterialClient.ViewModels"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:views="using:MaterialClient.Views"
+        xmlns:converters="using:MaterialClient.Converters"
         x:Class="MaterialClient.Views.AttendedWeighingWindow"
         x:DataType="vm:AttendedWeighingViewModel"
         x:Name="AttendedWeighingWindowRoot"
         Title="有人值守"
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen">
+  
+  <Window.Resources>
+    <converters:EqualityToColorConverter x:Key="EqualityToColorConverter"/>
+  </Window.Resources>
   
   <Window.Styles>
     <!-- delivery-button 样式：收料/发料切换按钮 -->
@@ -324,14 +329,24 @@
                 <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:WeighingRecord">
-                      <Button Background="Transparent"
-                              BorderThickness="0,0,0,1"
+                      <Button BorderThickness="0,0,0,1"
                               BorderBrush="#F0F0F0"
                               Padding="12,12"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Stretch"
                               Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
                               CommandParameter="{Binding}">
+                        <Button.Background>
+                          <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
+                            <Binding Path="." />
+                            <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
+                          </MultiBinding>
+                        </Button.Background>
+                        <Button.Styles>
+                          <Style Selector="Button:pointerover">
+                            <Setter Property="Opacity" Value="0.8"/>
+                          </Style>
+                        </Button.Styles>
                         <Grid ColumnDefinitions="80,*,*">
                           <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
                                      FontSize="13"
@@ -390,14 +405,24 @@
                   <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="entities:WeighingRecord">
-                        <Button Background="Transparent"
-                                BorderThickness="0,0,0,1"
+                        <Button BorderThickness="0,0,0,1"
                                 BorderBrush="#F0F0F0"
                                 Padding="12,12"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Stretch"
                                 Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
                                 CommandParameter="{Binding}">
+                          <Button.Background>
+                            <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
+                              <Binding Path="." />
+                              <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
+                            </MultiBinding>
+                          </Button.Background>
+                          <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                              <Setter Property="Opacity" Value="0.8"/>
+                            </Style>
+                          </Button.Styles>
                           <Grid ColumnDefinitions="80,*,*">
                             <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
                                        FontSize="13"

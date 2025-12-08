@@ -573,6 +573,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         {
             try
             {
+                // 设置选中的记录，用于高亮显示
+                SelectedWeighingRecord = weighingRecord;
                 CurrentWeighingRecordForDetail = weighingRecord;
 
                 // 手动创建 ViewModel，传入 WeighingRecord
@@ -618,6 +620,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             DetailViewModel.AbolishCompleted -= OnDetailAbolishCompleted;
             DetailViewModel.CloseRequested -= OnDetailCloseRequested;
         }
+        
+        // 清除选中状态
+        SelectedWeighingRecord = null;
         
         IsShowingMainView = true;
         CurrentWeighingRecordForDetail = null;
