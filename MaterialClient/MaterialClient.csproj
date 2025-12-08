@@ -42,16 +42,4 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
-
-    <ItemGroup>
-      <Compile Update="Views\SettingsWindow.axaml.cs">
-        <DependentUpon>SettingsWindow.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Views\CameraStatusPopup.axaml.cs">
-        <DependentUpon>CameraStatusPopup.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Views\AttendedWeighingDetailView.axaml.cs">
-        <DependentUpon>AttendedWeighingDetailView.axaml</DependentUpon>
-      </Compile>
-    </ItemGroup>
 </Project>

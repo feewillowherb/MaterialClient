@@ -15,10 +15,10 @@
     <Style Selector="Button.delivery-button">
       <Setter Property="Background" Value="Transparent"/>
     </Style>
-    <Style Selector="Button.delivery-button:pointerover">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Opacity" Value="1"/>
-    </Style>
+    <!-- <Style Selector="Button.delivery-button:pointerover"> -->
+    <!--   <Setter Property="Background" Value="Transparent"/> -->
+    <!--   <Setter Property="Opacity" Value="1"/> -->
+    <!-- </Style> -->
     <Style Selector="Button.delivery-button.selected">
       <Setter Property="Background" Value="#E0E7FF"/>
     </Style>
@@ -26,7 +26,7 @@
       <Setter Property="Background" Value="#E0E7FF"/>
       <Setter Property="Opacity" Value="1"/>
     </Style>
-    
+  
     <!-- tab-button 样式：标签页按钮 -->
     <Style Selector="Button.tab-button">
       <Setter Property="Background" Value="White"/>
