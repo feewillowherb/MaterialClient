@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Entities;
+using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 
@@ -139,22 +140,15 @@ public class TestService : DomainService, ITestService
         string encryptedPassword = "encrypted-password")
     {
         // Get projectId from license if not provided
-        if (projectId == null)
-        {
-            var license = await _licenseRepository.FirstOrDefaultAsync();
-            if (license != null)
-            {
-                projectId = license.ProjectId;
-            }
-            else
-            {
-                projectId = Guid.NewGuid();
-            }
-        }
+        var license = await (await _licenseRepository
+                .GetQueryableAsync())
+            .WhereIf(projectId.HasValue, l => l.ProjectId == projectId!.Value)
+            .FirstOrDefaultAsync();
 
         var credential = new UserCredential(
             id ?? Guid.NewGuid(),
-            projectId.Value,
+            license!.ProjectId,
+            license.Id,
             username,
             encryptedPassword
         );
@@ -287,4 +281,3 @@ public class TestService : DomainService, ITestService
         }
     }
 }
-

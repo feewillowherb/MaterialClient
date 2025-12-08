@@ -154,6 +154,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
                 var credential = new UserCredential(
                     Guid.NewGuid(),
                     license.ProjectId,
+                    license.Id,
                     username,
                     encryptedPassword
                 );
@@ -249,6 +250,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
                 var credential = new UserCredential(
                     Guid.NewGuid(),
                     projectId,
+                    license.Id,
                     username,
                     encryptedPassword
                 );
