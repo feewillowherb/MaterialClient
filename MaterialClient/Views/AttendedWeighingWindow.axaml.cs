@@ -27,8 +27,8 @@ public partial class AttendedWeighingWindow : Window
 
     private void TestDetailWindow_Click(object? sender, RoutedEventArgs e)
     {
-        var detailWindow = new AttendedWeighingDetailView();
-        detailWindow.Show();
+        //var detailWindow = new AttendedWeighingDetailView();
+        //detailWindow.Show();
     }
 
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)

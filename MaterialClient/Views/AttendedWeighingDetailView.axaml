@@ -114,10 +114,12 @@
                                           HorizontalAlignment="Left" VerticalAlignment="Center"
                                           FontSize="16"
                                           ItemsSource="{Binding Providers}"
-                                          SelectedValue="{Binding SelectedProviderId}"
-                                          SelectedValuePath="Id"
-                                          DisplayMemberPath="ProviderName">
-                                    <ComboBoxItem Content="--请选择--" IsSelected="False"/>
+                                          SelectedItem="{Binding SelectedProvider}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding ProviderName}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
                                 </ComboBox>
                             </WrapPanel>
                         </DockPanel>
@@ -211,17 +213,25 @@
                                       BorderBrush="#ABABAB" BorderThickness="1"
                                       HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                                       ItemsSource="{Binding Materials}"
-                                      SelectedValue="{Binding SelectedMaterialId}"
-                                      SelectedValuePath="Id"
-                                      DisplayMemberPath="Name" />
+                                      SelectedItem="{Binding SelectedMaterial}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                             <!-- 单位 -->
                             <ComboBox Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
                                       BorderBrush="#ABABAB" BorderThickness="1"
                                       HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                                       ItemsSource="{Binding MaterialUnits}"
-                                      SelectedValue="{Binding SelectedMaterialUnitId}"
-                                      SelectedValuePath="Id"
-                                      DisplayMemberPath="UnitName" />
+                                      SelectedItem="{Binding SelectedMaterialUnit}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding UnitName}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                             <!-- 换算率(吨) -->
                             <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
                                    HorizontalContentAlignment="Center"
