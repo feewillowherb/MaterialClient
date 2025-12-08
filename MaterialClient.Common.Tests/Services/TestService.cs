@@ -74,23 +74,32 @@ public class TestService : DomainService, ITestService
         DateTime? authEndTime = null,
         DateTime? lastActivityTime = null)
     {
-        // Get projectId from license if not provided
+        // Get projectId and licenseInfoId from license if not provided
+        Guid licenseInfoId;
         if (projectId == null)
         {
             var license = await _licenseRepository.FirstOrDefaultAsync();
             if (license != null)
             {
                 projectId = license.ProjectId;
+                licenseInfoId = license.Id;
             }
             else
             {
                 projectId = Guid.NewGuid();
+                licenseInfoId = Guid.NewGuid();
             }
+        }
+        else
+        {
+            var license = await _licenseRepository.FirstOrDefaultAsync();
+            licenseInfoId = license?.Id ?? Guid.NewGuid();
         }
 
         var session = new UserSession(
             id ?? Guid.NewGuid(),
             projectId.Value,
+            licenseInfoId,
             userId,
             username,
             trueName,

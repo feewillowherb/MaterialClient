@@ -84,9 +84,16 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
                     ClientId = Guid.NewGuid(),
                     Token = "test-access-token",
                     TrueName = "测试用户",
+                    IsAdmin = false,
+                    IsCompany = true,
+                    ProductType = 2,
+                    FromProductId = 1,
+                    ProductId = 1,
                     ProductName = "测试产品",
+                    CoId = 1,
                     CoName = "测试公司",
-                    Url = "http://test.com"
+                    Url = "http://test.com",
+                    AuthEndTime = DateTime.UtcNow.AddMonths(6)
                 }
             });
         }

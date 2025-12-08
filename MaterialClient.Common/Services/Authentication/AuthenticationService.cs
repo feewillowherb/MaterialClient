@@ -177,6 +177,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         var session = new UserSession(
             Guid.NewGuid(),
             license.ProjectId,
+            license.Id,
             loginData.UserId,
             loginData.UserName,
             loginData.TrueName,
@@ -230,7 +231,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         }
 
         // 使用 LicenseInfo 的主键 ID 作为外键值（外键 ProjectId 实际指向 LicenseInfo.Id）
-        var projectId = license.Id;
+        var projectId = license.ProjectId;
 
         // 保存或更新用户凭证（如果需要记住密码）
         if (rememberMe)
@@ -285,7 +286,8 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         // 创建新的测试会话，使用固定的测试 ProjectId
         var session = new UserSession(
             Guid.NewGuid(),
-            projectId, // 使用固定的测试 ProjectId
+            license.ProjectId, // 使用固定的测试 ProjectId
+            license.Id,
             testUserId,
             username, // 使用输入的用户名
             testTrueName,

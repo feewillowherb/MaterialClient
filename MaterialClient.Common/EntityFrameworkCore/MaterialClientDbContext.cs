@@ -179,6 +179,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.LicenseInfoId).IsRequired();
             entity.Property(e => e.UserId).IsRequired();
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
             entity.Property(e => e.TrueName).HasMaxLength(100);
@@ -189,11 +190,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.ApiUrl).HasMaxLength(500);
             entity.Property(e => e.LoginTime).IsRequired();
             entity.Property(e => e.LastActivityTime).IsRequired();
-
-            entity.HasOne(e => e.LicenseInfo)
-                .WithMany()
-                .HasForeignKey(e => e.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             // One active session per project
             entity.HasIndex(e => e.ProjectId).IsUnique();
