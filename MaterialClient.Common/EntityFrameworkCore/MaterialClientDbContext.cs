@@ -165,11 +165,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
-            entity.HasOne(e => e.LicenseInfo)
-                .WithMany()
-                .HasForeignKey(e => e.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
-
             // One credential per project
             entity.HasIndex(e => e.ProjectId).IsUnique();
         });

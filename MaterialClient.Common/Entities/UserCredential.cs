@@ -73,12 +73,6 @@ public class UserCredential : Entity<Guid>
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>
-    /// 导航属性：授权信息
-    /// </summary>
-    [ForeignKey(nameof(ProjectId))]
-    public virtual LicenseInfo LicenseInfo { get; set; }
-
-    /// <summary>
     /// 更新密码
     /// </summary>
     public void UpdatePassword(string newEncryptedPassword)
