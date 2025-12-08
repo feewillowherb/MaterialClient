@@ -3,9 +3,9 @@ using Avalonia.Interactivity;
 
 namespace MaterialClient.Views;
 
-public partial class DetailWindow : Window
+public partial class AttendedWeighingDetailView : Window
 {
-    public DetailWindow()
+    public AttendedWeighingDetailView()
     {
         InitializeComponent();
     }

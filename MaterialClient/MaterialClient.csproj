@@ -50,8 +50,8 @@
       <Compile Update="Views\CameraStatusPopup.axaml.cs">
         <DependentUpon>CameraStatusPopup.axaml</DependentUpon>
       </Compile>
-      <Compile Update="Views\DetailWindow.axaml.cs">
-        <DependentUpon>DetailWindow.axaml</DependentUpon>
+      <Compile Update="Views\AttendedWeighingDetailView.axaml.cs">
+        <DependentUpon>AttendedWeighingDetailView.axaml</DependentUpon>
       </Compile>
     </ItemGroup>
 </Project>

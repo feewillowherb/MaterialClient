@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="MaterialClient.Views.DetailWindow"
+        x:Class="MaterialClient.Views.AttendedWeighingDetailView"
         Title="详情窗口"
         Width="1100" Height="800"
         WindowStartupLocation="CenterScreen">

@@ -27,7 +27,7 @@ public partial class AttendedWeighingWindow : Window
 
     private void TestDetailWindow_Click(object? sender, RoutedEventArgs e)
     {
-        var detailWindow = new DetailWindow();
+        var detailWindow = new AttendedWeighingDetailView();
         detailWindow.Show();
     }
 
