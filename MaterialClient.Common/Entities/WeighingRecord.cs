@@ -32,6 +32,14 @@ public class WeighingRecord : FullAuditedEntity<long>
         Weight = weight;
     }
 
+    public void Update(string? plateNumber, int? providerId, int? materialId, decimal? waybillQuantity)
+    {
+        PlateNumber = plateNumber;
+        ProviderId = providerId;
+        MaterialId = materialId;
+        WaybillQuantity = waybillQuantity;
+    }
+
     /// <summary>
     /// 重量
     /// </summary>
@@ -43,6 +51,22 @@ public class WeighingRecord : FullAuditedEntity<long>
     public string? PlateNumber { get; set; }
 
 
+    /// <summary>
+    /// 供应商Id
+    /// </summary>
+    public int? ProviderId { get; set; }
+
+
+    /// <summary>
+    /// 材料Id
+    /// </summary>
+    public int? MaterialId { get; set; }
+
+
+    /// <summary>
+    /// 运单数量
+    /// </summary>
+    public decimal? WaybillQuantity { get; set; }
 
 
     /// <summary>
