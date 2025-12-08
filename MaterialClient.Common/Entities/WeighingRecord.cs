@@ -64,6 +64,12 @@ public class WeighingRecord : FullAuditedEntity<long>
 
 
     /// <summary>
+    /// 单位Id
+    /// </summary>
+    public int? MaterialUnitId { get; set; }
+
+
+    /// <summary>
     /// 运单数量
     /// </summary>
     public decimal? WaybillQuantity { get; set; }

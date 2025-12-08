@@ -12,15 +12,24 @@
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="100" />
-                <RowDefinition Height="185" />
+                <RowDefinition Height="130" />
                 <RowDefinition Height="400" />
                 <RowDefinition Height="80" />
             </Grid.RowDefinitions>
             <!--第一行-->
             <Border Grid.Row="0" Grid.Column="0" Background="#EDF3FF" BorderBrush="#EDF3FF"
                     DockPanel.Dock="Top" BorderThickness="1" CornerRadius="0" Padding="15">
-                <UniformGrid Rows="2" Columns="3">
-                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         <Label VerticalAlignment="Center" Width="100"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
@@ -39,7 +48,7 @@
                         <Label VerticalAlignment="Center" Width="100"
                                HorizontalAlignment="Left" FontSize="18">
                             <DockPanel>
-                                <TextBlock Foreground="#427FF9" x:Name="lbl_Add_AllWeight"
+                                <TextBlock Foreground="#427FF9" x:Name="LblAllWeight"
                                            FontWeight="Bold">
                                     <Run Text="20" />
                                 </TextBlock>
@@ -49,7 +58,7 @@
                             </DockPanel>
                         </Label>
                     </WrapPanel>
-                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                    <WrapPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         <Label VerticalAlignment="Center" Width="100"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
@@ -69,7 +78,7 @@
                                HorizontalAlignment="Left" FontSize="18">
                             <DockPanel>
                                 <TextBlock Foreground="#427FF9"
-                                           x:Name="lbl_Add_TruckWeight" FontWeight="Bold">
+                                           x:Name="LblTruckWeight" FontWeight="Bold">
                                     <Run Text="0" />
                                 </TextBlock>
                                 <TextBlock Padding="7,0,0,0" Foreground="#333333">
@@ -78,7 +87,7 @@
                             </DockPanel>
                         </Label>
                     </WrapPanel>
-                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                    <WrapPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         <Label VerticalAlignment="Center" Width="100"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
@@ -98,7 +107,7 @@
                                HorizontalAlignment="Left" FontSize="18">
                             <DockPanel>
                                 <TextBlock Foreground="#F5A000"
-                                           x:Name="lbl_Add_GoodsWeight">
+                                           x:Name="LblGoodsWeight">
                                     <Run Text="0" />
                                 </TextBlock>
                                 <TextBlock Padding="7,0,0,0" Foreground="#333333">
@@ -107,7 +116,7 @@
                             </DockPanel>
                         </Label>
                     </WrapPanel>
-                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                    <WrapPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         <Label VerticalAlignment="Center" Width="100"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
@@ -131,9 +140,9 @@
                         </Label>
                         <Label Content="11/30/2025 5:36 下午" VerticalAlignment="Center" Width="240"
                                HorizontalAlignment="Left" FontSize="16" Foreground="#333333"
-                               x:Name="lbl_Add_JoinTime" />
+                               x:Name="LblJoinTime" />
                     </WrapPanel>
-                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                    <WrapPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         <Label VerticalAlignment="Center" Width="100"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
@@ -158,9 +167,9 @@
                         </Label>
                         <Label Content="-" VerticalAlignment="Center" Width="240"
                                HorizontalAlignment="Left" FontSize="16" Foreground="#333333"
-                               x:Name="lbl_Add_OutTime" />
+                               x:Name="LblOutTime" />
                     </WrapPanel>
-                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                    <WrapPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
                         <Label VerticalAlignment="Center" Width="100"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
@@ -184,14 +193,14 @@
                         </Label>
                         <Label Content="13858080440" VerticalAlignment="Center" Width="240"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333"
-                               x:Name="lbl_Add_Operator" />
+                               x:Name="LblOperator" />
                     </WrapPanel>
-                </UniformGrid>
+                </Grid>
             </Border>
 
             <!--第二行-->
             <DockPanel Grid.Row="1" Grid.Column="0">
-                <Border Width="1090" Height="175" BorderThickness="0,5,0,0"
+                <Border Width="1090" Height="130" BorderThickness="0,5,0,0"
                         BorderBrush="#B0EBFF" HorizontalAlignment="Left" Background="White">
                     <WrapPanel Orientation="Horizontal" Background="White"
                                HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -202,7 +211,7 @@
                                 <Label Content="车牌号" VerticalAlignment="Center"
                                        Padding="15,0,0,0" Width="100"
                                        HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
-                                <TextBox x:Name="txt_Add_TruckNo" Height="40" Width="980"
+                                <TextBox x:Name="TxtTruckNo" Height="40" Width="980"
                                          BorderBrush="#ABABAB" BorderThickness="1"
                                          HorizontalAlignment="Left" TextWrapping="NoWrap"
                                          Text="" VerticalAlignment="Center"
@@ -211,19 +220,18 @@
                         </DockPanel>
                         <DockPanel Height="50" Width="1080" HorizontalAlignment="Left"
                                    VerticalAlignment="Top" Margin="0,5,0,5">
-                            <Label Content="供应商" VerticalAlignment="Center"
-                                   Padding="15,0,0,0" Width="100"
-                                   HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
-                            <Label Width="980" Height="40" BorderBrush="#ABABAB"
-                                   BorderThickness="1" HorizontalAlignment="Left">
-                                <ComboBox x:Name="cb_Add_Products"
-                                          FontSize="16"
-                                          HorizontalAlignment="Left"
-                                          VerticalAlignment="Top" Width="950" Height="35"
-                                          SelectedIndex="0">
+                            <WrapPanel Orientation="Horizontal" Background="White"
+                                       HorizontalAlignment="Left" VerticalAlignment="Top">
+                                <Label Content="供应商" VerticalAlignment="Center"
+                                       Padding="15,0,0,0" Width="100"
+                                       HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
+                                <ComboBox x:Name="CbProvider" Height="40" Width="980"
+                                          BorderBrush="#ABABAB" BorderThickness="1"
+                                          HorizontalAlignment="Left" VerticalAlignment="Center"
+                                          FontSize="16" SelectedIndex="0">
                                     <ComboBoxItem Content="--请选择--"/>
                                 </ComboBox>
-                            </Label>
+                            </WrapPanel>
                         </DockPanel>
                         <DockPanel Height="50" Width="1080" HorizontalAlignment="Left"
                                    VerticalAlignment="Top" Margin="0,5,0,5">
@@ -232,7 +240,7 @@
                                 <Label Content="备注" VerticalAlignment="Center"
                                        Padding="15,0,0,0" Width="100"
                                        HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
-                                <TextBox x:Name="txt_Add_Mark" Height="40" Width="980"
+                                <TextBox x:Name="TxtMark" Height="40" Width="980"
                                          BorderBrush="#ABABAB" BorderThickness="1"
                                          HorizontalAlignment="Left" TextWrapping="Wrap"
                                          Text="" VerticalAlignment="Center"
@@ -308,29 +316,56 @@
                 </Border>
                 <ScrollViewer Grid.Row="1" Grid.Column="0" Width="1100">
                     <Grid x:Name="grid_Og_Items">
-                        <!-- 测试数据行 -->
+                        <!-- 数据行 -->
                         <StackPanel Orientation="Horizontal" Background="White" Margin="0,5,0,0">
-                            <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
-                                   HorizontalContentAlignment="Center"
-                                   VerticalContentAlignment="Center" Content="混凝土" Foreground="#333333" />
-                            <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
-                                   HorizontalContentAlignment="Center"
-                                   VerticalContentAlignment="Center" Content="2.28t/m³" Foreground="#333333" />
+                            <!-- 材料名称 -->
+                            <ComboBox Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
+                                      x:Name="CbMaterial" BorderBrush="#ABABAB" BorderThickness="1"
+                                      HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                      SelectedIndex="0">
+                                <ComboBoxItem Content="--请选择--"/>
+                            </ComboBox>
+                            <!-- 单位 -->
+                            <ComboBox Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
+                                      x:Name="CbMaterialUnit" BorderBrush="#ABABAB" BorderThickness="1"
+                                      HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                      SelectedIndex="0">
+                                <ComboBoxItem Content="--请选择--"/>
+                            </ComboBox>
+                            <!-- 换算率(吨) -->
                             <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
                                    HorizontalContentAlignment="Center"
                                    VerticalContentAlignment="Center" Content="2.28" Foreground="#333333" />
+                            <!-- 运单数量 -->
+                            <TextBox Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
+                                     x:Name="TxtWaybillQuantity" BorderBrush="#ABABAB" BorderThickness="1"
+                                     HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                     TextAlignment="Center" Text="0" Foreground="#333333" />
+                            <!-- 运单重量 -->
                             <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
                                    HorizontalContentAlignment="Center"
                                    VerticalContentAlignment="Center" Content="0" Foreground="#333333" />
+                            <!-- 实际数量 -->
                             <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
                                    HorizontalContentAlignment="Center"
                                    VerticalContentAlignment="Center" Content="0" Foreground="#333333" />
-                            <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
-                                   HorizontalContentAlignment="Center"
-                                   VerticalContentAlignment="Center" Content="0" Foreground="#333333" />
+                            <!-- 实际重量 -->
                             <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
                                    HorizontalContentAlignment="Center"
                                    VerticalContentAlignment="Center" Content="默认" Foreground="#333333" />
+                            <!-- 正负差 -->
+                            <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
+                                   HorizontalContentAlignment="Center"
+                                   VerticalContentAlignment="Center" Content="-" Foreground="#333333" />
+                            <!-- 偏差率 -->
+                            <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
+                                   HorizontalContentAlignment="Center"
+                                   VerticalContentAlignment="Center" Content="-" Foreground="#333333" />
+                            <!-- 偏差结果 -->
+                            <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
+                                   HorizontalContentAlignment="Center"
+                                   VerticalContentAlignment="Center" Content="-" Foreground="#333333" />
+                            <!-- 操作 -->
                             <Label Width="90" Height="35" FontSize="14" Margin="5,0,5,0"
                                    HorizontalContentAlignment="Center"
                                    VerticalContentAlignment="Center" Content="-" Foreground="#333333" />
@@ -341,33 +376,29 @@
 
             <!--第四行-->
             <Button Grid.Row="3" Content="新增材料" Width="120 " Height="40" FontSize="16"
-                    x:Name="btn_Add_goods" BorderBrush="#2AC2BD" BorderThickness="2"
+                    x:Name="BtnAddGoods" BorderBrush="#2AC2BD" BorderThickness="2"
                     Foreground="White" Background="#2AC2BD" DockPanel.Dock="Left"
-                    HorizontalAlignment="Left" />
+                    HorizontalAlignment="Left" Click="BtnAddGoods_Click" />
             <DockPanel Grid.Row="3" HorizontalAlignment="Center" Height="80">
                 <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
-                        x:Name="btn_Add_Print" Content="打印"
-                        Background="#FFF" BorderBrush="#4A85F9" BorderThickness="2"
-                        Foreground="#4A85F9" />
+                        x:Name="BtnSave" Content="保存"
+                        Background="#4A85F9" Foreground="White" Click="BtnSave_Click" />
                 <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
-                        x:Name="btn_Add_Save" Content="保存"
+                        x:Name="BtnClose" Click="Btn_Close_Click" Content="关闭"
                         Background="#4A85F9" Foreground="White" />
                 <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
-                        x:Name="btn_back" Click="Btn_Close_Click" Content="关闭"
-                        Background="#4A85F9" Foreground="White" />
-                <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
-                        x:Name="btn_Add_Complete"
+                        x:Name="BtnComplete"
                         Content="完成本次收货" Background="#FFF" BorderBrush="#4A85F9"
-                        BorderThickness="2" Foreground="#4A85F9" />
+                        BorderThickness="2" Foreground="#4A85F9" Click="BtnComplete_Click" />
             </DockPanel>
             <Button Grid.Row="3" Width="135" Height="40" FontSize="18"
-                    x:Name="btn_Add_Match" Content="匹配"
+                    x:Name="BtnMatch" Content="匹配"
                     Background="#4A85F9" BorderBrush="#4A85F9" Foreground="White" HorizontalAlignment="Right"
-                    VerticalAlignment="Center" Margin="0,0,145,0" />
+                    VerticalAlignment="Center" Margin="0,0,145,0" Click="BtnMatch_Click" />
             <Button Grid.Row="3" Width="135" Height="40" FontSize="18"
-                    x:Name="btn_Add_Abolish" Content="废单"
+                    x:Name="BtnAbolish" Content="废单"
                     Background="#F5AA19" BorderBrush="#F5AA19" Foreground="White" HorizontalAlignment="Right"
-                    VerticalAlignment="Center" />
+                    VerticalAlignment="Center" Click="BtnAbolish_Click" />
         </Grid>
     </ScrollViewer>
 </Window>
