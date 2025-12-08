@@ -10,6 +10,48 @@
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen">
   
+  <Window.Styles>
+    <!-- delivery-button 样式：收料/发料切换按钮 -->
+    <Style Selector="Button.delivery-button">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.delivery-button:pointerover">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="Button.delivery-button.selected">
+      <Setter Property="Background" Value="#E0E7FF"/>
+    </Style>
+    <Style Selector="Button.delivery-button.selected:pointerover">
+      <Setter Property="Background" Value="#E0E7FF"/>
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+    
+    <!-- tab-button 样式：标签页按钮 -->
+    <Style Selector="Button.tab-button">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#666"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.tab-button:pointerover">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#666"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="Button.tab-button.active">
+      <Setter Property="Background" Value="#F0F7FF"/>
+      <Setter Property="Foreground" Value="#4169E1"/>
+      <Setter Property="BorderBrush" Value="#4169E1"/>
+    </Style>
+    <Style Selector="Button.tab-button.active:pointerover">
+      <Setter Property="Background" Value="#F0F7FF"/>
+      <Setter Property="Foreground" Value="#4169E1"/>
+      <Setter Property="BorderBrush" Value="#4169E1"/>
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+  </Window.Styles>
+  
   <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
     
     <!-- Top Blue Header Bar -->
@@ -98,16 +140,7 @@
                       CornerRadius="6"
                       Padding="32,8"
                       FontSize="16"
-                      Command="{Binding SetReceivingCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.delivery-button">
-                    <Setter Property="Background" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.delivery-button.selected">
-                    <Setter Property="Background" Value="#E0E7FF"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding SetReceivingCommand}"/>
               <Button Content="发料" 
                       Classes="delivery-button"
                       Classes.selected="{Binding !IsReceiving}"
@@ -116,16 +149,7 @@
                       CornerRadius="6"
                       Padding="32,8"
                       FontSize="16"
-                      Command="{Binding SetSendingCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.delivery-button">
-                    <Setter Property="Background" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.delivery-button.selected">
-                    <Setter Property="Background" Value="#E0E7FF"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding SetSendingCommand}"/>
             </StackPanel>
           </Border>
           
@@ -175,60 +199,21 @@
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
-                      Command="{Binding ShowAllRecordsCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.tab-button">
-                    <Setter Property="Background" Value="White"/>
-                    <Setter Property="Foreground" Value="#666"/>
-                    <Setter Property="BorderBrush" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.tab-button.active">
-                    <Setter Property="Background" Value="#F0F7FF"/>
-                    <Setter Property="Foreground" Value="#4169E1"/>
-                    <Setter Property="BorderBrush" Value="#4169E1"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding ShowAllRecordsCommand}"/>
               <Button Content="未完成" 
                       Classes="tab-button"
                       Classes.active="{Binding IsShowUnmatched}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
-                      Command="{Binding ShowUnmatchedCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.tab-button">
-                    <Setter Property="Background" Value="White"/>
-                    <Setter Property="Foreground" Value="#666"/>
-                    <Setter Property="BorderBrush" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.tab-button.active">
-                    <Setter Property="Background" Value="#F0F7FF"/>
-                    <Setter Property="Foreground" Value="#4169E1"/>
-                    <Setter Property="BorderBrush" Value="#4169E1"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding ShowUnmatchedCommand}"/>
               <Button Content="已完成" 
                       Classes="tab-button"
                       Classes.active="{Binding IsShowCompleted}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
-                      Command="{Binding ShowCompletedCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.tab-button">
-                    <Setter Property="Background" Value="White"/>
-                    <Setter Property="Foreground" Value="#666"/>
-                    <Setter Property="BorderBrush" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.tab-button.active">
-                    <Setter Property="Background" Value="#F0F7FF"/>
-                    <Setter Property="Foreground" Value="#4169E1"/>
-                    <Setter Property="BorderBrush" Value="#4169E1"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding ShowCompletedCommand}"/>
             </StackPanel>
           </Border>
           
