@@ -6,6 +6,7 @@
         xmlns:views="using:MaterialClient.Views"
         x:Class="MaterialClient.Views.AttendedWeighingWindow"
         x:DataType="vm:AttendedWeighingViewModel"
+        x:Name="AttendedWeighingWindowRoot"
         Title="有人值守"
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen">
@@ -329,7 +330,7 @@
                               Padding="12,12"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Stretch"
-                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
+                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
                               CommandParameter="{Binding}">
                         <Grid ColumnDefinitions="80,*,*">
                           <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
@@ -395,7 +396,7 @@
                                 Padding="12,12"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Stretch"
-                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
+                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
                                 CommandParameter="{Binding}">
                           <Grid ColumnDefinitions="80,*,*">
                             <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
@@ -500,8 +501,16 @@
         </Grid>
       </Border>
 
-      <!-- Middle Column: Material Info and Photos -->
-      <views:AttendedWeighingMainView Grid.Column="1" DataContext="{Binding}"/>
+      <!-- Middle Column: Material Info and Photos (动态切换视图) -->
+      <Grid Grid.Column="1">
+        <!-- 主视图 -->
+        <views:AttendedWeighingMainView DataContext="{Binding}" 
+                                         IsVisible="{Binding IsShowingMainView}"/>
+        
+        <!-- 详情视图 -->
+        <views:AttendedWeighingDetailView DataContext="{Binding DetailViewModel}"
+                                           IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingDetailView}"/>
+      </Grid>
 
       <!-- Right Column: Camera Views and Bill -->
       <Border Grid.Column="2" 
@@ -703,7 +712,7 @@
           
           <!-- Camera Status Popup -->
           <Popup Name="CameraStatusPopup"
-                 PlacementMode="Bottom"
+                 Placement="Bottom"
                  IsLightDismissEnabled="False"
                  HorizontalOffset="0"
                  VerticalOffset="2"

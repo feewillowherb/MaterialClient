@@ -98,6 +98,26 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private string? _mostFrequentPlateNumber;
 
+    /// <summary>
+    /// 当前显示的视图（true=主视图，false=详情视图）
+    /// </summary>
+    [ObservableProperty] private bool _isShowingMainView = true;
+
+    /// <summary>
+    /// 是否显示详情视图（IsShowingMainView 的反转）
+    /// </summary>
+    public bool IsShowingDetailView => !IsShowingMainView;
+
+    /// <summary>
+    /// 当前要显示详情的称重记录
+    /// </summary>
+    [ObservableProperty] private WeighingRecord? _currentWeighingRecordForDetail;
+
+    /// <summary>
+    /// 详情视图的 ViewModel
+    /// </summary>
+    [ObservableProperty] private AttendedWeighingDetailViewModel? _detailViewModel;
+
     // 分页相关属性
     [ObservableProperty] private int _currentPage = 1;
     [ObservableProperty] private int _pageSize = 20;
@@ -543,6 +563,84 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         // TODO: Load photos for the selected record
     }
 
+    /// <summary>
+    /// 打开称重记录详情视图
+    /// </summary>
+    [RelayCommand]
+    private void OpenDetail(object? record)
+    {
+        if (record is WeighingRecord weighingRecord)
+        {
+            try
+            {
+                CurrentWeighingRecordForDetail = weighingRecord;
+
+                // 手动创建 ViewModel，传入 WeighingRecord
+                var weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
+                var materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
+                var providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
+                var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
+
+                DetailViewModel = new AttendedWeighingDetailViewModel(
+                    weighingRecord,
+                    weighingRecordRepository,
+                    materialRepository,
+                    providerRepository,
+                    materialUnitRepository,
+                    _serviceProvider
+                );
+
+                // 订阅保存/废单完成事件以刷新列表并返回主视图
+                DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
+                DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
+                DetailViewModel.CloseRequested += OnDetailCloseRequested;
+
+                // 切换到详情视图
+                IsShowingMainView = false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"打开详情视图失败: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 返回主视图
+    /// </summary>
+    [RelayCommand]
+    private void BackToMain()
+    {
+        // 取消订阅事件
+        if (DetailViewModel != null)
+        {
+            DetailViewModel.SaveCompleted -= OnDetailSaveCompleted;
+            DetailViewModel.AbolishCompleted -= OnDetailAbolishCompleted;
+            DetailViewModel.CloseRequested -= OnDetailCloseRequested;
+        }
+        
+        IsShowingMainView = true;
+        CurrentWeighingRecordForDetail = null;
+        DetailViewModel = null;
+    }
+
+    private async void OnDetailSaveCompleted(object? sender, EventArgs e)
+    {
+        await RefreshAsync();
+        BackToMain();
+    }
+
+    private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
+    {
+        await RefreshAsync();
+        BackToMain();
+    }
+
+    private void OnDetailCloseRequested(object? sender, EventArgs e)
+    {
+        BackToMain();
+    }
+
     [RelayCommand]
     private void TakeBillPhoto()
     {
@@ -648,6 +746,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     partial void OnCameraStatusesChanged(ObservableCollection<CameraStatusViewModel> value)
     {
         OnPropertyChanged(nameof(HasCameraStatuses));
+    }
+
+    partial void OnIsShowingMainViewChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsShowingDetailView));
     }
 
     private void UpdateDisplayRecords()
