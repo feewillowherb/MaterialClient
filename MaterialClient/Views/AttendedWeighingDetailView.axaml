@@ -31,166 +31,51 @@
                     </Grid.RowDefinitions>
                     <WrapPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
-                            <DockPanel>
-                                <TextBlock Width="35" TextAlignment="Left">
-                                    <Run Text="毛" />
-                                </TextBlock>
-                                <TextBlock Width="39" TextAlignment="Right">
-                                    <Run Text="重" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="：" />
-                                </TextBlock>
-                            </DockPanel>
-                        </Label>
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18">
-                            <DockPanel>
-                                <TextBlock Foreground="#427FF9" x:Name="LblAllWeight"
-                                           FontWeight="Bold">
-                                    <Run Text="20" />
-                                </TextBlock>
-                                <TextBlock Padding="7,0,0,0" Foreground="#333333">
-                                    <Run Text="吨" />
-                                </TextBlock>
-                            </DockPanel>
-                        </Label>
+                        <Label Content="毛重：" VerticalAlignment="Center" Width="100"
+                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
+                        <TextBlock x:Name="LblAllWeight" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="18">
+                            <Run Foreground="#427FF9" FontWeight="Bold" Text="20" />
+                            <Run Foreground="#333333" Text=" 吨" />
+                        </TextBlock>
                     </WrapPanel>
                     <WrapPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
-                            <DockPanel>
-                                <TextBlock Width="35" TextAlignment="Left">
-                                    <Run Text="皮" />
-                                </TextBlock>
-                                <TextBlock Width="39" TextAlignment="Right">
-                                    <Run Text="重" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="：" />
-                                </TextBlock>
-                            </DockPanel>
-                        </Label>
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18">
-                            <DockPanel>
-                                <TextBlock Foreground="#427FF9"
-                                           x:Name="LblTruckWeight" FontWeight="Bold">
-                                    <Run Text="0" />
-                                </TextBlock>
-                                <TextBlock Padding="7,0,0,0" Foreground="#333333">
-                                    <Run Text="吨" />
-                                </TextBlock>
-                            </DockPanel>
-                        </Label>
+                        <Label Content="皮重：" VerticalAlignment="Center" Width="100"
+                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
+                        <TextBlock x:Name="LblTruckWeight" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="18">
+                            <Run Foreground="#427FF9" FontWeight="Bold" Text="0" />
+                            <Run Foreground="#333333" Text=" 吨" />
+                        </TextBlock>
                     </WrapPanel>
                     <WrapPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
-                            <DockPanel>
-                                <TextBlock Width="35" TextAlignment="Left">
-                                    <Run Text="净" />
-                                </TextBlock>
-                                <TextBlock Width="39" TextAlignment="Right">
-                                    <Run Text="重" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="：" />
-                                </TextBlock>
-                            </DockPanel>
-                        </Label>
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18">
-                            <DockPanel>
-                                <TextBlock Foreground="#F5A000"
-                                           x:Name="LblGoodsWeight">
-                                    <Run Text="0" />
-                                </TextBlock>
-                                <TextBlock Padding="7,0,0,0" Foreground="#333333">
-                                    <Run Text="吨" />
-                                </TextBlock>
-                            </DockPanel>
-                        </Label>
+                        <Label Content="净重：" VerticalAlignment="Center" Width="100"
+                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
+                        <TextBlock x:Name="LblGoodsWeight" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="18">
+                            <Run Foreground="#F5A000" Text="0" />
+                            <Run Foreground="#333333" Text=" 吨" />
+                        </TextBlock>
                     </WrapPanel>
                     <WrapPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
-                            <UniformGrid Rows="1" Columns="5">
-                                <TextBlock Width="20">
-                                    <Run Text="进" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="场" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="时" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="间" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="：" />
-                                </TextBlock>
-                            </UniformGrid>
-                        </Label>
+                        <Label Content="进场时间：" VerticalAlignment="Center" Width="100"
+                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
                         <Label Content="11/30/2025 5:36 下午" VerticalAlignment="Center" Width="240"
                                HorizontalAlignment="Left" FontSize="16" Foreground="#333333"
                                x:Name="LblJoinTime" />
                     </WrapPanel>
                     <WrapPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
-                            <UniformGrid Rows="1" Columns="5">
-                                <TextBlock Width="20">
-                                    <Run Text="出" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="场" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="时" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="间" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="：" />
-                                </TextBlock>
-                            </UniformGrid>
-
-                        </Label>
+                        <Label Content="出场时间：" VerticalAlignment="Center" Width="100"
+                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
                         <Label Content="-" VerticalAlignment="Center" Width="240"
                                HorizontalAlignment="Left" FontSize="16" Foreground="#333333"
                                x:Name="LblOutTime" />
                     </WrapPanel>
                     <WrapPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left"
                                VerticalAlignment="Center">
-                        <Label VerticalAlignment="Center" Width="100"
-                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333">
-                            <UniformGrid Rows="1" Columns="5">
-                                <TextBlock Width="20">
-                                    <Run Text="收" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="货" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="员" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="工" />
-                                </TextBlock>
-                                <TextBlock Width="20">
-                                    <Run Text="：" />
-                                </TextBlock>
-                            </UniformGrid>
-                        </Label>
+                        <Label Content="收货员工：" VerticalAlignment="Center" Width="100"
+                               HorizontalAlignment="Left" FontSize="18" Foreground="#333333" />
                         <Label Content="13858080440" VerticalAlignment="Center" Width="240"
                                HorizontalAlignment="Left" FontSize="18" Foreground="#333333"
                                x:Name="LblOperator" />

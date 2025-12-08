@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using MaterialClient.Common.Entities;
 using System;
 using System.Globalization;
@@ -69,11 +70,35 @@ public partial class AttendedWeighingDetailView : Window
         // 根据MatchedId控制匹配按钮的可见性
         BtnMatch.IsVisible = _weighingRecord.MatchedId == null;
 
+        // 更新重量显示
+        UpdateWeightDisplay(LblAllWeight, _weighingRecord.Weight, "#427FF9");
+        UpdateWeightDisplay(LblTruckWeight, 0, "#427FF9"); // TODO: 从数据获取皮重
+        UpdateWeightDisplay(LblGoodsWeight, _weighingRecord.Weight, "#F5A000"); // TODO: 计算净重
+
         // TODO: 加载并绑定数据到界面
         // TODO: 加载供应商列表到CbProvider
         // TODO: 加载材料列表到CbMaterial
         // TODO: 加载材料单位列表到CbMaterialUnit（根据选择的材料）
         // TODO: 绑定WeighingRecord的数据到各个控件
+    }
+
+    /// <summary>
+    /// 更新重量显示（保持颜色格式）
+    /// </summary>
+    private void UpdateWeightDisplay(TextBlock textBlock, decimal weight, string colorHex)
+    {
+        textBlock.Inlines?.Clear();
+        textBlock.Inlines?.Add(new Run
+        {
+            Text = weight.ToString("F2"),
+            Foreground = new SolidColorBrush(Color.Parse(colorHex)),
+            FontWeight = FontWeight.Bold
+        });
+        textBlock.Inlines?.Add(new Run
+        {
+            Text = " 吨",
+            Foreground = new SolidColorBrush(Color.Parse("#333333"))
+        });
     }
 
     private void Btn_Close_Click(object? sender, RoutedEventArgs e)
