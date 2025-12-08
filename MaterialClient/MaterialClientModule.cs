@@ -6,6 +6,7 @@ using MaterialClient.Common;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
+using MaterialClient.Backgrounds;
 
 namespace MaterialClient;
 
@@ -40,6 +41,9 @@ public class MaterialClientModule : AbpModule
 
         // Register startup service
         services.AddTransient<StartupService>();
+
+        // 后台任务：10 分钟轮询 TODO 逻辑，使用独立 UOW
+        services.AddHostedService<TodoPollingBackgroundService>();
     }
 }
 
