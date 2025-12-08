@@ -457,7 +457,7 @@
       <Grid Grid.Column="1">
         <!-- 主视图 -->
         <views:AttendedWeighingMainView DataContext="{Binding}" 
-                                         IsVisible="{Binding IsShowingMainView}"/>
+                                         IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingMainView}"/>
         
         <!-- 详情视图 -->
         <views:AttendedWeighingDetailView DataContext="{Binding DetailViewModel}"
