@@ -53,6 +53,45 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         _mockApi.ClearReceivedCalls();
     }
 
+    /// <summary>
+    /// 设置 mock 登录 API 响应
+    /// </summary>
+    /// <param name="username">用户名，如果为空则使用默认值 "testuser"</param>
+    /// <param name="shouldSucceed">是否成功登录，默认为 true</param>
+    private void SetupMockLoginResponse(string? username = null, bool shouldSucceed = true)
+    {
+        if (!shouldSucceed)
+        {
+            _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+            {
+                Success = false,
+                Code = -1,
+                Msg = "用户名或密码错误",
+                Data = null!
+            });
+        }
+        else
+        {
+            _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+            {
+                Success = true,
+                Code = 0,
+                Msg = "成功",
+                Data = new LoginUserDto
+                {
+                    UserId = 1,
+                    UserName = username ?? "testuser",
+                    ClientId = Guid.NewGuid(),
+                    Token = "test-access-token",
+                    TrueName = "测试用户",
+                    ProductName = "测试产品",
+                    CoName = "测试公司",
+                    Url = "http://test.com"
+                }
+            });
+        }
+    }
+
     #region Given Steps
 
     [Given("系统已完成授权激活")]
@@ -84,22 +123,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await GivenSystemIsAuthorized();
 
         // Setup mock API response
-        _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-        {
-            Success = true,
-            Code = 0,
-            Msg = "成功",
-            Data = new LoginUserDto
-            {
-                UserId = 1,
-                UserName = "testuser",
-                Token = "test-access-token",
-                TrueName = "测试用户",
-                ProductName = "测试产品",
-                CoName = "测试公司",
-                Url = "http://test.com"
-            }
-        });
+        SetupMockLoginResponse("testuser", shouldSucceed: true);
 
         await _authService.LoginAsync("testuser", "Test@123", true);
     }
@@ -219,35 +243,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
             }
 
             // Setup mock API response
-            if (_password == "wrongpassword")
-            {
-                _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-                {
-                    Success = false,
-                    Code = -1,
-                    Msg = "用户名或密码错误",
-                    Data = null!
-                });
-            }
-            else
-            {
-                _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-                {
-                    Success = true,
-                    Code = 0,
-                    Msg = "成功",
-                    Data = new LoginUserDto
-                    {
-                        UserId = 1,
-                        UserName = _username,
-                        Token = "test-access-token",
-                        TrueName = "测试用户",
-                        ProductName = "测试产品",
-                        CoName = "测试公司",
-                        Url = "http://test.com"
-                    }
-                });
-            }
+            SetupMockLoginResponse(_username, shouldSucceed: _password != "wrongpassword");
 
             var result = await _authService.LoginAsync(_username, _password, _rememberMe);
             _loginSuccessful = result != null;
