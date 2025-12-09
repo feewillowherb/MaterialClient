@@ -35,15 +35,10 @@ public class MaterialPlatformBearerTokenHandler : DelegatingHandler
     {
         try
         {
-            string? token = null;
-
-            using (var uow = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
-            {
-                var session = await _sessionRepository.FirstOrDefaultAsync(cancellationToken: cancellationToken);
-                token = session?.AccessToken;
-                await uow.CompleteAsync();
-            }
-
+            using var uow = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: false);
+            var session = await _sessionRepository.FirstOrDefaultAsync(cancellationToken: cancellationToken);
+            var token = session?.AccessToken;
+            await uow.CompleteAsync(cancellationToken);
             if (!string.IsNullOrWhiteSpace(token))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,19 +13,19 @@ namespace MaterialClient.Backgrounds;
 /// 10 分钟轮询的后台任务骨架，实际业务逻辑留空 //TODO。
 /// 执行逻辑在独立的 UOW 中运行，便于数据库交互。
 /// </summary>
-public sealed class TodoPollingBackgroundService : IHostedService, IAsyncDisposable
+public sealed class PollingBackgroundService : IHostedService, IAsyncDisposable
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
-    private readonly ILogger<TodoPollingBackgroundService> _logger;
+    private readonly ILogger<PollingBackgroundService> _logger;
     private CancellationTokenSource? _stoppingCts;
     private Task? _executingTask;
     private PeriodicTimer? _timer;
 
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
 
-    public TodoPollingBackgroundService(
+    public PollingBackgroundService(
         IServiceScopeFactory serviceScopeFactory,
-        ILogger<TodoPollingBackgroundService> logger)
+        ILogger<PollingBackgroundService> logger)
     {
         _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
@@ -43,9 +44,9 @@ public sealed class TodoPollingBackgroundService : IHostedService, IAsyncDisposa
     {
         _logger.LogInformation("TODO 轮询后台任务正在停止");
 
-        if (_stoppingCts != null && !_stoppingCts.IsCancellationRequested)
+        if (_stoppingCts is { IsCancellationRequested: false })
         {
-            _stoppingCts.Cancel();
+            await _stoppingCts.CancelAsync();
         }
 
         if (_executingTask != null)
@@ -85,23 +86,28 @@ public sealed class TodoPollingBackgroundService : IHostedService, IAsyncDisposa
         await using var scope = _serviceScopeFactory.CreateAsyncScope();
         var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
 
-        await using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
-        await PerformTodoAsync(scope.ServiceProvider, cancellationToken);
-        await uow.CompleteAsync();
+        using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
+        await SyncMaterialAsync(cancellationToken);
+        await uow.CompleteAsync(cancellationToken);
     }
 
-    private static Task PerformTodoAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
+    private async Task SyncMaterialAsync(CancellationToken cancellationToken)
     {
-        // TODO: 在此处编写实际的任务逻辑
-        return Task.CompletedTask;
+        await using var scope = _serviceScopeFactory.CreateAsyncScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<ISyncMaterialService>();
+
+        _logger.LogInformation("Starting SyncMaterial...");
+        await service.SyncMaterialAsync();
+        _logger.LogInformation("SyncMaterial Done");
     }
 
     public async ValueTask DisposeAsync()
     {
         _timer?.Dispose();
-        if (_stoppingCts != null && !_stoppingCts.IsCancellationRequested)
+        if (_stoppingCts is { IsCancellationRequested: false })
         {
-            _stoppingCts.Cancel();
+            await _stoppingCts.CancelAsync();
         }
 
         if (_executingTask != null)

@@ -10,11 +10,9 @@ public interface IMaterialPlatformApi
     Task<HttpResult<List<MaterialGoodListResultDto>>> GetMaterialGoodListAsync(
         [Body] GetMaterialGoodListInput request,
         CancellationToken cancellationToken = default);
-    
-    
 }
 
 public record GetMaterialGoodListInput(
     string ProId,
-    int UpdateTime
+    long UpdateTime
 );
