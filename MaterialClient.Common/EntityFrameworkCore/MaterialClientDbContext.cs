@@ -205,7 +205,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.HasIndex(e => e.Id).IsUnique();
         });
 
-        // Configure WorkSetting
+        // Configure WorkSettings
         modelBuilder.Entity<WorkSettingsEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
