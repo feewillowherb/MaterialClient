@@ -170,7 +170,7 @@ public class MaterialClientCommonModule : AbpModule
                 context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
 
             using var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false);
-            using var dbContext = await dbContextProvider.GetDbContextAsync();
+            await using var dbContext = await dbContextProvider.GetDbContextAsync();
             await dbContext.Database.MigrateAsync();
             await uow.CompleteAsync();
         }
