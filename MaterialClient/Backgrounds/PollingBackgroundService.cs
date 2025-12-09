@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -87,6 +88,7 @@ public sealed class PollingBackgroundService : IHostedService, IAsyncDisposable
         var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
+        await VerifyAuthAsync(scope.ServiceProvider, cancellationToken);
         await SyncMaterialAsync(scope.ServiceProvider, cancellationToken);
         await uow.CompleteAsync(cancellationToken);
     }
@@ -98,6 +100,23 @@ public sealed class PollingBackgroundService : IHostedService, IAsyncDisposable
         _logger.LogInformation("Starting SyncMaterial...");
         await service.SyncMaterialAsync();
         _logger.LogInformation("SyncMaterial Done");
+    }
+
+    private async Task VerifyAuthAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
+    {
+        var licenseService = serviceProvider.GetRequiredService<ILicenseService>();
+
+        _logger.LogInformation("Starting VerifyAuth...");
+        var isValid = await licenseService.IsLicenseValidAsync();
+        if (!isValid)
+        {
+            _logger.LogWarning("License is invalid or expired.");
+            // 这里可以添加更多处理逻辑，例如发送通知等
+        }
+        else
+        {
+            _logger.LogInformation("License is valid.");
+        }
     }
 
     public async ValueTask DisposeAsync()

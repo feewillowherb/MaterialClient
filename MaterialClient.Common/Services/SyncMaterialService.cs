@@ -70,6 +70,9 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
         await _materialRepository.UpdateManyAsync(materialsToUpdate);
         await _materialRepository.InsertManyAsync(materialsToInsert);
 
+        _logger.LogInformation("Synchronized {UpdateCount} materials and inserted {InsertCount} new materials.",
+            materialsToUpdate.Count, materialsToInsert.Count);
+
         if (workSetting != null)
         {
             workSetting.MaterialUpdateTime = now;

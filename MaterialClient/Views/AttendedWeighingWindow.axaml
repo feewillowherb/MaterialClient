@@ -73,46 +73,19 @@
             Margin="24,32"
             HorizontalAlignment="Stretch" 
             VerticalAlignment="Stretch">
-        <!-- Province Selector -->
-        <Border Background="#5A7FE6" 
-                CornerRadius="8" 
-                Padding="20,12"
-                VerticalAlignment="Center">
-          <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}" 
-                     Foreground="White" 
-                     FontSize="16"/>
-        </Border>
-        
         <!-- Weight Display Center -->
         <Grid Grid.Column="1" 
               HorizontalAlignment="Center"
               ColumnDefinitions="Auto,Auto,Auto">
-          <!-- Delivery Type Toggle -->
-          <Border Background="White" 
+          <!-- Province Selector -->
+          <Border Background="#5A7FE6" 
                   CornerRadius="8" 
-                  Padding="2"
+                  Padding="20,12"
                   VerticalAlignment="Center"
-                  Margin="0,0,32,0">
-            <StackPanel Orientation="Horizontal" Spacing="2">
-              <Button Content="收料" 
-                      Classes="delivery-button"
-                      Classes.selected="{Binding IsReceiving}"
-                      Foreground="#333"
-                      BorderThickness="0"
-                      CornerRadius="6"
-                      Padding="32,8"
-                      FontSize="16"
-                      Command="{Binding SetReceivingCommand}"/>
-              <Button Content="发料" 
-                      Classes="delivery-button"
-                      Classes.selected="{Binding !IsReceiving}"
-                      Foreground="#333"
-                      BorderThickness="0"
-                      CornerRadius="6"
-                      Padding="32,8"
-                      FontSize="16"
-                      Command="{Binding SetSendingCommand}"/>
-            </StackPanel>
+                  MinWidth="180">
+            <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}" 
+                       Foreground="White" 
+                       FontSize="16"/>
           </Border>
           
           <!-- Weight Value -->

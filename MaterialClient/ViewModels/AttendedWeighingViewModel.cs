@@ -841,7 +841,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         return status switch
         {
-            AttendedWeighingStatus.OffScale => "预重已结束",
+            AttendedWeighingStatus.OffScale => "称重已结束",
             AttendedWeighingStatus.WaitingForStability => "等待稳定",
             AttendedWeighingStatus.WeightStabilized => "重量已稳定",
             _ => "未知状态"

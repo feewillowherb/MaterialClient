@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using MaterialClient.ViewModels;
+using MaterialClient.Backgrounds;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.Views;
 
@@ -12,16 +14,40 @@ public partial class AttendedWeighingWindow : Window
 {
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
+    private readonly IServiceProvider? _serviceProvider;
 
-    public AttendedWeighingWindow(AttendedWeighingViewModel viewModel)
+    public AttendedWeighingWindow(AttendedWeighingViewModel viewModel, IServiceProvider? serviceProvider = null)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _serviceProvider = serviceProvider;
         
         // Set PlacementTarget for Popup
         if (CameraStatusPopup != null && CameraStatusPanel != null)
         {
             CameraStatusPopup.PlacementTarget = CameraStatusPanel;
+        }
+        
+        // 窗口打开时启动轮询后台服务
+        Opened += AttendedWeighingWindow_Opened;
+    }
+    
+    private async void AttendedWeighingWindow_Opened(object? sender, EventArgs e)
+    {
+        if (_serviceProvider != null)
+        {
+            try
+            {
+                var pollingService = _serviceProvider.GetService<PollingBackgroundService>();
+                if (pollingService != null)
+                {
+                    await pollingService.StartAsync(CancellationToken.None);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"启动轮询后台服务失败: {ex.Message}");
+            }
         }
     }
 
@@ -100,9 +126,27 @@ public partial class AttendedWeighingWindow : Window
         }
     }
 
-    protected override void OnClosed(EventArgs e)
+    protected override async void OnClosed(EventArgs e)
     {
         _closePopupCts?.Cancel();
+        
+        // 窗口关闭时停止轮询后台服务
+        if (_serviceProvider != null)
+        {
+            try
+            {
+                var pollingService = _serviceProvider.GetService<PollingBackgroundService>();
+                if (pollingService != null)
+                {
+                    await pollingService.StopAsync(CancellationToken.None);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"停止轮询后台服务失败: {ex.Message}");
+            }
+        }
+        
         if (DataContext is IDisposable disposable)
         {
             disposable.Dispose();
