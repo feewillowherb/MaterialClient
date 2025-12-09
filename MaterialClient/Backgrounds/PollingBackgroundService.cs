@@ -87,15 +87,13 @@ public sealed class PollingBackgroundService : IHostedService, IAsyncDisposable
         var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
-        await SyncMaterialAsync(cancellationToken);
+        await SyncMaterialAsync(scope.ServiceProvider, cancellationToken);
         await uow.CompleteAsync(cancellationToken);
     }
 
-    private async Task SyncMaterialAsync(CancellationToken cancellationToken)
+    private async Task SyncMaterialAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
     {
-        await using var scope = _serviceScopeFactory.CreateAsyncScope();
-
-        var service = scope.ServiceProvider.GetRequiredService<ISyncMaterialService>();
+        var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
         _logger.LogInformation("Starting SyncMaterial...");
         await service.SyncMaterialAsync();

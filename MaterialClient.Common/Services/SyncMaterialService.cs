@@ -28,6 +28,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
     [UnitOfWork]
     public async Task SyncMaterialAsync()
     {
+        var now = DateTime.Now;
         var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync();
         if (licenseInfo == null)
         {
@@ -68,5 +69,19 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
         var materialsToInsert = list.Where(x => !existingMaterialIds.Contains(x.Id)).ToList();
         await _materialRepository.UpdateManyAsync(materialsToUpdate);
         await _materialRepository.InsertManyAsync(materialsToInsert);
+
+        if (workSetting != null)
+        {
+            workSetting.MaterialUpdateTime = now;
+            await _workSettingRepository.UpdateAsync(workSetting);
+        }
+        else
+        {
+            workSetting = new WorkSetting
+            {
+                MaterialUpdateTime = now
+            };
+            await _workSettingRepository.InsertAsync(workSetting);
+        }
     }
 }

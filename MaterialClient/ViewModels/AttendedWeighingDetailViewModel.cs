@@ -339,7 +339,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             decimal? waybillQuantity = null;
             if (!string.IsNullOrWhiteSpace(WaybillQuantity))
             {
-                if (decimal.TryParse(WaybillQuantity, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out decimal quantity))
+                if (decimal.TryParse(WaybillQuantity, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
+                        out decimal quantity))
                 {
                     waybillQuantity = quantity;
                 }
@@ -446,7 +447,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         }
 
         // 验证是否为有效的十进制数
-        if (!decimal.TryParse(WaybillQuantity, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out decimal result))
+        if (!decimal.TryParse(WaybillQuantity, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
+                out decimal result))
         {
             WaybillQuantityError = "请输入有效的数字";
             return false;

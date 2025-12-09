@@ -100,7 +100,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
     private const decimal WeightStabilityTolerance = 0.1m; // 0.1t = 100kg
     private const int StabilityDurationMs = 10000; // 10秒
-    
+
     private decimal? _stableWeight = null; // 进入稳定状态时的重量值
 
     // 重量历史记录
@@ -131,7 +131,10 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             _currentStatus = AttendedWeighingStatus.OffScale;
             _stableWeight = null;
             // 清空重量历史记录（ConcurrentBag不支持Clear，需要重新创建）
-            while (_weightHistory.TryTake(out _)) { }
+            while (_weightHistory.TryTake(out _))
+            {
+            }
+
             _plateNumberCache.Clear();
             _selectedPlateNumber = null;
 
@@ -217,7 +220,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     private void OnWeightChanged(decimal weight)
     {
         var now = DateTime.UtcNow;
-        
+
         // 添加重量到历史记录
         AddWeightToHistory(weight, now);
 
@@ -243,7 +246,6 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     /// </summary>
     private void ProcessWeightChange(decimal currentWeight)
     {
-
         switch (_currentStatus)
         {
             case AttendedWeighingStatus.OffScale:
@@ -251,6 +253,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 if (currentWeight > WeightThreshold)
                 {
                     _currentStatus = AttendedWeighingStatus.WaitingForStability;
+                    _statusSubject.OnNext(_currentStatus);
                     _stableWeight = null;
 
                     // Select plate number (most frequent from cache)
@@ -267,6 +270,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 {
                     // Unstable weighing flow: directly from WaitingForStability to OffScale
                     _currentStatus = AttendedWeighingStatus.OffScale;
+                    _statusSubject.OnNext(_currentStatus);
                     _stableWeight = null;
 
                     // Capture all cameras and log (no need to save photos)
@@ -304,6 +308,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 {
                     // WeightStabilized -> OffScale: normal flow
                     _currentStatus = AttendedWeighingStatus.OffScale;
+                    _statusSubject.OnNext(_currentStatus);
 
                     // Check again if there are more frequent plate numbers, update if needed
                     UpdatePlateNumberIfNeeded();
@@ -326,7 +331,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     {
         // 使用历史记录判断重量是否稳定
         bool isStable = IsWeightStable(StabilityDurationMs, WeightStabilityTolerance);
-        
+
         if (isStable)
         {
             // 进入稳定状态
@@ -596,7 +601,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                     await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 
                     var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
-                    await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment,true);
+                    await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment, true);
                 }
                 catch (Exception ex)
                 {
@@ -767,7 +772,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         // 1. 获取所有记录的快照
         // 2. 过滤出需要保留的记录
         // 3. 清空并重新添加
-        
+
         // 为了避免频繁清理，只在记录数量较多时进行清理
         if (_weightHistory.Count < 50)
         {
@@ -785,7 +790,10 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         }
 
         // 清空并重新添加需要保留的记录
-        while (_weightHistory.TryTake(out _)) { }
+        while (_weightHistory.TryTake(out _))
+        {
+        }
+
         foreach (var record in recordsToKeep)
         {
             _weightHistory.Add(record);

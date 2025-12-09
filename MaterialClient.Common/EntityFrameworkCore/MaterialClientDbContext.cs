@@ -29,6 +29,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
     // Settings DbSet
     public DbSet<SettingsEntity> Settings { get; set; }
+    public DbSet<WorkSetting> WorkSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -202,6 +203,12 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
             // Only one settings record should exist
             entity.HasIndex(e => e.Id).IsUnique();
+        });
+
+        // Configure WorkSetting
+        modelBuilder.Entity<WorkSetting>(entity =>
+        {
+            entity.HasKey(e => e.Id);
         });
     }
 }
