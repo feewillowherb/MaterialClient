@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Entities;
@@ -68,6 +69,11 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// Observable stream of most frequent plate number changes
     /// </summary>
     IObservable<string?> MostFrequentPlateNumberChanges { get; }
+
+    /// <summary>
+    /// Check if weight is stable (changes less than ±0.1m within 3 seconds)
+    /// </summary>
+    bool IsWeightStable { get; }
 }
 
 /// <summary>
@@ -103,16 +109,17 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
 
     private decimal? _stableWeight = null; // 进入稳定状态时的重量值
 
-    // 重量历史记录
-    private readonly ConcurrentBag<WeightHistoryRecord> _weightHistory = new ConcurrentBag<WeightHistoryRecord>();
-
     // 车牌识别缓存
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
 
-    private string? _selectedPlateNumber = null;
-
     // 订阅管理
     private IDisposable? _weightSubscription;
+    private IDisposable? _stabilitySubscription;
+
+    // 重量稳定性监控
+    private const decimal WeightStabilityThreshold = 0.1m; // ±0.1m = 0.2m total range
+    private const int StabilityWindowSeconds = 3;
+    private bool _isWeightStable = false;
 
 
     /// <summary>
@@ -130,16 +137,13 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             // 重置状态
             _currentStatus = AttendedWeighingStatus.OffScale;
             _stableWeight = null;
-            // 清空重量历史记录（ConcurrentBag不支持Clear，需要重新创建）
-            while (_weightHistory.TryTake(out _))
-            {
-            }
 
             _plateNumberCache.Clear();
-            _selectedPlateNumber = null;
-
             _weightSubscription = _truckScaleWeightService.WeightUpdates
                 .Subscribe(OnWeightChanged);
+
+            // Initialize weight stability monitoring
+            InitializeWeightStabilityMonitoring();
 
             _logger?.LogInformation("AttendedWeighingService: Started monitoring truck scale weight changes");
         }
@@ -156,6 +160,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         {
             _weightSubscription?.Dispose();
             _weightSubscription = null;
+            _stabilitySubscription?.Dispose();
+            _stabilitySubscription = null;
+            _isWeightStable = false;
             _logger?.LogInformation("AttendedWeighingService: Stopped monitoring truck scale weight changes");
         }
 
@@ -182,6 +189,20 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     /// Observable stream of most frequent plate number changes
     /// </summary>
     public IObservable<string?> MostFrequentPlateNumberChanges => _plateNumberSubject;
+
+    /// <summary>
+    /// Check if weight is stable (changes less than ±0.1m within 3 seconds)
+    /// </summary>
+    public bool IsWeightStable
+    {
+        get
+        {
+            lock (_statusLock)
+            {
+                return _isWeightStable;
+            }
+        }
+    }
 
     /// <summary>
     /// 接收车牌识别结果
@@ -215,15 +236,50 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     }
 
     /// <summary>
+    /// Initialize weight stability monitoring using Rx
+    /// Monitors weight changes within 3 seconds window, considers stable if variation is less than ±0.1m
+    /// </summary>
+    private void InitializeWeightStabilityMonitoring()
+    {
+        _stabilitySubscription?.Dispose();
+
+        _stabilitySubscription = _truckScaleWeightService.WeightUpdates
+            .Buffer(TimeSpan.FromSeconds(StabilityWindowSeconds), TimeSpan.FromSeconds(0.1))
+            .Subscribe(buffer =>
+            {
+                if (buffer.Count > 0)
+                {
+                    var min = buffer.Min();
+                    var max = buffer.Max();
+                    var range = max - min;
+
+                    // Consider stable if range is within ±0.1m (0.2m total range)
+                    bool isStable = range <= WeightStabilityThreshold * 2;
+
+                    lock (_statusLock)
+                    {
+                        _isWeightStable = isStable;
+                    }
+
+                    _logger?.LogDebug(
+                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3})");
+                }
+                else
+                {
+                    // No data in buffer, consider unstable
+                    lock (_statusLock)
+                    {
+                        _isWeightStable = false;
+                    }
+                }
+            });
+    }
+
+    /// <summary>
     /// 重量变化处理
     /// </summary>
     private void OnWeightChanged(decimal weight)
     {
-        var now = DateTime.UtcNow;
-
-        // 添加重量到历史记录
-        AddWeightToHistory(weight, now);
-
         lock (_statusLock)
         {
             var previousStatus = _currentStatus;
@@ -253,11 +309,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 if (currentWeight > WeightThreshold)
                 {
                     _currentStatus = AttendedWeighingStatus.WaitingForStability;
-                    _statusSubject.OnNext(_currentStatus);
                     _stableWeight = null;
-
-                    // Select plate number (most frequent from cache)
-                    SelectPlateNumberFromCache();
 
                     _logger.LogInformation(
                         $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}kg");
@@ -270,7 +322,6 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 {
                     // Unstable weighing flow: directly from WaitingForStability to OffScale
                     _currentStatus = AttendedWeighingStatus.OffScale;
-                    _statusSubject.OnNext(_currentStatus);
                     _stableWeight = null;
 
                     // Capture all cameras and log (no need to save photos)
@@ -308,10 +359,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 {
                     // WeightStabilized -> OffScale: normal flow
                     _currentStatus = AttendedWeighingStatus.OffScale;
-                    _statusSubject.OnNext(_currentStatus);
 
-                    // Check again if there are more frequent plate numbers, update if needed
-                    UpdatePlateNumberIfNeeded();
 
                     // Clear plate number cache
                     ClearPlateNumberCache();
@@ -330,26 +378,12 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     private void CheckWeightStability(decimal currentWeight)
     {
         // 使用历史记录判断重量是否稳定
-        bool isStable = IsWeightStable(StabilityDurationMs, WeightStabilityTolerance);
-
-        if (isStable)
+        if (IsWeightStable)
         {
             // 进入稳定状态
             if (_stableWeight == null)
             {
-                // 从历史记录获取最新的重量值
-                var latestWeight = GetLatestWeightFromHistory();
-                if (latestWeight.HasValue)
-                {
-                    _stableWeight = latestWeight.Value;
-                }
-                else
-                {
-                    _stableWeight = currentWeight;
-                }
-
-                // Select plate number (most frequent from cache)
-                SelectPlateNumberFromCache();
+                _stableWeight = currentWeight;
 
                 // State transition: WaitingForStability -> WeightStabilized
                 _currentStatus = AttendedWeighingStatus.WeightStabilized;
@@ -358,7 +392,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                     $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}kg");
 
                 // When weight is stabilized, capture photos and create WeighingRecord
-                _ = Task.Run(async () => await OnWeightStabilizedAsync());
+                _ = Task.Run(async () => await OnWeightStabilizedAsync(currentWeight));
             }
         }
         else
@@ -371,7 +405,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     /// <summary>
     /// 重量已稳定时的处理
     /// </summary>
-    private async Task OnWeightStabilizedAsync()
+    private async Task OnWeightStabilizedAsync(decimal currentWeight)
     {
         try
         {
@@ -379,7 +413,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             var photoPaths = await CaptureAllCamerasAsync("WeightStabilized");
 
             // 创建WeighingRecord（传入照片路径）
-            await CreateWeighingRecordAsync(photoPaths);
+            await CreateWeighingRecordAsync(currentWeight, photoPaths);
         }
         catch (Exception ex)
         {
@@ -496,58 +530,16 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     /// <summary>
     /// 创建称重记录
     /// </summary>
-    private async Task CreateWeighingRecordAsync(List<string> photoPaths)
+    private async Task CreateWeighingRecordAsync(decimal weight, List<string> photoPaths)
     {
         try
         {
-            decimal weight;
-            string? plateNumber;
-
-            lock (_statusLock)
-            {
-                // 如果处于稳定状态，从历史记录获取最新的重量
-                if (_currentStatus == AttendedWeighingStatus.WeightStabilized)
-                {
-                    var latestWeight = GetLatestWeightFromHistory();
-                    if (latestWeight.HasValue)
-                    {
-                        weight = latestWeight.Value;
-                    }
-                    else if (_stableWeight != null)
-                    {
-                        // 如果历史记录中没有，使用记录的稳定重量
-                        weight = _stableWeight.Value;
-                    }
-                    else
-                    {
-                        _logger?.LogError(
-                            "AttendedWeighingService: Cannot create WeighingRecord, stable weight value is null");
-                        return;
-                    }
-                }
-                else if (_stableWeight != null)
-                {
-                    // 使用记录的稳定重量
-                    weight = _stableWeight.Value;
-                }
-                else
-                {
-                    _logger?.LogError(
-                        "AttendedWeighingService: Cannot create WeighingRecord, stable weight value is null");
-                    return;
-                }
-
-                plateNumber = _selectedPlateNumber;
-            }
+            var plateNumber = GetMostFrequentPlateNumber();
 
             using var uow = _unitOfWorkManager.Begin();
 
             // Create weighing record
-            var weighingRecord = new WeighingRecord(weight)
-            {
-                PlateNumber = plateNumber
-            };
-
+            var weighingRecord = new WeighingRecord(weight, plateNumber);
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 
@@ -555,7 +547,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
                 $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
 
             // Save captured photos to WeighingRecordAttachment
-            if (photoPaths != null && photoPaths.Count > 0)
+            if (photoPaths.Count > 0)
             {
                 await SaveCapturePhotosAsync(weighingRecord.Id, photoPaths);
             }
@@ -620,69 +612,11 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     }
 
     /// <summary>
-    /// 从缓存中选择车牌（识别次数最多的）
-    /// </summary>
-    private void SelectPlateNumberFromCache()
-    {
-        if (_plateNumberCache.IsEmpty)
-        {
-            _selectedPlateNumber = null;
-            return;
-        }
-
-        var mostFrequent = _plateNumberCache
-            .OrderByDescending(kvp => kvp.Value.Count)
-            .FirstOrDefault();
-
-        _selectedPlateNumber = mostFrequent.Key;
-        _logger?.LogInformation(
-            $"AttendedWeighingService: Selected plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
-
-        // Notify observers of plate number update
-        // _plateNumberSubject.OnNext(_selectedPlateNumber);
-    }
-
-    /// <summary>
-    /// 更新车牌（如果缓存中有更多次数的车牌）
-    /// </summary>
-    private void UpdatePlateNumberIfNeeded()
-    {
-        if (_plateNumberCache.IsEmpty)
-        {
-            return;
-        }
-
-        var mostFrequent = _plateNumberCache
-            .OrderByDescending(kvp => kvp.Value.Count)
-            .FirstOrDefault();
-
-        var currentCount = 0;
-        if (!string.IsNullOrEmpty(_selectedPlateNumber) &&
-            _plateNumberCache.TryGetValue(_selectedPlateNumber, out var currentRecord))
-        {
-            currentCount = currentRecord.Count;
-        }
-
-        if (!string.IsNullOrEmpty(mostFrequent.Key) &&
-            (string.IsNullOrEmpty(_selectedPlateNumber) ||
-             (mostFrequent.Value?.Count ?? 0) > currentCount))
-        {
-            _selectedPlateNumber = mostFrequent.Key;
-            _logger?.LogInformation(
-                $"AttendedWeighingService: Updated plate number: {_selectedPlateNumber} (recognition count: {mostFrequent.Value?.Count ?? 0})");
-
-            // Notify observers of plate number update
-            // _plateNumberSubject.OnNext(_selectedPlateNumber);
-        }
-    }
-
-    /// <summary>
     /// 清空车牌缓存
     /// </summary>
     private void ClearPlateNumberCache()
     {
         _plateNumberCache.Clear();
-        _selectedPlateNumber = null;
         _logger?.LogDebug("AttendedWeighingService: Cleared plate number cache");
 
         // Notify observers that plate number is cleared
@@ -710,127 +644,12 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     }
 
     /// <summary>
-    /// 判断重量是否稳定
-    /// </summary>
-    /// <param name="stabilityDelayMs">稳定延迟时间（毫秒）</param>
-    /// <param name="stabilityThreshold">稳定阈值</param>
-    /// <returns>是否稳定</returns>
-    private bool IsWeightStable(int stabilityDelayMs, decimal stabilityThreshold)
-    {
-        var now = DateTime.UtcNow;
-        var cutoffTime = now.AddMilliseconds(-stabilityDelayMs);
-
-        // 获取时间窗口内的所有重量记录（ConcurrentBag是线程安全的，可以直接查询）
-        var recentWeights = _weightHistory
-            .Where(x => x.Time >= cutoffTime)
-            .Select(x => x.Weight)
-            .ToList();
-
-        int expectedCount = stabilityDelayMs / 300; // 理论记录数（假设每300ms一条记录）
-        int minRequiredCount = (int)(expectedCount * 0.8); // 至少需要80%的记录
-
-        if (recentWeights.Count < minRequiredCount)
-        {
-            return false; // 时间窗口内记录不足
-        }
-
-        // 计算时间窗口内的最大和最小重量
-        var maxWeight = recentWeights.Max();
-        var minWeight = recentWeights.Min();
-        var weightRange = maxWeight - minWeight;
-
-        // 如果变化绝对值小于阈值，则认为稳定
-        return Math.Abs(weightRange) < stabilityThreshold;
-    }
-
-    /// <summary>
-    /// 添加重量到历史记录
-    /// </summary>
-    /// <param name="weight">重量值</param>
-    /// <param name="time">时间</param>
-    private void AddWeightToHistory(decimal weight, DateTime time)
-    {
-        _weightHistory.Add(new WeightHistoryRecord
-        {
-            Time = time,
-            Weight = weight
-        });
-
-        // 只保留最近5秒内的记录（多保留一些，避免频繁清理）
-        // ConcurrentBag不支持RemoveAll，需要定期清理旧记录
-        var cutoffTime = time.AddMilliseconds(-5000);
-        CleanOldRecords(cutoffTime);
-    }
-
-    /// <summary>
-    /// 清理旧记录
-    /// </summary>
-    /// <param name="cutoffTime">截止时间</param>
-    private void CleanOldRecords(DateTime cutoffTime)
-    {
-        // 由于ConcurrentBag不支持直接删除，我们需要：
-        // 1. 获取所有记录的快照
-        // 2. 过滤出需要保留的记录
-        // 3. 清空并重新添加
-
-        // 为了避免频繁清理，只在记录数量较多时进行清理
-        if (_weightHistory.Count < 50)
-        {
-            return;
-        }
-
-        var recordsToKeep = _weightHistory
-            .Where(x => x.Time >= cutoffTime)
-            .ToList();
-
-        // 如果大部分记录都需要保留，就不清理了
-        if (recordsToKeep.Count > _weightHistory.Count * 0.8)
-        {
-            return;
-        }
-
-        // 清空并重新添加需要保留的记录
-        while (_weightHistory.TryTake(out _))
-        {
-        }
-
-        foreach (var record in recordsToKeep)
-        {
-            _weightHistory.Add(record);
-        }
-    }
-
-    /// <summary>
-    /// 从历史记录获取最新的重量
-    /// </summary>
-    /// <returns>最新的重量值，如果没有记录则返回null</returns>
-    private decimal? GetLatestWeightFromHistory()
-    {
-        if (_weightHistory.IsEmpty)
-        {
-            return null;
-        }
-
-        // 返回最新的重量记录（ConcurrentBag是线程安全的，可以直接查询）
-        var latestRecord = _weightHistory.OrderByDescending(x => x.Time).FirstOrDefault();
-        return latestRecord?.Weight;
-    }
-
-    /// <summary>
-    /// 重量历史记录
-    /// </summary>
-    private class WeightHistoryRecord
-    {
-        public DateTime Time { get; set; }
-        public decimal Weight { get; set; }
-    }
-
-    /// <summary>
     /// 释放资源
     /// </summary>
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
+        _stabilitySubscription?.Dispose();
         _statusSubject?.OnCompleted();
         _statusSubject?.Dispose();
         _plateNumberSubject?.OnCompleted();

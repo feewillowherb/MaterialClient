@@ -23,6 +23,12 @@ public class WeighingRecord : FullAuditedEntity<long>
         Weight = weight;
     }
 
+    public WeighingRecord(decimal weight, string? plateNumber)
+    {
+        Weight = weight;
+        PlateNumber = plateNumber;
+    }
+
     /// <summary>
     /// 构造函数（用于指定Id）
     /// </summary>

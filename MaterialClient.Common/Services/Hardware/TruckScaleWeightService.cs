@@ -71,8 +71,10 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     private decimal _currentWeight = 0m;
     private bool _isListening = false;
     private bool _isClosing = false;
-    private readonly object _lockObject = new();
+    private readonly Lock _lockObject = new();
     private ScaleSettings? _currentSettings;
+
+    private const decimal TonDecimal = 100m;
 
     // Rx Subject for weight updates
     private readonly Subject<decimal> _weightSubject = new();
@@ -136,6 +138,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                             // Settings haven't changed, keep existing connection
                             return true;
                         }
+
                         // Settings changed, close and reopen
                         CloseInternal();
                     }
@@ -175,7 +178,8 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     // Open serial port
                     _serialPort.Open();
                     _isClosing = false;
-                    _logger?.LogInformation($"Truck scale serial port opened: {settings.SerialPort} at {settings.BaudRate} baud");
+                    _logger?.LogInformation(
+                        $"Truck scale serial port opened: {settings.SerialPort} at {settings.BaudRate} baud");
 
                     return true;
                 }
@@ -339,9 +343,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 // The string contains integer part + decimal part without decimal point
                 if (decimal.TryParse(weightString, out decimal weightInt))
                 {
-                    // Convert from integer to decimal (e.g., "000205" -> 2.05)
-                    // Assuming 2 decimal places (last 2 digits are decimal part)
-                    decimal parsedWeight = weightInt / 100m;
+                    decimal parsedWeight = weightInt / TonDecimal;
 
                     // Apply sign
                     if (isNegative)
@@ -353,7 +355,9 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     {
                         _currentWeight = parsedWeight;
                     }
-                    _logger?.LogDebug($"Parsed HEX weight: {parsedWeight} kg (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
+
+                    _logger?.LogDebug(
+                        $"Parsed HEX weight: {parsedWeight} kg (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
                     // Push weight update to Rx stream
                     _weightSubject.OnNext(parsedWeight);
                 }
@@ -392,6 +396,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 {
                     _currentWeight = weight;
                 }
+
                 _logger?.LogDebug($"Parsed String weight: {weight} kg");
                 // Push weight update to Rx stream
                 _weightSubject.OnNext(weight);
@@ -521,6 +526,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
         {
             _currentWeight = weight;
         }
+
         // Push weight update to Rx stream
         _weightSubject.OnNext(weight);
     }
