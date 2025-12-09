@@ -20,7 +20,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
     private readonly IMaterialPlatformApi _materialPlatformApi;
 
     private readonly IRepository<Material, int> _materialRepository;
-    private readonly IRepository<WorkSetting, int> _workSettingRepository;
+    private readonly IRepository<WorkSettingsEntity, int> _workSettingRepository;
     private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
     private readonly ILogger<SyncMaterialService> _logger;
 
@@ -77,7 +77,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
         }
         else
         {
-            workSetting = new WorkSetting
+            workSetting = new WorkSettingsEntity
             {
                 MaterialUpdateTime = now
             };

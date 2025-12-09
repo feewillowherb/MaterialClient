@@ -2,7 +2,7 @@
 
 namespace MaterialClient.Common.Entities;
 
-public class WorkSetting : Entity<int>
+public class WorkSettingsEntity : Entity<int>
 {
     public DateTime? MaterialUpdateTime { get; set; }
 }

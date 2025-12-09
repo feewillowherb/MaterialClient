@@ -29,7 +29,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
     // Settings DbSet
     public DbSet<SettingsEntity> Settings { get; set; }
-    public DbSet<WorkSetting> WorkSettings { get; set; }
+    public DbSet<WorkSettingsEntity> WorkSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -206,7 +206,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         });
 
         // Configure WorkSetting
-        modelBuilder.Entity<WorkSetting>(entity =>
+        modelBuilder.Entity<WorkSettingsEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
         });
