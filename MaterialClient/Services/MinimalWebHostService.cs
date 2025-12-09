@@ -1,9 +1,14 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Hardware;
 
 namespace MaterialClient.Services;
 
@@ -54,15 +59,15 @@ public class MinimalWebHostService : IDisposable
 
             _webApplication = builder.Build();
 
-
-            _webApplication.MapGet("/", () => "Hello World!");
+            // 配置 API 端点
+            ConfigureEndpoints(_webApplication);
 
             // Configure URLs from appsettings
             var urls = builder.Configuration["Urls"] ?? "http://localhost:9960";
             _webApplication.Urls.Add(urls);
 
             System.Diagnostics.Debug.WriteLine($"启动 Web 服务于 {urls}");
-            System.Diagnostics.Debug.WriteLine($"Swagger UI 访问地址: {urls}/swagger");
+            System.Diagnostics.Debug.WriteLine($"API 端点: {urls}/api/hardware/plate-number");
 
             // Start the web application
             await _webApplication.RunAsync();
@@ -129,4 +134,145 @@ public class MinimalWebHostService : IDisposable
             Task.Run(async () => await StopAsync()).Wait();
         }
     }
+
+    /// <summary>
+    /// 配置 API 端点
+    /// </summary>
+    private void ConfigureEndpoints(WebApplication app)
+    {
+        var logger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
+        
+        // 根路由
+        app.MapGet("/", () => Results.Ok(new { 
+            service = "MaterialClient API", 
+            version = "1.0",
+            endpoints = new[] { 
+                "/api/hardware/plate-number" 
+            }
+        }));
+
+        // 车牌识别 - 设备回调接口（海康威视）
+        app.MapPost("/api/hardware/plate-number", async (HikVisionPlateCallback? callback) =>
+        {
+            try
+            {
+                var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
+                
+                // 解析海康设备数据
+                var license = callback?.AlarmInfoPlate?.Result?.PlateResult?.License;
+                
+                if (!string.IsNullOrWhiteSpace(license))
+                {
+                    weighingService.OnPlateNumberRecognized(license);
+                    logger.LogInformation($"接收到车牌识别: {license} (设备: {callback?.AlarmInfoPlate?.DeviceName}, IP: {callback?.AlarmInfoPlate?.IpAddr})");
+                    
+                    return Results.Ok(new { 
+                        result = 1, 
+                        success = true, 
+                        msg = "完成",
+                        data = new { license }
+                    });
+                }
+                
+                logger.LogWarning("接收到无效的车牌数据");
+                return Results.BadRequest(new { 
+                    result = 0, 
+                    success = false, 
+                    msg = "无效的车牌数据" 
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "处理车牌识别回调失败");
+                return Results.Ok(new { 
+                    result = 1, 
+                    success = false, 
+                    msg = ex.Message 
+                });
+            }
+        });
+
+        // 获取车牌号（测试用）
+        app.MapGet("/api/hardware/plate-number", async () =>
+        {
+            try
+            {
+                var service = _sharedServiceProvider.GetRequiredService<IPlateNumberCaptureService>();
+                var plateNumber = await service.CapturePlateNumberAsync();
+                return Results.Ok(new { plateNumber });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "获取车牌号失败");
+                return Results.Problem(ex.Message);
+            }
+        });
+
+        // 设置车牌号（测试用）
+        app.MapPost("/api/hardware/plate-number/set", async (SetPlateNumberRequest request) =>
+        {
+            try
+            {
+                var service = _sharedServiceProvider.GetRequiredService<IPlateNumberCaptureService>();
+                
+                if (service is PlateNumberCaptureService impl)
+                {
+                    impl.SetPlateNumber(request.PlateNumber);
+                    logger.LogInformation($"设置测试车牌号: {request.PlateNumber}");
+                    return Results.Ok(new { 
+                        success = true, 
+                        message = "车牌号已更新",
+                        plateNumber = request.PlateNumber
+                    });
+                }
+
+                return Results.Problem("服务实现不可用");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "设置车牌号失败");
+                return Results.Problem(ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 设置车牌号请求模型
+    /// </summary>
+    private record SetPlateNumberRequest(string? PlateNumber);
+
+    #region 海康威视车牌识别数据模型
+    
+    /// <summary>
+    /// 海康威视车牌识别回调数据模型
+    /// </summary>
+    private record HikVisionPlateCallback(
+        [property: JsonPropertyName("AlarmInfoPlate")] AlarmInfoPlate? AlarmInfoPlate
+    );
+
+    /// <summary>
+    /// 报警信息
+    /// </summary>
+    private record AlarmInfoPlate(
+        [property: JsonPropertyName("channel")] int Channel,
+        [property: JsonPropertyName("deviceName")] string? DeviceName,
+        [property: JsonPropertyName("ipaddr")] string? IpAddr,
+        [property: JsonPropertyName("result")] PlateResultWrapper? Result
+    );
+
+    /// <summary>
+    /// 车牌结果包装
+    /// </summary>
+    private record PlateResultWrapper(
+        [property: JsonPropertyName("PlateResult")] PlateResult? PlateResult
+    );
+
+    /// <summary>
+    /// 车牌结果
+    /// </summary>
+    private record PlateResult(
+        [property: JsonPropertyName("license")] string? License
+    );
+    
+    #endregion
 }

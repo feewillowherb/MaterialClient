@@ -1,12 +1,46 @@
-﻿### CarLicenseController CallDeviceMessage 接口测试
+﻿### MaterialClient API 测试
 
 ### 变量定义
-@baseUrl = http://192.168.3.112:9960
+@baseUrl = http://localhost:9960
 
+### 0. 测试服务信息
+GET {{baseUrl}}/
 
+### 1. 海康威视车牌识别回调 - 车牌识别
+POST {{baseUrl}}/api/hardware/plate-number
+Content-Type: application/json
 
-### 1. 测试 CallDeviceMessage - 进场拍摄
-POST {{baseUrl}}/api/CarLicense/CallDeviceMessage_HuaXiaZhiXing
+{
+  "AlarmInfoPlate": {
+    "channel": 0,
+    "deviceName": "CarLicense500W_In",
+    "ipaddr": "192.168.3.192",
+    "result": {
+      "PlateResult": {
+        "license": "京A12345"
+      }
+    }
+  }
+}
+
+### 2. 获取当前车牌号（测试用）
+GET {{baseUrl}}/api/hardware/plate-number
+
+### 3. 设置测试车牌号
+POST {{baseUrl}}/api/hardware/plate-number/set
+Content-Type: application/json
+
+{
+  "plateNumber": "云A2T227"
+}
+
+### ========== 以下是旧版本测试（已废弃） ==========
+
+### 变量定义
+@baseUrlOld = http://192.168.3.112:9960
+
+### 1. 测试 CallDeviceMessage - 进场拍摄（旧版本）
+POST {{baseUrlOld}}/api/CarLicense/CallDeviceMessage_HuaXiaZhiXing
 Content-Type: application/json
 
 {
@@ -22,10 +56,8 @@ Content-Type: application/json
   }
 }
 
-
-
-### 1. 测试 CallDeviceMessage - 进场拍摄
-POST {{baseUrl}}/api/CarLicense/CallDeviceMessage
+### 1. 测试 CallDeviceMessage - 进场拍摄（旧版本）
+POST {{baseUrlOld}}/api/CarLicense/CallDeviceMessage
 Content-Type: application/json
 
 {
