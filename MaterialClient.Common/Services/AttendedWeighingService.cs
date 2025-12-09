@@ -117,7 +117,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     private IDisposable? _stabilitySubscription;
 
     // 重量稳定性监控
-    private const decimal WeightStabilityThreshold = 0.1m; // ±0.1m = 0.2m total range
+    private const decimal WeightStabilityThreshold = 0.05m; // ±0.05m = 0.1m total range
     private const int StabilityWindowSeconds = 3;
     private bool _isWeightStable = false;
 
@@ -377,7 +377,6 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     /// </summary>
     private void CheckWeightStability(decimal currentWeight)
     {
-        // 使用历史记录判断重量是否稳定
         if (IsWeightStable)
         {
             // 进入稳定状态
@@ -432,7 +431,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             var settings = await _settingsService.GetSettingsAsync();
             var cameraConfigs = settings.CameraConfigs;
 
-            if (cameraConfigs == null || cameraConfigs.Count == 0)
+            if (cameraConfigs.Count == 0)
             {
                 _logger?.LogWarning($"AttendedWeighingService: No cameras configured, cannot capture ({reason})");
                 return new List<string>();
