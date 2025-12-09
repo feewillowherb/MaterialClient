@@ -14,10 +14,10 @@ public partial class AuthCodeWindow : Window
 {
     private IDisposable? _authSuccessSubscription;
 
-    public AuthCodeWindow(AuthCodeWindowViewModel viewModel)
+    public AuthCodeWindow(AuthCodeWindowViewModel authCodeWindowViewModel)
     {
         InitializeComponent();
-        DataContext = viewModel;
+        DataContext = authCodeWindowViewModel;
 
         // Subscribe to DataContext changes
         this.WhenAnyValue(x => x.DataContext)

@@ -14,7 +14,7 @@ public class HttpResult<T>
     /// <summary>
     /// 响应数据
     /// </summary>
-    public T Data { get; set; }
+    public T? Data { get; set; }
 
     /// <summary>
     /// 响应消息

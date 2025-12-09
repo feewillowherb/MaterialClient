@@ -81,7 +81,7 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
         try
         {
             // Call authentication service for login operation
-            await _authenticationService.LoginTestAsync(Username, Password, RememberMe);
+            await _authenticationService.LoginAsync(Username, Password, RememberMe);
 
             // Success
             IsLoginSuccessful = true;

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 {
     /// <inheritdoc />
-    public partial class AddWeighingRecordType : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -35,6 +35,23 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "LicenseInfo",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ProjectId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    AuthToken = table.Column<Guid>(type: "TEXT", nullable: true),
+                    AuthEndTime = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    MachineCode = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LicenseInfo", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Materials",
                 columns: table => new
                 {
@@ -51,7 +68,18 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     Specifications = table.Column<string>(type: "TEXT", nullable: true),
                     ProId = table.Column<string>(type: "TEXT", nullable: true),
                     UnitName = table.Column<string>(type: "TEXT", nullable: true),
-                    UnitRate = table.Column<decimal>(type: "TEXT", nullable: false, defaultValue: 1m)
+                    UnitRate = table.Column<decimal>(type: "TEXT", nullable: false, defaultValue: 1m),
+                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    DeletionTime = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    DeleterId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    LastEditUserId = table.Column<int>(type: "INTEGER", nullable: true),
+                    LastEditor = table.Column<string>(type: "TEXT", nullable: true),
+                    CreateUserId = table.Column<int>(type: "INTEGER", nullable: true),
+                    Creator = table.Column<string>(type: "TEXT", nullable: true),
+                    UpdateTime = table.Column<int>(type: "INTEGER", nullable: true),
+                    AddTime = table.Column<int>(type: "INTEGER", nullable: true),
+                    UpdateDate = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    AddDate = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -72,6 +100,110 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Providers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Settings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ScaleSettingsJson = table.Column<string>(type: "TEXT", nullable: false),
+                    DocumentScannerConfigJson = table.Column<string>(type: "TEXT", nullable: false),
+                    SystemSettingsJson = table.Column<string>(type: "TEXT", nullable: false),
+                    CameraConfigsJson = table.Column<string>(type: "TEXT", nullable: false),
+                    LicensePlateRecognitionConfigsJson = table.Column<string>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Settings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserCredentials",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ProjectId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    LicenseInfoId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Username = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    EncryptedPassword = table.Column<string>(type: "TEXT", maxLength: 512, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserCredentials", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserSessions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ProjectId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    LicenseInfoId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    UserId = table.Column<long>(type: "INTEGER", nullable: false),
+                    Username = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    TrueName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    ClientId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    AccessToken = table.Column<string>(type: "TEXT", maxLength: 512, nullable: false),
+                    IsAdmin = table.Column<bool>(type: "INTEGER", nullable: false),
+                    IsCompany = table.Column<bool>(type: "INTEGER", nullable: false),
+                    ProductType = table.Column<int>(type: "INTEGER", nullable: false),
+                    FromProductId = table.Column<long>(type: "INTEGER", nullable: false),
+                    ProductId = table.Column<long>(type: "INTEGER", nullable: false),
+                    ProductName = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    CompanyId = table.Column<int>(type: "INTEGER", nullable: false),
+                    CompanyName = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    ApiUrl = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
+                    AuthEndTime = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    LoginTime = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastActivityTime = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserSessions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WeighingRecords",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Weight = table.Column<decimal>(type: "TEXT", nullable: false),
+                    PlateNumber = table.Column<string>(type: "TEXT", nullable: true),
+                    ProviderId = table.Column<int>(type: "INTEGER", nullable: true),
+                    MaterialId = table.Column<int>(type: "INTEGER", nullable: true),
+                    MaterialUnitId = table.Column<int>(type: "INTEGER", nullable: true),
+                    WaybillQuantity = table.Column<decimal>(type: "TEXT", nullable: true),
+                    MatchedId = table.Column<long>(type: "INTEGER", nullable: true),
+                    MatchedType = table.Column<int>(type: "INTEGER", nullable: true),
+                    CreationTime = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CreatorId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    LastModificationTime = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    LastModifierId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    DeleterId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    DeletionTime = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WeighingRecords", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WorkSettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    MaterialUpdateTime = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WorkSettings", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -150,39 +282,29 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "WeighingRecords",
+                name: "WeighingRecordAttachments",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Weight = table.Column<decimal>(type: "TEXT", nullable: false),
-                    PlateNumber = table.Column<string>(type: "TEXT", nullable: true),
-                    ProviderId = table.Column<int>(type: "INTEGER", nullable: true),
-                    MaterialId = table.Column<int>(type: "INTEGER", nullable: true),
-                    RecordType = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0),
-                    CreationTime = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    CreatorId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    LastModificationTime = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    LastModifierId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
-                    DeleterId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    DeletionTime = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    WeighingRecordId = table.Column<long>(type: "INTEGER", nullable: false),
+                    AttachmentFileId = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WeighingRecords", x => x.Id);
+                    table.PrimaryKey("PK_WeighingRecordAttachments", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_WeighingRecords_Materials_MaterialId",
-                        column: x => x.MaterialId,
-                        principalTable: "Materials",
+                        name: "FK_WeighingRecordAttachments_AttachmentFiles_AttachmentFileId",
+                        column: x => x.AttachmentFileId,
+                        principalTable: "AttachmentFiles",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_WeighingRecords_Providers_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Providers",
+                        name: "FK_WeighingRecordAttachments_WeighingRecords_WeighingRecordId",
+                        column: x => x.WeighingRecordId,
+                        principalTable: "WeighingRecords",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -211,31 +333,10 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "WeighingRecordAttachments",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    WeighingRecordId = table.Column<long>(type: "INTEGER", nullable: false),
-                    AttachmentFileId = table.Column<int>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_WeighingRecordAttachments", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_WeighingRecordAttachments_AttachmentFiles_AttachmentFileId",
-                        column: x => x.AttachmentFileId,
-                        principalTable: "AttachmentFiles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_WeighingRecordAttachments_WeighingRecords_WeighingRecordId",
-                        column: x => x.WeighingRecordId,
-                        principalTable: "WeighingRecords",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.CreateIndex(
+                name: "IX_LicenseInfo_ProjectId",
+                table: "LicenseInfo",
+                column: "ProjectId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MaterialUnits_MaterialId",
@@ -246,6 +347,24 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                 name: "IX_MaterialUnits_ProviderId",
                 table: "MaterialUnits",
                 column: "ProviderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Settings_Id",
+                table: "Settings",
+                column: "Id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserCredentials_ProjectId",
+                table: "UserCredentials",
+                column: "ProjectId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSessions_ProjectId",
+                table: "UserSessions",
+                column: "ProjectId",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WaybillAttachments_AttachmentFileId",
@@ -273,29 +392,37 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                 table: "WeighingRecordAttachments",
                 columns: new[] { "WeighingRecordId", "AttachmentFileId" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_WeighingRecords_MaterialId",
-                table: "WeighingRecords",
-                column: "MaterialId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_WeighingRecords_ProviderId",
-                table: "WeighingRecords",
-                column: "ProviderId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "LicenseInfo");
+
+            migrationBuilder.DropTable(
                 name: "MaterialUnits");
+
+            migrationBuilder.DropTable(
+                name: "Settings");
+
+            migrationBuilder.DropTable(
+                name: "UserCredentials");
+
+            migrationBuilder.DropTable(
+                name: "UserSessions");
 
             migrationBuilder.DropTable(
                 name: "WaybillAttachments");
 
             migrationBuilder.DropTable(
                 name: "WeighingRecordAttachments");
+
+            migrationBuilder.DropTable(
+                name: "WorkSettings");
+
+            migrationBuilder.DropTable(
+                name: "Materials");
 
             migrationBuilder.DropTable(
                 name: "Waybills");
@@ -305,9 +432,6 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
             migrationBuilder.DropTable(
                 name: "WeighingRecords");
-
-            migrationBuilder.DropTable(
-                name: "Materials");
 
             migrationBuilder.DropTable(
                 name: "Providers");

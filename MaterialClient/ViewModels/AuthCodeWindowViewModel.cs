@@ -50,7 +50,7 @@ public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : R
         try
         {
             // Call license service to verify
-            await licenseService.VerifyAuthorizationCodeTestAsync(AuthorizationCode);
+            await licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode);
 
             // Success
             IsVerified = true;
