@@ -14,6 +14,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
     // DbSets
     public DbSet<Material> Materials { get; set; }
+    public DbSet<MaterialType> MaterialTypes { get; set; }
     public DbSet<MaterialUnit> MaterialUnits { get; set; }
     public DbSet<Provider> Providers { get; set; }
     public DbSet<Waybill> Waybills { get; set; }
@@ -48,6 +49,26 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired();
             entity.Property(e => e.UnitRate).IsRequired().HasDefaultValue(1);
+        });
+
+        // Configure MaterialType relationships
+        modelBuilder.Entity<MaterialType>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TypeName).HasMaxLength(200);
+            entity.Property(e => e.TypeCode).HasMaxLength(50);
+            entity.Property(e => e.Remark).HasMaxLength(500);
+            entity.Property(e => e.ParentId).IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.CoId).IsRequired();
+            entity.Property(e => e.UpperLimit).HasPrecision(18, 2).HasDefaultValue(0);
+            entity.Property(e => e.LowerLimit).HasPrecision(18, 2).HasDefaultValue(0);
+            entity.Property(e => e.IsDeleted).IsRequired().HasDefaultValue(false);
+
+            // 创建索引以提高查询性能
+            entity.HasIndex(e => e.TypeCode);
+            entity.HasIndex(e => e.ParentId);
+            entity.HasIndex(e => e.CoId);
+            entity.HasIndex(e => e.IsDeleted);
         });
 
         // Configure MaterialUnit relationships
