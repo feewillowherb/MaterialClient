@@ -28,63 +28,92 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
     [UnitOfWork]
     public async Task SyncMaterialAsync()
     {
-        var now = DateTime.Now;
-        var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync();
-        if (licenseInfo == null)
+        try
         {
-            _logger.LogWarning("License info not found, skipping material sync.");
-            return;
-        }
-
-        var workSetting = await _workSettingRepository.FirstOrDefaultAsync();
-        long timestamp = 0;
-
-        if (workSetting?.MaterialUpdateTime != null)
-        {
-            timestamp = workSetting.MaterialUpdateTime.Value.Ticks;
-        }
-
-        var request = new GetMaterialGoodListInput(
-            ProId: licenseInfo.ProjectId.ToString(),
-            UpdateTime: timestamp
-        );
-
-        var materialResult = await _materialPlatformApi.GetMaterialGoodListAsync(request);
-        if (materialResult.Success == false)
-        {
-            _logger.LogError("Failed to fetch material error message: {ErrorMessage}, code: {Code}", materialResult.Msg,
-                materialResult.Code);
-            return;
-        }
-
-        var list = materialResult.Data.Select(MaterialGoodListResultDto.ToEntity).ToList();
-
-        var q = await _materialRepository.GetQueryableAsync();
-
-        var existingMaterialIds = await q
-            .Select(x => x.Id)
-            .Where(x => list.Select(l => l.Id).Contains(x))
-            .ToListAsync();
-        var materialsToUpdate = list.Where(x => existingMaterialIds.Contains(x.Id)).ToList();
-        var materialsToInsert = list.Where(x => !existingMaterialIds.Contains(x.Id)).ToList();
-        await _materialRepository.UpdateManyAsync(materialsToUpdate);
-        await _materialRepository.InsertManyAsync(materialsToInsert);
-
-        _logger.LogInformation("Synchronized {UpdateCount} materials and inserted {InsertCount} new materials.",
-            materialsToUpdate.Count, materialsToInsert.Count);
-
-        if (workSetting != null)
-        {
-            workSetting.MaterialUpdateTime = now;
-            await _workSettingRepository.UpdateAsync(workSetting);
-        }
-        else
-        {
-            workSetting = new WorkSettingsEntity
+            var now = DateTime.Now;
+            var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync();
+            if (licenseInfo == null)
             {
-                MaterialUpdateTime = now
-            };
-            await _workSettingRepository.InsertAsync(workSetting);
+                _logger.LogWarning("未找到许可证信息，跳过物料同步");
+                return;
+            }
+
+            var workSetting = await _workSettingRepository.FirstOrDefaultAsync();
+            long timestamp = 0;
+
+            if (workSetting?.MaterialUpdateTime != null)
+            {
+                timestamp = new DateTimeOffset(workSetting.MaterialUpdateTime.Value).ToUnixTimeSeconds();
+            }
+
+            var request = new GetMaterialGoodListInput(
+                ProId: licenseInfo.ProjectId.ToString(),
+                UpdateTime: timestamp
+            );
+
+            _logger.LogInformation("开始获取物料数据，项目ID: {ProjectId}, 时间戳: {Timestamp}", 
+                licenseInfo.ProjectId, timestamp);
+
+            List<MaterialGoodListResultDto>? materialList;
+            try
+            {
+                materialList = await _materialPlatformApi.GetMaterialGoodListAsync(request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "调用物料平台API时发生异常，项目ID: {ProjectId}", licenseInfo.ProjectId);
+                return;
+            }
+
+            if (materialList.Count == 0)
+            {
+                _logger.LogInformation("没有需要同步的物料数据");
+                return;
+            }
+
+            var list = materialList.Select(MaterialGoodListResultDto.ToEntity).ToList();
+
+            var q = await _materialRepository.GetQueryableAsync();
+
+            var existingMaterialIds = await q
+                .Select(x => x.Id)
+                .Where(x => list.Select(l => l.Id).Contains(x))
+                .ToListAsync();
+            
+            var materialsToUpdate = list.Where(x => existingMaterialIds.Contains(x.Id)).ToList();
+            var materialsToInsert = list.Where(x => !existingMaterialIds.Contains(x.Id)).ToList();
+            
+            if (materialsToUpdate.Count > 0)
+            {
+                await _materialRepository.UpdateManyAsync(materialsToUpdate);
+            }
+            
+            if (materialsToInsert.Count > 0)
+            {
+                await _materialRepository.InsertManyAsync(materialsToInsert);
+            }
+
+            _logger.LogInformation("物料同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
+                materialsToUpdate.Count, materialsToInsert.Count);
+
+            if (workSetting != null)
+            {
+                workSetting.MaterialUpdateTime = now;
+                await _workSettingRepository.UpdateAsync(workSetting);
+            }
+            else
+            {
+                workSetting = new WorkSettingsEntity
+                {
+                    MaterialUpdateTime = now
+                };
+                await _workSettingRepository.InsertAsync(workSetting);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "同步物料数据时发生异常");
+            throw;
         }
     }
 }

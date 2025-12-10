@@ -22,7 +22,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         : base(timer, serviceScopeFactory)
     {
         // 设置定时器间隔为 10 分钟
-        Timer.Period = (int)TimeSpan.FromMinutes(10).TotalMilliseconds;
+        Timer.Period = (int)TimeSpan.FromMinutes(1).TotalMilliseconds;
     }
 
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)

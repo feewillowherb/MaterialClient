@@ -46,8 +46,6 @@ public class MaterialClientModule : AbpModule
 
         // Register Web Host service
         services.AddSingleton<MinimalWebHostService>();
-
-        // 后台任务：10 分钟轮询 TODO 逻辑，使用独立 UOW
-        services.AddHostedService<PollingBackgroundService>();
+        
     }
 }
