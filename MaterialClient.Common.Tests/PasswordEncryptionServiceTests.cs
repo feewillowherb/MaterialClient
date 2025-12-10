@@ -83,7 +83,7 @@ public class PasswordEncryptionServiceTests
 
         // Assert - non-deterministic encryption (random IV for security)
         encrypted1.ShouldNotBe(encrypted2);
-        
+
         // But both should decrypt to the same plaintext
         _encryptionService.Decrypt(encrypted1).ShouldBe(plainText);
         _encryptionService.Decrypt(encrypted2).ShouldBe(plainText);

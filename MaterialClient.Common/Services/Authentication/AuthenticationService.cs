@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.Json;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services.Authentication;
@@ -77,11 +78,12 @@ public interface IAuthenticationService
 [AutoConstructor]
 public partial class AuthenticationService : DomainService, IAuthenticationService
 {
-    private readonly IBasePlatformApi _basePlatformApi;
+    private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly ILicenseService _licenseService;
     private readonly IPasswordEncryptionService _passwordEncryptionService;
     private readonly IRepository<UserCredential, Guid> _credentialRepository;
     private readonly IRepository<UserSession, Guid> _sessionRepository;
+    private readonly IJsonSerializer _jsonSerializer;
 
     [UnitOfWork]
     public async Task<UserSession> LoginAsync(string username, string password, bool rememberMe)
@@ -116,10 +118,10 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
             ProId = license.ProjectId.ToString()
         };
 
-        HttpResult<LoginUserDto> response;
+        HttpResult<object> response;
         try
         {
-            response = await _basePlatformApi.UserLoginAsync(request);
+            response = await _materialPlatformApi.UserLoginAsync(request);
         }
         catch (Exception ex)
         {
@@ -127,7 +129,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         }
 
         // Check response
-        if (response == null || !response.Success || response.Data == null)
+        if (!response.Success || response.Data == null)
         {
             // Clear saved credential on failed login
             await ClearSavedCredentialAsync();
@@ -136,7 +138,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
             throw new BusinessException("AUTH:LOGIN_FAILED", errorMsg);
         }
 
-        var loginData = response.Data;
+        var loginData = _jsonSerializer.Deserialize<LoginUserDto>(_jsonSerializer.Serialize(response.Data));
 
         // Save or update user credential if rememberMe is true
         if (rememberMe)
@@ -154,6 +156,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
                 var credential = new UserCredential(
                     Guid.NewGuid(),
                     license.ProjectId,
+                    license.Id,
                     username,
                     encryptedPassword
                 );
@@ -177,6 +180,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         var session = new UserSession(
             Guid.NewGuid(),
             license.ProjectId,
+            license.Id,
             loginData.UserId,
             loginData.UserName,
             loginData.TrueName,
@@ -230,7 +234,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         }
 
         // 使用 LicenseInfo 的主键 ID 作为外键值（外键 ProjectId 实际指向 LicenseInfo.Id）
-        var projectId = license.Id;
+        var projectId = license.ProjectId;
 
         // 保存或更新用户凭证（如果需要记住密码）
         if (rememberMe)
@@ -248,6 +252,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
                 var credential = new UserCredential(
                     Guid.NewGuid(),
                     projectId,
+                    license.Id,
                     username,
                     encryptedPassword
                 );
@@ -285,7 +290,8 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         // 创建新的测试会话，使用固定的测试 ProjectId
         var session = new UserSession(
             Guid.NewGuid(),
-            projectId, // 使用固定的测试 ProjectId
+            license.ProjectId, // 使用固定的测试 ProjectId
+            license.Id,
             testUserId,
             username, // 使用输入的用户名
             testTrueName,

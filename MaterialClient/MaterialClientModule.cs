@@ -6,11 +6,14 @@ using MaterialClient.Common;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
+using MaterialClient.Backgrounds;
+using Volo.Abp.AspNetCore;
 
 namespace MaterialClient;
 
 [DependsOn(
     typeof(MaterialClientCommonModule),
+    typeof(AbpAspNetCoreModule),
     typeof(AbpAutofacModule)
 )]
 public class MaterialClientModule : AbpModule
@@ -28,6 +31,7 @@ public class MaterialClientModule : AbpModule
         services.AddTransient<AuthCodeWindow>();
         services.AddTransient<AttendedWeighingWindow>();
         services.AddTransient<SettingsWindow>();
+        // AttendedWeighingDetailView 需要 WeighingRecord 参数，在使用时通过 IServiceProvider 创建
 
         // Register ViewModels (transient as they are bound to specific UI instances)
         services.AddTransient<MainWindowViewModel>();
@@ -35,9 +39,15 @@ public class MaterialClientModule : AbpModule
         services.AddTransient<AuthCodeWindowViewModel>();
         services.AddTransient<AttendedWeighingViewModel>();
         services.AddTransient<SettingsWindowViewModel>();
+        // AttendedWeighingDetailViewModel 需要 WeighingRecord 参数，在使用时创建
 
         // Register startup service
         services.AddTransient<StartupService>();
+
+        // Register Web Host service
+        services.AddSingleton<MinimalWebHostService>();
+
+        // 后台任务：10 分钟轮询 TODO 逻辑，使用独立 UOW
+        services.AddHostedService<PollingBackgroundService>();
     }
 }
-

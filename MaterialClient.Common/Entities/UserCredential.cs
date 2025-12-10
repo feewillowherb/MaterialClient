@@ -25,11 +25,13 @@ public class UserCredential : Entity<Guid>
     public UserCredential(
         Guid id,
         Guid projectId,
+        Guid licenseInfoId,
         string username,
         string encryptedPassword)
         : base(id)
     {
         ProjectId = projectId;
+        LicenseInfoId = licenseInfoId;
         Username = username;
         EncryptedPassword = encryptedPassword;
         CreatedAt = DateTime.Now;
@@ -41,6 +43,8 @@ public class UserCredential : Entity<Guid>
     /// </summary>
     [Required]
     public Guid ProjectId { get; set; }
+
+    [Required] public Guid LicenseInfoId { get; set; }
 
     /// <summary>
     /// 用户名
@@ -69,12 +73,6 @@ public class UserCredential : Entity<Guid>
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>
-    /// 导航属性：授权信息
-    /// </summary>
-    [ForeignKey(nameof(ProjectId))]
-    public virtual LicenseInfo LicenseInfo { get; set; }
-
-    /// <summary>
     /// 更新密码
     /// </summary>
     public void UpdatePassword(string newEncryptedPassword)
@@ -93,4 +91,3 @@ public class UserCredential : Entity<Guid>
         UpdatedAt = DateTime.Now;
     }
 }
-

@@ -25,7 +25,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     private readonly IBasePlatformApi _mockApi;
     private readonly IRepository<UserSession, Guid> _sessionRepository;
     private readonly IRepository<UserCredential, Guid> _credentialRepository;
-    
+
     private string _username = string.Empty;
     private string _password = string.Empty;
     private bool _rememberMe;
@@ -33,7 +33,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     private string _errorMessage = string.Empty;
     private UserSession? _currentSession;
     private UserCredential? _savedCredential;
-    
+
     public AuthenticationSteps()
     {
         _authService = GetRequiredService<IAuthenticationService>();
@@ -41,7 +41,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         _testService = GetRequiredService<ITestService>();
         _sessionRepository = GetRequiredService<IRepository<UserSession, Guid>>();
         _credentialRepository = GetRequiredService<IRepository<UserCredential, Guid>>();
-        
+
         // Get the mock API that was registered in the test module
         _mockApi = GetRequiredService<IBasePlatformApi>();
     }
@@ -51,6 +51,52 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     {
         // Reset all mocks for this scenario
         _mockApi.ClearReceivedCalls();
+    }
+
+    /// <summary>
+    /// 设置 mock 登录 API 响应
+    /// </summary>
+    /// <param name="username">用户名，如果为空则使用默认值 "testuser"</param>
+    /// <param name="shouldSucceed">是否成功登录，默认为 true</param>
+    private void SetupMockLoginResponse(string? username = null, bool shouldSucceed = true)
+    {
+        if (!shouldSucceed)
+        {
+            _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+            {
+                Success = false,
+                Code = -1,
+                Msg = "用户名或密码错误",
+                Data = null!
+            });
+        }
+        else
+        {
+            _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+            {
+                Success = true,
+                Code = 0,
+                Msg = "成功",
+                Data = new LoginUserDto
+                {
+                    UserId = 1,
+                    UserName = username ?? "testuser",
+                    ClientId = Guid.NewGuid(),
+                    Token = "test-access-token",
+                    TrueName = "测试用户",
+                    IsAdmin = false,
+                    IsCompany = true,
+                    ProductType = 2,
+                    FromProductId = 1,
+                    ProductId = 1,
+                    ProductName = "测试产品",
+                    CoId = 1,
+                    CoName = "测试公司",
+                    Url = "http://test.com",
+                    AuthEndTime = DateTime.UtcNow.AddMonths(6)
+                }
+            });
+        }
     }
 
     #region Given Steps
@@ -82,25 +128,10 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     public async Task GivenUserHasLoggedIn()
     {
         await GivenSystemIsAuthorized();
-        
+
         // Setup mock API response
-        _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-        {
-            Success = true,
-            Code = 0,
-            Msg = "成功",
-            Data = new LoginUserDto
-            {
-                UserId = 1,
-                UserName = "testuser",
-                Token = "test-access-token",
-                TrueName = "测试用户",
-                ProductName = "测试产品",
-                CoName = "测试公司",
-                Url = "http://test.com"
-            }
-        });
-        
+        SetupMockLoginResponse("testuser", shouldSucceed: true);
+
         await _authService.LoginAsync("testuser", "Test@123", true);
     }
 
@@ -211,47 +242,19 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
                 _errorMessage = "用户名不能为空";
                 return;
             }
-            
+
             if (string.IsNullOrEmpty(_password))
             {
                 _errorMessage = "密码不能为空";
                 return;
             }
-            
+
             // Setup mock API response
-            if (_password == "wrongpassword")
-            {
-                _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-                {
-                    Success = false,
-                    Code = -1,
-                    Msg = "用户名或密码错误",
-                    Data = null!
-                });
-            }
-            else
-            {
-                _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-                {
-                    Success = true,
-                    Code = 0,
-                    Msg = "成功",
-                    Data = new LoginUserDto
-                    {
-                        UserId = 1,
-                        UserName = _username,
-                        Token = "test-access-token",
-                        TrueName = "测试用户",
-                        ProductName = "测试产品",
-                        CoName = "测试公司",
-                        Url = "http://test.com"
-                    }
-                });
-            }
-            
+            SetupMockLoginResponse(_username, shouldSucceed: _password != "wrongpassword");
+
             var result = await _authService.LoginAsync(_username, _password, _rememberMe);
             _loginSuccessful = result != null;
-            
+
             if (!_loginSuccessful)
             {
                 _errorMessage = "登录失败";
@@ -268,7 +271,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     public async Task WhenCheckingForActiveSession()
     {
         var hasSession = await _authService.HasActiveSessionAsync();
-        
+
         if (hasSession)
         {
             _currentSession = await WithUnitOfWorkAsync(async () =>
@@ -313,7 +316,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var sessions = await _sessionRepository.GetListAsync();
-            
+
             sessions.ShouldNotBeEmpty();
             var session = sessions.First();
             session.AccessToken.ShouldNotBeNullOrEmpty();
@@ -326,7 +329,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var credential = await _credentialRepository.FirstOrDefaultAsync();
-            
+
             credential.ShouldNotBeNull();
             credential.Username.ShouldBe(_username);
             credential.EncryptedPassword.ShouldNotBeNullOrEmpty();
@@ -339,7 +342,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var credentials = await _credentialRepository.GetListAsync();
-            
+
             credentials.ShouldBeEmpty();
         });
     }
@@ -350,7 +353,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var credentials = await _credentialRepository.GetListAsync();
-            
+
             // Should either be empty or not contain the old credentials
             var oldCredential = credentials.FirstOrDefault(c => c.Username == "olduser");
             oldCredential.ShouldBeNull();
@@ -363,7 +366,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var credentials = await _credentialRepository.GetListAsync();
-            
+
             credentials.ShouldBeEmpty();
         });
     }
@@ -407,7 +410,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var sessions = await _sessionRepository.GetListAsync();
-            
+
             sessions.ShouldBeEmpty();
         });
     }
@@ -418,10 +421,10 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var credential = await _credentialRepository.FirstOrDefaultAsync();
-            
+
             credential.ShouldNotBeNull();
             credential.EncryptedPassword.ShouldNotBe(_password);
-            
+
             // Verify we can decrypt it
             var encryptionService = GetRequiredService<IPasswordEncryptionService>();
             var decrypted = encryptionService.Decrypt(credential.EncryptedPassword);
@@ -435,9 +438,9 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var credential = await _credentialRepository.FirstOrDefaultAsync();
-            
+
             credential.ShouldNotBeNull();
-            
+
             var encryptionService = GetRequiredService<IPasswordEncryptionService>();
             var decrypted = encryptionService.Decrypt(credential.EncryptedPassword);
             decrypted.ShouldBe(_password);
@@ -448,7 +451,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     public async Task ThenShouldLoadSavedCredentials()
     {
         var credential = await _authService.GetSavedCredentialAsync();
-        
+
         credential.ShouldNotBeNull();
         credential.Value.username.ShouldNotBeNullOrEmpty();
         credential.Value.password.ShouldNotBeNullOrEmpty();
@@ -466,7 +469,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var sessions = await _sessionRepository.GetListAsync();
-            
+
             sessions.ShouldBeEmpty();
         });
     }

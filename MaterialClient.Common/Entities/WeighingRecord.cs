@@ -23,6 +23,12 @@ public class WeighingRecord : FullAuditedEntity<long>
         Weight = weight;
     }
 
+    public WeighingRecord(decimal weight, string? plateNumber)
+    {
+        Weight = weight;
+        PlateNumber = plateNumber;
+    }
+
     /// <summary>
     /// 构造函数（用于指定Id）
     /// </summary>
@@ -30,6 +36,14 @@ public class WeighingRecord : FullAuditedEntity<long>
         : base(id)
     {
         Weight = weight;
+    }
+
+    public void Update(string? plateNumber, int? providerId, int? materialId, decimal? waybillQuantity)
+    {
+        PlateNumber = plateNumber;
+        ProviderId = providerId;
+        MaterialId = materialId;
+        WaybillQuantity = waybillQuantity;
     }
 
     /// <summary>
@@ -41,9 +55,31 @@ public class WeighingRecord : FullAuditedEntity<long>
     /// 车牌号
     /// </summary>
     public string? PlateNumber { get; set; }
-    
-    
-    
+
+
+    /// <summary>
+    /// 供应商Id
+    /// </summary>
+    public int? ProviderId { get; set; }
+
+
+    /// <summary>
+    /// 材料Id
+    /// </summary>
+    public int? MaterialId { get; set; }
+
+
+    /// <summary>
+    /// 单位Id
+    /// </summary>
+    public int? MaterialUnitId { get; set; }
+
+
+    /// <summary>
+    /// 运单数量
+    /// </summary>
+    public decimal? WaybillQuantity { get; set; }
+
 
     /// <summary>
     /// 和匹配的Id

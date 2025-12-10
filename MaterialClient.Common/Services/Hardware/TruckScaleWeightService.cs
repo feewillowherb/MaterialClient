@@ -66,14 +66,16 @@ public class TruckScaleWeightService : ITruckScaleWeightService
 {
     private readonly ISettingsService _settingsService;
     private readonly ILogger<TruckScaleWeightService>? _logger;
-    
+
     private SerialPort? _serialPort;
     private decimal _currentWeight = 0m;
     private bool _isListening = false;
     private bool _isClosing = false;
-    private readonly object _lockObject = new();
+    private readonly Lock _lockObject = new();
     private ScaleSettings? _currentSettings;
-    
+
+    private const decimal TonDecimal = 100m;
+
     // Rx Subject for weight updates
     private readonly Subject<decimal> _weightSubject = new();
 
@@ -136,6 +138,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                             // Settings haven't changed, keep existing connection
                             return true;
                         }
+
                         // Settings changed, close and reopen
                         CloseInternal();
                     }
@@ -175,8 +178,9 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     // Open serial port
                     _serialPort.Open();
                     _isClosing = false;
-                    _logger?.LogInformation($"Truck scale serial port opened: {settings.SerialPort} at {settings.BaudRate} baud");
-                    
+                    _logger?.LogInformation(
+                        $"Truck scale serial port opened: {settings.SerialPort} at {settings.BaudRate} baud");
+
                     return true;
                 }
             }
@@ -234,7 +238,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
 
             int receivedCount = 0;
             byte[] readBuffer = new byte[_byteCount];
-            
+
             while (receivedCount < _byteCount)
             {
                 int bytesRead = _serialPort.Read(readBuffer, receivedCount, _byteCount - receivedCount);
@@ -267,14 +271,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
             if (_serialPort == null) return;
 
             string receivedData = _serialPort.ReadTo(_endChar);
-            
+
             // Reverse the string as per reference implementation
             var reversed = string.Empty;
             for (int i = receivedData.Length - 1; i >= 0; i--)
             {
                 reversed += receivedData[i];
             }
-            
+
             ParseStringWeight(reversed);
         }
         catch (Exception ex)
@@ -304,27 +308,27 @@ public class TruckScaleWeightService : ITruckScaleWeightService
 
             // Parse sign byte (byte 1): 0x2B = '+', 0x2D = '-'
             bool isNegative = buffer[1] == 0x2D;
-            
+
             // Extract ASCII weight digits (bytes 2 onwards until we find 'E')
             // Format: 4 digits (integer part) + 2 digits (decimal part) = 6 digits total
             // Example: "000205" -> 2.05
             var weightString = string.Empty;
             int startIndex = 2; // Skip STX and sign
-            
+
             // Read ASCII digits until we encounter 'E' (0x45) or reach 6 digits
             for (int i = startIndex; i < buffer.Length - 1; i++) // -1 to skip ETX
             {
                 byte b = buffer[i];
-                
+
                 // Stop at 'E' marker (0x45)
                 if (b == 0x45)
                 {
                     break;
                 }
-                
+
                 // Convert ASCII to character
                 char c = (char)b;
-                
+
                 // Only include digits, and limit to 6 digits (4 integer + 2 decimal)
                 if (char.IsDigit(c) && weightString.Length < 6)
                 {
@@ -339,21 +343,21 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 // The string contains integer part + decimal part without decimal point
                 if (decimal.TryParse(weightString, out decimal weightInt))
                 {
-                    // Convert from integer to decimal (e.g., "000205" -> 2.05)
-                    // Assuming 2 decimal places (last 2 digits are decimal part)
-                    decimal parsedWeight = weightInt / 100m;
-                    
+                    decimal parsedWeight = weightInt / TonDecimal;
+
                     // Apply sign
                     if (isNegative)
                     {
                         parsedWeight = -parsedWeight;
                     }
-                    
+
                     lock (_lockObject)
                     {
                         _currentWeight = parsedWeight;
                     }
-                    _logger?.LogDebug($"Parsed HEX weight: {parsedWeight} kg (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
+
+                    _logger?.LogDebug(
+                        $"Parsed HEX weight: {parsedWeight} kg (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
                     // Push weight update to Rx stream
                     _weightSubject.OnNext(parsedWeight);
                 }
@@ -384,7 +388,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
         {
             // Remove the end character if present
             string weightString = data.TrimEnd('=');
-            
+
             // Try to parse as decimal
             if (decimal.TryParse(weightString, out decimal weight))
             {
@@ -392,6 +396,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 {
                     _currentWeight = weight;
                 }
+
                 _logger?.LogDebug($"Parsed String weight: {weight} kg");
                 // Push weight update to Rx stream
                 _weightSubject.OnNext(weight);
@@ -475,7 +480,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 if (_serialPort != null && _serialPort.IsOpen)
                 {
                     _isClosing = true;
-                    
+
                     // Wait for any ongoing receive operation to complete
                     int waitCount = 0;
                     while (_isListening && waitCount < 100)
@@ -488,7 +493,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     _serialPort.Close();
                     _serialPort.Dispose();
                     _serialPort = null;
-                    
+
                     _logger?.LogInformation("Truck scale serial port closed");
                 }
             }
@@ -521,6 +526,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
         {
             _currentWeight = weight;
         }
+
         // Push weight update to Rx stream
         _weightSubject.OnNext(weight);
     }

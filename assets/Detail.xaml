@@ -1,0 +1,376 @@
+     <TabItem x:Name="ti_Operation_Second" Header="TabItem">
+                                <ScrollViewer HorizontalScrollBarVisibility="Visible"
+                                              VerticalScrollBarVisibility="Disabled">
+                                    <Grid Background="#F5F6FA">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1085" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="100" />
+                                            <RowDefinition Height="185" />
+                                            <RowDefinition Height="400" />
+                                            <RowDefinition Height="80" />
+                                        </Grid.RowDefinitions>
+                                        <!--第一行-->
+                                        <Border Grid.Row="0" Grid.Column="0" Background="#EDF3FF" BorderBrush="#EDF3FF"
+                                                DockPanel.Dock="Top" BorderThickness="1" CornerRadius="0" Padding="15">
+                                            <UniformGrid Rows="2" Columns="3">
+                                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center">
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <DockPanel>
+                                                            <TextBlock Width="35" TextAlignment="Left">
+                                                                <Run Text="毛" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="39" TextAlignment="Right">
+                                                                <Run Text="重" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="：" />
+                                                            </TextBlock>
+                                                        </DockPanel>
+                                                    </Label>
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <DockPanel>
+                                                            <TextBlock Foreground="#427FF9" x:Name="lbl_Add_AllWeight"
+                                                                       FontWeight="Bold">
+                                                                <Run Text="0.00" />
+                                                            </TextBlock>
+                                                            <TextBlock Padding="7,0,0,0">
+                                                                <Run Text="吨" />
+                                                            </TextBlock>
+                                                        </DockPanel>
+                                                    </Label>
+                                                </WrapPanel>
+                                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center">
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <DockPanel>
+                                                            <TextBlock Width="35" TextAlignment="Left">
+                                                                <Run Text="皮" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="39" TextAlignment="Right">
+                                                                <Run Text="重" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="：" />
+                                                            </TextBlock>
+                                                        </DockPanel>
+                                                    </Label>
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <DockPanel>
+                                                            <TextBlock Foreground="#427FF9"
+                                                                       x:Name="lbl_Add_TruckWeight" FontWeight="Bold">
+                                                                <Run Text="0.00" />
+                                                            </TextBlock>
+                                                            <TextBlock Padding="7,0,0,0">
+                                                                <Run Text="吨" />
+                                                            </TextBlock>
+                                                        </DockPanel>
+                                                    </Label>
+                                                </WrapPanel>
+                                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center">
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <DockPanel>
+                                                            <TextBlock Width="35" TextAlignment="Left">
+                                                                <Run Text="净" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="39" TextAlignment="Right">
+                                                                <Run Text="重" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="：" />
+                                                            </TextBlock>
+                                                        </DockPanel>
+                                                    </Label>
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <DockPanel>
+                                                            <TextBlock Foreground="#F5A000"
+                                                                       x:Name="lbl_Add_GoodsWeight">
+                                                                <Run Text="0.00" />
+                                                            </TextBlock>
+                                                            <TextBlock Padding="7,0,0,0">
+                                                                <Run Text="吨" />
+                                                            </TextBlock>
+                                                        </DockPanel>
+                                                    </Label>
+                                                </WrapPanel>
+                                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center">
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <UniformGrid Rows="1" Columns="5">
+                                                            <TextBlock Width="20">
+                                                                <Run Text="进" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="场" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="时" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="间" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="：" />
+                                                            </TextBlock>
+                                                        </UniformGrid>
+                                                    </Label>
+                                                    <Label Content="-" VerticalAlignment="Center" Width="240"
+                                                           HorizontalAlignment="Left" FontSize="16"
+                                                           x:Name="lbl_Add_JoinTime" />
+                                                </WrapPanel>
+                                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center">
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <UniformGrid Rows="1" Columns="5">
+                                                            <TextBlock Width="20">
+                                                                <Run Text="出" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="场" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="时" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="间" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="：" />
+                                                            </TextBlock>
+                                                        </UniformGrid>
+
+                                                    </Label>
+                                                    <Label Content="-" VerticalAlignment="Center" Width="240"
+                                                           HorizontalAlignment="Left" FontSize="16"
+                                                           x:Name="lbl_Add_OutTime" />
+                                                </WrapPanel>
+                                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center">
+                                                    <Label VerticalAlignment="Center" Width="100"
+                                                           HorizontalAlignment="Left" FontSize="18">
+                                                        <UniformGrid Rows="1" Columns="5">
+                                                            <TextBlock Width="20">
+                                                                <Run Text="收" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="货" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="员" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="工" />
+                                                            </TextBlock>
+                                                            <TextBlock Width="20">
+                                                                <Run Text="：" />
+                                                            </TextBlock>
+                                                        </UniformGrid>
+                                                    </Label>
+                                                    <Label Content="admin" VerticalAlignment="Center" Width="240"
+                                                           HorizontalAlignment="Left" FontSize="18"
+                                                           x:Name="lbl_Add_Operator" />
+                                                </WrapPanel>
+                                            </UniformGrid>
+                                        </Border>
+
+                                        <!--第二行-->
+                                        <DockPanel Grid.Row="1" Grid.Column="0">
+                                            <Border Width="1090" Height="175" BorderThickness="0,5,0,0"
+                                                    BorderBrush="#B0EBFF" HorizontalAlignment="Left" Background="White">
+                                                <WrapPanel Orientation="Horizontal" Background="White"
+                                                           HorizontalAlignment="Left" VerticalAlignment="Top">
+                                                    <DockPanel Height="50" Width="1080" HorizontalAlignment="Left"
+                                                               VerticalAlignment="Top" Margin="0,5,0,5">
+                                                        <WrapPanel Orientation="Horizontal" Background="White"
+                                                                   HorizontalAlignment="Left" VerticalAlignment="Top">
+                                                            <Label Content="车牌号" VerticalAlignment="Center"
+                                                                   Padding="15,0,0,0" Width="100"
+                                                                   HorizontalAlignment="Left" FontSize="18" />
+                                                            <TextBox x:Name="txt_Add_TruckNo" Height="40" Width="980"
+                                                                     BorderBrush="#ABABAB" BorderThickness="1"
+                                                                     HorizontalAlignment="Left" TextWrapping="NoWrap"
+                                                                     Text="" VerticalAlignment="Center"
+                                                                     TextAlignment="Left" FontSize="18"
+                                                                     TextChanged="txt_Add_TruckNo_TextChanged" />
+                                                        </WrapPanel>
+                                                    </DockPanel>
+                                                    <DockPanel Height="50" Width="1080" HorizontalAlignment="Left"
+                                                               VerticalAlignment="Top" Margin="0,5,0,5">
+                                                        <Label Content="供应商" VerticalAlignment="Center"
+                                                               Padding="15,0,0,0" Width="100"
+                                                               HorizontalAlignment="Left" FontSize="18" />
+                                                        <Label Width="980" Height="40" BorderBrush="#ABABAB"
+                                                               BorderThickness="1" HorizontalAlignment="Left">
+                                                            <ComboBox x:Name="cb_Add_Products"
+                                                                      IsSelected="{Binding IsSelected}" FontSize="16"
+                                                                      materialDesign:HintAssist.Hint="--请选择--"
+                                                                      HorizontalAlignment="Left"
+                                                                      VerticalAlignment="Top" Width="950" Height="35"
+                                                                      SelectedIndex="0" IsEditable="False">
+                                                            </ComboBox>
+                                                        </Label>
+                                                    </DockPanel>
+                                                    <DockPanel Height="50" Width="1080" HorizontalAlignment="Left"
+                                                               VerticalAlignment="Top" Margin="0,5,0,5">
+                                                        <WrapPanel Orientation="Horizontal" Background="White"
+                                                                   HorizontalAlignment="Left" VerticalAlignment="Top">
+                                                            <Label Content="备注" VerticalAlignment="Center"
+                                                                   Padding="15,0,0,0" Width="100"
+                                                                   HorizontalAlignment="Left" FontSize="18" />
+                                                            <TextBox x:Name="txt_Add_Mark" Height="40" Width="980"
+                                                                     BorderBrush="#ABABAB" BorderThickness="1"
+                                                                     HorizontalAlignment="Left" TextWrapping="Wrap"
+                                                                     Text="" VerticalAlignment="Center"
+                                                                     TextAlignment="Left" FontSize="18" />
+                                                        </WrapPanel>
+                                                    </DockPanel>
+                                                </WrapPanel>
+                                            </Border>
+                                        </DockPanel>
+
+                                        <!--第三行-->
+                                        <Grid Grid.Row="2" Grid.Column="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="50" />
+                                                <RowDefinition Height="300" />
+                                            </Grid.RowDefinitions>
+                                            <Border Grid.Row="0" Grid.Column="0" Height="50" VerticalAlignment="Top"
+                                                    BorderBrush="#FFC7C7C7">
+                                                <StackPanel Orientation="Horizontal" Background="#6498FE">
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center" Content="材料名称">
+                                                    </Label>
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center" Content="单位" />
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center" Content="换算率(吨)" />
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center" Content="运单数量" />
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center" Content="运单重量" />
+                                                    <!--<Label Width="110" Height="35" FontSize="16" Margin="5,0,5,0" Foreground="White" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="扣重(吨)" />-->
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center">
+                                                        <Label.Content>
+                                                            <DockPanel>
+                                                                <TextBlock>实际数量</TextBlock>
+                                                                <materialDesign:PackIcon Kind="TooltipText" Height="20"
+                                                                        Width="20" VerticalAlignment="Center"
+                                                                        HorizontalAlignment="Center"
+                                                                        ToolTip="实际重量 ÷ 换算率" Margin="5,0,0,0" />
+                                                            </DockPanel>
+                                                        </Label.Content>
+                                                    </Label>
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center">
+                                                        <Label.Content>
+                                                            <DockPanel>
+                                                                <TextBlock>实际重量</TextBlock>
+                                                                <!--<materialDesign:PackIcon Kind="TooltipText" Height="20" Width="20" VerticalAlignment="Center"  HorizontalAlignment="Center" ToolTip="净重 - 扣重" Margin="5,0,0,0"/>-->
+                                                            </DockPanel>
+                                                        </Label.Content>
+                                                    </Label>
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center">
+                                                        <Label.Content>
+                                                            <DockPanel>
+                                                                <TextBlock>正负差</TextBlock>
+                                                                <materialDesign:PackIcon Kind="TooltipText" Height="20"
+                                                                        Width="20" VerticalAlignment="Center"
+                                                                        HorizontalAlignment="Center" ToolTip="正负差"
+                                                                        Margin="5,0,0,0" />
+                                                            </DockPanel>
+                                                        </Label.Content>
+                                                    </Label>
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center">
+                                                        <Label.Content>
+                                                            <DockPanel>
+                                                                <TextBlock>偏差率</TextBlock>
+                                                                <materialDesign:PackIcon Kind="TooltipText" Height="20"
+                                                                        Width="20" VerticalAlignment="Center"
+                                                                        HorizontalAlignment="Center"
+                                                                        ToolTip="（实际重量 - 计划发货重量）÷ 计划发货重量"
+                                                                        Margin="5,0,0,0" />
+                                                            </DockPanel>
+                                                        </Label.Content>
+                                                    </Label>
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center">
+                                                        <Label.Content>
+                                                            <DockPanel>
+                                                                <TextBlock>偏差结果</TextBlock>
+                                                                <materialDesign:PackIcon Kind="TooltipText" Height="20"
+                                                                        Width="20" VerticalAlignment="Center"
+                                                                        HorizontalAlignment="Center"
+                                                                        ToolTip="超正差，正常，超负差" Margin="5,0,0,0" />
+                                                            </DockPanel>
+                                                        </Label.Content>
+                                                    </Label>
+                                                    <Label Width="90" Height="35" FontSize="16" Margin="5,0,5,0"
+                                                           Foreground="White" HorizontalContentAlignment="Center"
+                                                           VerticalContentAlignment="Center" Content="操作">
+                                                    </Label>
+                                                </StackPanel>
+                                            </Border>
+                                            <ScrollViewer Grid.Row="1" Grid.Column="0" Width="1100">
+                                                <Grid x:Name="grid_Og_Items">
+                                                </Grid>
+                                            </ScrollViewer>
+                                        </Grid>
+
+                                        <!--第五行-->
+                                        <Button Grid.Row="3" Content="新增材料" Width="120 " Height="40" FontSize="16"
+                                                x:Name="btn_Add_goods" BorderBrush="#2AC2BD" BorderThickness="2"
+                                                Foreground="White" Background="#2AC2BD" DockPanel.Dock="Left"
+                                                HorizontalAlignment="Left" Click="Btn_Og_Add_Click" />
+                                        <DockPanel Grid.Row="3" HorizontalAlignment="Center" Height="80">
+                                            <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
+                                                    x:Name="btn_Add_Print" Click="Btn_Order_PrintClick" Content="打印"
+                                                    Background="#FFF" BorderBrush="#4A85F9" BorderThickness="2"
+                                                    Foreground="#4A85F9" />
+                                            <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
+                                                    x:Name="btn_Add_Save" Click="Btn_Order_SaveClick" Content="保存"
+                                                    Background="#4A85F9" />
+                                            <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
+                                                    x:Name="btn_back" Click="Btn_New_Click" Content="关闭"
+                                                    Background="#4A85F9" />
+                                            <Button Width="155" Height="40" Margin="10,0,10,0" FontSize="18"
+                                                    x:Name="btn_Add_Complete" Click="Btn_Order_CompleteClick"
+                                                    Content="完成本次收货" Background="#FFF" BorderBrush="#4A85F9"
+                                                    BorderThickness="2" Foreground="#4A85F9" />
+                                        </DockPanel>
+                                        <Button Grid.Row="3" Width="135" Height="40" FontSize="18"
+                                                x:Name="btn_Add_Match" Click="Btn_Order_MatchClick" Content="匹配"
+                                                Background="#4A85F9" BorderBrush="#4A85F9" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center" Margin="0,0,145,0" />
+                                        <Button Grid.Row="3" Width="135" Height="40" FontSize="18"
+                                                x:Name="btn_Add_Abolish" Click="Btn_Order_AbolishClick" Content="废单"
+                                                Background="#F5AA19" BorderBrush="#F5AA19" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center" />
+                                    </Grid>
+                                </ScrollViewer>

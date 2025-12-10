@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.Json;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services.Authentication;
@@ -62,6 +63,7 @@ public partial class LicenseService : DomainService, ILicenseService
     private readonly IMachineCodeService _machineCodeService;
     private readonly IRepository<LicenseInfo, Guid> _licenseRepository;
     private readonly IConfiguration _configuration;
+    private readonly IJsonSerializer _jsonSerializer;
 
     [UnitOfWork]
     public async Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode)
@@ -88,7 +90,7 @@ public partial class LicenseService : DomainService, ILicenseService
             Code = authorizationCode
         };
 
-        HttpResult<LicenseInfoDto> response;
+        HttpResult<string> response;
         try
         {
             response = await _basePlatformApi.GetAuthClientLicenseAsync(request);
@@ -99,20 +101,20 @@ public partial class LicenseService : DomainService, ILicenseService
         }
 
         // Check response
-        if (response == null || !response.Success || response.Data == null)
+        if (!response.Success || string.IsNullOrEmpty(response.Data))
         {
             var errorMsg = response?.Msg ?? "未知错误";
             throw new BusinessException("AUTH:INVALID_CODE", $"授权码验证失败：{errorMsg}");
         }
 
-        var licenseDto = response.Data;
+        var licenseDto = _jsonSerializer.Deserialize<LicenseInfoDto>(response.Data);
 
         // Verify machine code matches (if provided by API)
-        if (!string.IsNullOrWhiteSpace(licenseDto.MachineCode) &&
-            !string.Equals(licenseDto.MachineCode, machineCode, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new BusinessException("AUTH:MACHINE_MISMATCH", "授权码与当前机器不匹配");
-        }
+        // if (!string.IsNullOrWhiteSpace(licenseDto.MachineCode) &&
+        //     !string.Equals(licenseDto.MachineCode, machineCode, StringComparison.OrdinalIgnoreCase))
+        // {
+        //     throw new BusinessException("AUTH:MACHINE_MISMATCH", "授权码与当前机器不匹配");
+        // }
 
         // Check if license already exists
         var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
@@ -178,7 +180,7 @@ public partial class LicenseService : DomainService, ILicenseService
         var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
 
         LicenseInfo license;
-        
+
         // 如果存在授权信息但ID不是固定的测试ID，先删除它（会级联删除关联的会话和凭证）
         if (existingLicense != null && existingLicense.Id != testLicenseId)
         {

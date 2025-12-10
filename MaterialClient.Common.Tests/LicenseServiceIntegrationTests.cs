@@ -44,7 +44,7 @@ public class LicenseServiceIntegrationTests : MaterialClientEntityFrameworkCoreT
             Proid = Guid.NewGuid(),
             AuthToken = Guid.NewGuid(),
             AuthEndTime = DateTime.Now.AddMonths(1),
-            MachineCode =  _machineCodeService.GetMachineCode()
+            MachineCode = _machineCodeService.GetMachineCode()
         };
 
         _mockBasePlatformApi.GetAuthClientLicenseAsync(Arg.Any<LicenseRequestDto>(), Arg.Any<CancellationToken>())
@@ -111,7 +111,7 @@ public class LicenseServiceIntegrationTests : MaterialClientEntityFrameworkCoreT
             Proid = Guid.NewGuid(),
             AuthToken = Guid.NewGuid(),
             AuthEndTime = DateTime.Now.AddMonths(1),
-            MachineCode =  _machineCodeService.GetMachineCode()
+            MachineCode = _machineCodeService.GetMachineCode()
         };
 
         _mockBasePlatformApi.GetAuthClientLicenseAsync(Arg.Any<LicenseRequestDto>(), Arg.Any<CancellationToken>())
@@ -143,7 +143,7 @@ public class LicenseServiceIntegrationTests : MaterialClientEntityFrameworkCoreT
             Proid = Guid.NewGuid(),
             AuthToken = Guid.NewGuid(),
             AuthEndTime = DateTime.Now.AddDays(-1), // Expired yesterday
-            MachineCode =  _machineCodeService.GetMachineCode()
+            MachineCode = _machineCodeService.GetMachineCode()
         };
 
         _mockBasePlatformApi.GetAuthClientLicenseAsync(Arg.Any<LicenseRequestDto>(), Arg.Any<CancellationToken>())

@@ -19,6 +19,7 @@ namespace MaterialClient.Common.Services;
 /// <summary>
 /// Weighing service for monitoring truck scale and creating weighing records
 /// </summary>
+[Obsolete]
 public class WeighingService : DomainService
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
@@ -60,7 +61,7 @@ public class WeighingService : DomainService
         _logger = logger;
 
         // Lazy load matching service to avoid circular dependency
-        _matchingService = new Lazy<WeighingMatchingService>(() => 
+        _matchingService = new Lazy<WeighingMatchingService>(() =>
             serviceProvider.GetRequiredService<WeighingMatchingService>());
 
         // Load configuration
@@ -132,11 +133,11 @@ public class WeighingService : DomainService
 
             // Check if weight is within offset range
             var isWithinOffsetRange = currentWeight >= _configuration.WeightOffsetRangeMin &&
-                                     currentWeight <= _configuration.WeightOffsetRangeMax;
+                                      currentWeight <= _configuration.WeightOffsetRangeMax;
 
             // Check if weight exceeds offset range (boundary values are considered "exceeded")
             var exceedsOffsetRange = currentWeight > _configuration.WeightOffsetRangeMax ||
-                                    currentWeight < _configuration.WeightOffsetRangeMin;
+                                     currentWeight < _configuration.WeightOffsetRangeMin;
 
             switch (_currentStatus)
             {
@@ -148,6 +149,7 @@ public class WeighingService : DomainService
                         _stableStartTime = DateTime.UtcNow;
                         _logger?.LogInformation($"WeighingService: Vehicle on scale. Weight: {currentWeight} kg");
                     }
+
                     break;
 
                 case VehicleWeightStatus.OnScale:
@@ -169,6 +171,7 @@ public class WeighingService : DomainService
                         _currentStatus = VehicleWeightStatus.OffScale;
                         _logger?.LogWarning("WeighingService: Vehicle left scale before weighing completed");
                     }
+
                     break;
 
                 case VehicleWeightStatus.Weighing:
@@ -179,6 +182,7 @@ public class WeighingService : DomainService
                         _currentStatus = VehicleWeightStatus.OffScale;
                         _logger?.LogInformation("WeighingService: Vehicle left scale, ready for next vehicle");
                     }
+
                     break;
             }
         }
@@ -189,7 +193,7 @@ public class WeighingService : DomainService
         try
         {
             using var uow = _unitOfWorkManager.Begin();
-            
+
             // Create weighing record
             var weighingRecord = new WeighingRecord(weight) // Id will be auto-generated
             {
@@ -211,7 +215,8 @@ public class WeighingService : DomainService
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 
-            _logger?.LogInformation($"WeighingService: Created weighing record {weighingRecord.Id} with weight {weight} kg");
+            _logger?.LogInformation(
+                $"WeighingService: Created weighing record {weighingRecord.Id} with weight {weight} kg");
 
             // Try to capture vehicle photos
             try
@@ -228,7 +233,8 @@ public class WeighingService : DomainService
             // Use default DeliveryType (Delivery) - can be configured later
             try
             {
-                var waybillsCreated = await _matchingService.Value.TryMatchAndCreateWaybillsAsync(DeliveryType.Delivery);
+                var waybillsCreated =
+                    await _matchingService.Value.TryMatchAndCreateWaybillsAsync(DeliveryType.Delivery);
                 if (waybillsCreated > 0)
                 {
                     _logger?.LogInformation($"WeighingService: Created {waybillsCreated} waybill(s) after matching");
@@ -255,27 +261,30 @@ public class WeighingService : DomainService
             {
                 // Create attachment file
                 var fileName = Path.GetFileName(photoPath);
-                var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.EntryPhoto) // Id will be auto-generated
-                {
-                    // Vehicle photos are entry photos
-                };
+                var attachmentFile =
+                    new AttachmentFile(fileName, photoPath, AttachType.EntryPhoto) // Id will be auto-generated
+                    {
+                        // Vehicle photos are entry photos
+                    };
 
                 await _attachmentFileRepository.InsertAsync(attachmentFile);
 
                 // Create weighing record attachment
-                var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id); // Id will be auto-generated
+                var weighingRecordAttachment =
+                    new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id); // Id will be auto-generated
 
                 await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment);
             }
 
             await uow.CompleteAsync();
-            _logger?.LogInformation($"WeighingService: Saved {photoPaths.Count} vehicle photos for weighing record {weighingRecordId}");
+            _logger?.LogInformation(
+                $"WeighingService: Saved {photoPaths.Count} vehicle photos for weighing record {weighingRecordId}");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"WeighingService: Failed to save vehicle photos for weighing record {weighingRecordId}");
+            _logger?.LogError(ex,
+                $"WeighingService: Failed to save vehicle photos for weighing record {weighingRecordId}");
             throw;
         }
     }
 }
-

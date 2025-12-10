@@ -3,11 +3,20 @@
         xmlns:entities="using:MaterialClient.Common.Entities"
         xmlns:vm="using:MaterialClient.ViewModels"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:views="using:MaterialClient.Views"
+        xmlns:converters="using:MaterialClient.Converters"
         x:Class="MaterialClient.Views.AttendedWeighingWindow"
         x:DataType="vm:AttendedWeighingViewModel"
+        x:Name="AttendedWeighingWindowRoot"
         Title="有人值守"
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen">
+  
+  <Window.Resources>
+    <converters:EqualityToColorConverter x:Key="EqualityToColorConverter"/>
+  </Window.Resources>
+  
+  <!-- Window.Styles 已移至 App.axaml 全局样式 -->
   
   <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
     
@@ -26,25 +35,21 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center">
           <Button Content="数据管理" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"/>
           <Button Content="系统设置" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"
                   Command="{Binding OpenSettingsCommand}"/>
           <Button Content="项目信息" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"/>
           <Button Content="数据同步" 
+                  Classes="transparent-button"
                   Foreground="White" 
-                  Background="Transparent"
-                  BorderThickness="0"
                   Padding="8,4"/>
         </StackPanel>
         
@@ -68,64 +73,19 @@
             Margin="24,32"
             HorizontalAlignment="Stretch" 
             VerticalAlignment="Stretch">
-        <!-- Province Selector -->
-        <Border Background="#5A7FE6" 
-                CornerRadius="8" 
-                Padding="20,12"
-                VerticalAlignment="Center">
-          <TextBlock Text="浙 ▼" 
-                     Foreground="White" 
-                     FontSize="16"/>
-        </Border>
-        
         <!-- Weight Display Center -->
         <Grid Grid.Column="1" 
               HorizontalAlignment="Center"
               ColumnDefinitions="Auto,Auto,Auto">
-          <!-- Delivery Type Toggle -->
-          <Border Background="White" 
+          <!-- Province Selector -->
+          <Border Background="#5A7FE6" 
                   CornerRadius="8" 
-                  Padding="2"
+                  Padding="20,12"
                   VerticalAlignment="Center"
-                  Margin="0,0,32,0">
-            <StackPanel Orientation="Horizontal" Spacing="2">
-              <Button Content="收料" 
-                      Classes="delivery-button"
-                      Classes.selected="{Binding IsReceiving}"
-                      Foreground="#333"
-                      BorderThickness="0"
-                      CornerRadius="6"
-                      Padding="32,8"
-                      FontSize="16"
-                      Command="{Binding SetReceivingCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.delivery-button">
-                    <Setter Property="Background" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.delivery-button.selected">
-                    <Setter Property="Background" Value="#E0E7FF"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
-              <Button Content="发料" 
-                      Classes="delivery-button"
-                      Classes.selected="{Binding !IsReceiving}"
-                      Foreground="#333"
-                      BorderThickness="0"
-                      CornerRadius="6"
-                      Padding="32,8"
-                      FontSize="16"
-                      Command="{Binding SetSendingCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.delivery-button">
-                    <Setter Property="Background" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.delivery-button.selected">
-                    <Setter Property="Background" Value="#E0E7FF"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
-            </StackPanel>
+                  MinWidth="180">
+            <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}" 
+                       Foreground="White" 
+                       FontSize="16"/>
           </Border>
           
           <!-- Weight Value -->
@@ -148,7 +108,7 @@
         
         <!-- Right Side Info -->
         <TextBlock Grid.Column="2" 
-                   Text="预重已结束" 
+                   Text="{Binding CurrentWeighingStatusText}" 
                    Foreground="White" 
                    FontSize="18"
                    VerticalAlignment="Center"/>
@@ -170,70 +130,31 @@
             <StackPanel Orientation="Horizontal" Spacing="0">
               <Button Content="全部记录" 
                       Classes="tab-button"
-                      Classes.active="{Binding ShowAllRecords}"
+                      Classes.active="{Binding IsShowAllRecords}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
-                      Command="{Binding ShowAllRecordsCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.tab-button">
-                    <Setter Property="Background" Value="White"/>
-                    <Setter Property="Foreground" Value="#666"/>
-                    <Setter Property="BorderBrush" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.tab-button.active">
-                    <Setter Property="Background" Value="#F0F7FF"/>
-                    <Setter Property="Foreground" Value="#4169E1"/>
-                    <Setter Property="BorderBrush" Value="#4169E1"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding ShowAllRecordsCommand}"/>
               <Button Content="未完成" 
                       Classes="tab-button"
-                      Classes.active="{Binding ShowUnmatched}"
+                      Classes.active="{Binding IsShowUnmatched}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
-                      Command="{Binding ShowUnmatchedCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.tab-button">
-                    <Setter Property="Background" Value="White"/>
-                    <Setter Property="Foreground" Value="#666"/>
-                    <Setter Property="BorderBrush" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.tab-button.active">
-                    <Setter Property="Background" Value="#F0F7FF"/>
-                    <Setter Property="Foreground" Value="#4169E1"/>
-                    <Setter Property="BorderBrush" Value="#4169E1"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding ShowUnmatchedCommand}"/>
               <Button Content="已完成" 
                       Classes="tab-button"
-                      Classes.active="{Binding ShowCompleted}"
+                      Classes.active="{Binding IsShowCompleted}"
                       BorderThickness="0,0,0,3"
                       Padding="24,12"
                       FontSize="14"
-                      Command="{Binding ShowCompletedCommand}">
-                <Button.Styles>
-                  <Style Selector="Button.tab-button">
-                    <Setter Property="Background" Value="White"/>
-                    <Setter Property="Foreground" Value="#666"/>
-                    <Setter Property="BorderBrush" Value="Transparent"/>
-                  </Style>
-                  <Style Selector="Button.tab-button.active">
-                    <Setter Property="Background" Value="#F0F7FF"/>
-                    <Setter Property="Foreground" Value="#4169E1"/>
-                    <Setter Property="BorderBrush" Value="#4169E1"/>
-                  </Style>
-                </Button.Styles>
-              </Button>
+                      Command="{Binding ShowCompletedCommand}"/>
             </StackPanel>
           </Border>
           
           <!-- Search Box -->
           <Border Grid.Row="1" 
-                  Background="White" 
+                  Classes="card-border"
                   Margin="12,12,12,8"
                   Padding="12">
             <Grid RowDefinitions="Auto,Auto,Auto">
@@ -247,29 +168,15 @@
                          Margin="0,0,8,0"
                          FontSize="13"
                          Foreground="#666"/>
-              <Border Grid.Column="1" 
-                      BorderBrush="#E5E7EB" 
-                      BorderThickness="1"
-                      CornerRadius="4"
-                      Padding="8,4"
-                      Margin="0,0,8,0">
-                <CalendarDatePicker Width="80"
-                                    BorderThickness="0"
-                                    Background="Transparent"
-                                    FontSize="10"
-                                    Watermark="YYYY/MM/DD"/>
-              </Border>
-              <Border Grid.Column="2" 
-                      BorderBrush="#E5E7EB" 
-                      BorderThickness="1"
-                      CornerRadius="4"
-                      Padding="8,4">
-                <CalendarDatePicker Width="80"
-                                    BorderThickness="0"
-                                    Background="Transparent"
-                                    FontSize="10"
-                                    Watermark="YYYY/MM/DD"/>
-              </Border>
+              <CalendarDatePicker Grid.Column="1"
+                                  Width="80"
+                                  FontSize="10"
+                                  Watermark="YYYY/MM/DD"
+                                  Margin="0,0,8,0"/>
+              <CalendarDatePicker Grid.Column="2"
+                                  Width="80"
+                                  FontSize="10"
+                                  Watermark="YYYY/MM/DD"/>
             </Grid>
             
             <!-- Row 2: 车牌号码 + 输入框 -->
@@ -281,16 +188,9 @@
                          Margin="0,0,8,0"
                          FontSize="13"
                          Foreground="#666"/>
-              <Border Grid.Column="1" 
-                      BorderBrush="#E5E7EB" 
-                      BorderThickness="1"
-                      CornerRadius="4"
-                      Padding="8,4">
-                <TextBox Width="100"
-                         BorderThickness="0"
-                         Background="Transparent"
-                         FontSize="13"/>
-              </Border>
+              <TextBox Grid.Column="1"
+                       Width="100"
+                       FontSize="13"/>
             </Grid>
             
             <!-- Row 3: 搜索 + 重置按钮 -->
@@ -298,18 +198,14 @@
                   ColumnDefinitions="Auto,Auto">
               <Button Grid.Column="0" 
                       Content="搜索" 
-                      Background="#4169E1"
-                      Foreground="White"
-                      BorderThickness="0"
+                      Classes="primary-button"
                       CornerRadius="4"
                       Padding="20,6"
                       FontSize="13"
                       Margin="0,0,4,0"/>
               <Button Grid.Column="1" 
                       Content="重置" 
-                      Background="#E5E7EB"
-                      Foreground="#333"
-                      BorderThickness="0"
+                      Classes="secondary-button"
                       CornerRadius="4"
                       Padding="20,6"
                       FontSize="13"/>
@@ -318,8 +214,8 @@
           </Border>
           
           <!-- Record List -->
-          <Border Grid.Row="2" Background="White" Margin="12,0,12,12">
-            <Grid RowDefinitions="Auto,*">
+          <Border Grid.Row="2" Classes="card-border" Margin="12,0,12,12">
+            <Grid RowDefinitions="Auto,*,Auto">
               <!-- List Header -->
               <Border Background="#F8F9FA" 
                       BorderBrush="#E5E7EB" 
@@ -333,18 +229,29 @@
               </Border>
               
               <!-- Scrollable List - Unmatched Records -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding !ShowCompleted}">
-                <ItemsControl ItemsSource="{Binding UnmatchedWeighingRecords}">
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowUnmatched}">
+                <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:WeighingRecord">
-                      <Button Background="Transparent"
+                      <Button Classes="transparent-button"
                               BorderThickness="0,0,0,1"
                               BorderBrush="#F0F0F0"
                               Padding="12,12"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Stretch"
-                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
+                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
                               CommandParameter="{Binding}">
+                        <Button.Background>
+                          <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
+                            <Binding Path="." />
+                            <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
+                          </MultiBinding>
+                        </Button.Background>
+                        <!-- <Button.Styles> -->
+                        <!--   <Style Selector="Button:pointerover"> -->
+                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
+                        <!--   </Style> -->
+                        <!-- </Button.Styles> -->
                         <Grid ColumnDefinitions="80,*,*">
                           <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
                                      FontSize="13"
@@ -365,11 +272,11 @@
               </ScrollViewer>
               
               <!-- Scrollable List - Completed Waybills -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding ShowCompleted}">
-                <ItemsControl ItemsSource="{Binding CompletedWaybills}">
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowCompleted}">
+                <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="entities:Waybill">
-                      <Button Background="Transparent"
+                      <Button Classes="transparent-button"
                               BorderThickness="0,0,0,1"
                               BorderBrush="#F0F0F0"
                               Padding="12,12"
@@ -395,297 +302,140 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </ScrollViewer>
+
+              <!-- 全部记录模式下的混合列表 -->
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowAllRecords}">
+                <StackPanel>
+                  <!-- 未完成记录 -->
+                  <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="entities:WeighingRecord">
+                        <Button Classes="transparent-button"
+                                BorderThickness="0,0,0,1"
+                                BorderBrush="#F0F0F0"
+                                Padding="12,12"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
+                                CommandParameter="{Binding}">
+                          <Button.Background>
+                            <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
+                              <Binding Path="." />
+                              <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
+                            </MultiBinding>
+                          </Button.Background>
+                        <!-- <Button.Styles> -->
+                        <!--   <Style Selector="Button:pointerover"> -->
+                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
+                        <!--   </Style> -->
+                        <!-- </Button.Styles> -->
+                        <Grid ColumnDefinitions="80,*,*">
+                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
+                                       FontSize="13"
+                                       Foreground="#333"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding CreationTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                            <TextBlock Grid.Column="2" 
+                                       Text="-" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <!-- 已完成记录 -->
+                  <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="entities:Waybill">
+                        <Button Classes="transparent-button"
+                                BorderThickness="0,0,0,1"
+                                BorderBrush="#F0F0F0"
+                                Padding="12,12"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
+                                CommandParameter="{Binding}">
+                          <Grid ColumnDefinitions="80,*,*">
+                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
+                                       FontSize="13"
+                                       Foreground="#333"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                            <TextBlock Grid.Column="2" 
+                                       Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                       FontSize="13"
+                                       Foreground="#666"/>
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+              
+              <!-- Pagination Controls -->
+              <Border Grid.Row="2" 
+                      Background="#F8F9FA" 
+                      BorderBrush="#E5E7EB" 
+                      BorderThickness="0,1,0,0"
+                      Padding="12,8">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                  <!-- 总记录数信息 -->
+                  <TextBlock Grid.Column="0"
+                             Text="{Binding TotalCount, StringFormat='共 {0} 条'}"
+                             FontSize="12"
+                             Foreground="#666"
+                             VerticalAlignment="Center"
+                             Margin="0,0,12,0"/>
+                  
+                  <!-- 页码信息 -->
+                  <TextBlock Grid.Column="1"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             Text="{Binding PageInfoText}"
+                             FontSize="12"
+                             Foreground="#666"/>
+                  
+                  <!-- 上一页按钮 -->
+                  <Button Grid.Column="2"
+                          Content="上一页"
+                          Command="{Binding GoToPreviousPageCommand}"
+                          Classes="outline-button"
+                          CornerRadius="4"
+                          Padding="12,6"
+                          FontSize="12"
+                          Margin="0,0,8,0"/>
+                  
+                  <!-- 下一页按钮 -->
+                  <Button Grid.Column="3"
+                          Content="下一页"
+                          Command="{Binding GoToNextPageCommand}"
+                          Classes="outline-button"
+                          CornerRadius="4"
+                          Padding="12,6"
+                          FontSize="12"/>
+                </Grid>
+              </Border>
             </Grid>
           </Border>
         </Grid>
       </Border>
 
-      <!-- Middle Column: Material Info and Photos -->
-      <Border Grid.Column="1" Padding="24">
-        <Grid RowDefinitions="Auto,Auto,Auto,*">
-        <!-- Title Bar -->
-        <Border Background="White" 
-                BorderBrush="#E4E4E4" 
-                BorderThickness="1"
-                Padding="15,0"
-                Height="50">
-          <TextBlock Text="上一车次物料信息" 
-                     FontSize="20" 
-                     Foreground="#222222"
-                     VerticalAlignment="Center"/>
-        </Border>
+      <!-- Middle Column: Material Info and Photos (动态切换视图) -->
+      <Grid Grid.Column="1">
+        <!-- 主视图 -->
+        <views:AttendedWeighingMainView DataContext="{Binding}" 
+                                         IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingMainView}"/>
         
-        <!-- Info Blocks Grid - Row 1 -->
-        <Border Grid.Row="1" Background="#F5F6FA" Padding="0">
-        <UniformGrid Rows="1" 
-                     Columns="3" 
-                     Margin="0,0,0,0">
-          
-          <!-- Block 1: 车牌号 (Blue) -->
-          <Border Background="White" 
-                  BorderBrush="#B1EBFF" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,5">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
-                <TextBlock Text="车牌号" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.PlateNumber, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="80"
-                         TextAlignment="Center"
-                         Padding="0,25,0,0"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 2: 进场 (Orange) -->
-          <Border Background="White" 
-                  BorderBrush="#F4D59C" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,5">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
-                <TextBlock Text="进场" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.JoinTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="80"
-                         TextAlignment="Center"
-                         Padding="0,25,0,0"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 3: 出场 (Purple) -->
-          <Border Background="White" 
-                  BorderBrush="#D3AEF5" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,0,5">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
-                <TextBlock Text="出场" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.OutTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="80"
-                         TextAlignment="Center"
-                         Padding="0,25,0,0"/>
-            </StackPanel>
-          </Border>
-        </UniformGrid>
-        </Border>
-        
-        <!-- Info Blocks Grid - Row 2 -->
-        <Border Grid.Row="2" Background="#F5F6FA" Padding="0" Margin="0,0,0,20">
-        <UniformGrid Rows="1" 
-                     Columns="3"
-                     Margin="0,0,0,0">
-          
-          <!-- Block 4: 供应商 (Blue) -->
-          <Border Background="White" 
-                  BorderBrush="#B1EBFF" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,0">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
-                <TextBlock Text="供应商" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.Provider.ProviderName, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="80"
-                         TextAlignment="Center"
-                         Padding="0,25,0,0"
-                         TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 5: 材料 (Orange) -->
-          <Border Background="White" 
-                  BorderBrush="#F4D59C" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,0">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
-                <TextBlock Text="材料" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding MaterialInfo, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="80"
-                         TextAlignment="Center"
-                         Padding="0,25,0,0"
-                         TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 6: 偏差 (Purple) -->
-          <Border Background="White" 
-                  BorderBrush="#D3AEF5" 
-                  BorderThickness="0,5,0,0">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
-                <Grid>
-                  <TextBlock Text="偏差" 
-                             FontSize="14" 
-                             Foreground="#222222"
-                             VerticalAlignment="Top"
-                             Padding="0,10,0,0"
-                             HorizontalAlignment="Left"/>
-                  <TextBlock Text="-" 
-                             FontSize="18" 
-                             Foreground="#BCBCBC"
-                             VerticalAlignment="Top"
-                             Padding="0,10,0,0"
-                             HorizontalAlignment="Right"/>
-                </Grid>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding OffsetInfo, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="80"
-                         TextAlignment="Center"
-                         Padding="0,25,0,0"/>
-            </StackPanel>
-          </Border>
-        </UniformGrid>
-        </Border>
-        
-        <!-- Photos Section -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="16">
-          <!-- Entry Photos -->
-          <Border Background="#F8F9FA" 
-                  CornerRadius="8" 
-                  Padding="16">
-            <Grid RowDefinitions="Auto,*">
-              <TextBlock Text="上一车进场照片" 
-                         FontSize="14" 
-                         FontWeight="SemiBold"
-                         Margin="0,0,0,12"/>
-              <Grid Grid.Row="1" 
-                    RowDefinitions="*,*" 
-                    ColumnDefinitions="*,*"
-                    RowSpacing="8"
-                    ColumnSpacing="8">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding EntryPhoto1}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding EntryPhoto2}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding EntryPhoto3}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding EntryPhoto4}" Stretch="UniformToFill"/>
-                </Border>
-              </Grid>
-            </Grid>
-          </Border>
-          
-          <!-- Exit Photos -->
-          <Border Grid.Column="1" 
-                  Background="#F8F9FA" 
-                  CornerRadius="8" 
-                  Padding="16">
-            <Grid RowDefinitions="Auto,*">
-              <TextBlock Text="上一车退场照片" 
-                         FontSize="14" 
-                         FontWeight="SemiBold"
-                         Margin="0,0,0,12"/>
-              <Grid Grid.Row="1" 
-                    RowDefinitions="*,*" 
-                    ColumnDefinitions="*,*"
-                    RowSpacing="8"
-                    ColumnSpacing="8">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto1}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto2}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto3}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto4}" Stretch="UniformToFill"/>
-                </Border>
-              </Grid>
-            </Grid>
-          </Border>
-        </Grid>
-        </Grid>
-      </Border>
+        <!-- 详情视图 -->
+        <views:AttendedWeighingDetailView DataContext="{Binding DetailViewModel}"
+                                           IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingDetailView}"/>
+      </Grid>
 
       <!-- Right Column: Camera Views and Bill -->
       <Border Grid.Column="2" 
@@ -695,23 +445,20 @@
               Padding="20">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
           <!-- Camera Tabs -->
-          <Border Background="White" 
+          <Border Classes="card-border" 
                   CornerRadius="8,8,0,0" 
-                  BorderBrush="#E5E7EB" 
                   BorderThickness="1,1,1,0">
             <UniformGrid Rows="1" Columns="2">
               <Button Content="进场照片" 
-                      Background="#4169E1"
-                      Foreground="White"
-                      BorderThickness="0"
+                      Classes="primary-button"
                       CornerRadius="8,0,0,0"
                       Padding="32,12"
                       FontSize="14"
                       HorizontalAlignment="Stretch"
                       HorizontalContentAlignment="Center"/>
               <Button Content="出场照片" 
-                      Background="White"
                       Foreground="#666"
+                      Background="White"
                       BorderThickness="0"
                       CornerRadius="0,8,0,0"
                       Padding="32,12"
@@ -723,8 +470,7 @@
           
           <!-- Camera Grid -->
           <Border Grid.Row="1" 
-                  Background="White" 
-                  BorderBrush="#E5E7EB" 
+                  Classes="card-border"
                   BorderThickness="1,0,1,1"
                   CornerRadius="0,0,8,8"
                   Padding="16"
@@ -756,10 +502,7 @@
                      Margin="0,24,0,12"/>
           
           <Border Grid.Row="3" 
-                  Background="White" 
-                  BorderBrush="#E5E7EB" 
-                  BorderThickness="1"
-                  CornerRadius="8"
+                  Classes="card-border"
                   Height="240"
                   Padding="16">
             <Grid RowDefinitions="*,Auto">
@@ -775,9 +518,7 @@
               
               <Button Grid.Row="1" 
                       Content="拍照" 
-                      Background="#20C9A6"
-                      Foreground="White"
-                      BorderThickness="0"
+                      Classes="success-button"
                       CornerRadius="6"
                       Padding="48,8"
                       HorizontalAlignment="Center"
@@ -796,9 +537,19 @@
             BorderBrush="#E5E7EB" 
             BorderThickness="0,1,0,0"
             Padding="16,8">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+        <!-- Test Button -->
+        <Button Grid.Column="0"
+                Content="测试详情窗口"
+                Classes="primary-button"
+                CornerRadius="4"
+                Padding="16,8"
+                FontSize="13"
+                Margin="0,0,16,0"
+                Click="TestDetailWindow_Click"/>
+        
         <!-- Scale Status Indicator -->
-        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <!-- Online Indicator -->
           <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding IsScaleOnline}">
             <Ellipse.Fill>
@@ -832,45 +583,61 @@
         </StackPanel>
         
         <!-- Camera Status Indicator -->
-        <StackPanel Grid.Column="1" 
-                    Orientation="Horizontal" 
-                    Spacing="8" 
-                    VerticalAlignment="Center"
-                    Margin="24,0,0,0">
-          <!-- Online Indicator -->
-          <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding IsCameraOnline}">
-            <Ellipse.Fill>
-              <SolidColorBrush Color="#10B981"/>
-            </Ellipse.Fill>
-          </Ellipse>
-          <!-- Offline Indicator -->
-          <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding !IsCameraOnline}">
-            <Ellipse.Fill>
-              <SolidColorBrush Color="#EF4444"/>
-            </Ellipse.Fill>
-          </Ellipse>
-          <TextBlock Text="摄像头" 
-                     FontSize="13" 
-                     Foreground="#666"
-                     VerticalAlignment="Center"/>
-          <!-- Online Status Text -->
-          <TextBlock Text="在线" 
-                     FontSize="13" 
-                     Foreground="#10B981"
-                     VerticalAlignment="Center"
-                     FontWeight="SemiBold"
-                     IsVisible="{Binding IsCameraOnline}"/>
-          <!-- Offline Status Text -->
-          <TextBlock Text="离线" 
-                     FontSize="13" 
-                     Foreground="#EF4444"
-                     VerticalAlignment="Center"
-                     FontWeight="SemiBold"
-                     IsVisible="{Binding !IsCameraOnline}"/>
-        </StackPanel>
+        <Grid Grid.Column="2" 
+              Margin="24,0,0,0"
+              VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" 
+                      Spacing="8" 
+                      VerticalAlignment="Center"
+                      Name="CameraStatusPanel"
+                      PointerEntered="CameraStatusPanel_OnPointerEntered"
+                      PointerExited="CameraStatusPanel_OnPointerExited">
+            <!-- Online Indicator -->
+            <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding IsCameraOnline}">
+              <Ellipse.Fill>
+                <SolidColorBrush Color="#10B981"/>
+              </Ellipse.Fill>
+            </Ellipse>
+            <!-- Offline Indicator -->
+            <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding !IsCameraOnline}">
+              <Ellipse.Fill>
+                <SolidColorBrush Color="#EF4444"/>
+              </Ellipse.Fill>
+            </Ellipse>
+            <TextBlock Text="摄像头" 
+                       FontSize="13" 
+                       Foreground="#666"
+                       VerticalAlignment="Center"/>
+            <!-- Online Status Text -->
+            <TextBlock Text="在线" 
+                       FontSize="13" 
+                       Foreground="#10B981"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       IsVisible="{Binding IsCameraOnline}"/>
+            <!-- Offline Status Text -->
+            <TextBlock Text="离线" 
+                       FontSize="13" 
+                       Foreground="#EF4444"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       IsVisible="{Binding !IsCameraOnline}"/>
+          </StackPanel>
+          
+          <!-- Camera Status Popup -->
+          <Popup Name="CameraStatusPopup"
+                 Placement="Bottom"
+                 IsLightDismissEnabled="False"
+                 HorizontalOffset="0"
+                 VerticalOffset="2"
+                 PointerEntered="CameraStatusPopup_OnPointerEntered"
+                 PointerExited="CameraStatusPopup_OnPointerExited">
+            <views:CameraStatusPopup DataContext="{Binding}"/>
+          </Popup>
+        </Grid>
         
         <!-- Right side info (can be extended later) -->
-        <TextBlock Grid.Column="3" 
+        <TextBlock Grid.Column="4" 
                    Text="{Binding CurrentTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" 
                    FontSize="12" 
                    Foreground="#999"

@@ -38,9 +38,20 @@ public abstract class MaterialClientTestBase<TStartupModule> : AbpIntegratedTest
 
             using (var uow = uowManager.Begin(options))
             {
-                await action();
-
-                await uow.CompleteAsync();
+                try
+                {
+                    await action();
+                    await uow.CompleteAsync();
+                }
+                catch (Exception ex)
+                {
+                    var exceptionMessage = $"Exception occurred in WithUnitOfWorkAsync. " +
+                                         $"UoW Options: IsTransactional={options.IsTransactional}, " +
+                                         $"Timeout={options.Timeout}ms. " +
+                                         $"Original exception: {ex.GetType().Name} - {ex.Message}";
+                    
+                    throw new InvalidOperationException(exceptionMessage, ex);
+                }
             }
         }
     }
@@ -59,9 +70,21 @@ public abstract class MaterialClientTestBase<TStartupModule> : AbpIntegratedTest
 
             using (var uow = uowManager.Begin(options))
             {
-                var result = await func();
-                await uow.CompleteAsync();
-                return result;
+                try
+                {
+                    var result = await func();
+                    await uow.CompleteAsync();
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    var exceptionMessage = $"Exception occurred in WithUnitOfWorkAsync<{typeof(TResult).Name}>. " +
+                                         $"UoW Options: IsTransactional={options.IsTransactional}, " +
+                                         $"Timeout={options.Timeout}ms. " +
+                                         $"Original exception: {ex.GetType().Name} - {ex.Message}";
+                    
+                    throw new InvalidOperationException(exceptionMessage, ex);
+                }
             }
         }
     }

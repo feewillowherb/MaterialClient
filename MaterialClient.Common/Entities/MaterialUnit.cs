@@ -59,16 +59,4 @@ public class MaterialUnit : Entity<int>
     /// 换算率名称
     /// </summary>
     public string? RateName { get; set; }
-
-    // Navigation properties
-    /// <summary>
-    /// 物料定义导航属性
-    /// </summary>
-    public Material? Material { get; set; }
-
-    /// <summary>
-    /// 供应商导航属性
-    /// </summary>
-    public Provider? Provider { get; set; }
 }
-

@@ -29,7 +29,7 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
         context.Services.AddAlwaysDisableUnitOfWorkTransaction();
 
         ConfigureInMemorySqlite(context.Services);
-        
+
         // Register mock API for testing
         context.Services.AddSingleton<IBasePlatformApi>(sp =>
         {
@@ -47,8 +47,8 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
 
         services.Configure<AbpDbContextOptions>(options =>
         {
-            options.Configure(context => 
-            { 
+            options.Configure(context =>
+            {
                 context.DbContextOptions.UseSqlite(_sqliteConnection)
                     .EnableDetailedErrors() // 启用详细的错误信息
                     .EnableSensitiveDataLogging(); // 启用敏感数据日志记录（包含参数值）

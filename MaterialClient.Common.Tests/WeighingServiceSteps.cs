@@ -33,7 +33,7 @@ public class WeighingServiceSteps : MaterialClientDomainTestBase<MaterialClientD
     private string? _capturedPlateNumber;
     private List<string>? _capturedPhotoPaths;
 
-    private IRepository<WeighingRecord, long> WeighingRecordRepository => 
+    private IRepository<WeighingRecord, long> WeighingRecordRepository =>
         GetRequiredService<IRepository<WeighingRecord, long>>();
 
     [Given(@"the weighing configuration has offset range from (.*) to (.*) kg")]
@@ -122,7 +122,7 @@ public class WeighingServiceSteps : MaterialClientDomainTestBase<MaterialClientD
     public async Task WhenTheWeightChangesTo(decimal weight)
     {
         _mockTruckScaleWeightService?.GetCurrentWeightAsync().Returns(Task.FromResult(weight));
-        
+
         if (_weighingService == null)
         {
             await InitializeWeighingServiceAsync();
@@ -162,14 +162,14 @@ public class WeighingServiceSteps : MaterialClientDomainTestBase<MaterialClientD
 
             // Trigger record creation by simulating stable weight
             _weighingService?.StartMonitoring();
-            
+
             // Wait for stable duration (2000ms) plus multiple timer cycles (500ms each)
             // Need to wait at least: 2000ms (stable) + 500ms (timer cycle) + buffer
             await Task.Delay(3000); // Wait for stable duration plus buffer
 
             // Stop monitoring to ensure all operations complete
             _weighingService?.StopMonitoring();
-            
+
             // Additional delay to ensure async operations (record creation, photo capture) complete
             await Task.Delay(2000);
 
@@ -181,10 +181,10 @@ public class WeighingServiceSteps : MaterialClientDomainTestBase<MaterialClientD
                     var records = await WeighingRecordRepository.GetListAsync();
                     _createdRecords = records.OrderByDescending(r => r.CreationTime).ToList();
                 });
-                
+
                 if (_createdRecords.Any())
                     break;
-                    
+
                 await Task.Delay(500); // Wait a bit more if no records found
             }
         }
@@ -314,7 +314,7 @@ public class WeighingServiceSteps : MaterialClientDomainTestBase<MaterialClientD
             serviceProvider,
             config
         );
-        
+
         return Task.CompletedTask;
     }
 }

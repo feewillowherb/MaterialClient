@@ -15,13 +15,13 @@ public partial class LoginWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
-        
+
         // Subscribe to DataContext changes
         this.WhenAnyValue(x => x.DataContext)
             .Subscribe(dataContext =>
             {
                 _loginSuccessSubscription?.Dispose();
-                
+
                 if (dataContext is LoginWindowViewModel viewModel)
                 {
                     // Watch for successful login
@@ -42,7 +42,7 @@ public partial class LoginWindow : Window
                 }
             });
     }
-    
+
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         // Close the application when login window is closed without successful login

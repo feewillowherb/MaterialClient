@@ -44,10 +44,9 @@
                 <StackPanel Orientation="Vertical">
                     <!-- Close Button -->
                     <Button Content="×"
+                            Classes="transparent-button"
                             FontSize="60"
                             Foreground="#CCCCCC"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
                             HorizontalAlignment="Right"
                             Height="54"
                             Width="54"
@@ -86,8 +85,6 @@
                              Width="350"
                              Margin="0,10,0,20"
                              Padding="10,4,0,0"
-                             BorderThickness="2"
-                             BorderBrush="#E6E6E6"
                              FontSize="14"
                              VerticalContentAlignment="Center"
                              IsEnabled="{Binding !IsLoggingIn}"/>
@@ -105,8 +102,6 @@
                              Width="350"
                              Margin="0,10,0,20"
                              Padding="10,4,0,0"
-                             BorderThickness="2"
-                             BorderBrush="#E6E6E6"
                              FontSize="14"
                              VerticalContentAlignment="Center"
                              IsEnabled="{Binding !IsLoggingIn}"/>
@@ -135,11 +130,9 @@
                     <!-- Login Button -->
                     <Button Content="立即登录"
                             Command="{Binding LoginCommand}"
+                            Classes="primary-button"
                             Width="350"
                             Height="56"
-                            Background="#4C82FC"
-                            Foreground="White"
-                            BorderBrush="#4C82FC"
                             FontSize="18"
                             Margin="0,20,0,0"
                             HorizontalAlignment="Center"
@@ -161,11 +154,9 @@
                     <!-- Retry Button for Network Errors -->
                     <Button Content="重试"
                             Command="{Binding RetryCommand}"
+                            Classes="warning-button"
                             Width="350"
                             Height="40"
-                            Background="#FF9800"
-                            Foreground="White"
-                            BorderBrush="#FF9800"
                             FontSize="14"
                             Margin="0,10,0,0"
                             HorizontalAlignment="Center"

@@ -14,17 +14,17 @@ public partial class AuthCodeWindow : Window
 {
     private IDisposable? _authSuccessSubscription;
 
-    public AuthCodeWindow(AuthCodeWindowViewModel viewModel)
+    public AuthCodeWindow(AuthCodeWindowViewModel authCodeWindowViewModel)
     {
         InitializeComponent();
-        DataContext = viewModel;
-        
+        DataContext = authCodeWindowViewModel;
+
         // Subscribe to DataContext changes
         this.WhenAnyValue(x => x.DataContext)
             .Subscribe(dataContext =>
             {
                 _authSuccessSubscription?.Dispose();
-                
+
                 if (dataContext is AuthCodeWindowViewModel viewModel)
                 {
                     // Watch for successful authorization
@@ -32,7 +32,8 @@ public partial class AuthCodeWindow : Window
                         .WhenAnyValue(vm => vm.IsVerified)
                         .Subscribe(async isVerified =>
                         {
-                            if (isVerified){
+                            if (isVerified)
+                            {
                                 await Task.Delay(1000);
                                 Close();
                             }
@@ -40,7 +41,7 @@ public partial class AuthCodeWindow : Window
                 }
             });
     }
-    
+
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         // When user closes the window without completing authorization,

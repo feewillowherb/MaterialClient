@@ -10,7 +10,7 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
-        
+
         // Subscribe to close requested event
         viewModel.CloseRequested += OnCloseRequested;
     }
