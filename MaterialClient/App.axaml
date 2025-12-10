@@ -11,6 +11,7 @@
   
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
         <!-- 全局颜色资源 -->
         <Style>
             <Style.Resources>
@@ -196,6 +197,39 @@
             <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+        
+        <!-- DataGrid 样式 -->
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="RowBackground" Value="#FFFFFF"/>
+        </Style>
+        
+        <!-- DataGrid 表头样式 -->
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#6498FE"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="4,8"/>
+            <Setter Property="Height" Value="36"/>
+        </Style>
+        
+        <!-- DataGrid 选中行样式 -->
+        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#C8DCFF"/>
+        </Style>
+        
+        <!-- DataGrid 未选中行悬停样式 -->
+        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#F0F7FF"/>
+        </Style>
+        
+        <!-- DataGrid 单元格样式 -->
+        <Style Selector="DataGridCell">
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
         </Style>
         
     </Application.Styles>

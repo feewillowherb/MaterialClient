@@ -132,6 +132,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private string? _waybillQuantityError;
 
+    /// <summary>
+    /// 材料项列表（用于 DataGrid 绑定）
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<MaterialItemRow> _materialItems = new();
+
     #endregion
 
     public AttendedWeighingDetailViewModel(
@@ -212,6 +217,19 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         OutTime = null; // TODO: 从数据获取出场时间
         Operator = string.Empty; // TODO: 从数据获取操作员
         IsMatchButtonVisible = _weighingRecord.MatchedId == null;
+
+        // 初始化材料项列表（添加一行默认数据）
+        MaterialItems.Clear();
+        MaterialItems.Add(new MaterialItemRow
+        {
+            WaybillQuantity = _weighingRecord.WaybillQuantity,
+            WaybillWeight = null,
+            ActualQuantity = null,
+            ActualWeight = GoodsWeight,
+            Difference = null,
+            DeviationRate = null,
+            DeviationResult = "-"
+        });
     }
 
     private async Task LoadDropdownDataAsync()
@@ -241,6 +259,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                         SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == SelectedMaterialUnitId.Value);
                     }
                 }
+            }
+
+            // 设置 DataGrid 第一行的材料和单位
+            if (MaterialItems.Count > 0)
+            {
+                MaterialItems[0].SelectedMaterial = SelectedMaterial;
+                MaterialItems[0].SelectedMaterialUnit = SelectedMaterialUnit;
             }
         }
         catch
@@ -514,4 +539,73 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     public event EventHandler? CloseRequested;
 
     #endregion
+}
+
+/// <summary>
+/// 材料项行数据（用于 DataGrid）
+/// </summary>
+public partial class MaterialItemRow : ObservableObject
+{
+    /// <summary>
+    /// 选中的材料
+    /// </summary>
+    [ObservableProperty] private Material? _selectedMaterial;
+
+    /// <summary>
+    /// 选中的材料单位
+    /// </summary>
+    [ObservableProperty] private MaterialUnitDto? _selectedMaterialUnit;
+
+    /// <summary>
+    /// 运单数量
+    /// </summary>
+    [ObservableProperty] private decimal? _waybillQuantity;
+
+    /// <summary>
+    /// 运单重量
+    /// </summary>
+    [ObservableProperty] private decimal? _waybillWeight;
+
+    /// <summary>
+    /// 实际数量
+    /// </summary>
+    [ObservableProperty] private decimal? _actualQuantity;
+
+    /// <summary>
+    /// 实际重量
+    /// </summary>
+    [ObservableProperty] private decimal? _actualWeight;
+
+    /// <summary>
+    /// 正负差
+    /// </summary>
+    [ObservableProperty] private decimal? _difference;
+
+    /// <summary>
+    /// 偏差率
+    /// </summary>
+    [ObservableProperty] private decimal? _deviationRate;
+
+    /// <summary>
+    /// 偏差结果
+    /// </summary>
+    [ObservableProperty] private string _deviationResult = "-";
+
+    // 显示属性（用于格式化显示，null 时显示空字符串或 "-"）
+    public string WaybillQuantityDisplay => WaybillQuantity?.ToString("F2") ?? "";
+    public string WaybillWeightDisplay => WaybillWeight?.ToString("F2") ?? "";
+    public string ActualQuantityDisplay => ActualQuantity?.ToString("F2") ?? "";
+    public string ActualWeightDisplay => ActualWeight?.ToString("F2") ?? "";
+    public string DifferenceDisplay => Difference?.ToString("F2") ?? "-";
+    public string DeviationRateDisplay => DeviationRate.HasValue ? $"{DeviationRate.Value:F2}%" : "-";
+    public string RateDisplay => SelectedMaterialUnit?.Rate.ToString("F2") ?? "";
+
+    // 属性变更通知
+    partial void OnWaybillQuantityChanged(decimal? value) => OnPropertyChanged(nameof(WaybillQuantityDisplay));
+    partial void OnWaybillWeightChanged(decimal? value) => OnPropertyChanged(nameof(WaybillWeightDisplay));
+    partial void OnActualQuantityChanged(decimal? value) => OnPropertyChanged(nameof(ActualQuantityDisplay));
+    partial void OnActualWeightChanged(decimal? value) => OnPropertyChanged(nameof(ActualWeightDisplay));
+    partial void OnDifferenceChanged(decimal? value) => OnPropertyChanged(nameof(DifferenceDisplay));
+    partial void OnDeviationRateChanged(decimal? value) => OnPropertyChanged(nameof(DeviationRateDisplay));
+    partial void OnSelectedMaterialUnitChanged(MaterialUnitDto? value) => OnPropertyChanged(nameof(RateDisplay));
 }

@@ -129,176 +129,173 @@
             <!--第三行-->
             <Border Grid.Row="2" BorderThickness="1" BorderBrush="#E5E7EB" 
                     Background="White" CornerRadius="4" Margin="0,0,0,10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <!-- 表头 -->
-                    <Border Grid.Row="0" Background="#6498FE" CornerRadius="4,4,0,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="85" />
-                                <ColumnDefinition Width="75" />
-                                <ColumnDefinition Width="60" />
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="60" />
-                                <ColumnDefinition Width="60" />
-                                <ColumnDefinition Width="70" />
-                            </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="材料名称" />
-                        </Border>
-                        <Border Grid.Column="1" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="单位" />
-                        </Border>
-                        <Border Grid.Column="2" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="换算率" />
-                        </Border>
-                        <Border Grid.Column="3" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="运单数量" />
-                        </Border>
-                        <Border Grid.Column="4" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="运单重量" />
-                        </Border>
-                        <Border Grid.Column="5" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="实际数量" />
-                        </Border>
-                        <Border Grid.Column="6" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="实际重量" />
-                        </Border>
-                        <Border Grid.Column="7" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="正负差" />
-                        </Border>
-                        <Border Grid.Column="8" BorderThickness="0,0,1,0" BorderBrush="#4A7FE8">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="偏差率" />
-                        </Border>
-                        <Border Grid.Column="9">
-                            <TextBlock Height="32" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" TextAlignment="Center" Text="偏差结果" />
-                        </Border>
-                        </Grid>
-                    </Border>
-                    <!-- 数据区域 -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="grid_Og_Items">
-                            <!-- 数据行 -->
-                            <Border BorderThickness="0,0,0,1" BorderBrush="#E5E7EB" Background="White">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="85" />
-                                        <ColumnDefinition Width="75" />
-                                        <ColumnDefinition Width="60" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="60" />
-                                        <ColumnDefinition Width="60" />
-                                        <ColumnDefinition Width="70" />
-                                    </Grid.ColumnDefinitions>
-                                
-                                <!-- 数据单元格 -->
-                                <Border Grid.Column="0" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <ComboBox Height="32" FontSize="12"
-                                              Padding="4,2"
-                                              ItemsSource="{Binding Materials}"
+                <DataGrid ItemsSource="{Binding MaterialItems}"
+                          AutoGenerateColumns="False"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="False"
+                          GridLinesVisibility="All"
+                          HeadersVisibility="Column"
+                          RowHeight="32"
+                          BorderThickness="0"
+                          Background="White">
+                    
+                    <!-- 列定义 -->
+                    <DataGrid.Columns>
+                        <!-- 材料名称 -->
+                        <DataGridTemplateColumn Header="材料名称" Width="90">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.Materials}"
                                               SelectedItem="{Binding SelectedMaterial}"
                                               BorderThickness="0"
-                                              Background="Transparent">
+                                              Background="Transparent"
+                                              Padding="4,2"
+                                              FontSize="12">
                                         <ComboBox.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding Name}" FontSize="11" />
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
-                                </Border>
-                                <Border Grid.Column="1" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <ComboBox Height="32" FontSize="12"
-                                              Padding="4,2"
-                                              ItemsSource="{Binding MaterialUnits}"
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 单位 -->
+                        <DataGridTemplateColumn Header="单位" Width="65">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.MaterialUnits}"
                                               SelectedItem="{Binding SelectedMaterialUnit}"
                                               BorderThickness="0"
-                                              Background="Transparent">
+                                              Background="Transparent"
+                                              Padding="4,2"
+                                              FontSize="12">
                                         <ComboBox.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding UnitName}" FontSize="11" />
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
-                                </Border>
-                                <Border Grid.Column="2" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <TextBlock Height="32" FontSize="12"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" 
-                                               Text="{Binding SelectedMaterialUnit.Rate, StringFormat='{}{0:F2}'}" 
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 换算率 -->
+                        <DataGridTemplateColumn Header="换算率" Width="70">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RateDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
                                                Foreground="#333333" />
-                                </Border>
-                                <Border Grid.Column="3" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <TextBox Height="32" FontSize="12"
-                                             Padding="4,0"
-                                             TextAlignment="Center" 
-                                             Text="{Binding WaybillQuantity}"
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 运单数量 -->
+                        <DataGridTemplateColumn Header="运单数量" Width="85">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding WaybillQuantity}"
+                                             HorizontalAlignment="Stretch"
+                                             VerticalAlignment="Center"
+                                             TextAlignment="Center"
+                                             FontSize="12"
                                              BorderThickness="0"
                                              Background="Transparent" />
-                                </Border>
-                                <Border Grid.Column="4" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <TextBlock Height="32" FontSize="12"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" Text="0" Foreground="#333333" />
-                                </Border>
-                                <Border Grid.Column="5" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <TextBlock Height="32" FontSize="12"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" Text="0" Foreground="#333333" />
-                                </Border>
-                                <Border Grid.Column="6" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <TextBlock Height="32" FontSize="12"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" Text="默认" Foreground="#333333" />
-                                </Border>
-                                <Border Grid.Column="7" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <TextBlock Height="32" FontSize="12"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" Text="-" Foreground="#999999" />
-                                </Border>
-                                <Border Grid.Column="8" BorderThickness="0,0,1,0" BorderBrush="#E5E7EB">
-                                    <TextBlock Height="32" FontSize="12"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" Text="-" Foreground="#999999" />
-                                </Border>
-                                <Border Grid.Column="9">
-                                    <TextBlock Height="32" FontSize="12"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" Text="-" Foreground="#999999" />
-                                </Border>
-                                </Grid>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 运单重量 -->
+                        <DataGridTemplateColumn Header="运单重量" Width="85">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding WaybillWeightDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#333333" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 实际数量 -->
+                        <DataGridTemplateColumn Header="实际数量" Width="85">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ActualQuantityDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#333333" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 实际重量 -->
+                        <DataGridTemplateColumn Header="实际重量" Width="85">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ActualWeightDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#333333" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 正负差 -->
+                        <DataGridTemplateColumn Header="正负差" Width="70">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DifferenceDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#999999" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 偏差率 -->
+                        <DataGridTemplateColumn Header="偏差率" Width="70">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DeviationRateDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#999999" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- 偏差结果 -->
+                        <DataGridTemplateColumn Header="偏差结果" Width="85">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DeviationResult}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#999999" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
             </Border>
 
             <!--第四行：按钮栏-->
