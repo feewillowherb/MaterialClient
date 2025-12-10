@@ -1,20 +1,21 @@
+using System.Threading.Tasks;
+using MaterialClient.Backgrounds;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Volo.Abp.Autofac;
 using Volo.Abp.Modularity;
 using MaterialClient.Common;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
-using MaterialClient.Backgrounds;
-using Volo.Abp.AspNetCore;
+using Volo.Abp;
+using Volo.Abp.BackgroundWorkers;
 
 namespace MaterialClient;
 
 [DependsOn(
     typeof(MaterialClientCommonModule),
-    typeof(AbpAspNetCoreModule),
-    typeof(AbpAutofacModule)
+    typeof(AbpAutofacModule),
+    typeof(AbpBackgroundWorkersModule)
 )]
 public class MaterialClientModule : AbpModule
 {
@@ -47,5 +48,11 @@ public class MaterialClientModule : AbpModule
         // Register Web Host service
         services.AddSingleton<MinimalWebHostService>();
         
+    }
+    
+    public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
+    {
+        // 注册并启动后台工作器
+        await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
     }
 }
