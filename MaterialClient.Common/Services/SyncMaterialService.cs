@@ -27,6 +27,8 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
     private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
     private readonly ILogger<SyncMaterialService> _logger;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
+    private readonly IRepository<MaterialType, int> _materialTypeRepository;
+    private readonly IRepository<Provider, int> _providerRepository;
 
 
     [UnitOfWork]
@@ -181,15 +183,187 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
         }
     }
 
-    public Task SyncMaterialTypeAsync()
+    [UnitOfWork]
+    public async Task SyncMaterialTypeAsync()
     {
-        // 物料单位的同步已集成在 SyncMaterialAsync 方法中
-        return Task.CompletedTask;
+        try
+        {
+            var now = DateTime.Now;
+            var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync();
+            if (licenseInfo == null)
+            {
+                _logger.LogWarning("未找到许可证信息，跳过物料类型同步");
+                return;
+            }
+
+            var workSetting = await _workSettingRepository.FirstOrDefaultAsync();
+            long timestamp = 0;
+
+            if (workSetting?.MaterialTypeUpdatedTime != null)
+            {
+                timestamp = new DateTimeOffset(workSetting.MaterialTypeUpdatedTime.Value).ToUnixTimeSeconds();
+            }
+
+            var request = new GetMaterialGoodTypeListInput(
+                ProId: licenseInfo.ProjectId.ToString(),
+                UpdateTime: timestamp
+            );
+
+            _logger.LogInformation("开始获取物料类型数据，项目ID: {ProjectId}, 时间戳: {Timestamp}",
+                licenseInfo.ProjectId, timestamp);
+
+            List<MaterialGoodTypeListResultDto>? materialTypeList;
+            try
+            {
+                materialTypeList = await _materialPlatformApi.MaterialGoodTypeListAsync(request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "调用物料类型平台API时发生异常，项目ID: {ProjectId}", licenseInfo.ProjectId);
+                return;
+            }
+
+            if (materialTypeList.Count == 0)
+            {
+                _logger.LogInformation("没有需要同步的物料类型数据");
+                return;
+            }
+
+            var list = materialTypeList.Select(MaterialGoodTypeListResultDto.ToEntity).ToList();
+
+            var q = await _materialTypeRepository.GetQueryableAsync();
+
+            var existingTypeIds = await q
+                .Select(x => x.Id)
+                .Where(x => list.Select(l => l.Id).Contains(x))
+                .ToListAsync();
+
+            var typesToUpdate = list.Where(x => existingTypeIds.Contains(x.Id)).ToList();
+            var typesToInsert = list.Where(x => !existingTypeIds.Contains(x.Id)).ToList();
+
+            if (typesToUpdate.Count > 0)
+            {
+                await _materialTypeRepository.UpdateManyAsync(typesToUpdate);
+            }
+
+            if (typesToInsert.Count > 0)
+            {
+                await _materialTypeRepository.InsertManyAsync(typesToInsert);
+            }
+
+            _logger.LogInformation("物料类型同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
+                typesToUpdate.Count, typesToInsert.Count);
+
+            if (workSetting != null)
+            {
+                workSetting.MaterialTypeUpdatedTime = now;
+                await _workSettingRepository.UpdateAsync(workSetting);
+            }
+            else
+            {
+                workSetting = new WorkSettingsEntity
+                {
+                    MaterialTypeUpdatedTime = now
+                };
+                await _workSettingRepository.InsertAsync(workSetting);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "同步物料类型数据时发生异常");
+            throw;
+        }
     }
 
-    public Task SyncProviderAsync()
+    [UnitOfWork]
+    public async Task SyncProviderAsync()
     {
-        // 物料单位的同步已集成在 SyncMaterialAsync 方法中
-        return Task.CompletedTask;
+        try
+        {
+            var now = DateTime.Now;
+            var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync();
+            if (licenseInfo == null)
+            {
+                _logger.LogWarning("未找到许可证信息，跳过供应商同步");
+                return;
+            }
+
+            var workSetting = await _workSettingRepository.FirstOrDefaultAsync();
+            long timestamp = 0;
+
+            if (workSetting?.ProviderUpdatedTime != null)
+            {
+                timestamp = new DateTimeOffset(workSetting.ProviderUpdatedTime.Value).ToUnixTimeSeconds();
+            }
+
+            var request = new GetMaterialProviderListInput(
+                ProId: licenseInfo.ProjectId.ToString(),
+                UploadTime: timestamp
+            );
+
+            _logger.LogInformation("开始获取供应商数据，项目ID: {ProjectId}, 时间戳: {Timestamp}",
+                licenseInfo.ProjectId, timestamp);
+
+            List<MaterialProviderListResultDto>? providerList;
+            try
+            {
+                providerList = await _materialPlatformApi.MaterialProviderListAsync(request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "调用供应商平台API时发生异常，项目ID: {ProjectId}", licenseInfo.ProjectId);
+                return;
+            }
+
+            if (providerList.Count == 0)
+            {
+                _logger.LogInformation("没有需要同步的供应商数据");
+                return;
+            }
+
+            var list = providerList.Select(MaterialProviderListResultDto.ToEntity).ToList();
+
+            var q = await _providerRepository.GetQueryableAsync();
+
+            var existingProviderIds = await q
+                .Select(x => x.Id)
+                .Where(x => list.Select(l => l.Id).Contains(x))
+                .ToListAsync();
+
+            var providersToUpdate = list.Where(x => existingProviderIds.Contains(x.Id)).ToList();
+            var providersToInsert = list.Where(x => !existingProviderIds.Contains(x.Id)).ToList();
+
+            if (providersToUpdate.Count > 0)
+            {
+                await _providerRepository.UpdateManyAsync(providersToUpdate);
+            }
+
+            if (providersToInsert.Count > 0)
+            {
+                await _providerRepository.InsertManyAsync(providersToInsert);
+            }
+
+            _logger.LogInformation("供应商同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
+                providersToUpdate.Count, providersToInsert.Count);
+
+            if (workSetting != null)
+            {
+                workSetting.ProviderUpdatedTime = now;
+                await _workSettingRepository.UpdateAsync(workSetting);
+            }
+            else
+            {
+                workSetting = new WorkSettingsEntity
+                {
+                    ProviderUpdatedTime = now
+                };
+                await _workSettingRepository.InsertAsync(workSetting);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "同步供应商数据时发生异常");
+            throw;
+        }
     }
 }

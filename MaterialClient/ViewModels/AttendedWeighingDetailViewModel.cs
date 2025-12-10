@@ -287,8 +287,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     Id = provider.Id,
                     ProviderType = provider.ProviderType ?? 0,
                     ProviderName = provider.ProviderName,
-                    ContactName = provider.ContactName,
-                    ContactPhone = provider.ContactPhone
+                    ContactName = provider.ContectName,
+                    ContactPhone = provider.ContectPhone
                 });
             }
         }

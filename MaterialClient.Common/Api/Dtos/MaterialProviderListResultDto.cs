@@ -113,4 +113,33 @@ public class MaterialProviderListResultDto
     public int? CoId { get; set; } = 0;
 
     public int? MaterialTypeId { get; set; }
+
+    /// <summary>
+    /// 转换为实体对象
+    /// </summary>
+    public static MaterialClient.Common.Entities.Provider ToEntity(MaterialProviderListResultDto dto)
+    {
+        var provider = new MaterialClient.Common.Entities.Provider(
+            dto.ProviderId,
+            dto.ProviderType ?? 0,
+            dto.ProviderName ?? string.Empty)
+        {
+            ProviderTypeName = dto.ProviderTypeName,
+            ContectName = dto.ContectName,
+            ContectPhone = dto.ContectPhone,
+            MaterialTypeId = dto.MaterialTypeId,
+            CoId = dto.CoId,
+            IsDeleted = dto.DeleteStatus == 1,
+            LastEditUserId = dto.LastEditUserId,
+            LastEditor = dto.LastEditor,
+            CreateUserId = dto.CreateUserId,
+            Creator = dto.Creator,
+            UpdateTime = dto.UpdateTime,
+            AddTime = dto.AddTime,
+            UpdateDate = dto.UpdateDate,
+            AddDate = dto.AddDate
+        };
+
+        return provider;
+    }
 }

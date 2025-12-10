@@ -33,6 +33,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         {
             await WithUow(VerifyAuthAsync, workerContext.ServiceProvider);
             await WithUow(SyncMaterialAsync, workerContext.ServiceProvider);
+            await WithUow(SyncMaterialTypeAsync, workerContext.ServiceProvider);
+            await WithUow(SyncProviderAsync, workerContext.ServiceProvider);
         }
         catch (Exception ex)
         {
@@ -56,6 +58,24 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("开始同步物料数据...");
         await service.SyncMaterialAsync();
         Logger.LogInformation("物料数据同步完成");
+    }
+
+    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider)
+    {
+        var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
+
+        Logger.LogInformation("开始同步物料类型数据...");
+        await service.SyncMaterialTypeAsync();
+        Logger.LogInformation("物料类型数据同步完成");
+    }
+
+    private async Task SyncProviderAsync(IServiceProvider serviceProvider)
+    {
+        var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
+
+        Logger.LogInformation("开始同步供应商数据...");
+        await service.SyncProviderAsync();
+        Logger.LogInformation("供应商数据同步完成");
     }
 
     private async Task VerifyAuthAsync(IServiceProvider serviceProvider)

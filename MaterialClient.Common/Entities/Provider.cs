@@ -50,17 +50,17 @@ public class Provider : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string ProviderTypeName { get; set; }
+    public string? ProviderTypeName { get; set; }
 
     /// <summary>
     /// 联系人姓名
     /// </summary>
-    public string? ContactName { get; set; }
+    public string? ContectName { get; set; }
 
     /// <summary>
     /// 联系人电话
     /// </summary>
-    public string? ContactPhone { get; set; }
+    public string? ContectPhone { get; set; }
 
 
     public int? MaterialTypeId { get; set; }

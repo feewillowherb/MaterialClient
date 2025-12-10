@@ -105,4 +105,34 @@ public class MaterialGoodTypeListResultDto
     /// 空值 : false  
     /// </summary>
     public decimal LowerLimit { get; set; }
+
+    /// <summary>
+    /// 转换为实体对象
+    /// </summary>
+    public static MaterialClient.Common.Entities.MaterialType ToEntity(MaterialGoodTypeListResultDto dto)
+    {
+        var materialType = new MaterialClient.Common.Entities.MaterialType(
+            dto.MaterialTypeId,
+            dto.TypeName ?? string.Empty)
+        {
+            Remark = dto.Remark,
+            ParentId = dto.ParentId,
+            TypeCode = dto.TypeCode,
+            CoId = dto.CoId,
+            UpperLimit = dto.UpperLimit,
+            LowerLimit = dto.LowerLimit,
+            ProId = dto.ProId,
+            IsDeleted = dto.DeleteStatus == 1,
+            LastEditUserId = dto.LastEditUserId,
+            LastEditor = dto.LastEditor,
+            CreateUserId = dto.CreateUserId,
+            Creator = dto.Creator,
+            UpdateTime = dto.UpdateTime,
+            AddTime = dto.AddTime,
+            UpdateDate = dto.UpdateDate,
+            AddDate = dto.AddDate
+        };
+
+        return materialType;
+    }
 }
