@@ -11,7 +11,6 @@
   
     <Application.Styles>
         <FluentTheme />
-        
         <!-- 全局颜色资源 -->
         <Style>
             <Style.Resources>
