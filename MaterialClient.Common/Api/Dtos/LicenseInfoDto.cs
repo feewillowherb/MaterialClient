@@ -18,11 +18,10 @@ public class LicenseInfoDto
     /// <summary>
     /// 授权到期时间
     /// </summary>
-    public string AuthEndTime { get; set; }
+    public DateTime AuthEndTime { get; set; }
 
     /// <summary>
     /// 机器码
     /// </summary>
     public string MachineCode { get; set; }
 }
-

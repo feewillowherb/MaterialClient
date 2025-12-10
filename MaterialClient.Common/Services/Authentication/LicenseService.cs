@@ -131,7 +131,6 @@ public partial class LicenseService : DomainService, ILicenseService
         }
 
         LicenseInfo license;
-        var authEndTime = DateTime.Parse(licenseDto.AuthEndTime);
         if (existingLicense == null)
         {
             // Create new license
@@ -139,7 +138,7 @@ public partial class LicenseService : DomainService, ILicenseService
                 Guid.NewGuid(),
                 licenseDto.Proid,
                 licenseDto.AuthToken,
-                authEndTime,
+                licenseDto.AuthEndTime,
                 machineCode
             );
             await _licenseRepository.InsertAsync(license);
@@ -147,7 +146,7 @@ public partial class LicenseService : DomainService, ILicenseService
         else
         {
             // Update existing license
-            existingLicense.Update(licenseDto.AuthToken, authEndTime, machineCode);
+            existingLicense.Update(licenseDto.AuthToken, licenseDto.AuthEndTime, machineCode);
             license = await _licenseRepository.UpdateAsync(existingLicense);
         }
 
