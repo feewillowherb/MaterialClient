@@ -1,3 +1,4 @@
+using Volo.Abp.Auditing;
 using Volo.Abp.Domain.Entities;
 
 namespace MaterialClient.Common.Entities;
@@ -5,7 +6,7 @@ namespace MaterialClient.Common.Entities;
 /// <summary>
 /// 供应商实体
 /// </summary>
-public class Provider : Entity<int>
+public class Provider : Entity<int>, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
     /// <summary>
     /// 构造函数（用于EF Core）
@@ -36,12 +37,20 @@ public class Provider : Entity<int>
     /// <summary>
     /// 供应商类型
     /// </summary>
-    public int ProviderType { get; set; }
+    public int? ProviderType { get; set; }
 
     /// <summary>
     /// 供应商名称
     /// </summary>
     public string ProviderName { get; set; } = string.Empty;
+
+
+    /// <summary>
+    /// Desc:供应商类型名称
+    /// Default:
+    /// Nullable:True
+    /// </summary>           
+    public string ProviderTypeName { get; set; }
 
     /// <summary>
     /// 联系人姓名
@@ -52,5 +61,27 @@ public class Provider : Entity<int>
     /// 联系人电话
     /// </summary>
     public string? ContactPhone { get; set; }
-}
 
+
+    public int? MaterialTypeId { get; set; }
+
+
+    public int? CoId { get; set; }
+
+
+    #region Audited Properties
+
+    public int? LastEditUserId { get; set; }
+    public string? LastEditor { get; set; }
+    public int? CreateUserId { get; set; }
+    public string? Creator { get; set; }
+    public int? UpdateTime { get; set; }
+    public int? AddTime { get; set; }
+    public DateTime? UpdateDate { get; set; }
+    public DateTime? AddDate { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletionTime { get; set; }
+    public Guid? DeleterId { get; set; }
+
+    #endregion
+}

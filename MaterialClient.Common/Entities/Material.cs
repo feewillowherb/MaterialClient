@@ -95,6 +95,8 @@ public class Material : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
     /// </summary>
     public decimal UnitRate { get; set; } = 1;
 
+    #region Audited Properties
+
     public bool IsDeleted { get; set; }
     public DateTime? DeletionTime { get; set; }
     public Guid? DeleterId { get; set; }
@@ -106,4 +108,6 @@ public class Material : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
     public int? AddTime { get; set; }
     public DateTime? UpdateDate { get; set; }
     public DateTime? AddDate { get; set; }
+
+    #endregion
 }
