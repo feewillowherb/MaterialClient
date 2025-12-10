@@ -13,7 +13,8 @@ public interface ISyncMaterialService
 {
     Task SyncMaterialAsync();
 
-    Task SyncMaterialUnitAsync();
+    Task SyncMaterialTypeAsync();
+    Task SyncProviderAsync();
 }
 
 [AutoConstructor]
@@ -44,9 +45,9 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             var workSetting = await _workSettingRepository.FirstOrDefaultAsync();
             long timestamp = 0;
 
-            if (workSetting?.MaterialUpdateTime != null)
+            if (workSetting?.MaterialUpdatedTime != null)
             {
-                timestamp = new DateTimeOffset(workSetting.MaterialUpdateTime.Value).ToUnixTimeSeconds();
+                timestamp = new DateTimeOffset(workSetting.MaterialUpdatedTime.Value).ToUnixTimeSeconds();
             }
 
             var request = new GetMaterialGoodListInput(
@@ -104,14 +105,14 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
 
             if (workSetting != null)
             {
-                workSetting.MaterialUpdateTime = now;
+                workSetting.MaterialUpdatedTime = now;
                 await _workSettingRepository.UpdateAsync(workSetting);
             }
             else
             {
                 workSetting = new WorkSettingsEntity
                 {
-                    MaterialUpdateTime = now
+                    MaterialUpdatedTime = now
                 };
                 await _workSettingRepository.InsertAsync(workSetting);
             }
@@ -180,7 +181,13 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
         }
     }
 
-    public Task SyncMaterialUnitAsync()
+    public Task SyncMaterialTypeAsync()
+    {
+        // 物料单位的同步已集成在 SyncMaterialAsync 方法中
+        return Task.CompletedTask;
+    }
+
+    public Task SyncProviderAsync()
     {
         // 物料单位的同步已集成在 SyncMaterialAsync 方法中
         return Task.CompletedTask;

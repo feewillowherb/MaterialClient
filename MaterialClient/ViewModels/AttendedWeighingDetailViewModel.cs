@@ -285,7 +285,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 Providers.Add(new ProviderDto
                 {
                     Id = provider.Id,
-                    ProviderType = provider.ProviderType,
+                    ProviderType = provider.ProviderType ?? 0,
                     ProviderName = provider.ProviderName,
                     ContactName = provider.ContactName,
                     ContactPhone = provider.ContactPhone

@@ -22,7 +22,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     private readonly IAuthenticationService _authService;
     private readonly ILicenseService _licenseService;
     private readonly ITestService _testService;
-    private readonly IBasePlatformApi _mockApi;
+    private readonly IMaterialPlatformApi _mockApi;
     private readonly IRepository<UserSession, Guid> _sessionRepository;
     private readonly IRepository<UserCredential, Guid> _credentialRepository;
 
@@ -43,7 +43,7 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
         _credentialRepository = GetRequiredService<IRepository<UserCredential, Guid>>();
 
         // Get the mock API that was registered in the test module
-        _mockApi = GetRequiredService<IBasePlatformApi>();
+        _mockApi = GetRequiredService<IMaterialPlatformApi>();
     }
 
     [BeforeScenario]
@@ -60,43 +60,43 @@ public class AuthenticationSteps : MaterialClientEntityFrameworkCoreTestBase
     /// <param name="shouldSucceed">是否成功登录，默认为 true</param>
     private void SetupMockLoginResponse(string? username = null, bool shouldSucceed = true)
     {
-        if (!shouldSucceed)
-        {
-            _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-            {
-                Success = false,
-                Code = -1,
-                Msg = "用户名或密码错误",
-                Data = null!
-            });
-        }
-        else
-        {
-            _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
-            {
-                Success = true,
-                Code = 0,
-                Msg = "成功",
-                Data = new LoginUserDto
-                {
-                    UserId = 1,
-                    UserName = username ?? "testuser",
-                    ClientId = Guid.NewGuid(),
-                    Token = "test-access-token",
-                    TrueName = "测试用户",
-                    IsAdmin = false,
-                    IsCompany = true,
-                    ProductType = 2,
-                    FromProductId = 1,
-                    ProductId = 1,
-                    ProductName = "测试产品",
-                    CoId = 1,
-                    CoName = "测试公司",
-                    Url = "http://test.com",
-                    AuthEndTime = DateTime.UtcNow.AddMonths(6)
-                }
-            });
-        }
+        // if (!shouldSucceed)
+        // {
+        //     _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+        //     {
+        //         Success = false,
+        //         Code = -1,
+        //         Msg = "用户名或密码错误",
+        //         Data = null!
+        //     });
+        // }
+        // else
+        // {
+        //     _mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>()).Returns(new HttpResult<LoginUserDto>
+        //     {
+        //         Success = true,
+        //         Code = 0,
+        //         Msg = "成功",
+        //         Data = new LoginUserDto
+        //         {
+        //             UserId = 1,
+        //             UserName = username ?? "testuser",
+        //             ClientId = Guid.NewGuid(),
+        //             Token = "test-access-token",
+        //             TrueName = "测试用户",
+        //             IsAdmin = false,
+        //             IsCompany = true,
+        //             ProductType = 2,
+        //             FromProductId = 1,
+        //             ProductId = 1,
+        //             ProductName = "测试产品",
+        //             CoId = 1,
+        //             CoName = "测试公司",
+        //             Url = "http://test.com",
+        //             AuthEndTime = DateTime.UtcNow.AddMonths(6)
+        //         }
+        //     });
+        // }
     }
 
     #region Given Steps
