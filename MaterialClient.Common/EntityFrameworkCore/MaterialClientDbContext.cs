@@ -56,16 +56,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.HasKey(e => e.Id);
             entity.Property(e => e.UnitName).IsRequired();
             entity.Property(e => e.Rate).IsRequired();
-
-            entity.HasOne(e => e.Material)
-                .WithMany()
-                .HasForeignKey(e => e.MaterialId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.Provider)
-                .WithMany()
-                .HasForeignKey(e => e.ProviderId)
-                .OnDelete(DeleteBehavior.SetNull);
+            
         });
 
         // Configure Provider relationships
@@ -106,17 +97,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<WaybillAttachment>(entity =>
         {
             entity.HasKey(e => e.Id);
-
-            entity.HasOne(e => e.Waybill)
-                .WithMany()
-                .HasForeignKey(e => e.WaybillId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.AttachmentFile)
-                .WithMany()
-                .HasForeignKey(e => e.AttachmentFileId)
-                .OnDelete(DeleteBehavior.Cascade);
-
+            
             // Composite unique constraint
             entity.HasIndex(e => new { e.WaybillId, e.AttachmentFileId })
                 .IsUnique();
