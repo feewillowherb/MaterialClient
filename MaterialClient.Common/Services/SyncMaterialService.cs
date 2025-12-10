@@ -12,6 +12,8 @@ namespace MaterialClient.Common.Services;
 public interface ISyncMaterialService
 {
     Task SyncMaterialAsync();
+
+    Task SyncMaterialUnitAsync();
 }
 
 [AutoConstructor]
@@ -23,6 +25,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
     private readonly IRepository<WorkSettingsEntity, int> _workSettingRepository;
     private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
     private readonly ILogger<SyncMaterialService> _logger;
+    private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
 
 
     [UnitOfWork]
@@ -51,7 +54,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
                 UpdateTime: timestamp
             );
 
-            _logger.LogInformation("开始获取物料数据，项目ID: {ProjectId}, 时间戳: {Timestamp}", 
+            _logger.LogInformation("开始获取物料数据，项目ID: {ProjectId}, 时间戳: {Timestamp}",
                 licenseInfo.ProjectId, timestamp);
 
             List<MaterialGoodListResultDto>? materialList;
@@ -79,15 +82,15 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
                 .Select(x => x.Id)
                 .Where(x => list.Select(l => l.Id).Contains(x))
                 .ToListAsync();
-            
+
             var materialsToUpdate = list.Where(x => existingMaterialIds.Contains(x.Id)).ToList();
             var materialsToInsert = list.Where(x => !existingMaterialIds.Contains(x.Id)).ToList();
-            
+
             if (materialsToUpdate.Count > 0)
             {
                 await _materialRepository.UpdateManyAsync(materialsToUpdate);
             }
-            
+
             if (materialsToInsert.Count > 0)
             {
                 await _materialRepository.InsertManyAsync(materialsToInsert);
@@ -115,5 +118,14 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             _logger.LogError(ex, "同步物料数据时发生异常");
             throw;
         }
+
+        async Task InsertOrUpdateMaterialUnitAsync(List<Material> materials)
+        {
+            
+        }
+    }
+
+    public async Task SyncMaterialUnitAsync()
+    {
     }
 }
