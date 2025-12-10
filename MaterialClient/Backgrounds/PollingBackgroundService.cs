@@ -31,7 +31,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 
         try
         {
-            await ExecuteWithUowAsync(workerContext.ServiceProvider);
+            await WithUow(VerifyAuthAsync, workerContext.ServiceProvider);
+            await WithUow(SyncMaterialAsync, workerContext.ServiceProvider);
         }
         catch (Exception ex)
         {
@@ -39,13 +40,12 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         }
     }
 
-    private async Task ExecuteWithUowAsync(IServiceProvider serviceProvider)
+    private async Task WithUow(Func<IServiceProvider, Task> action, IServiceProvider serviceProvider)
     {
         var uowManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
-        await VerifyAuthAsync(serviceProvider);
-        await SyncMaterialAsync(serviceProvider);
+        await action(serviceProvider);
         await uow.CompleteAsync();
     }
 
