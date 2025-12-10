@@ -330,7 +330,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     Id = unit.Id,
                     MaterialId = unit.MaterialId,
                     UnitName = unit.UnitName,
-                    Rate = unit.Rate,
+                    Rate = unit.Rate ?? 0m,
                     RateName = unit.RateName,
                     ProviderId = unit.ProviderId
                 });
