@@ -99,6 +99,9 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             _logger.LogInformation("物料同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
                 materialsToUpdate.Count, materialsToInsert.Count);
 
+            // 同步物料单位
+            await SyncMaterialUnitsAsync(materialList);
+
             if (workSetting != null)
             {
                 workSetting.MaterialUpdateTime = now;
@@ -118,14 +121,68 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             _logger.LogError(ex, "同步物料数据时发生异常");
             throw;
         }
+    }
 
-        async Task InsertOrUpdateMaterialUnitAsync(List<Material> materials)
+    /// <summary>
+    /// 同步物料单位
+    /// </summary>
+    private async Task SyncMaterialUnitsAsync(List<MaterialGoodListResultDto> materialList)
+    {
+        try
         {
-            
+            // 收集所有需要同步的物料单位
+            var allUnits = new List<MaterialUnit>();
+            foreach (var material in materialList)
+            {
+                if (material.Units != null && material.Units.Count > 0)
+                {
+                    var units = material.Units
+                        .Select(u => MaterialGoodUnitResultDto.ToEntity(u, material.GoodsId))
+                        .ToList();
+                    allUnits.AddRange(units);
+                }
+            }
+
+            if (allUnits.Count == 0)
+            {
+                _logger.LogInformation("没有需要同步的物料单位数据");
+                return;
+            }
+
+            var unitQuery = await _materialUnitRepository.GetQueryableAsync();
+
+            // 查询已存在的物料单位ID
+            var existingUnitIds = await unitQuery
+                .Where(u => allUnits.Select(au => au.Id).Contains(u.Id))
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            var unitsToUpdate = allUnits.Where(u => existingUnitIds.Contains(u.Id)).ToList();
+            var unitsToInsert = allUnits.Where(u => !existingUnitIds.Contains(u.Id)).ToList();
+
+            if (unitsToUpdate.Count > 0)
+            {
+                await _materialUnitRepository.UpdateManyAsync(unitsToUpdate);
+            }
+
+            if (unitsToInsert.Count > 0)
+            {
+                await _materialUnitRepository.InsertManyAsync(unitsToInsert);
+            }
+
+            _logger.LogInformation("物料单位同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
+                unitsToUpdate.Count, unitsToInsert.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "同步物料单位时发生异常");
+            throw;
         }
     }
 
-    public async Task SyncMaterialUnitAsync()
+    public Task SyncMaterialUnitAsync()
     {
+        // 物料单位的同步已集成在 SyncMaterialAsync 方法中
+        return Task.CompletedTask;
     }
 }

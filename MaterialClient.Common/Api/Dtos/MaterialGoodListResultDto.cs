@@ -258,7 +258,28 @@ public class MaterialGoodUnitResultDto
     /// </summary>
     public string RateName { get; set; }
 
-    public static MaterialUnit ToEntity(MaterialGoodUnitResultDto dto)
+    public static MaterialUnit ToEntity(MaterialGoodUnitResultDto dto, int materialId)
     {
+        var materialUnit = new MaterialUnit(
+            dto.UnitId,
+            materialId,
+            dto.UnitName ?? string.Empty,
+            dto.Rate ?? 0)
+        {
+            UnitCalculationType = dto.UnitCalculationType,
+            ProviderId = dto.ProviderId,
+            RateName = dto.RateName,
+            IsDeleted = dto.DeleteStatus == 1,
+            LastEditUserId = dto.LastEditUserId,
+            LastEditor = dto.LastEditor,
+            CreateUserId = dto.CreateUserId,
+            Creator = dto.Creator,
+            UpdateTime = dto.UpdateTime,
+            AddTime = dto.AddTime,
+            UpdateDate = dto.UpdateDate,
+            AddDate = dto.AddDate
+        };
+
+        return materialUnit;
     }
 }
