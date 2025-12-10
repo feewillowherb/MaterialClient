@@ -11,6 +11,14 @@ public interface IMaterialPlatformApi
         [Body] GetMaterialGoodListInput request,
         CancellationToken cancellationToken = default);
 
+
+    [Post("/api/Material/MaterialGoodTypeList")]
+    Task<List<dynamic>> MaterialGoodTypeListAsync(
+        [Body] GetMaterialGoodTypeListInput request,
+        CancellationToken cancellationToken = default
+    );
+
+
     /// <summary>
     /// 用户登录
     /// </summary>
@@ -24,6 +32,11 @@ public interface IMaterialPlatformApi
 }
 
 public record GetMaterialGoodListInput(
+    string ProId,
+    long UpdateTime
+);
+
+public record GetMaterialGoodTypeListInput(
     string ProId,
     long UpdateTime
 );
