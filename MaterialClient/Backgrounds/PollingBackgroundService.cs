@@ -18,7 +18,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 {
     public PollingBackgroundService(
         AbpAsyncTimer timer,
-        IServiceScopeFactory serviceScopeFactory) 
+        IServiceScopeFactory serviceScopeFactory)
         : base(timer, serviceScopeFactory)
     {
         // 设置定时器间隔为 10 分钟
@@ -31,10 +31,27 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 
         try
         {
-            await WithUow(VerifyAuthAsync, workerContext.ServiceProvider);
-            await WithUow(SyncMaterialAsync, workerContext.ServiceProvider);
-            await WithUow(SyncMaterialTypeAsync, workerContext.ServiceProvider);
-            await WithUow(SyncProviderAsync, workerContext.ServiceProvider);
+            // 检查是否请求取消
+            if (workerContext.CancellationToken.IsCancellationRequested)
+            {
+                Logger.LogInformation("检测到取消请求，停止轮询任务");
+                return;
+            }
+
+            await WithUow(VerifyAuthAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(SyncMaterialAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(SyncMaterialTypeAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInformation("轮询后台任务被取消");
         }
         catch (Exception ex)
         {
@@ -42,16 +59,18 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         }
     }
 
-    private async Task WithUow(Func<IServiceProvider, Task> action, IServiceProvider serviceProvider)
+    private async Task WithUow(Func<IServiceProvider, System.Threading.CancellationToken, Task> action, IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        
         var uowManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
-        await action(serviceProvider);
-        await uow.CompleteAsync();
+        await action(serviceProvider, cancellationToken);
+        await uow.CompleteAsync(cancellationToken);
     }
 
-    private async Task SyncMaterialAsync(IServiceProvider serviceProvider)
+    private async Task SyncMaterialAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -60,7 +79,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("物料数据同步完成");
     }
 
-    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider)
+    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -69,7 +88,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("物料类型数据同步完成");
     }
 
-    private async Task SyncProviderAsync(IServiceProvider serviceProvider)
+    private async Task SyncProviderAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -78,7 +97,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("供应商数据同步完成");
     }
 
-    private async Task VerifyAuthAsync(IServiceProvider serviceProvider)
+    private async Task VerifyAuthAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         var licenseService = serviceProvider.GetRequiredService<ILicenseService>();
 
