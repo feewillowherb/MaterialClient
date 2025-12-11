@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Entities;
@@ -118,8 +119,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
 
     // 重量稳定性监控
     private const decimal WeightStabilityThreshold = 0.05m; // ±0.05m = 0.1m total range
-    private const int StabilityWindowSeconds = 3;
+    private const int StabilityWindowMs = 3000;
     private bool _isWeightStable = false;
+    private const int StabilityCheckIntervalMs = 200; // 默认 200ms
 
 
     /// <summary>
@@ -244,7 +246,8 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         _stabilitySubscription?.Dispose();
 
         _stabilitySubscription = _truckScaleWeightService.WeightUpdates
-            .Buffer(TimeSpan.FromSeconds(StabilityWindowSeconds), TimeSpan.FromSeconds(0.1))
+            .Buffer(StabilityWindowMs, StabilityCheckIntervalMs)
+            .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(buffer =>
             {
                 if (buffer.Count > 0)
