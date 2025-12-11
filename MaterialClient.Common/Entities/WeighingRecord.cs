@@ -82,6 +82,12 @@ public class WeighingRecord : FullAuditedEntity<long>
 
 
     /// <summary>
+    /// 显示收发料模式
+    /// </summary>
+    public DeliveryType? DeliveryType { get; set; }
+
+
+    /// <summary>
     /// 和匹配的Id
     /// </summary>
     public long? MatchedId { get; set; }
