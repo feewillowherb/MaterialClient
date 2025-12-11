@@ -215,8 +215,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         try
         {
             var deviceManagerService =
-                _serviceProvider.GetRequiredService<MaterialClient.Common.Services.IDeviceManagerService>();
+                _serviceProvider.GetRequiredService<IDeviceManagerService>();
             await deviceManagerService.StartAsync();
+
+            var attendedWeighingService =
+                _serviceProvider.GetRequiredService<IAttendedWeighingService>();
+            await attendedWeighingService.StartAsync();
         }
         catch (Exception ex)
         {
@@ -290,8 +294,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             if (cameraConfigs.Count == 0)
             {
                 // Update property on UI thread
-                Dispatcher.UIThread.Post(() => 
-                { 
+                Dispatcher.UIThread.Post(() =>
+                {
                     IsCameraOnline = false;
                     CameraStatuses.Clear();
                 });
@@ -347,8 +351,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             }
 
             // Update properties on UI thread
-            Dispatcher.UIThread.Post(() => 
-            { 
+            Dispatcher.UIThread.Post(() =>
+            {
                 IsCameraOnline = anyOnline;
                 CameraStatuses.Clear();
                 foreach (var status in cameraStatusList)
@@ -360,8 +364,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         catch
         {
             // Update property on UI thread
-            Dispatcher.UIThread.Post(() => 
-            { 
+            Dispatcher.UIThread.Post(() =>
+            {
                 IsCameraOnline = false;
                 CameraStatuses.Clear();
             });
@@ -437,13 +441,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             // 计算当前页应该显示哪些记录
             var skip = (CurrentPage - 1) * PageSize;
             var unmatchedCount = UnmatchedWeighingRecords.Count;
-            
+
             if (skip < unmatchedCount)
             {
                 // 当前页包含未完成记录
                 var unmatchedToShow = UnmatchedWeighingRecords.Skip(skip).Take(PageSize).ToList();
                 var remaining = PageSize - unmatchedToShow.Count;
-                
+
                 PagedUnmatchedWeighingRecords.Clear();
                 foreach (var record in unmatchedToShow)
                 {
@@ -497,7 +501,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             {
                 PagedUnmatchedWeighingRecords.Add(record);
             }
-            
+
             PagedCompletedWaybills.Clear();
         }
         else if (IsShowCompleted)
@@ -620,10 +624,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             DetailViewModel.AbolishCompleted -= OnDetailAbolishCompleted;
             DetailViewModel.CloseRequested -= OnDetailCloseRequested;
         }
-        
+
         // 清除选中状态
         SelectedWeighingRecord = null;
-        
+
         IsShowingMainView = true;
         CurrentWeighingRecordForDetail = null;
         DetailViewModel = null;

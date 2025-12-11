@@ -62,6 +62,7 @@ public interface ITruckScaleWeightService : IDisposable
 /// Truck scale weight service implementation
 /// Uses serial port communication to read weight from truck scale
 /// </summary>
+[AutoConstructor]
 public class TruckScaleWeightService : ITruckScaleWeightService
 {
     private readonly ISettingsService _settingsService;
@@ -71,7 +72,10 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     private decimal _currentWeight = 0m;
     private bool _isListening = false;
     private bool _isClosing = false;
-    private readonly System.Threading.ReaderWriterLockSlim _rwLock = new(System.Threading.LockRecursionPolicy.SupportsRecursion);
+
+    private readonly System.Threading.ReaderWriterLockSlim _rwLock =
+        new(System.Threading.LockRecursionPolicy.SupportsRecursion);
+
     private ScaleSettings? _currentSettings;
 
     private const decimal TonDecimal = 100m;
@@ -114,13 +118,6 @@ public class TruckScaleWeightService : ITruckScaleWeightService
         }
     }
 
-    public TruckScaleWeightService(
-        ISettingsService settingsService,
-        ILogger<TruckScaleWeightService>? logger = null)
-    {
-        _settingsService = settingsService;
-        _logger = logger;
-    }
 
     /// <summary>
     /// Initialize serial port connection with settings

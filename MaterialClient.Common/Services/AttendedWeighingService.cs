@@ -82,7 +82,7 @@ public interface IAttendedWeighingService : IAsyncDisposable
 /// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
 /// </summary>
 [AutoConstructor]
-public partial class AttendedWeighingService : DomainService, IAttendedWeighingService
+public partial class AttendedWeighingService : IAttendedWeighingService
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
@@ -254,7 +254,8 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         _stabilitySubscription?.Dispose();
 
         _stabilitySubscription = _truckScaleWeightService.WeightUpdates
-            .Buffer(StabilityWindowMs, StabilityCheckIntervalMs)
+            .Buffer(TimeSpan.FromMilliseconds(StabilityWindowMs),
+                TimeSpan.FromMilliseconds(StabilityCheckIntervalMs))
             .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(buffer =>
             {
