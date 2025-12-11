@@ -71,7 +71,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     private decimal _currentWeight = 0m;
     private bool _isListening = false;
     private bool _isClosing = false;
-    private readonly Lock _lockObject = new();
+    private readonly System.Threading.ReaderWriterLockSlim _rwLock = new(System.Threading.LockRecursionPolicy.SupportsRecursion);
     private ScaleSettings? _currentSettings;
 
     private const decimal TonDecimal = 100m;
@@ -102,9 +102,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     {
         get
         {
-            lock (_lockObject)
+            _rwLock.EnterReadLock();
+            try
             {
                 return _serialPort != null && _serialPort.IsOpen && !_isClosing;
+            }
+            finally
+            {
+                _rwLock.ExitReadLock();
             }
         }
     }
@@ -126,7 +131,8 @@ public class TruckScaleWeightService : ITruckScaleWeightService
         {
             try
             {
-                lock (_lockObject)
+                _rwLock.EnterWriteLock();
+                try
                 {
                     if (_serialPort != null && _serialPort.IsOpen)
                     {
@@ -183,6 +189,10 @@ public class TruckScaleWeightService : ITruckScaleWeightService
 
                     return true;
                 }
+                finally
+                {
+                    _rwLock.ExitWriteLock();
+                }
             }
             catch (Exception ex)
             {
@@ -201,7 +211,8 @@ public class TruckScaleWeightService : ITruckScaleWeightService
         {
             if (_isClosing) return;
 
-            lock (_lockObject)
+            _rwLock.EnterWriteLock();
+            try
             {
                 if (_serialPort == null || !_serialPort.IsOpen) return;
 
@@ -218,6 +229,10 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 }
 
                 _isListening = false;
+            }
+            finally
+            {
+                _rwLock.ExitWriteLock();
             }
         }
         catch (Exception ex)
@@ -351,9 +366,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                         parsedWeight = -parsedWeight;
                     }
 
-                    lock (_lockObject)
+                    _rwLock.EnterWriteLock();
+                    try
                     {
                         _currentWeight = parsedWeight;
+                    }
+                    finally
+                    {
+                        _rwLock.ExitWriteLock();
                     }
 
                     _logger?.LogDebug(
@@ -392,9 +412,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
             // Try to parse as decimal
             if (decimal.TryParse(weightString, out decimal weight))
             {
-                lock (_lockObject)
+                _rwLock.EnterWriteLock();
+                try
                 {
                     _currentWeight = weight;
+                }
+                finally
+                {
+                    _rwLock.ExitWriteLock();
                 }
 
                 _logger?.LogDebug($"Parsed String weight: {weight} kg");
@@ -427,9 +452,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
             }
 
             // Return the last received weight
-            lock (_lockObject)
+            _rwLock.EnterReadLock();
+            try
             {
                 return _currentWeight;
+            }
+            finally
+            {
+                _rwLock.ExitReadLock();
             }
         }
         catch (Exception ex)
@@ -473,7 +503,8 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     /// </summary>
     private void CloseInternal()
     {
-        lock (_lockObject)
+        _rwLock.EnterWriteLock();
+        try
         {
             try
             {
@@ -506,6 +537,10 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                 _isClosing = false;
             }
         }
+        finally
+        {
+            _rwLock.ExitWriteLock();
+        }
     }
 
     /// <summary>
@@ -515,6 +550,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     {
         Close();
         _weightSubject?.Dispose();
+        _rwLock?.Dispose();
     }
 
     /// <summary>
@@ -522,9 +558,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     /// </summary>
     public void SetWeight(decimal weight)
     {
-        lock (_lockObject)
+        _rwLock.EnterWriteLock();
+        try
         {
             _currentWeight = weight;
+        }
+        finally
+        {
+            _rwLock.ExitWriteLock();
         }
 
         // Push weight update to Rx stream
@@ -536,9 +577,14 @@ public class TruckScaleWeightService : ITruckScaleWeightService
     /// </summary>
     public decimal GetCurrentWeight()
     {
-        lock (_lockObject)
+        _rwLock.EnterReadLock();
+        try
         {
             return _currentWeight;
+        }
+        finally
+        {
+            _rwLock.ExitReadLock();
         }
     }
 }
