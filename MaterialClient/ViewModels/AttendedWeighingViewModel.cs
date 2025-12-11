@@ -81,6 +81,21 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private string? _exitPhoto4;
 
+    /// <summary>
+    /// 当前选中的照片标签 (0 = 进场照片, 1 = 出场照片)
+    /// </summary>
+    [ObservableProperty] private int _selectedPhotoTabIndex = 0;
+    
+    /// <summary>
+    /// 是否选中进场照片标签
+    /// </summary>
+    public bool IsEntryPhotoTabSelected => SelectedPhotoTabIndex == 0;
+    
+    /// <summary>
+    /// 是否选中出场照片标签
+    /// </summary>
+    public bool IsExitPhotoTabSelected => SelectedPhotoTabIndex == 1;
+
     [ObservableProperty] private string? _materialInfo;
 
     [ObservableProperty] private string? _offsetInfo;
@@ -685,6 +700,18 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
     }
 
+    [RelayCommand]
+    private void ShowEntryPhotos()
+    {
+        SelectedPhotoTabIndex = 0;
+    }
+
+    [RelayCommand]
+    private void ShowExitPhotos()
+    {
+        SelectedPhotoTabIndex = 1;
+    }
+
     private void SetDisplayMode(int mode)
     {
         IsShowAllRecords = mode == 0;
@@ -763,6 +790,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     partial void OnIsShowingMainViewChanged(bool value)
     {
         OnPropertyChanged(nameof(IsShowingDetailView));
+    }
+    
+    partial void OnSelectedPhotoTabIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsEntryPhotoTabSelected));
+        OnPropertyChanged(nameof(IsExitPhotoTabSelected));
     }
 
     private void UpdateDisplayRecords()
