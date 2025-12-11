@@ -137,7 +137,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             var allUnits = new List<MaterialUnit>();
             foreach (var material in materialList)
             {
-                if (material.Units != null && material.Units.Count > 0)
+                if (material.Units.Count > 0)
                 {
                     var units = material.Units
                         .Select(u => MaterialGoodUnitResultDto.ToEntity(u, material.GoodsId))
