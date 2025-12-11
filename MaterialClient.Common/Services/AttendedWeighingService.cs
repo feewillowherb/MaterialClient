@@ -142,7 +142,15 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
 
             _plateNumberCache.Clear();
             _weightSubscription = _truckScaleWeightService.WeightUpdates
-                .Subscribe(OnWeightChanged);
+                .Buffer(TimeSpan.FromMilliseconds(200)) // 收集200ms内的数据
+                .ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(buffer =>
+                {
+                    if (buffer.Count > 0)
+                    {
+                        OnWeightChanged(buffer.Last()); // 只处理最新的
+                    }
+                });
 
             // Initialize weight stability monitoring
             InitializeWeightStabilityMonitoring();
