@@ -75,6 +75,11 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// Check if weight is stable (changes less than ±0.1m within 3 seconds)
     /// </summary>
     bool IsWeightStable { get; }
+
+    /// <summary>
+    /// Observable stream of new weighing record creation events
+    /// </summary>
+    IObservable<WeighingRecord> WeighingRecordCreated { get; }
 }
 
 /// <summary>
@@ -102,6 +107,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService
 
     // Rx Subject for plate number updates
     private readonly Subject<string?> _plateNumberSubject = new();
+
+    // Rx Subject for weighing record creation events
+    private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
 
     // 重量稳定判定
     private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
@@ -213,6 +221,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService
             }
         }
     }
+
+    /// <summary>
+    /// Observable stream of new weighing record creation events
+    /// </summary>
+    public IObservable<WeighingRecord> WeighingRecordCreated => _weighingRecordCreatedSubject;
 
     /// <summary>
     /// 接收车牌识别结果
@@ -557,6 +570,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService
             _logger?.LogInformation(
                 $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
 
+            // Notify observers that a new weighing record was created
+            _weighingRecordCreatedSubject.OnNext(weighingRecord);
+
             // Save captured photos to WeighingRecordAttachment
             if (photoPaths.Count > 0)
             {
@@ -665,5 +681,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
         _statusSubject?.Dispose();
         _plateNumberSubject?.OnCompleted();
         _plateNumberSubject?.Dispose();
+        _weighingRecordCreatedSubject?.OnCompleted();
+        _weighingRecordCreatedSubject?.Dispose();
     }
 }

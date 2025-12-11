@@ -205,6 +205,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         // Start ReactiveUI observable to update weighing status
         StartStatusObservable();
+
+        // Subscribe to weighing record creation events
+        StartWeighingRecordCreatedObservable();
     }
 
     /// <summary>
@@ -834,6 +837,29 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             {
                 _currentWeighingStatus = status;
                 OnPropertyChanged(nameof(CurrentWeighingStatusText));
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    /// Start ReactiveUI observable to update list when new weighing record is created
+    /// </summary>
+    private void StartWeighingRecordCreatedObservable()
+    {
+        if (_attendedWeighingService == null)
+        {
+            return;
+        }
+
+        // Subscribe to weighing record creation events from service
+        _attendedWeighingService.WeighingRecordCreated
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async weighingRecord =>
+            {
+                System.Diagnostics.Debug.WriteLine($"AttendedWeighingViewModel: Received new weighing record creation event, ID: {weighingRecord.Id}");
+                
+                // Refresh the list to include the new record
+                await RefreshAsync();
             })
             .DisposeWith(_disposables);
     }
