@@ -1,14 +1,27 @@
-﻿using Volo.Abp.Domain.Entities;
+﻿using MaterialClient.Common.Entities.Enums;
+using Volo.Abp.Domain.Entities;
 
 namespace MaterialClient.Common.Entities;
 
 public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
 {
-    protected WaybillMaterial()
+    public WaybillMaterial()
     {
     }
 
-    public long OrderId { get; set; }
+    public WaybillMaterial(long waybillId, int materialId, string materialName, string? specifications,
+        int? materialUnitId, decimal goodsPlanOnPcs)
+    {
+        WaybillId = waybillId;
+        MaterialId = materialId;
+        MaterialName = materialName;
+        Specifications = specifications;
+        MaterialUnitId = materialUnitId;
+        GoodsPlanOnPcs = goodsPlanOnPcs;
+        GoodsPcs = goodsPlanOnPcs;
+    }
+
+    public long WaybillId { get; set; }
 
     public int MaterialId { get; set; }
 
@@ -29,7 +42,7 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
 
     public decimal GoodsTakeWeight { get; set; }
 
-    public int OffsetResult { get; set; }
+    public OffsetResultType OffsetResult { get; set; }
 
     public decimal OffsetWeight { get; set; }
 
@@ -50,4 +63,13 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
     public DateTime? AddDate { get; set; }
 
     #endregion
+
+
+    public void UpdateOffsetFromWaybill(Waybill waybill)
+    {
+        OffsetWeight = waybill.OrderGoodsWeight!.Value - waybill.OrderPlanOnWeight!.Value;
+        OffsetResult = waybill.OffsetResult;
+        OffsetRate = waybill.OffsetRate!.Value;
+        GoodsPlanOnWeight = waybill.OrderPlanOnWeight!.Value;
+    }
 }

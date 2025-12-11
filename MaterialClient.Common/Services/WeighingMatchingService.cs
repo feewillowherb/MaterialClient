@@ -27,6 +27,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
+    private readonly IRepository<Material, int> _materialRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
     private readonly WeighingConfiguration _configuration;
     private readonly ILogger<WeighingMatchingService>? _logger;
@@ -282,9 +284,33 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             OrderSource = OrderSource.MannedStation
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
+        joinRecord.MatchAsJoin(outRecord.Id);
+        outRecord.MatchAsOut(joinRecord.Id);
+        var materialId = joinRecord.MaterialId ?? outRecord.MaterialId;
+        var materialUnitId = joinRecord.MaterialUnitId ?? outRecord.MaterialUnitId;
+        var waybillQuantity = joinRecord.WaybillQuantity ?? outRecord.WaybillQuantity;
+        if (materialUnitId.HasValue && waybillQuantity.HasValue && materialId.HasValue)
+        {
+            var material = await _materialRepository.GetAsync(materialId.Value);
 
+
+            var waybillMaterial = new WaybillMaterial(waybill.Id,
+                material.Id,
+                material.Name,
+                material.Specifications,
+                materialUnitId.Value,
+                waybillQuantity.Value
+            );
+
+            waybill.CalculateMaterialWeight(material.LowerLimit, material.UpperLimit);
+
+
+            await _waybillMaterialRepository.InsertAsync(waybillMaterial);
+        }
 
         await _waybillRepository.InsertAsync(waybill);
+        await _weighingRecordRepository.UpdateAsync(joinRecord);
+        await _weighingRecordRepository.UpdateAsync(outRecord);
     }
 
     /// <summary>

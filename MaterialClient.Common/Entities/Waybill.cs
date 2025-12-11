@@ -129,6 +129,8 @@ public class Waybill : FullAuditedEntity<long>
     /// </summary>
     public OffsetResultType OffsetResult { get; set; } = OffsetResultType.Default;
 
+    public decimal? OffsetRate { get; set; }
+
     /// <summary>
     /// 预警类型
     /// </summary>
@@ -189,7 +191,7 @@ public class Waybill : FullAuditedEntity<long>
     }
 
 
-    public void CalculateMaterialWeight(decimal lowerLimit, decimal upperLimit)
+    public void CalculateMaterialWeight(decimal? lowerLimit, decimal? upperLimit)
     {
         if (!OrderPlanOnPcs.HasValue || !MaterialUnitRate.HasValue || !OrderTruckWeight.HasValue ||
             !OrderTotalWeight.HasValue ||
@@ -210,6 +212,8 @@ public class Waybill : FullAuditedEntity<long>
 
         var rowOffSetRate = Math.Round((rowWeight - OrderPlanOnWeight.Value) * 100 / OrderPlanOnWeight.Value, 4,
             MidpointRounding.AwayFromZero);
+
+        OffsetRate = rowOffSetRate;
 
         if (lowerLimit < 0 || upperLimit > 0)
         {

@@ -117,4 +117,17 @@ public class WeighingRecord : FullAuditedEntity<long>
     {
         return PlateNumberValidator.IsValidChinesePlateNumber(plateNumber);
     }
+
+
+    public void MatchAsJoin(long matchedId)
+    {
+        MatchedId = matchedId;
+        MatchedType = WeighingRecordMatchType.Join;
+    }
+
+    public void MatchAsOut(long matchedId)
+    {
+        MatchedId = matchedId;
+        MatchedType = WeighingRecordMatchType.Out;
+    }
 }
