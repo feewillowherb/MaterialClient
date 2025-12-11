@@ -23,6 +23,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     public DbSet<AttachmentFile> AttachmentFiles { get; set; }
     public DbSet<WaybillAttachment> WaybillAttachments { get; set; }
     public DbSet<WeighingRecordAttachment> WeighingRecordAttachments { get; set; }
+    public DbSet<WaybillMaterial> WaybillMaterials { get; set; }
 
     // Authentication DbSets
     public DbSet<LicenseInfo> LicenseInfos { get; set; }
@@ -48,7 +49,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<Material>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.Name).IsRequired();
             entity.Property(e => e.UnitRate).IsRequired().HasDefaultValue(1);
         });
@@ -57,7 +58,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<MaterialType>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.TypeName).HasMaxLength(200);
             entity.Property(e => e.TypeCode).HasMaxLength(50);
             entity.Property(e => e.Remark).HasMaxLength(500);
@@ -77,7 +78,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<MaterialUnit>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.UnitName).IsRequired();
             entity.Property(e => e.Rate).IsRequired();
         });
@@ -86,7 +87,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<Provider>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.ProviderName).IsRequired();
         });
 
@@ -94,7 +95,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<Waybill>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.OrderNo).IsRequired();
 
             entity.HasOne(e => e.Provider)
@@ -107,7 +108,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<WeighingRecord>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.Weight).IsRequired();
         });
 
@@ -115,7 +116,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<AttachmentFile>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.FileName).IsRequired();
             entity.Property(e => e.LocalPath).IsRequired();
         });
@@ -124,7 +125,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<WaybillAttachment>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             // Composite unique constraint
             entity.HasIndex(e => new { e.WaybillId, e.AttachmentFileId })
                 .IsUnique();
@@ -154,7 +155,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<LicenseInfo>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.ProjectId).IsRequired();
             entity.Property(e => e.AuthEndTime).IsRequired();
             entity.Property(e => e.MachineCode).IsRequired().HasMaxLength(128);
@@ -169,7 +170,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<UserCredential>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.ProjectId).IsRequired();
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
             entity.Property(e => e.EncryptedPassword).IsRequired().HasMaxLength(512);
@@ -184,7 +185,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<UserSession>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.ProjectId).IsRequired();
             entity.Property(e => e.LicenseInfoId).IsRequired();
             entity.Property(e => e.UserId).IsRequired();
@@ -206,7 +207,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Entity<SettingsEntity>(entity =>
         {
             entity.ConfigureByConvention();
-            
+
             entity.Property(e => e.ScaleSettingsJson).IsRequired();
             entity.Property(e => e.DocumentScannerConfigJson).IsRequired();
             entity.Property(e => e.SystemSettingsJson).IsRequired();
@@ -215,9 +216,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         });
 
         // Configure WorkSettingsEntity
-        modelBuilder.Entity<WorkSettingsEntity>(entity =>
-        {
-            entity.ConfigureByConvention();
-        });
+        modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
     }
 }

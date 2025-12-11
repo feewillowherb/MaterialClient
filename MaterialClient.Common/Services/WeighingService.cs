@@ -234,7 +234,7 @@ public class WeighingService : DomainService
             try
             {
                 var waybillsCreated =
-                    await _matchingService.Value.TryMatchAndCreateWaybillsAsync(DeliveryType.Delivery);
+                    await _matchingService.Value.TryMatchAndCreateWaybillsAsync(DeliveryType.Receiving);
                 if (waybillsCreated > 0)
                 {
                     _logger?.LogInformation($"WeighingService: Created {waybillsCreated} waybill(s) after matching");
