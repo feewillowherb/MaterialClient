@@ -122,14 +122,6 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         // 如果记录已有 DeliveryType，使用它；否则默认收料
         IsReceiving = currentRecord.DeliveryType == null || currentRecord.DeliveryType == DeliveryType.Receiving;
 
-        // 监听选中项变化
-        this.WhenAnyValue(x => x.SelectedCandidateRecord)
-            .Subscribe(_ => UpdateCanConfirm());
-
-        // 监听收发料类型变化，重新加载候选记录
-        this.WhenAnyValue(x => x.IsReceiving)
-            .Subscribe(async _ => await LoadCandidateRecordsAsync());
-
         // 加载数据
         _ = InitializeAsync();
     }
@@ -140,9 +132,21 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         await LoadCandidateRecordsAsync();
     }
 
-    private void UpdateCanConfirm()
+    /// <summary>
+    /// 当选中的候选记录变化时更新 CanConfirm
+    /// </summary>
+    partial void OnSelectedCandidateRecordChanged(CandidateRecordViewModel? value)
     {
-        CanConfirm = SelectedCandidateRecord != null;
+        CanConfirm = value != null;
+    }
+
+    /// <summary>
+    /// 当收发类型变化时重新加载候选记录
+    /// </summary>
+    partial void OnIsReceivingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SelectedDeliveryType));
+        _ = LoadCandidateRecordsAsync();
     }
 
     #region 命令
@@ -260,15 +264,6 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         {
             System.Diagnostics.Debug.WriteLine($"加载照片失败: {ex.Message}");
         }
-    }
-
-    #endregion
-
-    #region 属性变更
-
-    partial void OnIsReceivingChanged(bool value)
-    {
-        OnPropertyChanged(nameof(SelectedDeliveryType));
     }
 
     #endregion

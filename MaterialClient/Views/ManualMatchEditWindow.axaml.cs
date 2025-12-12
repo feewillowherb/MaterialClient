@@ -3,15 +3,13 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.ViewModels;
 
 namespace MaterialClient.Views;
 
 public partial class ManualMatchEditWindow : Window
 {
-    private readonly WeighingRecord? _currentRecord;
-    private readonly WeighingRecord? _matchedRecord;
-    private readonly DeliveryType _deliveryType;
-    private readonly IServiceProvider? _serviceProvider;
+    private readonly ManualMatchEditWindowViewModel? _viewModel;
 
     /// <summary>
     /// 无参构造函数（用于设计器）
@@ -34,24 +32,30 @@ public partial class ManualMatchEditWindow : Window
         DeliveryType deliveryType,
         IServiceProvider serviceProvider) : this()
     {
-        _currentRecord = currentRecord;
-        _matchedRecord = matchedRecord;
-        _deliveryType = deliveryType;
-        _serviceProvider = serviceProvider;
-
-        // TODO: 创建 ViewModel 并设置 DataContext
-        // DataContext = new ManualMatchEditWindowViewModel(currentRecord, matchedRecord, deliveryType, serviceProvider);
+        _viewModel = new ManualMatchEditWindowViewModel(currentRecord, matchedRecord, deliveryType, serviceProvider);
+        DataContext = _viewModel;
     }
 
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
-        Close();
+        Close(false);
     }
 
-    private void OnConfirmButtonClick(object? sender, RoutedEventArgs e)
+    private async void OnConfirmButtonClick(object? sender, RoutedEventArgs e)
     {
-        // 确定按钮点击处理
-        // TODO: 实现保存逻辑
-        Close();
+        if (_viewModel == null)
+        {
+            Close(false);
+            return;
+        }
+
+        // 执行保存操作
+        var result = await _viewModel.SaveAsync();
+        
+        // 如果保存成功，关闭窗口并返回 true
+        if (result)
+        {
+            Close(true);
+        }
     }
 }

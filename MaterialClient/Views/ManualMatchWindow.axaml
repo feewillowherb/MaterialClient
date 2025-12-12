@@ -130,7 +130,7 @@
             <Border Grid.Row="4" Margin="10,0,10,10">
                 <DataGrid x:Name="CandidateDataGrid"
                           ItemsSource="{Binding CandidateRecords}"
-                          SelectedItem="{Binding SelectedCandidateRecord}"
+                          SelectedItem="{Binding SelectedCandidateRecord, Mode=TwoWay}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserResizeColumns="True"

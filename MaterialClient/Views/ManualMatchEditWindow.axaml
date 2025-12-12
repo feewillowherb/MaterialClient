@@ -2,8 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MaterialClient.ViewModels"
         mc:Ignorable="d"
         x:Class="MaterialClient.Views.ManualMatchEditWindow"
+        x:DataType="vm:ManualMatchEditWindowViewModel"
         Title="订单匹配确认"
         Width="755"
         Height="768"
@@ -42,15 +44,20 @@
                     <Grid ColumnDefinitions="*,*">
                         <Grid Grid.Column="0" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="车牌号：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <TextBox Grid.Column="1" Watermark="请输入车牌号" Height="30" Text="川A12345"/>
+                            <TextBox Grid.Column="1" 
+                                     Watermark="请输入车牌号" 
+                                     Height="30" 
+                                     Text="{Binding PlateNumber, Mode=TwoWay}"/>
                         </Grid>
                         <Grid Grid.Column="1" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="供应商：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <ComboBox Grid.Column="1" PlaceholderText="请选择供应商" Height="30" HorizontalAlignment="Stretch">
-                                <ComboBoxItem Content="供应商A"/>
-                                <ComboBoxItem Content="供应商B"/>
-                                <ComboBoxItem Content="供应商C"/>
-                            </ComboBox>
+                            <ComboBox Grid.Column="1" 
+                                      PlaceholderText="请选择供应商" 
+                                      Height="30" 
+                                      HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding Providers}"
+                                      SelectedItem="{Binding SelectedProvider, Mode=TwoWay}"
+                                      DisplayMemberBinding="{Binding ProviderName}"/>
                         </Grid>
                     </Grid>
                     
@@ -58,11 +65,17 @@
                     <Grid ColumnDefinitions="*,*">
                         <Grid Grid.Column="0" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="称毛时间：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="2024-01-15 08:30:00"/>
+                            <TextBox Grid.Column="1" 
+                                     Height="30" 
+                                     IsEnabled="False" 
+                                     Text="{Binding GrossWeightTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"/>
                         </Grid>
                         <Grid Grid.Column="1" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="称皮时间：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="2024-01-15 09:15:00"/>
+                            <TextBox Grid.Column="1" 
+                                     Height="30" 
+                                     IsEnabled="False" 
+                                     Text="{Binding TareWeightTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"/>
                         </Grid>
                     </Grid>
                     
@@ -70,11 +83,17 @@
                     <Grid ColumnDefinitions="*,*">
                         <Grid Grid.Column="0" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="毛重（吨）：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="25.50"/>
+                            <TextBox Grid.Column="1" 
+                                     Height="30" 
+                                     IsEnabled="False" 
+                                     Text="{Binding GrossWeight, StringFormat='{}{0:F2}'}"/>
                         </Grid>
                         <Grid Grid.Column="1" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="皮重（吨）：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="8.20"/>
+                            <TextBox Grid.Column="1" 
+                                     Height="30" 
+                                     IsEnabled="False" 
+                                     Text="{Binding TareWeight, StringFormat='{}{0:F2}'}"/>
                         </Grid>
                     </Grid>
                     
@@ -82,11 +101,17 @@
                     <Grid ColumnDefinitions="*,*">
                         <Grid Grid.Column="0" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="净重（吨）：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="17.30"/>
+                            <TextBox Grid.Column="1" 
+                                     Height="30" 
+                                     IsEnabled="False" 
+                                     Text="{Binding NetWeight, StringFormat='{}{0:F2}'}"/>
                         </Grid>
                         <Grid Grid.Column="1" ColumnDefinitions="80,*" Margin="5">
                             <TextBlock Text="材料类别：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                            <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="水泥"/>
+                            <TextBox Grid.Column="1" 
+                                     Height="30" 
+                                     IsEnabled="False" 
+                                     Text="{Binding MaterialCategory}"/>
                         </Grid>
                     </Grid>
                     
@@ -97,7 +122,8 @@
                                  Height="50" 
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
-                                 Watermark="请输入备注"/>
+                                 Watermark="请输入备注"
+                                 Text="{Binding Remark, Mode=TwoWay}"/>
                     </Grid>
                     
                     <!-- 材料明细区域 -->
@@ -107,15 +133,20 @@
                             <Grid ColumnDefinitions="*,*">
                                 <Grid Grid.Column="0" ColumnDefinitions="80,*">
                                     <TextBlock Text="材料明细：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                                    <ComboBox Grid.Column="1" PlaceholderText="请选择材料" Height="30" HorizontalAlignment="Stretch">
-                                        <ComboBoxItem Content="水泥P.O42.5"/>
-                                        <ComboBoxItem Content="砂石"/>
-                                        <ComboBoxItem Content="钢筋"/>
-                                    </ComboBox>
+                                    <ComboBox Grid.Column="1" 
+                                              PlaceholderText="请选择材料" 
+                                              Height="30" 
+                                              HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding Materials}"
+                                              SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding Name}"/>
                                 </Grid>
                                 <Grid Grid.Column="1" ColumnDefinitions="80,*">
                                     <TextBlock Text="规格型号：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                                    <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="P.O42.5"/>
+                                    <TextBox Grid.Column="1" 
+                                             Height="30" 
+                                             IsEnabled="False" 
+                                             Text="{Binding Specifications}"/>
                                 </Grid>
                             </Grid>
                             
@@ -123,11 +154,20 @@
                             <Grid ColumnDefinitions="*,*">
                                 <Grid Grid.Column="0" ColumnDefinitions="80,*">
                                     <TextBlock Text="单位：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                                    <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="吨"/>
+                                    <ComboBox Grid.Column="1" 
+                                              PlaceholderText="请选择单位" 
+                                              Height="30" 
+                                              HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding MaterialUnits}"
+                                              SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding UnitName}"/>
                                 </Grid>
                                 <Grid Grid.Column="1" ColumnDefinitions="80,*">
                                     <TextBlock Text="换算系数：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                                    <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="1.00"/>
+                                    <TextBox Grid.Column="1" 
+                                             Height="30" 
+                                             IsEnabled="False" 
+                                             Text="{Binding ConversionRate, StringFormat='{}{0:F2}'}"/>
                                 </Grid>
                             </Grid>
                             
@@ -135,11 +175,16 @@
                             <Grid ColumnDefinitions="*,*">
                                 <Grid Grid.Column="0" ColumnDefinitions="80,*">
                                     <TextBlock Text="运单数量：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                                    <TextBox Grid.Column="1" Height="30" Text="17.30"/>
+                                    <TextBox Grid.Column="1" 
+                                             Height="30" 
+                                             Text="{Binding WaybillQuantity, Mode=TwoWay}"/>
                                 </Grid>
                                 <Grid Grid.Column="1" ColumnDefinitions="80,*">
                                     <TextBlock Text="运单重量：" FontSize="13" VerticalAlignment="Center" Foreground="#333"/>
-                                    <TextBox Grid.Column="1" Height="30" IsEnabled="False" Text="17.30"/>
+                                    <TextBox Grid.Column="1" 
+                                             Height="30" 
+                                             IsEnabled="False" 
+                                             Text="{Binding WaybillWeight, StringFormat='{}{0:F2}'}"/>
                                 </Grid>
                             </Grid>
                             
@@ -149,7 +194,8 @@
                                     HorizontalAlignment="Right"
                                     CornerRadius="4"
                                     Padding="16,6"
-                                    Margin="0,5,0,0"/>
+                                    Margin="0,5,0,0"
+                                    Command="{Binding DeleteMaterialCommand}"/>
                         </StackPanel>
                     </Border>
                     
@@ -159,45 +205,62 @@
                             HorizontalAlignment="Center"
                             CornerRadius="4"
                             Padding="24,8"
-                            Margin="0,5,0,10"/>
+                            Margin="0,5,0,10"
+                            Command="{Binding AddMaterialCommand}"/>
                     
                     <!-- 进场照片/出场照片区域 -->
                     <Grid ColumnDefinitions="*,*" Margin="0,10,0,0">
                         <!-- 进场照片 -->
                         <StackPanel Grid.Column="0" Spacing="5">
                             <TextBlock Text="进场照片" FontSize="13" Foreground="#333" Margin="5,0,0,5"/>
-                            <UniformGrid Rows="2" Columns="2" Width="340" Height="200" Margin="5">
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
+                            <ItemsControl ItemsSource="{Binding EntryPhotos}" Width="340" Height="200" Margin="5">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="2" Columns="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
+                                            <Image Source="{Binding}" Stretch="UniformToFill"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <!-- 如果没有照片时显示占位 -->
+                            <UniformGrid Rows="2" Columns="2" Width="340" Height="200" Margin="5"
+                                         IsVisible="{Binding EntryPhotos.Count, Converter={x:Static ObjectConverters.IsNull}}">
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
                             </UniformGrid>
                         </StackPanel>
                         
                         <!-- 出场照片 -->
                         <StackPanel Grid.Column="1" Spacing="5">
                             <TextBlock Text="出场照片" FontSize="13" Foreground="#333" Margin="5,0,0,5"/>
-                            <UniformGrid Rows="2" Columns="2" Width="340" Height="200" Margin="5">
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
-                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                    <Image Stretch="UniformToFill"/>
-                                </Border>
+                            <ItemsControl ItemsSource="{Binding ExitPhotos}" Width="340" Height="200" Margin="5">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="2" Columns="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
+                                            <Image Source="{Binding}" Stretch="UniformToFill"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <!-- 如果没有照片时显示占位 -->
+                            <UniformGrid Rows="2" Columns="2" Width="340" Height="200" Margin="5"
+                                         IsVisible="{Binding ExitPhotos.Count, Converter={x:Static ObjectConverters.IsNull}}">
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
+                                <Border Background="#E5E7EB" Margin="2" CornerRadius="4"/>
                             </UniformGrid>
                         </StackPanel>
                     </Grid>
@@ -213,7 +276,7 @@
                                     Height="180" 
                                     CornerRadius="4" 
                                     Margin="5">
-                                <Image Stretch="UniformToFill"/>
+                                <Image Source="{Binding TicketPhoto}" Stretch="UniformToFill"/>
                             </Border>
                             <!-- 视频预览区（用静态占位） -->
                             <Border Grid.Column="1" 
@@ -235,7 +298,8 @@
                                     VerticalAlignment="Top"
                                     CornerRadius="4"
                                     Padding="24,8"
-                                    Margin="10,0,0,0"/>
+                                    Margin="10,0,0,0"
+                                    Command="{Binding TakePhotoCommand}"/>
                         </Grid>
                     </StackPanel>
                     
