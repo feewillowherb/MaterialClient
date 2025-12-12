@@ -807,30 +807,30 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 await PhotoGridViewModel.LoadFromWeighingRecordAsync(record);
             }
 
-            var attachmentRepository = _serviceProvider.GetService<IRepository<WeighingRecordAttachment, int>>();
-            if (attachmentRepository != null)
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService != null)
             {
-                var attachments = await attachmentRepository.GetListAsync(
-                    predicate: x => x.WeighingRecordId == record.Id,
-                    includeDetails: true
-                );
-
+                var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(new[] { record.Id });
+                
                 VehiclePhotos.Clear();
                 BillPhotoPath = null;
 
-                foreach (var attachment in attachments)
+                if (attachmentsDict.TryGetValue(record.Id, out var attachmentFiles))
                 {
-                    if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                    foreach (var file in attachmentFiles)
                     {
-                        // Determine if attachment is vehicle photo or bill photo based on AttachType
-                        if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto ||
-                            attachment.AttachmentFile.AttachType == AttachType.ExitPhoto)
+                        if (!string.IsNullOrEmpty(file.LocalPath))
                         {
-                            VehiclePhotos.Add(attachment.AttachmentFile.LocalPath);
-                        }
-                        else if (attachment.AttachmentFile.AttachType == AttachType.TicketPhoto)
-                        {
-                            BillPhotoPath = attachment.AttachmentFile.LocalPath;
+                            // Determine if attachment is vehicle photo or bill photo based on AttachType
+                            if (file.AttachType == AttachType.EntryPhoto ||
+                                file.AttachType == AttachType.ExitPhoto)
+                            {
+                                VehiclePhotos.Add(file.LocalPath);
+                            }
+                            else if (file.AttachType == AttachType.TicketPhoto)
+                            {
+                                BillPhotoPath = file.LocalPath;
+                            }
                         }
                     }
                 }
@@ -838,7 +838,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
         catch
         {
-            // If repository is not available, photos will remain empty
+            // If service is not available, photos will remain empty
         }
     }
 
@@ -852,30 +852,30 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 await PhotoGridViewModel.LoadFromWaybillAsync(waybill);
             }
 
-            var waybillAttachmentRepository = _serviceProvider.GetService<IRepository<WaybillAttachment, int>>();
-            if (waybillAttachmentRepository != null)
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService != null)
             {
-                var attachments = await waybillAttachmentRepository.GetListAsync(
-                    predicate: x => x.WaybillId == waybill.Id,
-                    includeDetails: true
-                );
-
+                var attachmentsDict = await attachmentService.GetAttachmentsByWaybillIdsAsync(new[] { waybill.Id });
+                
                 VehiclePhotos.Clear();
                 BillPhotoPath = null;
 
-                foreach (var attachment in attachments)
+                if (attachmentsDict.TryGetValue(waybill.Id, out var attachmentFiles))
                 {
-                    if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                    foreach (var file in attachmentFiles)
                     {
-                        // Determine if attachment is vehicle photo or bill photo based on AttachType
-                        if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto ||
-                            attachment.AttachmentFile.AttachType == AttachType.ExitPhoto)
+                        if (!string.IsNullOrEmpty(file.LocalPath))
                         {
-                            VehiclePhotos.Add(attachment.AttachmentFile.LocalPath);
-                        }
-                        else if (attachment.AttachmentFile.AttachType == AttachType.TicketPhoto)
-                        {
-                            BillPhotoPath = attachment.AttachmentFile.LocalPath;
+                            // Determine if attachment is vehicle photo or bill photo based on AttachType
+                            if (file.AttachType == AttachType.EntryPhoto ||
+                                file.AttachType == AttachType.ExitPhoto)
+                            {
+                                VehiclePhotos.Add(file.LocalPath);
+                            }
+                            else if (file.AttachType == AttachType.TicketPhoto)
+                            {
+                                BillPhotoPath = file.LocalPath;
+                            }
                         }
                     }
                 }
@@ -883,7 +883,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
         catch
         {
-            // If repository is not available, photos will remain empty
+            // If service is not available, photos will remain empty
         }
     }
 }

@@ -136,15 +136,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         {
             entity.ConfigureByConvention();
 
-            entity.HasOne(e => e.WeighingRecord)
-                .WithMany()
-                .HasForeignKey(e => e.WeighingRecordId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.AttachmentFile)
-                .WithMany()
-                .HasForeignKey(e => e.AttachmentFileId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             // Composite unique constraint
             entity.HasIndex(e => new { e.WeighingRecordId, e.AttachmentFileId })

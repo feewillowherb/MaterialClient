@@ -8,8 +8,6 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
-using ReactiveUI;
-using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
@@ -21,7 +19,6 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     private readonly WeighingRecord _currentRecord;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWeighingMatchingService _weighingMatchingService;
-    private readonly IRepository<WeighingRecordAttachment, int>? _attachmentRepository;
 
     #region 属性
 
@@ -112,7 +109,6 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         _currentRecord = currentRecord;
         _serviceProvider = serviceProvider;
         _weighingMatchingService = serviceProvider.GetRequiredService<IWeighingMatchingService>();
-        _attachmentRepository = serviceProvider.GetService<IRepository<WeighingRecordAttachment, int>>();
 
         // 初始化当前记录信息
         PlateNumber = currentRecord.PlateNumber;
@@ -235,27 +231,28 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     {
         try
         {
-            if (_attachmentRepository == null) return;
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService == null) return;
 
-            var attachments = await _attachmentRepository.GetListAsync(
-                predicate: x => x.WeighingRecordId == _currentRecord.Id,
-                includeDetails: true
-            );
+            var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(new[] { _currentRecord.Id });
 
             EntryPhotos.Clear();
             TicketPhoto = null;
 
-            foreach (var attachment in attachments)
+            if (attachmentsDict.TryGetValue(_currentRecord.Id, out var attachmentFiles))
             {
-                if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                foreach (var file in attachmentFiles)
                 {
-                    if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto)
+                    if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        EntryPhotos.Add(attachment.AttachmentFile.LocalPath);
-                    }
-                    else if (attachment.AttachmentFile.AttachType == AttachType.TicketPhoto)
-                    {
-                        TicketPhoto = attachment.AttachmentFile.LocalPath;
+                        if (file.AttachType == AttachType.EntryPhoto)
+                        {
+                            EntryPhotos.Add(file.LocalPath);
+                        }
+                        else if (file.AttachType == AttachType.TicketPhoto)
+                        {
+                            TicketPhoto = file.LocalPath;
+                        }
                     }
                 }
             }

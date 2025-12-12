@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
@@ -25,7 +26,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
     private readonly IRepository<Provider, int>? _providerRepository;
     private readonly IRepository<Material, int>? _materialRepository;
     private readonly IRepository<MaterialUnit, int>? _materialUnitRepository;
-    private readonly IRepository<WeighingRecordAttachment, int>? _attachmentRepository;
     private readonly IRepository<WeighingRecord, long>? _weighingRecordRepository;
 
     #region 属性
@@ -177,7 +177,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         _providerRepository = serviceProvider.GetService<IRepository<Provider, int>>();
         _materialRepository = serviceProvider.GetService<IRepository<Material, int>>();
         _materialUnitRepository = serviceProvider.GetService<IRepository<MaterialUnit, int>>();
-        _attachmentRepository = serviceProvider.GetService<IRepository<WeighingRecordAttachment, int>>();
         _weighingRecordRepository = serviceProvider.GetService<IRepository<WeighingRecord, long>>();
 
         // 初始化数据
@@ -412,21 +411,17 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
     private async Task LoadPhotosAsync()
     {
-        if (_attachmentRepository == null) return;
+        var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+        if (attachmentService == null) return;
 
         try
         {
-            // 加载当前记录的附件
-            var currentAttachments = await _attachmentRepository.GetListAsync(
-                predicate: x => x.WeighingRecordId == _currentRecord.Id,
-                includeDetails: true
-            );
+            // 批量查询两个记录的附件
+            var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(
+                new[] { _currentRecord.Id, _matchedRecord.Id });
 
-            // 加载匹配记录的附件
-            var matchedAttachments = await _attachmentRepository.GetListAsync(
-                predicate: x => x.WeighingRecordId == _matchedRecord.Id,
-                includeDetails: true
-            );
+            attachmentsDict.TryGetValue(_currentRecord.Id, out var currentFiles);
+            attachmentsDict.TryGetValue(_matchedRecord.Id, out var matchedFiles);
 
             EntryPhotos.Clear();
             ExitPhotos.Clear();
@@ -434,39 +429,44 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
             // 根据时间判断哪些是进场照片，哪些是出场照片
             var earlierRecord = _currentRecord.CreationTime <= _matchedRecord.CreationTime ? _currentRecord : _matchedRecord;
-            var laterRecord = _currentRecord.CreationTime > _matchedRecord.CreationTime ? _currentRecord : _matchedRecord;
-            var earlierAttachments = earlierRecord.Id == _currentRecord.Id ? currentAttachments : matchedAttachments;
-            var laterAttachments = laterRecord.Id == _currentRecord.Id ? currentAttachments : matchedAttachments;
+            var earlierFiles = earlierRecord.Id == _currentRecord.Id ? currentFiles : matchedFiles;
+            var laterFiles = earlierRecord.Id == _currentRecord.Id ? matchedFiles : currentFiles;
 
             // 进场照片（较早记录的照片）
-            foreach (var attachment in earlierAttachments)
+            if (earlierFiles != null)
             {
-                if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                foreach (var file in earlierFiles)
                 {
-                    if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto)
+                    if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        EntryPhotos.Add(attachment.AttachmentFile.LocalPath);
-                    }
-                    else if (attachment.AttachmentFile.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
-                    {
-                        TicketPhoto = attachment.AttachmentFile.LocalPath;
+                        if (file.AttachType == AttachType.EntryPhoto)
+                        {
+                            EntryPhotos.Add(file.LocalPath);
+                        }
+                        else if (file.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
+                        {
+                            TicketPhoto = file.LocalPath;
+                        }
                     }
                 }
             }
 
             // 出场照片（较晚记录的照片）
-            foreach (var attachment in laterAttachments)
+            if (laterFiles != null)
             {
-                if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                foreach (var file in laterFiles)
                 {
-                    if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto ||
-                        attachment.AttachmentFile.AttachType == AttachType.ExitPhoto)
+                    if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        ExitPhotos.Add(attachment.AttachmentFile.LocalPath);
-                    }
-                    else if (attachment.AttachmentFile.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
-                    {
-                        TicketPhoto = attachment.AttachmentFile.LocalPath;
+                        if (file.AttachType == AttachType.EntryPhoto ||
+                            file.AttachType == AttachType.ExitPhoto)
+                        {
+                            ExitPhotos.Add(file.LocalPath);
+                        }
+                        else if (file.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
+                        {
+                            TicketPhoto = file.LocalPath;
+                        }
                     }
                 }
             }

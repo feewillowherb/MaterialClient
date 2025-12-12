@@ -1,11 +1,12 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
@@ -109,37 +110,34 @@ public partial class PhotoGridViewModel : ViewModelBase
         {
             Clear();
 
-            var attachmentRepository = _serviceProvider.GetService<IRepository<WeighingRecordAttachment, int>>();
-            if (attachmentRepository == null) return;
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService == null) return;
 
-            var attachments = await attachmentRepository.GetListAsync(
-                predicate: x => x.WeighingRecordId == record.Id,
-                includeDetails: true
-            );
+            var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(new[] { record.Id });
+            if (!attachmentsDict.TryGetValue(record.Id, out var attachmentFiles))
+                return;
 
             int entryIndex = 0;
             int exitIndex = 0;
 
-            foreach (var attachment in attachments)
+            foreach (var file in attachmentFiles)
             {
-                if (attachment.AttachmentFile == null || string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                if (string.IsNullOrEmpty(file.LocalPath))
                     continue;
 
-                var localPath = attachment.AttachmentFile.LocalPath;
-
-                if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto)
+                if (file.AttachType == AttachType.EntryPhoto)
                 {
-                    SetEntryPhoto(entryIndex++, localPath);
+                    SetEntryPhoto(entryIndex++, file.LocalPath);
                 }
-                else if (attachment.AttachmentFile.AttachType == AttachType.ExitPhoto)
+                else if (file.AttachType == AttachType.ExitPhoto)
                 {
-                    SetExitPhoto(exitIndex++, localPath);
+                    SetExitPhoto(exitIndex++, file.LocalPath);
                 }
             }
         }
         catch
         {
-            // If repository is not available, photos will remain empty
+            // If service is not available, photos will remain empty
         }
     }
 
@@ -152,37 +150,34 @@ public partial class PhotoGridViewModel : ViewModelBase
         {
             Clear();
 
-            var waybillAttachmentRepository = _serviceProvider.GetService<IRepository<WaybillAttachment, int>>();
-            if (waybillAttachmentRepository == null) return;
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService == null) return;
 
-            var attachments = await waybillAttachmentRepository.GetListAsync(
-                predicate: x => x.WaybillId == waybill.Id,
-                includeDetails: true
-            );
+            var attachmentsDict = await attachmentService.GetAttachmentsByWaybillIdsAsync(new[] { waybill.Id });
+            if (!attachmentsDict.TryGetValue(waybill.Id, out var attachmentFiles))
+                return;
 
             int entryIndex = 0;
             int exitIndex = 0;
 
-            foreach (var attachment in attachments)
+            foreach (var file in attachmentFiles)
             {
-                if (attachment.AttachmentFile == null || string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                if (string.IsNullOrEmpty(file.LocalPath))
                     continue;
 
-                var localPath = attachment.AttachmentFile.LocalPath;
-
-                if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto)
+                if (file.AttachType == AttachType.EntryPhoto)
                 {
-                    SetEntryPhoto(entryIndex++, localPath);
+                    SetEntryPhoto(entryIndex++, file.LocalPath);
                 }
-                else if (attachment.AttachmentFile.AttachType == AttachType.ExitPhoto)
+                else if (file.AttachType == AttachType.ExitPhoto)
                 {
-                    SetExitPhoto(exitIndex++, localPath);
+                    SetExitPhoto(exitIndex++, file.LocalPath);
                 }
             }
         }
         catch
         {
-            // If repository is not available, photos will remain empty
+            // If service is not available, photos will remain empty
         }
     }
 
