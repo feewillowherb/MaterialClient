@@ -236,8 +236,8 @@ public class TestService : DomainService, ITestService
             provider = new Provider(providerType, providerName);
         }
 
-        provider.ContactName = contactName;
-        provider.ContactPhone = contactPhone;
+        provider.ContectName = contactName;
+        provider.ContectPhone = contactPhone;
 
         return await _providerRepository.InsertAsync(provider);
     }

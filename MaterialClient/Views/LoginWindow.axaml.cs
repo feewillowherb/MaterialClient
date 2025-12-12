@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -34,7 +35,7 @@ public partial class LoginWindow : Window
                                 // Close window after a short delay to show success message
                                 Dispatcher.UIThread.Post(async () =>
                                 {
-                                    await System.Threading.Tasks.Task.Delay(500);
+                                    await Task.Delay(TimeSpan.FromSeconds(0.5));
                                     Close();
                                 }, DispatcherPriority.Background);
                             }

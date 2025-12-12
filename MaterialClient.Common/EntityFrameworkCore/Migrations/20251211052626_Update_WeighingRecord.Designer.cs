@@ -3,6 +3,7 @@ using System;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -11,9 +12,11 @@ using Volo.Abp.EntityFrameworkCore;
 namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    partial class MaterialClientDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251211052626_Update_WeighingRecord")]
+    partial class Update_WeighingRecord
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -628,18 +631,6 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<DateTime?>("LastSyncTime")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("MaterialId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("MaterialUnitId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal?>("MaterialUnitRate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("OffsetRate")
-                        .HasColumnType("TEXT");
-
                     b.Property<short>("OffsetResult")
                         .HasColumnType("INTEGER");
 
@@ -650,13 +641,13 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal?>("OrderPcs")
+                    b.Property<decimal>("OrderPcs")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal?>("OrderPlanOnPcs")
+                    b.Property<decimal>("OrderPlanOnPcs")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal?>("OrderPlanOnWeight")
+                    b.Property<decimal>("OrderPlanOnWeight")
                         .HasColumnType("TEXT");
 
                     b.Property<short>("OrderSource")
@@ -713,84 +704,6 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .IsUnique();
 
                     b.ToTable("WaybillAttachments");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.WaybillMaterial", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("AddDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("AddTime")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreateUserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Creator")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("GoodsPcs")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("GoodsPlanOnPcs")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("GoodsPlanOnWeight")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("GoodsTakeWeight")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("GoodsWeight")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("LastEditUserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LastEditor")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("MaterialId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("MaterialName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("MaterialUnitId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("OffsetCount")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("OffsetRate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<short>("OffsetResult")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("OffsetWeight")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Specifications")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("UpdateDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("UpdateTime")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("WaybillId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("WaybillMaterials");
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.WeighingRecord", b =>

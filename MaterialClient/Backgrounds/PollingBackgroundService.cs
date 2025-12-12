@@ -1,144 +1,116 @@
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.BackgroundWorkers;
+using Volo.Abp.Threading;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Backgrounds;
 
 /// <summary>
-/// 10 分钟轮询的后台任务骨架，实际业务逻辑留空 //TODO。
+/// 10 分钟轮询的后台任务，使用 ABP 的 AsyncPeriodicBackgroundWorkerBase。
 /// 执行逻辑在独立的 UOW 中运行，便于数据库交互。
 /// </summary>
-public sealed class PollingBackgroundService : IHostedService, IAsyncDisposable
+public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 {
-    private readonly IServiceScopeFactory _serviceScopeFactory;
-    private readonly ILogger<PollingBackgroundService> _logger;
-    private CancellationTokenSource? _stoppingCts;
-    private Task? _executingTask;
-    private PeriodicTimer? _timer;
-
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
-
     public PollingBackgroundService(
-        IServiceScopeFactory serviceScopeFactory,
-        ILogger<PollingBackgroundService> logger)
+        AbpAsyncTimer timer,
+        IServiceScopeFactory serviceScopeFactory)
+        : base(timer, serviceScopeFactory)
     {
-        _serviceScopeFactory = serviceScopeFactory;
-        _logger = logger;
+        // 设置定时器间隔为 10 分钟
+        Timer.Period = (int)TimeSpan.FromMinutes(30).TotalMilliseconds;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
     {
-        _stoppingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _timer = new PeriodicTimer(Interval);
-        _executingTask = Task.Run(() => RunAsync(_stoppingCts.Token), cancellationToken);
-        _logger.LogInformation("TODO 轮询后台任务已启动，间隔 {Interval}", Interval);
-        return Task.CompletedTask;
-    }
-
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("TODO 轮询后台任务正在停止");
-
-        if (_stoppingCts is { IsCancellationRequested: false })
-        {
-            await _stoppingCts.CancelAsync();
-        }
-
-        if (_executingTask != null)
-        {
-            await Task.WhenAny(_executingTask, Task.Delay(Timeout.Infinite, cancellationToken));
-        }
-
-        _timer?.Dispose();
-    }
-
-    private async Task RunAsync(CancellationToken cancellationToken)
-    {
-        if (_timer == null)
-        {
-            return;
-        }
+        Logger.LogInformation("开始执行轮询后台任务");
 
         try
         {
-            while (await _timer.WaitForNextTickAsync(cancellationToken))
+            // 检查是否请求取消
+            if (workerContext.CancellationToken.IsCancellationRequested)
             {
-                await ExecuteWithUowAsync(cancellationToken);
+                Logger.LogInformation("检测到取消请求，停止轮询任务");
+                return;
             }
+
+            await WithUow(VerifyAuthAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(SyncMaterialAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(SyncMaterialTypeAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
         }
         catch (OperationCanceledException)
         {
-            // 正常停止，忽略
+            Logger.LogInformation("轮询后台任务被取消");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "TODO 轮询后台任务执行异常");
+            Logger.LogError(ex, "轮询后台任务执行异常");
         }
     }
 
-    private async Task ExecuteWithUowAsync(CancellationToken cancellationToken)
+    private async Task WithUow(Func<IServiceProvider, System.Threading.CancellationToken, Task> action, IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
-        await using var scope = _serviceScopeFactory.CreateAsyncScope();
-        var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        var uowManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
-        await VerifyAuthAsync(scope.ServiceProvider, cancellationToken);
-        await SyncMaterialAsync(scope.ServiceProvider, cancellationToken);
+        await action(serviceProvider, cancellationToken);
         await uow.CompleteAsync(cancellationToken);
     }
 
-    private async Task SyncMaterialAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
+    private async Task SyncMaterialAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
-        _logger.LogInformation("Starting SyncMaterial...");
+        Logger.LogInformation("开始同步物料数据...");
         await service.SyncMaterialAsync();
-        _logger.LogInformation("SyncMaterial Done");
+        Logger.LogInformation("物料数据同步完成");
     }
 
-    private async Task VerifyAuthAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
+    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    {
+        var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
+
+        Logger.LogInformation("开始同步物料类型数据...");
+        await service.SyncMaterialTypeAsync();
+        Logger.LogInformation("物料类型数据同步完成");
+    }
+
+    private async Task SyncProviderAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    {
+        var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
+
+        Logger.LogInformation("开始同步供应商数据...");
+        await service.SyncProviderAsync();
+        Logger.LogInformation("供应商数据同步完成");
+    }
+
+    private async Task VerifyAuthAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         var licenseService = serviceProvider.GetRequiredService<ILicenseService>();
 
-        _logger.LogInformation("Starting VerifyAuth...");
+        Logger.LogInformation("开始验证许可证...");
         var isValid = await licenseService.IsLicenseValidAsync();
         if (!isValid)
         {
-            _logger.LogWarning("License is invalid or expired.");
+            Logger.LogWarning("许可证无效或已过期");
             // 这里可以添加更多处理逻辑，例如发送通知等
         }
         else
         {
-            _logger.LogInformation("License is valid.");
+            Logger.LogInformation("许可证验证通过");
         }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        _timer?.Dispose();
-        if (_stoppingCts is { IsCancellationRequested: false })
-        {
-            await _stoppingCts.CancelAsync();
-        }
-
-        if (_executingTask != null)
-        {
-            try
-            {
-                await _executingTask;
-            }
-            catch (OperationCanceledException)
-            {
-                // 忽略停止时的取消异常
-            }
-        }
-
-        _stoppingCts?.Dispose();
     }
 }

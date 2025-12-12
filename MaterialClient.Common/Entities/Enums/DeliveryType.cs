@@ -6,13 +6,12 @@ namespace MaterialClient.Common.Entities.Enums;
 public enum DeliveryType
 {
     /// <summary>
-    /// 发料
-    /// </summary>
-    Delivery = 0,
-
-    /// <summary>
     /// 收料
     /// </summary>
-    Receiving = 1
-}
+    Receiving = 0,
 
+    /// <summary>
+    /// 发料
+    /// </summary>
+    Sending = 1
+}

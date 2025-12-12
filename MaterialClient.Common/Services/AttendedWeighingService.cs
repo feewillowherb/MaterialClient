@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Entities;
@@ -74,6 +75,11 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// Check if weight is stable (changes less than ±0.1m within 3 seconds)
     /// </summary>
     bool IsWeightStable { get; }
+
+    /// <summary>
+    /// Observable stream of new weighing record creation events
+    /// </summary>
+    IObservable<WeighingRecord> WeighingRecordCreated { get; }
 }
 
 /// <summary>
@@ -81,7 +87,7 @@ public interface IAttendedWeighingService : IAsyncDisposable
 /// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
 /// </summary>
 [AutoConstructor]
-public partial class AttendedWeighingService : DomainService, IAttendedWeighingService
+public partial class AttendedWeighingService : IAttendedWeighingService
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
@@ -102,6 +108,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     // Rx Subject for plate number updates
     private readonly Subject<string?> _plateNumberSubject = new();
 
+    // Rx Subject for weighing record creation events
+    private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
+
     // 重量稳定判定
     private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
     private const decimal WeightStabilityTolerance = 0.1m; // 0.1t = 100kg
@@ -118,8 +127,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
 
     // 重量稳定性监控
     private const decimal WeightStabilityThreshold = 0.05m; // ±0.05m = 0.1m total range
-    private const int StabilityWindowSeconds = 3;
+    private const int StabilityWindowMs = 3000;
     private bool _isWeightStable = false;
+    private const int StabilityCheckIntervalMs = 200; // 默认 200ms
 
 
     /// <summary>
@@ -140,7 +150,15 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
 
             _plateNumberCache.Clear();
             _weightSubscription = _truckScaleWeightService.WeightUpdates
-                .Subscribe(OnWeightChanged);
+                .Buffer(TimeSpan.FromMilliseconds(200)) // 收集200ms内的数据
+                .ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(buffer =>
+                {
+                    if (buffer.Count > 0)
+                    {
+                        OnWeightChanged(buffer.Last()); // 只处理最新的
+                    }
+                });
 
             // Initialize weight stability monitoring
             InitializeWeightStabilityMonitoring();
@@ -205,6 +223,11 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
     }
 
     /// <summary>
+    /// Observable stream of new weighing record creation events
+    /// </summary>
+    public IObservable<WeighingRecord> WeighingRecordCreated => _weighingRecordCreatedSubject;
+
+    /// <summary>
     /// 接收车牌识别结果
     /// </summary>
     public void OnPlateNumberRecognized(string plateNumber)
@@ -244,7 +267,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         _stabilitySubscription?.Dispose();
 
         _stabilitySubscription = _truckScaleWeightService.WeightUpdates
-            .Buffer(TimeSpan.FromSeconds(StabilityWindowSeconds), TimeSpan.FromSeconds(0.1))
+            .Buffer(TimeSpan.FromMilliseconds(StabilityWindowMs),
+                TimeSpan.FromMilliseconds(StabilityCheckIntervalMs))
+            .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(buffer =>
             {
                 if (buffer.Count > 0)
@@ -545,6 +570,9 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
             _logger?.LogInformation(
                 $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
 
+            // Notify observers that a new weighing record was created
+            _weighingRecordCreatedSubject.OnNext(weighingRecord);
+
             // Save captured photos to WeighingRecordAttachment
             if (photoPaths.Count > 0)
             {
@@ -653,5 +681,7 @@ public partial class AttendedWeighingService : DomainService, IAttendedWeighingS
         _statusSubject?.Dispose();
         _plateNumberSubject?.OnCompleted();
         _plateNumberSubject?.Dispose();
+        _weighingRecordCreatedSubject?.OnCompleted();
+        _weighingRecordCreatedSubject?.Dispose();
     }
 }

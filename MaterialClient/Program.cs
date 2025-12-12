@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Avalonia;
 using Avalonia.ReactiveUI;
 
@@ -12,6 +13,10 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // 设置应用程序语言环境为中文
+        CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("zh-CN");
+        CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("zh-CN");
+        
         BuildAvaloniaApp()
             .StartWithClassicDesktopLifetime(args);
     }

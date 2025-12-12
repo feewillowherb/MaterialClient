@@ -81,6 +81,21 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private string? _exitPhoto4;
 
+    /// <summary>
+    /// 当前选中的照片标签 (0 = 进场照片, 1 = 出场照片)
+    /// </summary>
+    [ObservableProperty] private int _selectedPhotoTabIndex = 0;
+    
+    /// <summary>
+    /// 是否选中进场照片标签
+    /// </summary>
+    public bool IsEntryPhotoTabSelected => SelectedPhotoTabIndex == 0;
+    
+    /// <summary>
+    /// 是否选中出场照片标签
+    /// </summary>
+    public bool IsExitPhotoTabSelected => SelectedPhotoTabIndex == 1;
+
     [ObservableProperty] private string? _materialInfo;
 
     [ObservableProperty] private string? _offsetInfo;
@@ -205,6 +220,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         // Start ReactiveUI observable to update weighing status
         StartStatusObservable();
+
+        // Subscribe to weighing record creation events
+        StartWeighingRecordCreatedObservable();
     }
 
     /// <summary>
@@ -215,8 +233,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         try
         {
             var deviceManagerService =
-                _serviceProvider.GetRequiredService<MaterialClient.Common.Services.IDeviceManagerService>();
+                _serviceProvider.GetRequiredService<IDeviceManagerService>();
             await deviceManagerService.StartAsync();
+
+            var attendedWeighingService =
+                _serviceProvider.GetRequiredService<IAttendedWeighingService>();
+            await attendedWeighingService.StartAsync();
         }
         catch (Exception ex)
         {
@@ -290,8 +312,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             if (cameraConfigs.Count == 0)
             {
                 // Update property on UI thread
-                Dispatcher.UIThread.Post(() => 
-                { 
+                Dispatcher.UIThread.Post(() =>
+                {
                     IsCameraOnline = false;
                     CameraStatuses.Clear();
                 });
@@ -347,8 +369,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             }
 
             // Update properties on UI thread
-            Dispatcher.UIThread.Post(() => 
-            { 
+            Dispatcher.UIThread.Post(() =>
+            {
                 IsCameraOnline = anyOnline;
                 CameraStatuses.Clear();
                 foreach (var status in cameraStatusList)
@@ -360,8 +382,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         catch
         {
             // Update property on UI thread
-            Dispatcher.UIThread.Post(() => 
-            { 
+            Dispatcher.UIThread.Post(() =>
+            {
                 IsCameraOnline = false;
                 CameraStatuses.Clear();
             });
@@ -437,13 +459,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             // 计算当前页应该显示哪些记录
             var skip = (CurrentPage - 1) * PageSize;
             var unmatchedCount = UnmatchedWeighingRecords.Count;
-            
+
             if (skip < unmatchedCount)
             {
                 // 当前页包含未完成记录
                 var unmatchedToShow = UnmatchedWeighingRecords.Skip(skip).Take(PageSize).ToList();
                 var remaining = PageSize - unmatchedToShow.Count;
-                
+
                 PagedUnmatchedWeighingRecords.Clear();
                 foreach (var record in unmatchedToShow)
                 {
@@ -497,7 +519,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             {
                 PagedUnmatchedWeighingRecords.Add(record);
             }
-            
+
             PagedCompletedWaybills.Clear();
         }
         else if (IsShowCompleted)
@@ -592,10 +614,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                     _serviceProvider
                 );
 
-                // 订阅保存/废单完成事件以刷新列表并返回主视图
+                // 订阅保存/废单/匹配完成事件以刷新列表并返回主视图
                 DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
                 DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
                 DetailViewModel.CloseRequested += OnDetailCloseRequested;
+                DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
 
                 // 切换到详情视图
                 IsShowingMainView = false;
@@ -619,11 +642,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             DetailViewModel.SaveCompleted -= OnDetailSaveCompleted;
             DetailViewModel.AbolishCompleted -= OnDetailAbolishCompleted;
             DetailViewModel.CloseRequested -= OnDetailCloseRequested;
+            DetailViewModel.MatchCompleted -= OnDetailMatchCompleted;
         }
-        
+
         // 清除选中状态
         SelectedWeighingRecord = null;
-        
+
         IsShowingMainView = true;
         CurrentWeighingRecordForDetail = null;
         DetailViewModel = null;
@@ -636,6 +660,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
+    {
+        await RefreshAsync();
+        BackToMain();
+    }
+
+    private async void OnDetailMatchCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
         BackToMain();
@@ -676,6 +706,18 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         {
             // Handle error opening settings window
         }
+    }
+
+    [RelayCommand]
+    private void ShowEntryPhotos()
+    {
+        SelectedPhotoTabIndex = 0;
+    }
+
+    [RelayCommand]
+    private void ShowExitPhotos()
+    {
+        SelectedPhotoTabIndex = 1;
     }
 
     private void SetDisplayMode(int mode)
@@ -757,6 +799,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         OnPropertyChanged(nameof(IsShowingDetailView));
     }
+    
+    partial void OnSelectedPhotoTabIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsEntryPhotoTabSelected));
+        OnPropertyChanged(nameof(IsExitPhotoTabSelected));
+    }
 
     private void UpdateDisplayRecords()
     {
@@ -830,6 +878,29 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             {
                 _currentWeighingStatus = status;
                 OnPropertyChanged(nameof(CurrentWeighingStatusText));
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    /// Start ReactiveUI observable to update list when new weighing record is created
+    /// </summary>
+    private void StartWeighingRecordCreatedObservable()
+    {
+        if (_attendedWeighingService == null)
+        {
+            return;
+        }
+
+        // Subscribe to weighing record creation events from service
+        _attendedWeighingService.WeighingRecordCreated
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async weighingRecord =>
+            {
+                System.Diagnostics.Debug.WriteLine($"AttendedWeighingViewModel: Received new weighing record creation event, ID: {weighingRecord.Id}");
+                
+                // Refresh the list to include the new record
+                await RefreshAsync();
             })
             .DisposeWith(_disposables);
     }

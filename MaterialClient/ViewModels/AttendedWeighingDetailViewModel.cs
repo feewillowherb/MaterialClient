@@ -5,11 +5,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Services;
+using MaterialClient.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
+using Avalonia;
 
 namespace MaterialClient.ViewModels;
 
@@ -131,6 +134,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     /// 运单数量验证错误信息
     /// </summary>
     [ObservableProperty] private string? _waybillQuantityError;
+
+    /// <summary>
+    /// 车牌号错误提示信息
+    /// </summary>
+    [ObservableProperty] private string? _plateNumberError;
 
     /// <summary>
     /// 材料项列表（用于 DataGrid 绑定）
@@ -285,10 +293,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 Providers.Add(new ProviderDto
                 {
                     Id = provider.Id,
-                    ProviderType = provider.ProviderType,
+                    ProviderType = provider.ProviderType ?? 0,
                     ProviderName = provider.ProviderName,
-                    ContactName = provider.ContactName,
-                    ContactPhone = provider.ContactPhone
+                    ContactName = provider.ContectName,
+                    ContactPhone = provider.ContectPhone
                 });
             }
         }
@@ -330,7 +338,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     Id = unit.Id,
                     MaterialId = unit.MaterialId,
                     UnitName = unit.UnitName,
-                    Rate = unit.Rate,
+                    Rate = unit.Rate ?? 0m,
                     RateName = unit.RateName,
                     ProviderId = unit.ProviderId
                 });
@@ -401,8 +409,60 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     [RelayCommand]
     private async Task MatchAsync()
     {
-        // TODO: 实现匹配逻辑
-        await Task.CompletedTask;
+        try
+        {
+            // 检查车牌号是否为空
+            if (string.IsNullOrWhiteSpace(_weighingRecord.PlateNumber))
+            {
+                // 提示用户需要先填写车牌号
+                PlateNumberError = "请先在上方填写车牌号后再进行匹配";
+                return;
+            }
+
+            // 打开手动匹配窗口
+            var matchWindow = new ManualMatchWindow(_weighingRecord, _serviceProvider);
+            
+            var parentWin = GetParentWindow();
+            WeighingRecord? matchedRecord;
+            
+            if (parentWin != null)
+            {
+                matchedRecord = await matchWindow.ShowDialog<WeighingRecord?>(parentWin);
+            }
+            else
+            {
+                matchWindow.Show();
+                return;
+            }
+
+            // 如果用户选择了匹配记录
+            if (matchedRecord != null)
+            {
+                // 打开 ManualMatchEditWindow
+                var editWindow = new ManualMatchEditWindow(_weighingRecord, matchedRecord, matchWindow.SelectedDeliveryType, _serviceProvider);
+                await editWindow.ShowDialog(parentWin);
+                
+                // 匹配完成后刷新
+                MatchCompleted?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"匹配失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取父窗口
+    /// </summary>
+    private Avalonia.Controls.Window? GetParentWindow()
+    {
+        // 尝试从应用程序获取主窗口
+        if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.MainWindow;
+        }
+        return null;
     }
 
     /// <summary>
@@ -507,6 +567,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         WaybillQuantityError = null;
     }
 
+    partial void OnPlateNumberChanged(string? value)
+    {
+        // 清除车牌号错误提示
+        PlateNumberError = null;
+    }
+
     partial void OnTruckWeightChanged(decimal value)
     {
         // 重新计算净重
@@ -537,6 +603,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     /// 关闭请求事件
     /// </summary>
     public event EventHandler? CloseRequested;
+
+    /// <summary>
+    /// 匹配完成事件
+    /// </summary>
+    public event EventHandler? MatchCompleted;
 
     #endregion
 }

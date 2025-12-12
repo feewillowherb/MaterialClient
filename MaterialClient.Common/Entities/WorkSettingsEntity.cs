@@ -4,5 +4,10 @@ namespace MaterialClient.Common.Entities;
 
 public class WorkSettingsEntity : Entity<int>
 {
-    public DateTime? MaterialUpdateTime { get; set; }
+    public DateTime? MaterialUpdatedTime { get; set; }
+
+
+    public DateTime? MaterialTypeUpdatedTime { get; set; }
+
+    public DateTime? ProviderUpdatedTime { get; set; }
 }

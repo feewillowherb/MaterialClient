@@ -52,7 +52,7 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 配送类型
     /// </summary>
-    public int? DeliveryType { get; set; }
+    public DeliveryType? DeliveryType { get; set; }
 
     /// <summary>
     /// 车牌号
@@ -77,17 +77,17 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 计划重量
     /// </summary>
-    public decimal OrderPlanOnWeight { get; set; }
+    public decimal? OrderPlanOnWeight { get; set; }
 
     /// <summary>
     /// 计划件数
     /// </summary>
-    public decimal OrderPlanOnPcs { get; set; }
+    public decimal? OrderPlanOnPcs { get; set; }
 
     /// <summary>
     /// 实际件数
     /// </summary>
-    public decimal OrderPcs { get; set; }
+    public decimal? OrderPcs { get; set; }
 
     /// <summary>
     /// 总重量
@@ -129,6 +129,8 @@ public class Waybill : FullAuditedEntity<long>
     /// </summary>
     public OffsetResultType OffsetResult { get; set; } = OffsetResultType.Default;
 
+    public decimal? OffsetRate { get; set; }
+
     /// <summary>
     /// 预警类型
     /// </summary>
@@ -144,5 +146,89 @@ public class Waybill : FullAuditedEntity<long>
     /// 供应商导航属性
     /// </summary>
     public Provider? Provider { get; set; }
-}
 
+
+    /// <summary>
+    /// 物料Id
+    /// </summary>
+    public int? MaterialId { get; set; }
+
+    /// <summary>
+    /// 物料单位Id
+    /// </summary>
+    public int? MaterialUnitId { get; set; }
+
+
+    /// <summary>
+    /// 物料单位
+    /// </summary>
+    public decimal? MaterialUnitRate { get; set; }
+
+
+    public static string GenerateOrderNo(DeliveryType deliveryType, DateTime dateTime, int todayCount)
+    {
+        var content = deliveryType == Enums.DeliveryType.Receiving
+            ? $"sl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}"
+            : $"fl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}";
+        return content;
+    }
+
+
+    public void SetWeight(WeighingRecord joinRecord, WeighingRecord outRecord, DeliveryType deliveryType)
+    {
+        if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Sending)
+        {
+            OrderTruckWeight = joinRecord.Weight;
+            OrderTotalWeight = outRecord.Weight;
+            OrderGoodsWeight = outRecord.Weight - joinRecord.Weight;
+        }
+        else if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Receiving)
+        {
+            OrderTruckWeight = outRecord.Weight;
+            OrderTotalWeight = joinRecord.Weight;
+            OrderGoodsWeight = joinRecord.Weight - outRecord.Weight;
+        }
+    }
+
+
+    public void CalculateMaterialWeight(decimal? lowerLimit, decimal? upperLimit)
+    {
+        if (!OrderPlanOnPcs.HasValue || !MaterialUnitRate.HasValue || !OrderTruckWeight.HasValue ||
+            !OrderTotalWeight.HasValue ||
+            !OrderGoodsWeight.HasValue)
+        {
+            return;
+        }
+
+        var unitRate = MaterialUnitRate.Value;
+
+        OrderPlanOnWeight = Math.Round(OrderPlanOnPcs.Value * unitRate, 2, MidpointRounding.AwayFromZero);
+
+        var rowWeight = Math.Round(OrderGoodsWeight.Value * OrderPlanOnWeight.Value / OrderPlanOnWeight.Value, 4,
+            MidpointRounding.AwayFromZero);
+
+        OrderPcs = Math.Round(rowWeight / unitRate, 4, MidpointRounding.AwayFromZero);
+
+
+        var rowOffSetRate = Math.Round((rowWeight - OrderPlanOnWeight.Value) * 100 / OrderPlanOnWeight.Value, 4,
+            MidpointRounding.AwayFromZero);
+
+        OffsetRate = rowOffSetRate;
+
+        if (lowerLimit < 0 || upperLimit > 0)
+        {
+            if (rowOffSetRate < 0 && rowOffSetRate < lowerLimit)
+            {
+                OffsetResult = OffsetResultType.OverNegativeDeviation;
+            }
+            else if (rowOffSetRate > 0 && rowOffSetRate > upperLimit)
+            {
+                OffsetResult = OffsetResultType.OverPositiveDeviation;
+            }
+            else
+            {
+                OffsetResult = OffsetResultType.Normal;
+            }
+        }
+    }
+}

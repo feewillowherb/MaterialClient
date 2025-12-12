@@ -1,5 +1,6 @@
 using Volo.Abp.Domain.Entities.Auditing;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Providers;
 
 namespace MaterialClient.Common.Entities;
 
@@ -82,6 +83,12 @@ public class WeighingRecord : FullAuditedEntity<long>
 
 
     /// <summary>
+    /// 显示收发料模式
+    /// </summary>
+    public DeliveryType? DeliveryType { get; set; }
+
+
+    /// <summary>
     /// 和匹配的Id
     /// </summary>
     public long? MatchedId { get; set; }
@@ -91,4 +98,36 @@ public class WeighingRecord : FullAuditedEntity<long>
     /// 匹配类型
     /// </summary>
     public WeighingRecordMatchType? MatchedType { get; set; }
+
+    /// <summary>
+    /// 验证车牌号是否为有效的中国车牌号
+    /// </summary>
+    /// <returns>如果车牌号有效返回true，否则返回false</returns>
+    public bool IsValidChinesePlateNumber()
+    {
+        return PlateNumberValidator.IsValidChinesePlateNumber(PlateNumber);
+    }
+
+    /// <summary>
+    /// 验证指定的车牌号是否为有效的中国车牌号（静态方法）
+    /// </summary>
+    /// <param name="plateNumber">要验证的车牌号</param>
+    /// <returns>如果车牌号有效返回true，否则返回false</returns>
+    public static bool IsValidChinesePlateNumber(string? plateNumber)
+    {
+        return PlateNumberValidator.IsValidChinesePlateNumber(plateNumber);
+    }
+
+
+    public void MatchAsJoin(long matchedId)
+    {
+        MatchedId = matchedId;
+        MatchedType = WeighingRecordMatchType.Join;
+    }
+
+    public void MatchAsOut(long matchedId)
+    {
+        MatchedId = matchedId;
+        MatchedType = WeighingRecordMatchType.Out;
+    }
 }
