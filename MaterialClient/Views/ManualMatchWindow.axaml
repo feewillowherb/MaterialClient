@@ -1,0 +1,197 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="MaterialClient.Views.ManualMatchWindow"
+        Title="订单匹配"
+        Width="740"
+        Height="700"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White">
+
+    <Border BorderBrush="LightGray" BorderThickness="1">
+        <Grid RowDefinitions="50,Auto,Auto,Auto,*,Auto,50">
+            
+            <!-- 标题栏 -->
+            <Grid Grid.Row="0" Background="#6498FE">
+                <TextBlock Text="订单数据匹配"
+                           FontSize="14"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="15,0,0,0"/>
+                <Button Classes="transparent-button"
+                        HorizontalAlignment="Right"
+                        Height="35"
+                        Click="OnCloseButtonClick"
+                        Cursor="Hand">
+                    <TextBlock Text="×" FontSize="30" Foreground="White"/>
+                </Button>
+            </Grid>
+            
+            <!-- 当前订单信息标题 -->
+            <TextBlock Grid.Row="1" 
+                       Text="当前订单信息" 
+                       FontSize="14" 
+                       Foreground="Black"
+                       Margin="10,10,10,5"/>
+            
+            <!-- 当前订单信息区域 -->
+            <Border Grid.Row="2" 
+                    Background="#F2F2F2" 
+                    Margin="10,0,10,10"
+                    Padding="10">
+                <StackPanel Spacing="10">
+                    <!-- 第一行：车牌号、供料单位 -->
+                    <Grid ColumnDefinitions="*,*">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <TextBlock Text="车牌号：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="川A12345" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <TextBlock Text="供料单位：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="示例供应商" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        </StackPanel>
+                    </Grid>
+                    
+                    <!-- 第二行：车辆重量、进场时间 -->
+                    <Grid ColumnDefinitions="*,*">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <TextBlock Text="车辆重量（吨）：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="25.50" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <TextBlock Text="进场时间：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="2024-01-15 08:30:00" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        </StackPanel>
+                    </Grid>
+                    
+                    <!-- 进场照片 -->
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
+                        <TextBlock Text="进场照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                            <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
+                                <Image Stretch="UniformToFill"/>
+                            </Border>
+                            <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
+                                <Image Stretch="UniformToFill"/>
+                            </Border>
+                            <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
+                                <Image Stretch="UniformToFill"/>
+                            </Border>
+                            <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
+                                <Image Stretch="UniformToFill"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                    
+                    <!-- 运单照片 -->
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
+                        <TextBlock Text="运单照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                            <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
+                                <Image Stretch="UniformToFill"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            
+            <!-- 可匹配订单信息标题 -->
+            <TextBlock Grid.Row="3" 
+                       Text="可匹配订单信息" 
+                       FontSize="14" 
+                       Foreground="Black"
+                       Margin="10,5,10,5"/>
+            
+            <!-- 可匹配订单列表 -->
+            <Border Grid.Row="4" Margin="10,0,10,10">
+                <DataGrid AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserResizeColumns="True"
+                          CanUserReorderColumns="False"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="1"
+                          BorderBrush="#E5E7EB">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="车牌号" Width="100"/>
+                        <DataGridTextColumn Header="供料单位" Width="120"/>
+                        <DataGridTextColumn Header="车辆重量（吨）" Width="100"/>
+                        <DataGridTextColumn Header="进场时间" Width="150"/>
+                        <DataGridTextColumn Header="相隔时间" Width="80"/>
+                        <DataGridTemplateColumn Header="操作" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="查看详情" 
+                                            Classes="transparent-button"
+                                            Foreground="#40A9FF"
+                                            Padding="8,4"
+                                            FontSize="12"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+            
+            <!-- 分页控件区域 -->
+            <Border Grid.Row="5" Margin="10,0,10,10">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                    <TextBlock Grid.Column="0" 
+                               Text="共 0 条" 
+                               FontSize="12" 
+                               Foreground="#666"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" 
+                               Text="第 1/1 页" 
+                               FontSize="12" 
+                               Foreground="#666"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                    <Button Grid.Column="2" 
+                            Content="上一页" 
+                            Classes="outline-button"
+                            CornerRadius="4"
+                            Padding="12,6"
+                            FontSize="12"
+                            Margin="0,0,8,0"/>
+                    <Button Grid.Column="3" 
+                            Content="下一页" 
+                            Classes="outline-button"
+                            CornerRadius="4"
+                            Padding="12,6"
+                            FontSize="12"/>
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="8,0,0,0">
+                        <TextBlock Text="跳至" FontSize="12" Foreground="#666" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox Width="40" Height="24" FontSize="12" Text="1"/>
+                        <TextBlock Text="页" FontSize="12" Foreground="#666" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            
+            <!-- 底部按钮 -->
+            <Border Grid.Row="6" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="*,*">
+                    <Button Grid.Column="0"
+                            Content="取消"
+                            Classes="secondary-button"
+                            HorizontalAlignment="Right"
+                            CornerRadius="4"
+                            Padding="24,8"
+                            Margin="0,0,10,0"
+                            Click="OnCloseButtonClick"/>
+                    <Button Grid.Column="1"
+                            Content="确定"
+                            Classes="primary-button"
+                            HorizontalAlignment="Left"
+                            CornerRadius="4"
+                            Padding="24,8"
+                            Margin="10,0,0,0"
+                            Click="OnConfirmButtonClick"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
