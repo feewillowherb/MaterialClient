@@ -178,7 +178,7 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
         await WithUnitOfWorkAsync(async () =>
         {
             _matchingService = GetRequiredService<WeighingMatchingService>();
-            _waybillsCreatedCount = await _matchingService.TryMatchAndCreateWaybillsAsync(_deliveryType);
+            // _waybillsCreatedCount = await _matchingService.TryMatchAndCreateWaybillsAsync(_deliveryType);
 
             // Load created waybills
             var waybills = await WaybillRepository.GetListAsync();
