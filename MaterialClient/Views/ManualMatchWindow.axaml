@@ -22,13 +22,16 @@
                            Foreground="White"
                            VerticalAlignment="Center"
                            Margin="15,0,0,0"/>
-                <Button Classes="transparent-button"
+                <Button Content="✕"
+                        Classes="transparent-button"
                         HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontSize="20"
+                        Foreground="White"
+                        Width="40"
                         Height="35"
                         Click="OnCloseButtonClick"
-                        Cursor="Hand">
-                    <TextBlock Text="×" FontSize="30" Foreground="White"/>
-                </Button>
+                        Cursor="Hand"/>
             </Grid>
             
             <!-- 当前订单信息标题 -->

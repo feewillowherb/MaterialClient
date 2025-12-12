@@ -43,4 +43,10 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Views\ManualMatchEditWindow.axaml.cs">
+        <DependentUpon>ManualMatchEditWindow.axaml</DependentUpon>
+      </Compile>
+    </ItemGroup>
 </Project>
