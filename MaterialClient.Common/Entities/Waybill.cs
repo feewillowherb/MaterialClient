@@ -47,7 +47,7 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 订单类型
     /// </summary>
-    public int? OrderType { get; set; }
+    public OrderTypeEnum? OrderType { get; set; }
 
     /// <summary>
     /// 配送类型
@@ -231,4 +231,11 @@ public class Waybill : FullAuditedEntity<long>
             }
         }
     }
+}
+
+public enum OrderTypeEnum
+{
+    FirstWeight = 0, //收料/发料中
+    Completed = 1, //完成收料/发料
+    Esc = 2, //已取消
 }

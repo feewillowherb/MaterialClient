@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:entities="using:MaterialClient.Common.Entities"
+        xmlns:models="using:MaterialClient.Common.Models"
         xmlns:vm="using:MaterialClient.ViewModels"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:views="using:MaterialClient.Views"
@@ -230,62 +231,25 @@
                 </Grid>
               </Border>
               
-              <!-- Scrollable List - Unmatched Records -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowUnmatched}">
-                <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
+              <!-- Scrollable List - 统一的列表 -->
+              <ScrollViewer Grid.Row="1">
+                <ItemsControl ItemsSource="{Binding PagedListItems}">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="entities:WeighingRecord">
+                    <DataTemplate x:DataType="models:WeighingListItemDto">
                       <Button Classes="transparent-button"
                               BorderThickness="0,0,0,1"
                               BorderBrush="#F0F0F0"
                               Padding="12,12"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Stretch"
-                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
+                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectListItemCommand}"
                               CommandParameter="{Binding}">
                         <Button.Background>
                           <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
                             <Binding Path="." />
-                            <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
+                            <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedListItem" />
                           </MultiBinding>
                         </Button.Background>
-                        <!-- <Button.Styles> -->
-                        <!--   <Style Selector="Button:pointerover"> -->
-                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
-                        <!--   </Style> -->
-                        <!-- </Button.Styles> -->
-                        <Grid ColumnDefinitions="80,*,*">
-                          <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
-                                     FontSize="13"
-                                     Foreground="#333"/>
-                          <TextBlock Grid.Column="1" 
-                                     Text="{Binding CreationTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                     FontSize="13"
-                                     Foreground="#666"/>
-                          <TextBlock Grid.Column="2" 
-                                     Text="-" 
-                                     FontSize="13"
-                                     Foreground="#666"/>
-                        </Grid>
-                      </Button>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
-              
-              <!-- Scrollable List - Completed Waybills -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowCompleted}">
-                <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="entities:Waybill">
-                      <Button Classes="transparent-button"
-                              BorderThickness="0,0,0,1"
-                              BorderBrush="#F0F0F0"
-                              Padding="12,12"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Stretch"
-                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
-                              CommandParameter="{Binding}">
                         <Grid ColumnDefinitions="80,*,*">
                           <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
                                      FontSize="13"
@@ -295,7 +259,7 @@
                                      FontSize="13"
                                      Foreground="#666"/>
                           <TextBlock Grid.Column="2" 
-                                     Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                     Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='-'}" 
                                      FontSize="13"
                                      Foreground="#666"/>
                         </Grid>
@@ -303,81 +267,6 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-              </ScrollViewer>
-
-              <!-- 全部记录模式下的混合列表 -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowAllRecords}">
-                <StackPanel>
-                  <!-- 未完成记录 -->
-                  <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="entities:WeighingRecord">
-                        <Button Classes="transparent-button"
-                                BorderThickness="0,0,0,1"
-                                BorderBrush="#F0F0F0"
-                                Padding="12,12"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
-                                CommandParameter="{Binding}">
-                          <Button.Background>
-                            <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
-                              <Binding Path="." />
-                              <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
-                            </MultiBinding>
-                          </Button.Background>
-                        <!-- <Button.Styles> -->
-                        <!--   <Style Selector="Button:pointerover"> -->
-                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
-                        <!--   </Style> -->
-                        <!-- </Button.Styles> -->
-                        <Grid ColumnDefinitions="80,*,*">
-                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
-                                       FontSize="13"
-                                       Foreground="#333"/>
-                            <TextBlock Grid.Column="1" 
-                                       Text="{Binding CreationTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                            <TextBlock Grid.Column="2" 
-                                       Text="-" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                          </Grid>
-                        </Button>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <!-- 已完成记录 -->
-                  <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="entities:Waybill">
-                        <Button Classes="transparent-button"
-                                BorderThickness="0,0,0,1"
-                                BorderBrush="#F0F0F0"
-                                Padding="12,12"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
-                                CommandParameter="{Binding}">
-                          <Grid ColumnDefinitions="80,*,*">
-                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
-                                       FontSize="13"
-                                       Foreground="#333"/>
-                            <TextBlock Grid.Column="1" 
-                                       Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                            <TextBlock Grid.Column="2" 
-                                       Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                          </Grid>
-                        </Button>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
               </ScrollViewer>
               
               <!-- Pagination Controls -->

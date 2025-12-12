@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using ReactiveUI;
@@ -22,20 +23,30 @@ namespace MaterialClient.ViewModels;
 
 public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 {
-    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
-    private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IWeighingMatchingService _weighingMatchingService;
     private readonly IServiceProvider _serviceProvider;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly MaterialClient.Common.Services.IAttendedWeighingService? _attendedWeighingService;
     private readonly CompositeDisposable _disposables = new();
 
-    [ObservableProperty] private ObservableCollection<WeighingRecord> _unmatchedWeighingRecords = new();
+    /// <summary>
+    /// 统一的列表项集合（包含未完成和已完成数据）
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<WeighingListItemDto> _listItems = new();
 
-    [ObservableProperty] private ObservableCollection<Waybill> _completedWaybills = new();
+    /// <summary>
+    /// 分页后的列表项集合
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<WeighingListItemDto> _pagedListItems = new();
 
     [ObservableProperty] private WeighingRecord? _selectedWeighingRecord;
 
     [ObservableProperty] private Waybill? _selectedWaybill;
+    
+    /// <summary>
+    /// 当前选中的列表项
+    /// </summary>
+    [ObservableProperty] private WeighingListItemDto? _selectedListItem;
 
     [ObservableProperty] private ObservableCollection<string> _vehiclePhotos = new();
 
@@ -52,10 +63,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isShowUnmatched;
 
     [ObservableProperty] private bool _isShowCompleted;
-
-    [ObservableProperty] private ObservableCollection<object> _displayRecords = new();
-
-    [ObservableProperty] private object? _selectedRecord;
 
     [ObservableProperty] private string? _currentEntryPhoto1;
 
@@ -138,8 +145,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private int _pageSize = 20;
     [ObservableProperty] private int _totalCount;
     [ObservableProperty] private int _totalPages;
-    [ObservableProperty] private ObservableCollection<WeighingRecord> _pagedUnmatchedWeighingRecords = new();
-    [ObservableProperty] private ObservableCollection<Waybill> _pagedCompletedWaybills = new();
 
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
 
@@ -157,15 +162,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
 
     public AttendedWeighingViewModel(
-        IRepository<WeighingRecord, long> weighingRecordRepository,
-        IRepository<Waybill, long> waybillRepository,
+        IWeighingMatchingService weighingMatchingService,
         IServiceProvider serviceProvider,
         ITruckScaleWeightService truckScaleWeightService,
         IAttendedWeighingService attendedWeighingService
     )
     {
-        _weighingRecordRepository = weighingRecordRepository;
-        _waybillRepository = waybillRepository;
+        _weighingMatchingService = weighingMatchingService;
         _serviceProvider = serviceProvider;
         _truckScaleWeightService = truckScaleWeightService;
         _attendedWeighingService = attendedWeighingService;
@@ -404,148 +407,51 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            // Load unmatched weighing records (RecordType == Unmatch)
-            var allRecords = await _weighingRecordRepository.GetListAsync();
-            var unmatchedRecords = allRecords
-                .Where(x => x.MatchedId == null)
-                .OrderByDescending(r => r.CreationTime)
-                .ToList();
-
-            UnmatchedWeighingRecords.Clear();
-            foreach (var record in unmatchedRecords)
+            // 根据当前显示模式确定 isCompleted 参数
+            bool? isCompleted = null;
+            if (IsShowUnmatched)
             {
-                UnmatchedWeighingRecords.Add(record);
+                isCompleted = false;
+            }
+            else if (IsShowCompleted)
+            {
+                isCompleted = true;
             }
 
-            // Load completed waybills
-            var allWaybills = await _waybillRepository.GetListAsync();
-            var waybills = allWaybills
-                .OrderByDescending(w => w.CreationTime)
-                .ToList();
-
-            CompletedWaybills.Clear();
-            foreach (var waybill in waybills)
+            // 构建请求参数
+            var input = new GetWeighingListItemsInput
             {
-                CompletedWaybills.Add(waybill);
-            }
+                IsCompleted = isCompleted,
+                SkipCount = (CurrentPage - 1) * PageSize,
+                MaxResultCount = PageSize
+            };
 
-            // 应用分页
-            ApplyPaging();
+            // 获取分页数据
+            var result = await _weighingMatchingService.GetListItemsAsync(input);
+
+            // 更新总数和分页信息
+            TotalCount = (int)result.TotalCount;
+            TotalPages = (int)Math.Ceiling(TotalCount / (double)PageSize);
+            if (TotalPages == 0) TotalPages = 1;
+
+            // 确保当前页在有效范围内
+            if (CurrentPage > TotalPages) CurrentPage = TotalPages;
+            if (CurrentPage < 1) CurrentPage = 1;
+
+            // 更新列表
+            ListItems.Clear();
+            PagedListItems.Clear();
+            foreach (var item in result.Items)
+            {
+                ListItems.Add(item);
+                PagedListItems.Add(item);
+            }
         }
         catch
         {
-            // If repositories are not available, collections will remain empty
+            // If service is not available, collections will remain empty
             // This allows the UI to work even before ABP is fully initialized
         }
-    }
-
-    /// <summary>
-    /// 应用分页逻辑
-    /// </summary>
-    private void ApplyPaging()
-    {
-        if (IsShowAllRecords)
-        {
-            // 全部记录模式：合并未完成和已完成记录进行分页
-            var combinedTotal = UnmatchedWeighingRecords.Count + CompletedWaybills.Count;
-            TotalCount = combinedTotal;
-            TotalPages = (int)Math.Ceiling(combinedTotal / (double)PageSize);
-            if (TotalPages == 0) TotalPages = 1;
-
-            // 确保当前页在有效范围内
-            if (CurrentPage > TotalPages) CurrentPage = TotalPages;
-            if (CurrentPage < 1) CurrentPage = 1;
-
-            // 计算当前页应该显示哪些记录
-            var skip = (CurrentPage - 1) * PageSize;
-            var unmatchedCount = UnmatchedWeighingRecords.Count;
-
-            if (skip < unmatchedCount)
-            {
-                // 当前页包含未完成记录
-                var unmatchedToShow = UnmatchedWeighingRecords.Skip(skip).Take(PageSize).ToList();
-                var remaining = PageSize - unmatchedToShow.Count;
-
-                PagedUnmatchedWeighingRecords.Clear();
-                foreach (var record in unmatchedToShow)
-                {
-                    PagedUnmatchedWeighingRecords.Add(record);
-                }
-
-                // 如果还有剩余空间，添加已完成记录
-                if (remaining > 0)
-                {
-                    var waybillsToShow = CompletedWaybills.Take(remaining).ToList();
-                    PagedCompletedWaybills.Clear();
-                    foreach (var waybill in waybillsToShow)
-                    {
-                        PagedCompletedWaybills.Add(waybill);
-                    }
-                }
-                else
-                {
-                    PagedCompletedWaybills.Clear();
-                }
-            }
-            else
-            {
-                // 当前页只包含已完成记录
-                PagedUnmatchedWeighingRecords.Clear();
-                var waybillSkip = skip - unmatchedCount;
-                var waybillsToShow = CompletedWaybills.Skip(waybillSkip).Take(PageSize).ToList();
-                PagedCompletedWaybills.Clear();
-                foreach (var waybill in waybillsToShow)
-                {
-                    PagedCompletedWaybills.Add(waybill);
-                }
-            }
-        }
-        else if (IsShowUnmatched)
-        {
-            // 只显示未完成记录
-            TotalCount = UnmatchedWeighingRecords.Count;
-            TotalPages = (int)Math.Ceiling(TotalCount / (double)PageSize);
-            if (TotalPages == 0) TotalPages = 1;
-
-            // 确保当前页在有效范围内
-            if (CurrentPage > TotalPages) CurrentPage = TotalPages;
-            if (CurrentPage < 1) CurrentPage = 1;
-
-            var skip = (CurrentPage - 1) * PageSize;
-            var pagedRecords = UnmatchedWeighingRecords.Skip(skip).Take(PageSize).ToList();
-
-            PagedUnmatchedWeighingRecords.Clear();
-            foreach (var record in pagedRecords)
-            {
-                PagedUnmatchedWeighingRecords.Add(record);
-            }
-
-            PagedCompletedWaybills.Clear();
-        }
-        else if (IsShowCompleted)
-        {
-            // 只显示已完成记录
-            TotalCount = CompletedWaybills.Count;
-            TotalPages = (int)Math.Ceiling(TotalCount / (double)PageSize);
-            if (TotalPages == 0) TotalPages = 1;
-
-            // 确保当前页在有效范围内
-            if (CurrentPage > TotalPages) CurrentPage = TotalPages;
-            if (CurrentPage < 1) CurrentPage = 1;
-
-            var skip = (CurrentPage - 1) * PageSize;
-            var pagedWaybills = CompletedWaybills.Skip(skip).Take(PageSize).ToList();
-
-            PagedUnmatchedWeighingRecords.Clear();
-            PagedCompletedWaybills.Clear();
-            foreach (var waybill in pagedWaybills)
-            {
-                PagedCompletedWaybills.Add(waybill);
-            }
-        }
-
-        // Update display records after pagination
-        UpdateDisplayRecords();
     }
 
     [RelayCommand]
@@ -578,20 +484,47 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         SetDisplayMode(2);
     }
 
+    /// <summary>
+    /// 选择列表项（处理统一的 WeighingListItemDto）
+    /// </summary>
     [RelayCommand]
-    private void SelectRecord(object? record)
+    private void SelectListItem(WeighingListItemDto? item)
     {
-        SelectedRecord = record;
-        // TODO: Load photos for the selected record
+        if (item == null) return;
+        
+        SelectedListItem = item;
+        
+        if (item.ItemType == WeighingListItemType.WeighingRecord)
+        {
+            // 未完成记录，打开详情视图
+            OpenDetail(item);
+        }
+        else if (item.ItemType == WeighingListItemType.Waybill)
+        {
+            // 已完成记录，显示运单信息
+            SelectWaybill(item);
+        }
+    }
+
+    /// <summary>
+    /// 选择已完成的运单（显示主视图）
+    /// </summary>
+    private void SelectWaybill(WeighingListItemDto item)
+    {
+        if (item.Waybill != null)
+        {
+            SelectedWaybill = item.Waybill;
+            IsShowingMainView = true;
+        }
     }
 
     /// <summary>
     /// 打开称重记录详情视图
     /// </summary>
     [RelayCommand]
-    private void OpenDetail(object? record)
+    private void OpenDetail(WeighingListItemDto? item)
     {
-        if (record is WeighingRecord weighingRecord)
+        if (item?.WeighingRecord is WeighingRecord weighingRecord)
         {
             try
             {
@@ -729,19 +662,19 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowUnmatched));
         OnPropertyChanged(nameof(ShowCompleted));
         CurrentPage = 1; // 切换显示模式时重置到第一页
-        ApplyPaging();
+        _ = RefreshAsync();
     }
 
     /// <summary>
     /// 上一页命令
     /// </summary>
     [RelayCommand]
-    private void GoToPreviousPage()
+    private async Task GoToPreviousPageAsync()
     {
         if (CurrentPage > 1)
         {
             CurrentPage--;
-            ApplyPaging();
+            await RefreshAsync();
         }
     }
 
@@ -751,12 +684,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     /// 下一页命令
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanGoToNextPage))]
-    private void GoToNextPage()
+    private async Task GoToNextPageAsync()
     {
         if (CurrentPage < TotalPages)
         {
             CurrentPage++;
-            ApplyPaging();
+            await RefreshAsync();
         }
     }
 
@@ -766,12 +699,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     /// 跳转到指定页
     /// </summary>
     [RelayCommand]
-    private void GoToPage(int page)
+    private async Task GoToPageAsync(int page)
     {
         if (page >= 1 && page <= TotalPages)
         {
             CurrentPage = page;
-            ApplyPaging();
+            await RefreshAsync();
         }
     }
 
@@ -804,38 +737,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         OnPropertyChanged(nameof(IsEntryPhotoTabSelected));
         OnPropertyChanged(nameof(IsExitPhotoTabSelected));
-    }
-
-    private void UpdateDisplayRecords()
-    {
-        DisplayRecords.Clear();
-
-        if (IsShowAllRecords)
-        {
-            foreach (var record in PagedUnmatchedWeighingRecords)
-            {
-                DisplayRecords.Add(record);
-            }
-
-            foreach (var waybill in PagedCompletedWaybills)
-            {
-                DisplayRecords.Add(waybill);
-            }
-        }
-        else if (IsShowUnmatched)
-        {
-            foreach (var record in PagedUnmatchedWeighingRecords)
-            {
-                DisplayRecords.Add(record);
-            }
-        }
-        else if (IsShowCompleted)
-        {
-            foreach (var waybill in PagedCompletedWaybills)
-            {
-                DisplayRecords.Add(waybill);
-            }
-        }
     }
 
     private void StartTimeUpdateTimer()

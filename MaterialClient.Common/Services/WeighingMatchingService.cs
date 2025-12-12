@@ -7,8 +7,10 @@ using Microsoft.Extensions.Logging;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
@@ -36,6 +38,13 @@ public interface IWeighingMatchingService
     /// <param name="matchedRecord">匹配的称重记录</param>
     /// <param name="deliveryType">收发料类型</param>
     Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
+    
+    /// <summary>
+    /// 获取称重列表项（分页）
+    /// </summary>
+    /// <param name="input">分页和过滤参数</param>
+    /// <returns>分页结果</returns>
+    Task<PagedResultDto<WeighingListItemDto>> GetListItemsAsync(GetWeighingListItemsInput input);
 }
 
 /// <summary>
@@ -334,6 +343,67 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             // 发料：matchedRecord 是皮重（进场），currentRecord 是毛重（出场）
             await CreateWaybillAsync(matchedRecord, currentRecord, deliveryType);
         }
+    }
+
+    /// <summary>
+    /// 获取称重列表项（分页）
+    /// </summary>
+    [UnitOfWork]
+    public async Task<PagedResultDto<WeighingListItemDto>> GetListItemsAsync(GetWeighingListItemsInput input)
+    {
+        var result = new List<WeighingListItemDto>();
+        var isCompleted = input.IsCompleted;
+
+        if (isCompleted == null || isCompleted == false)
+        {
+            // 获取未完成的 WeighingRecord（MatchedId == null）
+            var weighingRecordQuery = await _weighingRecordRepository.GetQueryableAsync();
+            var unmatchedRecords = await weighingRecordQuery
+                .Where(r => r.MatchedId == null)
+                .ToListAsync();
+
+            foreach (var record in unmatchedRecords)
+            {
+                result.Add(WeighingListItemDto.FromWeighingRecord(record));
+            }
+
+            // 获取未完成的 Waybill（OrderType == FirstWeight）
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var firstWeightWaybills = await waybillQuery
+                .Where(w => w.OrderType == OrderTypeEnum.FirstWeight)
+                .ToListAsync();
+
+            foreach (var waybill in firstWeightWaybills)
+            {
+                result.Add(WeighingListItemDto.FromWaybill(waybill));
+            }
+        }
+
+        if (isCompleted == null || isCompleted == true)
+        {
+            // 获取已完成的 Waybill（OrderType == Completed）
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var completedWaybills = await waybillQuery
+                .Where(w => w.OrderType == OrderTypeEnum.Completed)
+                .ToListAsync();
+
+            foreach (var waybill in completedWaybills)
+            {
+                result.Add(WeighingListItemDto.FromWaybill(waybill));
+            }
+        }
+
+        // 获取总数
+        var totalCount = result.Count;
+
+        // 按 JoinTime 降序排列，然后分页
+        var items = result
+            .OrderByDescending(item => item.JoinTime)
+            .Skip(input.SkipCount)
+            .Take(input.MaxResultCount)
+            .ToList();
+
+        return new PagedResultDto<WeighingListItemDto>(totalCount, items);
     }
 }
 
