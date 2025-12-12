@@ -34,8 +34,11 @@ public partial class AuthCodeWindow : Window
                         {
                             if (isVerified)
                             {
-                                await Task.Delay(1000);
-                                Close();
+                                Dispatcher.UIThread.Post(async () =>
+                                {
+                                    await Task.Delay(TimeSpan.FromSeconds(0.5));
+                                    Close();
+                                }, DispatcherPriority.Background);
                             }
                         });
                 }
@@ -50,6 +53,7 @@ public partial class AuthCodeWindow : Window
         {
             viewModel.HandleWindowClose();
         }
+
         Close();
     }
 
@@ -59,4 +63,3 @@ public partial class AuthCodeWindow : Window
         base.OnClosed(e);
     }
 }
-
