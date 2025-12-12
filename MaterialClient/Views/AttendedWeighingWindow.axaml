@@ -335,83 +335,8 @@
               BorderThickness="1,0,0,0"
               Padding="20">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-          <!-- Camera Tabs -->
-          <Border Classes="card-border" 
-                  CornerRadius="8,8,0,0" 
-                  BorderThickness="1,1,1,0">
-            <UniformGrid Rows="1" Columns="2">
-              <Button Content="进场照片" 
-                      CornerRadius="8,0,0,0"
-                      Padding="32,12"
-                      FontSize="14"
-                      BorderThickness="0"
-                      HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Center"
-                      Command="{Binding ShowEntryPhotosCommand}"
-                      Foreground="{Binding IsEntryPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='White|#666666'}"
-                      Background="{Binding IsEntryPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='#4169E1|White'}"/>
-              <Button Content="出场照片" 
-                      CornerRadius="0,8,0,0"
-                      Padding="32,12"
-                      FontSize="14"
-                      BorderThickness="0"
-                      HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Center"
-                      Command="{Binding ShowExitPhotosCommand}"
-                      Foreground="{Binding IsExitPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='White|#666666'}"
-                      Background="{Binding IsExitPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='#4169E1|White'}"/>
-            </UniformGrid>
-          </Border>
-          
-          <!-- Camera Grid -->
-          <Border Grid.Row="1" 
-                  Classes="card-border"
-                  BorderThickness="1,0,1,1"
-                  CornerRadius="0,0,8,8"
-                  Padding="16"
-                  Height="280">
-            <Grid>
-              <!-- 进场照片 Grid -->
-              <Grid RowDefinitions="*,*" 
-                    ColumnDefinitions="*,*"
-                    RowSpacing="8"
-                    ColumnSpacing="8"
-                    IsVisible="{Binding IsEntryPhotoTabSelected}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Grid>
-              
-              <!-- 出场照片 Grid -->
-              <Grid RowDefinitions="*,*" 
-                    ColumnDefinitions="*,*"
-                    RowSpacing="8"
-                    ColumnSpacing="8"
-                    IsVisible="{Binding IsExitPhotoTabSelected}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Grid>
-            </Grid>
-          </Border>
+          <!-- Photo Grid View -->
+          <views:PhotoGridView Grid.RowSpan="2" DataContext="{Binding PhotoGridViewModel}"/>
           
           <!-- Bill Scan Section -->
           <TextBlock Grid.Row="2" 

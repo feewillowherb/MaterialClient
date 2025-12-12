@@ -246,16 +246,16 @@
                   RowSpacing="8"
                   ColumnSpacing="8">
               <Border Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
             </Grid>
           </Grid>
@@ -277,16 +277,16 @@
                   RowSpacing="8"
                   ColumnSpacing="8">
               <Border Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
             </Grid>
           </Grid>

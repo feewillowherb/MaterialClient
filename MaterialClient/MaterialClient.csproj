@@ -51,5 +51,8 @@
       <Compile Update="Views\PlateNumberInputWindow.axaml.cs">
         <DependentUpon>PlateNumberInputWindow.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Views\PhotoGridView.axaml.cs">
+        <DependentUpon>PhotoGridView.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>
