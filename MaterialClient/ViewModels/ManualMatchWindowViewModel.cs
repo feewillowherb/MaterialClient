@@ -118,7 +118,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         PlateNumber = currentRecord.PlateNumber;
         Weight = currentRecord.Weight;
         JoinTime = currentRecord.CreationTime;
-        
+
         // 如果记录已有 DeliveryType，使用它；否则默认收料
         IsReceiving = currentRecord.DeliveryType == null || currentRecord.DeliveryType == DeliveryType.Receiving;
 
@@ -159,7 +159,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
             CandidateRecords.Clear();
 
             var candidates = await _weighingMatchingService.GetCandidateRecordsAsync(
-                _currentRecord, 
+                _currentRecord,
                 SelectedDeliveryType);
 
             foreach (var record in candidates)
@@ -312,9 +312,9 @@ public partial class CandidateRecordViewModel : ObservableObject
     public CandidateRecordViewModel(WeighingRecord record, DateTime currentRecordTime)
     {
         Record = record;
-        
+
         // 计算时间差
-        var diff = currentRecordTime - record.CreationTime;
+        var diff = record.CreationTime - currentRecordTime;
         if (diff.TotalDays >= 1)
         {
             SeparatedTime = $"{(int)diff.TotalDays}天{diff.Hours}时";
