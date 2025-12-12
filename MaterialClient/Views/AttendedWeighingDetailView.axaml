@@ -163,10 +163,10 @@
                         </DataGridTemplateColumn>
                         
                         <!-- 单位 -->
-                        <DataGridTemplateColumn Header="单位" Width="65">
+                        <DataGridTemplateColumn Header="单位" Width="85">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.MaterialUnits}"
+                                    <ComboBox ItemsSource="{Binding MaterialUnits}"
                                               SelectedItem="{Binding SelectedMaterialUnit}"
                                               BorderThickness="0"
                                               Background="Transparent"
@@ -174,7 +174,7 @@
                                               FontSize="12">
                                         <ComboBox.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding UnitName}" FontSize="11" />
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="11" />
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>

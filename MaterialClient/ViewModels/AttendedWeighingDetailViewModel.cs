@@ -230,6 +230,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         MaterialItems.Clear();
         MaterialItems.Add(new MaterialItemRow
         {
+            LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
             WaybillQuantity = _weighingRecord.WaybillQuantity,
             WaybillWeight = null,
             ActualQuantity = null,
@@ -249,19 +250,24 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 LoadMaterialsAsync()
             );
 
-            // 设置已选中的项
+            // 设置已选中的供应商
             if (SelectedProviderId.HasValue)
             {
                 SelectedProvider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
             }
 
+            // 设置已选中的材料和单位
+            Material? selectedMaterial = null;
+
             if (SelectedMaterialId.HasValue)
             {
-                SelectedMaterial = Materials.FirstOrDefault(m => m.Id == SelectedMaterialId.Value);
+                selectedMaterial = Materials.FirstOrDefault(m => m.Id == SelectedMaterialId.Value);
+                SelectedMaterial = selectedMaterial;
+                
                 // 如果已有选中的材料，加载对应的单位列表
-                if (SelectedMaterial != null)
+                if (selectedMaterial != null)
                 {
-                    await LoadMaterialUnitsAsync(SelectedMaterial.Id);
+                    await LoadMaterialUnitsAsync(selectedMaterial.Id);
                     if (SelectedMaterialUnitId.HasValue)
                     {
                         SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == SelectedMaterialUnitId.Value);
@@ -269,11 +275,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 }
             }
 
-            // 设置 DataGrid 第一行的材料和单位
+            // 设置 DataGrid 第一行的材料和单位（使用初始化方法，避免触发自动加载）
             if (MaterialItems.Count > 0)
             {
-                MaterialItems[0].SelectedMaterial = SelectedMaterial;
-                MaterialItems[0].SelectedMaterialUnit = SelectedMaterialUnit;
+                var firstRow = MaterialItems[0];
+                firstRow.InitializeSelection(selectedMaterial, MaterialUnits, SelectedMaterialUnitId);
             }
         }
         catch
@@ -350,6 +356,37 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// 为 DataGrid 行加载材料单位列表
+    /// </summary>
+    private async Task<ObservableCollection<MaterialUnitDto>> LoadMaterialUnitsForRowAsync(int materialId)
+    {
+        var result = new ObservableCollection<MaterialUnitDto>();
+        try
+        {
+            var units = await _materialUnitRepository.GetListAsync(
+                predicate: u => u.MaterialId == materialId
+            );
+            foreach (var unit in units.OrderBy(u => u.UnitName))
+            {
+                result.Add(new MaterialUnitDto
+                {
+                    Id = unit.Id,
+                    MaterialId = unit.MaterialId,
+                    UnitName = unit.UnitName,
+                    Rate = unit.Rate ?? 0m,
+                    RateName = unit.RateName,
+                    ProviderId = unit.ProviderId
+                });
+            }
+        }
+        catch
+        {
+            // 如果加载失败，返回空列表
+        }
+        return result;
+    }
+
     #endregion
 
     #region 命令
@@ -379,16 +416,24 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 }
             }
 
+            // 从 DataGrid 行获取材料和单位ID
+            var firstRow = MaterialItems.FirstOrDefault();
+            int? materialId = firstRow?.SelectedMaterial?.Id;
+            int? materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
+
+            // 直接从 SelectedProvider 获取供应商ID，避免订阅延迟问题
+            int? providerId = SelectedProvider?.Id;
+
             // 更新称重记录
             _weighingRecord.Update(
                 PlateNumber,
-                SelectedProviderId,
-                SelectedMaterialId,
+                providerId,
+                materialId,
                 waybillQuantity
             );
 
             // 更新材料单位ID
-            _weighingRecord.MaterialUnitId = SelectedMaterialUnitId;
+            _weighingRecord.MaterialUnitId = materialUnitId;
 
             // 保存到数据库
             await _weighingRecordRepository.UpdateAsync(_weighingRecord);
@@ -618,6 +663,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 public partial class MaterialItemRow : ObservableObject
 {
     /// <summary>
+    /// 用于加载材料单位的委托
+    /// </summary>
+    public Func<int, Task<ObservableCollection<MaterialUnitDto>>>? LoadMaterialUnitsFunc { get; set; }
+
+    /// <summary>
     /// 选中的材料
     /// </summary>
     [ObservableProperty] private Material? _selectedMaterial;
@@ -626,6 +676,11 @@ public partial class MaterialItemRow : ObservableObject
     /// 选中的材料单位
     /// </summary>
     [ObservableProperty] private MaterialUnitDto? _selectedMaterialUnit;
+
+    /// <summary>
+    /// 材料单位列表（行级别）
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<MaterialUnitDto> _materialUnits = new();
 
     /// <summary>
     /// 运单数量
@@ -679,4 +734,80 @@ public partial class MaterialItemRow : ObservableObject
     partial void OnDifferenceChanged(decimal? value) => OnPropertyChanged(nameof(DifferenceDisplay));
     partial void OnDeviationRateChanged(decimal? value) => OnPropertyChanged(nameof(DeviationRateDisplay));
     partial void OnSelectedMaterialUnitChanged(MaterialUnitDto? value) => OnPropertyChanged(nameof(RateDisplay));
+
+    /// <summary>
+    /// 当选中的材料变化时，加载对应的单位列表
+    /// </summary>
+    partial void OnSelectedMaterialChanged(Material? value)
+    {
+        if (value != null && LoadMaterialUnitsFunc != null)
+        {
+            _ = LoadMaterialUnitsInternalAsync(value.Id);
+        }
+        else
+        {
+            MaterialUnits.Clear();
+            SelectedMaterialUnit = null;
+        }
+    }
+
+    /// <summary>
+    /// 加载材料单位列表
+    /// </summary>
+    private async Task LoadMaterialUnitsInternalAsync(int materialId)
+    {
+        if (LoadMaterialUnitsFunc != null)
+        {
+            try
+            {
+                var units = await LoadMaterialUnitsFunc(materialId);
+                MaterialUnits.Clear();
+                foreach (var unit in units)
+                {
+                    MaterialUnits.Add(unit);
+                }
+            }
+            catch
+            {
+                // 如果加载失败，保持空列表
+            }
+        }
+    }
+
+    /// <summary>
+    /// 设置单位列表（外部调用，用于初始化）
+    /// </summary>
+    public void SetMaterialUnits(ObservableCollection<MaterialUnitDto> units)
+    {
+        MaterialUnits.Clear();
+        foreach (var unit in units)
+        {
+            MaterialUnits.Add(unit);
+        }
+    }
+
+    /// <summary>
+    /// 初始化行数据（不触发自动加载）
+    /// </summary>
+    public void InitializeSelection(Material? material, ObservableCollection<MaterialUnitDto> units, int? selectedUnitId)
+    {
+        // 暂时禁用自动加载
+        var originalFunc = LoadMaterialUnitsFunc;
+        LoadMaterialUnitsFunc = null;
+
+        // 设置材料（不会触发自动加载）
+        SelectedMaterial = material;
+        
+        // 设置单位列表
+        SetMaterialUnits(units);
+        
+        // 从新列表中查找并设置选中的单位（确保对象引用一致）
+        if (selectedUnitId.HasValue)
+        {
+            SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == selectedUnitId.Value);
+        }
+
+        // 恢复自动加载功能
+        LoadMaterialUnitsFunc = originalFunc;
+    }
 }

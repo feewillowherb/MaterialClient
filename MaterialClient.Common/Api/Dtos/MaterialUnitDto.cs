@@ -34,4 +34,9 @@ public class MaterialUnitDto
     /// 供应商ID
     /// </summary>
     public int? ProviderId { get; set; }
+
+    /// <summary>
+    /// 格式化显示名称（用于下拉框）：Rate/UnitName，未选择时为空
+    /// </summary>
+    public string DisplayName => string.IsNullOrEmpty(UnitName) ? string.Empty : $"{Rate:F2}/{UnitName}";
 }

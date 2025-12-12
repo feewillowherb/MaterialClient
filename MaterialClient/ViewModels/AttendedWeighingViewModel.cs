@@ -142,7 +142,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     // 分页相关属性
     [ObservableProperty] private int _currentPage = 1;
-    [ObservableProperty] private int _pageSize = 20;
+    [ObservableProperty] private int _pageSize = 10;
     [ObservableProperty] private int _totalCount;
     [ObservableProperty] private int _totalPages;
 

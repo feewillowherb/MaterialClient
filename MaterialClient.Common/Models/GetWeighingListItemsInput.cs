@@ -16,5 +16,7 @@ public class GetWeighingListItemsInput : PagedAndSortedResultRequestDto
     {
         // 默认按 JoinTime 降序排列
         Sorting = "JoinTime DESC";
+        // 默认每页 10 条
+        MaxResultCount = 10;
     }
 }
