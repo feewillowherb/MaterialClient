@@ -19,8 +19,23 @@ public interface IWeighingMatchingService
 {
     Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record);
     Task UpdateWaybillAsync(UpdateWaybillInput input);
-
     Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input);
+    
+    /// <summary>
+    /// 获取可匹配的候选记录列表
+    /// </summary>
+    /// <param name="record">当前称重记录</param>
+    /// <param name="deliveryType">收发料类型</param>
+    /// <returns>可匹配的候选记录列表</returns>
+    Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType);
+    
+    /// <summary>
+    /// 手动匹配两条称重记录并创建运单
+    /// </summary>
+    /// <param name="currentRecord">当前称重记录</param>
+    /// <param name="matchedRecord">匹配的称重记录</param>
+    /// <param name="deliveryType">收发料类型</param>
+    Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
 }
 
 /// <summary>
@@ -33,8 +48,6 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
     private readonly IRepository<Material, int> _materialRepository;
-    private readonly IUnitOfWorkManager _unitOfWorkManager;
-    private readonly WeighingConfiguration _configuration;
     private readonly ILogger<WeighingMatchingService>? _logger;
 
 
@@ -251,6 +264,76 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         await _weighingRecordRepository.UpdateAsync(joinRecord);
         await _weighingRecordRepository.UpdateAsync(outRecord);
+    }
+
+    /// <summary>
+    /// 获取可匹配的候选记录列表
+    /// </summary>
+    [UnitOfWork]
+    public async Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType)
+    {
+        if (string.IsNullOrWhiteSpace(record.PlateNumber))
+        {
+            _logger?.LogWarning("GetCandidateRecordsAsync: Record {RecordId} has no plate number", record.Id);
+            return new List<WeighingRecord>();
+        }
+
+        var query = await _weighingRecordRepository.GetQueryableAsync();
+
+        var unmatchedRecords = await query
+            .Where(r => r.PlateNumber == record.PlateNumber && r.Id != record.Id)
+            .Where(r => r.MatchedId == null)
+            .OrderByDescending(r => r.CreationTime)
+            .ToListAsync();
+
+        if (unmatchedRecords.Count == 0)
+        {
+            _logger?.LogInformation(
+                "GetCandidateRecordsAsync: No unmatched records found for plate '{PlateNumber}'",
+                record.PlateNumber);
+            return new List<WeighingRecord>();
+        }
+
+        var validTime = record.CreationTime.AddMinutes(-MaxIntervalMinutes);
+
+        if (deliveryType == DeliveryType.Receiving)
+        {
+            // 收料：当前记录是出场（皮重），找比当前 record 重的记录（进场/毛重）
+            return unmatchedRecords
+                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.Weight > record.Weight)
+                .Where(r => (r.Weight - record.Weight) > MinTon)
+                .OrderByDescending(r => r.CreationTime)
+                .ToList();
+        }
+        else // DeliveryType.Sending
+        {
+            // 发料：当前记录是出场（毛重），找比当前 record 轻的记录（进场/皮重）
+            return unmatchedRecords
+                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.Weight < record.Weight)
+                .Where(r => (record.Weight - r.Weight) > MinTon)
+                .OrderByDescending(r => r.CreationTime)
+                .ToList();
+        }
+    }
+
+    /// <summary>
+    /// 手动匹配两条称重记录并创建运单
+    /// </summary>
+    [UnitOfWork]
+    public async Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType)
+    {
+        if (deliveryType == DeliveryType.Receiving)
+        {
+            // 收料：matchedRecord 是毛重（进场），currentRecord 是皮重（出场）
+            await CreateWaybillAsync(currentRecord, matchedRecord, deliveryType);
+        }
+        else // DeliveryType.Sending
+        {
+            // 发料：matchedRecord 是皮重（进场），currentRecord 是毛重（出场）
+            await CreateWaybillAsync(matchedRecord, currentRecord, deliveryType);
+        }
     }
 }
 

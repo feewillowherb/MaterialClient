@@ -48,5 +48,8 @@
       <Compile Update="Views\ManualMatchEditWindow.axaml.cs">
         <DependentUpon>ManualMatchEditWindow.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Views\PlateNumberInputWindow.axaml.cs">
+        <DependentUpon>PlateNumberInputWindow.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>

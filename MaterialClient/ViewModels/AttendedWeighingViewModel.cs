@@ -614,10 +614,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                     _serviceProvider
                 );
 
-                // 订阅保存/废单完成事件以刷新列表并返回主视图
+                // 订阅保存/废单/匹配完成事件以刷新列表并返回主视图
                 DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
                 DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
                 DetailViewModel.CloseRequested += OnDetailCloseRequested;
+                DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
 
                 // 切换到详情视图
                 IsShowingMainView = false;
@@ -641,6 +642,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             DetailViewModel.SaveCompleted -= OnDetailSaveCompleted;
             DetailViewModel.AbolishCompleted -= OnDetailAbolishCompleted;
             DetailViewModel.CloseRequested -= OnDetailCloseRequested;
+            DetailViewModel.MatchCompleted -= OnDetailMatchCompleted;
         }
 
         // 清除选中状态
@@ -658,6 +660,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
+    {
+        await RefreshAsync();
+        BackToMain();
+    }
+
+    private async void OnDetailMatchCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
         BackToMain();
