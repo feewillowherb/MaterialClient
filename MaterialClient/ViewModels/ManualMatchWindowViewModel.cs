@@ -2,8 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
@@ -20,8 +20,6 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     private readonly IServiceProvider _serviceProvider;
     private readonly IWeighingMatchingService _weighingMatchingService;
 
-    #region 属性
-
     /// <summary>
     /// 当前称重记录
     /// </summary>
@@ -30,27 +28,32 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 车牌号
     /// </summary>
-    [ObservableProperty] private string? _plateNumber;
+    [Reactive]
+    private string? _plateNumber;
 
     /// <summary>
     /// 供料单位
     /// </summary>
-    [ObservableProperty] private string? _providerName;
+    [Reactive]
+    private string? _providerName;
 
     /// <summary>
     /// 车辆重量
     /// </summary>
-    [ObservableProperty] private decimal _weight;
+    [Reactive]
+    private decimal _weight;
 
     /// <summary>
     /// 进场时间
     /// </summary>
-    [ObservableProperty] private DateTime _joinTime;
+    [Reactive]
+    private DateTime _joinTime;
 
     /// <summary>
     /// 是否收料（true=收料，false=发料）
     /// </summary>
-    [ObservableProperty] private bool _isReceiving = true;
+    [Reactive]
+    private bool _isReceiving = true;
 
     /// <summary>
     /// 选中的收发料类型
@@ -60,49 +63,56 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 可匹配订单列表
     /// </summary>
-    [ObservableProperty] private ObservableCollection<CandidateRecordViewModel> _candidateRecords = new();
+    [Reactive]
+    private ObservableCollection<CandidateRecordViewModel> _candidateRecords = new();
 
     /// <summary>
     /// 选中的匹配订单
     /// </summary>
-    [ObservableProperty] private CandidateRecordViewModel? _selectedCandidateRecord;
+    [Reactive]
+    private CandidateRecordViewModel? _selectedCandidateRecord;
 
     /// <summary>
     /// 是否可以点击确定
     /// </summary>
-    [ObservableProperty] private bool _canConfirm;
+    [Reactive]
+    private bool _canConfirm;
 
     /// <summary>
     /// 进场照片列表
     /// </summary>
-    [ObservableProperty] private ObservableCollection<string> _entryPhotos = new();
+    [Reactive]
+    private ObservableCollection<string> _entryPhotos = new();
 
     /// <summary>
     /// 运单照片
     /// </summary>
-    [ObservableProperty] private string? _ticketPhoto;
+    [Reactive]
+    private string? _ticketPhoto;
 
     /// <summary>
     /// 总记录数
     /// </summary>
-    [ObservableProperty] private int _totalCount;
+    [Reactive]
+    private int _totalCount;
 
     /// <summary>
     /// 当前页
     /// </summary>
-    [ObservableProperty] private int _currentPage = 1;
+    [Reactive]
+    private int _currentPage = 1;
 
     /// <summary>
     /// 总页数
     /// </summary>
-    [ObservableProperty] private int _totalPages = 1;
+    [Reactive]
+    private int _totalPages = 1;
 
     /// <summary>
     /// 是否正在加载
     /// </summary>
-    [ObservableProperty] private bool _isLoading;
-
-    #endregion
+    [Reactive]
+    private bool _isLoading;
 
     public ManualMatchWindowViewModel(WeighingRecord currentRecord, IServiceProvider serviceProvider)
     {
@@ -122,27 +132,21 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         _ = InitializeAsync();
     }
 
-    private async Task InitializeAsync()
+    partial void OnIsReceivingChanged(bool value)
     {
-        await LoadPhotosAsync();
-        await LoadCandidateRecordsAsync();
+        this.RaisePropertyChanged(nameof(SelectedDeliveryType));
+        _ = LoadCandidateRecordsAsync();
     }
 
-    /// <summary>
-    /// 当选中的候选记录变化时更新 CanConfirm
-    /// </summary>
     partial void OnSelectedCandidateRecordChanged(CandidateRecordViewModel? value)
     {
         CanConfirm = value != null;
     }
 
-    /// <summary>
-    /// 当收发类型变化时重新加载候选记录
-    /// </summary>
-    partial void OnIsReceivingChanged(bool value)
+    private async Task InitializeAsync()
     {
-        OnPropertyChanged(nameof(SelectedDeliveryType));
-        _ = LoadCandidateRecordsAsync();
+        await LoadPhotosAsync();
+        await LoadCandidateRecordsAsync();
     }
 
     #region 命令
@@ -150,7 +154,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 加载可匹配订单
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private async Task LoadCandidateRecordsAsync()
     {
         try
@@ -184,7 +188,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 设置为收料
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void SetReceiving()
     {
         IsReceiving = true;
@@ -193,7 +197,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 设置为发料
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void SetSending()
     {
         IsReceiving = false;
@@ -202,7 +206,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 上一页
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void PreviousPage()
     {
         if (CurrentPage > 1)
@@ -214,7 +218,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 下一页
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void NextPage()
     {
         if (CurrentPage < TotalPages)
@@ -269,7 +273,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
 /// <summary>
 /// 候选匹配记录 ViewModel
 /// </summary>
-public partial class CandidateRecordViewModel : ObservableObject
+public partial class CandidateRecordViewModel : ReactiveObject
 {
     /// <summary>
     /// 原始称重记录
@@ -284,7 +288,8 @@ public partial class CandidateRecordViewModel : ObservableObject
     /// <summary>
     /// 供料单位
     /// </summary>
-    [ObservableProperty] private string? _providerName;
+    [Reactive]
+    private string? _providerName;
 
     /// <summary>
     /// 车辆重量

@@ -1,8 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using Volo.Abp;
 
 namespace MaterialClient.ViewModels;
@@ -10,29 +10,36 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 /// 授权码输入窗口 ViewModel
 /// </summary>
-public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : ReactiveViewModelBase
+public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
 {
-    [ObservableProperty]
+    private readonly ILicenseService _licenseService;
+
+    [Reactive]
     private string _authorizationCode = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _statusMessage = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _statusMessageColor = "#000000";
 
-    [ObservableProperty]
+    [Reactive]
     private bool _isVerifying;
 
-    [ObservableProperty]
+    [Reactive]
     private bool _showRetryButton;
 
-    [ObservableProperty]
+    [Reactive]
     private bool _isVerified;
+
+    public AuthCodeWindowViewModel(ILicenseService licenseService)
+    {
+        _licenseService = licenseService;
+    }
 
     #region Commands
 
-    [RelayCommand]
+    [ReactiveCommand]
     private async Task VerifyAuthorizationCodeAsync()
     {
         // Validate input
@@ -50,7 +57,7 @@ public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : R
         try
         {
             // Call license service to verify
-            await licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode);
+            await _licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode);
 
             // Success
             IsVerified = true;
@@ -76,7 +83,7 @@ public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : R
         }
     }
 
-    [RelayCommand()]
+    [ReactiveCommand]
     private void Retry()
     {
         ResetForm();
@@ -133,4 +140,3 @@ public partial class AuthCodeWindowViewModel(ILicenseService licenseService) : R
 
     #endregion
 }
-

@@ -1,15 +1,15 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
-using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
@@ -30,134 +30,77 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
     #region 属性
 
-    /// <summary>
-    /// 车牌号
-    /// </summary>
-    [ObservableProperty] private string? _plateNumber;
+    [Reactive]
+    private string? _plateNumber;
 
-    /// <summary>
-    /// 供应商列表
-    /// </summary>
-    [ObservableProperty] private ObservableCollection<ProviderDto> _providers = new();
+    [Reactive]
+    private ObservableCollection<ProviderDto> _providers = new();
 
-    /// <summary>
-    /// 选中的供应商
-    /// </summary>
-    [ObservableProperty] private ProviderDto? _selectedProvider;
+    [Reactive]
+    private ProviderDto? _selectedProvider;
 
-    /// <summary>
-    /// 称毛时间
-    /// </summary>
-    [ObservableProperty] private DateTime? _grossWeightTime;
+    [Reactive]
+    private DateTime? _grossWeightTime;
 
-    /// <summary>
-    /// 称皮时间
-    /// </summary>
-    [ObservableProperty] private DateTime? _tareWeightTime;
+    [Reactive]
+    private DateTime? _tareWeightTime;
 
-    /// <summary>
-    /// 毛重（吨）
-    /// </summary>
-    [ObservableProperty] private decimal _grossWeight;
+    [Reactive]
+    private decimal _grossWeight;
 
-    /// <summary>
-    /// 皮重（吨）
-    /// </summary>
-    [ObservableProperty] private decimal _tareWeight;
+    [Reactive]
+    private decimal _tareWeight;
 
-    /// <summary>
-    /// 净重（吨）
-    /// </summary>
-    [ObservableProperty] private decimal _netWeight;
+    [Reactive]
+    private decimal _netWeight;
 
-    /// <summary>
-    /// 材料类别
-    /// </summary>
-    [ObservableProperty] private string? _materialCategory;
+    [Reactive]
+    private string? _materialCategory;
 
-    /// <summary>
-    /// 备注
-    /// </summary>
-    [ObservableProperty] private string? _remark;
+    [Reactive]
+    private string? _remark;
 
-    /// <summary>
-    /// 材料列表
-    /// </summary>
-    [ObservableProperty] private ObservableCollection<Material> _materials = new();
+    [Reactive]
+    private ObservableCollection<Material> _materials = new();
 
-    /// <summary>
-    /// 选中的材料
-    /// </summary>
-    [ObservableProperty] private Material? _selectedMaterial;
+    [Reactive]
+    private Material? _selectedMaterial;
 
-    /// <summary>
-    /// 材料单位列表
-    /// </summary>
-    [ObservableProperty] private ObservableCollection<MaterialUnitDto> _materialUnits = new();
+    [Reactive]
+    private ObservableCollection<MaterialUnitDto> _materialUnits = new();
 
-    /// <summary>
-    /// 选中的材料单位
-    /// </summary>
-    [ObservableProperty] private MaterialUnitDto? _selectedMaterialUnit;
+    [Reactive]
+    private MaterialUnitDto? _selectedMaterialUnit;
 
-    /// <summary>
-    /// 规格型号（只读，从材料获取）
-    /// </summary>
-    [ObservableProperty] private string? _specifications;
+    [Reactive]
+    private string? _specifications;
 
-    /// <summary>
-    /// 单位名称（只读）
-    /// </summary>
-    [ObservableProperty] private string? _unitName;
+    [Reactive]
+    private string? _unitName;
 
-    /// <summary>
-    /// 换算系数
-    /// </summary>
-    [ObservableProperty] private decimal _conversionRate = 1.00m;
+    [Reactive]
+    private decimal _conversionRate = 1.00m;
 
-    /// <summary>
-    /// 运单数量
-    /// </summary>
-    [ObservableProperty] private string? _waybillQuantity;
+    [Reactive]
+    private string? _waybillQuantity;
 
-    /// <summary>
-    /// 运单重量（只读，自动计算）
-    /// </summary>
-    [ObservableProperty] private decimal _waybillWeight;
+    [Reactive]
+    private decimal _waybillWeight;
 
-    /// <summary>
-    /// 进场照片列表
-    /// </summary>
-    [ObservableProperty] private ObservableCollection<string> _entryPhotos = new();
+    [Reactive]
+    private ObservableCollection<string> _entryPhotos = new();
 
-    /// <summary>
-    /// 出场照片列表
-    /// </summary>
-    [ObservableProperty] private ObservableCollection<string> _exitPhotos = new();
+    [Reactive]
+    private ObservableCollection<string> _exitPhotos = new();
 
-    /// <summary>
-    /// 运单照片
-    /// </summary>
-    [ObservableProperty] private string? _ticketPhoto;
+    [Reactive]
+    private string? _ticketPhoto;
 
-    /// <summary>
-    /// 是否正在加载
-    /// </summary>
-    [ObservableProperty] private bool _isLoading;
+    [Reactive]
+    private bool _isLoading;
 
-    /// <summary>
-    /// 收发料类型
-    /// </summary>
     public DeliveryType DeliveryType => _deliveryType;
-
-    /// <summary>
-    /// 当前记录（只读）
-    /// </summary>
     public WeighingRecord CurrentRecord => _currentRecord;
-
-    /// <summary>
-    /// 匹配记录（只读）
-    /// </summary>
     public WeighingRecord MatchedRecord => _matchedRecord;
 
     #endregion
@@ -173,13 +116,11 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         _deliveryType = deliveryType;
         _serviceProvider = serviceProvider;
 
-        // 获取仓储服务
         _providerRepository = serviceProvider.GetService<IRepository<Provider, int>>();
         _materialRepository = serviceProvider.GetService<IRepository<Material, int>>();
         _materialUnitRepository = serviceProvider.GetService<IRepository<MaterialUnit, int>>();
         _weighingRecordRepository = serviceProvider.GetService<IRepository<WeighingRecord, long>>();
 
-        // 初始化数据
         InitializeData();
 
         // 监听材料选择变化，加载对应的单位列表
@@ -217,28 +158,25 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 }
             });
 
-        // 加载下拉列表数据和照片
         _ = LoadDropdownDataAsync();
         _ = LoadPhotosAsync();
+    }
+
+    partial void OnWaybillQuantityChanged(string? value)
+    {
+        UpdateWaybillWeight();
     }
 
     #region 初始化
 
     private void InitializeData()
     {
-        // 设置车牌号（优先使用当前记录的车牌号）
         PlateNumber = _currentRecord.PlateNumber ?? _matchedRecord.PlateNumber;
 
-        // 根据收发类型确定毛重和皮重
-        // 收料（Receiving）：进场时车带货物是毛重，出场时空车是皮重
-        // 发料（Sending）：进场时空车是皮重，出场时车带货物是毛重
         if (_deliveryType == DeliveryType.Receiving)
         {
-            // 收料：currentRecord 是先进场的（毛重），matchedRecord 是后出场的（皮重）
-            // 但需要根据时间判断哪个是进场哪个是出场
             if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
             {
-                // currentRecord 先发生，是进场（毛重）
                 GrossWeight = _currentRecord.Weight;
                 GrossWeightTime = _currentRecord.CreationTime;
                 TareWeight = _matchedRecord.Weight;
@@ -246,7 +184,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             }
             else
             {
-                // matchedRecord 先发生，是进场（毛重）
                 GrossWeight = _matchedRecord.Weight;
                 GrossWeightTime = _matchedRecord.CreationTime;
                 TareWeight = _currentRecord.Weight;
@@ -255,10 +192,8 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
         else
         {
-            // 发料：进场时空车是皮重，出场时车带货物是毛重
             if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
             {
-                // currentRecord 先发生，是进场（皮重）
                 TareWeight = _currentRecord.Weight;
                 TareWeightTime = _currentRecord.CreationTime;
                 GrossWeight = _matchedRecord.Weight;
@@ -266,7 +201,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             }
             else
             {
-                // matchedRecord 先发生，是进场（皮重）
                 TareWeight = _matchedRecord.Weight;
                 TareWeightTime = _matchedRecord.CreationTime;
                 GrossWeight = _currentRecord.Weight;
@@ -274,10 +208,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             }
         }
 
-        // 计算净重
         NetWeight = Math.Abs(GrossWeight - TareWeight);
-
-        // 初始化运单数量为净重
         WaybillQuantity = NetWeight.ToString("F2");
         WaybillWeight = NetWeight;
     }
@@ -293,14 +224,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 LoadMaterialsAsync()
             );
 
-            // 设置已选中的供应商（如果有）
             var providerId = _currentRecord.ProviderId ?? _matchedRecord.ProviderId;
             if (providerId.HasValue)
             {
                 SelectedProvider = Providers.FirstOrDefault(p => p.Id == providerId.Value);
             }
 
-            // 设置已选中的材料（如果有）
             var materialId = _currentRecord.MaterialId ?? _matchedRecord.MaterialId;
             if (materialId.HasValue)
             {
@@ -318,7 +247,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 }
             }
 
-            // 设置运单数量（如果有）
             var waybillQuantity = _currentRecord.WaybillQuantity ?? _matchedRecord.WaybillQuantity;
             if (waybillQuantity.HasValue)
             {
@@ -416,7 +344,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
         try
         {
-            // 批量查询两个记录的附件
             var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(
                 new[] { _currentRecord.Id, _matchedRecord.Id });
 
@@ -427,14 +354,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             ExitPhotos.Clear();
             TicketPhoto = null;
 
-            // 根据时间判断哪些是进场照片，哪些是出场照片
             var earlierRecord = _currentRecord.CreationTime <= _matchedRecord.CreationTime
                 ? _currentRecord
                 : _matchedRecord;
             var earlierFiles = earlierRecord.Id == _currentRecord.Id ? currentFiles : matchedFiles;
             var laterFiles = earlierRecord.Id == _currentRecord.Id ? matchedFiles : currentFiles;
 
-            // 进场照片（较早记录的照片）
             if (earlierFiles != null)
             {
                 foreach (var file in earlierFiles)
@@ -453,7 +378,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 }
             }
 
-            // 出场照片（较晚记录的照片）
             if (laterFiles != null)
             {
                 foreach (var file in laterFiles)
@@ -483,17 +407,13 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
     #region 命令
 
-    /// <summary>
-    /// 保存命令
-    /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     public async Task<bool> SaveAsync()
     {
         if (_weighingRecordRepository == null) return false;
 
         try
         {
-            // 解析运单数量
             decimal? waybillQuantity = null;
             if (!string.IsNullOrWhiteSpace(WaybillQuantity) &&
                 decimal.TryParse(WaybillQuantity, out var qty))
@@ -501,7 +421,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 waybillQuantity = qty;
             }
 
-            // 更新当前记录
             _currentRecord.Update(
                 PlateNumber,
                 SelectedProvider?.Id,
@@ -511,10 +430,8 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             );
             _currentRecord.DeliveryType = _deliveryType;
 
-            // 设置匹配关系
             if (_deliveryType == DeliveryType.Receiving)
             {
-                // 收料：当前记录是进场（Join），匹配记录是出场（Out）
                 if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
                 {
                     _currentRecord.MatchAsJoin(_matchedRecord.Id);
@@ -528,7 +445,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             }
             else
             {
-                // 发料：当前记录是进场（Join-皮重），匹配记录是出场（Out-毛重）
                 if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
                 {
                     _currentRecord.MatchAsJoin(_matchedRecord.Id);
@@ -541,7 +457,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 }
             }
 
-            // 更新匹配记录
             _matchedRecord.Update(
                 PlateNumber,
                 SelectedProvider?.Id,
@@ -551,7 +466,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             );
             _matchedRecord.DeliveryType = _deliveryType;
 
-            // 保存到数据库
             await _weighingRecordRepository.UpdateAsync(_currentRecord);
             await _weighingRecordRepository.UpdateAsync(_matchedRecord);
 
@@ -564,28 +478,19 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// 添加材料命令
-    /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void AddMaterial()
     {
         // TODO: 实现添加材料逻辑
     }
 
-    /// <summary>
-    /// 删除材料命令
-    /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void DeleteMaterial()
     {
         // TODO: 实现删除材料逻辑
     }
 
-    /// <summary>
-    /// 拍照命令
-    /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void TakePhoto()
     {
         // TODO: 实现拍照逻辑
@@ -602,11 +507,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         {
             WaybillWeight = qty * ConversionRate;
         }
-    }
-
-    partial void OnWaybillQuantityChanged(string? value)
-    {
-        UpdateWaybillWeight();
     }
 
     #endregion

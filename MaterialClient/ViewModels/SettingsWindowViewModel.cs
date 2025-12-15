@@ -8,8 +8,8 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace MaterialClient.ViewModels;
 
@@ -22,25 +22,32 @@ public partial class SettingsWindowViewModel : ViewModelBase
     private readonly ITruckScaleWeightService _truckScaleWeightService;
 
     // Scale settings
-    [ObservableProperty] private string _scaleSerialPort = "COM3";
+    [Reactive]
+    private string _scaleSerialPort = "COM3";
 
-    [ObservableProperty] private string _scaleBaudRate = "9600";
+    [Reactive]
+    private string _scaleBaudRate = "9600";
 
-    [ObservableProperty] private string _scaleCommunicationMethod = "TF0";
+    [Reactive]
+    private string _scaleCommunicationMethod = "TF0";
 
-    [ObservableProperty] private ObservableCollection<string> _availableSerialPorts = new();
+    [Reactive]
+    private ObservableCollection<string> _availableSerialPorts = new();
 
     // Document scanner settings
-    [ObservableProperty] private string? _documentScannerUsbDevice;
+    [Reactive]
+    private string? _documentScannerUsbDevice;
 
     // System settings
-    [ObservableProperty] private bool _enableAutoStart;
+    [Reactive]
+    private bool _enableAutoStart;
 
     // Camera configs
-    [ObservableProperty] private ObservableCollection<CameraConfigViewModel> _cameraConfigs = new();
+    [Reactive]
+    private ObservableCollection<CameraConfigViewModel> _cameraConfigs = new();
 
     // License plate recognition configs
-    [ObservableProperty]
+    [Reactive]
     private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs = new();
 
     public SettingsWindowViewModel(
@@ -59,7 +66,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     #region Commands
 
-    [RelayCommand]
+    [ReactiveCommand]
     private async Task SaveAsync()
     {
         try
@@ -110,14 +117,14 @@ public partial class SettingsWindowViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [ReactiveCommand]
     private void Cancel()
     {
         // Raise close requested event
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    [RelayCommand]
+    [ReactiveCommand]
     private void AddCamera()
     {
         CameraConfigs.Add(new CameraConfigViewModel
@@ -126,7 +133,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
         });
     }
 
-    [RelayCommand]
+    [ReactiveCommand]
     private void RemoveCamera(CameraConfigViewModel? config)
     {
         if (config != null)
@@ -135,7 +142,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [ReactiveCommand]
     private void AddLicensePlateRecognition()
     {
         LicensePlateRecognitionConfigs.Add(new LicensePlateRecognitionConfigViewModel
@@ -145,7 +152,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
         });
     }
 
-    [RelayCommand]
+    [ReactiveCommand]
     private void RemoveLicensePlateRecognition(LicensePlateRecognitionConfigViewModel? config)
     {
         if (config != null)
@@ -248,46 +255,46 @@ public partial class SettingsWindowViewModel : ViewModelBase
             // If loading fails, use default values
         }
     }
-}
 
-#endregion
+    #endregion
+}
 
 /// <summary>
 /// Camera config ViewModel for UI binding
 /// </summary>
-public partial class CameraConfigViewModel : ObservableObject
+public partial class CameraConfigViewModel : ReactiveObject
 {
-    [ObservableProperty]
+    [Reactive]
     private string _name = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _ip = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _port = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _channel = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _userName = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _password = string.Empty;
 }
 
 /// <summary>
 /// License plate recognition config ViewModel for UI binding
 /// </summary>
-public partial class LicensePlateRecognitionConfigViewModel : ObservableObject
+public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 {
-    [ObservableProperty]
+    [Reactive]
     private string _name = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _ip = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private LicensePlateDirection _direction = LicensePlateDirection.In;
 
     /// <summary>
@@ -303,5 +310,10 @@ public partial class LicensePlateRecognitionConfigViewModel : ObservableObject
                 Direction = (LicensePlateDirection)value;
             }
         }
+    }
+
+    partial void OnDirectionChanged(LicensePlateDirection value)
+    {
+        this.RaisePropertyChanged(nameof(DirectionIndex));
     }
 }

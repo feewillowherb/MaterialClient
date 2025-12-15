@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
@@ -20,47 +20,56 @@ public partial class PhotoGridViewModel : ViewModelBase
     /// <summary>
     /// 当前选中的照片标签 (0 = 进场照片, 1 = 出场照片)
     /// </summary>
-    [ObservableProperty] private int _selectedPhotoTabIndex = 0;
+    [Reactive]
+    private int _selectedPhotoTabIndex = 0;
 
     /// <summary>
     /// 进场照片1
     /// </summary>
-    [ObservableProperty] private string? _entryPhoto1;
+    [Reactive]
+    private string? _entryPhoto1;
 
     /// <summary>
     /// 进场照片2
     /// </summary>
-    [ObservableProperty] private string? _entryPhoto2;
+    [Reactive]
+    private string? _entryPhoto2;
 
     /// <summary>
     /// 进场照片3
     /// </summary>
-    [ObservableProperty] private string? _entryPhoto3;
+    [Reactive]
+    private string? _entryPhoto3;
 
     /// <summary>
     /// 进场照片4
     /// </summary>
-    [ObservableProperty] private string? _entryPhoto4;
+    [Reactive]
+    private string? _entryPhoto4;
 
     /// <summary>
     /// 出场照片1
     /// </summary>
-    [ObservableProperty] private string? _exitPhoto1;
+    [Reactive]
+    private string? _exitPhoto1;
 
     /// <summary>
     /// 出场照片2
     /// </summary>
-    [ObservableProperty] private string? _exitPhoto2;
+    [Reactive]
+    private string? _exitPhoto2;
 
     /// <summary>
     /// 出场照片3
     /// </summary>
-    [ObservableProperty] private string? _exitPhoto3;
+    [Reactive]
+    private string? _exitPhoto3;
 
     /// <summary>
     /// 出场照片4
     /// </summary>
-    [ObservableProperty] private string? _exitPhoto4;
+    [Reactive]
+    private string? _exitPhoto4;
 
     /// <summary>
     /// 是否选中进场照片标签
@@ -77,10 +86,16 @@ public partial class PhotoGridViewModel : ViewModelBase
         _serviceProvider = serviceProvider;
     }
 
+    partial void OnSelectedPhotoTabIndexChanged(int value)
+    {
+        this.RaisePropertyChanged(nameof(IsEntryPhotoTabSelected));
+        this.RaisePropertyChanged(nameof(IsExitPhotoTabSelected));
+    }
+
     /// <summary>
     /// 切换到进场照片标签
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void ShowEntryPhotos()
     {
         SelectedPhotoTabIndex = 0;
@@ -89,16 +104,10 @@ public partial class PhotoGridViewModel : ViewModelBase
     /// <summary>
     /// 切换到出场照片标签
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void ShowExitPhotos()
     {
         SelectedPhotoTabIndex = 1;
-    }
-
-    partial void OnSelectedPhotoTabIndexChanged(int value)
-    {
-        OnPropertyChanged(nameof(IsEntryPhotoTabSelected));
-        OnPropertyChanged(nameof(IsExitPhotoTabSelected));
     }
 
     /// <summary>

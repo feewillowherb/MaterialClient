@@ -1,8 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using Volo.Abp;
 
 namespace MaterialClient.ViewModels;
@@ -14,39 +14,29 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
 {
     private readonly IAuthenticationService _authenticationService;
 
-    [ObservableProperty]
+    [Reactive]
     private string _username = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private string _password = string.Empty;
 
-    [ObservableProperty]
+    [Reactive]
     private bool _rememberMe;
 
-    [ObservableProperty]
+    [Reactive]
     private bool _isLoggingIn;
 
-    [ObservableProperty]
+    [Reactive]
     private bool _hasError;
 
-    [ObservableProperty]
+    [Reactive]
     private bool _showRetryButton;
 
-    [ObservableProperty]
+    [Reactive]
     private bool _isLoginSuccessful;
 
+    [Reactive]
     private string _errorMessage = string.Empty;
-    public string ErrorMessage
-    {
-        get => _errorMessage;
-        set
-        {
-            if (SetProperty(ref _errorMessage, value))
-            {
-                HasError = !string.IsNullOrEmpty(value);
-            }
-        }
-    }
 
     public LoginWindowViewModel(IAuthenticationService authenticationService)
     {
@@ -56,9 +46,14 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
         _ = LoadSavedCredentialsAsync();
     }
 
+    partial void OnErrorMessageChanged(string value)
+    {
+        HasError = !string.IsNullOrEmpty(value);
+    }
+
     #region Commands
 
-    [RelayCommand]
+    [ReactiveCommand]
     private async Task LoginAsync()
     {
         // Validate input
@@ -106,7 +101,7 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
         }
     }
 
-    [RelayCommand]
+    [ReactiveCommand]
     private void Retry()
     {
         ResetErrorState();
@@ -166,4 +161,3 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
 
     #endregion
 }
-
