@@ -31,90 +31,63 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     #region Properties
 
-    [Reactive]
-    private ObservableCollection<WeighingListItemDto> _listItems = new();
+    [Reactive] private ObservableCollection<WeighingListItemDto> _listItems = new();
 
-    [Reactive]
-    private ObservableCollection<WeighingListItemDto> _pagedListItems = new();
+    [Reactive] private ObservableCollection<WeighingListItemDto> _pagedListItems = new();
 
-    [Reactive]
-    private WeighingRecord? _selectedWeighingRecord;
+    [Reactive] private WeighingRecord? _selectedWeighingRecord;
 
-    [Reactive]
-    private Waybill? _selectedWaybill;
+    [Reactive] private Waybill? _selectedWaybill;
 
-    [Reactive]
-    private WeighingListItemDto? _selectedListItem;
+    [Reactive] private WeighingListItemDto? _selectedListItem;
 
-    [Reactive]
-    private ObservableCollection<string> _vehiclePhotos = new();
+    [Reactive] private ObservableCollection<string> _vehiclePhotos = new();
 
-    [Reactive]
-    private string? _billPhotoPath;
+    [Reactive] private string? _billPhotoPath;
 
-    [Reactive]
-    private DateTime _currentTime = DateTime.Now;
+    [Reactive] private DateTime _currentTime = DateTime.Now;
 
-    [Reactive]
-    private decimal _currentWeight;
+    [Reactive] private decimal _currentWeight;
 
-    [Reactive]
-    private bool _isReceiving = true;
+    [Reactive] private bool _isReceiving = true;
 
-    [Reactive]
-    private bool _isShowAllRecords = true;
+    [Reactive] private bool _isShowAllRecords = true;
 
-    [Reactive]
-    private bool _isShowUnmatched;
+    [Reactive] private bool _isShowUnmatched;
 
-    [Reactive]
-    private bool _isShowCompleted;
+    [Reactive] private bool _isShowCompleted;
 
-    [Reactive]
-    private PhotoGridViewModel? _photoGridViewModel;
+    [Reactive] private PhotoGridViewModel? _photoGridViewModel;
 
-    [Reactive]
-    private string? _materialInfo;
+    [Reactive] private string? _materialInfo;
 
-    [Reactive]
-    private string? _offsetInfo;
+    [Reactive] private string? _offsetInfo;
 
-    [Reactive]
-    private bool _isScaleOnline;
+    [Reactive] private bool _isScaleOnline;
 
-    [Reactive]
-    private bool _isCameraOnline;
+    [Reactive] private bool _isCameraOnline;
 
-    [Reactive]
-    private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
+    [Reactive] private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
 
     public bool HasCameraStatuses => CameraStatuses.Count > 0;
 
-    [Reactive]
-    private string? _mostFrequentPlateNumber;
+    [Reactive] private string? _mostFrequentPlateNumber;
 
-    [Reactive]
-    private bool _isShowingMainView = true;
+    [Reactive] private bool _isShowingMainView = true;
 
     public bool IsShowingDetailView => !IsShowingMainView;
 
-    [Reactive]
-    private WeighingRecord? _currentWeighingRecordForDetail;
+    [Reactive] private WeighingRecord? _currentWeighingRecordForDetail;
 
-    [Reactive]
-    private AttendedWeighingDetailViewModel? _detailViewModel;
+    [Reactive] private AttendedWeighingDetailViewModel? _detailViewModel;
 
-    [Reactive]
-    private int _currentPage = 1;
+    [Reactive] private int _currentPage = 1;
 
-    [Reactive]
-    private int _pageSize = 10;
+    [Reactive] private int _pageSize = 10;
 
-    [Reactive]
-    private int _totalCount;
+    [Reactive] private int _totalCount;
 
-    [Reactive]
-    private int _totalPages;
+    [Reactive] private int _totalPages;
 
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
@@ -136,7 +109,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         _attendedWeighingService = attendedWeighingService;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
-        
+
         // Setup property change notifications
         this.WhenAnyValue(x => x.SelectedWeighingRecord)
             .Subscribe(async value =>
@@ -152,6 +125,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                     BillPhotoPath = null;
                     PhotoGridViewModel?.Clear();
                 }
+
                 this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
                 this.RaisePropertyChanged(nameof(IsWaybillSelected));
             })
@@ -171,6 +145,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                     BillPhotoPath = null;
                     PhotoGridViewModel?.Clear();
                 }
+
                 this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
                 this.RaisePropertyChanged(nameof(IsWaybillSelected));
             })
@@ -434,9 +409,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private void SelectListItem(WeighingListItemDto? item)
     {
         if (item == null) return;
-        
+
         SelectedListItem = item;
-        
+
         if (item.ItemType == WeighingListItemType.WeighingRecord)
         {
             _ = OpenDetail(item);
@@ -469,17 +444,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 var materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
                 var providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
                 var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
-                
+
                 var weighingRecord = await weighingRecordRepository.GetAsync(item.Id);
                 SelectedWeighingRecord = weighingRecord;
                 CurrentWeighingRecordForDetail = weighingRecord;
 
                 DetailViewModel = new AttendedWeighingDetailViewModel(
                     item,
-                    weighingRecordRepository,
-                    materialRepository,
-                    providerRepository,
-                    materialUnitRepository,
                     _serviceProvider
                 );
 
@@ -657,7 +628,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async weighingRecord =>
             {
-                System.Diagnostics.Debug.WriteLine($"AttendedWeighingViewModel: Received new weighing record creation event, ID: {weighingRecord.Id}");
+                System.Diagnostics.Debug.WriteLine(
+                    $"AttendedWeighingViewModel: Received new weighing record creation event, ID: {weighingRecord.Id}");
                 await RefreshAsync();
             })
             .DisposeWith(_disposables);
@@ -686,8 +658,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             var attachmentService = _serviceProvider.GetService<IAttachmentService>();
             if (attachmentService != null)
             {
-                var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(new[] { record.Id });
-                
+                var attachmentsDict =
+                    await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(new[] { record.Id });
+
                 VehiclePhotos.Clear();
                 BillPhotoPath = null;
 
@@ -730,7 +703,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             if (attachmentService != null)
             {
                 var attachmentsDict = await attachmentService.GetAttachmentsByWaybillIdsAsync(new[] { waybill.Id });
-                
+
                 VehiclePhotos.Clear();
                 BillPhotoPath = null;
 

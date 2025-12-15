@@ -31,91 +31,64 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     #region 属性
 
-    [Reactive]
-    private long _weighingRecordId;
+    [Reactive] private long _weighingRecordId;
 
-    [Reactive]
-    private decimal _allWeight;
+    [Reactive] private decimal _allWeight;
 
-    [Reactive]
-    private decimal _truckWeight;
+    [Reactive] private decimal _truckWeight;
 
-    [Reactive]
-    private decimal _goodsWeight;
+    [Reactive] private decimal _goodsWeight;
 
-    [Reactive]
-    private string? _plateNumber;
+    [Reactive] private string? _plateNumber;
 
-    [Reactive]
-    private ObservableCollection<ProviderDto> _providers = new();
+    [Reactive] private ObservableCollection<ProviderDto> _providers = new();
 
-    [Reactive]
-    private ProviderDto? _selectedProvider;
+    [Reactive] private ProviderDto? _selectedProvider;
 
-    [Reactive]
-    private int? _selectedProviderId;
+    [Reactive] private int? _selectedProviderId;
 
-    [Reactive]
-    private ObservableCollection<Material> _materials = new();
+    [Reactive] private ObservableCollection<Material> _materials = new();
 
-    [Reactive]
-    private Material? _selectedMaterial;
+    [Reactive] private Material? _selectedMaterial;
 
-    [Reactive]
-    private int? _selectedMaterialId;
+    [Reactive] private int? _selectedMaterialId;
 
-    [Reactive]
-    private ObservableCollection<MaterialUnitDto> _materialUnits = new();
+    [Reactive] private ObservableCollection<MaterialUnitDto> _materialUnits = new();
 
-    [Reactive]
-    private MaterialUnitDto? _selectedMaterialUnit;
+    [Reactive] private MaterialUnitDto? _selectedMaterialUnit;
 
-    [Reactive]
-    private int? _selectedMaterialUnitId;
+    [Reactive] private int? _selectedMaterialUnitId;
 
-    [Reactive]
-    private string? _waybillQuantity;
+    [Reactive] private string? _waybillQuantity;
 
-    [Reactive]
-    private string? _remark;
+    [Reactive] private string? _remark;
 
-    [Reactive]
-    private DateTime? _joinTime;
+    [Reactive] private DateTime? _joinTime;
 
-    [Reactive]
-    private DateTime? _outTime;
+    [Reactive] private DateTime? _outTime;
 
-    [Reactive]
-    private string? _operator;
+    [Reactive] private string? _operator;
 
-    [Reactive]
-    private bool _isMatchButtonVisible;
+    [Reactive] private bool _isMatchButtonVisible;
 
-    [Reactive]
-    private string? _waybillQuantityError;
+    [Reactive] private string? _waybillQuantityError;
 
-    [Reactive]
-    private string? _plateNumberError;
+    [Reactive] private string? _plateNumberError;
 
-    [Reactive]
-    private ObservableCollection<MaterialItemRow> _materialItems = new();
+    [Reactive] private ObservableCollection<MaterialItemRow> _materialItems = new();
 
     #endregion
 
     public AttendedWeighingDetailViewModel(
         WeighingListItemDto listItem,
-        IRepository<WeighingRecord, long> weighingRecordRepository,
-        IRepository<Material, int> materialRepository,
-        IRepository<Provider, int> providerRepository,
-        IRepository<MaterialUnit, int> materialUnitRepository,
         IServiceProvider serviceProvider)
     {
         _listItem = listItem;
-        _weighingRecordRepository = weighingRecordRepository;
-        _materialRepository = materialRepository;
-        _providerRepository = providerRepository;
-        _materialUnitRepository = materialUnitRepository;
         _serviceProvider = serviceProvider;
+        _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
+        _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
+        _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
+        _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
 
         InitializeData();
         _ = LoadDropdownDataAsync();
@@ -196,7 +169,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             DeviationRate = null,
             DeviationResult = "-"
         });
-        
+
         _ = LoadWeighingRecordDetailsAsync();
     }
 
@@ -220,7 +193,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             {
                 selectedMaterial = Materials.FirstOrDefault(m => m.Id == SelectedMaterialId.Value);
                 SelectedMaterial = selectedMaterial;
-                
+
                 if (selectedMaterial != null)
                 {
                     await LoadMaterialUnitsAsync(selectedMaterial.Id);
@@ -349,6 +322,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         {
             // 如果加载失败，返回空列表
         }
+
         return result;
     }
 
@@ -367,7 +341,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         try
         {
             var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
-            
+
             decimal? waybillQuantity = null;
             if (!string.IsNullOrWhiteSpace(WaybillQuantity))
             {
@@ -413,10 +387,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
             var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
             var matchWindow = new ManualMatchWindow(weighingRecord, _serviceProvider);
-            
+
             var parentWin = GetParentWindow();
             WeighingRecord? matchedRecord;
-            
+
             if (parentWin != null)
             {
                 matchedRecord = await matchWindow.ShowDialog<WeighingRecord?>(parentWin);
@@ -429,7 +403,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
             if (matchedRecord != null)
             {
-                var editWindow = new ManualMatchEditWindow(weighingRecord, matchedRecord, matchWindow.SelectedDeliveryType, _serviceProvider);
+                var editWindow = new ManualMatchEditWindow(weighingRecord, matchedRecord,
+                    matchWindow.SelectedDeliveryType, _serviceProvider);
                 await editWindow.ShowDialog(parentWin);
                 MatchCompleted?.Invoke(this, EventArgs.Empty);
             }
@@ -442,10 +417,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     private Avalonia.Controls.Window? GetParentWindow()
     {
-        if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        if (Application.Current?.ApplicationLifetime is
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
             return desktop.MainWindow;
         }
+
         return null;
     }
 
@@ -536,35 +513,25 @@ public partial class MaterialItemRow : ReactiveObject
 {
     public Func<int, Task<ObservableCollection<MaterialUnitDto>>>? LoadMaterialUnitsFunc { get; set; }
 
-    [Reactive]
-    private Material? _selectedMaterial;
+    [Reactive] private Material? _selectedMaterial;
 
-    [Reactive]
-    private MaterialUnitDto? _selectedMaterialUnit;
+    [Reactive] private MaterialUnitDto? _selectedMaterialUnit;
 
-    [Reactive]
-    private ObservableCollection<MaterialUnitDto> _materialUnits = new();
+    [Reactive] private ObservableCollection<MaterialUnitDto> _materialUnits = new();
 
-    [Reactive]
-    private decimal? _waybillQuantity;
+    [Reactive] private decimal? _waybillQuantity;
 
-    [Reactive]
-    private decimal? _waybillWeight;
+    [Reactive] private decimal? _waybillWeight;
 
-    [Reactive]
-    private decimal? _actualQuantity;
+    [Reactive] private decimal? _actualQuantity;
 
-    [Reactive]
-    private decimal? _actualWeight;
+    [Reactive] private decimal? _actualWeight;
 
-    [Reactive]
-    private decimal? _difference;
+    [Reactive] private decimal? _difference;
 
-    [Reactive]
-    private decimal? _deviationRate;
+    [Reactive] private decimal? _deviationRate;
 
-    [Reactive]
-    private string _deviationResult = "-";
+    [Reactive] private string _deviationResult = "-";
 
     public string WaybillQuantityDisplay => WaybillQuantity?.ToString("F2") ?? "";
     public string WaybillWeightDisplay => WaybillWeight?.ToString("F2") ?? "";
@@ -641,14 +608,15 @@ public partial class MaterialItemRow : ReactiveObject
         }
     }
 
-    public void InitializeSelection(Material? material, ObservableCollection<MaterialUnitDto> units, int? selectedUnitId)
+    public void InitializeSelection(Material? material, ObservableCollection<MaterialUnitDto> units,
+        int? selectedUnitId)
     {
         var originalFunc = LoadMaterialUnitsFunc;
         LoadMaterialUnitsFunc = null;
 
         SelectedMaterial = material;
         SetMaterialUnits(units);
-        
+
         if (selectedUnitId.HasValue)
         {
             SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == selectedUnitId.Value);
