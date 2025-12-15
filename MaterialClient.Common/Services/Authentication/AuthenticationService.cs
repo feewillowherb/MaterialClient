@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
@@ -9,6 +10,7 @@ using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Json;
+using Volo.Abp.Security.Claims;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services.Authentication;
@@ -84,6 +86,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     private readonly IRepository<UserCredential, Guid> _credentialRepository;
     private readonly IRepository<UserSession, Guid> _sessionRepository;
     private readonly IJsonSerializer _jsonSerializer;
+    private readonly ICurrentPrincipalAccessor _currentPrincipalAccessor;
 
     [UnitOfWork]
     public async Task<UserSession> LoginAsync(string username, string password, bool rememberMe)
@@ -200,6 +203,9 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
 
         await _sessionRepository.InsertAsync(session);
 
+        // Set current user information
+        SetCurrentUser(session);
+
         return session;
     }
 
@@ -311,6 +317,9 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
 
         await _sessionRepository.InsertAsync(session);
 
+        // Set current user information
+        SetCurrentUser(session);
+
         return session;
     }
 
@@ -389,5 +398,27 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
             session.UpdateActivity();
             await _sessionRepository.UpdateAsync(session);
         }
+    }
+
+    /// <summary>
+    /// 设置当前用户信息到 ICurrentPrincipalAccessor
+    /// </summary>
+    /// <param name="session">用户会话信息</param>
+    private void SetCurrentUser(UserSession session)
+    {
+        var userName = !string.IsNullOrWhiteSpace(session.TrueName) 
+            ? session.TrueName 
+            : session.Username;
+
+        var claims = new List<Claim>
+        {
+            new Claim(AbpClaimTypes.UserId, session.Id.ToString()),
+            new Claim(AbpClaimTypes.UserName, userName)
+        };
+
+        var claimsIdentity = new ClaimsIdentity(claims);
+        var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+
+        _currentPrincipalAccessor.Change(claimsPrincipal);
     }
 }

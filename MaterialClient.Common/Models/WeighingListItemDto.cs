@@ -40,14 +40,34 @@ public class WeighingListItemDto
     public WeighingListItemType ItemType { get; set; }
     
     /// <summary>
-    /// 原始称重记录（当 ItemType == WeighingRecord 时有值）
+    /// 供应商ID
     /// </summary>
-    public WeighingRecord? WeighingRecord { get; set; }
+    public int? ProviderId { get; set; }
     
     /// <summary>
-    /// 原始运单（当 ItemType == Waybill 时有值）
+    /// 物料ID
     /// </summary>
-    public Waybill? Waybill { get; set; }
+    public int? MaterialId { get; set; }
+    
+    /// <summary>
+    /// 物料单位ID
+    /// </summary>
+    public int? MaterialUnitId { get; set; }
+    
+    /// <summary>
+    /// 收发料类型
+    /// </summary>
+    public DeliveryType? DeliveryType { get; set; }
+    
+    /// <summary>
+    /// 重量（称重记录的重量，或运单的总重量）
+    /// </summary>
+    public decimal? Weight { get; set; }
+    
+    /// <summary>
+    /// 订单号（仅运单有值）
+    /// </summary>
+    public string? OrderNo { get; set; }
     
     /// <summary>
     /// 从 WeighingRecord 创建 DTO
@@ -62,8 +82,12 @@ public class WeighingListItemDto
             OutTime = null,
             IsCompleted = false,
             ItemType = WeighingListItemType.WeighingRecord,
-            WeighingRecord = record,
-            Waybill = null
+            ProviderId = record.ProviderId,
+            MaterialId = record.MaterialId,
+            MaterialUnitId = record.MaterialUnitId,
+            DeliveryType = record.DeliveryType,
+            Weight = record.Weight,
+            OrderNo = null
         };
     }
     
@@ -80,8 +104,12 @@ public class WeighingListItemDto
             OutTime = waybill.OutTime,
             IsCompleted = waybill.OrderType == OrderTypeEnum.Completed,
             ItemType = WeighingListItemType.Waybill,
-            WeighingRecord = null,
-            Waybill = waybill
+            ProviderId = waybill.ProviderId,
+            MaterialId = waybill.MaterialId,
+            MaterialUnitId = waybill.MaterialUnitId,
+            DeliveryType = waybill.DeliveryType,
+            Weight = waybill.OrderTotalWeight,
+            OrderNo = waybill.OrderNo
         };
     }
 }
