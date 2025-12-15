@@ -154,7 +154,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         Remark = string.Empty;
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
-        Operator = string.Empty;
+        Operator = _listItem.Operator;
         IsMatchButtonVisible = true;
 
         MaterialItems.Clear();
