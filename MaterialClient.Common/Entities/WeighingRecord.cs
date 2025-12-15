@@ -39,12 +39,15 @@ public class WeighingRecord : FullAuditedEntity<long>
         Weight = weight;
     }
 
-    public void Update(string? plateNumber, int? providerId, int? materialId, decimal? waybillQuantity)
+    public void Update(string? plateNumber, int? providerId, int? materialId,
+        int? materialUnitId,
+        decimal? waybillQuantity)
     {
         PlateNumber = plateNumber;
         ProviderId = providerId;
         MaterialId = materialId;
         WaybillQuantity = waybillQuantity;
+        MaterialUnitId = materialUnitId;
     }
 
     /// <summary>

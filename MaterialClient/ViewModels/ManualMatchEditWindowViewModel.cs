@@ -428,7 +428,9 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             TicketPhoto = null;
 
             // 根据时间判断哪些是进场照片，哪些是出场照片
-            var earlierRecord = _currentRecord.CreationTime <= _matchedRecord.CreationTime ? _currentRecord : _matchedRecord;
+            var earlierRecord = _currentRecord.CreationTime <= _matchedRecord.CreationTime
+                ? _currentRecord
+                : _matchedRecord;
             var earlierFiles = earlierRecord.Id == _currentRecord.Id ? currentFiles : matchedFiles;
             var laterFiles = earlierRecord.Id == _currentRecord.Id ? matchedFiles : currentFiles;
 
@@ -504,9 +506,9 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 PlateNumber,
                 SelectedProvider?.Id,
                 SelectedMaterial?.Id,
+                SelectedMaterialUnit?.Id,
                 waybillQuantity
             );
-            _currentRecord.MaterialUnitId = SelectedMaterialUnit?.Id;
             _currentRecord.DeliveryType = _deliveryType;
 
             // 设置匹配关系
@@ -544,9 +546,9 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 PlateNumber,
                 SelectedProvider?.Id,
                 SelectedMaterial?.Id,
+                SelectedMaterialUnit?.Id,
                 waybillQuantity
             );
-            _matchedRecord.MaterialUnitId = SelectedMaterialUnit?.Id;
             _matchedRecord.DeliveryType = _deliveryType;
 
             // 保存到数据库

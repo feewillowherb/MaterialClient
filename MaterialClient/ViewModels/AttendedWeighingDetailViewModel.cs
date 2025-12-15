@@ -429,11 +429,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 PlateNumber,
                 providerId,
                 materialId,
+                materialUnitId,
                 waybillQuantity
             );
-
-            // 更新材料单位ID
-            _weighingRecord.MaterialUnitId = materialUnitId;
+            
 
             // 保存到数据库
             await _weighingRecordRepository.UpdateAsync(_weighingRecord);
