@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 
@@ -82,6 +83,7 @@ public class WeighingListItemDto
     /// </summary>
     public static WeighingListItemDto FromWeighingRecord(WeighingRecord record)
     {
+        var firstMaterial = record.Materials?.FirstOrDefault();
         return new WeighingListItemDto
         {
             Id = record.Id,
@@ -91,12 +93,12 @@ public class WeighingListItemDto
             IsCompleted = false,
             ItemType = WeighingListItemType.WeighingRecord,
             ProviderId = record.ProviderId,
-            MaterialId = record.MaterialId,
-            MaterialUnitId = record.MaterialUnitId,
+            MaterialId = firstMaterial?.MaterialId,
+            MaterialUnitId = firstMaterial?.MaterialUnitId,
             DeliveryType = record.DeliveryType,
-            Weight = record.Weight,
+            Weight = record.TotalWeight,
             OrderNo = null,
-            WaybillQuantity = record.WaybillQuantity
+            WaybillQuantity = firstMaterial?.WaybillQuantity
         };
     }
 

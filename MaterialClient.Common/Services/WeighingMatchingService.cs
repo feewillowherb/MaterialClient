@@ -111,8 +111,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         {
             var candidateRecords = unmatchedRecords
                 .Where(r => r.CreationTime >= validTime)
-                .Where(r => r.Weight > record.Weight)
-                .Where(r => (r.Weight - record.Weight) > MinTon)
+                .Where(r => r.TotalWeight > record.TotalWeight)
+                .Where(r => (r.TotalWeight - record.TotalWeight) > MinTon)
                 .OrderByDescending(r => r.CreationTime)
                 .ToList();
             if (candidateRecords.Count == 0)
@@ -135,8 +135,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         {
             var candidateRecords = unmatchedRecords
                 .Where(r => r.CreationTime >= validTime)
-                .Where(r => r.Weight < record.Weight)
-                .Where(r => (record.Weight - r.Weight) > MinTon)
+                .Where(r => r.TotalWeight < record.TotalWeight)
+                .Where(r => (record.TotalWeight - r.TotalWeight) > MinTon)
                 .OrderByDescending(r => r.CreationTime)
                 .ToList();
             if (candidateRecords.Count == 0)
@@ -196,13 +196,34 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             return;
         }
 
-        // 更新字段
+        // 更新基本字段
         if (input.PlateNumber != null) record.PlateNumber = input.PlateNumber;
         if (input.ProviderId.HasValue) record.ProviderId = input.ProviderId;
-        if (input.MaterialId.HasValue) record.MaterialId = input.MaterialId;
-        if (input.MaterialUnitId.HasValue) record.MaterialUnitId = input.MaterialUnitId;
-        if (input.WaybillQuantity.HasValue) record.WaybillQuantity = input.WaybillQuantity;
         if (input.DeliveryType.HasValue) record.DeliveryType = input.DeliveryType;
+
+        // 更新物料信息（在第一个 Material 中）
+        if (input.MaterialId.HasValue || input.MaterialUnitId.HasValue || input.WaybillQuantity.HasValue)
+        {
+            var materials = record.Materials;
+            var firstMaterial = materials.FirstOrDefault();
+            if (firstMaterial != null)
+            {
+                if (input.MaterialId.HasValue) firstMaterial.MaterialId = input.MaterialId;
+                if (input.MaterialUnitId.HasValue) firstMaterial.MaterialUnitId = input.MaterialUnitId;
+                if (input.WaybillQuantity.HasValue) firstMaterial.WaybillQuantity = input.WaybillQuantity;
+                // 重新设置以触发 JSON 序列化
+                record.Materials = materials;
+            }
+            else
+            {
+                // 创建新的物料
+                record.AddMaterial(new WeighingRecordMaterial(
+                    0,
+                    input.MaterialId,
+                    input.MaterialUnitId,
+                    input.WaybillQuantity));
+            }
+        }
 
         await _weighingRecordRepository.UpdateAsync(record);
     }
@@ -299,10 +320,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         // 先插入 Waybill 获取 Id
         await _waybillRepository.InsertAsync(waybill);
 
-        // 计算物料信息
-        var materialId = joinRecord.MaterialId ?? outRecord.MaterialId;
-        var materialUnitId = joinRecord.MaterialUnitId ?? outRecord.MaterialUnitId;
-        var waybillQuantity = joinRecord.WaybillQuantity ?? outRecord.WaybillQuantity;
+        // 计算物料信息（从 Materials 集合中获取）
+        var joinMaterial = joinRecord.Materials?.FirstOrDefault();
+        var outMaterial = outRecord.Materials?.FirstOrDefault();
+        var materialId = joinMaterial?.MaterialId ?? outMaterial?.MaterialId;
+        var materialUnitId = joinMaterial?.MaterialUnitId ?? outMaterial?.MaterialUnitId;
+        var waybillQuantity = joinMaterial?.WaybillQuantity ?? outMaterial?.WaybillQuantity;
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
 
         await _weighingRecordRepository.UpdateAsync(joinRecord);
@@ -344,8 +367,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             // 收料：当前记录是出场（皮重），找比当前 record 重的记录（进场/毛重）
             return unmatchedRecords
                 .Where(r => r.CreationTime >= validTime)
-                .Where(r => r.Weight > record.Weight)
-                .Where(r => (r.Weight - record.Weight) > MinTon)
+                .Where(r => r.TotalWeight > record.TotalWeight)
+                .Where(r => (r.TotalWeight - record.TotalWeight) > MinTon)
                 .OrderByDescending(r => r.CreationTime)
                 .ToList();
         }
@@ -354,8 +377,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             // 发料：当前记录是出场（毛重），找比当前 record 轻的记录（进场/皮重）
             return unmatchedRecords
                 .Where(r => r.CreationTime >= validTime)
-                .Where(r => r.Weight < record.Weight)
-                .Where(r => (record.Weight - r.Weight) > MinTon)
+                .Where(r => r.TotalWeight < record.TotalWeight)
+                .Where(r => (record.TotalWeight - r.TotalWeight) > MinTon)
                 .OrderByDescending(r => r.CreationTime)
                 .ToList();
         }

@@ -178,15 +178,15 @@ public class Waybill : FullAuditedEntity<long>
     {
         if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Sending)
         {
-            OrderTruckWeight = joinRecord.Weight;
-            OrderTotalWeight = outRecord.Weight;
-            OrderGoodsWeight = outRecord.Weight - joinRecord.Weight;
+            OrderTruckWeight = joinRecord.TotalWeight;
+            OrderTotalWeight = outRecord.TotalWeight;
+            OrderGoodsWeight = outRecord.TotalWeight - joinRecord.TotalWeight;
         }
         else if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Receiving)
         {
-            OrderTruckWeight = outRecord.Weight;
-            OrderTotalWeight = joinRecord.Weight;
-            OrderGoodsWeight = joinRecord.Weight - outRecord.Weight;
+            OrderTruckWeight = outRecord.TotalWeight;
+            OrderTotalWeight = joinRecord.TotalWeight;
+            OrderGoodsWeight = joinRecord.TotalWeight - outRecord.TotalWeight;
         }
     }
 

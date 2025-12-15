@@ -50,6 +50,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Ignore<ScaleSettings>();
         modelBuilder.Ignore<DocumentScannerConfig>();
         modelBuilder.Ignore<SystemSettings>();
+        modelBuilder.Ignore<WeighingRecordMaterial>(); // Stored as JSON in WeighingRecord
 
         // Configure Material relationships
         modelBuilder.Entity<Material>(entity =>
@@ -115,7 +116,13 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         {
             entity.ConfigureByConvention();
 
-            entity.Property(e => e.Weight).IsRequired();
+            entity.Property(e => e.TotalWeight).IsRequired();
+            
+            // MaterialsJson stores the list of materials as JSON
+            entity.Property(e => e.MaterialsJson);
+            
+            // Ignore the computed Materials property (it's derived from MaterialsJson)
+            entity.Ignore(e => e.Materials);
         });
 
         // Configure AttachmentFile relationships

@@ -175,16 +175,16 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         {
             if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
             {
-                GrossWeight = _currentRecord.Weight;
+                GrossWeight = _currentRecord.TotalWeight;
                 GrossWeightTime = _currentRecord.CreationTime;
-                TareWeight = _matchedRecord.Weight;
+                TareWeight = _matchedRecord.TotalWeight;
                 TareWeightTime = _matchedRecord.CreationTime;
             }
             else
             {
-                GrossWeight = _matchedRecord.Weight;
+                GrossWeight = _matchedRecord.TotalWeight;
                 GrossWeightTime = _matchedRecord.CreationTime;
-                TareWeight = _currentRecord.Weight;
+                TareWeight = _currentRecord.TotalWeight;
                 TareWeightTime = _currentRecord.CreationTime;
             }
         }
@@ -192,16 +192,16 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         {
             if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
             {
-                TareWeight = _currentRecord.Weight;
+                TareWeight = _currentRecord.TotalWeight;
                 TareWeightTime = _currentRecord.CreationTime;
-                GrossWeight = _matchedRecord.Weight;
+                GrossWeight = _matchedRecord.TotalWeight;
                 GrossWeightTime = _matchedRecord.CreationTime;
             }
             else
             {
-                TareWeight = _matchedRecord.Weight;
+                TareWeight = _matchedRecord.TotalWeight;
                 TareWeightTime = _matchedRecord.CreationTime;
-                GrossWeight = _currentRecord.Weight;
+                GrossWeight = _currentRecord.TotalWeight;
                 GrossWeightTime = _currentRecord.CreationTime;
             }
         }
@@ -228,7 +228,10 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 SelectedProvider = Providers.FirstOrDefault(p => p.Id == providerId.Value);
             }
 
-            var materialId = _currentRecord.MaterialId ?? _matchedRecord.MaterialId;
+            // 从 Materials 集合获取物料信息
+            var currentMaterial = _currentRecord.Materials?.FirstOrDefault();
+            var matchedMaterial = _matchedRecord.Materials?.FirstOrDefault();
+            var materialId = currentMaterial?.MaterialId ?? matchedMaterial?.MaterialId;
             if (materialId.HasValue)
             {
                 SelectedMaterial = Materials.FirstOrDefault(m => m.Id == materialId.Value);
@@ -237,7 +240,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 {
                     await LoadMaterialUnitsAsync(SelectedMaterial.Id);
 
-                    var materialUnitId = _currentRecord.MaterialUnitId ?? _matchedRecord.MaterialUnitId;
+                    var materialUnitId = currentMaterial?.MaterialUnitId ?? matchedMaterial?.MaterialUnitId;
                     if (materialUnitId.HasValue)
                     {
                         SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == materialUnitId.Value);
@@ -245,7 +248,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 }
             }
 
-            var waybillQuantity = _currentRecord.WaybillQuantity ?? _matchedRecord.WaybillQuantity;
+            var waybillQuantity = currentMaterial?.WaybillQuantity ?? matchedMaterial?.WaybillQuantity;
             if (waybillQuantity.HasValue)
             {
                 WaybillQuantity = waybillQuantity.Value.ToString("F2");
@@ -419,14 +422,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 waybillQuantity = qty;
             }
 
-            _currentRecord.Update(
-                PlateNumber,
-                SelectedProvider?.Id,
-                SelectedMaterial?.Id,
-                SelectedMaterialUnit?.Id,
-                waybillQuantity
-            );
+            // 更新基本信息
+            _currentRecord.Update(PlateNumber, SelectedProvider?.Id);
             _currentRecord.DeliveryType = _deliveryType;
+
+            // 更新物料信息（在第一个 Material 中）
+            UpdateRecordMaterial(_currentRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
 
             if (_deliveryType == DeliveryType.Receiving)
             {
@@ -455,14 +456,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 }
             }
 
-            _matchedRecord.Update(
-                PlateNumber,
-                SelectedProvider?.Id,
-                SelectedMaterial?.Id,
-                SelectedMaterialUnit?.Id,
-                waybillQuantity
-            );
+            // 更新匹配记录的基本信息
+            _matchedRecord.Update(PlateNumber, SelectedProvider?.Id);
             _matchedRecord.DeliveryType = _deliveryType;
+
+            // 更新匹配记录的物料信息
+            UpdateRecordMaterial(_matchedRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
 
             await _weighingRecordRepository.UpdateAsync(_currentRecord);
             await _weighingRecordRepository.UpdateAsync(_matchedRecord);
@@ -473,6 +472,31 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         {
             System.Diagnostics.Debug.WriteLine($"保存失败: {ex.Message}");
             return false;
+        }
+    }
+
+    private void UpdateRecordMaterial(WeighingRecord record, int? materialId, int? materialUnitId, decimal? waybillQuantity)
+    {
+        var materials = record.Materials;
+        var firstMaterial = materials.FirstOrDefault();
+        
+        if (firstMaterial != null)
+        {
+            firstMaterial.MaterialId = materialId;
+            firstMaterial.MaterialUnitId = materialUnitId;
+            firstMaterial.WaybillQuantity = waybillQuantity;
+            // 重新设置以触发 JSON 序列化
+            record.Materials = materials;
+        }
+        else if (materialId.HasValue || materialUnitId.HasValue || waybillQuantity.HasValue)
+        {
+            // 如果没有现有物料记录但需要设置值，创建新的
+            var newMaterial = new WeighingRecordMaterial(
+                0, // Weight 将在业务逻辑中设置
+                materialId, 
+                materialUnitId, 
+                waybillQuantity);
+            record.AddMaterial(newMaterial);
         }
     }
 

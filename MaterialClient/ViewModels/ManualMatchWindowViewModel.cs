@@ -123,7 +123,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
 
         // 初始化当前记录信息
         PlateNumber = currentRecord.PlateNumber;
-        Weight = currentRecord.Weight;
+        Weight = currentRecord.TotalWeight;
         JoinTime = currentRecord.CreationTime;
 
         // 如果记录已有 DeliveryType，使用它；否则默认收料
@@ -294,7 +294,7 @@ public partial class CandidateRecordViewModel : ReactiveObject
     /// <summary>
     /// 车辆重量
     /// </summary>
-    public decimal Weight => Record.Weight;
+    public decimal Weight => Record.TotalWeight;
 
     /// <summary>
     /// 进场时间
