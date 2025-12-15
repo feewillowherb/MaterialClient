@@ -2,10 +2,10 @@ using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Views;
@@ -340,8 +340,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
         try
         {
-            var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
-
             decimal? waybillQuantity = null;
             if (!string.IsNullOrWhiteSpace(WaybillQuantity))
             {
@@ -357,15 +355,17 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             int? materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
             int? providerId = SelectedProvider?.Id;
 
-            weighingRecord.Update(
+            var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+            await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
+                _listItem.Id,
+                _listItem.ItemType,
                 PlateNumber,
                 providerId,
                 materialId,
                 materialUnitId,
                 waybillQuantity
-            );
+            ));
 
-            await _weighingRecordRepository.UpdateAsync(weighingRecord);
             SaveCompleted?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)

@@ -191,7 +191,7 @@
                         <DataGridTemplateColumn Header="运单数量" Width="85">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBox Text="{Binding WaybillQuantity}"
+                                    <TextBox Text="{Binding WaybillQuantity, Mode=TwoWay}"
                                              HorizontalAlignment="Stretch"
                                              VerticalAlignment="Center"
                                              TextAlignment="Center"

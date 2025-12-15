@@ -24,6 +24,12 @@ public interface IWeighingMatchingService
     Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input);
     
     /// <summary>
+    /// 更新列表项（根据类型自动判断更新 WeighingRecord 或 Waybill）
+    /// </summary>
+    /// <param name="input">更新参数</param>
+    Task UpdateListItemAsync(UpdateListItemInput input);
+    
+    /// <summary>
     /// 获取可匹配的候选记录列表
     /// </summary>
     /// <param name="record">当前称重记录</param>
@@ -199,6 +205,34 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (input.DeliveryType.HasValue) record.DeliveryType = input.DeliveryType;
 
         await _weighingRecordRepository.UpdateAsync(record);
+    }
+
+    [UnitOfWork]
+    public async Task UpdateListItemAsync(UpdateListItemInput input)
+    {
+        if (input.ItemType == WeighingListItemType.WeighingRecord)
+        {
+            await UpdateWeighingRecordAsync(new UpdateWeighingRecordInput(
+                input.Id,
+                input.PlateNumber,
+                input.ProviderId,
+                input.MaterialId,
+                input.MaterialUnitId,
+                input.WaybillQuantity,
+                null
+            ));
+        }
+        else if (input.ItemType == WeighingListItemType.Waybill)
+        {
+            await UpdateWaybillAsync(new UpdateWaybillInput(
+                input.Id,
+                input.PlateNumber,
+                input.ProviderId,
+                input.MaterialId,
+                input.MaterialUnitId,
+                input.WaybillQuantity
+            ));
+        }
     }
 
     private async Task TryCalculateMaterialAsync(Waybill waybill, int? materialId, int? materialUnitId,
@@ -424,4 +458,14 @@ public record UpdateWeighingRecordInput(
     int? MaterialUnitId,
     decimal? WaybillQuantity,
     DeliveryType? DeliveryType
+);
+
+public record UpdateListItemInput(
+    long Id,
+    WeighingListItemType ItemType,
+    string? PlateNumber,
+    int? ProviderId,
+    int? MaterialId,
+    int? MaterialUnitId,
+    decimal? WaybillQuantity
 );
