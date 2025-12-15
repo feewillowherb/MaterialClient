@@ -1,4 +1,5 @@
 using System;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
 using ReactiveUI;
@@ -42,13 +43,12 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase
     {
         _authenticationService = authenticationService;
 
+        this.WhenAnyValue(x => x.ErrorMessage)
+            .Select(msg => !string.IsNullOrEmpty(msg))
+            .Subscribe(hasError => HasError = hasError);
+
         // Load saved credentials
         _ = LoadSavedCredentialsAsync();
-    }
-
-    partial void OnErrorMessageChanged(string value)
-    {
-        HasError = !string.IsNullOrEmpty(value);
     }
 
     #region Commands

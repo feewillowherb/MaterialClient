@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -84,12 +85,13 @@ public partial class PhotoGridViewModel : ViewModelBase
     public PhotoGridViewModel(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-    }
 
-    partial void OnSelectedPhotoTabIndexChanged(int value)
-    {
-        this.RaisePropertyChanged(nameof(IsEntryPhotoTabSelected));
-        this.RaisePropertyChanged(nameof(IsExitPhotoTabSelected));
+        this.WhenAnyValue(x => x.SelectedPhotoTabIndex)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(IsEntryPhotoTabSelected));
+                this.RaisePropertyChanged(nameof(IsExitPhotoTabSelected));
+            });
     }
 
     /// <summary>

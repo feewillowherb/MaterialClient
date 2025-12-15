@@ -1,5 +1,7 @@
+using System;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using System.Reactive.Linq;
 
 namespace MaterialClient.ViewModels;
 
@@ -37,13 +39,11 @@ public partial class CameraStatusViewModel : ReactiveObject
     /// </summary>
     public string DisplayAddress => $"{Ip}:{Port}";
 
-    partial void OnIpChanged(string value)
+    public CameraStatusViewModel()
     {
-        this.RaisePropertyChanged(nameof(DisplayAddress));
-    }
-
-    partial void OnPortChanged(string value)
-    {
-        this.RaisePropertyChanged(nameof(DisplayAddress));
+        Action<(string, string)> updateDisplay = _ => this.RaisePropertyChanged(nameof(DisplayAddress));
+        
+        this.WhenAnyValue(x => x.Ip, x => x.Port)
+            .Subscribe(updateDisplay);
     }
 }

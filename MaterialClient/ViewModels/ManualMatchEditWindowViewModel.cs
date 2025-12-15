@@ -158,13 +158,11 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 }
             });
 
+        this.WhenAnyValue(x => x.WaybillQuantity)
+            .Subscribe(_ => UpdateWaybillWeight());
+
         _ = LoadDropdownDataAsync();
         _ = LoadPhotosAsync();
-    }
-
-    partial void OnWaybillQuantityChanged(string? value)
-    {
-        UpdateWaybillWeight();
     }
 
     #region 初始化

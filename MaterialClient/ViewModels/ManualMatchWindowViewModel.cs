@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -128,19 +129,18 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         // 如果记录已有 DeliveryType，使用它；否则默认收料
         IsReceiving = currentRecord.DeliveryType == null || currentRecord.DeliveryType == DeliveryType.Receiving;
 
+        this.WhenAnyValue(x => x.IsReceiving)
+            .Subscribe(async _ =>
+            {
+                this.RaisePropertyChanged(nameof(SelectedDeliveryType));
+                await LoadCandidateRecordsAsync();
+            });
+
+        this.WhenAnyValue(x => x.SelectedCandidateRecord)
+            .Subscribe(value => CanConfirm = value != null);
+
         // 加载数据
         _ = InitializeAsync();
-    }
-
-    partial void OnIsReceivingChanged(bool value)
-    {
-        this.RaisePropertyChanged(nameof(SelectedDeliveryType));
-        _ = LoadCandidateRecordsAsync();
-    }
-
-    partial void OnSelectedCandidateRecordChanged(CandidateRecordViewModel? value)
-    {
-        CanConfirm = value != null;
     }
 
     private async Task InitializeAsync()

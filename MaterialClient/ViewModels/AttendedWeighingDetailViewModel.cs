@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
@@ -119,6 +120,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         InitializeData();
         _ = LoadDropdownDataAsync();
 
+        // Setup property change subscriptions
+        this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
+            .Subscribe(_ => GoodsWeight = AllWeight - TruckWeight);
+
+        this.WhenAnyValue(x => x.WaybillQuantity)
+            .Subscribe(_ => WaybillQuantityError = null);
+
+        this.WhenAnyValue(x => x.PlateNumber)
+            .Subscribe(_ => PlateNumberError = null);
+
         this.WhenAnyValue(x => x.SelectedProvider)
             .Subscribe(provider =>
             {
@@ -152,26 +163,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     SelectedMaterialUnitId = unit.Id;
                 }
             });
-    }
-
-    partial void OnAllWeightChanged(decimal value)
-    {
-        GoodsWeight = value - TruckWeight;
-    }
-
-    partial void OnTruckWeightChanged(decimal value)
-    {
-        GoodsWeight = AllWeight - value;
-    }
-
-    partial void OnWaybillQuantityChanged(string? value)
-    {
-        WaybillQuantityError = null;
-    }
-
-    partial void OnPlateNumberChanged(string? value)
-    {
-        PlateNumberError = null;
     }
 
     #region 初始化
@@ -583,52 +574,42 @@ public partial class MaterialItemRow : ReactiveObject
     public string DeviationRateDisplay => DeviationRate.HasValue ? $"{DeviationRate.Value:F2}%" : "-";
     public string RateDisplay => SelectedMaterialUnit?.Rate.ToString("F2") ?? "";
 
-    partial void OnSelectedMaterialChanged(Material? value)
+    public MaterialItemRow()
     {
-        if (value != null && LoadMaterialUnitsFunc != null)
-        {
-            _ = LoadMaterialUnitsInternalAsync(value.Id);
-        }
-        else
-        {
-            MaterialUnits.Clear();
-            SelectedMaterialUnit = null;
-        }
-    }
+        this.WhenAnyValue(x => x.SelectedMaterial)
+            .Subscribe(async value =>
+            {
+                if (value != null && LoadMaterialUnitsFunc != null)
+                {
+                    await LoadMaterialUnitsInternalAsync(value.Id);
+                }
+                else
+                {
+                    MaterialUnits.Clear();
+                    SelectedMaterialUnit = null;
+                }
+            });
 
-    partial void OnSelectedMaterialUnitChanged(MaterialUnitDto? value)
-    {
-        this.RaisePropertyChanged(nameof(RateDisplay));
-    }
+        this.WhenAnyValue(x => x.SelectedMaterialUnit)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(RateDisplay)));
 
-    partial void OnWaybillQuantityChanged(decimal? value)
-    {
-        this.RaisePropertyChanged(nameof(WaybillQuantityDisplay));
-    }
+        this.WhenAnyValue(x => x.WaybillQuantity)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(WaybillQuantityDisplay)));
 
-    partial void OnWaybillWeightChanged(decimal? value)
-    {
-        this.RaisePropertyChanged(nameof(WaybillWeightDisplay));
-    }
+        this.WhenAnyValue(x => x.WaybillWeight)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(WaybillWeightDisplay)));
 
-    partial void OnActualQuantityChanged(decimal? value)
-    {
-        this.RaisePropertyChanged(nameof(ActualQuantityDisplay));
-    }
+        this.WhenAnyValue(x => x.ActualQuantity)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(ActualQuantityDisplay)));
 
-    partial void OnActualWeightChanged(decimal? value)
-    {
-        this.RaisePropertyChanged(nameof(ActualWeightDisplay));
-    }
+        this.WhenAnyValue(x => x.ActualWeight)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(ActualWeightDisplay)));
 
-    partial void OnDifferenceChanged(decimal? value)
-    {
-        this.RaisePropertyChanged(nameof(DifferenceDisplay));
-    }
+        this.WhenAnyValue(x => x.Difference)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(DifferenceDisplay)));
 
-    partial void OnDeviationRateChanged(decimal? value)
-    {
-        this.RaisePropertyChanged(nameof(DeviationRateDisplay));
+        this.WhenAnyValue(x => x.DeviationRate)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(DeviationRateDisplay)));
     }
 
     private async Task LoadMaterialUnitsInternalAsync(int materialId)

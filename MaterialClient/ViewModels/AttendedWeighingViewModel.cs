@@ -136,7 +136,57 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         _attendedWeighingService = attendedWeighingService;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
-        CameraStatuses.CollectionChanged += (s, e) => this.RaisePropertyChanged(nameof(HasCameraStatuses));
+        
+        // Setup property change notifications
+        this.WhenAnyValue(x => x.SelectedWeighingRecord)
+            .Subscribe(async value =>
+            {
+                if (value != null)
+                {
+                    SelectedWaybill = null;
+                    await LoadWeighingRecordPhotos(value);
+                }
+                else
+                {
+                    VehiclePhotos.Clear();
+                    BillPhotoPath = null;
+                    PhotoGridViewModel?.Clear();
+                }
+                this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
+                this.RaisePropertyChanged(nameof(IsWaybillSelected));
+            })
+            .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.SelectedWaybill)
+            .Subscribe(async value =>
+            {
+                if (value != null)
+                {
+                    SelectedWeighingRecord = null;
+                    await LoadWaybillPhotos(value);
+                }
+                else
+                {
+                    VehiclePhotos.Clear();
+                    BillPhotoPath = null;
+                    PhotoGridViewModel?.Clear();
+                }
+                this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
+                this.RaisePropertyChanged(nameof(IsWaybillSelected));
+            })
+            .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.CameraStatuses.Count)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(HasCameraStatuses)))
+            .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.IsShowingMainView)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsShowingDetailView)))
+            .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(PageInfoText)))
+            .DisposeWith(_disposables);
 
         _ = RefreshAsync();
         StartTimeUpdateTimer();
@@ -153,60 +203,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartPlateNumberObservable();
         StartStatusObservable();
         StartWeighingRecordCreatedObservable();
-    }
-
-    partial void OnSelectedWeighingRecordChanged(WeighingRecord? value)
-    {
-        if (value != null)
-        {
-            SelectedWaybill = null;
-            _ = LoadWeighingRecordPhotos(value);
-        }
-        else
-        {
-            VehiclePhotos.Clear();
-            BillPhotoPath = null;
-            PhotoGridViewModel?.Clear();
-        }
-        this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
-        this.RaisePropertyChanged(nameof(IsWaybillSelected));
-    }
-
-    partial void OnSelectedWaybillChanged(Waybill? value)
-    {
-        if (value != null)
-        {
-            SelectedWeighingRecord = null;
-            _ = LoadWaybillPhotos(value);
-        }
-        else
-        {
-            VehiclePhotos.Clear();
-            BillPhotoPath = null;
-            PhotoGridViewModel?.Clear();
-        }
-        this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
-        this.RaisePropertyChanged(nameof(IsWaybillSelected));
-    }
-
-    partial void OnCameraStatusesChanged(ObservableCollection<CameraStatusViewModel> value)
-    {
-        this.RaisePropertyChanged(nameof(HasCameraStatuses));
-    }
-
-    partial void OnIsShowingMainViewChanged(bool value)
-    {
-        this.RaisePropertyChanged(nameof(IsShowingDetailView));
-    }
-
-    partial void OnCurrentPageChanged(int value)
-    {
-        this.RaisePropertyChanged(nameof(PageInfoText));
-    }
-
-    partial void OnTotalPagesChanged(int value)
-    {
-        this.RaisePropertyChanged(nameof(PageInfoText));
     }
 
     private async Task StartAllDevicesAsync()

@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO.Ports;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
@@ -312,8 +313,9 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
         }
     }
 
-    partial void OnDirectionChanged(LicensePlateDirection value)
+    public LicensePlateRecognitionConfigViewModel()
     {
-        this.RaisePropertyChanged(nameof(DirectionIndex));
+        this.WhenAnyValue(x => x.Direction)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(DirectionIndex)));
     }
 }
