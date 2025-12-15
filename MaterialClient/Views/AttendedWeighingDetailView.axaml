@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
              x:Class="MaterialClient.Views.AttendedWeighingDetailView"
-             x:DataType="vm:AttendedWeighingDetailViewModel">
+             x:DataType="vm:AttendedWeighingDetailViewModel"
+             x:Name="DetailViewRoot">
     <ScrollViewer HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto">
         <Grid Background="#F5F6FA" Margin="10">
@@ -146,18 +147,13 @@
                         <DataGridTemplateColumn Header="材料名称" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.Materials}"
-                                              SelectedItem="{Binding SelectedMaterial}"
+                                    <ComboBox ItemsSource="{Binding #DetailViewRoot.((vm:AttendedWeighingDetailViewModel)DataContext).Materials}"
+                                              SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding Name}"
                                               BorderThickness="0"
                                               Background="Transparent"
                                               Padding="4,2"
-                                              FontSize="12">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding Name}" FontSize="11" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                              FontSize="12" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -167,17 +163,12 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <ComboBox ItemsSource="{Binding MaterialUnits}"
-                                              SelectedItem="{Binding SelectedMaterialUnit}"
+                                              SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding DisplayName}"
                                               BorderThickness="0"
                                               Background="Transparent"
                                               Padding="4,2"
-                                              FontSize="12">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding DisplayName}" FontSize="11" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                              FontSize="12" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

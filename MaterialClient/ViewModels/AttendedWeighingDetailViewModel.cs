@@ -586,6 +586,7 @@ public partial class MaterialItemRow : ReactiveObject
             try
             {
                 var units = await LoadMaterialUnitsFunc(materialId);
+                SelectedMaterialUnit = null;
                 MaterialUnits.Clear();
                 foreach (var unit in units)
                 {
