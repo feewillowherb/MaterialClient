@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -46,12 +47,12 @@ public class WeighingListItemDto
     public int? ProviderId { get; set; }
 
     /// <summary>
-    /// 物料ID
+    /// 物料ID（兼容旧代码，取第一个物料的ID）
     /// </summary>
     public int? MaterialId { get; set; }
 
     /// <summary>
-    /// 物料单位ID
+    /// 物料单位ID（兼容旧代码，取第一个物料的单位ID）
     /// </summary>
     public int? MaterialUnitId { get; set; }
 
@@ -71,7 +72,7 @@ public class WeighingListItemDto
     public string? OrderNo { get; set; }
 
     /// <summary>
-    /// 运单数量（WeighingRecord.WaybillQuantity 或 Waybill.OrderPlanOnPcs）
+    /// 运单数量（兼容旧代码，取第一个物料的数量）
     /// </summary>
     public decimal? WaybillQuantity { get; set; }
 
@@ -79,11 +80,18 @@ public class WeighingListItemDto
     public string? Operator { get; set; }
 
     /// <summary>
+    /// 物料列表（支持多物料）
+    /// </summary>
+    public List<WeighingListItemMaterialDto> Materials { get; set; } = new();
+
+    /// <summary>
     /// 从 WeighingRecord 创建 DTO
     /// </summary>
     public static WeighingListItemDto FromWeighingRecord(WeighingRecord record)
     {
-        var firstMaterial = record.Materials?.FirstOrDefault();
+        var materials = record.Materials ?? new List<WeighingRecordMaterial>();
+        var firstMaterial = materials.FirstOrDefault();
+        
         return new WeighingListItemDto
         {
             Id = record.Id,
@@ -98,7 +106,14 @@ public class WeighingListItemDto
             DeliveryType = record.DeliveryType,
             Weight = record.TotalWeight,
             OrderNo = null,
-            WaybillQuantity = firstMaterial?.WaybillQuantity
+            WaybillQuantity = firstMaterial?.WaybillQuantity,
+            Materials = materials.Select(m => new WeighingListItemMaterialDto
+            {
+                MaterialId = m.MaterialId,
+                MaterialUnitId = m.MaterialUnitId,
+                Weight = m.Weight,
+                WaybillQuantity = m.WaybillQuantity
+            }).ToList()
         };
     }
 
@@ -107,7 +122,7 @@ public class WeighingListItemDto
     /// </summary>
     public static WeighingListItemDto FromWaybill(Waybill waybill)
     {
-        return new WeighingListItemDto
+        var dto = new WeighingListItemDto
         {
             Id = waybill.Id,
             PlateNumber = waybill.PlateNumber,
@@ -123,5 +138,45 @@ public class WeighingListItemDto
             OrderNo = waybill.OrderNo,
             WaybillQuantity = waybill.OrderPlanOnPcs
         };
+        
+        // 如果有物料信息，添加到 Materials 列表
+        if (waybill.MaterialId.HasValue)
+        {
+            dto.Materials.Add(new WeighingListItemMaterialDto
+            {
+                MaterialId = waybill.MaterialId,
+                MaterialUnitId = waybill.MaterialUnitId,
+                Weight = waybill.OrderGoodsWeight,
+                WaybillQuantity = waybill.OrderPlanOnPcs
+            });
+        }
+        
+        return dto;
     }
+}
+
+/// <summary>
+/// 称重列表项物料 DTO
+/// </summary>
+public class WeighingListItemMaterialDto
+{
+    /// <summary>
+    /// 物料ID
+    /// </summary>
+    public int? MaterialId { get; set; }
+
+    /// <summary>
+    /// 物料单位ID
+    /// </summary>
+    public int? MaterialUnitId { get; set; }
+
+    /// <summary>
+    /// 重量
+    /// </summary>
+    public decimal? Weight { get; set; }
+
+    /// <summary>
+    /// 运单数量
+    /// </summary>
+    public decimal? WaybillQuantity { get; set; }
 }
