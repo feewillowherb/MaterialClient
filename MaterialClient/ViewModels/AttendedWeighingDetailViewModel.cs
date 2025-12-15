@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -21,7 +22,7 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class AttendedWeighingDetailViewModel : ViewModelBase
 {
-    private readonly WeighingRecord _weighingRecord;
+    private readonly WeighingListItemDto _listItem;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<Provider, int> _providerRepository;
@@ -148,14 +149,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     #endregion
 
     public AttendedWeighingDetailViewModel(
-        WeighingRecord weighingRecord,
+        WeighingListItemDto listItem,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IRepository<Material, int> materialRepository,
         IRepository<Provider, int> providerRepository,
         IRepository<MaterialUnit, int> materialUnitRepository,
         IServiceProvider serviceProvider)
     {
-        _weighingRecord = weighingRecord;
+        _listItem = listItem;
         _weighingRecordRepository = weighingRecordRepository;
         _materialRepository = materialRepository;
         _providerRepository = providerRepository;
@@ -210,28 +211,28 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     private void InitializeData()
     {
-        WeighingRecordId = _weighingRecord.Id;
-        AllWeight = _weighingRecord.Weight;
+        WeighingRecordId = _listItem.Id;
+        AllWeight = _listItem.Weight ?? 0;
         TruckWeight = 0; // TODO: 从数据获取皮重
         GoodsWeight = AllWeight - TruckWeight; // 计算净重
-        PlateNumber = _weighingRecord.PlateNumber;
-        SelectedProviderId = _weighingRecord.ProviderId;
-        SelectedMaterialId = _weighingRecord.MaterialId;
-        SelectedMaterialUnitId = _weighingRecord.MaterialUnitId;
+        PlateNumber = _listItem.PlateNumber;
+        SelectedProviderId = _listItem.ProviderId;
+        SelectedMaterialId = _listItem.MaterialId;
+        SelectedMaterialUnitId = _listItem.MaterialUnitId;
         // SelectedProvider, SelectedMaterial, SelectedMaterialUnit 将在加载下拉列表后设置
-        WaybillQuantity = _weighingRecord.WaybillQuantity?.ToString("F2");
+        WaybillQuantity = _listItem.WaybillQuantity?.ToString("F2");
         Remark = string.Empty; // TODO: 从实体获取备注字段
-        JoinTime = _weighingRecord.CreationTime;
-        OutTime = null; // TODO: 从数据获取出场时间
+        JoinTime = _listItem.JoinTime;
+        OutTime = _listItem.OutTime;
         Operator = string.Empty; // TODO: 从数据获取操作员
-        IsMatchButtonVisible = _weighingRecord.MatchedId == null;
+        IsMatchButtonVisible = true; // 默认显示，需要从 WeighingRecord 获取 MatchedId
 
         // 初始化材料项列表（添加一行默认数据）
         MaterialItems.Clear();
         MaterialItems.Add(new MaterialItemRow
         {
             LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
-            WaybillQuantity = _weighingRecord.WaybillQuantity,
+            WaybillQuantity = _listItem.WaybillQuantity,
             WaybillWeight = null,
             ActualQuantity = null,
             ActualWeight = GoodsWeight,
@@ -239,6 +240,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             DeviationRate = null,
             DeviationResult = "-"
         });
+        
+        // 异步加载完整的 WeighingRecord 信息（用于 MatchedId 等字段）
+        _ = LoadWeighingRecordDetailsAsync();
     }
 
     private async Task LoadDropdownDataAsync()
@@ -285,6 +289,21 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         catch
         {
             // 如果加载失败，保持空列表
+        }
+    }
+
+    private async Task LoadWeighingRecordDetailsAsync()
+    {
+        try
+        {
+            var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
+            
+            // 更新需要从 WeighingRecord 获取的字段（主要是 MatchedId）
+            IsMatchButtonVisible = weighingRecord.MatchedId == null;
+        }
+        catch
+        {
+            // 如果加载失败，保持默认值
         }
     }
 
@@ -405,6 +424,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
         try
         {
+            // 从数据库获取最新的 WeighingRecord
+            var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
+            
             // 解析运单数量
             decimal? waybillQuantity = null;
             if (!string.IsNullOrWhiteSpace(WaybillQuantity))
@@ -421,21 +443,20 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             int? materialId = firstRow?.SelectedMaterial?.Id;
             int? materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
 
-            // 直接从 SelectedProvider 获取供应商ID，避免订阅延迟问题
+            // 直接从 SelectedProvider 获取供应商ID
             int? providerId = SelectedProvider?.Id;
 
             // 更新称重记录
-            _weighingRecord.Update(
+            weighingRecord.Update(
                 PlateNumber,
                 providerId,
                 materialId,
                 materialUnitId,
                 waybillQuantity
             );
-            
 
             // 保存到数据库
-            await _weighingRecordRepository.UpdateAsync(_weighingRecord);
+            await _weighingRecordRepository.UpdateAsync(weighingRecord);
 
             // 触发保存成功事件
             SaveCompleted?.Invoke(this, EventArgs.Empty);
@@ -456,15 +477,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         try
         {
             // 检查车牌号是否为空
-            if (string.IsNullOrWhiteSpace(_weighingRecord.PlateNumber))
+            if (string.IsNullOrWhiteSpace(PlateNumber))
             {
                 // 提示用户需要先填写车牌号
                 PlateNumberError = "请先在上方填写车牌号后再进行匹配";
                 return;
             }
 
+            // 从数据库获取最新的 WeighingRecord
+            var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
+
             // 打开手动匹配窗口
-            var matchWindow = new ManualMatchWindow(_weighingRecord, _serviceProvider);
+            var matchWindow = new ManualMatchWindow(weighingRecord, _serviceProvider);
             
             var parentWin = GetParentWindow();
             WeighingRecord? matchedRecord;
@@ -483,7 +507,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             if (matchedRecord != null)
             {
                 // 打开 ManualMatchEditWindow
-                var editWindow = new ManualMatchEditWindow(_weighingRecord, matchedRecord, matchWindow.SelectedDeliveryType, _serviceProvider);
+                var editWindow = new ManualMatchEditWindow(weighingRecord, matchedRecord, matchWindow.SelectedDeliveryType, _serviceProvider);
                 await editWindow.ShowDialog(parentWin);
                 
                 // 匹配完成后刷新
@@ -517,8 +541,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
-            // 软删除：调用实体的删除方法
-            await _weighingRecordRepository.DeleteAsync(_weighingRecord.Id);
+            // 软删除
+            await _weighingRecordRepository.DeleteAsync(_listItem.Id);
 
             // 触发删除成功事件
             AbolishCompleted?.Invoke(this, EventArgs.Empty);

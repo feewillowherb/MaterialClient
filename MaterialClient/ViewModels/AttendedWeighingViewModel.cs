@@ -481,20 +481,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         {
             try
             {
-                // 手动创建 ViewModel，传入 WeighingRecord
+                // 手动创建 ViewModel，传入 WeighingListItemDto
                 var weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
                 var materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
                 var providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
                 var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
                 
+                // 设置选中的记录ID（用于高亮显示或其他用途）
                 var weighingRecord = await weighingRecordRepository.GetAsync(item.Id);
-                
-                // 设置选中的记录，用于高亮显示
                 SelectedWeighingRecord = weighingRecord;
                 CurrentWeighingRecordForDetail = weighingRecord;
 
+                // 传入 WeighingListItemDto 而不是 WeighingRecord
                 DetailViewModel = new AttendedWeighingDetailViewModel(
-                    weighingRecord,
+                    item,
                     weighingRecordRepository,
                     materialRepository,
                     providerRepository,

@@ -70,6 +70,11 @@ public class WeighingListItemDto
     public string? OrderNo { get; set; }
     
     /// <summary>
+    /// 运单数量（WeighingRecord.WaybillQuantity 或 Waybill.OrderPlanOnPcs）
+    /// </summary>
+    public decimal? WaybillQuantity { get; set; }
+    
+    /// <summary>
     /// 从 WeighingRecord 创建 DTO
     /// </summary>
     public static WeighingListItemDto FromWeighingRecord(WeighingRecord record)
@@ -87,7 +92,8 @@ public class WeighingListItemDto
             MaterialUnitId = record.MaterialUnitId,
             DeliveryType = record.DeliveryType,
             Weight = record.Weight,
-            OrderNo = null
+            OrderNo = null,
+            WaybillQuantity = record.WaybillQuantity
         };
     }
     
@@ -109,7 +115,8 @@ public class WeighingListItemDto
             MaterialUnitId = waybill.MaterialUnitId,
             DeliveryType = waybill.DeliveryType,
             Weight = waybill.OrderTotalWeight,
-            OrderNo = waybill.OrderNo
+            OrderNo = waybill.OrderNo,
+            WaybillQuantity = waybill.OrderPlanOnPcs
         };
     }
 }
