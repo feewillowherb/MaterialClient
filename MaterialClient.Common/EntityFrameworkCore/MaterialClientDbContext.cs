@@ -4,13 +4,19 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Configuration;
 using Volo.Abp.EntityFrameworkCore.Modeling;
+using Volo.Abp.Users;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace MaterialClient.EFCore;
 
 public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 {
-    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options) : base(options)
+    private readonly ICurrentUser _currentUser;
+
+    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options, ICurrentUser currentUser) 
+        : base(options)
     {
+        _currentUser = currentUser;
     }
 
     // DbSets
@@ -208,5 +214,80 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
         // Configure WorkSettingsEntity
         modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAuditConcepts();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyAuditConcepts();
+        return base.SaveChanges();
+    }
+
+    private void ApplyAuditConcepts()
+    {
+        var now = DateTime.Now;
+        var unixTimestamp = (int)(now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        
+        // 获取当前用户ID和用户名
+        int? currentUserId = null;
+        string? currentUserName = null;
+
+        if (_currentUser.IsAuthenticated)
+        {
+            currentUserName = _currentUser.UserName;
+            
+            // 从数据库查询当前会话以获取业务用户ID
+            // 使用 _currentUser.Id (Guid) 来查找对应的 UserSession
+            if (_currentUser.Id.HasValue)
+            {
+                var userSession = UserSessions
+                    .AsNoTracking()
+                    .FirstOrDefault(s => s.Id == _currentUser.Id.Value);
+                
+                if (userSession != null)
+                {
+                    // 将 long 类型的业务用户ID转换为 int
+                    var businessUserId = userSession.UserId;
+                    if (businessUserId <= int.MaxValue && businessUserId >= int.MinValue)
+                    {
+                        currentUserId = (int)businessUserId;
+                    }
+                    else
+                    {
+                        // 如果超出 int 范围，使用取模策略
+                        currentUserId = (int)(businessUserId % int.MaxValue);
+                    }
+                }
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<IMaterialClientAuditedObject>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreateUserId = currentUserId;
+                    entry.Entity.Creator = currentUserName;
+                    entry.Entity.AddTime = unixTimestamp;
+                    entry.Entity.AddDate = now;
+                    entry.Entity.LastEditUserId = currentUserId;
+                    entry.Entity.LastEditor = currentUserName;
+                    entry.Entity.UpdateTime = unixTimestamp;
+                    entry.Entity.UpdateDate = now;
+                    break;
+
+                case EntityState.Modified:
+                    entry.Entity.LastEditUserId = currentUserId;
+                    entry.Entity.LastEditor = currentUserName;
+                    entry.Entity.UpdateTime = unixTimestamp;
+                    entry.Entity.UpdateDate = now;
+                    break;
+            }
+        }
     }
 }
