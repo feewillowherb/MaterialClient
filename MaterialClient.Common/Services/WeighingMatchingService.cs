@@ -311,7 +311,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             JoinTime = joinRecord.CreationTime,
             OutTime = outRecord.CreationTime,
             DeliveryType = deliveryType,
-            OrderSource = OrderSource.MannedStation
+            OrderSource = OrderSource.MannedStation,
+            OrderType = OrderTypeEnum.Completed
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
         joinRecord.MatchAsJoin(outRecord.Id);
