@@ -22,13 +22,13 @@ public interface IWeighingMatchingService
     Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record);
     Task UpdateWaybillAsync(UpdateWaybillInput input);
     Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input);
-    
+
     /// <summary>
     /// 更新列表项（根据类型自动判断更新 WeighingRecord 或 Waybill）
     /// </summary>
     /// <param name="input">更新参数</param>
     Task UpdateListItemAsync(UpdateListItemInput input);
-    
+
     /// <summary>
     /// 获取可匹配的候选记录列表
     /// </summary>
@@ -36,7 +36,7 @@ public interface IWeighingMatchingService
     /// <param name="deliveryType">收发料类型</param>
     /// <returns>可匹配的候选记录列表</returns>
     Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType);
-    
+
     /// <summary>
     /// 手动匹配两条称重记录并创建运单
     /// </summary>
@@ -44,7 +44,7 @@ public interface IWeighingMatchingService
     /// <param name="matchedRecord">匹配的称重记录</param>
     /// <param name="deliveryType">收发料类型</param>
     Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
-    
+
     /// <summary>
     /// 获取称重列表项（分页）
     /// </summary>
@@ -240,7 +240,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 input.MaterialId,
                 input.MaterialUnitId,
                 input.WaybillQuantity,
-                null
+                input.DeliveryType
             ));
         }
         else if (input.ItemType == WeighingListItemType.Waybill)
@@ -272,8 +272,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         waybill.CalculateMaterialWeight(material.LowerLimit, material.UpperLimit);
 
         // 查找或创建 WaybillMaterial
-        var existingMaterial = await _waybillMaterialRepository.FirstOrDefaultAsync(
-            wm => wm.WaybillId == waybill.Id);
+        var existingMaterial = await _waybillMaterialRepository.FirstOrDefaultAsync(wm => wm.WaybillId == waybill.Id);
 
         if (existingMaterial != null)
         {
@@ -388,7 +387,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     /// 手动匹配两条称重记录并创建运单
     /// </summary>
     [UnitOfWork]
-    public async Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType)
+    public async Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
+        DeliveryType deliveryType)
     {
         if (deliveryType == DeliveryType.Receiving)
         {
@@ -490,5 +490,6 @@ public record UpdateListItemInput(
     int? ProviderId,
     int? MaterialId,
     int? MaterialUnitId,
-    decimal? WaybillQuantity
+    decimal? WaybillQuantity,
+    DeliveryType? DeliveryType
 );

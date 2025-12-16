@@ -1,11 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
-using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Views;
@@ -59,8 +57,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     [Reactive] private int? _selectedMaterialUnitId;
 
-    [Reactive] private string? _waybillQuantity;
-
     [Reactive] private string? _remark;
 
     [Reactive] private DateTime? _joinTime;
@@ -70,8 +66,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     [Reactive] private string? _operator;
 
     [Reactive] private bool _isMatchButtonVisible;
-
-    [Reactive] private string? _waybillQuantityError;
 
     [Reactive] private string? _plateNumberError;
 
@@ -96,9 +90,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
             .Subscribe(_ => GoodsWeight = AllWeight - TruckWeight);
-
-        this.WhenAnyValue(x => x.WaybillQuantity)
-            .Subscribe(_ => WaybillQuantityError = null);
 
         this.WhenAnyValue(x => x.PlateNumber)
             .Subscribe(_ => PlateNumberError = null);
@@ -150,7 +141,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         SelectedProviderId = _listItem.ProviderId;
         SelectedMaterialId = _listItem.MaterialId;
         SelectedMaterialUnitId = _listItem.MaterialUnitId;
-        WaybillQuantity = _listItem.WaybillQuantity?.ToString("F2");
         Remark = string.Empty;
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
@@ -333,27 +323,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     [ReactiveCommand]
     private async Task SaveAsync()
     {
-        if (!ValidateWaybillQuantity())
-        {
-            return;
-        }
-
         try
         {
-            decimal? waybillQuantity = null;
-            if (!string.IsNullOrWhiteSpace(WaybillQuantity))
-            {
-                if (decimal.TryParse(WaybillQuantity, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
-                        out decimal quantity))
-                {
-                    waybillQuantity = quantity;
-                }
-            }
-
             var firstRow = MaterialItems.FirstOrDefault();
             int? materialId = firstRow?.SelectedMaterial?.Id;
             int? materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
             int? providerId = SelectedProvider?.Id;
+            decimal? waybillQuantity = firstRow?.WaybillQuantity;
 
             var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
             await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
@@ -363,7 +339,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 providerId,
                 materialId,
                 materialUnitId,
-                waybillQuantity
+                waybillQuantity,
+                null
             ));
 
             SaveCompleted?.Invoke(this, EventArgs.Empty);
@@ -460,41 +437,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     #endregion
 
-    #region 验证
-
-    private bool ValidateWaybillQuantity()
-    {
-        WaybillQuantityError = null;
-
-        if (string.IsNullOrWhiteSpace(WaybillQuantity))
-        {
-            return true;
-        }
-
-        if (!decimal.TryParse(WaybillQuantity, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
-                out decimal result))
-        {
-            WaybillQuantityError = "请输入有效的数字";
-            return false;
-        }
-
-        if (result <= 0)
-        {
-            WaybillQuantityError = "运单数量必须大于0";
-            return false;
-        }
-
-        var parts = WaybillQuantity.Split('.');
-        if (parts.Length > 1 && parts[1].Length > 2)
-        {
-            WaybillQuantityError = "运单数量最多保留两位小数";
-            return false;
-        }
-
-        return true;
-    }
-
-    #endregion
 
     #region 事件
 

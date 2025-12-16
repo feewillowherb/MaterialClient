@@ -188,16 +188,19 @@
                         </DataGridTemplateColumn>
                         
                         <!-- 运单数量 -->
-                        <DataGridTemplateColumn Header="运单数量" Width="85">
+                        <DataGridTemplateColumn Header="运单数量" Width="95">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBox Text="{Binding WaybillQuantity, Mode=TwoWay}"
-                                             HorizontalAlignment="Stretch"
-                                             VerticalAlignment="Center"
-                                             TextAlignment="Center"
-                                             FontSize="12"
-                                             BorderThickness="0"
-                                             Background="Transparent" />
+                                    <NumericUpDown Value="{Binding WaybillQuantity, Mode=TwoWay}"
+                                                   FormatString="F2"
+                                                   Increment="0.01"
+                                                   Minimum="0"
+                                                   HorizontalAlignment="Stretch"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   ShowButtonSpinner="False"
+                                                   BorderThickness="0"
+                                                   Background="Transparent" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
