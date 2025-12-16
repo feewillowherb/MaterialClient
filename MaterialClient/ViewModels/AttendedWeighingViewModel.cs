@@ -39,6 +39,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [Reactive] private Waybill? _selectedWaybill;
 
+    [Reactive] private string? _selectedWaybillProviderName;
+
     [Reactive] private WeighingListItemDto? _selectedListItem;
 
     [Reactive] private ObservableCollection<string> _vehiclePhotos = new();
@@ -429,6 +431,19 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             var waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
             var waybill = await waybillRepository.GetAsync(item.Id);
             SelectedWaybill = waybill;
+            
+            // 加载供应商名称
+            if (waybill.ProviderId.HasValue)
+            {
+                var providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
+                var provider = await providerRepository.FindAsync(waybill.ProviderId.Value);
+                SelectedWaybillProviderName = provider?.ProviderName;
+            }
+            else
+            {
+                SelectedWaybillProviderName = null;
+            }
+            
             IsShowingMainView = true;
         }
     }

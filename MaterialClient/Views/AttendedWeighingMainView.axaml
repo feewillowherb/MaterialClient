@@ -146,7 +146,7 @@
                            Padding="0,10,0,0"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.Provider.ProviderName, TargetNullValue='--'}" 
+              <TextBlock Text="{Binding SelectedWaybillProviderName, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
