@@ -37,7 +37,7 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 供应商ID (FK to Provider)
     /// </summary>
-    public int ProviderId { get; set; }
+    public int? ProviderId { get; set; }
 
     /// <summary>
     /// 订单号
@@ -140,14 +140,7 @@ public class Waybill : FullAuditedEntity<long>
     /// 订单来源
     /// </summary>
     public OrderSource OrderSource { get; set; }
-
-    // Navigation properties
-    /// <summary>
-    /// 供应商导航属性
-    /// </summary>
-    public Provider? Provider { get; set; }
-
-
+    
     /// <summary>
     /// 物料Id
     /// </summary>

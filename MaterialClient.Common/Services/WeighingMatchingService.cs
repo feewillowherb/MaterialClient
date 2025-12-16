@@ -306,6 +306,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.CreationTime, todayCount);
         var waybill = new Waybill(orderNo)
         {
+            ProviderId = joinRecord.ProviderId ?? outRecord.ProviderId,
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
             JoinTime = joinRecord.CreationTime,
             OutTime = outRecord.CreationTime,
@@ -317,7 +318,10 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         outRecord.MatchAsOut(joinRecord.Id);
 
         // 先插入 Waybill 获取 Id
-        await _waybillRepository.InsertAsync(waybill);
+        await _waybillRepository.InsertAsync(waybill, autoSave: true);
+        await _weighingRecordRepository.UpdateAsync(joinRecord, autoSave: true);
+        await _weighingRecordRepository.UpdateAsync(outRecord, autoSave: true);
+
 
         // 计算物料信息（从 Materials 集合中获取）
         var joinMaterial = joinRecord.Materials?.FirstOrDefault();
@@ -326,13 +330,10 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var materialUnitId = joinMaterial?.MaterialUnitId ?? outMaterial?.MaterialUnitId;
         var waybillQuantity = joinMaterial?.WaybillQuantity ?? outMaterial?.WaybillQuantity;
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
-
-        await _weighingRecordRepository.UpdateAsync(joinRecord);
-        await _weighingRecordRepository.UpdateAsync(outRecord);
     }
 
     /// <summary>
-    /// 获取可匹配的候选记录列表
+    /// 获取可匹配的候选记录列表（双向匹配，record 可作为 join 或 out）
     /// </summary>
     [UnitOfWork]
     public async Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType)
@@ -359,28 +360,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             return new List<WeighingRecord>();
         }
 
-        var validTime = record.CreationTime.AddMinutes(-MaxIntervalMinutes);
-
-        if (deliveryType == DeliveryType.Receiving)
-        {
-            // 收料：当前记录是出场（皮重），找比当前 record 重的记录（进场/毛重）
-            return unmatchedRecords
-                .Where(r => r.CreationTime >= validTime)
-                .Where(r => r.TotalWeight > record.TotalWeight)
-                .Where(r => (r.TotalWeight - record.TotalWeight) > MinTon)
-                .OrderByDescending(r => r.CreationTime)
-                .ToList();
-        }
-        else // DeliveryType.Sending
-        {
-            // 发料：当前记录是出场（毛重），找比当前 record 轻的记录（进场/皮重）
-            return unmatchedRecords
-                .Where(r => r.CreationTime >= validTime)
-                .Where(r => r.TotalWeight < record.TotalWeight)
-                .Where(r => (record.TotalWeight - r.TotalWeight) > MinTon)
-                .OrderByDescending(r => r.CreationTime)
-                .ToList();
-        }
+        // 使用 TryMatch 过滤可匹配的候选记录
+        return unmatchedRecords
+            .Where(r => WeighingRecord.TryMatch(record, r, deliveryType, MaxIntervalMinutes, MinTon).IsMatch)
+            .OrderByDescending(r => r.CreationTime)
+            .ToList();
     }
 
     /// <summary>
@@ -390,16 +374,13 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     public async Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
         DeliveryType deliveryType)
     {
-        if (deliveryType == DeliveryType.Receiving)
-        {
-            // 收料：matchedRecord 是毛重（进场），currentRecord 是皮重（出场）
-            await CreateWaybillAsync(currentRecord, matchedRecord, deliveryType);
-        }
-        else // DeliveryType.Sending
-        {
-            // 发料：matchedRecord 是皮重（进场），currentRecord 是毛重（出场）
-            await CreateWaybillAsync(matchedRecord, currentRecord, deliveryType);
-        }
+        // 使用领域方法自动判断 join/out
+        var matchResult = WeighingRecord.TryMatch(currentRecord, matchedRecord, deliveryType);
+
+        if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
+            throw new BusinessException("无法匹配这两条记录");
+
+        await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
     }
 
     /// <summary>

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -26,7 +25,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
     private readonly IRepository<Provider, int>? _providerRepository;
     private readonly IRepository<Material, int>? _materialRepository;
     private readonly IRepository<MaterialUnit, int>? _materialUnitRepository;
-    private readonly IRepository<WeighingRecord, long>? _weighingRecordRepository;
 
     #region 属性
 
@@ -119,7 +117,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         _providerRepository = serviceProvider.GetService<IRepository<Provider, int>>();
         _materialRepository = serviceProvider.GetService<IRepository<Material, int>>();
         _materialUnitRepository = serviceProvider.GetService<IRepository<MaterialUnit, int>>();
-        _weighingRecordRepository = serviceProvider.GetService<IRepository<WeighingRecord, long>>();
 
         InitializeData();
 
@@ -411,10 +408,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
     [ReactiveCommand]
     public async Task<bool> SaveAsync()
     {
-        if (_weighingRecordRepository == null) return false;
+        var matchingService = _serviceProvider.GetService<IWeighingMatchingService>();
+        if (matchingService == null) return false;
 
         try
         {
+            // 先更新两条记录的基本信息和物料信息
             decimal? waybillQuantity = null;
             if (!string.IsNullOrWhiteSpace(WaybillQuantity) &&
                 decimal.TryParse(WaybillQuantity, out var qty))
@@ -422,49 +421,16 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 waybillQuantity = qty;
             }
 
-            // 更新基本信息
             _currentRecord.Update(PlateNumber, SelectedProvider?.Id);
             _currentRecord.DeliveryType = _deliveryType;
-
-            // 更新物料信息（在第一个 Material 中）
             UpdateRecordMaterial(_currentRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
 
-            if (_deliveryType == DeliveryType.Receiving)
-            {
-                if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
-                {
-                    _currentRecord.MatchAsJoin(_matchedRecord.Id);
-                    _matchedRecord.MatchAsOut(_currentRecord.Id);
-                }
-                else
-                {
-                    _currentRecord.MatchAsOut(_matchedRecord.Id);
-                    _matchedRecord.MatchAsJoin(_currentRecord.Id);
-                }
-            }
-            else
-            {
-                if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
-                {
-                    _currentRecord.MatchAsJoin(_matchedRecord.Id);
-                    _matchedRecord.MatchAsOut(_currentRecord.Id);
-                }
-                else
-                {
-                    _currentRecord.MatchAsOut(_matchedRecord.Id);
-                    _matchedRecord.MatchAsJoin(_currentRecord.Id);
-                }
-            }
-
-            // 更新匹配记录的基本信息
             _matchedRecord.Update(PlateNumber, SelectedProvider?.Id);
             _matchedRecord.DeliveryType = _deliveryType;
-
-            // 更新匹配记录的物料信息
             UpdateRecordMaterial(_matchedRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
 
-            await _weighingRecordRepository.UpdateAsync(_currentRecord);
-            await _weighingRecordRepository.UpdateAsync(_matchedRecord);
+            // 调用 ManualMatchAsync 执行匹配和创建运单
+            await matchingService.ManualMatchAsync(_currentRecord, _matchedRecord, _deliveryType);
 
             return true;
         }

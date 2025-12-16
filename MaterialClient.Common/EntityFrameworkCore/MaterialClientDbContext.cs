@@ -13,7 +13,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 {
     private readonly ICurrentUser _currentUser;
 
-    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options, ICurrentUser currentUser) 
+    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options, ICurrentUser currentUser)
         : base(options)
     {
         _currentUser = currentUser;
@@ -104,11 +104,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.ConfigureByConvention();
 
             entity.Property(e => e.OrderNo).IsRequired();
-
-            entity.HasOne(e => e.Provider)
-                .WithMany()
-                .HasForeignKey(e => e.ProviderId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Configure WeighingRecord relationships
@@ -117,10 +112,10 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.ConfigureByConvention();
 
             entity.Property(e => e.TotalWeight).IsRequired();
-            
+
             // MaterialsJson stores the list of materials as JSON
             entity.Property(e => e.MaterialsJson);
-            
+
             // Ignore the computed Materials property (it's derived from MaterialsJson)
             entity.Ignore(e => e.Materials);
         });
@@ -239,7 +234,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     {
         var now = DateTime.Now;
         var unixTimestamp = (int)(now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-        
+
         // 获取当前用户ID和用户名
         int? currentUserId = null;
         string? currentUserName = null;
@@ -247,7 +242,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         if (_currentUser.IsAuthenticated)
         {
             currentUserName = _currentUser.UserName;
-            
+
             // 从数据库查询当前会话以获取业务用户ID
             // 使用 _currentUser.Id (Guid) 来查找对应的 UserSession
             if (_currentUser.Id.HasValue)
@@ -255,7 +250,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
                 var userSession = UserSessions
                     .AsNoTracking()
                     .FirstOrDefault(s => s.Id == _currentUser.Id.Value);
-                
+
                 if (userSession != null)
                 {
                     // 将 long 类型的业务用户ID转换为 int
