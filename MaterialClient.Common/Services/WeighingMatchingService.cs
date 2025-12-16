@@ -51,6 +51,13 @@ public interface IWeighingMatchingService
     /// <param name="input">分页和过滤参数</param>
     /// <returns>分页结果</returns>
     Task<PagedResultDto<WeighingListItemDto>> GetListItemsAsync(GetWeighingListItemsInput input);
+
+    /// <summary>
+    /// 自动匹配称重记录（同时尝试收料和发料两种类型）
+    /// </summary>
+    /// <param name="weighingRecordId">称重记录ID</param>
+    /// <returns>是否匹配成功</returns>
+    Task<bool> AutoMatchAsync(long weighingRecordId);
 }
 
 /// <summary>
@@ -443,6 +450,90 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             .ToList();
 
         return new PagedResultDto<WeighingListItemDto>(totalCount, items);
+    }
+
+    /// <summary>
+    /// 自动匹配称重记录（同时尝试收料和发料两种类型）
+    /// </summary>
+    [UnitOfWork]
+    public async Task<bool> AutoMatchAsync(long weighingRecordId)
+    {
+        var record = await _weighingRecordRepository.FindAsync(weighingRecordId);
+        if (record == null)
+        {
+            _logger?.LogWarning("AutoMatchAsync: Record {RecordId} not found", weighingRecordId);
+            return false;
+        }
+
+        // 已经匹配过的记录不再处理
+        if (record.MatchedId != null)
+        {
+            _logger?.LogInformation("AutoMatchAsync: Record {RecordId} is already matched", weighingRecordId);
+            return false;
+        }
+
+        // 验证车牌号
+        if (!record.IsValidChinesePlateNumber())
+        {
+            _logger?.LogInformation(
+                "AutoMatchAsync: Record {RecordId} has invalid plate number '{PlateNumber}', skipping matching",
+                record.Id, record.PlateNumber);
+            return false;
+        }
+
+        // 如果记录有明确的 DeliveryType，只尝试该类型
+        if (record.DeliveryType != null)
+        {
+            return await TryMatchWithDeliveryTypeAsync(record, record.DeliveryType.Value);
+        }
+
+        // 没有明确 DeliveryType 时，同时尝试收料和发料
+        // 优先尝试收料（Receiving）
+        if (await TryMatchWithDeliveryTypeAsync(record, DeliveryType.Receiving))
+        {
+            return true;
+        }
+
+        // 再尝试发料（Sending）
+        return await TryMatchWithDeliveryTypeAsync(record, DeliveryType.Sending);
+    }
+
+    /// <summary>
+    /// 尝试使用指定的 DeliveryType 匹配记录
+    /// </summary>
+    private async Task<bool> TryMatchWithDeliveryTypeAsync(WeighingRecord record, DeliveryType deliveryType)
+    {
+        var candidates = await GetCandidateRecordsAsync(record, deliveryType);
+        if (candidates.Count == 0)
+        {
+            _logger?.LogInformation(
+                "AutoMatchAsync: No candidate records found for record {RecordId} with DeliveryType {DeliveryType}",
+                record.Id, deliveryType);
+            return false;
+        }
+
+        // 选择时间最接近的候选记录
+        var matchedRecord = candidates
+            .OrderBy(r => Math.Abs((r.CreationTime - record.CreationTime).TotalMinutes))
+            .First();
+
+        // 使用领域方法自动判断 join/out
+        var matchResult = WeighingRecord.TryMatch(record, matchedRecord, deliveryType, MaxIntervalMinutes, MinTon);
+
+        if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
+        {
+            _logger?.LogWarning(
+                "AutoMatchAsync: TryMatch failed for record {RecordId} with candidate {CandidateId}",
+                record.Id, matchedRecord.Id);
+            return false;
+        }
+
+        await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
+
+        _logger?.LogInformation(
+            "AutoMatchAsync: Successfully matched record {RecordId} with {MatchedId}, DeliveryType: {DeliveryType}",
+            record.Id, matchedRecord.Id, deliveryType);
+        return true;
     }
 }
 

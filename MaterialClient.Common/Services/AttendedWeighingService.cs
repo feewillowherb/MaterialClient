@@ -6,11 +6,13 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.EventBus.Local;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
@@ -96,6 +98,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<AttendedWeighingService> _logger;
 
     // Status management
@@ -572,6 +575,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService
 
             // Notify observers that a new weighing record was created
             _weighingRecordCreatedSubject.OnNext(weighingRecord);
+
+            // Publish TryMatchEvent for automatic matching
+            await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
 
             // Save captured photos to WeighingRecordAttachment
             if (photoPaths.Count > 0)
