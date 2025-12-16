@@ -140,7 +140,7 @@ public class Waybill : FullAuditedEntity<long>
     /// 订单来源
     /// </summary>
     public OrderSource OrderSource { get; set; }
-    
+
     /// <summary>
     /// 物料Id
     /// </summary>
@@ -157,6 +157,34 @@ public class Waybill : FullAuditedEntity<long>
     /// </summary>
     public decimal? MaterialUnitRate { get; set; }
 
+
+    public decimal? GetJoinWeight()
+    {
+        if (DeliveryType == Enums.DeliveryType.Sending)
+        {
+            return OrderTruckWeight ?? 0;
+        }
+        else if (DeliveryType == Enums.DeliveryType.Receiving)
+        {
+            return OrderTotalWeight ?? 0;
+        }
+
+        return null;
+    }
+
+    public decimal? GetOutWeight()
+    {
+        if (DeliveryType == Enums.DeliveryType.Sending)
+        {
+            return OrderTotalWeight ?? 0;
+        }
+        else if (DeliveryType == Enums.DeliveryType.Receiving)
+        {
+            return OrderTruckWeight ?? 0;
+        }
+
+        return null;
+    }
 
     public static string GenerateOrderNo(DeliveryType deliveryType, DateTime dateTime, int todayCount)
     {

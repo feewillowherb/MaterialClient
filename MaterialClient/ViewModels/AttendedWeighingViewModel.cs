@@ -65,6 +65,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [Reactive] private string? _offsetInfo;
 
+    [Reactive] private string? _joinWeightInfo;
+
+    [Reactive] private string? _outWeightInfo;
+
     [Reactive] private bool _isScaleOnline;
 
     [Reactive] private bool _isCameraOnline;
@@ -444,6 +448,70 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 SelectedWaybillProviderName = null;
             }
             
+            // 加载物料信息: {Rate}/{Unit} {MaterialName}
+            if (waybill.MaterialId.HasValue)
+            {
+                var materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
+                var material = await materialRepository.FindAsync(waybill.MaterialId.Value);
+                
+                string? unitInfo = null;
+                if (waybill.MaterialUnitId.HasValue)
+                {
+                    var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
+                    var materialUnit = await materialUnitRepository.FindAsync(waybill.MaterialUnitId.Value);
+                    if (materialUnit != null)
+                    {
+                        unitInfo = $"{materialUnit.Rate}/{materialUnit.UnitName}";
+                    }
+                }
+                
+                if (material != null)
+                {
+                    MaterialInfo = unitInfo != null ? $"{unitInfo} {material.Name}" : material.Name;
+                }
+                else
+                {
+                    MaterialInfo = null;
+                }
+            }
+            else
+            {
+                MaterialInfo = null;
+            }
+            
+            // 加载偏差信息
+            if (waybill.OffsetRate.HasValue)
+            {
+                var offsetRatePercent = waybill.OffsetRate.Value * 100;
+                OffsetInfo = $"{offsetRatePercent:F2}%";
+            }
+            else
+            {
+                OffsetInfo = null;
+            }
+            
+            // 加载进场重量信息
+            var joinWeight = waybill.GetJoinWeight();
+            if (joinWeight.HasValue && waybill.JoinTime.HasValue)
+            {
+                JoinWeightInfo = $"{joinWeight.Value:F2} 吨 {waybill.JoinTime.Value:HH:mm:ss}";
+            }
+            else
+            {
+                JoinWeightInfo = null;
+            }
+            
+            // 加载出场重量信息
+            var outWeight = waybill.GetOutWeight();
+            if (outWeight.HasValue && waybill.OutTime.HasValue)
+            {
+                OutWeightInfo = $"{outWeight.Value:F2} 吨 {waybill.OutTime.Value:HH:mm:ss}";
+            }
+            else
+            {
+                OutWeightInfo = null;
+            }
+            
             IsShowingMainView = true;
         }
     }
@@ -456,9 +524,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             try
             {
                 var weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
-                var materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
-                var providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
-                var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
 
                 var weighingRecord = await weighingRecordRepository.GetAsync(item.Id);
                 SelectedWeighingRecord = weighingRecord;

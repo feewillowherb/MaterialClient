@@ -76,7 +76,7 @@
                            VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.JoinTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='--'}" 
+              <TextBlock Text="{Binding JoinWeightInfo, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
@@ -105,7 +105,7 @@
                            VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.OutTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='--'}" 
+              <TextBlock Text="{Binding OutWeightInfo, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
