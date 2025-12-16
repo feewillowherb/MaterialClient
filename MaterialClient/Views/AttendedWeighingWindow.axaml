@@ -11,7 +11,8 @@
         x:Name="AttendedWeighingWindowRoot"
         Title="有人值守"
         Width="1440" Height="900"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/fd-ico.ico">
   
   <Window.Resources>
     <converters:EqualityToColorConverter x:Key="EqualityToColorConverter"/>
