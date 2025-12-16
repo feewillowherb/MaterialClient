@@ -37,7 +37,7 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 供应商ID (FK to Provider)
     /// </summary>
-    public int ProviderId { get; set; }
+    public int? ProviderId { get; set; }
 
     /// <summary>
     /// 订单号
@@ -47,7 +47,7 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 订单类型
     /// </summary>
-    public int? OrderType { get; set; }
+    public OrderTypeEnum? OrderType { get; set; }
 
     /// <summary>
     /// 配送类型
@@ -141,13 +141,6 @@ public class Waybill : FullAuditedEntity<long>
     /// </summary>
     public OrderSource OrderSource { get; set; }
 
-    // Navigation properties
-    /// <summary>
-    /// 供应商导航属性
-    /// </summary>
-    public Provider? Provider { get; set; }
-
-
     /// <summary>
     /// 物料Id
     /// </summary>
@@ -165,6 +158,34 @@ public class Waybill : FullAuditedEntity<long>
     public decimal? MaterialUnitRate { get; set; }
 
 
+    public decimal? GetJoinWeight()
+    {
+        if (DeliveryType == Enums.DeliveryType.Sending)
+        {
+            return OrderTruckWeight ?? 0;
+        }
+        else if (DeliveryType == Enums.DeliveryType.Receiving)
+        {
+            return OrderTotalWeight ?? 0;
+        }
+
+        return null;
+    }
+
+    public decimal? GetOutWeight()
+    {
+        if (DeliveryType == Enums.DeliveryType.Sending)
+        {
+            return OrderTotalWeight ?? 0;
+        }
+        else if (DeliveryType == Enums.DeliveryType.Receiving)
+        {
+            return OrderTruckWeight ?? 0;
+        }
+
+        return null;
+    }
+
     public static string GenerateOrderNo(DeliveryType deliveryType, DateTime dateTime, int todayCount)
     {
         var content = deliveryType == Enums.DeliveryType.Receiving
@@ -178,15 +199,15 @@ public class Waybill : FullAuditedEntity<long>
     {
         if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Sending)
         {
-            OrderTruckWeight = joinRecord.Weight;
-            OrderTotalWeight = outRecord.Weight;
-            OrderGoodsWeight = outRecord.Weight - joinRecord.Weight;
+            OrderTruckWeight = joinRecord.TotalWeight;
+            OrderTotalWeight = outRecord.TotalWeight;
+            OrderGoodsWeight = outRecord.TotalWeight - joinRecord.TotalWeight;
         }
         else if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Receiving)
         {
-            OrderTruckWeight = outRecord.Weight;
-            OrderTotalWeight = joinRecord.Weight;
-            OrderGoodsWeight = joinRecord.Weight - outRecord.Weight;
+            OrderTruckWeight = outRecord.TotalWeight;
+            OrderTotalWeight = joinRecord.TotalWeight;
+            OrderGoodsWeight = joinRecord.TotalWeight - outRecord.TotalWeight;
         }
     }
 
@@ -231,4 +252,11 @@ public class Waybill : FullAuditedEntity<long>
             }
         }
     }
+}
+
+public enum OrderTypeEnum
+{
+    FirstWeight = 0, //收料/发料中
+    Completed = 1, //完成收料/发料
+    Esc = 2, //已取消
 }

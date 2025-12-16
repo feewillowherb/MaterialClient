@@ -3,17 +3,20 @@ using System;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 
 #nullable disable
 
-namespace MaterialClient.Common.EntityFrameworkCore.Migrations
+namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    partial class MaterialClientDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251215094020_Update_WeighingRecord_Materials")]
+    partial class Update_WeighingRecord_Materials
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -680,13 +683,15 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("ProviderId")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Remark")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ProviderId");
 
                     b.ToTable("Waybills");
                 });
@@ -889,6 +894,17 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WorkSettings");
+                });
+
+            modelBuilder.Entity("MaterialClient.Common.Entities.Waybill", b =>
+                {
+                    b.HasOne("MaterialClient.Common.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
                 });
 #pragma warning restore 612, 618
         }

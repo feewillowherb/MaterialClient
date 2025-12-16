@@ -9,6 +9,7 @@ namespace MaterialClient.Views;
 public partial class ManualMatchWindow : Window
 {
     private readonly ManualMatchWindowViewModel? _viewModel;
+    private readonly IServiceProvider? _serviceProvider;
 
     /// <summary>
     /// 选中的匹配记录
@@ -36,6 +37,7 @@ public partial class ManualMatchWindow : Window
     /// <param name="serviceProvider">服务提供者</param>
     public ManualMatchWindow(WeighingRecord currentRecord, IServiceProvider serviceProvider) : this()
     {
+        _serviceProvider = serviceProvider;
         _viewModel = new ManualMatchWindowViewModel(currentRecord, serviceProvider);
         DataContext = _viewModel;
     }
@@ -47,12 +49,24 @@ public partial class ManualMatchWindow : Window
 
     private async void OnConfirmButtonClick(object? sender, RoutedEventArgs e)
     {
-        if (_viewModel?.SelectedCandidateRecord == null)
+        if (_viewModel?.SelectedCandidateRecord == null || _serviceProvider == null)
         {
             return;
         }
 
-        // 返回选中的记录
-        Close(_viewModel.SelectedCandidateRecord.Record);
+        // 打开 ManualMatchEditWindow 进行匹配确认编辑
+        var editWindow = new ManualMatchEditWindow(
+            _viewModel.CurrentRecord,
+            _viewModel.SelectedCandidateRecord.Record,
+            _viewModel.SelectedDeliveryType,
+            _serviceProvider);
+
+        var result = await editWindow.ShowDialog<bool?>(this);
+        
+        // 如果用户确认保存，则关闭当前窗口并返回匹配结果
+        if (result == true)
+        {
+            Close(_viewModel.SelectedCandidateRecord.Record);
+        }
     }
 }

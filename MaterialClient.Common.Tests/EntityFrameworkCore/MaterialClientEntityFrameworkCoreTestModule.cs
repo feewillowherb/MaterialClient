@@ -6,11 +6,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using System.Security.Claims;
 using Volo.Abp;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
+using Volo.Abp.Users;
 using MaterialClient.EFCore;
 
 namespace MaterialClient.Common.EntityFrameworkCore;
@@ -72,12 +74,38 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
             .EnableSensitiveDataLogging() // 启用敏感数据日志记录（包含参数值）
             .Options;
 
-        using (var context = new MaterialClientDbContext(options))
+        // Create a test ICurrentUser instance
+        var testCurrentUser = new TestCurrentUser();
+
+        using (var context = new MaterialClientDbContext(options, testCurrentUser))
         {
             context.GetService<IRelationalDatabaseCreator>().CreateTables();
         }
 
         return connection;
+    }
+
+    /// <summary>
+    /// 测试用的 ICurrentUser 实现
+    /// </summary>
+    private class TestCurrentUser : ICurrentUser
+    {
+        public bool IsAuthenticated => false;
+        public Guid? Id => null;
+        public string? UserName => null;
+        public string? Name => null;
+        public string? SurName => null;
+        public string? PhoneNumber => null;
+        public bool PhoneNumberVerified => false;
+        public string? Email => null;
+        public bool EmailVerified => false;
+        public Guid? TenantId => null;
+        public string[] Roles => Array.Empty<string>();
+
+        public Claim? FindClaim(string claimType) => null;
+        public Claim[] FindClaims(string claimType) => Array.Empty<Claim>();
+        public Claim[] GetAllClaims() => Array.Empty<Claim>();
+        public bool IsInRole(string roleName) => false;
     }
 }
 

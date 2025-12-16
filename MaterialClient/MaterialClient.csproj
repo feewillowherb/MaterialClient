@@ -8,6 +8,7 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <EnableDefaultItems>true</EnableDefaultItems>
+        <ApplicationIcon>Assets\fd-ico.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,6 +22,10 @@
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.6" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.6" />
         <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.6" />
+        <PackageReference Include="ReactiveUI.SourceGenerators" Version="2.5.1">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Avalonia.Diagnostics" Version="11.3.6">
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
@@ -31,7 +36,6 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Volo.Abp.Autofac" Version="9.3.6" />
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     </ItemGroup>
 
     <ItemGroup>
@@ -50,6 +54,9 @@
       </Compile>
       <Compile Update="Views\PlateNumberInputWindow.axaml.cs">
         <DependentUpon>PlateNumberInputWindow.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\PhotoGridView.axaml.cs">
+        <DependentUpon>PhotoGridView.axaml</DependentUpon>
       </Compile>
     </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:entities="using:MaterialClient.Common.Entities"
+        xmlns:models="using:MaterialClient.Common.Models"
         xmlns:vm="using:MaterialClient.ViewModels"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:views="using:MaterialClient.Views"
@@ -10,7 +11,8 @@
         x:Name="AttendedWeighingWindowRoot"
         Title="有人值守"
         Width="1440" Height="900"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/fd-ico.ico">
   
   <Window.Resources>
     <converters:EqualityToColorConverter x:Key="EqualityToColorConverter"/>
@@ -230,62 +232,25 @@
                 </Grid>
               </Border>
               
-              <!-- Scrollable List - Unmatched Records -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowUnmatched}">
-                <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
+              <!-- Scrollable List - 统一的列表 -->
+              <ScrollViewer Grid.Row="1">
+                <ItemsControl ItemsSource="{Binding PagedListItems}">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="entities:WeighingRecord">
+                    <DataTemplate x:DataType="models:WeighingListItemDto">
                       <Button Classes="transparent-button"
                               BorderThickness="0,0,0,1"
                               BorderBrush="#F0F0F0"
                               Padding="12,12"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Stretch"
-                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
+                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectListItemCommand}"
                               CommandParameter="{Binding}">
                         <Button.Background>
                           <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
                             <Binding Path="." />
-                            <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
+                            <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedListItem" />
                           </MultiBinding>
                         </Button.Background>
-                        <!-- <Button.Styles> -->
-                        <!--   <Style Selector="Button:pointerover"> -->
-                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
-                        <!--   </Style> -->
-                        <!-- </Button.Styles> -->
-                        <Grid ColumnDefinitions="80,*,*">
-                          <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
-                                     FontSize="13"
-                                     Foreground="#333"/>
-                          <TextBlock Grid.Column="1" 
-                                     Text="{Binding CreationTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                     FontSize="13"
-                                     Foreground="#666"/>
-                          <TextBlock Grid.Column="2" 
-                                     Text="-" 
-                                     FontSize="13"
-                                     Foreground="#666"/>
-                        </Grid>
-                      </Button>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
-              
-              <!-- Scrollable List - Completed Waybills -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowCompleted}">
-                <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="entities:Waybill">
-                      <Button Classes="transparent-button"
-                              BorderThickness="0,0,0,1"
-                              BorderBrush="#F0F0F0"
-                              Padding="12,12"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Stretch"
-                              Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
-                              CommandParameter="{Binding}">
                         <Grid ColumnDefinitions="80,*,*">
                           <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
                                      FontSize="13"
@@ -295,7 +260,7 @@
                                      FontSize="13"
                                      Foreground="#666"/>
                           <TextBlock Grid.Column="2" 
-                                     Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
+                                     Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='-'}" 
                                      FontSize="13"
                                      Foreground="#666"/>
                         </Grid>
@@ -303,81 +268,6 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-              </ScrollViewer>
-
-              <!-- 全部记录模式下的混合列表 -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsShowAllRecords}">
-                <StackPanel>
-                  <!-- 未完成记录 -->
-                  <ItemsControl ItemsSource="{Binding PagedUnmatchedWeighingRecords}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="entities:WeighingRecord">
-                        <Button Classes="transparent-button"
-                                BorderThickness="0,0,0,1"
-                                BorderBrush="#F0F0F0"
-                                Padding="12,12"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).OpenDetailCommand}"
-                                CommandParameter="{Binding}">
-                          <Button.Background>
-                            <MultiBinding Converter="{StaticResource EqualityToColorConverter}">
-                              <Binding Path="." />
-                              <Binding Path="$parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectedWeighingRecord" />
-                            </MultiBinding>
-                          </Button.Background>
-                        <!-- <Button.Styles> -->
-                        <!--   <Style Selector="Button:pointerover"> -->
-                        <!--     <Setter Property="Opacity" Value="0.8"/> -->
-                        <!--   </Style> -->
-                        <!-- </Button.Styles> -->
-                        <Grid ColumnDefinitions="80,*,*">
-                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
-                                       FontSize="13"
-                                       Foreground="#333"/>
-                            <TextBlock Grid.Column="1" 
-                                       Text="{Binding CreationTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                            <TextBlock Grid.Column="2" 
-                                       Text="-" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                          </Grid>
-                        </Button>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <!-- 已完成记录 -->
-                  <ItemsControl ItemsSource="{Binding PagedCompletedWaybills}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="entities:Waybill">
-                        <Button Classes="transparent-button"
-                                BorderThickness="0,0,0,1"
-                                BorderBrush="#F0F0F0"
-                                Padding="12,12"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding $parent[ItemsControl].((vm:AttendedWeighingViewModel)DataContext).SelectRecordCommand}"
-                                CommandParameter="{Binding}">
-                          <Grid ColumnDefinitions="80,*,*">
-                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" 
-                                       FontSize="13"
-                                       Foreground="#333"/>
-                            <TextBlock Grid.Column="1" 
-                                       Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                            <TextBlock Grid.Column="2" 
-                                       Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}" 
-                                       FontSize="13"
-                                       Foreground="#666"/>
-                          </Grid>
-                        </Button>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
               </ScrollViewer>
               
               <!-- Pagination Controls -->
@@ -446,83 +336,8 @@
               BorderThickness="1,0,0,0"
               Padding="20">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-          <!-- Camera Tabs -->
-          <Border Classes="card-border" 
-                  CornerRadius="8,8,0,0" 
-                  BorderThickness="1,1,1,0">
-            <UniformGrid Rows="1" Columns="2">
-              <Button Content="进场照片" 
-                      CornerRadius="8,0,0,0"
-                      Padding="32,12"
-                      FontSize="14"
-                      BorderThickness="0"
-                      HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Center"
-                      Command="{Binding ShowEntryPhotosCommand}"
-                      Foreground="{Binding IsEntryPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='White|#666666'}"
-                      Background="{Binding IsEntryPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='#4169E1|White'}"/>
-              <Button Content="出场照片" 
-                      CornerRadius="0,8,0,0"
-                      Padding="32,12"
-                      FontSize="14"
-                      BorderThickness="0"
-                      HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Center"
-                      Command="{Binding ShowExitPhotosCommand}"
-                      Foreground="{Binding IsExitPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='White|#666666'}"
-                      Background="{Binding IsExitPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='#4169E1|White'}"/>
-            </UniformGrid>
-          </Border>
-          
-          <!-- Camera Grid -->
-          <Border Grid.Row="1" 
-                  Classes="card-border"
-                  BorderThickness="1,0,1,1"
-                  CornerRadius="0,0,8,8"
-                  Padding="16"
-                  Height="280">
-            <Grid>
-              <!-- 进场照片 Grid -->
-              <Grid RowDefinitions="*,*" 
-                    ColumnDefinitions="*,*"
-                    RowSpacing="8"
-                    ColumnSpacing="8"
-                    IsVisible="{Binding IsEntryPhotoTabSelected}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding CurrentEntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Grid>
-              
-              <!-- 出场照片 Grid -->
-              <Grid RowDefinitions="*,*" 
-                    ColumnDefinitions="*,*"
-                    RowSpacing="8"
-                    ColumnSpacing="8"
-                    IsVisible="{Binding IsExitPhotoTabSelected}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Grid>
-            </Grid>
-          </Border>
+          <!-- Photo Grid View -->
+          <views:PhotoGridView Grid.RowSpan="2" DataContext="{Binding PhotoGridViewModel}"/>
           
           <!-- Bill Scan Section -->
           <TextBlock Grid.Row="2" 
@@ -567,19 +382,9 @@
             BorderBrush="#E5E7EB" 
             BorderThickness="0,1,0,0"
             Padding="16,8">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
-        <!-- Test Button -->
-        <Button Grid.Column="0"
-                Content="测试详情窗口"
-                Classes="primary-button"
-                CornerRadius="4"
-                Padding="16,8"
-                FontSize="13"
-                Margin="0,0,16,0"
-                Click="TestDetailWindow_Click"/>
-        
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
         <!-- Scale Status Indicator -->
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <!-- Online Indicator -->
           <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding IsScaleOnline}">
             <Ellipse.Fill>
@@ -613,7 +418,7 @@
         </StackPanel>
         
         <!-- Camera Status Indicator -->
-        <Grid Grid.Column="2" 
+        <Grid Grid.Column="1" 
               Margin="24,0,0,0"
               VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" 
@@ -667,7 +472,7 @@
         </Grid>
         
         <!-- Right side info (can be extended later) -->
-        <TextBlock Grid.Column="4" 
+        <TextBlock Grid.Column="3" 
                    Text="{Binding CurrentTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" 
                    FontSize="12" 
                    Foreground="#999"

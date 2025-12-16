@@ -39,13 +39,12 @@
               <Border Background="#FCFCFE" 
                       BorderBrush="#E4E4E4" 
                       BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
+                      Padding="10,6"
+                      Height="40">
                 <TextBlock Text="车牌号" 
                            FontSize="14" 
                            Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
+                           VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
               <TextBlock Text="{Binding SelectedWaybill.PlateNumber, TargetNullValue='--'}" 
@@ -53,9 +52,9 @@
                          Foreground="#222222"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         Height="80"
+                         Height="50"
                          TextAlignment="Center"
-                         Padding="0,25,0,0"/>
+                         Padding="0,12,0,0"/>
             </StackPanel>
           </Border>
           
@@ -69,23 +68,22 @@
               <Border Background="#FCFCFE" 
                       BorderBrush="#E4E4E4" 
                       BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
+                      Padding="10,6"
+                      Height="40">
                 <TextBlock Text="进场" 
                            FontSize="14" 
                            Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
+                           VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.JoinTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='--'}" 
+              <TextBlock Text="{Binding JoinWeightInfo, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         Height="80"
+                         Height="50"
                          TextAlignment="Center"
-                         Padding="0,25,0,0"/>
+                         Padding="0,12,0,0"/>
             </StackPanel>
           </Border>
           
@@ -99,23 +97,22 @@
               <Border Background="#FCFCFE" 
                       BorderBrush="#E4E4E4" 
                       BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
+                      Padding="10,6"
+                      Height="40">
                 <TextBlock Text="出场" 
                            FontSize="14" 
                            Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
+                           VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.OutTime, StringFormat='{}{0:MM-dd HH:mm}', TargetNullValue='--'}" 
+              <TextBlock Text="{Binding OutWeightInfo, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         Height="80"
+                         Height="50"
                          TextAlignment="Center"
-                         Padding="0,25,0,0"/>
+                         Padding="0,12,0,0"/>
             </StackPanel>
           </Border>
         </UniformGrid>
@@ -137,23 +134,22 @@
               <Border Background="#FCFCFE" 
                       BorderBrush="#E4E4E4" 
                       BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
+                      Padding="10,6"
+                      Height="40">
                 <TextBlock Text="供应商" 
                            FontSize="14" 
                            Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
+                           VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.Provider.ProviderName, TargetNullValue='--'}" 
+              <TextBlock Text="{Binding SelectedWaybillProviderName, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         Height="80"
+                         Height="50"
                          TextAlignment="Center"
-                         Padding="0,25,0,0"
+                         Padding="0,12,0,0"
                          TextTrimming="CharacterEllipsis"/>
             </StackPanel>
           </Border>
@@ -168,13 +164,12 @@
               <Border Background="#FCFCFE" 
                       BorderBrush="#E4E4E4" 
                       BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
+                      Padding="10,6"
+                      Height="40">
                 <TextBlock Text="材料" 
                            FontSize="14" 
                            Foreground="#222222"
-                           VerticalAlignment="Top"
-                           Padding="0,10,0,0"/>
+                           VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
               <TextBlock Text="{Binding MaterialInfo, TargetNullValue='--'}" 
@@ -182,9 +177,9 @@
                          Foreground="#222222"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         Height="80"
+                         Height="50"
                          TextAlignment="Center"
-                         Padding="0,25,0,0"
+                         Padding="0,12,0,0"
                          TextTrimming="CharacterEllipsis"/>
             </StackPanel>
           </Border>
@@ -198,20 +193,18 @@
               <Border Background="#FCFCFE" 
                       BorderBrush="#E4E4E4" 
                       BorderThickness="0,0,0,3"
-                      Padding="10"
-                      Height="60">
+                      Padding="10,6"
+                      Height="40">
                 <Grid>
                   <TextBlock Text="偏差" 
                              FontSize="14" 
                              Foreground="#222222"
-                             VerticalAlignment="Top"
-                             Padding="0,10,0,0"
+                             VerticalAlignment="Center"
                              HorizontalAlignment="Left"/>
                   <TextBlock Text="-" 
                              FontSize="18" 
                              Foreground="#BCBCBC"
-                             VerticalAlignment="Top"
-                             Padding="0,10,0,0"
+                             VerticalAlignment="Center"
                              HorizontalAlignment="Right"/>
                 </Grid>
               </Border>
@@ -221,9 +214,9 @@
                          Foreground="#222222"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         Height="80"
+                         Height="50"
                          TextAlignment="Center"
-                         Padding="0,25,0,0"/>
+                         Padding="0,12,0,0"/>
             </StackPanel>
           </Border>
         </UniformGrid>
@@ -246,16 +239,16 @@
                   RowSpacing="8"
                   ColumnSpacing="8">
               <Border Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
             </Grid>
           </Grid>
@@ -277,16 +270,16 @@
                   RowSpacing="8"
                   ColumnSpacing="8">
               <Border Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
               <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                <Image Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
               </Border>
             </Grid>
           </Grid>

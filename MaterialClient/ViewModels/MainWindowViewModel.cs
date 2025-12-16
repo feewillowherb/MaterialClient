@@ -1,8 +1,8 @@
 using System;
-using System.Windows.Input;
 using MaterialClient.Views;
-using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace MaterialClient.ViewModels;
 
@@ -12,16 +12,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public string Greeting { get; } = "Welcome to Avalonia!";
 
-    [RelayCommand]
+    public MainWindowViewModel(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+
+    [ReactiveCommand]
     private void OpenAttendedWeighing()
     {
         // Resolve window from Autofac container (ViewModel is injected via constructor)
         var window = _serviceProvider.GetRequiredService<AttendedWeighingWindow>();
         window.Show();
-    }
-
-    public MainWindowViewModel(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
     }
 }

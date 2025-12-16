@@ -12,7 +12,8 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="None"
-        Background="White">
+        Background="White"
+        Icon="/Assets/fd-ico.ico">
 
     <Border BorderBrush="LightGray" BorderThickness="1">
         <Grid RowDefinitions="50,Auto,Auto,Auto,*,Auto,50">
@@ -130,7 +131,7 @@
             <Border Grid.Row="4" Margin="10,0,10,10">
                 <DataGrid x:Name="CandidateDataGrid"
                           ItemsSource="{Binding CandidateRecords}"
-                          SelectedItem="{Binding SelectedCandidateRecord}"
+                          SelectedItem="{Binding SelectedCandidateRecord, Mode=TwoWay}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserResizeColumns="True"

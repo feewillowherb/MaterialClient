@@ -2,7 +2,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
              x:Class="MaterialClient.Views.AttendedWeighingDetailView"
-             x:DataType="vm:AttendedWeighingDetailViewModel">
+             x:DataType="vm:AttendedWeighingDetailViewModel"
+             x:Name="DetailViewRoot">
+    
+    
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Style.Resources>
+                <x:Double x:Key="DataGridSortIconMinWidth">16</x:Double>
+            </Style.Resources>
+
+            <!-- setters... -->
+        </Style>
+    </UserControl.Styles>
+    
     <ScrollViewer HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto">
         <Grid Background="#F5F6FA" Margin="10">
@@ -140,50 +153,40 @@
                           BorderThickness="0"
                           Background="White">
                     
-                    <!-- 列定义 -->
+                    <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
                     <DataGrid.Columns>
-                        <!-- 材料名称 -->
-                        <DataGridTemplateColumn Header="材料名称" Width="90">
+                        <!-- 材料名称 (4字: 76 + 16 = 92) -->
+                        <DataGridTemplateColumn Header="材料名称" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.Materials}"
-                                              SelectedItem="{Binding SelectedMaterial}"
+                                    <ComboBox ItemsSource="{Binding #DetailViewRoot.((vm:AttendedWeighingDetailViewModel)DataContext).Materials}"
+                                              SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding Name}"
                                               BorderThickness="0"
                                               Background="Transparent"
                                               Padding="4,2"
-                                              FontSize="12">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding Name}" FontSize="11" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                              FontSize="12" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 单位 -->
-                        <DataGridTemplateColumn Header="单位" Width="65">
+                        <!-- 单位 (2字: 48 + 16 = 64) -->
+                        <DataGridTemplateColumn Header="单位" Width="64">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.MaterialUnits}"
-                                              SelectedItem="{Binding SelectedMaterialUnit}"
+                                    <ComboBox ItemsSource="{Binding MaterialUnits}"
+                                              SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding DisplayName}"
                                               BorderThickness="0"
                                               Background="Transparent"
                                               Padding="4,2"
-                                              FontSize="12">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding UnitName}" FontSize="11" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                              FontSize="12" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 换算率 -->
-                        <DataGridTemplateColumn Header="换算率" Width="70">
+                        <!-- 换算率 (3字: 60 + 16 = 76) -->
+                        <DataGridTemplateColumn Header="换算率" Width="76">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding RateDisplay}"
@@ -196,23 +199,26 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 运单数量 -->
-                        <DataGridTemplateColumn Header="运单数量" Width="85">
+                        <!-- 运单数量 (4字: 76 + 16 = 92) -->
+                        <DataGridTemplateColumn Header="运单数量" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBox Text="{Binding WaybillQuantity}"
-                                             HorizontalAlignment="Stretch"
-                                             VerticalAlignment="Center"
-                                             TextAlignment="Center"
-                                             FontSize="12"
-                                             BorderThickness="0"
-                                             Background="Transparent" />
+                                    <NumericUpDown Value="{Binding WaybillQuantity, Mode=TwoWay}"
+                                                   FormatString="F2"
+                                                   Increment="0.01"
+                                                   Minimum="0"
+                                                   HorizontalAlignment="Stretch"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   ShowButtonSpinner="False"
+                                                   BorderThickness="0"
+                                                   Background="Transparent" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 运单重量 -->
-                        <DataGridTemplateColumn Header="运单重量" Width="85">
+                        <!-- 运单重量 (4字: 76 + 16 = 92) -->
+                        <DataGridTemplateColumn Header="运单重量" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding WaybillWeightDisplay}"
@@ -225,8 +231,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 实际数量 -->
-                        <DataGridTemplateColumn Header="实际数量" Width="85">
+                        <!-- 实际数量 (4字: 76 + 16 = 92) -->
+                        <DataGridTemplateColumn Header="实际数量" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ActualQuantityDisplay}"
@@ -239,8 +245,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 实际重量 -->
-                        <DataGridTemplateColumn Header="实际重量" Width="85">
+                        <!-- 实际重量 (4字: 76 + 16 = 92) -->
+                        <DataGridTemplateColumn Header="实际重量" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ActualWeightDisplay}"
@@ -253,8 +259,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 正负差 -->
-                        <DataGridTemplateColumn Header="正负差" Width="70">
+                        <!-- 正负差 (3字: 60 + 16 = 76) -->
+                        <DataGridTemplateColumn Header="正负差" Width="76">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DifferenceDisplay}"
@@ -267,8 +273,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 偏差率 -->
-                        <DataGridTemplateColumn Header="偏差率" Width="70">
+                        <!-- 偏差率 (3字: 60 + 16 = 76) -->
+                        <DataGridTemplateColumn Header="偏差率" Width="76">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DeviationRateDisplay}"
@@ -281,8 +287,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 偏差结果 -->
-                        <DataGridTemplateColumn Header="偏差结果" Width="85">
+                        <!-- 偏差结果 (4字: 76 + 16 = 92) -->
+                        <DataGridTemplateColumn Header="偏差结果" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DeviationResult}"

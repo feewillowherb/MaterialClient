@@ -1,15 +1,14 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
-using ReactiveUI;
-using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
@@ -21,9 +20,6 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     private readonly WeighingRecord _currentRecord;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWeighingMatchingService _weighingMatchingService;
-    private readonly IRepository<WeighingRecordAttachment, int>? _attachmentRepository;
-
-    #region 属性
 
     /// <summary>
     /// 当前称重记录
@@ -33,27 +29,32 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 车牌号
     /// </summary>
-    [ObservableProperty] private string? _plateNumber;
+    [Reactive]
+    private string? _plateNumber;
 
     /// <summary>
     /// 供料单位
     /// </summary>
-    [ObservableProperty] private string? _providerName;
+    [Reactive]
+    private string? _providerName;
 
     /// <summary>
     /// 车辆重量
     /// </summary>
-    [ObservableProperty] private decimal _weight;
+    [Reactive]
+    private decimal _weight;
 
     /// <summary>
     /// 进场时间
     /// </summary>
-    [ObservableProperty] private DateTime _joinTime;
+    [Reactive]
+    private DateTime _joinTime;
 
     /// <summary>
     /// 是否收料（true=收料，false=发料）
     /// </summary>
-    [ObservableProperty] private bool _isReceiving = true;
+    [Reactive]
+    private bool _isReceiving = true;
 
     /// <summary>
     /// 选中的收发料类型
@@ -63,72 +64,80 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 可匹配订单列表
     /// </summary>
-    [ObservableProperty] private ObservableCollection<CandidateRecordViewModel> _candidateRecords = new();
+    [Reactive]
+    private ObservableCollection<CandidateRecordViewModel> _candidateRecords = new();
 
     /// <summary>
     /// 选中的匹配订单
     /// </summary>
-    [ObservableProperty] private CandidateRecordViewModel? _selectedCandidateRecord;
+    [Reactive]
+    private CandidateRecordViewModel? _selectedCandidateRecord;
 
     /// <summary>
     /// 是否可以点击确定
     /// </summary>
-    [ObservableProperty] private bool _canConfirm;
+    [Reactive]
+    private bool _canConfirm;
 
     /// <summary>
     /// 进场照片列表
     /// </summary>
-    [ObservableProperty] private ObservableCollection<string> _entryPhotos = new();
+    [Reactive]
+    private ObservableCollection<string> _entryPhotos = new();
 
     /// <summary>
     /// 运单照片
     /// </summary>
-    [ObservableProperty] private string? _ticketPhoto;
+    [Reactive]
+    private string? _ticketPhoto;
 
     /// <summary>
     /// 总记录数
     /// </summary>
-    [ObservableProperty] private int _totalCount;
+    [Reactive]
+    private int _totalCount;
 
     /// <summary>
     /// 当前页
     /// </summary>
-    [ObservableProperty] private int _currentPage = 1;
+    [Reactive]
+    private int _currentPage = 1;
 
     /// <summary>
     /// 总页数
     /// </summary>
-    [ObservableProperty] private int _totalPages = 1;
+    [Reactive]
+    private int _totalPages = 1;
 
     /// <summary>
     /// 是否正在加载
     /// </summary>
-    [ObservableProperty] private bool _isLoading;
-
-    #endregion
+    [Reactive]
+    private bool _isLoading;
 
     public ManualMatchWindowViewModel(WeighingRecord currentRecord, IServiceProvider serviceProvider)
     {
         _currentRecord = currentRecord;
         _serviceProvider = serviceProvider;
         _weighingMatchingService = serviceProvider.GetRequiredService<IWeighingMatchingService>();
-        _attachmentRepository = serviceProvider.GetService<IRepository<WeighingRecordAttachment, int>>();
 
         // 初始化当前记录信息
         PlateNumber = currentRecord.PlateNumber;
-        Weight = currentRecord.Weight;
+        Weight = currentRecord.TotalWeight;
         JoinTime = currentRecord.CreationTime;
-        
+
         // 如果记录已有 DeliveryType，使用它；否则默认收料
         IsReceiving = currentRecord.DeliveryType == null || currentRecord.DeliveryType == DeliveryType.Receiving;
 
-        // 监听选中项变化
-        this.WhenAnyValue(x => x.SelectedCandidateRecord)
-            .Subscribe(_ => UpdateCanConfirm());
-
-        // 监听收发料类型变化，重新加载候选记录
         this.WhenAnyValue(x => x.IsReceiving)
-            .Subscribe(async _ => await LoadCandidateRecordsAsync());
+            .Subscribe(async _ =>
+            {
+                this.RaisePropertyChanged(nameof(SelectedDeliveryType));
+                await LoadCandidateRecordsAsync();
+            });
+
+        this.WhenAnyValue(x => x.SelectedCandidateRecord)
+            .Subscribe(value => CanConfirm = value != null);
 
         // 加载数据
         _ = InitializeAsync();
@@ -140,17 +149,12 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         await LoadCandidateRecordsAsync();
     }
 
-    private void UpdateCanConfirm()
-    {
-        CanConfirm = SelectedCandidateRecord != null;
-    }
-
     #region 命令
 
     /// <summary>
     /// 加载可匹配订单
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private async Task LoadCandidateRecordsAsync()
     {
         try
@@ -159,7 +163,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
             CandidateRecords.Clear();
 
             var candidates = await _weighingMatchingService.GetCandidateRecordsAsync(
-                _currentRecord, 
+                _currentRecord,
                 SelectedDeliveryType);
 
             foreach (var record in candidates)
@@ -184,7 +188,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 设置为收料
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void SetReceiving()
     {
         IsReceiving = true;
@@ -193,7 +197,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 设置为发料
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void SetSending()
     {
         IsReceiving = false;
@@ -202,7 +206,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 上一页
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void PreviousPage()
     {
         if (CurrentPage > 1)
@@ -214,7 +218,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     /// <summary>
     /// 下一页
     /// </summary>
-    [RelayCommand]
+    [ReactiveCommand]
     private void NextPage()
     {
         if (CurrentPage < TotalPages)
@@ -231,27 +235,28 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     {
         try
         {
-            if (_attachmentRepository == null) return;
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService == null) return;
 
-            var attachments = await _attachmentRepository.GetListAsync(
-                predicate: x => x.WeighingRecordId == _currentRecord.Id,
-                includeDetails: true
-            );
+            var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(new[] { _currentRecord.Id });
 
             EntryPhotos.Clear();
             TicketPhoto = null;
 
-            foreach (var attachment in attachments)
+            if (attachmentsDict.TryGetValue(_currentRecord.Id, out var attachmentFiles))
             {
-                if (attachment.AttachmentFile != null && !string.IsNullOrEmpty(attachment.AttachmentFile.LocalPath))
+                foreach (var file in attachmentFiles)
                 {
-                    if (attachment.AttachmentFile.AttachType == AttachType.EntryPhoto)
+                    if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        EntryPhotos.Add(attachment.AttachmentFile.LocalPath);
-                    }
-                    else if (attachment.AttachmentFile.AttachType == AttachType.TicketPhoto)
-                    {
-                        TicketPhoto = attachment.AttachmentFile.LocalPath;
+                        if (file.AttachType == AttachType.EntryPhoto)
+                        {
+                            EntryPhotos.Add(file.LocalPath);
+                        }
+                        else if (file.AttachType == AttachType.TicketPhoto)
+                        {
+                            TicketPhoto = file.LocalPath;
+                        }
                     }
                 }
             }
@@ -263,21 +268,12 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     }
 
     #endregion
-
-    #region 属性变更
-
-    partial void OnIsReceivingChanged(bool value)
-    {
-        OnPropertyChanged(nameof(SelectedDeliveryType));
-    }
-
-    #endregion
 }
 
 /// <summary>
 /// 候选匹配记录 ViewModel
 /// </summary>
-public partial class CandidateRecordViewModel : ObservableObject
+public partial class CandidateRecordViewModel : ReactiveObject
 {
     /// <summary>
     /// 原始称重记录
@@ -292,12 +288,13 @@ public partial class CandidateRecordViewModel : ObservableObject
     /// <summary>
     /// 供料单位
     /// </summary>
-    [ObservableProperty] private string? _providerName;
+    [Reactive]
+    private string? _providerName;
 
     /// <summary>
     /// 车辆重量
     /// </summary>
-    public decimal Weight => Record.Weight;
+    public decimal Weight => Record.TotalWeight;
 
     /// <summary>
     /// 进场时间
@@ -312,9 +309,9 @@ public partial class CandidateRecordViewModel : ObservableObject
     public CandidateRecordViewModel(WeighingRecord record, DateTime currentRecordTime)
     {
         Record = record;
-        
+
         // 计算时间差
-        var diff = currentRecordTime - record.CreationTime;
+        var diff = record.CreationTime - currentRecordTime;
         if (diff.TotalDays >= 1)
         {
             SeparatedTime = $"{(int)diff.TotalDays}天{diff.Hours}时";

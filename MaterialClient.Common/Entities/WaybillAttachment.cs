@@ -42,16 +42,6 @@ public class WaybillAttachment : Entity<int>
     /// 附件文件ID (FK to AttachmentFile)
     /// </summary>
     public int AttachmentFileId { get; set; }
-
-    // Navigation properties
-    /// <summary>
-    /// 运单导航属性
-    /// </summary>
-    public Waybill? Waybill { get; set; }
-
-    /// <summary>
-    /// 附件文件导航属性
-    /// </summary>
-    public AttachmentFile? AttachmentFile { get; set; }
+    
 }
 

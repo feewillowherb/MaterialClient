@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using MaterialClient.ViewModels;
 using MaterialClient.Backgrounds;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,17 +48,6 @@ public partial class AttendedWeighingWindow : Window
                 System.Diagnostics.Debug.WriteLine($"启动轮询后台服务失败: {ex.Message}");
             }
         }
-    }
-
-    private async void TestDetailWindow_Click(object? sender, RoutedEventArgs e)
-    {
-        // 测试订单数据匹配窗口
-        var matchWindow = new ManualMatchWindow();
-        await matchWindow.ShowDialog(this);
-        
-        // 如果需要测试订单匹配确认窗口，可以取消下面的注释：
-        // var matchEditWindow = new ManualMatchEditWindow();
-        // await matchEditWindow.ShowDialog(this);
     }
 
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)
@@ -131,26 +119,12 @@ public partial class AttendedWeighingWindow : Window
         }
     }
 
-    protected override async void OnClosed(EventArgs e)
+    protected override void OnClosed(EventArgs e)
     {
         _closePopupCts?.Cancel();
         
-        // 窗口关闭时停止轮询后台服务
-        if (_serviceProvider != null)
-        {
-            try
-            {
-                var pollingService = _serviceProvider.GetService<PollingBackgroundService>();
-                if (pollingService != null)
-                {
-                    await pollingService.StopAsync(CancellationToken.None);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"停止轮询后台服务失败: {ex.Message}");
-            }
-        }
+        // 不需要手动停止 PollingBackgroundService
+        // ABP 框架会在应用退出时自动停止所有 BackgroundWorker
         
         if (DataContext is IDisposable disposable)
         {

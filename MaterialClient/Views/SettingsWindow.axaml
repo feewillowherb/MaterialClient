@@ -6,7 +6,8 @@
         x:DataType="vm:SettingsWindowViewModel"
         Title="系统设置"
         Width="800" Height="700"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/fd-ico.ico">
   
   <Grid RowDefinitions="Auto,*,Auto" Margin="16">
     
