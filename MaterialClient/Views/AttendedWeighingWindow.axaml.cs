@@ -51,17 +51,6 @@ public partial class AttendedWeighingWindow : Window
         }
     }
 
-    private async void TestDetailWindow_Click(object? sender, RoutedEventArgs e)
-    {
-        // 测试订单数据匹配窗口
-        var matchWindow = new ManualMatchWindow();
-        await matchWindow.ShowDialog(this);
-        
-        // 如果需要测试订单匹配确认窗口，可以取消下面的注释：
-        // var matchEditWindow = new ManualMatchEditWindow();
-        // await matchEditWindow.ShowDialog(this);
-    }
-
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)
     {
         // Cancel any pending close operation

@@ -482,7 +482,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             // 加载偏差信息
             if (waybill.OffsetRate.HasValue)
             {
-                var offsetRatePercent = waybill.OffsetRate.Value * 100;
+                var offsetRatePercent = waybill.OffsetRate.Value;
                 OffsetInfo = $"{offsetRatePercent:F2}%";
             }
             else
