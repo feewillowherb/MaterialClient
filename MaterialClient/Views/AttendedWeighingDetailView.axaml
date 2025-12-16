@@ -16,9 +16,27 @@
         </Style>
     </UserControl.Styles>
     
-    <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollBarVisibility="Auto">
-        <Grid Background="#F5F6FA" Margin="10">
+    <Grid>
+        <!-- Loading 遮罩层 -->
+        <Border Background="#80FFFFFF"
+                IsVisible="{Binding IsLoading}"
+                ZIndex="100">
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="10">
+                <ProgressBar IsIndeterminate="True"
+                             Width="120"
+                             Height="4" />
+                <TextBlock Text="加载中..."
+                           HorizontalAlignment="Center"
+                           FontSize="14"
+                           Foreground="#666" />
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
+            <Grid Background="#F5F6FA" Margin="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -159,7 +177,7 @@
                         <DataGridTemplateColumn Header="材料名称" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding #DetailViewRoot.((vm:AttendedWeighingDetailViewModel)DataContext).Materials}"
+                                    <ComboBox ItemsSource="{Binding AvailableMaterials}"
                                               SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
                                               DisplayMemberBinding="{Binding Name}"
                                               BorderThickness="0"
@@ -355,6 +373,7 @@
                             Command="{Binding AbolishCommand}" />
                 </StackPanel>
             </Grid>
+                </Grid>
+            </ScrollViewer>
         </Grid>
-    </ScrollViewer>
 </UserControl>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -12,6 +13,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
@@ -521,29 +523,45 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         if (item?.ItemType == WeighingListItemType.WeighingRecord)
         {
+            var logger = _serviceProvider.GetService<ILogger<AttendedWeighingViewModel>>();
+            var totalSw = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
+            logger?.LogInformation("[OpenDetail] ========== START ==========");
+            
             try
             {
+                sw.Restart();
                 var weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
+                logger?.LogInformation("[OpenDetail] GetRequiredService<WeighingRecord>: {ElapsedMs}ms", sw.ElapsedMilliseconds);
 
+                sw.Restart();
                 var weighingRecord = await weighingRecordRepository.GetAsync(item.Id);
+                logger?.LogInformation("[OpenDetail] DB: GetWeighingRecord: {ElapsedMs}ms", sw.ElapsedMilliseconds);
+                
                 SelectedWeighingRecord = weighingRecord;
                 CurrentWeighingRecordForDetail = weighingRecord;
 
+                sw.Restart();
                 DetailViewModel = new AttendedWeighingDetailViewModel(
                     item,
                     _serviceProvider
                 );
+                logger?.LogInformation("[OpenDetail] new AttendedWeighingDetailViewModel: {ElapsedMs}ms", sw.ElapsedMilliseconds);
 
                 DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
                 DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
                 DetailViewModel.CloseRequested += OnDetailCloseRequested;
                 DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
 
+                sw.Restart();
                 IsShowingMainView = false;
+                logger?.LogInformation("[OpenDetail] IsShowingMainView = false: {ElapsedMs}ms", sw.ElapsedMilliseconds);
+                
+                logger?.LogInformation("[OpenDetail] TOTAL: {ElapsedMs}ms", totalSw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"打开详情视图失败: {ex.Message}");
+                logger?.LogError(ex, "打开详情视图失败");
             }
         }
     }

@@ -1,12 +1,15 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Views;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
@@ -26,6 +29,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<AttendedWeighingDetailViewModel>? _logger;
 
     #region 属性
 
@@ -71,22 +75,42 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     [Reactive] private ObservableCollection<MaterialItemRow> _materialItems = new();
 
+    [Reactive] private bool _isLoading;
+
     #endregion
 
     public AttendedWeighingDetailViewModel(
         WeighingListItemDto listItem,
         IServiceProvider serviceProvider)
     {
+        var totalSw = Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
+        
         _listItem = listItem;
         _serviceProvider = serviceProvider;
+        _logger = _serviceProvider.GetService<ILogger<AttendedWeighingDetailViewModel>>();
+        
+        sw.Restart();
         _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
+        LogPerf("GetRequiredService<WeighingRecord>", sw);
+        
+        sw.Restart();
         _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
+        LogPerf("GetRequiredService<Material>", sw);
+        
+        sw.Restart();
         _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
+        LogPerf("GetRequiredService<Provider>", sw);
+        
+        sw.Restart();
         _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
+        LogPerf("GetRequiredService<MaterialUnit>", sw);
 
-        InitializeData();
-        _ = LoadDropdownDataAsync();
+        sw.Restart();
+        InitializeBasicData();
+        LogPerf("InitializeBasicData", sw);
 
+        sw.Restart();
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
             .Subscribe(_ => GoodsWeight = AllWeight - TruckWeight);
@@ -103,8 +127,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 }
             });
 
+        // 使用 SelectMany 替代 async void Subscribe
         this.WhenAnyValue(x => x.SelectedMaterial)
-            .Subscribe(async material =>
+            .Where(_ => _isInitialized) // 只在初始化完成后响应
+            .SelectMany(async material =>
             {
                 if (material != null)
                 {
@@ -117,7 +143,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     MaterialUnits.Clear();
                     SelectedMaterialUnit = null;
                 }
-            });
+                return System.Reactive.Unit.Default;
+            })
+            .Subscribe();
 
         this.WhenAnyValue(x => x.SelectedMaterialUnit)
             .Subscribe(unit =>
@@ -127,11 +155,61 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     SelectedMaterialUnitId = unit.Id;
                 }
             });
+        LogPerf("WhenAnyValue subscriptions", sw);
+        
+        LogPerf("Constructor TOTAL", totalSw);
+    }
+    
+    private void LogPerf(string label, Stopwatch sw, int? count = null)
+    {
+        if (count.HasValue)
+        {
+            _logger?.LogInformation("[DetailVM] {Label}: {ElapsedMs}ms (count: {Count})", 
+                label, sw.ElapsedMilliseconds, count.Value);
+        }
+        else
+        {
+            _logger?.LogInformation("[DetailVM] {Label}: {ElapsedMs}ms", label, sw.ElapsedMilliseconds);
+        }
+    }
+
+    private bool _isInitialized;
+
+    /// <summary>
+    /// 延迟加载数据 - 在 View 加载完成后调用
+    /// </summary>
+    public async Task LoadDataAsync()
+    {
+        if (_isInitialized) return;
+        
+        var totalSw = Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
+
+        IsLoading = true;
+        try
+        {
+            sw.Restart();
+            await LoadDropdownDataAsync();
+            LogPerf("LoadDropdownDataAsync", sw);
+            
+            sw.Restart();
+            await LoadWeighingRecordDetailsAsync();
+            LogPerf("LoadWeighingRecordDetailsAsync", sw);
+        }
+        finally
+        {
+            IsLoading = false;
+            _isInitialized = true;
+            LogPerf("LoadDataAsync TOTAL", totalSw);
+        }
     }
 
     #region 初始化
 
-    private void InitializeData()
+    /// <summary>
+    /// 初始化基础数据（同步，不涉及数据库查询）
+    /// </summary>
+    private void InitializeBasicData()
     {
         WeighingRecordId = _listItem.Id;
         AllWeight = _listItem.Weight ?? 0;
@@ -159,34 +237,42 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             DeviationRate = null,
             DeviationResult = "-"
         });
-
-        _ = LoadWeighingRecordDetailsAsync();
     }
 
     private async Task LoadDropdownDataAsync()
     {
+        var sw = Stopwatch.StartNew();
         try
         {
+            sw.Restart();
             await Task.WhenAll(
                 LoadProvidersAsync(),
                 LoadMaterialsAsync()
             );
+            LogPerf("Task.WhenAll(Providers, Materials)", sw);
 
+            sw.Restart();
             if (SelectedProviderId.HasValue)
             {
                 SelectedProvider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
             }
+            LogPerf("Set SelectedProvider", sw);
 
             Material? selectedMaterial = null;
 
             if (SelectedMaterialId.HasValue)
             {
+                sw.Restart();
                 selectedMaterial = Materials.FirstOrDefault(m => m.Id == SelectedMaterialId.Value);
                 SelectedMaterial = selectedMaterial;
+                LogPerf("Set SelectedMaterial", sw);
 
                 if (selectedMaterial != null)
                 {
+                    sw.Restart();
                     await LoadMaterialUnitsAsync(selectedMaterial.Id);
+                    LogPerf("LoadMaterialUnitsAsync", sw);
+                    
                     if (SelectedMaterialUnitId.HasValue)
                     {
                         SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == SelectedMaterialUnitId.Value);
@@ -194,36 +280,45 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 }
             }
 
+            sw.Restart();
             if (MaterialItems.Count > 0)
             {
                 var firstRow = MaterialItems[0];
-                firstRow.InitializeSelection(selectedMaterial, MaterialUnits, SelectedMaterialUnitId);
+                firstRow.InitializeSelection(Materials, selectedMaterial, MaterialUnits, SelectedMaterialUnitId);
             }
+            LogPerf("MaterialItemRow.InitializeSelection", sw);
         }
-        catch
+        catch (Exception ex)
         {
-            // 如果加载失败，保持空列表
+            _logger?.LogError(ex, "LoadDropdownDataAsync Error");
         }
     }
 
     private async Task LoadWeighingRecordDetailsAsync()
     {
+        var sw = Stopwatch.StartNew();
         try
         {
             var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
+            LogPerf("DB: GetWeighingRecord", sw);
             IsMatchButtonVisible = weighingRecord.MatchedId == null;
         }
-        catch
+        catch (Exception ex)
         {
-            // 如果加载失败，保持默认值
+            _logger?.LogError(ex, "LoadWeighingRecordDetailsAsync Error");
         }
     }
 
     private async Task LoadProvidersAsync()
     {
+        var sw = Stopwatch.StartNew();
         try
         {
+            sw.Restart();
             var providers = await _providerRepository.GetListAsync();
+            LogPerf("DB: GetProviderList ({Count} items)", sw, providers.Count);
+            
+            sw.Restart();
             Providers.Clear();
             foreach (var provider in providers.OrderBy(p => p.ProviderName))
             {
@@ -236,37 +331,49 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     ContactPhone = provider.ContectPhone
                 });
             }
+            LogPerf("Build Providers ObservableCollection", sw);
         }
-        catch
+        catch (Exception ex)
         {
-            // 如果加载失败，保持空列表
+            _logger?.LogError(ex, "LoadProvidersAsync Error");
         }
     }
 
     private async Task LoadMaterialsAsync()
     {
+        var sw = Stopwatch.StartNew();
         try
         {
+            sw.Restart();
             var materials = await _materialRepository.GetListAsync();
+            LogPerf("DB: GetMaterialList ({Count} items)", sw, materials.Count);
+            
+            sw.Restart();
             Materials.Clear();
             foreach (var material in materials.OrderBy(m => m.Name))
             {
                 Materials.Add(material);
             }
+            LogPerf("Build Materials ObservableCollection", sw);
         }
-        catch
+        catch (Exception ex)
         {
-            // 如果加载失败，保持空列表
+            _logger?.LogError(ex, "LoadMaterialsAsync Error");
         }
     }
 
     private async Task LoadMaterialUnitsAsync(int materialId)
     {
+        var sw = Stopwatch.StartNew();
         try
         {
+            sw.Restart();
             var units = await _materialUnitRepository.GetListAsync(
                 predicate: u => u.MaterialId == materialId
             );
+            LogPerf("DB: GetMaterialUnitList ({Count} items)", sw, units.Count);
+            
+            sw.Restart();
             MaterialUnits.Clear();
             foreach (var unit in units.OrderBy(u => u.UnitName))
             {
@@ -280,10 +387,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     ProviderId = unit.ProviderId
                 });
             }
+            LogPerf("Build MaterialUnits ObservableCollection", sw);
         }
-        catch
+        catch (Exception ex)
         {
-            // 如果加载失败，保持空列表
+            _logger?.LogError(ex, "LoadMaterialUnitsAsync Error");
         }
     }
 
@@ -455,6 +563,11 @@ public partial class MaterialItemRow : ReactiveObject
 {
     public Func<int, Task<ObservableCollection<MaterialUnitDto>>>? LoadMaterialUnitsFunc { get; set; }
 
+    /// <summary>
+    /// 可选材料列表（从父 ViewModel 传入，避免跨控件绑定）
+    /// </summary>
+    [Reactive] private ObservableCollection<Material> _availableMaterials = new();
+
     [Reactive] private Material? _selectedMaterial;
 
     [Reactive] private MaterialUnitDto? _selectedMaterialUnit;
@@ -483,10 +596,16 @@ public partial class MaterialItemRow : ReactiveObject
     public string DeviationRateDisplay => DeviationRate.HasValue ? $"{DeviationRate.Value:F2}%" : "-";
     public string RateDisplay => SelectedMaterialUnit?.Rate.ToString("F2") ?? "";
 
+    private bool _isInitialized;
+
     public MaterialItemRow()
     {
+        var sw = Stopwatch.StartNew();
+        
+        // 使用 SelectMany 替代 async void Subscribe，并添加初始化检查
         this.WhenAnyValue(x => x.SelectedMaterial)
-            .Subscribe(async value =>
+            .Where(_ => _isInitialized) // 只在初始化完成后响应
+            .SelectMany(async value =>
             {
                 if (value != null && LoadMaterialUnitsFunc != null)
                 {
@@ -497,7 +616,9 @@ public partial class MaterialItemRow : ReactiveObject
                     MaterialUnits.Clear();
                     SelectedMaterialUnit = null;
                 }
-            });
+                return System.Reactive.Unit.Default;
+            })
+            .Subscribe();
 
         this.WhenAnyValue(x => x.SelectedMaterialUnit)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(RateDisplay)));
@@ -519,6 +640,17 @@ public partial class MaterialItemRow : ReactiveObject
 
         this.WhenAnyValue(x => x.DeviationRate)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(DeviationRateDisplay)));
+        
+        // MaterialItemRow 无法直接使用 ILogger，保留 Debug 输出
+        Debug.WriteLine("[MaterialItemRow] Constructor: {0}ms", sw.ElapsedMilliseconds);
+    }
+
+    /// <summary>
+    /// 标记初始化完成，开始响应属性变更
+    /// </summary>
+    public void MarkInitialized()
+    {
+        _isInitialized = true;
     }
 
     private async Task LoadMaterialUnitsInternalAsync(int materialId)
@@ -551,11 +683,14 @@ public partial class MaterialItemRow : ReactiveObject
         }
     }
 
-    public void InitializeSelection(Material? material, ObservableCollection<MaterialUnitDto> units,
+    public void InitializeSelection(
+        ObservableCollection<Material> availableMaterials,
+        Material? material,
+        ObservableCollection<MaterialUnitDto> units,
         int? selectedUnitId)
     {
-        var originalFunc = LoadMaterialUnitsFunc;
-        LoadMaterialUnitsFunc = null;
+        // 设置可选材料列表
+        AvailableMaterials = availableMaterials;
 
         SelectedMaterial = material;
         SetMaterialUnits(units);
@@ -565,6 +700,7 @@ public partial class MaterialItemRow : ReactiveObject
             SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == selectedUnitId.Value);
         }
 
-        LoadMaterialUnitsFunc = originalFunc;
+        // 初始化完成后，标记可以响应属性变更
+        MarkInitialized();
     }
 }
