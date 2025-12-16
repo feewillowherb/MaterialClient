@@ -4,6 +4,18 @@
              x:Class="MaterialClient.Views.AttendedWeighingDetailView"
              x:DataType="vm:AttendedWeighingDetailViewModel"
              x:Name="DetailViewRoot">
+    
+    
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Style.Resources>
+                <x:Double x:Key="DataGridSortIconMinWidth">16</x:Double>
+            </Style.Resources>
+
+            <!-- setters... -->
+        </Style>
+    </UserControl.Styles>
+    
     <ScrollViewer HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto">
         <Grid Background="#F5F6FA" Margin="10">
