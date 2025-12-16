@@ -1,0 +1,133 @@
+2025-12-16 17:11:38.974 +08:00 [INF] AttendedWeighingService: Started monitoring truck scale weight changes
+2025-12-16 17:11:40.743 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:40.745 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:40.838 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 90ms
+2025-12-16 17:11:41.019 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:41.020 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:41.036 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 16ms
+2025-12-16 17:11:41.062 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 25ms
+2025-12-16 17:11:41.086 +08:00 [INF] [DetailVM] InitializeBasicData: 23ms
+2025-12-16 17:11:41.102 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 15ms
+2025-12-16 17:11:41.102 +08:00 [INF] [DetailVM] Constructor TOTAL: 84ms
+2025-12-16 17:11:41.104 +08:00 [INF] [DetailView] InitializeComponent: 112ms
+2025-12-16 17:11:41.104 +08:00 [INF] [DetailView] Constructor TOTAL: 112ms
+2025-12-16 17:11:41.140 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 123ms
+2025-12-16 17:11:41.141 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:41.141 +08:00 [INF] [OpenDetail] TOTAL: 398ms
+2025-12-16 17:11:41.852 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:41.853 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:41.858 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 4ms
+2025-12-16 17:11:41.865 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:41.865 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:41.866 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:41.866 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:41.867 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:41.867 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:41.867 +08:00 [INF] [DetailVM] Constructor TOTAL: 2ms
+2025-12-16 17:11:41.892 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 27ms
+2025-12-16 17:11:41.892 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:41.892 +08:00 [INF] [OpenDetail] TOTAL: 40ms
+2025-12-16 17:11:42.402 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:42.402 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:42.405 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 2ms
+2025-12-16 17:11:42.419 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:42.420 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:42.420 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:42.421 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:42.421 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:42.422 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:42.422 +08:00 [INF] [DetailVM] Constructor TOTAL: 2ms
+2025-12-16 17:11:42.429 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 10ms
+2025-12-16 17:11:42.429 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:42.429 +08:00 [INF] [OpenDetail] TOTAL: 27ms
+2025-12-16 17:11:42.820 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:42.820 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:42.838 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 17ms
+2025-12-16 17:11:42.851 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:42.852 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:42.852 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:42.852 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:42.852 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:42.853 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:42.853 +08:00 [INF] [DetailVM] Constructor TOTAL: 1ms
+2025-12-16 17:11:42.860 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 8ms
+2025-12-16 17:11:42.860 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:42.860 +08:00 [INF] [OpenDetail] TOTAL: 39ms
+2025-12-16 17:11:43.117 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:43.119 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 1ms
+2025-12-16 17:11:43.124 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 4ms
+2025-12-16 17:11:43.147 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:43.148 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 1ms
+2025-12-16 17:11:43.149 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:43.149 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:43.150 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:43.151 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:43.151 +08:00 [INF] [DetailVM] Constructor TOTAL: 4ms
+2025-12-16 17:11:43.161 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 15ms
+2025-12-16 17:11:43.161 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:43.161 +08:00 [INF] [OpenDetail] TOTAL: 43ms
+2025-12-16 17:11:43.609 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:43.610 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:43.613 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 3ms
+2025-12-16 17:11:43.624 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:43.624 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:43.624 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:43.624 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:43.624 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:43.625 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:43.625 +08:00 [INF] [DetailVM] Constructor TOTAL: 1ms
+2025-12-16 17:11:43.632 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 8ms
+2025-12-16 17:11:43.632 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:43.632 +08:00 [INF] [OpenDetail] TOTAL: 22ms
+2025-12-16 17:11:45.490 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:45.491 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:45.495 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 3ms
+2025-12-16 17:11:45.501 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:45.501 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:45.501 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:45.501 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:45.501 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:45.502 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:45.502 +08:00 [INF] [DetailVM] Constructor TOTAL: 1ms
+2025-12-16 17:11:45.503 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 2ms
+2025-12-16 17:11:45.503 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:45.504 +08:00 [INF] [OpenDetail] TOTAL: 13ms
+2025-12-16 17:11:45.856 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:45.857 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:45.860 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 2ms
+2025-12-16 17:11:45.869 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:45.870 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:45.870 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:45.870 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:45.870 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:45.871 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:45.871 +08:00 [INF] [DetailVM] Constructor TOTAL: 1ms
+2025-12-16 17:11:45.874 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 5ms
+2025-12-16 17:11:45.875 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:45.875 +08:00 [INF] [OpenDetail] TOTAL: 18ms
+2025-12-16 17:11:46.190 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:46.190 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:46.192 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 1ms
+2025-12-16 17:11:46.196 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:46.196 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:46.197 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:46.197 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:46.197 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:46.198 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:46.198 +08:00 [INF] [DetailVM] Constructor TOTAL: 1ms
+2025-12-16 17:11:46.201 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 4ms
+2025-12-16 17:11:46.201 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:46.201 +08:00 [INF] [OpenDetail] TOTAL: 11ms
+2025-12-16 17:11:46.507 +08:00 [INF] [OpenDetail] ========== START ==========
+2025-12-16 17:11:46.507 +08:00 [INF] [OpenDetail] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:46.512 +08:00 [INF] [OpenDetail] DB: GetWeighingRecord: 4ms
+2025-12-16 17:11:46.532 +08:00 [INF] [DetailVM] GetRequiredService<WeighingRecord>: 0ms
+2025-12-16 17:11:46.532 +08:00 [INF] [DetailVM] GetRequiredService<Material>: 0ms
+2025-12-16 17:11:46.532 +08:00 [INF] [DetailVM] GetRequiredService<Provider>: 0ms
+2025-12-16 17:11:46.532 +08:00 [INF] [DetailVM] GetRequiredService<MaterialUnit>: 0ms
+2025-12-16 17:11:46.533 +08:00 [INF] [DetailVM] InitializeBasicData: 0ms
+2025-12-16 17:11:46.533 +08:00 [INF] [DetailVM] WhenAnyValue subscriptions: 0ms
+2025-12-16 17:11:46.533 +08:00 [INF] [DetailVM] Constructor TOTAL: 1ms
+2025-12-16 17:11:46.536 +08:00 [INF] [OpenDetail] new AttendedWeighingDetailViewModel: 4ms
+2025-12-16 17:11:46.536 +08:00 [INF] [OpenDetail] IsShowingMainView = false: 0ms
+2025-12-16 17:11:46.536 +08:00 [INF] [OpenDetail] TOTAL: 29ms
