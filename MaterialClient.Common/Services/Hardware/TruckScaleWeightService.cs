@@ -374,7 +374,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     }
 
                     _logger?.LogDebug(
-                        $"Parsed HEX weight: {parsedWeight} kg (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
+                        $"Parsed HEX weight: {parsedWeight} t (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
                     // Push weight update to Rx stream
                     _weightSubject.OnNext(parsedWeight);
                 }
@@ -419,7 +419,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     _rwLock.ExitWriteLock();
                 }
 
-                _logger?.LogDebug($"Parsed String weight: {weight} kg");
+                _logger?.LogDebug($"Parsed String weight: {weight} t");
                 // Push weight update to Rx stream
                 _weightSubject.OnNext(weight);
             }

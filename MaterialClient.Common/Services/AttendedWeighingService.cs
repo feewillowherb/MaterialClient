@@ -317,7 +317,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
             if (_currentStatus != previousStatus)
             {
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}kg");
+                    $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}t");
 
                 // Notify observers of status change
                 _statusSubject.OnNext(_currentStatus);
@@ -340,7 +340,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                     _stableWeight = null;
 
                     _logger.LogInformation(
-                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}kg");
+                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}t");
                 }
 
                 break;
@@ -372,7 +372,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                     ClearPlateNumberCache();
 
                     _logger?.LogWarning(
-                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}kg, triggered capture");
+                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}t, triggered capture");
                 }
                 else
                 {
@@ -393,7 +393,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                     ClearPlateNumberCache();
 
                     _logger?.LogInformation(
-                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}kg");
+                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}t");
                 }
 
                 break;
@@ -416,7 +416,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                 _currentStatus = AttendedWeighingStatus.WeightStabilized;
 
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}kg");
+                    $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}t");
 
                 // When weight is stabilized, capture photos and create WeighingRecord
                 _ = Task.Run(async () => await OnWeightStabilizedAsync(currentWeight));
@@ -571,7 +571,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
             await uow.CompleteAsync();
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
+                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}");
 
             // Notify observers that a new weighing record was created
             _weighingRecordCreatedSubject.OnNext(weighingRecord);
