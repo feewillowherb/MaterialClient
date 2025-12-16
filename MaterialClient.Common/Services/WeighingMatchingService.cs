@@ -319,9 +319,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         outRecord.MatchAsOut(joinRecord.Id);
 
         // 先插入 Waybill 获取 Id
-        await _waybillRepository.InsertAsync(waybill, autoSave: true);
-        await _weighingRecordRepository.UpdateAsync(joinRecord, autoSave: true);
-        await _weighingRecordRepository.UpdateAsync(outRecord, autoSave: true);
+        await _waybillRepository.InsertAsync(waybill);
+        await _weighingRecordRepository.UpdateAsync(joinRecord);
+        await _weighingRecordRepository.UpdateAsync(outRecord);
 
 
         // 计算物料信息（从 Materials 集合中获取）
