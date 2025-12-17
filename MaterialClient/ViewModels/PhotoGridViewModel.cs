@@ -6,8 +6,10 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using MaterialClient.Views;
 
 namespace MaterialClient.ViewModels;
 
@@ -113,6 +115,31 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// 打开图片查看窗口
+    /// </summary>
+    [ReactiveCommand]
+    private void OpenImageViewer(string? imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath))
+            return;
+
+        try
+        {
+            // 先创建并设置 ViewModel
+            var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
+            viewModel.SetImage(imagePath);
+            
+            // 手动创建窗口，传入已设置的 ViewModel
+            var window = new ImageViewerWindow(viewModel);
+            window.Show();
+        }
+        catch
+        {
+            // Handle error opening image viewer window
+        }
+    }
+
+    /// <summary>
     /// 从称重记录加载照片
     /// </summary>
     public async Task LoadFromWeighingRecordAsync(WeighingRecord record)
@@ -167,6 +194,44 @@ public partial class PhotoGridViewModel : ViewModelBase
             var attachmentsDict = await attachmentService.GetAttachmentsByWaybillIdsAsync(new[] { waybill.Id });
             if (!attachmentsDict.TryGetValue(waybill.Id, out var attachmentFiles))
                 return;
+
+            int entryIndex = 0;
+            int exitIndex = 0;
+
+            foreach (var file in attachmentFiles)
+            {
+                if (string.IsNullOrEmpty(file.LocalPath))
+                    continue;
+
+                if (file.AttachType == AttachType.EntryPhoto)
+                {
+                    SetEntryPhoto(entryIndex++, file.LocalPath);
+                }
+                else if (file.AttachType == AttachType.ExitPhoto)
+                {
+                    SetExitPhoto(exitIndex++, file.LocalPath);
+                }
+            }
+        }
+        catch
+        {
+            // If service is not available, photos will remain empty
+        }
+    }
+
+    /// <summary>
+    /// 从列表项加载照片（统一接口，根据 ItemType 自动路由）
+    /// </summary>
+    public async Task LoadFromListItemAsync(WeighingListItemDto item)
+    {
+        try
+        {
+            Clear();
+
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService == null) return;
+
+            var attachmentFiles = await attachmentService.GetAttachmentsByListItemAsync(item);
 
             int entryIndex = 0;
             int exitIndex = 0;

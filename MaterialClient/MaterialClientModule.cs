@@ -7,6 +7,7 @@ using MaterialClient.Common;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using Volo.Abp;
 using Volo.Abp.BackgroundWorkers;
 
@@ -32,6 +33,7 @@ public class MaterialClientModule : AbpModule
         services.AddTransient<AuthCodeWindow>();
         services.AddTransient<AttendedWeighingWindow>();
         services.AddTransient<SettingsWindow>();
+        services.AddTransient<ImageViewerWindow>();
         // AttendedWeighingDetailView 需要 WeighingRecord 参数，在使用时通过 IServiceProvider 创建
 
         // Register ViewModels (transient as they are bound to specific UI instances)
@@ -40,6 +42,7 @@ public class MaterialClientModule : AbpModule
         services.AddTransient<AuthCodeWindowViewModel>();
         services.AddTransient<AttendedWeighingViewModel>();
         services.AddTransient<SettingsWindowViewModel>();
+        services.AddTransient<ImageViewerViewModel>();
         // AttendedWeighingDetailViewModel 需要 WeighingRecord 参数，在使用时创建
 
         // Register startup service

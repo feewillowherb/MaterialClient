@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.ChangeTracking;
 using Volo.Abp.Domain.Repositories;
@@ -28,6 +30,13 @@ public interface IAttachmentService
     /// <param name="waybillIds">运单ID列表</param>
     /// <returns>字典，key为运单ID，value为附件文件列表</returns>
     Task<Dictionary<long, List<AttachmentFile>>> GetAttachmentsByWaybillIdsAsync(IEnumerable<long> waybillIds);
+
+    /// <summary>
+    /// 根据列表项获取附件（统一接口，自动根据 ItemType 路由）
+    /// </summary>
+    /// <param name="item">列表项</param>
+    /// <returns>附件文件列表</returns>
+    Task<List<AttachmentFile>> GetAttachmentsByListItemAsync(WeighingListItemDto item);
 }
 
 /// <summary>
@@ -153,5 +162,25 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 根据列表项获取附件（统一接口，自动根据 ItemType 路由）
+    /// </summary>
+    [DisableEntityChangeTracking]
+    public async Task<List<AttachmentFile>> GetAttachmentsByListItemAsync(WeighingListItemDto item)
+    {
+        if (item.ItemType == WeighingListItemType.WeighingRecord)
+        {
+            var result = await GetAttachmentsByWeighingRecordIdsAsync(new[] { item.Id });
+            return result.TryGetValue(item.Id, out var files) ? files : new List<AttachmentFile>();
+        }
+        else if (item.ItemType == WeighingListItemType.Waybill)
+        {
+            var result = await GetAttachmentsByWaybillIdsAsync(new[] { item.Id });
+            return result.TryGetValue(item.Id, out var files) ? files : new List<AttachmentFile>();
+        }
+
+        return new List<AttachmentFile>();
     }
 }

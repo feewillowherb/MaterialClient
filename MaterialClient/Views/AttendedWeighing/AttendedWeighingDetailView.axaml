@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
-             x:Class="MaterialClient.Views.AttendedWeighingDetailView"
+             x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingDetailView"
              x:DataType="vm:AttendedWeighingDetailViewModel"
              x:Name="DetailViewRoot">
     
@@ -337,7 +337,8 @@
                             Classes="outline-button"
                             HorizontalContentAlignment="Center"
                             VerticalContentAlignment="Center"
-                            Command="{Binding CompleteCommand}" />
+                            Command="{Binding CompleteCommand}"
+                            IsVisible="{Binding IsCompleteButtonVisible}" />
                 </StackPanel>
                 
                 <!-- 右侧按钮组 -->

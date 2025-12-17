@@ -38,14 +38,14 @@ public partial class ManualMatchEditWindow : Window
 
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
-        Close(false);
+        Close((bool?)false);
     }
 
     private async void OnConfirmButtonClick(object? sender, RoutedEventArgs e)
     {
         if (_viewModel == null)
         {
-            Close(false);
+            Close((bool?)false);
             return;
         }
 
@@ -55,7 +55,7 @@ public partial class ManualMatchEditWindow : Window
         // 如果保存成功，关闭窗口并返回 true
         if (result)
         {
-            Close(true);
+            Close((bool?)true);
         }
     }
 }

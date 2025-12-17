@@ -7,7 +7,7 @@ using MaterialClient.ViewModels;
 using MaterialClient.Backgrounds;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.Views.AttendedWeighing;
 
 public partial class AttendedWeighingWindow : Window
 {

@@ -55,10 +55,10 @@ public class WeightScaleRxTests
             var noise = (decimal)(random.NextDouble() * 0.08 - 0.04); // ±0.04m范围内波动
             var weight = Math.Round(stableWeight + noise, 2); // 保持2位小数精度
             dataPoints.Add(weight);
-            
+
             weightSubject.OnNext(weight); // 直接通过Subject发送数据
             _output.WriteLine($"[{i * 100}ms] 发送重量: {weight:F2}m");
-            
+
             await Task.Delay(100); // 100ms间隔
         }
 
@@ -68,7 +68,8 @@ public class WeightScaleRxTests
         // Assert: 验证重量被识别为稳定
         var isStable = attendedService.IsWeightStable;
         _output.WriteLine($"\n最终稳定状态: {isStable}");
-        _output.WriteLine($"数据范围: {dataPoints.Min():F2}m ~ {dataPoints.Max():F2}m (差值: {(dataPoints.Max() - dataPoints.Min()):F2}m)");
+        _output.WriteLine(
+            $"数据范围: {dataPoints.Min():F2}m ~ {dataPoints.Max():F2}m (差值: {(dataPoints.Max() - dataPoints.Min()):F2}m)");
 
         Assert.True(isStable, "数据在±0.05m范围内波动，应该被识别为稳定");
 
@@ -96,16 +97,16 @@ public class WeightScaleRxTests
 
         // Act: 模拟硬件每100ms发送不稳定数据（变化超过0.1m）
         var dataPoints = new List<decimal>();
-        
+
         // 生成30个数据点（3秒），重量从0.5到1.5大幅变化
         for (int i = 0; i < 30; i++)
         {
             var weight = Math.Round(0.5m + (i * 0.05m), 2); // 每次增加0.05m，保持2位小数
             dataPoints.Add(weight);
-            
+
             weightSubject.OnNext(weight);
             _output.WriteLine($"[{i * 100}ms] 发送重量: {weight:F2}m");
-            
+
             await Task.Delay(100);
         }
 
@@ -115,7 +116,8 @@ public class WeightScaleRxTests
         // Assert: 验证重量被识别为不稳定
         var isStable = attendedService.IsWeightStable;
         _output.WriteLine($"\n最终稳定状态: {isStable}");
-        _output.WriteLine($"数据范围: {dataPoints.Min():F2}m ~ {dataPoints.Max():F2}m (差值: {(dataPoints.Max() - dataPoints.Min()):F2}m)");
+        _output.WriteLine(
+            $"数据范围: {dataPoints.Min():F2}m ~ {dataPoints.Max():F2}m (差值: {(dataPoints.Max() - dataPoints.Min()):F2}m)");
 
         Assert.False(isStable, "数据变化超过0.1m，应该被识别为不稳定");
 
@@ -203,14 +205,16 @@ public class WeightScaleRxTests
         var weighingRecordRepo = Substitute.For<IRepository<WeighingRecord, long>>();
         var attachmentRepo = Substitute.For<IRepository<WeighingRecordAttachment, int>>();
         var fileRepo = Substitute.For<IRepository<AttachmentFile, int>>();
-        
+
         var mockUow = Substitute.For<IUnitOfWork>();
         mockUow.CompleteAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        
+
         var uowManager = Substitute.For<IUnitOfWorkManager>();
         uowManager.Begin(Arg.Any<AbpUnitOfWorkOptions>(), Arg.Any<bool>()).Returns(mockUow);
 
         var logger = Substitute.For<ILogger<AttendedWeighingService>>();
+
+        var eventBus = Substitute.For<Volo.Abp.EventBus.Local.ILocalEventBus>();
 
         // 创建服务实例
         return new AttendedWeighingService(
@@ -221,6 +225,7 @@ public class WeightScaleRxTests
             attachmentRepo,
             fileRepo,
             uowManager,
+            eventBus,
             logger
         );
     }

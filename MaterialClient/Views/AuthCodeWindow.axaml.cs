@@ -13,6 +13,11 @@ namespace MaterialClient.Views;
 public partial class AuthCodeWindow : Window
 {
     private IDisposable? _authSuccessSubscription;
+    
+    /// <summary>
+    /// 公开的验证结果属性，用于在窗口关闭后读取
+    /// </summary>
+    public bool IsVerified { get; private set; }
 
     public AuthCodeWindow(AuthCodeWindowViewModel authCodeWindowViewModel)
     {
@@ -30,8 +35,9 @@ public partial class AuthCodeWindow : Window
                     // Watch for successful authorization
                     _authSuccessSubscription = viewModel
                         .WhenAnyValue(vm => vm.IsVerified)
-                        .Subscribe(async isVerified =>
+                        .Subscribe(isVerified =>
                         {
+                            IsVerified = isVerified;  // 保存到窗口属性
                             if (isVerified)
                             {
                                 Dispatcher.UIThread.Post(async () =>

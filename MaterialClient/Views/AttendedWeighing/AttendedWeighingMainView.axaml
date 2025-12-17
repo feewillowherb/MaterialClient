@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:converters="using:MaterialClient.Converters"
-             x:Class="MaterialClient.Views.AttendedWeighingMainView"
+             x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingMainView"
              x:DataType="vm:AttendedWeighingViewModel">
   
   <UserControl.Resources>
@@ -47,7 +47,7 @@
                            VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.PlateNumber, TargetNullValue='--'}" 
+              <TextBlock Text="{Binding SelectedListItem.PlateNumber, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
@@ -142,7 +142,7 @@
                            VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybillProviderName, TargetNullValue='--'}" 
+              <TextBlock Text="{Binding SelectedListItem.ProviderName, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
@@ -238,18 +238,45 @@
                   ColumnDefinitions="*,*"
                   RowSpacing="8"
                   ColumnSpacing="8">
-              <Border Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
-              <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
-              <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
-              <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
+              <Button Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto1}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
+              <Button Grid.Column="1"
+                      Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto2}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
+              <Button Grid.Row="1"
+                      Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto3}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
+              <Button Grid.Row="1" Grid.Column="1"
+                      Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto4}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
             </Grid>
           </Grid>
         </Border>
@@ -269,18 +296,45 @@
                   ColumnDefinitions="*,*"
                   RowSpacing="8"
                   ColumnSpacing="8">
-              <Border Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
-              <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
-              <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
-              <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-                <Image Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-              </Border>
+              <Button Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto1}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
+              <Button Grid.Column="1"
+                      Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto2}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
+              <Button Grid.Row="1"
+                      Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto3}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
+              <Button Grid.Row="1" Grid.Column="1"
+                      Background="Transparent" 
+                      BorderThickness="0" 
+                      Padding="0"
+                      Command="{Binding OpenImageViewerCommand}"
+                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto4}">
+                <Border Background="#E5E7EB" CornerRadius="4">
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                </Border>
+              </Button>
             </Grid>
           </Grid>
         </Border>

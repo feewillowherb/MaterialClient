@@ -1,6 +1,7 @@
 using System;
 using Volo.Abp.Domain.Entities.Auditing;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
 
 namespace MaterialClient.Common.Entities;
 
@@ -158,6 +159,17 @@ public class Waybill : FullAuditedEntity<long>
     public decimal? MaterialUnitRate { get; set; }
 
 
+    public void SyncCompleted(DateTime now)
+    {
+        LastSyncTime = now;
+    }
+
+    public void OrderTypeCompleted()
+    {
+        OrderType = OrderTypeEnum.Completed;
+    }
+
+
     public decimal? GetJoinWeight()
     {
         if (DeliveryType == Enums.DeliveryType.Sending)
@@ -214,43 +226,19 @@ public class Waybill : FullAuditedEntity<long>
 
     public void CalculateMaterialWeight(decimal? lowerLimit, decimal? upperLimit)
     {
-        if (!OrderPlanOnPcs.HasValue || !MaterialUnitRate.HasValue || !OrderTruckWeight.HasValue ||
-            !OrderTotalWeight.HasValue ||
-            !OrderGoodsWeight.HasValue)
-        {
-            return;
-        }
+        var calc = new MaterialCalculation(
+            OrderPlanOnPcs,
+            OrderGoodsWeight,
+            MaterialUnitRate,
+            lowerLimit,
+            upperLimit);
 
-        var unitRate = MaterialUnitRate.Value;
+        if (!calc.IsValid) return;
 
-        OrderPlanOnWeight = Math.Round(OrderPlanOnPcs.Value * unitRate, 2, MidpointRounding.AwayFromZero);
-
-        var rowWeight = Math.Round(OrderGoodsWeight.Value * OrderPlanOnWeight.Value / OrderPlanOnWeight.Value, 4,
-            MidpointRounding.AwayFromZero);
-
-        OrderPcs = Math.Round(rowWeight / unitRate, 4, MidpointRounding.AwayFromZero);
-
-
-        var rowOffSetRate = Math.Round((rowWeight - OrderPlanOnWeight.Value) * 100 / OrderPlanOnWeight.Value, 4,
-            MidpointRounding.AwayFromZero);
-
-        OffsetRate = rowOffSetRate;
-
-        if (lowerLimit < 0 || upperLimit > 0)
-        {
-            if (rowOffSetRate < 0 && rowOffSetRate < lowerLimit)
-            {
-                OffsetResult = OffsetResultType.OverNegativeDeviation;
-            }
-            else if (rowOffSetRate > 0 && rowOffSetRate > upperLimit)
-            {
-                OffsetResult = OffsetResultType.OverPositiveDeviation;
-            }
-            else
-            {
-                OffsetResult = OffsetResultType.Normal;
-            }
-        }
+        OrderPlanOnWeight = calc.PlanWeight;
+        OrderPcs = calc.ActualQuantity;
+        OffsetRate = calc.DeviationRate;
+        OffsetResult = calc.OffsetResult;
     }
 }
 

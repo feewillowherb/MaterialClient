@@ -63,7 +63,7 @@ public interface ITruckScaleWeightService : IDisposable
 /// Uses serial port communication to read weight from truck scale
 /// </summary>
 [AutoConstructor]
-public class TruckScaleWeightService : ITruckScaleWeightService
+public partial class TruckScaleWeightService : ITruckScaleWeightService
 {
     private readonly ISettingsService _settingsService;
     private readonly ILogger<TruckScaleWeightService>? _logger;
@@ -374,7 +374,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     }
 
                     _logger?.LogDebug(
-                        $"Parsed HEX weight: {parsedWeight} kg (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
+                        $"Parsed HEX weight: {parsedWeight} t (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
                     // Push weight update to Rx stream
                     _weightSubject.OnNext(parsedWeight);
                 }
@@ -419,7 +419,7 @@ public class TruckScaleWeightService : ITruckScaleWeightService
                     _rwLock.ExitWriteLock();
                 }
 
-                _logger?.LogDebug($"Parsed String weight: {weight} kg");
+                _logger?.LogDebug($"Parsed String weight: {weight} t");
                 // Push weight update to Rx stream
                 _weightSubject.OnNext(weight);
             }

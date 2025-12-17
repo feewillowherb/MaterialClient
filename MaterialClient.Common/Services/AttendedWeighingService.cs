@@ -6,11 +6,13 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.EventBus.Local;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
@@ -80,6 +82,21 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// Observable stream of new weighing record creation events
     /// </summary>
     IObservable<WeighingRecord> WeighingRecordCreated { get; }
+
+    /// <summary>
+    /// 获取当前收发料类型
+    /// </summary>
+    DeliveryType CurrentDeliveryType { get; }
+
+    /// <summary>
+    /// 设置收发料类型
+    /// </summary>
+    void SetDeliveryType(DeliveryType deliveryType);
+
+    /// <summary>
+    /// Observable stream of delivery type changes
+    /// </summary>
+    IObservable<DeliveryType> DeliveryTypeChanges { get; }
 }
 
 /// <summary>
@@ -96,6 +113,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<AttendedWeighingService> _logger;
 
     // Status management
@@ -110,6 +128,15 @@ public partial class AttendedWeighingService : IAttendedWeighingService
 
     // Rx Subject for weighing record creation events
     private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
+
+    // Rx Subject for delivery type changes
+    private readonly Subject<DeliveryType> _deliveryTypeSubject = new();
+
+    // 最近创建的称重记录ID，用于重写车牌号
+    private long? _lastCreatedWeighingRecordId = null;
+
+    // 当前收发料类型（默认为收料）
+    private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
 
     // 重量稳定判定
     private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
@@ -228,6 +255,41 @@ public partial class AttendedWeighingService : IAttendedWeighingService
     public IObservable<WeighingRecord> WeighingRecordCreated => _weighingRecordCreatedSubject;
 
     /// <summary>
+    /// 获取当前收发料类型
+    /// </summary>
+    public DeliveryType CurrentDeliveryType
+    {
+        get
+        {
+            lock (_statusLock)
+            {
+                return _currentDeliveryType;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 设置收发料类型
+    /// </summary>
+    public void SetDeliveryType(DeliveryType deliveryType)
+    {
+        lock (_statusLock)
+        {
+            if (_currentDeliveryType != deliveryType)
+            {
+                _currentDeliveryType = deliveryType;
+                _deliveryTypeSubject.OnNext(deliveryType);
+                _logger?.LogInformation($"AttendedWeighingService: DeliveryType changed to {deliveryType}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Observable stream of delivery type changes
+    /// </summary>
+    public IObservable<DeliveryType> DeliveryTypeChanges => _deliveryTypeSubject;
+
+    /// <summary>
     /// 接收车牌识别结果
     /// </summary>
     public void OnPlateNumberRecognized(string plateNumber)
@@ -314,7 +376,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
             if (_currentStatus != previousStatus)
             {
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}kg");
+                    $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}t");
 
                 // Notify observers of status change
                 _statusSubject.OnNext(_currentStatus);
@@ -337,7 +399,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                     _stableWeight = null;
 
                     _logger.LogInformation(
-                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}kg");
+                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}t");
                 }
 
                 break;
@@ -365,11 +427,15 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                         }
                     });
 
-                    // Clear plate number cache
-                    ClearPlateNumberCache();
+                    // Try to rewrite plate number, then clear cache
+                    _ = Task.Run(async () =>
+                    {
+                        await TryReWritePlateNumberAsync();
+                        ClearPlateNumberCache();
+                    });
 
                     _logger?.LogWarning(
-                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}kg, triggered capture");
+                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}t, triggered capture");
                 }
                 else
                 {
@@ -385,12 +451,15 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                     // WeightStabilized -> OffScale: normal flow
                     _currentStatus = AttendedWeighingStatus.OffScale;
 
-
-                    // Clear plate number cache
-                    ClearPlateNumberCache();
+                    // Try to rewrite plate number, then clear cache
+                    _ = Task.Run(async () =>
+                    {
+                        await TryReWritePlateNumberAsync();
+                        ClearPlateNumberCache();
+                    });
 
                     _logger?.LogInformation(
-                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}kg");
+                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}t");
                 }
 
                 break;
@@ -413,7 +482,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                 _currentStatus = AttendedWeighingStatus.WeightStabilized;
 
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}kg");
+                    $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}t");
 
                 // When weight is stabilized, capture photos and create WeighingRecord
                 _ = Task.Run(async () => await OnWeightStabilizedAsync(currentWeight));
@@ -562,16 +631,25 @@ public partial class AttendedWeighingService : IAttendedWeighingService
 
             using var uow = _unitOfWorkManager.Begin();
 
-            // Create weighing record
+            // Create weighing record with current delivery type
             var weighingRecord = new WeighingRecord(weight, plateNumber);
+            weighingRecord.DeliveryType = _currentDeliveryType;
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}kg, PlateNumber: {plateNumber ?? "None"}");
+                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}, DeliveryType: {_currentDeliveryType}");
+
+            // 保存最近创建的称重记录ID，用于后续重写车牌号
+            lock (_statusLock)
+            {
+                _lastCreatedWeighingRecordId = weighingRecord.Id;
+            }
 
             // Notify observers that a new weighing record was created
             _weighingRecordCreatedSubject.OnNext(weighingRecord);
+
+            // Publish TryMatchEvent for automatic matching
 
             // Save captured photos to WeighingRecordAttachment
             if (photoPaths.Count > 0)
@@ -583,6 +661,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                 _logger?.LogWarning(
                     $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
             }
+            
+            await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
         }
         catch (Exception ex)
         {
@@ -635,6 +715,59 @@ public partial class AttendedWeighingService : IAttendedWeighingService
         catch (Exception ex)
         {
             _logger?.LogError(ex, $"AttendedWeighingService: Error occurred while saving captured photos");
+        }
+    }
+
+    /// <summary>
+    /// 尝试重写称重记录的车牌号
+    /// 在清空车牌缓存前调用，用最频繁识别的车牌号更新最近创建的称重记录
+    /// </summary>
+    private async Task TryReWritePlateNumberAsync()
+    {
+        long? recordId;
+        lock (_statusLock)
+        {
+            recordId = _lastCreatedWeighingRecordId;
+            _lastCreatedWeighingRecordId = null; // 立即清空，防止重复操作
+        }
+
+        try
+        {
+            if (recordId == null)
+            {
+                _logger?.LogDebug("AttendedWeighingService: No recent weighing record to rewrite plate number");
+                return;
+            }
+
+            var plateNumber = GetMostFrequentPlateNumber();
+            if (string.IsNullOrWhiteSpace(plateNumber))
+            {
+                _logger?.LogDebug("AttendedWeighingService: No plate number to rewrite");
+                return;
+            }
+
+            using var uow = _unitOfWorkManager.Begin();
+            var weighingRecord = await _weighingRecordRepository.GetAsync(recordId.Value);
+            
+            if (weighingRecord.PlateNumber != plateNumber)
+            {
+                var oldPlateNumber = weighingRecord.PlateNumber;
+                weighingRecord.PlateNumber = plateNumber;
+                await _weighingRecordRepository.UpdateAsync(weighingRecord);
+                await uow.CompleteAsync();
+                
+                _logger?.LogInformation(
+                    $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
+            }
+            else
+            {
+                _logger?.LogDebug(
+                    $"AttendedWeighingService: Plate number unchanged for weighing record {recordId.Value}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while rewriting plate number");
         }
     }
 

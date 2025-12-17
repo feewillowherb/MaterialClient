@@ -66,6 +66,7 @@ public partial class App : Application
                 if (mainWindow != null)
                 {
                     desktop.MainWindow = mainWindow;
+                    mainWindow.Show();
                     
                     // Register exit handler
                     desktop.Exit += OnApplicationExit;

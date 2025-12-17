@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Views;
@@ -66,6 +67,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     [Reactive] private string? _operator;
 
     [Reactive] private bool _isMatchButtonVisible;
+
+    [Reactive] private bool _isCompleteButtonVisible;
 
     [Reactive] private string? _plateNumberError;
 
@@ -135,7 +138,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         WeighingRecordId = _listItem.Id;
         AllWeight = _listItem.Weight ?? 0;
-        TruckWeight = 0;
+        TruckWeight = _listItem.TruckWeight ?? 0;
         GoodsWeight = AllWeight - TruckWeight;
         PlateNumber = _listItem.PlateNumber;
         SelectedProviderId = _listItem.ProviderId;
@@ -146,11 +149,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
         IsMatchButtonVisible = true;
+        // 仅当为 Waybill 且 OrderType == FirstWeight（即未完成）时显示"完成本次收货"按钮
+        IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
 
         MaterialItems.Clear();
         MaterialItems.Add(new MaterialItemRow
         {
             LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
+            IsWaybill = _listItem.ItemType == WeighingListItemType.Waybill,
             WaybillQuantity = _listItem.WaybillQuantity,
             WaybillWeight = null,
             ActualQuantity = null,
@@ -420,7 +426,31 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     [ReactiveCommand]
     private async Task CompleteAsync()
     {
-        await Task.CompletedTask;
+        try
+        {
+            var firstRow = MaterialItems.FirstOrDefault();
+            int? materialId = firstRow?.SelectedMaterial?.Id;
+            int? materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
+            int? providerId = SelectedProvider?.Id;
+            decimal? waybillQuantity = firstRow?.WaybillQuantity;
+            var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+            await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
+                _listItem.Id,
+                _listItem.ItemType,
+                PlateNumber,
+                providerId,
+                materialId,
+                materialUnitId,
+                waybillQuantity,
+                null
+            ));
+            await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
+            CompleteCompleted?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"完成本次收货失败: {ex.Message}");
+        }
     }
 
     [ReactiveCommand]
@@ -444,6 +474,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     public event EventHandler? AbolishCompleted;
     public event EventHandler? CloseRequested;
     public event EventHandler? MatchCompleted;
+    public event EventHandler? CompleteCompleted;
 
     #endregion
 }
@@ -454,6 +485,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 public partial class MaterialItemRow : ReactiveObject
 {
     public Func<int, Task<ObservableCollection<MaterialUnitDto>>>? LoadMaterialUnitsFunc { get; set; }
+
+    /// <summary>
+    /// 是否为 Waybill 类型（启用实时计算）
+    /// </summary>
+    public bool IsWaybill { get; set; }
 
     [Reactive] private Material? _selectedMaterial;
 
@@ -497,13 +533,35 @@ public partial class MaterialItemRow : ReactiveObject
                     MaterialUnits.Clear();
                     SelectedMaterialUnit = null;
                 }
+
+                // 当 Material 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
             });
 
         this.WhenAnyValue(x => x.SelectedMaterialUnit)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(RateDisplay)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(RateDisplay));
+                // 当 MaterialUnit 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
+            });
 
         this.WhenAnyValue(x => x.WaybillQuantity)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(WaybillQuantityDisplay)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(WaybillQuantityDisplay));
+                // 当 WaybillQuantity 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
+            });
 
         this.WhenAnyValue(x => x.WaybillWeight)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(WaybillWeightDisplay)));
@@ -512,13 +570,36 @@ public partial class MaterialItemRow : ReactiveObject
             .Subscribe(_ => this.RaisePropertyChanged(nameof(ActualQuantityDisplay)));
 
         this.WhenAnyValue(x => x.ActualWeight)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(ActualWeightDisplay)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(ActualWeightDisplay));
+                // 当 ActualWeight 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
+            });
 
         this.WhenAnyValue(x => x.Difference)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(DifferenceDisplay)));
 
         this.WhenAnyValue(x => x.DeviationRate)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(DeviationRateDisplay)));
+    }
+
+    /// <summary>
+    /// 计算物料重量（使用 MaterialCalculation 统一计算逻辑）
+    /// </summary>
+    private void CalculateMaterialWeight()
+    {
+        var calc = new MaterialCalculation(
+            WaybillQuantity,
+            ActualWeight,
+            SelectedMaterialUnit?.Rate,
+            SelectedMaterial?.LowerLimit,
+            SelectedMaterial?.UpperLimit);
+
+        ApplyCalculation(calc);
     }
 
     private async Task LoadMaterialUnitsInternalAsync(int materialId)
@@ -566,5 +647,17 @@ public partial class MaterialItemRow : ReactiveObject
         }
 
         LoadMaterialUnitsFunc = originalFunc;
+    }
+
+    /// <summary>
+    /// 应用物料计算结果
+    /// </summary>
+    public void ApplyCalculation(MaterialCalculation calc)
+    {
+        WaybillWeight = calc.PlanWeight;
+        ActualQuantity = calc.ActualQuantity;
+        Difference = calc.Difference;
+        DeviationRate = calc.DeviationRate;
+        DeviationResult = calc.OffsetResultDisplay;
     }
 }
