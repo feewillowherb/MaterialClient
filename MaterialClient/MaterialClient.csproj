@@ -61,5 +61,8 @@
       <Compile Update="Views\AttendedWeighing\AttendedWeighingDetailView.axaml.cs">
         <DependentUpon>AttendedWeighingDetailView.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Views\AttendedWeighing\WeighingRecordListView.axaml.cs">
+        <DependentUpon>WeighingRecordListView.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>

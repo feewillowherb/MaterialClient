@@ -9,6 +9,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using MaterialClient.Views;
 
 namespace MaterialClient.ViewModels;
 
@@ -111,6 +112,28 @@ public partial class PhotoGridViewModel : ViewModelBase
     private void ShowExitPhotos()
     {
         SelectedPhotoTabIndex = 1;
+    }
+
+    /// <summary>
+    /// 打开图片查看窗口
+    /// </summary>
+    [ReactiveCommand]
+    private void OpenImageViewer(string? imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath))
+            return;
+
+        try
+        {
+            var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
+            viewModel.SetImage(imagePath);
+            var window = _serviceProvider.GetRequiredService<ImageViewerWindow>();
+            window.Show();
+        }
+        catch
+        {
+            // Handle error opening image viewer window
+        }
     }
 
     /// <summary>

@@ -16,6 +16,7 @@ using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using MaterialClient.Views;
 
 namespace MaterialClient.ViewModels;
 
@@ -530,6 +531,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             DetailViewModel.AbolishCompleted -= OnDetailAbolishCompleted;
             DetailViewModel.CloseRequested -= OnDetailCloseRequested;
             DetailViewModel.MatchCompleted -= OnDetailMatchCompleted;
+            DetailViewModel.CompleteCompleted -= OnDetailCompleteCompleted;
         }
 
         SelectedListItem = null;
@@ -589,12 +591,31 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var settingsWindow = _serviceProvider.GetRequiredService<Views.SettingsWindow>();
+            var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
             settingsWindow.Show();
         }
         catch
         {
             // Handle error opening settings window
+        }
+    }
+
+    [ReactiveCommand]
+    private void OpenImageViewer(string? imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath))
+            return;
+
+        try
+        {
+            var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
+            viewModel.SetImage(imagePath);
+            var window = _serviceProvider.GetRequiredService<ImageViewerWindow>();
+            window.Show();
+        }
+        catch
+        {
+            // Handle error opening image viewer window
         }
     }
 

@@ -53,18 +53,45 @@
               RowSpacing="8"
               ColumnSpacing="8"
               IsVisible="{Binding IsEntryPhotoTabSelected}">
-          <Border Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
-          <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
-          <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
-          <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
+          <Button Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding EntryPhoto1}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
+          <Button Grid.Column="1"
+                  Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding EntryPhoto2}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
+          <Button Grid.Row="1"
+                  Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding EntryPhoto3}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
+          <Button Grid.Row="1" Grid.Column="1"
+                  Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding EntryPhoto4}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
         </Grid>
         
         <!-- 出场照片 Grid -->
@@ -73,18 +100,45 @@
               RowSpacing="8"
               ColumnSpacing="8"
               IsVisible="{Binding IsExitPhotoTabSelected}">
-          <Border Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
-          <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
-          <Border Grid.Row="1" Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
-          <Border Grid.Row="1" Grid.Column="1" Background="#E5E7EB" CornerRadius="4">
-            <Image Source="{Binding ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-          </Border>
+          <Button Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding ExitPhoto1}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
+          <Button Grid.Column="1"
+                  Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding ExitPhoto2}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
+          <Button Grid.Row="1"
+                  Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding ExitPhoto3}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
+          <Button Grid.Row="1" Grid.Column="1"
+                  Background="Transparent" 
+                  BorderThickness="0" 
+                  Padding="0"
+                  Command="{Binding OpenImageViewerCommand}"
+                  CommandParameter="{Binding ExitPhoto4}">
+            <Border Background="#E5E7EB" CornerRadius="4">
+              <Image Source="{Binding ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+            </Border>
+          </Button>
         </Grid>
       </Grid>
     </Border>
