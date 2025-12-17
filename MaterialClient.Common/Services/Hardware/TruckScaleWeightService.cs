@@ -63,7 +63,7 @@ public interface ITruckScaleWeightService : IDisposable
 /// Uses serial port communication to read weight from truck scale
 /// </summary>
 [AutoConstructor]
-public class TruckScaleWeightService : ITruckScaleWeightService
+public partial class TruckScaleWeightService : ITruckScaleWeightService
 {
     private readonly ISettingsService _settingsService;
     private readonly ILogger<TruckScaleWeightService>? _logger;

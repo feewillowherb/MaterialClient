@@ -132,6 +132,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService
     // Rx Subject for delivery type changes
     private readonly Subject<DeliveryType> _deliveryTypeSubject = new();
 
+    // 最近创建的称重记录ID，用于重写车牌号
+    private long? _lastCreatedWeighingRecordId = null;
+
     // 当前收发料类型（默认为收料）
     private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
 
@@ -424,8 +427,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                         }
                     });
 
-                    // Clear plate number cache
-                    ClearPlateNumberCache();
+                    // Try to rewrite plate number, then clear cache
+                    _ = Task.Run(async () =>
+                    {
+                        await TryReWritePlateNumberAsync();
+                        ClearPlateNumberCache();
+                    });
 
                     _logger?.LogWarning(
                         $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}t, triggered capture");
@@ -444,9 +451,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                     // WeightStabilized -> OffScale: normal flow
                     _currentStatus = AttendedWeighingStatus.OffScale;
 
-
-                    // Clear plate number cache
-                    ClearPlateNumberCache();
+                    // Try to rewrite plate number, then clear cache
+                    _ = Task.Run(async () =>
+                    {
+                        await TryReWritePlateNumberAsync();
+                        ClearPlateNumberCache();
+                    });
 
                     _logger?.LogInformation(
                         $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}t");
@@ -630,6 +640,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService
             _logger?.LogInformation(
                 $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}, DeliveryType: {_currentDeliveryType}");
 
+            // 保存最近创建的称重记录ID，用于后续重写车牌号
+            lock (_statusLock)
+            {
+                _lastCreatedWeighingRecordId = weighingRecord.Id;
+            }
+
             // Notify observers that a new weighing record was created
             _weighingRecordCreatedSubject.OnNext(weighingRecord);
 
@@ -698,6 +714,59 @@ public partial class AttendedWeighingService : IAttendedWeighingService
         catch (Exception ex)
         {
             _logger?.LogError(ex, $"AttendedWeighingService: Error occurred while saving captured photos");
+        }
+    }
+
+    /// <summary>
+    /// 尝试重写称重记录的车牌号
+    /// 在清空车牌缓存前调用，用最频繁识别的车牌号更新最近创建的称重记录
+    /// </summary>
+    private async Task TryReWritePlateNumberAsync()
+    {
+        long? recordId;
+        lock (_statusLock)
+        {
+            recordId = _lastCreatedWeighingRecordId;
+            _lastCreatedWeighingRecordId = null; // 立即清空，防止重复操作
+        }
+
+        try
+        {
+            if (recordId == null)
+            {
+                _logger?.LogDebug("AttendedWeighingService: No recent weighing record to rewrite plate number");
+                return;
+            }
+
+            var plateNumber = GetMostFrequentPlateNumber();
+            if (string.IsNullOrWhiteSpace(plateNumber))
+            {
+                _logger?.LogDebug("AttendedWeighingService: No plate number to rewrite");
+                return;
+            }
+
+            using var uow = _unitOfWorkManager.Begin();
+            var weighingRecord = await _weighingRecordRepository.GetAsync(recordId.Value);
+            
+            if (weighingRecord.PlateNumber != plateNumber)
+            {
+                var oldPlateNumber = weighingRecord.PlateNumber;
+                weighingRecord.PlateNumber = plateNumber;
+                await _weighingRecordRepository.UpdateAsync(weighingRecord);
+                await uow.CompleteAsync();
+                
+                _logger?.LogInformation(
+                    $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
+            }
+            else
+            {
+                _logger?.LogDebug(
+                    $"AttendedWeighingService: Plate number unchanged for weighing record {recordId.Value}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while rewriting plate number");
         }
     }
 
