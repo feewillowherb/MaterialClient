@@ -62,12 +62,14 @@
           <CalendarDatePicker Grid.Column="1"
                               Width="80"
                               FontSize="10"
-                              Watermark="YYYY/MM/DD"
-                              Margin="0,0,8,0"/>
+                              Margin="0,0,8,0"
+                              Watermark=""
+                              SelectedDate="{Binding SearchStartDate}"/>
           <CalendarDatePicker Grid.Column="2"
                               Width="80"
                               FontSize="10"
-                              Watermark="YYYY/MM/DD"/>
+                              Watermark=""
+                              SelectedDate="{Binding SearchEndDate}"/>
         </Grid>
         
         <!-- Row 2: 车牌号码 + 输入框 -->
@@ -81,7 +83,8 @@
                      Foreground="#666"/>
           <TextBox Grid.Column="1"
                    Width="100"
-                   FontSize="13"/>
+                   FontSize="13"
+                   Text="{Binding SearchPlateNumber}"/>
         </Grid>
         
         <!-- Row 3: 搜索 + 重置按钮 -->
@@ -93,13 +96,15 @@
                   CornerRadius="4"
                   Padding="20,6"
                   FontSize="13"
-                  Margin="0,0,4,0"/>
+                  Margin="0,0,4,0"
+                  Command="{Binding SearchCommand}"/>
           <Button Grid.Column="1" 
                   Content="重置" 
                   Classes="secondary-button"
                   CornerRadius="4"
                   Padding="20,6"
-                  FontSize="13"/>
+                  FontSize="13"
+                  Command="{Binding ResetSearchCommand}"/>
         </Grid>
         </Grid>
       </Border>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -84,6 +85,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [Reactive] private int _totalCount;
 
     [Reactive] private int _totalPages;
+
+    [Reactive] private DateTime? _searchStartDate;
+
+    [Reactive] private DateTime? _searchEndDate;
+
+    [Reactive] private string? _searchPlateNumber;
 
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
     public bool IsCompletedWaybillSelected => SelectedListItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
@@ -326,25 +333,61 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 isCompleted = true;
             }
 
+            // 获取所有数据（不分页），以便应用搜索过滤
             var input = new GetWeighingListItemsInput
             {
                 IsCompleted = isCompleted,
-                SkipCount = (CurrentPage - 1) * PageSize,
-                MaxResultCount = PageSize
+                SkipCount = 0,
+                MaxResultCount = 10000 // 获取足够多的数据以支持搜索过滤
             };
 
             var result = await _weighingMatchingService.GetListItemsAsync(input);
 
-            TotalCount = (int)result.TotalCount;
+            // 应用搜索过滤
+            var filteredItems = result.Items.AsEnumerable();
+            
+            // 按日期范围过滤
+            if (SearchStartDate.HasValue)
+            {
+                var startDate = SearchStartDate.Value.Date;
+                filteredItems = filteredItems.Where(item => item.JoinTime.Date >= startDate);
+            }
+            
+            if (SearchEndDate.HasValue)
+            {
+                var endDate = SearchEndDate.Value.Date.AddDays(1); // 包含结束日期当天
+                filteredItems = filteredItems.Where(item => item.JoinTime.Date < endDate);
+            }
+            
+            // 按车牌号过滤
+            if (!string.IsNullOrWhiteSpace(SearchPlateNumber))
+            {
+                var plateNumber = SearchPlateNumber.Trim();
+                filteredItems = filteredItems.Where(item => 
+                    !string.IsNullOrEmpty(item.PlateNumber) && 
+                    item.PlateNumber.Contains(plateNumber, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var filteredList = filteredItems.ToList();
+
+            // 计算分页
+            TotalCount = filteredList.Count;
             TotalPages = (int)Math.Ceiling(TotalCount / (double)PageSize);
             if (TotalPages == 0) TotalPages = 1;
 
             if (CurrentPage > TotalPages) CurrentPage = TotalPages;
             if (CurrentPage < 1) CurrentPage = 1;
 
+            // 应用分页
+            var pagedItems = filteredList
+                .OrderByDescending(item => item.JoinTime)
+                .Skip((CurrentPage - 1) * PageSize)
+                .Take(PageSize)
+                .ToList();
+
             ListItems.Clear();
             PagedListItems.Clear();
-            foreach (var item in result.Items)
+            foreach (var item in pagedItems)
             {
                 ListItems.Add(item);
                 PagedListItems.Add(item);
@@ -592,6 +635,23 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             CurrentPage = page;
             await RefreshAsync();
         }
+    }
+
+    [ReactiveCommand]
+    private async Task SearchAsync()
+    {
+        CurrentPage = 1; // 重置到第一页
+        await RefreshAsync();
+    }
+
+    [ReactiveCommand]
+    private async Task ResetSearchAsync()
+    {
+        SearchStartDate = null;
+        SearchEndDate = null;
+        SearchPlateNumber = null;
+        CurrentPage = 1; // 重置到第一页
+        await RefreshAsync();
     }
 
     #endregion
