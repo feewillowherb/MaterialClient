@@ -337,7 +337,8 @@
                             Classes="outline-button"
                             HorizontalContentAlignment="Center"
                             VerticalContentAlignment="Center"
-                            Command="{Binding CompleteCommand}" />
+                            Command="{Binding CompleteCommand}"
+                            IsVisible="{Binding IsCompleteButtonVisible}" />
                 </StackPanel>
                 
                 <!-- 右侧按钮组 -->

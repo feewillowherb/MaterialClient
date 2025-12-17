@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Views;
@@ -66,6 +67,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     [Reactive] private string? _operator;
 
     [Reactive] private bool _isMatchButtonVisible;
+
+    [Reactive] private bool _isCompleteButtonVisible;
 
     [Reactive] private string? _plateNumberError;
 
@@ -146,6 +149,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
         IsMatchButtonVisible = true;
+        // 仅当为 Waybill 且 OrderType == FirstWeight（即未完成）时显示"完成本次收货"按钮
+        IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
 
         MaterialItems.Clear();
         MaterialItems.Add(new MaterialItemRow
@@ -420,7 +425,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     [ReactiveCommand]
     private async Task CompleteAsync()
     {
-        await Task.CompletedTask;
+        try
+        {
+            var waybillService = _serviceProvider.GetRequiredService<IWaybillService>();
+            await waybillService.CompleteOrderAsync(_listItem.Id);
+            CompleteCompleted?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"完成本次收货失败: {ex.Message}");
+        }
     }
 
     [ReactiveCommand]
@@ -444,6 +458,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     public event EventHandler? AbolishCompleted;
     public event EventHandler? CloseRequested;
     public event EventHandler? MatchCompleted;
+    public event EventHandler? CompleteCompleted;
 
     #endregion
 }

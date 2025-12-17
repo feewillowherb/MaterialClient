@@ -158,6 +158,17 @@ public class Waybill : FullAuditedEntity<long>
     public decimal? MaterialUnitRate { get; set; }
 
 
+    public void SyncCompleted(DateTime now)
+    {
+        LastSyncTime = now;
+    }
+
+    public void OrderTypeCompleted()
+    {
+        OrderType = OrderTypeEnum.Completed;
+    }
+
+
     public decimal? GetJoinWeight()
     {
         if (DeliveryType == Enums.DeliveryType.Sending)
