@@ -156,6 +156,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         MaterialItems.Add(new MaterialItemRow
         {
             LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
+            IsWaybill = _listItem.ItemType == WeighingListItemType.Waybill,
             WaybillQuantity = _listItem.WaybillQuantity,
             WaybillWeight = null,
             ActualQuantity = null,
@@ -427,8 +428,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
-            var waybillService = _serviceProvider.GetRequiredService<IWaybillService>();
-            await waybillService.CompleteOrderAsync(_listItem.Id);
+            var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+            await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
             CompleteCompleted?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
@@ -469,6 +470,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 public partial class MaterialItemRow : ReactiveObject
 {
     public Func<int, Task<ObservableCollection<MaterialUnitDto>>>? LoadMaterialUnitsFunc { get; set; }
+
+    /// <summary>
+    /// 是否为 Waybill 类型（启用实时计算）
+    /// </summary>
+    public bool IsWaybill { get; set; }
 
     [Reactive] private Material? _selectedMaterial;
 
@@ -512,13 +518,35 @@ public partial class MaterialItemRow : ReactiveObject
                     MaterialUnits.Clear();
                     SelectedMaterialUnit = null;
                 }
+
+                // 当 Material 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
             });
 
         this.WhenAnyValue(x => x.SelectedMaterialUnit)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(RateDisplay)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(RateDisplay));
+                // 当 MaterialUnit 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
+            });
 
         this.WhenAnyValue(x => x.WaybillQuantity)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(WaybillQuantityDisplay)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(WaybillQuantityDisplay));
+                // 当 WaybillQuantity 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
+            });
 
         this.WhenAnyValue(x => x.WaybillWeight)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(WaybillWeightDisplay)));
@@ -527,13 +555,100 @@ public partial class MaterialItemRow : ReactiveObject
             .Subscribe(_ => this.RaisePropertyChanged(nameof(ActualQuantityDisplay)));
 
         this.WhenAnyValue(x => x.ActualWeight)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(ActualWeightDisplay)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(ActualWeightDisplay));
+                // 当 ActualWeight 变化时触发计算（如果是 Waybill）
+                if (IsWaybill)
+                {
+                    CalculateMaterialWeight();
+                }
+            });
 
         this.WhenAnyValue(x => x.Difference)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(DifferenceDisplay)));
 
         this.WhenAnyValue(x => x.DeviationRate)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(DeviationRateDisplay)));
+    }
+
+    /// <summary>
+    /// 计算物料重量（复制自 Waybill.CalculateMaterialWeight 的逻辑）
+    /// </summary>
+    private void CalculateMaterialWeight()
+    {
+        // 获取 Material 的 UnitRate, LowerLimit, UpperLimit
+        var unitRate = SelectedMaterial?.UnitRate;
+        var lowerLimit = SelectedMaterial?.LowerLimit;
+        var upperLimit = SelectedMaterial?.UpperLimit;
+
+        // 验证必要的参数
+        if (!WaybillQuantity.HasValue || !unitRate.HasValue || unitRate.Value == 0 || !ActualWeight.HasValue)
+        {
+            WaybillWeight = null;
+            ActualQuantity = null;
+            Difference = null;
+            DeviationRate = null;
+            DeviationResult = "-";
+            return;
+        }
+
+        // 计划重量 = 计划件数 × 换算率
+        WaybillWeight = Math.Round(WaybillQuantity.Value * unitRate.Value, 2, MidpointRounding.AwayFromZero);
+
+        // 实际重量就是 ActualWeight（货物重量）
+        var actualWeightValue = ActualWeight.Value;
+
+        // 实际件数 = 实际重量 / 换算率
+        ActualQuantity = Math.Round(actualWeightValue / unitRate.Value, 4, MidpointRounding.AwayFromZero);
+
+        // 差值 = 实际重量 - 计划重量
+        Difference = actualWeightValue - WaybillWeight.Value;
+
+        // 偏差率计算
+        if (WaybillWeight.Value != 0)
+        {
+            DeviationRate = Math.Round(Difference.Value * 100 / WaybillWeight.Value, 4, MidpointRounding.AwayFromZero);
+
+            // 根据 LowerLimit/UpperLimit 判断偏差结果
+            DeviationResult = DetermineDeviationResult(DeviationRate.Value, lowerLimit, upperLimit);
+        }
+        else
+        {
+            DeviationRate = null;
+            DeviationResult = "-";
+        }
+    }
+
+    /// <summary>
+    /// 根据偏差率和阈值判断偏差结果
+    /// </summary>
+    private static string DetermineDeviationResult(decimal deviationRate, decimal? lowerLimit, decimal? upperLimit)
+    {
+        // 如果没有设置阈值，返回默认
+        if (!lowerLimit.HasValue && !upperLimit.HasValue)
+        {
+            return "-";
+        }
+
+        // 检查是否超出阈值
+        if (lowerLimit.HasValue && lowerLimit < 0 && deviationRate < 0 && deviationRate < lowerLimit)
+        {
+            return "超负差";
+        }
+
+        if (upperLimit.HasValue && upperLimit > 0 && deviationRate > 0 && deviationRate > upperLimit)
+        {
+            return "超正差";
+        }
+
+        // 在阈值范围内
+        if (lowerLimit.HasValue || upperLimit.HasValue)
+        {
+            return "正常";
+        }
+
+        return "-";
     }
 
     private async Task LoadMaterialUnitsInternalAsync(int materialId)

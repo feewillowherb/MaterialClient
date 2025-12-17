@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
@@ -58,6 +52,22 @@ public interface IWeighingMatchingService
     /// <param name="weighingRecordId">称重记录ID</param>
     /// <returns>是否匹配成功</returns>
     Task<bool> AutoMatchAsync(long weighingRecordId);
+
+    /// <summary>
+    /// 完成运单（将 OrderType 设置为 Completed）
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    Task CompleteOrderAsync(long waybillId);
+
+    /// <summary>
+    /// 尝试计算物料重量（如果有必要的参数）
+    /// </summary>
+    /// <param name="waybill">运单实体</param>
+    /// <param name="materialId">物料ID（可选，为null时使用waybill中的值）</param>
+    /// <param name="materialUnitId">物料单位ID（可选，为null时使用waybill中的值）</param>
+    /// <param name="waybillQuantity">运单数量（可选，为null时使用waybill中的值）</param>
+    Task TryCalculateMaterialAsync(Waybill waybill, int? materialId = null, int? materialUnitId = null,
+        decimal? waybillQuantity = null);
 }
 
 /// <summary>
@@ -68,8 +78,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
-    private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
     private readonly IRepository<Material, int> _materialRepository;
+    private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
     private readonly ILogger<WeighingMatchingService>? _logger;
 
 
@@ -262,46 +272,6 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             ));
         }
     }
-
-    private async Task TryCalculateMaterialAsync(Waybill waybill, int? materialId, int? materialUnitId,
-        decimal? waybillQuantity)
-    {
-        if (!materialUnitId.HasValue || !waybillQuantity.HasValue || !materialId.HasValue)
-            return;
-
-        var material = await _materialRepository.GetAsync(materialId.Value);
-
-        // 更新 Waybill 的物料信息
-        waybill.MaterialId = materialId;
-        waybill.MaterialUnitId = materialUnitId;
-        waybill.OrderPlanOnPcs = waybillQuantity;
-        waybill.MaterialUnitRate = material.UnitRate;
-        waybill.CalculateMaterialWeight(material.LowerLimit, material.UpperLimit);
-
-        // 查找或创建 WaybillMaterial
-        var existingMaterial = await _waybillMaterialRepository.FirstOrDefaultAsync(wm => wm.WaybillId == waybill.Id);
-
-        if (existingMaterial != null)
-        {
-            // 更新现有记录
-            existingMaterial.MaterialId = material.Id;
-            existingMaterial.MaterialName = material.Name;
-            existingMaterial.Specifications = material.Specifications;
-            existingMaterial.MaterialUnitId = materialUnitId;
-            existingMaterial.GoodsPlanOnPcs = waybillQuantity.Value;
-            existingMaterial.UpdateOffsetFromWaybill(waybill);
-            await _waybillMaterialRepository.UpdateAsync(existingMaterial);
-        }
-        else
-        {
-            // 创建新记录
-            var waybillMaterial = new WaybillMaterial(waybill.Id, material.Id, material.Name,
-                material.Specifications, materialUnitId.Value, waybillQuantity.Value);
-            waybillMaterial.UpdateOffsetFromWaybill(waybill);
-            await _waybillMaterialRepository.InsertAsync(waybillMaterial);
-        }
-    }
-
 
     [UnitOfWork]
     private async Task CreateWaybillAsync(WeighingRecord joinRecord, WeighingRecord outRecord,
@@ -534,6 +504,65 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             "AutoMatchAsync: Successfully matched record {RecordId} with {MatchedId}, DeliveryType: {DeliveryType}",
             record.Id, matchedRecord.Id, deliveryType);
         return true;
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task CompleteOrderAsync(long waybillId)
+    {
+        var waybill = await _waybillRepository.GetAsync(waybillId);
+
+        // 先执行物料计算
+        await TryCalculateMaterialAsync(waybill);
+
+        waybill.OrderTypeCompleted();
+        await _waybillRepository.UpdateAsync(waybill);
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task TryCalculateMaterialAsync(Waybill waybill, int? materialId = null, int? materialUnitId = null,
+        decimal? waybillQuantity = null)
+    {
+        // 使用传入的值，或从 waybill 中获取
+        materialId ??= waybill.MaterialId;
+        materialUnitId ??= waybill.MaterialUnitId;
+        waybillQuantity ??= waybill.OrderPlanOnPcs;
+
+        if (!materialUnitId.HasValue || !waybillQuantity.HasValue || !materialId.HasValue)
+            return;
+
+        var material = await _materialRepository.GetAsync(materialId.Value);
+
+        // 更新 Waybill 的物料信息
+        waybill.MaterialId = materialId;
+        waybill.MaterialUnitId = materialUnitId;
+        waybill.OrderPlanOnPcs = waybillQuantity;
+        waybill.MaterialUnitRate = material.UnitRate;
+        waybill.CalculateMaterialWeight(material.LowerLimit, material.UpperLimit);
+
+        // 查找或创建 WaybillMaterial
+        var existingMaterial = await _waybillMaterialRepository.FirstOrDefaultAsync(wm => wm.WaybillId == waybill.Id);
+
+        if (existingMaterial != null)
+        {
+            // 更新现有记录
+            existingMaterial.MaterialId = material.Id;
+            existingMaterial.MaterialName = material.Name;
+            existingMaterial.Specifications = material.Specifications;
+            existingMaterial.MaterialUnitId = materialUnitId;
+            existingMaterial.GoodsPlanOnPcs = waybillQuantity.Value;
+            existingMaterial.UpdateOffsetFromWaybill(waybill);
+            await _waybillMaterialRepository.UpdateAsync(existingMaterial);
+        }
+        else
+        {
+            // 创建新记录
+            var waybillMaterial = new WaybillMaterial(waybill.Id, material.Id, material.Name,
+                material.Specifications, materialUnitId.Value, waybillQuantity.Value);
+            waybillMaterial.UpdateOffsetFromWaybill(waybill);
+            await _waybillMaterialRepository.InsertAsync(waybillMaterial);
+        }
     }
 }
 
