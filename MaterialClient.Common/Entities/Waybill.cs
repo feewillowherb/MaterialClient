@@ -1,6 +1,7 @@
 using System;
 using Volo.Abp.Domain.Entities.Auditing;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
 
 namespace MaterialClient.Common.Entities;
 
@@ -37,7 +38,7 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 供应商ID (FK to Provider)
     /// </summary>
-    public int ProviderId { get; set; }
+    public int? ProviderId { get; set; }
 
     /// <summary>
     /// 订单号
@@ -47,12 +48,12 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 订单类型
     /// </summary>
-    public int? OrderType { get; set; }
+    public OrderTypeEnum? OrderType { get; set; }
 
     /// <summary>
     /// 配送类型
     /// </summary>
-    public int? DeliveryType { get; set; }
+    public DeliveryType? DeliveryType { get; set; }
 
     /// <summary>
     /// 车牌号
@@ -77,17 +78,17 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 计划重量
     /// </summary>
-    public decimal OrderPlanOnWeight { get; set; }
+    public decimal? OrderPlanOnWeight { get; set; }
 
     /// <summary>
     /// 计划件数
     /// </summary>
-    public decimal OrderPlanOnPcs { get; set; }
+    public decimal? OrderPlanOnPcs { get; set; }
 
     /// <summary>
     /// 实际件数
     /// </summary>
-    public decimal OrderPcs { get; set; }
+    public decimal? OrderPcs { get; set; }
 
     /// <summary>
     /// 总重量
@@ -129,6 +130,8 @@ public class Waybill : FullAuditedEntity<long>
     /// </summary>
     public OffsetResultType OffsetResult { get; set; } = OffsetResultType.Default;
 
+    public decimal? OffsetRate { get; set; }
+
     /// <summary>
     /// 预警类型
     /// </summary>
@@ -139,10 +142,109 @@ public class Waybill : FullAuditedEntity<long>
     /// </summary>
     public OrderSource OrderSource { get; set; }
 
-    // Navigation properties
     /// <summary>
-    /// 供应商导航属性
+    /// 物料Id
     /// </summary>
-    public Provider? Provider { get; set; }
+    public int? MaterialId { get; set; }
+
+    /// <summary>
+    /// 物料单位Id
+    /// </summary>
+    public int? MaterialUnitId { get; set; }
+
+
+    /// <summary>
+    /// 物料单位
+    /// </summary>
+    public decimal? MaterialUnitRate { get; set; }
+
+
+    public void SyncCompleted(DateTime now)
+    {
+        LastSyncTime = now;
+    }
+
+    public void OrderTypeCompleted()
+    {
+        OrderType = OrderTypeEnum.Completed;
+    }
+
+
+    public decimal? GetJoinWeight()
+    {
+        if (DeliveryType == Enums.DeliveryType.Sending)
+        {
+            return OrderTruckWeight ?? 0;
+        }
+        else if (DeliveryType == Enums.DeliveryType.Receiving)
+        {
+            return OrderTotalWeight ?? 0;
+        }
+
+        return null;
+    }
+
+    public decimal? GetOutWeight()
+    {
+        if (DeliveryType == Enums.DeliveryType.Sending)
+        {
+            return OrderTotalWeight ?? 0;
+        }
+        else if (DeliveryType == Enums.DeliveryType.Receiving)
+        {
+            return OrderTruckWeight ?? 0;
+        }
+
+        return null;
+    }
+
+    public static string GenerateOrderNo(DeliveryType deliveryType, DateTime dateTime, int todayCount)
+    {
+        var content = deliveryType == Enums.DeliveryType.Receiving
+            ? $"sl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}"
+            : $"fl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}";
+        return content;
+    }
+
+
+    public void SetWeight(WeighingRecord joinRecord, WeighingRecord outRecord, DeliveryType deliveryType)
+    {
+        if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Sending)
+        {
+            OrderTruckWeight = joinRecord.TotalWeight;
+            OrderTotalWeight = outRecord.TotalWeight;
+            OrderGoodsWeight = outRecord.TotalWeight - joinRecord.TotalWeight;
+        }
+        else if (deliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Receiving)
+        {
+            OrderTruckWeight = outRecord.TotalWeight;
+            OrderTotalWeight = joinRecord.TotalWeight;
+            OrderGoodsWeight = joinRecord.TotalWeight - outRecord.TotalWeight;
+        }
+    }
+
+
+    public void CalculateMaterialWeight(decimal? lowerLimit, decimal? upperLimit)
+    {
+        var calc = new MaterialCalculation(
+            OrderPlanOnPcs,
+            OrderGoodsWeight,
+            MaterialUnitRate,
+            lowerLimit,
+            upperLimit);
+
+        if (!calc.IsValid) return;
+
+        OrderPlanOnWeight = calc.PlanWeight;
+        OrderPcs = calc.ActualQuantity;
+        OffsetRate = calc.DeviationRate;
+        OffsetResult = calc.OffsetResult;
+    }
 }
 
+public enum OrderTypeEnum
+{
+    FirstWeight = 0, //收料/发料中
+    Completed = 1, //完成收料/发料
+    Esc = 2, //已取消
+}

@@ -3,17 +3,25 @@ using Volo.Abp.EntityFrameworkCore;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Configuration;
+using Volo.Abp.EntityFrameworkCore.Modeling;
+using Volo.Abp.Users;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace MaterialClient.EFCore;
 
 public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 {
-    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options) : base(options)
+    private readonly ICurrentUser _currentUser;
+
+    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options, ICurrentUser currentUser)
+        : base(options)
     {
+        _currentUser = currentUser;
     }
 
     // DbSets
     public DbSet<Material> Materials { get; set; }
+    public DbSet<MaterialType> MaterialTypes { get; set; }
     public DbSet<MaterialUnit> MaterialUnits { get; set; }
     public DbSet<Provider> Providers { get; set; }
     public DbSet<Waybill> Waybills { get; set; }
@@ -21,82 +29,102 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     public DbSet<AttachmentFile> AttachmentFiles { get; set; }
     public DbSet<WaybillAttachment> WaybillAttachments { get; set; }
     public DbSet<WeighingRecordAttachment> WeighingRecordAttachments { get; set; }
-    
+    public DbSet<WaybillMaterial> WaybillMaterials { get; set; }
+
     // Authentication DbSets
     public DbSet<LicenseInfo> LicenseInfos { get; set; }
     public DbSet<UserCredential> UserCredentials { get; set; }
     public DbSet<UserSession> UserSessions { get; set; }
-    
+
     // Settings DbSet
     public DbSet<SettingsEntity> Settings { get; set; }
+    public DbSet<WorkSettingsEntity> WorkSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         // Ignore configuration classes - they are not entities, only used for JSON serialization
         modelBuilder.Ignore<CameraConfig>();
         modelBuilder.Ignore<LicensePlateRecognitionConfig>();
         modelBuilder.Ignore<ScaleSettings>();
         modelBuilder.Ignore<DocumentScannerConfig>();
         modelBuilder.Ignore<SystemSettings>();
-        
+        modelBuilder.Ignore<WeighingRecordMaterial>(); // Stored as JSON in WeighingRecord
+
         // Configure Material relationships
         modelBuilder.Entity<Material>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.Name).IsRequired();
             entity.Property(e => e.UnitRate).IsRequired().HasDefaultValue(1);
+        });
+
+        // Configure MaterialType relationships
+        modelBuilder.Entity<MaterialType>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.TypeName).HasMaxLength(200);
+            entity.Property(e => e.TypeCode).HasMaxLength(50);
+            entity.Property(e => e.Remark).HasMaxLength(500);
+            entity.Property(e => e.ParentId).IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.CoId).IsRequired();
+            entity.Property(e => e.UpperLimit).HasPrecision(18, 2).HasDefaultValue(0);
+            entity.Property(e => e.LowerLimit).HasPrecision(18, 2).HasDefaultValue(0);
+
+            // 创建索引以提高查询性能
+            entity.HasIndex(e => e.TypeCode);
+            entity.HasIndex(e => e.ParentId);
+            entity.HasIndex(e => e.CoId);
+            entity.HasIndex(e => e.IsDeleted);
         });
 
         // Configure MaterialUnit relationships
         modelBuilder.Entity<MaterialUnit>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.UnitName).IsRequired();
             entity.Property(e => e.Rate).IsRequired();
-            
-            entity.HasOne(e => e.Material)
-                .WithMany()
-                .HasForeignKey(e => e.MaterialId)
-                .OnDelete(DeleteBehavior.Restrict);
-            
-            entity.HasOne(e => e.Provider)
-                .WithMany()
-                .HasForeignKey(e => e.ProviderId)
-                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure Provider relationships
         modelBuilder.Entity<Provider>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.ProviderName).IsRequired();
         });
 
         // Configure Waybill relationships
         modelBuilder.Entity<Waybill>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.OrderNo).IsRequired();
-            
-            entity.HasOne(e => e.Provider)
-                .WithMany()
-                .HasForeignKey(e => e.ProviderId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Configure WeighingRecord relationships
         modelBuilder.Entity<WeighingRecord>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Weight).IsRequired();
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.TotalWeight).IsRequired();
+
+            // MaterialsJson stores the list of materials as JSON
+            entity.Property(e => e.MaterialsJson);
+
+            // Ignore the computed Materials property (it's derived from MaterialsJson)
+            entity.Ignore(e => e.Materials);
         });
 
         // Configure AttachmentFile relationships
         modelBuilder.Entity<AttachmentFile>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.FileName).IsRequired();
             entity.Property(e => e.LocalPath).IsRequired();
         });
@@ -104,18 +132,8 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         // Configure WaybillAttachment relationships
         modelBuilder.Entity<WaybillAttachment>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            
-            entity.HasOne(e => e.Waybill)
-                .WithMany()
-                .HasForeignKey(e => e.WaybillId)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne(e => e.AttachmentFile)
-                .WithMany()
-                .HasForeignKey(e => e.AttachmentFileId)
-                .OnDelete(DeleteBehavior.Cascade);
-            
+            entity.ConfigureByConvention();
+
             // Composite unique constraint
             entity.HasIndex(e => new { e.WaybillId, e.AttachmentFileId })
                 .IsUnique();
@@ -124,18 +142,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         // Configure WeighingRecordAttachment relationships
         modelBuilder.Entity<WeighingRecordAttachment>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            
-            entity.HasOne(e => e.WeighingRecord)
-                .WithMany()
-                .HasForeignKey(e => e.WeighingRecordId)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne(e => e.AttachmentFile)
-                .WithMany()
-                .HasForeignKey(e => e.AttachmentFileId)
-                .OnDelete(DeleteBehavior.Cascade);
-            
+            entity.ConfigureByConvention();
+
+
             // Composite unique constraint
             entity.HasIndex(e => new { e.WeighingRecordId, e.AttachmentFileId })
                 .IsUnique();
@@ -144,13 +153,14 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         // Configure LicenseInfo
         modelBuilder.Entity<LicenseInfo>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.ProjectId).IsRequired();
             entity.Property(e => e.AuthEndTime).IsRequired();
             entity.Property(e => e.MachineCode).IsRequired().HasMaxLength(128);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
-            
+
             // Only one license should exist at a time
             entity.HasIndex(e => e.ProjectId);
         });
@@ -158,18 +168,14 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         // Configure UserCredential
         modelBuilder.Entity<UserCredential>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.ProjectId).IsRequired();
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
             entity.Property(e => e.EncryptedPassword).IsRequired().HasMaxLength(512);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
-            
-            entity.HasOne(e => e.LicenseInfo)
-                .WithMany()
-                .HasForeignKey(e => e.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
-            
+
             // One credential per project
             entity.HasIndex(e => e.ProjectId).IsUnique();
         });
@@ -177,8 +183,10 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         // Configure UserSession
         modelBuilder.Entity<UserSession>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.LicenseInfoId).IsRequired();
             entity.Property(e => e.UserId).IsRequired();
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
             entity.Property(e => e.TrueName).HasMaxLength(100);
@@ -189,12 +197,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.ApiUrl).HasMaxLength(500);
             entity.Property(e => e.LoginTime).IsRequired();
             entity.Property(e => e.LastActivityTime).IsRequired();
-            
-            entity.HasOne(e => e.LicenseInfo)
-                .WithMany()
-                .HasForeignKey(e => e.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
-            
+
             // One active session per project
             entity.HasIndex(e => e.ProjectId).IsUnique();
         });
@@ -202,15 +205,91 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         // Configure SettingsEntity
         modelBuilder.Entity<SettingsEntity>(entity =>
         {
-            entity.HasKey(e => e.Id);
+            entity.ConfigureByConvention();
+
             entity.Property(e => e.ScaleSettingsJson).IsRequired();
             entity.Property(e => e.DocumentScannerConfigJson).IsRequired();
             entity.Property(e => e.SystemSettingsJson).IsRequired();
             entity.Property(e => e.CameraConfigsJson).IsRequired();
             entity.Property(e => e.LicensePlateRecognitionConfigsJson).IsRequired();
-            
-            // Only one settings record should exist
-            entity.HasIndex(e => e.Id).IsUnique();
         });
+
+        // Configure WorkSettingsEntity
+        modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAuditConcepts();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyAuditConcepts();
+        return base.SaveChanges();
+    }
+
+    private void ApplyAuditConcepts()
+    {
+        var now = DateTime.Now;
+        var unixTimestamp = (int)(now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+
+        // 获取当前用户ID和用户名
+        int? currentUserId = null;
+        string? currentUserName = null;
+
+        if (_currentUser.IsAuthenticated)
+        {
+            currentUserName = _currentUser.UserName;
+
+            // 从数据库查询当前会话以获取业务用户ID
+            // 使用 _currentUser.Id (Guid) 来查找对应的 UserSession
+            if (_currentUser.Id.HasValue)
+            {
+                var userSession = UserSessions
+                    .AsNoTracking()
+                    .FirstOrDefault(s => s.Id == _currentUser.Id.Value);
+
+                if (userSession != null)
+                {
+                    // 将 long 类型的业务用户ID转换为 int
+                    var businessUserId = userSession.UserId;
+                    if (businessUserId <= int.MaxValue && businessUserId >= int.MinValue)
+                    {
+                        currentUserId = (int)businessUserId;
+                    }
+                    else
+                    {
+                        // 如果超出 int 范围，使用取模策略
+                        currentUserId = (int)(businessUserId % int.MaxValue);
+                    }
+                }
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<IMaterialClientAuditedObject>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreateUserId = currentUserId;
+                    entry.Entity.Creator = currentUserName;
+                    entry.Entity.AddTime = unixTimestamp;
+                    entry.Entity.AddDate = now;
+                    entry.Entity.LastEditUserId = currentUserId;
+                    entry.Entity.LastEditor = currentUserName;
+                    entry.Entity.UpdateTime = unixTimestamp;
+                    entry.Entity.UpdateDate = now;
+                    break;
+
+                case EntityState.Modified:
+                    entry.Entity.LastEditUserId = currentUserId;
+                    entry.Entity.LastEditor = currentUserName;
+                    entry.Entity.UpdateTime = unixTimestamp;
+                    entry.Entity.UpdateDate = now;
+                    break;
+            }
+        }
     }
 }

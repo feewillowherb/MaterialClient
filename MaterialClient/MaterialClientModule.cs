@@ -1,17 +1,22 @@
+using System.Threading.Tasks;
+using MaterialClient.Backgrounds;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Volo.Abp.Autofac;
 using Volo.Abp.Modularity;
 using MaterialClient.Common;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
+using Volo.Abp;
+using Volo.Abp.BackgroundWorkers;
 
 namespace MaterialClient;
 
 [DependsOn(
     typeof(MaterialClientCommonModule),
-    typeof(AbpAutofacModule)
+    typeof(AbpAutofacModule),
+    typeof(AbpBackgroundWorkersModule)
 )]
 public class MaterialClientModule : AbpModule
 {
@@ -28,6 +33,8 @@ public class MaterialClientModule : AbpModule
         services.AddTransient<AuthCodeWindow>();
         services.AddTransient<AttendedWeighingWindow>();
         services.AddTransient<SettingsWindow>();
+        services.AddTransient<ImageViewerWindow>();
+        // AttendedWeighingDetailView 需要 WeighingRecord 参数，在使用时通过 IServiceProvider 创建
 
         // Register ViewModels (transient as they are bound to specific UI instances)
         services.AddTransient<MainWindowViewModel>();
@@ -35,9 +42,20 @@ public class MaterialClientModule : AbpModule
         services.AddTransient<AuthCodeWindowViewModel>();
         services.AddTransient<AttendedWeighingViewModel>();
         services.AddTransient<SettingsWindowViewModel>();
+        services.AddTransient<ImageViewerViewModel>();
+        // AttendedWeighingDetailViewModel 需要 WeighingRecord 参数，在使用时创建
 
         // Register startup service
         services.AddTransient<StartupService>();
+
+        // Register Web Host service
+        services.AddSingleton<MinimalWebHostService>();
+        
+    }
+    
+    public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
+    {
+        // 注册并启动后台工作器
+        await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
     }
 }
-

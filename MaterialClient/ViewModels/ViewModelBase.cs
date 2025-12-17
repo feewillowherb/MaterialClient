@@ -1,17 +1,17 @@
-﻿using ReactiveUI;
+using ReactiveUI;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
 /// Base class for ViewModels using ReactiveUI
 /// </summary>
-public class ViewModelBase : ReactiveObject
+public partial class ViewModelBase : ReactiveObject
 {
 }
 
 /// <summary>
-/// Alias for ViewModelBase using ReactiveUI
+/// Alias for ViewModelBase (kept for backward compatibility)
 /// </summary>
-public class ReactiveViewModelBase : ReactiveObject
+public partial class ReactiveViewModelBase : ViewModelBase
 {
 }

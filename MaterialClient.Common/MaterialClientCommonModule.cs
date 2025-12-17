@@ -60,7 +60,7 @@ public class MaterialClientCommonModule : AbpModule
 
         // Register Refit API Client with retry policy and timeout
         var basePlatformUrl = configuration["BasePlatform:BaseUrl"]
-                              ?? "http://base.publicapi.findong.com";
+                              ?? "http://localhost:5000";
 
         services.AddRefitClient<IBasePlatformApi>()
             .ConfigureHttpClient(c =>
@@ -68,6 +68,25 @@ public class MaterialClientCommonModule : AbpModule
                 c.BaseAddress = new Uri(basePlatformUrl);
                 c.Timeout = TimeSpan.FromSeconds(30);
             })
+            .AddTransientHttpErrorPolicy(policy =>
+                policy.WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                ));
+
+        // Register Material Platform Refit API Client with bearer token handler
+        var materialPlatformUrl = configuration["MaterialPlatform:BaseUrl"]
+                                  ?? basePlatformUrl;
+
+        services.AddTransient<MaterialPlatformBearerTokenHandler>();
+
+        services.AddRefitClient<IMaterialPlatformApi>()
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri(materialPlatformUrl);
+                c.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .AddHttpMessageHandler<MaterialPlatformBearerTokenHandler>()
             .AddTransientHttpErrorPolicy(policy =>
                 policy.WaitAndRetryAsync(
                     retryCount: 3,
@@ -96,7 +115,7 @@ public class MaterialClientCommonModule : AbpModule
         // No need to register explicitly, ABP will auto-register it
 
         // Register AttendedWeighingService as singleton (needs to maintain state and listen continuously)
-        services.AddSingleton<AttendedWeighingService>();
+        services.AddSingleton<IAttendedWeighingService, AttendedWeighingService>();
 
         // Repositories are automatically registered by ABP framework
         // when using IRepository<TEntity, TKey> interface
@@ -123,7 +142,7 @@ public class MaterialClientCommonModule : AbpModule
             .Enrich.FromLogContext()
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Information)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
             .MinimumLevel.Override("Volo.Abp", LogEventLevel.Warning)
             .WriteTo.File(
                 path: logFilePath,
@@ -151,7 +170,7 @@ public class MaterialClientCommonModule : AbpModule
                 context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
 
             using var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false);
-            using var dbContext = await dbContextProvider.GetDbContextAsync();
+            await using var dbContext = await dbContextProvider.GetDbContextAsync();
             await dbContext.Database.MigrateAsync();
             await uow.CompleteAsync();
         }
@@ -160,24 +179,6 @@ public class MaterialClientCommonModule : AbpModule
             // 记录错误但不阻止应用启动
             var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
             logger?.LogError(ex, "数据库迁移失败");
-        }
-
-        // 启动 AttendedWeighingService
-        try
-        {
-            var attendedWeighingService = context.ServiceProvider.GetService<AttendedWeighingService>();
-            if (attendedWeighingService != null)
-            {
-                await attendedWeighingService.StartAsync();
-                var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
-                logger?.LogInformation("AttendedWeighingService 已自动启动");
-            }
-        }
-        catch (Exception ex)
-        {
-            // 记录错误但不阻止应用启动
-            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
-            logger?.LogError(ex, "启动 AttendedWeighingService 失败");
         }
     }
 

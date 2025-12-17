@@ -113,6 +113,12 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("AddDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("AddTime")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("BasicUnit")
                         .HasColumnType("TEXT");
 
@@ -123,6 +129,32 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Creator")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<int?>("LastEditUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastEditor")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal?>("LowerLimit")
@@ -149,6 +181,12 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue(1m);
 
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateTime")
+                        .HasColumnType("INTEGER");
+
                     b.Property<decimal?>("UpperLimit")
                         .HasColumnType("TEXT");
 
@@ -157,11 +195,135 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.ToTable("Materials");
                 });
 
+            modelBuilder.Entity("MaterialClient.Common.Entities.MaterialType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("AddDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("AddTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Creator")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<int?>("LastEditUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastEditor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("LowerLimit")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("ParentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid?>("ProId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TypeCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TypeName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("UpperLimit")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoId");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("TypeCode");
+
+                    b.ToTable("MaterialTypes");
+                });
+
             modelBuilder.Entity("MaterialClient.Common.Entities.MaterialUnit", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("AddDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("AddTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Creator")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<int?>("LastEditUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastEditor")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("MaterialId")
                         .HasColumnType("INTEGER");
@@ -175,15 +337,20 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<string>("RateName")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("UnitCalculationType")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("UnitName")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateTime")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
-
-                    b.HasIndex("MaterialId");
-
-                    b.HasIndex("ProviderId");
 
                     b.ToTable("MaterialUnits");
                 });
@@ -194,22 +361,100 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ContactName")
+                    b.Property<DateTime?>("AddDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ContactPhone")
+                    b.Property<int?>("AddTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContectName")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("ContectPhone")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Creator")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<int?>("LastEditUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastEditor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MaterialTypeId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ProviderName")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("ProviderType")
+                    b.Property<int?>("ProviderType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProviderTypeName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateTime")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
                     b.ToTable("Providers");
+                });
+
+            modelBuilder.Entity("MaterialClient.Common.Entities.SettingsEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CameraConfigsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DocumentScannerConfigJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LicensePlateRecognitionConfigsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ScaleSettingsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SystemSettingsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Settings");
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.UserCredential", b =>
@@ -223,6 +468,9 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<string>("EncryptedPassword")
                         .IsRequired()
                         .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("LicenseInfoId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ProjectId")
@@ -283,6 +531,9 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("LastActivityTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("LicenseInfoId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("LoginTime")
@@ -377,6 +628,18 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<DateTime?>("LastSyncTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("MaterialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaterialUnitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("MaterialUnitRate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("OffsetRate")
+                        .HasColumnType("TEXT");
+
                     b.Property<short>("OffsetResult")
                         .HasColumnType("INTEGER");
 
@@ -387,13 +650,13 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("OrderPcs")
+                    b.Property<decimal?>("OrderPcs")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("OrderPlanOnPcs")
+                    b.Property<decimal?>("OrderPlanOnPcs")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("OrderPlanOnWeight")
+                    b.Property<decimal?>("OrderPlanOnWeight")
                         .HasColumnType("TEXT");
 
                     b.Property<short>("OrderSource")
@@ -417,15 +680,13 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("ProviderId")
+                    b.Property<int?>("ProviderId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Remark")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProviderId");
 
                     b.ToTable("Waybills");
                 });
@@ -444,12 +705,88 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttachmentFileId");
-
                     b.HasIndex("WaybillId", "AttachmentFileId")
                         .IsUnique();
 
                     b.ToTable("WaybillAttachments");
+                });
+
+            modelBuilder.Entity("MaterialClient.Common.Entities.WaybillMaterial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("AddDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("AddTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Creator")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("GoodsPcs")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("GoodsPlanOnPcs")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("GoodsPlanOnWeight")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("GoodsTakeWeight")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("GoodsWeight")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LastEditUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastEditor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaterialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MaterialName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MaterialUnitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("OffsetCount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("OffsetRate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<short>("OffsetResult")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("OffsetWeight")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Specifications")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("WaybillId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WaybillMaterials");
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.WeighingRecord", b =>
@@ -474,6 +811,9 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("DeletionTime");
 
+                    b.Property<int?>("DeliveryType")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -488,8 +828,14 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("LastModifierId");
 
-                    b.Property<int?>("MaterialId")
+                    b.Property<long?>("MatchedId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MatchedType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MaterialsJson")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("PlateNumber")
                         .HasColumnType("TEXT");
@@ -497,19 +843,13 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<int?>("ProviderId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("RecordType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(0);
-
-                    b.Property<decimal>("Weight")
+                    b.Property<decimal>("TotalWeight")
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("WaybillId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
-
-                    b.HasIndex("MaterialId");
-
-                    b.HasIndex("ProviderId");
 
                     b.ToTable("WeighingRecords");
                 });
@@ -528,118 +868,30 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttachmentFileId");
-
                     b.HasIndex("WeighingRecordId", "AttachmentFileId")
                         .IsUnique();
 
                     b.ToTable("WeighingRecordAttachments");
                 });
 
-            modelBuilder.Entity("MaterialClient.Common.Entities.MaterialUnit", b =>
+            modelBuilder.Entity("MaterialClient.Common.Entities.WorkSettingsEntity", b =>
                 {
-                    b.HasOne("MaterialClient.Common.Entities.Material", "Material")
-                        .WithMany()
-                        .HasForeignKey("MaterialId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
-                    b.HasOne("MaterialClient.Common.Entities.Provider", "Provider")
-                        .WithMany()
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                    b.Property<DateTime?>("MaterialTypeUpdatedTime")
+                        .HasColumnType("TEXT");
 
-                    b.Navigation("Material");
+                    b.Property<DateTime?>("MaterialUpdatedTime")
+                        .HasColumnType("TEXT");
 
-                    b.Navigation("Provider");
-                });
+                    b.Property<DateTime?>("ProviderUpdatedTime")
+                        .HasColumnType("TEXT");
 
-            modelBuilder.Entity("MaterialClient.Common.Entities.UserCredential", b =>
-                {
-                    b.HasOne("MaterialClient.Common.Entities.LicenseInfo", "LicenseInfo")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasKey("Id");
 
-                    b.Navigation("LicenseInfo");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.UserSession", b =>
-                {
-                    b.HasOne("MaterialClient.Common.Entities.LicenseInfo", "LicenseInfo")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LicenseInfo");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.Waybill", b =>
-                {
-                    b.HasOne("MaterialClient.Common.Entities.Provider", "Provider")
-                        .WithMany()
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.WaybillAttachment", b =>
-                {
-                    b.HasOne("MaterialClient.Common.Entities.AttachmentFile", "AttachmentFile")
-                        .WithMany()
-                        .HasForeignKey("AttachmentFileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MaterialClient.Common.Entities.Waybill", "Waybill")
-                        .WithMany()
-                        .HasForeignKey("WaybillId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AttachmentFile");
-
-                    b.Navigation("Waybill");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.WeighingRecord", b =>
-                {
-                    b.HasOne("MaterialClient.Common.Entities.Material", "Material")
-                        .WithMany()
-                        .HasForeignKey("MaterialId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MaterialClient.Common.Entities.Provider", "Provider")
-                        .WithMany()
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Material");
-
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.WeighingRecordAttachment", b =>
-                {
-                    b.HasOne("MaterialClient.Common.Entities.AttachmentFile", "AttachmentFile")
-                        .WithMany()
-                        .HasForeignKey("AttachmentFileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MaterialClient.Common.Entities.WeighingRecord", "WeighingRecord")
-                        .WithMany()
-                        .HasForeignKey("WeighingRecordId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AttachmentFile");
-
-                    b.Navigation("WeighingRecord");
+                    b.ToTable("WorkSettings");
                 });
 #pragma warning restore 612, 618
         }

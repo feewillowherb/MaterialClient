@@ -25,6 +25,7 @@ public class UserSession : Entity<Guid>
     public UserSession(
         Guid id,
         Guid projectId,
+        Guid licenseInfoId,
         long userId,
         string username,
         string trueName,
@@ -58,15 +59,22 @@ public class UserSession : Entity<Guid>
         CompanyName = companyName;
         ApiUrl = apiUrl;
         AuthEndTime = authEndTime;
+        LicenseInfoId = licenseInfoId;
         LoginTime = DateTime.Now;
         LastActivityTime = DateTime.Now;
     }
 
     /// <summary>
-    /// 项目ID（关联到 LicenseInfo）
+    /// 项目ID
     /// </summary>
     [Required]
     public Guid ProjectId { get; set; }
+
+    /// <summary>
+    /// 授权信息ID
+    /// </summary>
+    [Required]
+    public Guid LicenseInfoId { get; set; }
 
     /// <summary>
     /// 用户ID（从基础平台获取）
@@ -175,12 +183,6 @@ public class UserSession : Entity<Guid>
     /// 会话是否过期（超过24小时无活动）
     /// </summary>
     public bool IsExpired => (DateTime.Now - LastActivityTime).TotalHours > 24;
-
-    /// <summary>
-    /// 导航属性：授权信息
-    /// </summary>
-    [ForeignKey(nameof(ProjectId))]
-    public virtual LicenseInfo LicenseInfo { get; set; }
 
     /// <summary>
     /// 更新最后活动时间

@@ -1,0 +1,363 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:entities="using:MaterialClient.Common.Entities"
+        xmlns:models="using:MaterialClient.Common.Models"
+        xmlns:vm="using:MaterialClient.ViewModels"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:views="using:MaterialClient.Views.AttendedWeighing"
+        xmlns:converters="using:MaterialClient.Converters"
+        xmlns:views1="clr-namespace:MaterialClient.Views"
+        x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingWindow"
+        x:DataType="vm:AttendedWeighingViewModel"
+        x:Name="AttendedWeighingWindowRoot"
+        Title="有人值守"
+        Width="1440" Height="900"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/fd-ico.ico">
+  
+  <Window.Resources>
+    <converters:EqualityToColorConverter x:Key="EqualityToColorConverter"/>
+    <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter"/>
+    <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
+  </Window.Resources>
+  
+  <!-- Window.Styles 已移至 App.axaml 全局样式 -->
+  
+  <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
+    
+    <!-- Top Blue Header Bar -->
+    <Border Grid.Row="0" Background="#4169E1" Padding="16,12">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <!-- Logo and Title -->
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <Image Source="/Assets/Indexlogo.png" Width="210" Height="32" Stretch="Uniform"/>
+        </StackPanel>
+        
+        <!-- Menu Items (Center) -->
+        <StackPanel Grid.Column="1" 
+                    Orientation="Horizontal" 
+                    Spacing="32" 
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+          <Button Content="数据管理" 
+                  Classes="transparent-button"
+                  Foreground="White" 
+                  Padding="8,4"/>
+          <Button Content="系统设置" 
+                  Classes="transparent-button"
+                  Foreground="White" 
+                  Padding="8,4"
+                  Command="{Binding OpenSettingsCommand}"/>
+          <Button Content="项目信息" 
+                  Classes="transparent-button"
+                  Foreground="White" 
+                  Padding="8,4"/>
+          <Button Content="数据同步" 
+                  Classes="transparent-button"
+                  Foreground="White" 
+                  Padding="8,4"/>
+        </StackPanel>
+        
+      </Grid>
+    </Border>
+
+    <!-- Blue Gradient Weight Display Area -->
+    <Grid Grid.Row="1" Background="#4A85F9">
+      <!-- Background Image Layer -->
+      <Border>
+        <Border.Background>
+          <ImageBrush Source="/Assets/Indexbanner.png" 
+                      Stretch="UniformToFill"
+                      AlignmentX="Center"
+                      AlignmentY="Center"/>
+        </Border.Background>
+      </Border>
+      
+      <!-- Content Layer with Margin -->
+      <Grid ColumnDefinitions="Auto,*,Auto" 
+            Margin="24,32"
+            HorizontalAlignment="Stretch" 
+            VerticalAlignment="Stretch">
+        <!-- Weight Display Center -->
+        <Grid Grid.Column="1" 
+              HorizontalAlignment="Center"
+              ColumnDefinitions="Auto,Auto,Auto,Auto">
+          <!-- Province Selector -->
+          <Border Background="#5A7FE6" 
+                  CornerRadius="8" 
+                  Padding="20,12"
+                  VerticalAlignment="Center"
+                  MinWidth="180">
+            <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}" 
+                       Foreground="White" 
+                       FontSize="16"/>
+          </Border>
+          
+          <!-- DeliveryType Selector -->
+          <Border Grid.Column="1"
+                  Background="#5A7FE6"
+                  CornerRadius="8"
+                  Margin="16,0,0,0"
+                  VerticalAlignment="Center">
+            <StackPanel Orientation="Vertical">
+              <RadioButton GroupName="DeliveryType"
+                           IsChecked="{Binding IsReceiving}"
+                           Command="{Binding SetReceivingCommand}"
+                           Cursor="Hand">
+                <RadioButton.Template>
+                  <ControlTemplate TargetType="RadioButton">
+                    <Border Name="bd" 
+                            BorderThickness="1" 
+                            CornerRadius="8,8,0,0"
+                            BorderBrush="Transparent" 
+                            Background="Transparent"
+                            Padding="20,6">
+                      <TextBlock Name="bdText" 
+                                 Text="收料" 
+                                 Foreground="#FFFFFF"
+                                 FontSize="14" 
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Center"/>
+                    </Border>
+                  </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Styles>
+                  <Style Selector="RadioButton:checked /template/ Border#bd">
+                    <Setter Property="Background" Value="#FFFFFF"/>
+                    <Setter Property="BorderBrush" Value="#FFFFFF"/>
+                  </Style>
+                  <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
+                    <Setter Property="Foreground" Value="#5A7FE6"/>
+                  </Style>
+                </RadioButton.Styles>
+              </RadioButton>
+              <RadioButton GroupName="DeliveryType"
+                           IsChecked="{Binding IsSending}"
+                           Command="{Binding SetSendingCommand}"
+                           Cursor="Hand">
+                <RadioButton.Template>
+                  <ControlTemplate TargetType="RadioButton">
+                    <Border Name="bd" 
+                            BorderThickness="1" 
+                            CornerRadius="0,0,8,8"
+                            BorderBrush="Transparent" 
+                            Background="Transparent"
+                            Padding="20,6">
+                      <TextBlock Name="bdText" 
+                                 Text="发料" 
+                                 Foreground="#FFFFFF"
+                                 FontSize="14" 
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Center"/>
+                    </Border>
+                  </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Styles>
+                  <Style Selector="RadioButton:checked /template/ Border#bd">
+                    <Setter Property="Background" Value="#FFFFFF"/>
+                    <Setter Property="BorderBrush" Value="#FFFFFF"/>
+                  </Style>
+                  <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
+                    <Setter Property="Foreground" Value="#5A7FE6"/>
+                  </Style>
+                </RadioButton.Styles>
+              </RadioButton>
+            </StackPanel>
+          </Border>
+          
+          <!-- Weight Value -->
+          <TextBlock Grid.Column="2" 
+                     Text="{Binding CurrentWeight, StringFormat='{}{0:F2}'}" 
+                     Foreground="White" 
+                     FontSize="64" 
+                     FontWeight="Bold"
+                     VerticalAlignment="Center"
+                     Margin="16,0"/>
+          
+          <!-- Unit -->
+          <TextBlock Grid.Column="3" 
+                     Text="吨" 
+                     Foreground="White" 
+                     FontSize="24"
+                     VerticalAlignment="Center"
+                     Margin="8,0,0,0"/>
+        </Grid>
+        
+        <!-- Right Side Info -->
+        <TextBlock Grid.Column="2" 
+                   Text="{Binding CurrentWeighingStatusText}" 
+                   Foreground="White" 
+                   FontSize="18"
+                   VerticalAlignment="Center"/>
+      </Grid>
+    </Grid>
+
+    <!-- Main Content Area (White Background, Three Columns) -->
+    <Grid Grid.Row="2" Background="White" ColumnDefinitions="300,*,380" Margin="0">
+      
+      <!-- Left Column: Record List -->
+      <views:WeighingRecordListView Grid.Column="0" DataContext="{Binding}"/>
+
+      <!-- Middle Column: Material Info and Photos (动态切换视图) -->
+      <Grid Grid.Column="1">
+        <!-- 主视图 -->
+        <views:AttendedWeighingMainView DataContext="{Binding}" 
+                                         IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingMainView}"/>
+        
+        <!-- 详情视图 -->
+        <views:AttendedWeighingDetailView DataContext="{Binding DetailViewModel}"
+                                           IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingDetailView}"/>
+      </Grid>
+
+      <!-- Right Column: Camera Views and Bill -->
+      <Border Grid.Column="2" 
+              Background="#F8F9FA" 
+              BorderBrush="#E5E7EB" 
+              BorderThickness="1,0,0,0"
+              Padding="20">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+          <!-- Photo Grid View -->
+          <views1:PhotoGridView Grid.RowSpan="2" DataContext="{Binding PhotoGridViewModel}"/>
+          
+          <!-- Bill Scan Section -->
+          <TextBlock Grid.Row="2" 
+                     Text="单据扫描" 
+                     FontSize="14" 
+                     FontWeight="SemiBold"
+                     Margin="0,24,0,12"/>
+          
+          <Border Grid.Row="3" 
+                  Classes="card-border"
+                  Height="240"
+                  Padding="16">
+            <Grid RowDefinitions="*,Auto">
+              <Border Background="#F0F0F0" 
+                      CornerRadius="4"
+                      BorderBrush="#D1D5DB"
+                      BorderThickness="1">
+                <Image Source="{Binding BillPhotoPath}" 
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+              </Border>
+              
+              <Button Grid.Row="1" 
+                      Content="拍照" 
+                      Classes="success-button"
+                      CornerRadius="6"
+                      Padding="48,8"
+                      HorizontalAlignment="Center"
+                      Margin="0,12,0,0"
+                      Command="{Binding TakeBillPhotoCommand}"/>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+      
+    </Grid>
+    
+    <!-- Status Bar -->
+    <Border Grid.Row="3" 
+            Background="#F5F5F5" 
+            BorderBrush="#E5E7EB" 
+            BorderThickness="0,1,0,0"
+            Padding="16,8">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+        <!-- Scale Status Indicator -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <!-- Online Indicator -->
+          <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding IsScaleOnline}">
+            <Ellipse.Fill>
+              <SolidColorBrush Color="#10B981"/>
+            </Ellipse.Fill>
+          </Ellipse>
+          <!-- Offline Indicator -->
+          <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding !IsScaleOnline}">
+            <Ellipse.Fill>
+              <SolidColorBrush Color="#EF4444"/>
+            </Ellipse.Fill>
+          </Ellipse>
+          <TextBlock Text="地磅设备" 
+                     FontSize="13" 
+                     Foreground="#666"
+                     VerticalAlignment="Center"/>
+          <!-- Online Status Text -->
+          <TextBlock Text="在线" 
+                     FontSize="13" 
+                     Foreground="#10B981"
+                     VerticalAlignment="Center"
+                     FontWeight="SemiBold"
+                     IsVisible="{Binding IsScaleOnline}"/>
+          <!-- Offline Status Text -->
+          <TextBlock Text="离线" 
+                     FontSize="13" 
+                     Foreground="#EF4444"
+                     VerticalAlignment="Center"
+                     FontWeight="SemiBold"
+                     IsVisible="{Binding !IsScaleOnline}"/>
+        </StackPanel>
+        
+        <!-- Camera Status Indicator -->
+        <Grid Grid.Column="1" 
+              Margin="24,0,0,0"
+              VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" 
+                      Spacing="8" 
+                      VerticalAlignment="Center"
+                      Name="CameraStatusPanel"
+                      PointerEntered="CameraStatusPanel_OnPointerEntered"
+                      PointerExited="CameraStatusPanel_OnPointerExited">
+            <!-- Online Indicator -->
+            <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding IsCameraOnline}">
+              <Ellipse.Fill>
+                <SolidColorBrush Color="#10B981"/>
+              </Ellipse.Fill>
+            </Ellipse>
+            <!-- Offline Indicator -->
+            <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding !IsCameraOnline}">
+              <Ellipse.Fill>
+                <SolidColorBrush Color="#EF4444"/>
+              </Ellipse.Fill>
+            </Ellipse>
+            <TextBlock Text="摄像头" 
+                       FontSize="13" 
+                       Foreground="#666"
+                       VerticalAlignment="Center"/>
+            <!-- Online Status Text -->
+            <TextBlock Text="在线" 
+                       FontSize="13" 
+                       Foreground="#10B981"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       IsVisible="{Binding IsCameraOnline}"/>
+            <!-- Offline Status Text -->
+            <TextBlock Text="离线" 
+                       FontSize="13" 
+                       Foreground="#EF4444"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       IsVisible="{Binding !IsCameraOnline}"/>
+          </StackPanel>
+          
+          <!-- Camera Status Popup -->
+          <Popup Name="CameraStatusPopup"
+                 Placement="Bottom"
+                 IsLightDismissEnabled="False"
+                 HorizontalOffset="0"
+                 VerticalOffset="2"
+                 PointerEntered="CameraStatusPopup_OnPointerEntered"
+                 PointerExited="CameraStatusPopup_OnPointerExited">
+            <views1:CameraStatusPopup DataContext="{Binding}"/>
+          </Popup>
+        </Grid>
+        
+        <!-- Right side info (can be extended later) -->
+        <TextBlock Grid.Column="3" 
+                   Text="{Binding CurrentTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" 
+                   FontSize="12" 
+                   Foreground="#999"
+                   VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

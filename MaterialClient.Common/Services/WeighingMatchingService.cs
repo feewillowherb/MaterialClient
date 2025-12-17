@@ -1,233 +1,719 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
+using Microsoft.EntityFrameworkCore;
+using Volo.Abp;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
 
+public interface IWeighingMatchingService
+{
+    Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record);
+    Task UpdateWaybillAsync(UpdateWaybillInput input);
+    Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input);
+
+    /// <summary>
+    /// 更新列表项（根据类型自动判断更新 WeighingRecord 或 Waybill）
+    /// </summary>
+    /// <param name="input">更新参数</param>
+    Task UpdateListItemAsync(UpdateListItemInput input);
+
+    /// <summary>
+    /// 获取可匹配的候选记录列表
+    /// </summary>
+    /// <param name="record">当前称重记录</param>
+    /// <param name="deliveryType">收发料类型</param>
+    /// <returns>可匹配的候选记录列表</returns>
+    Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType);
+
+    /// <summary>
+    /// 手动匹配两条称重记录并创建运单
+    /// </summary>
+    /// <param name="currentRecord">当前称重记录</param>
+    /// <param name="matchedRecord">匹配的称重记录</param>
+    /// <param name="deliveryType">收发料类型</param>
+    Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
+
+    /// <summary>
+    /// 获取称重列表项（分页）
+    /// </summary>
+    /// <param name="input">分页和过滤参数</param>
+    /// <returns>分页结果</returns>
+    Task<PagedResultDto<WeighingListItemDto>> GetListItemsAsync(GetWeighingListItemsInput input);
+
+    /// <summary>
+    /// 自动匹配称重记录（同时尝试收料和发料两种类型）
+    /// </summary>
+    /// <param name="weighingRecordId">称重记录ID</param>
+    /// <returns>是否匹配成功</returns>
+    Task<bool> AutoMatchAsync(long weighingRecordId);
+
+    /// <summary>
+    /// 完成运单（将 OrderType 设置为 Completed）
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    Task CompleteOrderAsync(long waybillId);
+
+    /// <summary>
+    /// 尝试计算物料重量（如果有必要的参数）
+    /// </summary>
+    /// <param name="waybill">运单实体</param>
+    /// <param name="materialId">物料ID（可选，为null时使用waybill中的值）</param>
+    /// <param name="materialUnitId">物料单位ID（可选，为null时使用waybill中的值）</param>
+    /// <param name="waybillQuantity">运单数量（可选，为null时使用waybill中的值）</param>
+    Task TryCalculateMaterialAsync(Waybill waybill, int? materialId = null, int? materialUnitId = null,
+        decimal? waybillQuantity = null);
+}
+
 /// <summary>
 /// Service for matching weighing records and creating waybills
 /// </summary>
-public class WeighingMatchingService : DomainService
+[AutoConstructor]
+public partial class WeighingMatchingService : DomainService, IWeighingMatchingService
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
-    private readonly IUnitOfWorkManager _unitOfWorkManager;
-    private readonly WeighingConfiguration _configuration;
+    private readonly IRepository<Material, int> _materialRepository;
+    private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
+    private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
+    private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
+    private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
+    private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
+    private readonly IRepository<Provider, int> _providerRepository;
     private readonly ILogger<WeighingMatchingService>? _logger;
 
-    public WeighingMatchingService(
-        IRepository<WeighingRecord, long> weighingRecordRepository,
-        IRepository<Waybill, long> waybillRepository,
-        IUnitOfWorkManager unitOfWorkManager,
-        IConfiguration configuration,
-        ILogger<WeighingMatchingService>? logger = null)
-    {
-        _weighingRecordRepository = weighingRecordRepository;
-        _waybillRepository = waybillRepository;
-        _unitOfWorkManager = unitOfWorkManager;
-        _logger = logger;
 
-        // Load configuration
-        var configSection = configuration.GetSection("Weighing");
-        _configuration = configSection.Get<WeighingConfiguration>() ?? new WeighingConfiguration();
-    }
+    private const int MaxIntervalMinutes = 300;
+    private const decimal MinTon = 1m;
 
-    /// <summary>
-    /// Try to match weighing records and create waybills
-    /// </summary>
-    /// <param name="deliveryType">Delivery type (Delivery or Receiving) for weight relationship validation</param>
-    /// <returns>Number of waybills created</returns>
-    public async Task<int> TryMatchAndCreateWaybillsAsync(DeliveryType deliveryType)
+
+    [UnitOfWork]
+    public async Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record)
     {
-        try
+        if (!record.IsValidChinesePlateNumber())
         {
-            // Get all unmatched weighing records
-            var allRecords = await _weighingRecordRepository.GetListAsync();
-            var unmatchedRecords = allRecords
-                .Where(r => r.MatchedId == null)
-                .OrderBy(r => r.CreationTime)
+            _logger?.LogInformation(
+                "WeighingMatchingService: Record {RecordId} has invalid plate number '{PlateNumber}', skipping matching",
+                record.Id, record.PlateNumber);
+            return false;
+        }
+
+        var query = await _weighingRecordRepository.GetQueryableAsync();
+
+        var unmatchedRecords = await query
+            .Where(r => r.PlateNumber == record.PlateNumber && r.Id != record.Id)
+            .Where(r => r.MatchedId == null)
+            .OrderByDescending(r => r.CreationTime)
+            .ToListAsync();
+        if (unmatchedRecords.Count == 0)
+        {
+            _logger?.LogInformation(
+                "WeighingMatchingService: No unmatched records found for plate '{PlateNumber}' to match with record {RecordId}",
+                record.PlateNumber, record.Id);
+            return false;
+        }
+
+        var validTime = record.CreationTime.AddMinutes(-MaxIntervalMinutes);
+        var timeoutOrders = unmatchedRecords
+            .Where(r => r.CreationTime < validTime)
+            .ToList();
+        if (timeoutOrders.Any())
+        {
+            _logger?.LogInformation(
+                "WeighingMatchingService: Found {Count} timeout unmatched records for plate '{PlateNumber}' to match with record {RecordId}",
+                timeoutOrders.Count, record.PlateNumber, record.Id);
+        }
+
+        if (record.DeliveryType == null || record.DeliveryType == DeliveryType.Receiving)
+        {
+            var candidateRecords = unmatchedRecords
+                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.TotalWeight > record.TotalWeight)
+                .Where(r => (r.TotalWeight - record.TotalWeight) > MinTon)
+                .OrderByDescending(r => r.CreationTime)
                 .ToList();
-
-            if (unmatchedRecords.Count < 2)
+            if (candidateRecords.Count == 0)
             {
-                return 0; // Need at least 2 records to match
+                _logger?.LogInformation(
+                    "WeighingMatchingService: No candidate records found for matching with record {RecordId}",
+                    record.Id);
+                return false;
             }
 
-            // Group by plate number (including empty/null as same group)
-            var recordsByPlate = unmatchedRecords
-                .GroupBy(r => r.PlateNumber ?? string.Empty)
+            var matchedRecord = candidateRecords
+                .OrderBy(r => r.CreationTime - record.CreationTime)
+                .First();
+
+            await CreateWaybillAsync(record, matchedRecord, DeliveryType.Receiving);
+            return true;
+        }
+
+        if (record.DeliveryType == DeliveryType.Sending)
+        {
+            var candidateRecords = unmatchedRecords
+                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.TotalWeight < record.TotalWeight)
+                .Where(r => (record.TotalWeight - r.TotalWeight) > MinTon)
+                .OrderByDescending(r => r.CreationTime)
                 .ToList();
-
-            int waybillsCreated = 0;
-
-            foreach (var plateGroup in recordsByPlate)
+            if (candidateRecords.Count == 0)
             {
-                var records = plateGroup.OrderBy(r => r.CreationTime).ToList();
-                
-                // Find matching pairs using rule 1 (same plate + time window)
-                var matchingPairs = FindMatchingPairsByRule1(records);
-
-                foreach (var pair in matchingPairs)
-                {
-                    // Validate rule 2 (time order + weight relationship)
-                    if (ValidateRule2(pair.Item1, pair.Item2, deliveryType))
-                    {
-                        // Create waybill
-                        await CreateWaybillAsync(pair.Item1, pair.Item2, deliveryType);
-                        waybillsCreated++;
-                    }
-                }
+                _logger?.LogInformation(
+                    "WeighingMatchingService: No candidate records found for matching with record {RecordId}",
+                    record.Id);
+                return false;
             }
 
-            return waybillsCreated;
+            var matchedRecord = candidateRecords
+                .OrderBy(r => r.CreationTime - record.CreationTime)
+                .First();
+
+            await CreateWaybillAsync(matchedRecord, record, DeliveryType.Sending);
+            return true;
         }
-        catch (Exception ex)
+
+        _logger?.LogWarning(
+            "WeighingMatchingService: Record {RecordId} has unknown DeliveryType '{DeliveryType}', skipping matching",
+            record.Id, record.DeliveryType);
+        return false;
+    }
+
+    [UnitOfWork]
+    public async Task UpdateWaybillAsync(UpdateWaybillInput input)
+    {
+        var waybill = await _waybillRepository.FindAsync(input.WaybillId);
+
+        if (waybill == null)
         {
-            _logger?.LogError(ex, "WeighingMatchingService: Error matching records and creating waybills");
-            throw;
+            _logger?.LogError("Waybill with ID {WaybillId} not found.", input.WaybillId);
+            return;
+        }
+
+        // 更新基本字段
+        if (input.PlateNumber != null) waybill.PlateNumber = input.PlateNumber;
+        if (input.ProviderId.HasValue) waybill.ProviderId = input.ProviderId.Value;
+
+        // 计算物料信息
+        await TryCalculateMaterialAsync(waybill,
+            input.MaterialId ?? waybill.MaterialId,
+            input.MaterialUnitId ?? waybill.MaterialUnitId,
+            input.WaybillQuantity ?? waybill.OrderPlanOnPcs);
+
+        await _waybillRepository.UpdateAsync(waybill);
+    }
+
+    [UnitOfWork]
+    public async Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input)
+    {
+        var record = await _weighingRecordRepository.FindAsync(input.WeighingRecordId);
+
+        if (record == null)
+        {
+            _logger?.LogError("WeighingRecord with ID {RecordId} not found.", input.WeighingRecordId);
+            return;
+        }
+
+        // 更新基本字段
+        if (input.PlateNumber != null) record.PlateNumber = input.PlateNumber;
+        if (input.ProviderId.HasValue) record.ProviderId = input.ProviderId;
+        if (input.DeliveryType.HasValue) record.DeliveryType = input.DeliveryType;
+
+        // 更新物料信息（在第一个 Material 中）
+        if (input.MaterialId.HasValue || input.MaterialUnitId.HasValue || input.WaybillQuantity.HasValue)
+        {
+            var materials = record.Materials;
+            var firstMaterial = materials.FirstOrDefault();
+            if (firstMaterial != null)
+            {
+                if (input.MaterialId.HasValue) firstMaterial.MaterialId = input.MaterialId;
+                if (input.MaterialUnitId.HasValue) firstMaterial.MaterialUnitId = input.MaterialUnitId;
+                if (input.WaybillQuantity.HasValue) firstMaterial.WaybillQuantity = input.WaybillQuantity;
+                // 重新设置以触发 JSON 序列化
+                record.Materials = materials;
+            }
+            else
+            {
+                // 创建新的物料
+                record.AddMaterial(new WeighingRecordMaterial(
+                    0,
+                    input.MaterialId,
+                    input.MaterialUnitId,
+                    input.WaybillQuantity));
+            }
+        }
+
+        await _weighingRecordRepository.UpdateAsync(record);
+    }
+
+    [UnitOfWork]
+    public async Task UpdateListItemAsync(UpdateListItemInput input)
+    {
+        if (input.ItemType == WeighingListItemType.WeighingRecord)
+        {
+            await UpdateWeighingRecordAsync(new UpdateWeighingRecordInput(
+                input.Id,
+                input.PlateNumber,
+                input.ProviderId,
+                input.MaterialId,
+                input.MaterialUnitId,
+                input.WaybillQuantity,
+                input.DeliveryType
+            ));
+        }
+        else if (input.ItemType == WeighingListItemType.Waybill)
+        {
+            await UpdateWaybillAsync(new UpdateWaybillInput(
+                input.Id,
+                input.PlateNumber,
+                input.ProviderId,
+                input.MaterialId,
+                input.MaterialUnitId,
+                input.WaybillQuantity
+            ));
         }
     }
 
-    /// <summary>
-    /// Find matching pairs by rule 1: same plate number + time window
-    /// If multiple candidates exist, select the pair with shortest time interval
-    /// </summary>
-    private List<(WeighingRecord, WeighingRecord)> FindMatchingPairsByRule1(List<WeighingRecord> records)
+    [UnitOfWork]
+    private async Task CreateWaybillAsync(WeighingRecord joinRecord, WeighingRecord outRecord,
+        DeliveryType deliveryType)
     {
-        var pairs = new List<(WeighingRecord, WeighingRecord)>();
-        var matchedRecordIds = new HashSet<long>();
+        var todayCount = await _waybillRepository.CountAsync(w =>
+            w.CreationTime.Date == DateTime.Today);
 
-        for (int i = 0; i < records.Count; i++)
+        var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.CreationTime, todayCount);
+        var waybill = new Waybill(orderNo)
         {
-            if (matchedRecordIds.Contains(records[i].Id))
-                continue;
-
-            var candidatePairs = new List<(WeighingRecord, WeighingRecord, TimeSpan)>();
-
-            for (int j = i + 1; j < records.Count; j++)
-            {
-                if (matchedRecordIds.Contains(records[j].Id))
-                    continue;
-
-                var timeDiff = records[j].CreationTime - records[i].CreationTime;
-                var timeWindow = TimeSpan.FromHours(_configuration.WeighingMatchDurationHours);
-
-                // Check if time difference is within window
-                if (timeDiff <= timeWindow && timeDiff >= TimeSpan.Zero)
-                {
-                    candidatePairs.Add((records[i], records[j], timeDiff));
-                }
-            }
-
-            // If multiple candidates, select the one with shortest time interval
-            if (candidatePairs.Any())
-            {
-                var bestPair = candidatePairs.OrderBy(p => p.Item3).First();
-                pairs.Add((bestPair.Item1, bestPair.Item2));
-                matchedRecordIds.Add(bestPair.Item1.Id);
-                matchedRecordIds.Add(bestPair.Item2.Id);
-            }
-        }
-
-        return pairs;
-    }
-
-    /// <summary>
-    /// Validate rule 2: time order + weight relationship based on DeliveryType
-    /// - Join record must be created before Out record
-    /// - For Delivery: Join.Weight < Out.Weight
-    /// - For Receiving: Join.Weight > Out.Weight
-    /// </summary>
-    private bool ValidateRule2(WeighingRecord record1, WeighingRecord record2, DeliveryType deliveryType)
-    {
-        // Determine which is Join (earlier) and which is Out (later)
-        WeighingRecord joinRecord, outRecord;
-        if (record1.CreationTime < record2.CreationTime)
-        {
-            joinRecord = record1;
-            outRecord = record2;
-        }
-        else
-        {
-            joinRecord = record2;
-            outRecord = record1;
-        }
-
-        // Validate weight relationship based on DeliveryType
-        if (deliveryType == DeliveryType.Delivery)
-        {
-            // 发料: Join.Weight < Out.Weight
-            return joinRecord.Weight < outRecord.Weight;
-        }
-        else // Receiving
-        {
-            // 收料: Join.Weight > Out.Weight
-            return joinRecord.Weight > outRecord.Weight;
-        }
-    }
-
-    /// <summary>
-    /// Create waybill from matched weighing records
-    /// </summary>
-    private async Task CreateWaybillAsync(WeighingRecord record1, WeighingRecord record2, DeliveryType deliveryType)
-    {
-        using var uow = _unitOfWorkManager.Begin();
-
-        // Determine Join and Out records
-        WeighingRecord joinRecord, outRecord;
-        if (record1.CreationTime < record2.CreationTime)
-        {
-            joinRecord = record1;
-            outRecord = record2;
-        }
-        else
-        {
-            joinRecord = record2;
-            outRecord = record1;
-        }
-
-        // Create waybill
-        var orderNo = Guid.NewGuid().ToString(); // Generate OrderNo from Guid
-        var waybill = new Waybill(orderNo) // Id will be auto-generated
-        {
+            ProviderId = joinRecord.ProviderId ?? outRecord.ProviderId,
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
             JoinTime = joinRecord.CreationTime,
             OutTime = outRecord.CreationTime,
-            DeliveryType = (int)deliveryType,
+            DeliveryType = deliveryType,
             OrderSource = OrderSource.MannedStation,
-            OrderTruckWeight = joinRecord.Weight,
-            OrderTotalWeight = outRecord.Weight,
-            OrderGoodsWeight = outRecord.Weight - joinRecord.Weight
+            OrderType = OrderTypeEnum.FirstWeight
         };
+        waybill.SetWeight(joinRecord, outRecord, deliveryType);
 
-        // If ProviderId is 0 (both records had null ProviderId), set to nullable
-        // But Waybill.ProviderId is int (not nullable), so we keep 0 and let business logic handle it
-        if (waybill.ProviderId == 0)
-        {
-            // TODO: Handle null Provider case - may need to make ProviderId nullable in Waybill
-            _logger?.LogWarning($"WeighingMatchingService: Created waybill with ProviderId=0 (both records had null ProviderId)");
-        }
-
-        await _waybillRepository.InsertAsync(waybill);
-        await uow.CompleteAsync();
-
-        // Update WeighingRecord types
-        using var uow2 = _unitOfWorkManager.Begin();
-
+        // 先插入 Waybill 获取 Id
+        await _waybillRepository.InsertAsync(waybill, true);
+        joinRecord.MatchAsJoin(outRecord.Id, waybill.Id);
+        outRecord.MatchAsOut(joinRecord.Id, waybill.Id);
         await _weighingRecordRepository.UpdateAsync(joinRecord);
         await _weighingRecordRepository.UpdateAsync(outRecord);
-        await uow2.CompleteAsync();
 
-        _logger?.LogInformation($"WeighingMatchingService: Created waybill {waybill.OrderNo} from records {joinRecord.Id} (Join) and {outRecord.Id} (Out)");
+        // 复制 WeighingRecord 的附件到 WaybillAttachment
+        await CopyAttachmentsToWaybillAsync(waybill.Id, joinRecord.Id, outRecord.Id);
+
+        // 计算物料信息（从 Materials 集合中获取）
+        var joinMaterial = joinRecord.Materials?.FirstOrDefault();
+        var outMaterial = outRecord.Materials?.FirstOrDefault();
+        var materialId = joinMaterial?.MaterialId ?? outMaterial?.MaterialId;
+        var materialUnitId = joinMaterial?.MaterialUnitId ?? outMaterial?.MaterialUnitId;
+        var waybillQuantity = joinMaterial?.WaybillQuantity ?? outMaterial?.WaybillQuantity;
+        await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
+    }
+
+    /// <summary>
+    /// 复制 WeighingRecord 的附件到 WaybillAttachment，并设置 AttachType
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    /// <param name="joinRecordId">进场称重记录ID</param>
+    /// <param name="outRecordId">出场称重记录ID</param>
+    private async Task CopyAttachmentsToWaybillAsync(long waybillId, long joinRecordId, long outRecordId)
+    {
+        var attachmentQuery = await _weighingRecordAttachmentRepository.GetQueryableAsync();
+
+        // 处理 joinRecord 的附件（设为 EntryPhoto）
+        var joinAttachments = await attachmentQuery
+            .Where(ra => ra.WeighingRecordId == joinRecordId)
+            .ToListAsync();
+
+        foreach (var attachment in joinAttachments)
+        {
+            var attachmentFile = await _attachmentFileRepository.GetAsync(attachment.AttachmentFileId);
+            attachmentFile.AttachType = AttachType.EntryPhoto;
+            await _attachmentFileRepository.UpdateAsync(attachmentFile);
+
+            await _waybillAttachmentRepository.InsertAsync(
+                new WaybillAttachment(waybillId, attachment.AttachmentFileId));
+        }
+
+        // 处理 outRecord 的附件（设为 ExitPhoto）
+        var outAttachments = await attachmentQuery
+            .Where(ra => ra.WeighingRecordId == outRecordId)
+            .ToListAsync();
+
+        foreach (var attachment in outAttachments)
+        {
+            // 避免重复插入（如果同一个附件同时关联了 joinRecord 和 outRecord）
+            var alreadyAdded = joinAttachments.Any(ja => ja.AttachmentFileId == attachment.AttachmentFileId);
+
+            var attachmentFile = await _attachmentFileRepository.GetAsync(attachment.AttachmentFileId);
+            attachmentFile.AttachType = AttachType.ExitPhoto;
+            await _attachmentFileRepository.UpdateAsync(attachmentFile);
+
+            if (!alreadyAdded)
+            {
+                await _waybillAttachmentRepository.InsertAsync(
+                    new WaybillAttachment(waybillId, attachment.AttachmentFileId));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 获取可匹配的候选记录列表（双向匹配，record 可作为 join 或 out）
+    /// </summary>
+    [UnitOfWork]
+    public async Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType)
+    {
+        if (string.IsNullOrWhiteSpace(record.PlateNumber))
+        {
+            _logger?.LogWarning("GetCandidateRecordsAsync: Record {RecordId} has no plate number", record.Id);
+            return new List<WeighingRecord>();
+        }
+
+        var query = await _weighingRecordRepository.GetQueryableAsync();
+
+        var unmatchedRecords = await query
+            .Where(r => r.PlateNumber == record.PlateNumber && r.Id != record.Id)
+            .Where(r => r.MatchedId == null)
+            .OrderByDescending(r => r.CreationTime)
+            .ToListAsync();
+
+        if (unmatchedRecords.Count == 0)
+        {
+            _logger?.LogInformation(
+                "GetCandidateRecordsAsync: No unmatched records found for plate '{PlateNumber}'",
+                record.PlateNumber);
+            return new List<WeighingRecord>();
+        }
+
+        // 使用 TryMatch 过滤可匹配的候选记录
+        return unmatchedRecords
+            .Where(r => WeighingRecord.TryMatch(record, r, deliveryType, MaxIntervalMinutes, MinTon).IsMatch)
+            .OrderByDescending(r => r.CreationTime)
+            .ToList();
+    }
+
+    /// <summary>
+    /// 手动匹配两条称重记录并创建运单
+    /// </summary>
+    [UnitOfWork]
+    public async Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
+        DeliveryType deliveryType)
+    {
+        // 使用领域方法自动判断 join/out
+        var matchResult = WeighingRecord.TryMatch(currentRecord, matchedRecord, deliveryType);
+
+        if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
+            throw new BusinessException("无法匹配这两条记录");
+
+        await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
+    }
+
+    /// <summary>
+    /// 获取称重列表项（分页）
+    /// </summary>
+    [UnitOfWork]
+    public async Task<PagedResultDto<WeighingListItemDto>> GetListItemsAsync(GetWeighingListItemsInput input)
+    {
+        var result = new List<WeighingListItemDto>();
+        var isCompleted = input.IsCompleted;
+
+        if (isCompleted == null || isCompleted == false)
+        {
+            // 获取未完成的 WeighingRecord（MatchedId == null）
+            var weighingRecordQuery = await _weighingRecordRepository.GetQueryableAsync();
+            var unmatchedRecords = await weighingRecordQuery
+                .Where(r => r.MatchedId == null)
+                .ToListAsync();
+
+            foreach (var record in unmatchedRecords)
+            {
+                result.Add(WeighingListItemDto.FromWeighingRecord(record));
+            }
+
+            // 获取未完成的 Waybill（OrderType == FirstWeight）
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var firstWeightWaybills = await waybillQuery
+                .Where(w => w.OrderType == OrderTypeEnum.FirstWeight)
+                .ToListAsync();
+
+            foreach (var waybill in firstWeightWaybills)
+            {
+                result.Add(WeighingListItemDto.FromWaybill(waybill));
+            }
+        }
+
+        if (isCompleted == null || isCompleted == true)
+        {
+            // 获取已完成的 Waybill（OrderType == Completed）
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var completedWaybills = await waybillQuery
+                .Where(w => w.OrderType == OrderTypeEnum.Completed)
+                .ToListAsync();
+
+            foreach (var waybill in completedWaybills)
+            {
+                result.Add(WeighingListItemDto.FromWaybill(waybill));
+            }
+        }
+
+        // 获取总数
+        var totalCount = result.Count;
+
+        // 按 JoinTime 降序排列，然后分页
+        var items = result
+            .OrderByDescending(item => item.JoinTime)
+            .Skip(input.SkipCount)
+            .Take(input.MaxResultCount)
+            .ToList();
+
+        // 填充预计算字段
+        await PopulateComputedFieldsAsync(items);
+
+        return new PagedResultDto<WeighingListItemDto>(totalCount, items);
+    }
+
+    /// <summary>
+    /// 填充列表项的预计算字段
+    /// </summary>
+    private async Task PopulateComputedFieldsAsync(List<WeighingListItemDto> items)
+    {
+        // 收集所有需要查询的 ID
+        var providerIds = items.Where(i => i.ProviderId.HasValue).Select(i => i.ProviderId!.Value).Distinct().ToList();
+        var materialIds = items.Where(i => i.MaterialId.HasValue).Select(i => i.MaterialId!.Value).Distinct().ToList();
+        var materialUnitIds = items.Where(i => i.MaterialUnitId.HasValue).Select(i => i.MaterialUnitId!.Value).Distinct().ToList();
+
+        // 批量查询供应商
+        var providers = providerIds.Count > 0
+            ? (await _providerRepository.GetListAsync(p => providerIds.Contains(p.Id))).ToDictionary(p => p.Id)
+            : new Dictionary<int, Provider>();
+
+        // 批量查询物料
+        var materials = materialIds.Count > 0
+            ? (await _materialRepository.GetListAsync(m => materialIds.Contains(m.Id))).ToDictionary(m => m.Id)
+            : new Dictionary<int, Material>();
+
+        // 批量查询物料单位
+        var materialUnits = materialUnitIds.Count > 0
+            ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
+            : new Dictionary<int, MaterialUnit>();
+
+        // 填充预计算字段
+        foreach (var item in items)
+        {
+            // 供应商名称
+            if (item.ProviderId.HasValue && providers.TryGetValue(item.ProviderId.Value, out var provider))
+            {
+                item.ProviderName = provider.ProviderName;
+            }
+
+            // 物料信息
+            if (item.MaterialId.HasValue && materials.TryGetValue(item.MaterialId.Value, out var material))
+            {
+                string? unitInfo = null;
+                if (item.MaterialUnitId.HasValue && materialUnits.TryGetValue(item.MaterialUnitId.Value, out var materialUnit))
+                {
+                    unitInfo = $"{materialUnit.Rate}/{materialUnit.UnitName}";
+                }
+                item.MaterialInfo = unitInfo != null ? $"{unitInfo} {material.Name}" : material.Name;
+            }
+
+            // 仅对 Waybill 类型填充进出场重量和偏差信息
+            if (item.ItemType == WeighingListItemType.Waybill)
+            {
+                // 计算进出场重量
+                if (item.DeliveryType == Entities.Enums.DeliveryType.Sending)
+                {
+                    item.JoinWeight = item.TruckWeight;
+                    item.OutWeight = item.Weight;
+                }
+                else if (item.DeliveryType == Entities.Enums.DeliveryType.Receiving)
+                {
+                    item.JoinWeight = item.Weight;
+                    item.OutWeight = item.TruckWeight;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 自动匹配称重记录（同时尝试收料和发料两种类型）
+    /// </summary>
+    [UnitOfWork]
+    public async Task<bool> AutoMatchAsync(long weighingRecordId)
+    {
+        var record = await _weighingRecordRepository.FindAsync(weighingRecordId);
+        if (record == null)
+        {
+            _logger?.LogWarning("AutoMatchAsync: Record {RecordId} not found", weighingRecordId);
+            return false;
+        }
+
+        // 已经匹配过的记录不再处理
+        if (record.MatchedId != null)
+        {
+            _logger?.LogInformation("AutoMatchAsync: Record {RecordId} is already matched", weighingRecordId);
+            return false;
+        }
+
+        // 验证车牌号
+        if (!record.IsValidChinesePlateNumber())
+        {
+            _logger?.LogInformation(
+                "AutoMatchAsync: Record {RecordId} has invalid plate number '{PlateNumber}', skipping matching",
+                record.Id, record.PlateNumber);
+            return false;
+        }
+
+        // 如果记录有明确的 DeliveryType，只尝试该类型
+        if (record.DeliveryType != null)
+        {
+            return await TryMatchWithDeliveryTypeAsync(record, record.DeliveryType.Value);
+        }
+
+        // 没有明确 DeliveryType 时，同时尝试收料和发料
+        // 优先尝试收料（Receiving）
+        if (await TryMatchWithDeliveryTypeAsync(record, DeliveryType.Receiving))
+        {
+            return true;
+        }
+
+        // 再尝试发料（Sending）
+        return await TryMatchWithDeliveryTypeAsync(record, DeliveryType.Sending);
+    }
+
+    /// <summary>
+    /// 尝试使用指定的 DeliveryType 匹配记录
+    /// </summary>
+    private async Task<bool> TryMatchWithDeliveryTypeAsync(WeighingRecord record, DeliveryType deliveryType)
+    {
+        var candidates = await GetCandidateRecordsAsync(record, deliveryType);
+        if (candidates.Count == 0)
+        {
+            _logger?.LogInformation(
+                "AutoMatchAsync: No candidate records found for record {RecordId} with DeliveryType {DeliveryType}",
+                record.Id, deliveryType);
+            return false;
+        }
+
+        // 选择时间最接近的候选记录
+        var matchedRecord = candidates
+            .OrderBy(r => Math.Abs((r.CreationTime - record.CreationTime).TotalMinutes))
+            .First();
+
+        // 使用领域方法自动判断 join/out
+        var matchResult = WeighingRecord.TryMatch(record, matchedRecord, deliveryType, MaxIntervalMinutes, MinTon);
+
+        if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
+        {
+            _logger?.LogWarning(
+                "AutoMatchAsync: TryMatch failed for record {RecordId} with candidate {CandidateId}",
+                record.Id, matchedRecord.Id);
+            return false;
+        }
+
+        await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
+
+        _logger?.LogInformation(
+            "AutoMatchAsync: Successfully matched record {RecordId} with {MatchedId}, DeliveryType: {DeliveryType}",
+            record.Id, matchedRecord.Id, deliveryType);
+        return true;
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task CompleteOrderAsync(long waybillId)
+    {
+        var waybill = await _waybillRepository.GetAsync(waybillId);
+
+        // 先执行物料计算
+        await TryCalculateMaterialAsync(waybill);
+
+        waybill.OrderTypeCompleted();
+        await _waybillRepository.UpdateAsync(waybill);
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task TryCalculateMaterialAsync(Waybill waybill, int? materialId = null, int? materialUnitId = null,
+        decimal? waybillQuantity = null)
+    {
+        // 使用传入的值，或从 waybill 中获取
+        materialId ??= waybill.MaterialId;
+        materialUnitId ??= waybill.MaterialUnitId;
+        waybillQuantity ??= waybill.OrderPlanOnPcs;
+
+        if (!materialUnitId.HasValue || !waybillQuantity.HasValue || !materialId.HasValue)
+            return;
+
+        var material = await _materialRepository.GetAsync(materialId.Value);
+
+        var materialUnit = await _materialUnitRepository.GetAsync(materialUnitId.Value);
+
+        // 更新 Waybill 的物料信息
+        waybill.MaterialId = materialId;
+        waybill.MaterialUnitId = materialUnitId;
+        waybill.OrderPlanOnPcs = waybillQuantity;
+        waybill.MaterialUnitRate = materialUnit.Rate;
+        waybill.CalculateMaterialWeight(material.LowerLimit, material.UpperLimit);
+
+        // 查找或创建 WaybillMaterial
+        var existingMaterial = await _waybillMaterialRepository.FirstOrDefaultAsync(wm => wm.WaybillId == waybill.Id);
+
+        if (existingMaterial != null)
+        {
+            // 更新现有记录
+            existingMaterial.MaterialId = material.Id;
+            existingMaterial.MaterialName = material.Name;
+            existingMaterial.Specifications = material.Specifications;
+            existingMaterial.MaterialUnitId = materialUnitId;
+            existingMaterial.GoodsPlanOnPcs = waybillQuantity.Value;
+            existingMaterial.UpdateOffsetFromWaybill(waybill);
+            await _waybillMaterialRepository.UpdateAsync(existingMaterial);
+        }
+        else
+        {
+            // 创建新记录
+            var waybillMaterial = new WaybillMaterial(waybill.Id, material.Id, material.Name,
+                material.Specifications, materialUnitId.Value, waybillQuantity.Value);
+            waybillMaterial.UpdateOffsetFromWaybill(waybill);
+            await _waybillMaterialRepository.InsertAsync(waybillMaterial);
+        }
     }
 }
 
+public record UpdateWaybillInput(
+    long WaybillId,
+    string? PlateNumber,
+    int? ProviderId,
+    int? MaterialId,
+    int? MaterialUnitId,
+    decimal? WaybillQuantity
+);
+
+public record UpdateWeighingRecordInput(
+    long WeighingRecordId,
+    string? PlateNumber,
+    int? ProviderId,
+    int? MaterialId,
+    int? MaterialUnitId,
+    decimal? WaybillQuantity,
+    DeliveryType? DeliveryType
+);
+
+public record UpdateListItemInput(
+    long Id,
+    WeighingListItemType ItemType,
+    string? PlateNumber,
+    int? ProviderId,
+    int? MaterialId,
+    int? MaterialUnitId,
+    decimal? WaybillQuantity,
+    DeliveryType? DeliveryType
+);

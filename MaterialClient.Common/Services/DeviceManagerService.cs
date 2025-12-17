@@ -41,7 +41,7 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     private readonly IServiceProvider _serviceProvider;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<DeviceManagerService>? _logger;
-    
+
     /// <summary>
     /// Get truck scale weight service lazily to avoid circular dependency
     /// </summary>

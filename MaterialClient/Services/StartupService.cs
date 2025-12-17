@@ -1,8 +1,9 @@
 using System;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
-using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using MaterialClient.ViewModels;
+using MaterialClient.Views;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.Services;
@@ -40,9 +41,9 @@ public class StartupService
         {
             // Step 1: Check license
             var isLicenseValid = await _licenseService.IsLicenseValidAsync();
-            
+
             bool licenseWasInvalid = !isLicenseValid;
-            
+
             if (!isLicenseValid)
             {
                 // No license or expired license - show authorization window
@@ -61,9 +62,9 @@ public class StartupService
             {
                 await _authenticationService.LogoutAsync();
             }
-            
+
             var hasActiveSession = await _authenticationService.HasActiveSessionAsync();
-            
+
             if (!hasActiveSession)
             {
                 // No active session - show login window
@@ -98,8 +99,7 @@ public class StartupService
 
         authWindow.Closed += (sender, args) =>
         {
-            var viewModel = authWindow.DataContext as AuthCodeWindowViewModel;
-            tcs.SetResult(viewModel?.IsVerified ?? false);
+            tcs.SetResult(authWindow.IsVerified);
         };
 
         authWindow.Show();
@@ -116,8 +116,7 @@ public class StartupService
 
         loginWindow.Closed += (sender, args) =>
         {
-            var viewModel = loginWindow.DataContext as LoginWindowViewModel;
-            tcs.SetResult(viewModel?.IsLoginSuccessful ?? false);
+            tcs.SetResult(loginWindow.IsLoginSuccessful);
         };
 
         loginWindow.Show();

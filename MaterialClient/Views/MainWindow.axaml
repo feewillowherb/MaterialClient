@@ -6,7 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="MaterialClient.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/fd-ico.ico"
         Title="MaterialClient">
 
     <Design.DataContext>
@@ -17,8 +17,12 @@
 
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
         <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center"/>
-        <Button Content="打开有人值守页面" Command="{Binding OpenAttendedWeighingCommand}" 
-                HorizontalAlignment="Center" Padding="16,8" MinWidth="200"/>
+        <Button Content="打开有人值守页面" 
+                Command="{Binding OpenAttendedWeighingCommand}" 
+                Classes="primary-button"
+                HorizontalAlignment="Center" 
+                Padding="16,8" 
+                MinWidth="200"/>
     </StackPanel>
 
 </Window>

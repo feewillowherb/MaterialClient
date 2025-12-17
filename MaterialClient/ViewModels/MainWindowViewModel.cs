@@ -1,25 +1,23 @@
-﻿using System;
-using System.Windows.Input;
-using MaterialClient.Views;
-using ReactiveUI;
+using System;
+using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace MaterialClient.ViewModels;
 
-public class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IServiceProvider _serviceProvider;
-    
-    public string Greeting { get; } = "Welcome to Avalonia!";
 
-    public ICommand OpenAttendedWeighingCommand { get; }
+    public string Greeting { get; } = "Welcome to Avalonia!";
 
     public MainWindowViewModel(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-        OpenAttendedWeighingCommand = ReactiveCommand.Create(OpenAttendedWeighing);
     }
 
+    [ReactiveCommand]
     private void OpenAttendedWeighing()
     {
         // Resolve window from Autofac container (ViewModel is injected via constructor)

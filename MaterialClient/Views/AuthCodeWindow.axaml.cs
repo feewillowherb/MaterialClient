@@ -13,34 +13,44 @@ namespace MaterialClient.Views;
 public partial class AuthCodeWindow : Window
 {
     private IDisposable? _authSuccessSubscription;
+    
+    /// <summary>
+    /// 公开的验证结果属性，用于在窗口关闭后读取
+    /// </summary>
+    public bool IsVerified { get; private set; }
 
-    public AuthCodeWindow(AuthCodeWindowViewModel viewModel)
+    public AuthCodeWindow(AuthCodeWindowViewModel authCodeWindowViewModel)
     {
         InitializeComponent();
-        DataContext = viewModel;
-        
+        DataContext = authCodeWindowViewModel;
+
         // Subscribe to DataContext changes
         this.WhenAnyValue(x => x.DataContext)
             .Subscribe(dataContext =>
             {
                 _authSuccessSubscription?.Dispose();
-                
+
                 if (dataContext is AuthCodeWindowViewModel viewModel)
                 {
                     // Watch for successful authorization
                     _authSuccessSubscription = viewModel
                         .WhenAnyValue(vm => vm.IsVerified)
-                        .Subscribe(async isVerified =>
+                        .Subscribe(isVerified =>
                         {
-                            if (isVerified){
-                                await Task.Delay(1000);
-                                Close();
+                            IsVerified = isVerified;  // 保存到窗口属性
+                            if (isVerified)
+                            {
+                                Dispatcher.UIThread.Post(async () =>
+                                {
+                                    await Task.Delay(TimeSpan.FromSeconds(0.5));
+                                    Close();
+                                }, DispatcherPriority.Background);
                             }
                         });
                 }
             });
     }
-    
+
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         // When user closes the window without completing authorization,
@@ -49,6 +59,7 @@ public partial class AuthCodeWindow : Window
         {
             viewModel.HandleWindowClose();
         }
+
         Close();
     }
 
@@ -58,4 +69,3 @@ public partial class AuthCodeWindow : Window
         base.OnClosed(e);
     }
 }
-

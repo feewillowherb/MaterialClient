@@ -18,6 +18,7 @@ namespace MaterialClient;
 public partial class App : Application
 {
     private IAbpApplicationWithInternalServiceProvider? _abpApplication;
+    private MinimalWebHostService? _webHostService;
 
     public override void Initialize()
     {
@@ -28,7 +29,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
+            // Avoid duplicate validations from both Avalonia and MVVM frameworks (ReactiveUI). 
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
 
@@ -43,6 +44,21 @@ public partial class App : Application
 
                 await _abpApplication.InitializeAsync();
 
+                // Get Web Host service and start in background
+                _webHostService = _abpApplication.ServiceProvider.GetRequiredService<MinimalWebHostService>();
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _webHostService.StartAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Web host startup error: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                    }
+                });
+
                 // Run startup flow
                 var startupService = _abpApplication.ServiceProvider.GetRequiredService<StartupService>();
                 var mainWindow = await startupService.StartupAsync();
@@ -50,6 +66,10 @@ public partial class App : Application
                 if (mainWindow != null)
                 {
                     desktop.MainWindow = mainWindow;
+                    mainWindow.Show();
+                    
+                    // Register exit handler
+                    desktop.Exit += OnApplicationExit;
                 }
                 else
                 {
@@ -68,6 +88,25 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    private void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
+    {
+        // Stop Web Host and ABP application synchronously
+        Task.Run(async () =>
+        {
+            // Stop Web Host service
+            if (_webHostService != null)
+            {
+                await _webHostService.StopAsync();
+            }
+
+            // Shutdown ABP application
+            if (_abpApplication != null)
+            {
+                await _abpApplication.ShutdownAsync();
+                _abpApplication.Dispose();
+            }
+        }).Wait();
+    }
 
     private void DisableAvaloniaDataAnnotationValidation()
     {
