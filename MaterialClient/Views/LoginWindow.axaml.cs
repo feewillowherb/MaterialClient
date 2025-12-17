@@ -11,6 +11,11 @@ namespace MaterialClient.Views;
 public partial class LoginWindow : Window
 {
     private IDisposable? _loginSuccessSubscription;
+    
+    /// <summary>
+    /// 公开的登录成功属性，用于在窗口关闭后读取
+    /// </summary>
+    public bool IsLoginSuccessful { get; private set; }
 
     public LoginWindow(LoginWindowViewModel viewModel)
     {
@@ -30,6 +35,7 @@ public partial class LoginWindow : Window
                         .WhenAnyValue(vm => vm.IsLoginSuccessful)
                         .Subscribe(isSuccessful =>
                         {
+                            IsLoginSuccessful = isSuccessful;  // 保存到窗口属性
                             if (isSuccessful)
                             {
                                 // Close window after a short delay to show success message
