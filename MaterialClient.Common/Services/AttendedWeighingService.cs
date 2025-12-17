@@ -650,7 +650,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService
             _weighingRecordCreatedSubject.OnNext(weighingRecord);
 
             // Publish TryMatchEvent for automatic matching
-            await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
 
             // Save captured photos to WeighingRecordAttachment
             if (photoPaths.Count > 0)
@@ -662,6 +661,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                 _logger?.LogWarning(
                     $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
             }
+            
+            await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
         }
         catch (Exception ex)
         {
