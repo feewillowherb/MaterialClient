@@ -80,6 +80,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
+    private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly ILogger<WeighingMatchingService>? _logger;
 
 
@@ -534,11 +535,13 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         var material = await _materialRepository.GetAsync(materialId.Value);
 
+        var materialUnit = await _materialUnitRepository.GetAsync(materialUnitId.Value);
+
         // 更新 Waybill 的物料信息
         waybill.MaterialId = materialId;
         waybill.MaterialUnitId = materialUnitId;
         waybill.OrderPlanOnPcs = waybillQuantity;
-        waybill.MaterialUnitRate = material.UnitRate;
+        waybill.MaterialUnitRate = materialUnit.Rate;
         waybill.CalculateMaterialWeight(material.LowerLimit, material.UpperLimit);
 
         // 查找或创建 WaybillMaterial

@@ -66,6 +66,12 @@ public class WeighingListItemDto
     /// </summary>
     public decimal? Weight { get; set; }
 
+
+    /// <summary>
+    /// 皮重
+    /// </summary>
+    public decimal? TruckWeight { get; set; }
+
     /// <summary>
     /// 订单号（仅运单有值）
     /// </summary>
@@ -144,6 +150,7 @@ public class WeighingListItemDto
             MaterialUnitId = waybill.MaterialUnitId,
             DeliveryType = waybill.DeliveryType,
             Weight = waybill.OrderTotalWeight,
+            TruckWeight = waybill.OrderTruckWeight,
             OrderNo = waybill.OrderNo,
             WaybillQuantity = waybill.OrderPlanOnPcs,
             OrderType = waybill.OrderType

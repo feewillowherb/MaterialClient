@@ -536,6 +536,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
             DetailViewModel.CloseRequested += OnDetailCloseRequested;
             DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
+            DetailViewModel.CompleteCompleted += OnDetailCompleteCompleted;
 
             IsShowingMainView = false;
         }
@@ -575,6 +576,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     private async void OnDetailMatchCompleted(object? sender, EventArgs e)
+    {
+        await RefreshAsync();
+        BackToMain();
+    }
+
+    private async void OnDetailCompleteCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
         BackToMain();

@@ -138,7 +138,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         WeighingRecordId = _listItem.Id;
         AllWeight = _listItem.Weight ?? 0;
-        TruckWeight = 0;
+        TruckWeight = _listItem.TruckWeight ?? 0;
         GoodsWeight = AllWeight - TruckWeight;
         PlateNumber = _listItem.PlateNumber;
         SelectedProviderId = _listItem.ProviderId;
@@ -428,7 +428,22 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
+            var firstRow = MaterialItems.FirstOrDefault();
+            int? materialId = firstRow?.SelectedMaterial?.Id;
+            int? materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
+            int? providerId = SelectedProvider?.Id;
+            decimal? waybillQuantity = firstRow?.WaybillQuantity;
             var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+            await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
+                _listItem.Id,
+                _listItem.ItemType,
+                PlateNumber,
+                providerId,
+                materialId,
+                materialUnitId,
+                waybillQuantity,
+                null
+            ));
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
             CompleteCompleted?.Invoke(this, EventArgs.Empty);
         }
@@ -580,7 +595,7 @@ public partial class MaterialItemRow : ReactiveObject
         var calc = new MaterialCalculation(
             WaybillQuantity,
             ActualWeight,
-            SelectedMaterial?.UnitRate,
+            SelectedMaterialUnit?.Rate,
             SelectedMaterial?.LowerLimit,
             SelectedMaterial?.UpperLimit);
 
