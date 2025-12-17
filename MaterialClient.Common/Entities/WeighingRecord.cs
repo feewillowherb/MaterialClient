@@ -71,9 +71,14 @@ public class WeighingRecord : FullAuditedEntity<long>
 
 
     /// <summary>
-    /// 和匹配的Id
+    /// 匹配WeighingRecord的Id
     /// </summary>
     public long? MatchedId { get; set; }
+
+    /// <summary>
+    /// 关联的运单Id
+    /// </summary>
+    public long? WaybillId { get; set; }
 
 
     /// <summary>
@@ -153,14 +158,16 @@ public class WeighingRecord : FullAuditedEntity<long>
     }
 
 
-    public void MatchAsJoin(long matchedId)
+    public void MatchAsJoin(long matchedId, long waybillId)
     {
+        WaybillId = waybillId;
         MatchedId = matchedId;
         MatchedType = WeighingRecordMatchType.Join;
     }
 
-    public void MatchAsOut(long matchedId)
+    public void MatchAsOut(long matchedId, long waybillId)
     {
+        WaybillId = waybillId;
         MatchedId = matchedId;
         MatchedType = WeighingRecordMatchType.Out;
     }

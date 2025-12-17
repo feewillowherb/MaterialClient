@@ -296,11 +296,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             OrderType = OrderTypeEnum.FirstWeight
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
-        joinRecord.MatchAsJoin(outRecord.Id);
-        outRecord.MatchAsOut(joinRecord.Id);
 
         // 先插入 Waybill 获取 Id
-        await _waybillRepository.InsertAsync(waybill);
+        await _waybillRepository.InsertAsync(waybill, true);
+        joinRecord.MatchAsJoin(outRecord.Id, waybill.Id);
+        outRecord.MatchAsOut(joinRecord.Id, waybill.Id);
         await _weighingRecordRepository.UpdateAsync(joinRecord);
         await _weighingRecordRepository.UpdateAsync(outRecord);
 
