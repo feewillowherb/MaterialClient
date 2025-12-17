@@ -82,6 +82,21 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// Observable stream of new weighing record creation events
     /// </summary>
     IObservable<WeighingRecord> WeighingRecordCreated { get; }
+
+    /// <summary>
+    /// 获取当前收发料类型
+    /// </summary>
+    DeliveryType CurrentDeliveryType { get; }
+
+    /// <summary>
+    /// 设置收发料类型
+    /// </summary>
+    void SetDeliveryType(DeliveryType deliveryType);
+
+    /// <summary>
+    /// Observable stream of delivery type changes
+    /// </summary>
+    IObservable<DeliveryType> DeliveryTypeChanges { get; }
 }
 
 /// <summary>
@@ -113,6 +128,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService
 
     // Rx Subject for weighing record creation events
     private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
+
+    // Rx Subject for delivery type changes
+    private readonly Subject<DeliveryType> _deliveryTypeSubject = new();
+
+    // 当前收发料类型（默认为收料）
+    private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
 
     // 重量稳定判定
     private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
@@ -229,6 +250,41 @@ public partial class AttendedWeighingService : IAttendedWeighingService
     /// Observable stream of new weighing record creation events
     /// </summary>
     public IObservable<WeighingRecord> WeighingRecordCreated => _weighingRecordCreatedSubject;
+
+    /// <summary>
+    /// 获取当前收发料类型
+    /// </summary>
+    public DeliveryType CurrentDeliveryType
+    {
+        get
+        {
+            lock (_statusLock)
+            {
+                return _currentDeliveryType;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 设置收发料类型
+    /// </summary>
+    public void SetDeliveryType(DeliveryType deliveryType)
+    {
+        lock (_statusLock)
+        {
+            if (_currentDeliveryType != deliveryType)
+            {
+                _currentDeliveryType = deliveryType;
+                _deliveryTypeSubject.OnNext(deliveryType);
+                _logger?.LogInformation($"AttendedWeighingService: DeliveryType changed to {deliveryType}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Observable stream of delivery type changes
+    /// </summary>
+    public IObservable<DeliveryType> DeliveryTypeChanges => _deliveryTypeSubject;
 
     /// <summary>
     /// 接收车牌识别结果
@@ -565,13 +621,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService
 
             using var uow = _unitOfWorkManager.Begin();
 
-            // Create weighing record
+            // Create weighing record with current delivery type
             var weighingRecord = new WeighingRecord(weight, plateNumber);
+            weighingRecord.DeliveryType = _currentDeliveryType;
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}");
+                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}, DeliveryType: {_currentDeliveryType}");
 
             // Notify observers that a new weighing record was created
             _weighingRecordCreatedSubject.OnNext(weighingRecord);

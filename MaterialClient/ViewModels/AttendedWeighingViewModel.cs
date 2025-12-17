@@ -99,6 +99,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
     public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
+    public bool IsSending => !IsReceiving;
 
     #endregion
 
@@ -169,6 +170,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .Subscribe(_ => this.RaisePropertyChanged(nameof(PageInfoText)))
             .DisposeWith(_disposables);
 
+        this.WhenAnyValue(x => x.IsReceiving)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsSending)))
+            .DisposeWith(_disposables);
+
         _ = RefreshAsync();
         StartTimeUpdateTimer();
 
@@ -184,6 +189,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartPlateNumberObservable();
         StartStatusObservable();
         StartWeighingRecordCreatedObservable();
+        StartDeliveryTypeObservable();
     }
 
     private async Task StartAllDevicesAsync()
@@ -384,13 +390,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [ReactiveCommand]
     private void SetReceiving()
     {
-        IsReceiving = true;
+        _attendedWeighingService?.SetDeliveryType(DeliveryType.Receiving);
     }
 
     [ReactiveCommand]
     private void SetSending()
     {
-        IsReceiving = false;
+        _attendedWeighingService?.SetDeliveryType(DeliveryType.Sending);
     }
 
     [ReactiveCommand]
@@ -715,6 +721,26 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 System.Diagnostics.Debug.WriteLine(
                     $"AttendedWeighingViewModel: Received new weighing record creation event, ID: {weighingRecord.Id}");
                 await RefreshAsync();
+            })
+            .DisposeWith(_disposables);
+    }
+
+    private void StartDeliveryTypeObservable()
+    {
+        if (_attendedWeighingService == null)
+        {
+            return;
+        }
+
+        // 初始化 IsReceiving 为服务的当前值
+        IsReceiving = _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving;
+
+        // 订阅 DeliveryType 变化
+        _attendedWeighingService.DeliveryTypeChanges
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(deliveryType =>
+            {
+                IsReceiving = deliveryType == DeliveryType.Receiving;
             })
             .DisposeWith(_disposables);
     }
