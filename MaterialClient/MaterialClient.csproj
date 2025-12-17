@@ -9,7 +9,10 @@
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <EnableDefaultItems>true</EnableDefaultItems>
         <ApplicationIcon>Assets\fd-ico.ico</ApplicationIcon>
-        <PublishAot>true</PublishAot>
+
+        <PublishReadyToRun>true</PublishReadyToRun>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
         <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
     </PropertyGroup>
 
