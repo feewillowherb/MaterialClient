@@ -77,7 +77,16 @@ public class WeighingListItemDto
     public decimal? WaybillQuantity { get; set; }
 
 
+    /// <summary>
+    /// 操作员
+    /// </summary>
     public string? Operator { get; set; }
+    
+
+    /// <summary>
+    /// 订单类型
+    /// </summary>
+    public OrderTypeEnum? OrderType { get; set; }
 
     /// <summary>
     /// 物料列表（支持多物料）
@@ -136,7 +145,8 @@ public class WeighingListItemDto
             DeliveryType = waybill.DeliveryType,
             Weight = waybill.OrderTotalWeight,
             OrderNo = waybill.OrderNo,
-            WaybillQuantity = waybill.OrderPlanOnPcs
+            WaybillQuantity = waybill.OrderPlanOnPcs,
+            OrderType = waybill.OrderType
         };
         
         // 如果有物料信息，添加到 Materials 列表

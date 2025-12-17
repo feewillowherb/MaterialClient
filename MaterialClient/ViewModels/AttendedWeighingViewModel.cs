@@ -418,17 +418,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         SelectedListItem = item;
 
-        if (item.ItemType == WeighingListItemType.WeighingRecord)
+        if (item is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+        {
+            SelectCompletedWaybill(item);
+        }
+        else
         {
             _ = OpenDetail(item);
         }
-        else if (item.ItemType == WeighingListItemType.Waybill)
-        {
-            SelectWaybill(item);
-        }
     }
 
-    private async void SelectWaybill(WeighingListItemDto item)
+    private async void SelectCompletedWaybill(WeighingListItemDto item)
     {
         if (item.ItemType == WeighingListItemType.Waybill)
         {
@@ -519,32 +519,29 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [ReactiveCommand]
     private async Task OpenDetail(WeighingListItemDto? item)
     {
-        if (item?.ItemType == WeighingListItemType.WeighingRecord)
+        try
         {
-            try
-            {
-                var weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
+            var weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
 
-                var weighingRecord = await weighingRecordRepository.GetAsync(item.Id);
-                SelectedWeighingRecord = weighingRecord;
-                CurrentWeighingRecordForDetail = weighingRecord;
+            var weighingRecord = await weighingRecordRepository.GetAsync(item.Id);
+            SelectedWeighingRecord = weighingRecord;
+            CurrentWeighingRecordForDetail = weighingRecord;
 
-                DetailViewModel = new AttendedWeighingDetailViewModel(
-                    item,
-                    _serviceProvider
-                );
+            DetailViewModel = new AttendedWeighingDetailViewModel(
+                item,
+                _serviceProvider
+            );
 
-                DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
-                DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
-                DetailViewModel.CloseRequested += OnDetailCloseRequested;
-                DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
+            DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
+            DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
+            DetailViewModel.CloseRequested += OnDetailCloseRequested;
+            DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
 
-                IsShowingMainView = false;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"打开详情视图失败: {ex.Message}");
-            }
+            IsShowingMainView = false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"打开详情视图失败: {ex.Message}");
         }
     }
 
