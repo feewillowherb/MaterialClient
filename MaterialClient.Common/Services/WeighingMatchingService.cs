@@ -81,6 +81,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
+    private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
+    private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
+    private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly ILogger<WeighingMatchingService>? _logger;
 
 
@@ -301,6 +304,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         await _weighingRecordRepository.UpdateAsync(joinRecord);
         await _weighingRecordRepository.UpdateAsync(outRecord);
 
+        // 复制 WeighingRecord 的附件到 WaybillAttachment
+        await CopyAttachmentsToWaybillAsync(waybill.Id, joinRecord.Id, outRecord.Id);
 
         // 计算物料信息（从 Materials 集合中获取）
         var joinMaterial = joinRecord.Materials?.FirstOrDefault();
@@ -309,6 +314,53 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var materialUnitId = joinMaterial?.MaterialUnitId ?? outMaterial?.MaterialUnitId;
         var waybillQuantity = joinMaterial?.WaybillQuantity ?? outMaterial?.WaybillQuantity;
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
+    }
+
+    /// <summary>
+    /// 复制 WeighingRecord 的附件到 WaybillAttachment，并设置 AttachType
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    /// <param name="joinRecordId">进场称重记录ID</param>
+    /// <param name="outRecordId">出场称重记录ID</param>
+    private async Task CopyAttachmentsToWaybillAsync(long waybillId, long joinRecordId, long outRecordId)
+    {
+        var attachmentQuery = await _weighingRecordAttachmentRepository.GetQueryableAsync();
+
+        // 处理 joinRecord 的附件（设为 EntryPhoto）
+        var joinAttachments = await attachmentQuery
+            .Where(ra => ra.WeighingRecordId == joinRecordId)
+            .ToListAsync();
+
+        foreach (var attachment in joinAttachments)
+        {
+            var attachmentFile = await _attachmentFileRepository.GetAsync(attachment.AttachmentFileId);
+            attachmentFile.AttachType = AttachType.EntryPhoto;
+            await _attachmentFileRepository.UpdateAsync(attachmentFile);
+
+            await _waybillAttachmentRepository.InsertAsync(
+                new WaybillAttachment(waybillId, attachment.AttachmentFileId));
+        }
+
+        // 处理 outRecord 的附件（设为 ExitPhoto）
+        var outAttachments = await attachmentQuery
+            .Where(ra => ra.WeighingRecordId == outRecordId)
+            .ToListAsync();
+
+        foreach (var attachment in outAttachments)
+        {
+            // 避免重复插入（如果同一个附件同时关联了 joinRecord 和 outRecord）
+            var alreadyAdded = joinAttachments.Any(ja => ja.AttachmentFileId == attachment.AttachmentFileId);
+
+            var attachmentFile = await _attachmentFileRepository.GetAsync(attachment.AttachmentFileId);
+            attachmentFile.AttachType = AttachType.ExitPhoto;
+            await _attachmentFileRepository.UpdateAsync(attachmentFile);
+
+            if (!alreadyAdded)
+            {
+                await _waybillAttachmentRepository.InsertAsync(
+                    new WaybillAttachment(waybillId, attachment.AttachmentFileId));
+            }
+        }
     }
 
     /// <summary>
