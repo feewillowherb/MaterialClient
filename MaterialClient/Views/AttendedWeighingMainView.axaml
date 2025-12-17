@@ -47,7 +47,7 @@
                            VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybill.PlateNumber, TargetNullValue='--'}" 
+              <TextBlock Text="{Binding SelectedListItem.PlateNumber, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"
@@ -142,7 +142,7 @@
                            VerticalAlignment="Center"/>
               </Border>
               <!-- Value -->
-              <TextBlock Text="{Binding SelectedWaybillProviderName, TargetNullValue='--'}" 
+              <TextBlock Text="{Binding SelectedListItem.ProviderName, TargetNullValue='--'}" 
                          FontSize="22" 
                          Foreground="#222222"
                          HorizontalAlignment="Center"

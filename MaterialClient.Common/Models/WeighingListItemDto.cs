@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using MaterialClient.Common.Entities;
@@ -95,6 +94,31 @@ public class WeighingListItemDto
     public OrderTypeEnum? OrderType { get; set; }
 
     /// <summary>
+    /// 进场重量（预计算）
+    /// </summary>
+    public decimal? JoinWeight { get; set; }
+
+    /// <summary>
+    /// 出场重量（预计算）
+    /// </summary>
+    public decimal? OutWeight { get; set; }
+
+    /// <summary>
+    /// 供应商名称（预计算）
+    /// </summary>
+    public string? ProviderName { get; set; }
+
+    /// <summary>
+    /// 物料信息（预计算，格式：{Rate}/{Unit} {MaterialName}）
+    /// </summary>
+    public string? MaterialInfo { get; set; }
+
+    /// <summary>
+    /// 偏差率（预计算，百分比格式）
+    /// </summary>
+    public string? OffsetInfo { get; set; }
+
+    /// <summary>
     /// 物料列表（支持多物料）
     /// </summary>
     public List<WeighingListItemMaterialDto> Materials { get; set; } = new();
@@ -104,7 +128,7 @@ public class WeighingListItemDto
     /// </summary>
     public static WeighingListItemDto FromWeighingRecord(WeighingRecord record)
     {
-        var materials = record.Materials ?? new List<WeighingRecordMaterial>();
+        var materials = record.Materials;
         var firstMaterial = materials.FirstOrDefault();
         
         return new WeighingListItemDto
@@ -153,7 +177,9 @@ public class WeighingListItemDto
             TruckWeight = waybill.OrderTruckWeight,
             OrderNo = waybill.OrderNo,
             WaybillQuantity = waybill.OrderPlanOnPcs,
-            OrderType = waybill.OrderType
+            OrderType = waybill.OrderType,
+            // 预计算偏差信息
+            OffsetInfo = waybill.OffsetRate.HasValue ? $"{waybill.OffsetRate.Value:F2}%" : null
         };
         
         // 如果有物料信息，添加到 Materials 列表

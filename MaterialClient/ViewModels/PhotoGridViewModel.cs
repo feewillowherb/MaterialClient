@@ -6,6 +6,7 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -167,6 +168,44 @@ public partial class PhotoGridViewModel : ViewModelBase
             var attachmentsDict = await attachmentService.GetAttachmentsByWaybillIdsAsync(new[] { waybill.Id });
             if (!attachmentsDict.TryGetValue(waybill.Id, out var attachmentFiles))
                 return;
+
+            int entryIndex = 0;
+            int exitIndex = 0;
+
+            foreach (var file in attachmentFiles)
+            {
+                if (string.IsNullOrEmpty(file.LocalPath))
+                    continue;
+
+                if (file.AttachType == AttachType.EntryPhoto)
+                {
+                    SetEntryPhoto(entryIndex++, file.LocalPath);
+                }
+                else if (file.AttachType == AttachType.ExitPhoto)
+                {
+                    SetExitPhoto(exitIndex++, file.LocalPath);
+                }
+            }
+        }
+        catch
+        {
+            // If service is not available, photos will remain empty
+        }
+    }
+
+    /// <summary>
+    /// 从列表项加载照片（统一接口，根据 ItemType 自动路由）
+    /// </summary>
+    public async Task LoadFromListItemAsync(WeighingListItemDto item)
+    {
+        try
+        {
+            Clear();
+
+            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
+            if (attachmentService == null) return;
+
+            var attachmentFiles = await attachmentService.GetAttachmentsByListItemAsync(item);
 
             int entryIndex = 0;
             int exitIndex = 0;

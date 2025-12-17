@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
@@ -10,13 +9,12 @@ using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
-using Volo.Abp.Domain.Repositories;
-using Microsoft.Extensions.DependencyInjection;
-using MaterialClient.Common.Services;
 
 namespace MaterialClient.ViewModels;
 
@@ -25,7 +23,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private readonly IWeighingMatchingService _weighingMatchingService;
     private readonly IServiceProvider _serviceProvider;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
-    private readonly MaterialClient.Common.Services.IAttendedWeighingService? _attendedWeighingService;
+    private readonly IAttendedWeighingService? _attendedWeighingService;
     private readonly CompositeDisposable _disposables = new();
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
 
@@ -34,12 +32,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [Reactive] private ObservableCollection<WeighingListItemDto> _listItems = new();
 
     [Reactive] private ObservableCollection<WeighingListItemDto> _pagedListItems = new();
-
-    [Reactive] private WeighingRecord? _selectedWeighingRecord;
-
-    [Reactive] private Waybill? _selectedWaybill;
-
-    [Reactive] private string? _selectedWaybillProviderName;
 
     [Reactive] private WeighingListItemDto? _selectedListItem;
 
@@ -83,8 +75,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     public bool IsShowingDetailView => !IsShowingMainView;
 
-    [Reactive] private WeighingRecord? _currentWeighingRecordForDetail;
-
     [Reactive] private AttendedWeighingDetailViewModel? _detailViewModel;
 
     [Reactive] private int _currentPage = 1;
@@ -96,8 +86,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [Reactive] private int _totalPages;
 
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
-    public bool IsWeighingRecordSelected => SelectedWeighingRecord != null && SelectedWaybill == null;
-    public bool IsWaybillSelected => SelectedWaybill != null && SelectedWeighingRecord == null;
+    public bool IsCompletedWaybillSelected => SelectedListItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
     public bool IsSending => !IsReceiving;
 
@@ -118,43 +107,23 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
 
         // Setup property change notifications
-        this.WhenAnyValue(x => x.SelectedWeighingRecord)
-            .Subscribe(async value =>
+        this.WhenAnyValue(x => x.SelectedListItem)
+            .Subscribe(async item =>
             {
-                if (value != null)
+                this.RaisePropertyChanged(nameof(IsCompletedWaybillSelected));
+                
+                if (item != null)
                 {
-                    SelectedWaybill = null;
-                    await LoadWeighingRecordPhotos(value);
+                    await LoadListItemPhotos(item);
+                    UpdateDisplayInfoFromListItem(item);
                 }
                 else
                 {
                     VehiclePhotos.Clear();
                     BillPhotoPath = null;
                     PhotoGridViewModel?.Clear();
+                    ClearDisplayInfo();
                 }
-
-                this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
-                this.RaisePropertyChanged(nameof(IsWaybillSelected));
-            })
-            .DisposeWith(_disposables);
-
-        this.WhenAnyValue(x => x.SelectedWaybill)
-            .Subscribe(async value =>
-            {
-                if (value != null)
-                {
-                    SelectedWeighingRecord = null;
-                    await LoadWaybillPhotos(value);
-                }
-                else
-                {
-                    VehiclePhotos.Clear();
-                    BillPhotoPath = null;
-                    PhotoGridViewModel?.Clear();
-                }
-
-                this.RaisePropertyChanged(nameof(IsWeighingRecordSelected));
-                this.RaisePropertyChanged(nameof(IsWaybillSelected));
             })
             .DisposeWith(_disposables);
 
@@ -230,9 +199,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     private void StartCameraStatusCheckTimer()
     {
-        var statusTimer = new Timer(_ =>
+        var cameraStatusTimer = new Timer(_ =>
         {
-            _ = Task.Run(async () =>
+            Task.Run(async () =>
             {
                 try
                 {
@@ -245,7 +214,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             });
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
 
-        _disposables.Add(statusTimer);
+        _disposables.Add(cameraStatusTimer);
     }
 
     private async Task CheckCameraOnlineStatusAsync()
@@ -253,7 +222,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         try
         {
             var settingsService =
-                _serviceProvider.GetRequiredService<MaterialClient.Common.Services.ISettingsService>();
+                _serviceProvider.GetRequiredService<ISettingsService>();
             var hikvisionService = _serviceProvider.GetRequiredService<IHikvisionService>();
             var settings = await settingsService.GetSettingsAsync();
             var cameraConfigs = settings.CameraConfigs;
@@ -434,105 +403,60 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async void SelectCompletedWaybill(WeighingListItemDto item)
+    private void SelectCompletedWaybill(WeighingListItemDto _)
     {
-        if (item.ItemType == WeighingListItemType.Waybill)
+        // 直接使用 DTO 中的预计算字段，无需再次查询数据库
+        // SelectedListItem 的变化会自动触发 UpdateDisplayInfoFromListItem
+        IsShowingMainView = true;
+    }
+
+    /// <summary>
+    /// 从列表项更新显示信息（使用预计算字段）
+    /// </summary>
+    private void UpdateDisplayInfoFromListItem(WeighingListItemDto item)
+    {
+        // 使用预计算的供应商名称和物料信息
+        MaterialInfo = item.MaterialInfo;
+        OffsetInfo = item.OffsetInfo;
+
+        // 使用预计算的进出场重量
+        if (item.JoinWeight.HasValue)
         {
-            var waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
-            var waybill = await waybillRepository.GetAsync(item.Id);
-            SelectedWaybill = waybill;
-            
-            // 加载供应商名称
-            if (waybill.ProviderId.HasValue)
-            {
-                var providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
-                var provider = await providerRepository.FindAsync(waybill.ProviderId.Value);
-                SelectedWaybillProviderName = provider?.ProviderName;
-            }
-            else
-            {
-                SelectedWaybillProviderName = null;
-            }
-            
-            // 加载物料信息: {Rate}/{Unit} {MaterialName}
-            if (waybill.MaterialId.HasValue)
-            {
-                var materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
-                var material = await materialRepository.FindAsync(waybill.MaterialId.Value);
-                
-                string? unitInfo = null;
-                if (waybill.MaterialUnitId.HasValue)
-                {
-                    var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
-                    var materialUnit = await materialUnitRepository.FindAsync(waybill.MaterialUnitId.Value);
-                    if (materialUnit != null)
-                    {
-                        unitInfo = $"{materialUnit.Rate}/{materialUnit.UnitName}";
-                    }
-                }
-                
-                if (material != null)
-                {
-                    MaterialInfo = unitInfo != null ? $"{unitInfo} {material.Name}" : material.Name;
-                }
-                else
-                {
-                    MaterialInfo = null;
-                }
-            }
-            else
-            {
-                MaterialInfo = null;
-            }
-            
-            // 加载偏差信息
-            if (waybill.OffsetRate.HasValue)
-            {
-                var offsetRatePercent = waybill.OffsetRate.Value;
-                OffsetInfo = $"{offsetRatePercent:F2}%";
-            }
-            else
-            {
-                OffsetInfo = null;
-            }
-            
-            // 加载进场重量信息
-            var joinWeight = waybill.GetJoinWeight();
-            if (joinWeight.HasValue && waybill.JoinTime.HasValue)
-            {
-                JoinWeightInfo = $"{joinWeight.Value:F2} 吨 {waybill.JoinTime.Value:HH:mm:ss}";
-            }
-            else
-            {
-                JoinWeightInfo = null;
-            }
-            
-            // 加载出场重量信息
-            var outWeight = waybill.GetOutWeight();
-            if (outWeight.HasValue && waybill.OutTime.HasValue)
-            {
-                OutWeightInfo = $"{outWeight.Value:F2} 吨 {waybill.OutTime.Value:HH:mm:ss}";
-            }
-            else
-            {
-                OutWeightInfo = null;
-            }
-            
-            IsShowingMainView = true;
+            JoinWeightInfo = $"{item.JoinWeight.Value:F2} 吨 {item.JoinTime:HH:mm:ss}";
+        }
+        else
+        {
+            JoinWeightInfo = null;
+        }
+
+        if (item.OutWeight.HasValue && item.OutTime.HasValue)
+        {
+            OutWeightInfo = $"{item.OutWeight.Value:F2} 吨 {item.OutTime.Value:HH:mm:ss}";
+        }
+        else
+        {
+            OutWeightInfo = null;
         }
     }
 
-    [ReactiveCommand]
-    private async Task OpenDetail(WeighingListItemDto? item)
+    /// <summary>
+    /// 清空显示信息
+    /// </summary>
+    private void ClearDisplayInfo()
     {
+        MaterialInfo = null;
+        OffsetInfo = null;
+        JoinWeightInfo = null;
+        OutWeightInfo = null;
+    }
+
+    [ReactiveCommand]
+    private Task OpenDetail(WeighingListItemDto? item)
+    {
+        if (item == null) return Task.CompletedTask;
+
         try
         {
-            var weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
-
-            var weighingRecord = await weighingRecordRepository.GetAsync(item.Id);
-            SelectedWeighingRecord = weighingRecord;
-            CurrentWeighingRecordForDetail = weighingRecord;
-
             DetailViewModel = new AttendedWeighingDetailViewModel(
                 item,
                 _serviceProvider
@@ -550,6 +474,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         {
             System.Diagnostics.Debug.WriteLine($"打开详情视图失败: {ex.Message}");
         }
+
+        return Task.CompletedTask;
     }
 
     [ReactiveCommand]
@@ -563,9 +489,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             DetailViewModel.MatchCompleted -= OnDetailMatchCompleted;
         }
 
-        SelectedWeighingRecord = null;
+        SelectedListItem = null;
         IsShowingMainView = true;
-        CurrentWeighingRecordForDetail = null;
         DetailViewModel = null;
     }
 
@@ -675,6 +600,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         var timeTimer = new Timer(_ => CurrentTime = DateTime.Now, null,
             TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        _disposables.Add(timeTimer);
     }
 
     private void StartPlateNumberObservable()
@@ -756,82 +682,38 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         };
     }
 
-    private async Task LoadWeighingRecordPhotos(WeighingRecord record)
+    /// <summary>
+    /// 从列表项加载照片（统一接口）
+    /// </summary>
+    private async Task LoadListItemPhotos(WeighingListItemDto item)
     {
         try
         {
             if (PhotoGridViewModel != null)
             {
-                await PhotoGridViewModel.LoadFromWeighingRecordAsync(record);
+                await PhotoGridViewModel.LoadFromListItemAsync(item);
             }
 
             var attachmentService = _serviceProvider.GetService<IAttachmentService>();
             if (attachmentService != null)
             {
-                var attachmentsDict =
-                    await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(new[] { record.Id });
+                var attachmentFiles = await attachmentService.GetAttachmentsByListItemAsync(item);
 
                 VehiclePhotos.Clear();
                 BillPhotoPath = null;
 
-                if (attachmentsDict.TryGetValue(record.Id, out var attachmentFiles))
+                foreach (var file in attachmentFiles)
                 {
-                    foreach (var file in attachmentFiles)
+                    if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        if (!string.IsNullOrEmpty(file.LocalPath))
+                        if (file.AttachType == AttachType.EntryPhoto ||
+                            file.AttachType == AttachType.ExitPhoto)
                         {
-                            if (file.AttachType == AttachType.EntryPhoto ||
-                                file.AttachType == AttachType.ExitPhoto)
-                            {
-                                VehiclePhotos.Add(file.LocalPath);
-                            }
-                            else if (file.AttachType == AttachType.TicketPhoto)
-                            {
-                                BillPhotoPath = file.LocalPath;
-                            }
+                            VehiclePhotos.Add(file.LocalPath);
                         }
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // If service is not available, photos will remain empty
-        }
-    }
-
-    private async Task LoadWaybillPhotos(Waybill waybill)
-    {
-        try
-        {
-            if (PhotoGridViewModel != null)
-            {
-                await PhotoGridViewModel.LoadFromWaybillAsync(waybill);
-            }
-
-            var attachmentService = _serviceProvider.GetService<IAttachmentService>();
-            if (attachmentService != null)
-            {
-                var attachmentsDict = await attachmentService.GetAttachmentsByWaybillIdsAsync(new[] { waybill.Id });
-
-                VehiclePhotos.Clear();
-                BillPhotoPath = null;
-
-                if (attachmentsDict.TryGetValue(waybill.Id, out var attachmentFiles))
-                {
-                    foreach (var file in attachmentFiles)
-                    {
-                        if (!string.IsNullOrEmpty(file.LocalPath))
+                        else if (file.AttachType == AttachType.TicketPhoto)
                         {
-                            if (file.AttachType == AttachType.EntryPhoto ||
-                                file.AttachType == AttachType.ExitPhoto)
-                            {
-                                VehiclePhotos.Add(file.LocalPath);
-                            }
-                            else if (file.AttachType == AttachType.TicketPhoto)
-                            {
-                                BillPhotoPath = file.LocalPath;
-                            }
+                            BillPhotoPath = file.LocalPath;
                         }
                     }
                 }

@@ -84,6 +84,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
+    private readonly IRepository<Provider, int> _providerRepository;
     private readonly ILogger<WeighingMatchingService>? _logger;
 
 
@@ -472,7 +473,73 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             .Take(input.MaxResultCount)
             .ToList();
 
+        // 填充预计算字段
+        await PopulateComputedFieldsAsync(items);
+
         return new PagedResultDto<WeighingListItemDto>(totalCount, items);
+    }
+
+    /// <summary>
+    /// 填充列表项的预计算字段
+    /// </summary>
+    private async Task PopulateComputedFieldsAsync(List<WeighingListItemDto> items)
+    {
+        // 收集所有需要查询的 ID
+        var providerIds = items.Where(i => i.ProviderId.HasValue).Select(i => i.ProviderId!.Value).Distinct().ToList();
+        var materialIds = items.Where(i => i.MaterialId.HasValue).Select(i => i.MaterialId!.Value).Distinct().ToList();
+        var materialUnitIds = items.Where(i => i.MaterialUnitId.HasValue).Select(i => i.MaterialUnitId!.Value).Distinct().ToList();
+
+        // 批量查询供应商
+        var providers = providerIds.Count > 0
+            ? (await _providerRepository.GetListAsync(p => providerIds.Contains(p.Id))).ToDictionary(p => p.Id)
+            : new Dictionary<int, Provider>();
+
+        // 批量查询物料
+        var materials = materialIds.Count > 0
+            ? (await _materialRepository.GetListAsync(m => materialIds.Contains(m.Id))).ToDictionary(m => m.Id)
+            : new Dictionary<int, Material>();
+
+        // 批量查询物料单位
+        var materialUnits = materialUnitIds.Count > 0
+            ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
+            : new Dictionary<int, MaterialUnit>();
+
+        // 填充预计算字段
+        foreach (var item in items)
+        {
+            // 供应商名称
+            if (item.ProviderId.HasValue && providers.TryGetValue(item.ProviderId.Value, out var provider))
+            {
+                item.ProviderName = provider.ProviderName;
+            }
+
+            // 物料信息
+            if (item.MaterialId.HasValue && materials.TryGetValue(item.MaterialId.Value, out var material))
+            {
+                string? unitInfo = null;
+                if (item.MaterialUnitId.HasValue && materialUnits.TryGetValue(item.MaterialUnitId.Value, out var materialUnit))
+                {
+                    unitInfo = $"{materialUnit.Rate}/{materialUnit.UnitName}";
+                }
+                item.MaterialInfo = unitInfo != null ? $"{unitInfo} {material.Name}" : material.Name;
+            }
+
+            // 仅对 Waybill 类型填充进出场重量和偏差信息
+            if (item.ItemType == WeighingListItemType.Waybill)
+            {
+                // 计算进出场重量
+                if (item.DeliveryType == Entities.Enums.DeliveryType.Sending)
+                {
+                    item.JoinWeight = item.TruckWeight;
+                    item.OutWeight = item.Weight;
+                }
+                else if (item.DeliveryType == Entities.Enums.DeliveryType.Receiving)
+                {
+                    item.JoinWeight = item.Weight;
+                    item.OutWeight = item.TruckWeight;
+                }
+            }
+        }
     }
 
     /// <summary>
