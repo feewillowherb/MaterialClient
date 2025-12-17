@@ -542,30 +542,93 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private async void OnDetailSaveCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
+        await SelectLatestCompletedItemAsync();
         BackToMain();
     }
 
     private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
+        await SelectLatestCompletedItemAsync();
         BackToMain();
     }
 
     private async void OnDetailMatchCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
+        await SelectLatestCompletedItemAsync();
         BackToMain();
     }
 
     private async void OnDetailCompleteCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
+        await SelectLatestCompletedItemAsync();
         BackToMain();
     }
 
-    private void OnDetailCloseRequested(object? sender, EventArgs e)
+    private async void OnDetailCloseRequested(object? sender, EventArgs e)
     {
+        await RefreshAsync();
+        await SelectLatestCompletedItemAsync();
         BackToMain();
+    }
+
+    /// <summary>
+    /// 选择最新的一条完成数据
+    /// </summary>
+    private async Task SelectLatestCompletedItemAsync()
+    {
+        try
+        {
+            // 从当前列表中查找最新的完成数据
+            var latestCompleted = ListItems
+                .Where(item => item.OrderType == OrderTypeEnum.Completed)
+                .OrderByDescending(item => item.JoinTime)
+                .FirstOrDefault();
+
+            if (latestCompleted != null)
+            {
+                // 如果当前页有完成数据，直接选择
+                SelectedListItem = latestCompleted;
+            }
+            else
+            {
+                // 如果当前页没有完成数据，从所有数据中查找
+                var input = new GetWeighingListItemsInput
+                {
+                    IsCompleted = true,
+                    SkipCount = 0,
+                    MaxResultCount = 1 // 只需要最新的一条
+                };
+
+                var result = await _weighingMatchingService.GetListItemsAsync(input);
+                var latestItem = result.Items
+                    .OrderByDescending(item => item.JoinTime)
+                    .FirstOrDefault();
+
+                if (latestItem != null)
+                {
+                    // 如果找到最新完成数据，需要刷新列表并选择
+                    // 先切换到显示完成数据模式
+                    IsShowCompleted = true;
+                    IsShowAllRecords = false;
+                    IsShowUnmatched = false;
+                    CurrentPage = 1;
+                    await RefreshAsync();
+                    
+                    // 刷新后选择第一条（应该就是最新的）
+                    if (ListItems.Count > 0)
+                    {
+                        SelectedListItem = ListItems.FirstOrDefault();
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // 如果出错，忽略错误，不影响主流程
+        }
     }
 
     [ReactiveCommand]
