@@ -1,8 +1,9 @@
 using System;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
-using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using MaterialClient.ViewModels;
+using MaterialClient.Views;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MaterialClient.Services;

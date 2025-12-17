@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:converters="using:MaterialClient.Converters"
-             x:Class="MaterialClient.Views.AttendedWeighingMainView"
+             x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingMainView"
              x:DataType="vm:AttendedWeighingViewModel">
   
   <UserControl.Resources>

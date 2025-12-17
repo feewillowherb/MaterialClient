@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.Views.AttendedWeighing;
 
 public partial class AttendedWeighingMainView : UserControl
 {

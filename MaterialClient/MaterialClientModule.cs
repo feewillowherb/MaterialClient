@@ -7,6 +7,7 @@ using MaterialClient.Common;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using Volo.Abp;
 using Volo.Abp.BackgroundWorkers;
 

@@ -1,5 +1,5 @@
 using System;
-using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;

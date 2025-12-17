@@ -58,5 +58,8 @@
       <Compile Update="Views\PhotoGridView.axaml.cs">
         <DependentUpon>PhotoGridView.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Views\AttendedWeighing\AttendedWeighingDetailView.axaml.cs">
+        <DependentUpon>AttendedWeighingDetailView.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>
