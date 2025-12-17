@@ -573,82 +573,18 @@ public partial class MaterialItemRow : ReactiveObject
     }
 
     /// <summary>
-    /// 计算物料重量（复制自 Waybill.CalculateMaterialWeight 的逻辑）
+    /// 计算物料重量（使用 MaterialCalculation 统一计算逻辑）
     /// </summary>
     private void CalculateMaterialWeight()
     {
-        // 获取 Material 的 UnitRate, LowerLimit, UpperLimit
-        var unitRate = SelectedMaterial?.UnitRate;
-        var lowerLimit = SelectedMaterial?.LowerLimit;
-        var upperLimit = SelectedMaterial?.UpperLimit;
+        var calc = new MaterialCalculation(
+            WaybillQuantity,
+            ActualWeight,
+            SelectedMaterial?.UnitRate,
+            SelectedMaterial?.LowerLimit,
+            SelectedMaterial?.UpperLimit);
 
-        // 验证必要的参数
-        if (!WaybillQuantity.HasValue || !unitRate.HasValue || unitRate.Value == 0 || !ActualWeight.HasValue)
-        {
-            WaybillWeight = null;
-            ActualQuantity = null;
-            Difference = null;
-            DeviationRate = null;
-            DeviationResult = "-";
-            return;
-        }
-
-        // 计划重量 = 计划件数 × 换算率
-        WaybillWeight = Math.Round(WaybillQuantity.Value * unitRate.Value, 2, MidpointRounding.AwayFromZero);
-
-        // 实际重量就是 ActualWeight（货物重量）
-        var actualWeightValue = ActualWeight.Value;
-
-        // 实际件数 = 实际重量 / 换算率
-        ActualQuantity = Math.Round(actualWeightValue / unitRate.Value, 4, MidpointRounding.AwayFromZero);
-
-        // 差值 = 实际重量 - 计划重量
-        Difference = actualWeightValue - WaybillWeight.Value;
-
-        // 偏差率计算
-        if (WaybillWeight.Value != 0)
-        {
-            DeviationRate = Math.Round(Difference.Value * 100 / WaybillWeight.Value, 4, MidpointRounding.AwayFromZero);
-
-            // 根据 LowerLimit/UpperLimit 判断偏差结果
-            DeviationResult = DetermineDeviationResult(DeviationRate.Value, lowerLimit, upperLimit);
-        }
-        else
-        {
-            DeviationRate = null;
-            DeviationResult = "-";
-        }
-    }
-
-    /// <summary>
-    /// 根据偏差率和阈值判断偏差结果
-    /// </summary>
-    private static string DetermineDeviationResult(decimal deviationRate, decimal? lowerLimit, decimal? upperLimit)
-    {
-        // 如果没有设置阈值，返回默认
-        if (!lowerLimit.HasValue && !upperLimit.HasValue)
-        {
-            return "-";
-        }
-
-        // 检查是否超出阈值
-        if (lowerLimit.HasValue && lowerLimit < 0 && deviationRate < 0 && deviationRate < lowerLimit)
-        {
-            return "超负差";
-        }
-
-        if (upperLimit.HasValue && upperLimit > 0 && deviationRate > 0 && deviationRate > upperLimit)
-        {
-            return "超正差";
-        }
-
-        // 在阈值范围内
-        if (lowerLimit.HasValue || upperLimit.HasValue)
-        {
-            return "正常";
-        }
-
-        return "-";
+        ApplyCalculation(calc);
     }
 
     private async Task LoadMaterialUnitsInternalAsync(int materialId)
@@ -696,5 +632,17 @@ public partial class MaterialItemRow : ReactiveObject
         }
 
         LoadMaterialUnitsFunc = originalFunc;
+    }
+
+    /// <summary>
+    /// 应用物料计算结果
+    /// </summary>
+    public void ApplyCalculation(MaterialCalculation calc)
+    {
+        WaybillWeight = calc.PlanWeight;
+        ActualQuantity = calc.ActualQuantity;
+        Difference = calc.Difference;
+        DeviationRate = calc.DeviationRate;
+        DeviationResult = calc.OffsetResultDisplay;
     }
 }
