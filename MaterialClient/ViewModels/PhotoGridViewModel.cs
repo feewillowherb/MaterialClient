@@ -125,9 +125,12 @@ public partial class PhotoGridViewModel : ViewModelBase
 
         try
         {
+            // 先创建并设置 ViewModel
             var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
             viewModel.SetImage(imagePath);
-            var window = _serviceProvider.GetRequiredService<ImageViewerWindow>();
+            
+            // 手动创建窗口，传入已设置的 ViewModel
+            var window = new ImageViewerWindow(viewModel);
             window.Show();
         }
         catch
