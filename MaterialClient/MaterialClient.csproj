@@ -7,6 +7,7 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <SupportedOSPlatform>windows</SupportedOSPlatform>
         <EnableDefaultItems>true</EnableDefaultItems>
         <ApplicationIcon>Assets\fd-ico.ico</ApplicationIcon>
 

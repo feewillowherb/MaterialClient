@@ -13,6 +13,7 @@
         <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
         <!-- 运行时标识符：Windows x64 -->
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <SupportedOSPlatform>windows</SupportedOSPlatform>
         <!-- 发布时裁剪未使用的代码（可选，减小文件大小） -->
         <PublishTrimmed>false</PublishTrimmed>
     </PropertyGroup>
