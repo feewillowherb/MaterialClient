@@ -766,9 +766,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 receivederId: null);
 
             // 调用同步 API
-            var success = await _materialPlatformApi.SynchronizationOrderAsync(dto, cancellationToken);
+            var result = await _materialPlatformApi.SynchronizationOrderAsync(dto, cancellationToken);
 
-            if (success)
+            if (result.Success)
             {
                 // 更新同步时间
                 waybill.PushCompleted(DateTime.Now);
@@ -783,6 +783,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 _logger?.LogWarning(
                     "SyncNewWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 同步失败，API 返回 false",
                     waybill.Id, waybill.OrderNo);
+
+                waybill.PushCompleted(DateTime.Now);
+                waybill.SetPendingSync();
+                await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
+
                 return false;
             }
         }
@@ -814,9 +819,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 receivederId: null);
 
             // 调用修改订单 API
-            var success = await _materialPlatformApi.SynchronizationModifyOrderAsync(dto, cancellationToken);
+            var result = await _materialPlatformApi.SynchronizationModifyOrderAsync(dto, cancellationToken);
 
-            if (success)
+            if (result.Success)
             {
                 // 重置待同步状态
                 waybill.ResetPendingSync(DateTime.Now);
