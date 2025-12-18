@@ -298,7 +298,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         DeliveryType deliveryType)
     {
         var todayCount = await _waybillRepository.CountAsync(w =>
-            w.CreationTime.Date == DateTime.Today);
+            w.AddDate!.Value.Date == DateTime.Today);
 
         var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.CreationTime, todayCount);
         var orderId = Waybill.GenerateOrderId();

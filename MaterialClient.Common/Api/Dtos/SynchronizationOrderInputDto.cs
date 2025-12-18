@@ -313,16 +313,16 @@ public class SynchronizationOrderInputDto
             // 审计字段映射（来自 FullAuditedEntity）
             OrderId = waybill.Id,
             StrOrderId = waybill.Id.ToString(),
-            UpdateDate = waybill.LastModificationTime,
-            AddDate = waybill.CreationTime,
-            UpdateTime = DateTimeToUnixTimestamp(waybill.LastModificationTime),
-            AddTime = DateTimeToUnixTimestamp(waybill.CreationTime),
+            UpdateDate = waybill.UpdateDate,
+            AddDate = waybill.AddDate,
+            UpdateTime = waybill.UpdateTime,
+            AddTime = waybill.AddTime,
 
             // 审计字段映射（FullAuditedEntity 只提供 Guid 类型的 CreatorId 和 LastModifierId，DTO 需要 int?，设为 null）
-            LastEditUserId = null,
-            LastEditor = null,
-            CreateUserId = null,
-            Creator = null,
+            LastEditUserId = waybill.LastEditUserId,
+            LastEditor = waybill.LastEditor,
+            CreateUserId = waybill.CreateUserId,
+            Creator = waybill.Creator,
 
             // 删除状态
             DeleteStatus = waybill.IsDeleted ? 1 : 0,
@@ -364,10 +364,10 @@ public class SynchronizationOrderInputDto
                 LastEditor = null,
                 CreateUserId = null,
                 Creator = null,
-                UpdateTime = DateTimeToUnixTimestamp(waybill.LastModificationTime),
-                AddTime = DateTimeToUnixTimestamp(waybill.CreationTime),
-                UpdateDate = waybill.LastModificationTime,
-                AddDate = waybill.CreationTime
+                UpdateTime = waybill.UpdateTime,
+                AddTime = waybill.AddTime,
+                UpdateDate = waybill.UpdateDate,
+                AddDate = waybill.AddDate
             });
         }
 

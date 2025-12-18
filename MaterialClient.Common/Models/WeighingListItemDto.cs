@@ -86,7 +86,7 @@ public class WeighingListItemDto
     /// 操作员
     /// </summary>
     public string? Operator { get; set; }
-    
+
 
     /// <summary>
     /// 订单类型
@@ -130,7 +130,7 @@ public class WeighingListItemDto
     {
         var materials = record.Materials;
         var firstMaterial = materials.FirstOrDefault();
-        
+
         return new WeighingListItemDto
         {
             Id = record.Id,
@@ -165,7 +165,7 @@ public class WeighingListItemDto
         {
             Id = waybill.Id,
             PlateNumber = waybill.PlateNumber,
-            JoinTime = waybill.JoinTime ?? waybill.CreationTime,
+            JoinTime = waybill.JoinTime ?? waybill.AddDate!.Value,
             OutTime = waybill.OutTime,
             IsCompleted = waybill.OrderType == OrderTypeEnum.Completed,
             ItemType = WeighingListItemType.Waybill,
@@ -181,7 +181,7 @@ public class WeighingListItemDto
             // 预计算偏差信息
             OffsetInfo = waybill.OffsetRate.HasValue ? $"{waybill.OffsetRate.Value:F2}%" : null
         };
-        
+
         // 如果有物料信息，添加到 Materials 列表
         if (waybill.MaterialId.HasValue)
         {
@@ -193,7 +193,7 @@ public class WeighingListItemDto
                 WaybillQuantity = waybill.OrderPlanOnPcs
             });
         }
-        
+
         return dto;
     }
 }
