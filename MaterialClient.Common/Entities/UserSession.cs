@@ -87,13 +87,13 @@ public class UserSession : Entity<Guid>
     /// </summary>
     [Required]
     [MaxLength(100)]
-    public string? Username { get; set; }
+    public string Username { get; set; } = string.Empty;
 
     /// <summary>
     /// 真实姓名
     /// </summary>
     [MaxLength(100)]
-    public string? TrueName { get; set; }
+    public string TrueName { get; set; } = string.Empty;
 
     /// <summary>
     /// 客户端ID（从基础平台获取）

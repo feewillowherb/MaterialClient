@@ -51,14 +51,14 @@ public class UserCredential : Entity<Guid>
     /// </summary>
     [Required]
     [MaxLength(100)]
-    public string? Username { get; set; }
+    public string Username { get; set; } = string.Empty;
 
     /// <summary>
     /// 加密后的密码（AES-256-CBC）
     /// </summary>
     [Required]
     [MaxLength(512)]
-    public string? EncryptedPassword { get; set; }
+    public string EncryptedPassword { get; set; } = string.Empty;
 
     /// <summary>
     /// 创建时间
