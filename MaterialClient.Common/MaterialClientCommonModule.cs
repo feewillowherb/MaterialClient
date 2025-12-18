@@ -21,6 +21,7 @@ using Volo.Abp;
 using Serilog;
 using Serilog.Events;
 using Yitter.IdGenerator;
+using SQLitePCL;
 
 namespace MaterialClient.Common;
 
@@ -35,8 +36,14 @@ public class MaterialClientCommonModule : AbpModule
         var services = context.Services;
         var configuration = context.Services.GetConfiguration();
 
+        // 初始化 SQLitePCLRaw 以支持 SQLCipher
+        Batteries.Init();
+
         // 配置 Serilog 日志
         ConfigureSerilog(services, configuration);
+
+        // Register DatabaseConnectionService
+        services.AddSingleton<IDatabaseConnectionService, DatabaseConnectionService>();
 
         // Register DbContext with default repositories
         services.AddAbpDbContext<MaterialClientDbContext>(options =>
@@ -45,14 +52,15 @@ public class MaterialClientCommonModule : AbpModule
             options.AddDefaultRepositories(includeAllEntities: true);
         });
 
-        // Configure SQLite connection from configuration
-        var connectionString = configuration.GetConnectionString("Default")
-                               ?? "Data Source=MaterialClient.db";
-
+        // Configure SQLite connection with SQLCipher support
+        // Connection string will be dynamically retrieved from DatabaseConnectionService
         services.Configure<AbpDbContextOptions>(options =>
         {
             options.Configure(context =>
             {
+                var connectionService = context.ServiceProvider.GetRequiredService<IDatabaseConnectionService>();
+                var connectionString = connectionService.GetConnectionString();
+                
                 context.DbContextOptions.UseSqlite(connectionString)
                     .EnableDetailedErrors() // 启用详细的错误信息
                     .EnableSensitiveDataLogging(); // 启用敏感数据日志记录（包含参数值）
@@ -170,6 +178,9 @@ public class MaterialClientCommonModule : AbpModule
     public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
     {
         // 尝试自动更新数据库迁移
+        // 注意：数据库连接会自动使用加密连接（如果 LicenseInfo 存在）
+        // 如果数据库不存在且没有 LicenseInfo，迁移会失败，但这是预期的
+        // 数据库会在 VerifyAuthorizationCodeAsync 中创建
         try
         {
             var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
@@ -184,8 +195,9 @@ public class MaterialClientCommonModule : AbpModule
         catch (Exception ex)
         {
             // 记录错误但不阻止应用启动
+            // 如果数据库不存在，这是预期的，数据库会在首次授权验证时创建
             var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
-            logger?.LogError(ex, "数据库迁移失败");
+            logger?.LogWarning(ex, "数据库迁移失败（如果数据库不存在，这是预期的）");
         }
     }
 

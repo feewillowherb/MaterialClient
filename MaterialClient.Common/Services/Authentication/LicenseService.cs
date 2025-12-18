@@ -1,14 +1,18 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
+using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Json;
 using Volo.Abp.Uow;
 
@@ -64,6 +68,8 @@ public partial class LicenseService : DomainService, ILicenseService
     private readonly IRepository<LicenseInfo, Guid> _licenseRepository;
     private readonly IConfiguration _configuration;
     private readonly IJsonSerializer _jsonSerializer;
+    private readonly IDatabaseConnectionService _databaseConnectionService;
+    private readonly IDbContextProvider<MaterialClientDbContext> _dbContextProvider;
 
     [UnitOfWork]
     public async Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode)
@@ -115,6 +121,34 @@ public partial class LicenseService : DomainService, ILicenseService
         // {
         //     throw new BusinessException("AUTH:MACHINE_MISMATCH", "授权码与当前机器不匹配");
         // }
+
+        // 检查数据库文件是否存在，如果不存在则使用 ProId 创建加密数据库
+        // 必须在保存 license 之前创建数据库，以确保使用加密连接
+        var databaseFilePath = _databaseConnectionService.GetDatabaseFilePath();
+        if (!File.Exists(databaseFilePath))
+        {
+            // 使用 ProId 作为密码创建加密数据库
+            try
+            {
+                var encryptedConnectionString = _databaseConnectionService.GetEncryptedConnectionString(licenseDto.Proid);
+                
+                // 创建新的 DbContext 选项，使用加密连接字符串
+                var optionsBuilder = new DbContextOptionsBuilder<MaterialClientDbContext>();
+                optionsBuilder.UseSqlite(encryptedConnectionString);
+                
+                // 创建临时 DbContext 来初始化数据库
+                using var tempDbContext = new MaterialClientDbContext(optionsBuilder.Options);
+                
+                // 执行迁移以创建数据库和表结构
+                await tempDbContext.Database.MigrateAsync();
+            }
+            catch (Exception ex)
+            {
+                // 如果创建数据库失败，记录错误并抛出异常
+                Logger.LogError(ex, "创建加密数据库失败");
+                throw new BusinessException("DB:CREATE_FAILED", $"无法创建加密数据库：{ex.Message}", innerException: ex);
+            }
+        }
 
         // Check if license already exists
         var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
