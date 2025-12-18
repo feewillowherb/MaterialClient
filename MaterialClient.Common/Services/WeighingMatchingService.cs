@@ -217,6 +217,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             input.MaterialUnitId ?? waybill.MaterialUnitId,
             input.WaybillQuantity ?? waybill.OrderPlanOnPcs);
 
+        waybill.SetPendingSync();
+
         await _waybillRepository.UpdateAsync(waybill);
     }
 
