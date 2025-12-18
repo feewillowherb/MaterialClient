@@ -8,7 +8,7 @@ namespace MaterialClient.Common.Api;
 public interface IMaterialPlatformApi
 {
     [Post("/api/Order/SynchronizationOrder")]
-    Task<bool> SynchronizationOrderAsync(
+    Task<dynamic> SynchronizationOrderAsync(
         [Body] SynchronizationOrderInputDto request,
         CancellationToken cancellationToken = default);
 

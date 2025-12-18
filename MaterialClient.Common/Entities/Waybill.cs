@@ -2,6 +2,7 @@ using System;
 using Volo.Abp.Domain.Entities.Auditing;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
+using Yitter.IdGenerator;
 
 namespace MaterialClient.Common.Entities;
 
@@ -20,7 +21,7 @@ public class Waybill : FullAuditedEntity<long>
     /// <summary>
     /// 构造函数（用于自增主键）
     /// </summary>
-    public Waybill(string orderNo)
+    public Waybill(long id, string orderNo) : base(id)
     {
         OrderNo = orderNo;
     }
@@ -209,6 +210,11 @@ public class Waybill : FullAuditedEntity<long>
             ? $"sl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}"
             : $"fl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}";
         return content;
+    }
+
+    public static long GenerateOrderId()
+    {
+        return YitIdHelper.NextId();
     }
 
 

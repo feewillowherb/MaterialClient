@@ -301,7 +301,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             w.CreationTime.Date == DateTime.Today);
 
         var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.CreationTime, todayCount);
-        var waybill = new Waybill(orderNo)
+        var orderId = Waybill.GenerateOrderId();
+        var waybill = new Waybill(orderId, orderNo)
         {
             ProviderId = joinRecord.ProviderId ?? outRecord.ProviderId,
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
@@ -719,6 +720,134 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         var proId = licenseInfo.ProjectId.ToString();
 
+        // 处理未同步的运单（新增）
+        await PushNewWaybillsAsync(proId, cancellationToken);
+
+        // 处理待更新的运单（修改）
+        await PushUpdatedWaybillsAsync(proId, cancellationToken);
+    }
+
+    /// <summary>
+    /// 批量查询并分组运单物料信息
+    /// </summary>
+    private async Task<Dictionary<long, List<WaybillMaterial>>> GetWaybillMaterialsDict(
+        List<Waybill> waybills,
+        CancellationToken cancellationToken)
+    {
+        if (waybills.Count == 0)
+            return new Dictionary<long, List<WaybillMaterial>>();
+
+        var waybillMaterialQuery = await _waybillMaterialRepository.GetQueryableAsync();
+        var allWaybillMaterials = await waybillMaterialQuery
+            .Where(wm => waybills.Select(w => w.Id).Contains(wm.WaybillId))
+            .ToListAsync(cancellationToken);
+
+        return allWaybillMaterials
+            .GroupBy(wm => wm.WaybillId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    /// <summary>
+    /// 同步单个运单（新增）
+    /// </summary>
+    private async Task<bool> SyncNewWaybillAsync(
+        Waybill waybill,
+        List<WaybillMaterial>? waybillMaterials,
+        string proId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // 转换为 DTO
+            var dto = SynchronizationOrderInputDto.FromWaybill(
+                waybill,
+                waybillMaterials,
+                proId,
+                receivederId: null);
+
+            // 调用同步 API
+            var success = await _materialPlatformApi.SynchronizationOrderAsync(dto, cancellationToken);
+
+            if (success)
+            {
+                // 更新同步时间
+                waybill.PushCompleted(DateTime.Now);
+                await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
+                _logger?.LogInformation(
+                    "SyncNewWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 同步成功",
+                    waybill.Id, waybill.OrderNo);
+                return true;
+            }
+            else
+            {
+                _logger?.LogWarning(
+                    "SyncNewWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 同步失败，API 返回 false",
+                    waybill.Id, waybill.OrderNo);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex,
+                "SyncNewWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 同步时发生异常",
+                waybill.Id, waybill.OrderNo);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 更新单个运单（修改）
+    /// </summary>
+    private async Task<bool> SyncUpdatedWaybillAsync(
+        Waybill waybill,
+        List<WaybillMaterial>? waybillMaterials,
+        string proId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // 转换为 DTO
+            var dto = SynchronizationOrderInputDto.FromWaybill(
+                waybill,
+                waybillMaterials,
+                proId,
+                receivederId: null);
+
+            // 调用修改订单 API
+            var success = await _materialPlatformApi.SynchronizationModifyOrderAsync(dto, cancellationToken);
+
+            if (success)
+            {
+                // 重置待同步状态
+                waybill.ResetPendingSync(DateTime.Now);
+                await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
+                _logger?.LogInformation(
+                    "SyncUpdatedWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 更新成功",
+                    waybill.Id, waybill.OrderNo);
+                return true;
+            }
+            else
+            {
+                _logger?.LogWarning(
+                    "SyncUpdatedWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 更新失败，API 返回 false",
+                    waybill.Id, waybill.OrderNo);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex,
+                "SyncUpdatedWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 更新时发生异常",
+                waybill.Id, waybill.OrderNo);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 推送未同步的运单（新增）
+    /// </summary>
+    private async Task PushNewWaybillsAsync(string proId, CancellationToken cancellationToken)
+    {
         // 查询所有 LastSyncTime 为 null 的运单
         var waybillQuery = await _waybillRepository.GetQueryableAsync();
         var unsyncedWaybills = await waybillQuery
@@ -727,77 +856,84 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         if (unsyncedWaybills.Count == 0)
         {
-            _logger?.LogInformation("PushWaybillAsync: 没有需要同步的运单");
+            _logger?.LogInformation("PushNewWaybillsAsync: 没有需要同步的新运单");
             return;
         }
 
-        _logger?.LogInformation("PushWaybillAsync: 开始推送 {Count} 个未同步的运单", unsyncedWaybills.Count);
+        _logger?.LogInformation("PushNewWaybillsAsync: 开始推送 {Count} 个未同步的运单", unsyncedWaybills.Count);
 
         var successCount = 0;
         var failCount = 0;
 
-        // 查询所有运单的物料信息
-        var waybillMaterialQuery = await _waybillMaterialRepository.GetQueryableAsync();
-        var allWaybillMaterials = await waybillMaterialQuery
-            .Where(wm => unsyncedWaybills.Select(w => w.Id).Contains(wm.WaybillId))
-            .ToListAsync(cancellationToken);
-
-        // 按运单ID分组物料
-        var waybillMaterialsDict = allWaybillMaterials
-            .GroupBy(wm => wm.WaybillId)
-            .ToDictionary(g => g.Key, g => g.ToList());
+        // 批量查询运单物料信息
+        var waybillMaterialsDict = await GetWaybillMaterialsDict(unsyncedWaybills, cancellationToken);
 
         // 对每个运单进行同步
         foreach (var waybill in unsyncedWaybills)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            try
-            {
-                // 获取该运单的物料集合
-                var waybillMaterials = waybillMaterialsDict.TryGetValue(waybill.Id, out var materials)
-                    ? materials
-                    : null;
+            // 获取该运单的物料集合
+            var waybillMaterials = waybillMaterialsDict.TryGetValue(waybill.Id, out var materials)
+                ? materials
+                : null;
 
-                // 转换为 DTO
-                var dto = SynchronizationOrderInputDto.FromWaybill(
-                    waybill,
-                    waybillMaterials,
-                    proId,
-                    receivederId: null);
-
-                // 调用同步 API
-                var success = await _materialPlatformApi.SynchronizationOrderAsync(dto, cancellationToken);
-
-                if (success)
-                {
-                    // 更新同步时间
-                    waybill.PushCompleted(DateTime.Now);
-                    await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
-                    successCount++;
-                    _logger?.LogInformation(
-                        "PushWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 同步成功",
-                        waybill.Id, waybill.OrderNo);
-                }
-                else
-                {
-                    failCount++;
-                    _logger?.LogWarning(
-                        "PushWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 同步失败，API 返回 false",
-                        waybill.Id, waybill.OrderNo);
-                }
-            }
-            catch (Exception ex)
-            {
+            var success = await SyncNewWaybillAsync(waybill, waybillMaterials, proId, cancellationToken);
+            if (success)
+                successCount++;
+            else
                 failCount++;
-                _logger?.LogError(ex,
-                    "PushWaybillAsync: 运单 {WaybillId} (订单号: {OrderNo}) 同步时发生异常",
-                    waybill.Id, waybill.OrderNo);
-            }
         }
 
         _logger?.LogInformation(
-            "PushWaybillAsync: 推送完成，成功: {SuccessCount}, 失败: {FailCount}",
+            "PushNewWaybillsAsync: 推送完成，成功: {SuccessCount}, 失败: {FailCount}",
+            successCount, failCount);
+    }
+
+    /// <summary>
+    /// 推送待更新的运单（修改）
+    /// </summary>
+    private async Task PushUpdatedWaybillsAsync(string proId, CancellationToken cancellationToken)
+    {
+        // 查询所有 LastSyncTime != null && IsPendingSync == true 的运单
+        var waybillQuery = await _waybillRepository.GetQueryableAsync();
+        var unUpdatedWaybills = await waybillQuery
+            .Where(w => w.LastSyncTime != null && w.IsPendingSync == true)
+            .ToListAsync(cancellationToken);
+
+        if (unUpdatedWaybills.Count == 0)
+        {
+            _logger?.LogInformation("PushUpdatedWaybillsAsync: 没有需要更新的运单");
+            return;
+        }
+
+        _logger?.LogInformation("PushUpdatedWaybillsAsync: 开始推送 {Count} 个待更新的运单", unUpdatedWaybills.Count);
+
+        var successCount = 0;
+        var failCount = 0;
+
+        // 批量查询运单物料信息
+        var waybillMaterialsDict = await GetWaybillMaterialsDict(unUpdatedWaybills, cancellationToken);
+
+        // 对每个运单进行更新
+        foreach (var waybill in unUpdatedWaybills)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 获取该运单的物料集合
+            var waybillMaterials = waybillMaterialsDict.TryGetValue(waybill.Id, out var materials)
+                ? materials
+                : null;
+
+            var success = await SyncUpdatedWaybillAsync(waybill, waybillMaterials, proId, cancellationToken);
+            if (success)
+                successCount++;
+            else
+                failCount++;
+        }
+
+        _logger?.LogInformation(
+            "PushUpdatedWaybillsAsync: 更新完成，成功: {SuccessCount}, 失败: {FailCount}",
             successCount, failCount);
     }
 }
