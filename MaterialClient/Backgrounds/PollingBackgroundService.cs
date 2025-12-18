@@ -48,6 +48,9 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
             
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -112,5 +115,14 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         {
             Logger.LogInformation("许可证验证通过");
         }
+    }
+
+    private async Task PushWaybillAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    {
+        var service = serviceProvider.GetRequiredService<IWeighingMatchingService>();
+
+        Logger.LogInformation("开始推送运单数据...");
+        await service.PushWaybillAsync(cancellationToken);
+        Logger.LogInformation("运单数据推送完成");
     }
 }

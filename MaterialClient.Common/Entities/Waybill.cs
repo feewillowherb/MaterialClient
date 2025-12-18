@@ -164,7 +164,7 @@ public class Waybill : FullAuditedEntity<long>
     public decimal? MaterialUnitRate { get; set; }
 
 
-    public void SyncCompleted(DateTime now)
+    public void PushCompleted(DateTime now)
     {
         LastSyncTime = now;
     }
@@ -247,14 +247,15 @@ public class Waybill : FullAuditedEntity<long>
     }
 
 
-    public void ResetPendingSync()
+    public void ResetPendingSync(DateTime now)
     {
-        IsPendingSync = true;
+        IsPendingSync = false;
+        LastSyncTime = now;
     }
 
     public void SetPendingSync()
     {
-        IsPendingSync = false;
+        IsPendingSync = true;
     }
 }
 
