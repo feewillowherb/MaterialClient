@@ -60,7 +60,7 @@ public class LicenseInfo : Entity<Guid>
     /// </summary>
     [Required]
     [MaxLength(128)]
-    public string MachineCode { get; set; }
+    public string? MachineCode { get; set; }
 
     /// <summary>
     /// 创建时间

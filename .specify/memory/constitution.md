@@ -54,6 +54,12 @@
   - 在文件里 Interface 应该放在 Impl 前面（先定义接口，后定义实现类）。
 - **数据绑定框架约束（NON-NEGOTIABLE）**：
   - 所有数据绑定强制使用 ReactiveUI，不要使用 CommunityToolkit.Mvvm。
+- **Record 替代 Tuple（NON-NEGOTIABLE）**：
+  - 禁止使用 tuple（如 `(string, int)` 或 `ValueTuple`）作为返回值或参数类型。
+  - 应使用 `record` 类型替代 tuple，以提高代码可读性、可维护性和类型安全性。
+  - Record 类型应具有清晰的命名，反映其业务含义，例如 `record UserInfo(string Name, int Age)` 而非 `(string, int)`。
+  - 对于简单的值组合，优先使用命名 record，避免使用匿名类型或 tuple。
+  - 此规则适用于方法返回值、方法参数、局部变量和字段定义。
 
 ## Architecture & Technology Principles
 
@@ -150,4 +156,4 @@
 - 测试代码必须遵循与生产代码相同的代码字符约束和命名约定。
 - 集成测试必须使用统一的测试基础设施，确保测试的一致性和可维护性。
 
-**Version**: 1.3.1 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-31
+**Version**: 1.3.2 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-31

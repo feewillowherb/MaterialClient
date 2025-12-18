@@ -21,28 +21,28 @@ public class MaterialProviderListResultDto
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string ProviderTypeName { get; set; }
+    public string? ProviderTypeName { get; set; }
 
     /// <summary>
     /// Desc:供应商名称
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string ProviderName { get; set; }
+    public string? ProviderName { get; set; }
 
     /// <summary>
     /// Desc:联系人
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string ContectName { get; set; }
+    public string? ContectName { get; set; }
 
     /// <summary>
     /// Desc:联系方式
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string ContectPhone { get; set; }
+    public string? ContectPhone { get; set; }
 
     /// <summary>
     /// Desc:最近更新人编号
@@ -56,7 +56,7 @@ public class MaterialProviderListResultDto
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string LastEditor { get; set; }
+    public string? LastEditor { get; set; }
 
     /// <summary>
     /// Desc:(0:正常 1:删除)
@@ -77,7 +77,7 @@ public class MaterialProviderListResultDto
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string Creator { get; set; }
+    public string? Creator { get; set; }
 
     /// <summary>
     /// Desc:更新时间

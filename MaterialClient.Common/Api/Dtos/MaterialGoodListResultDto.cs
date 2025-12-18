@@ -74,7 +74,7 @@ public class MaterialGoodListResultDto
     /// Default:DateTime.Now
     /// Nullable:True
     /// </summary>           
-    public List<MaterialGoodUnitResultDto> Units { get; set; }
+    public List<MaterialGoodUnitResultDto>? Units { get; set; }
 
     /// <summary>
     /// 项目Id
@@ -169,7 +169,7 @@ public class MaterialGoodUnitResultDto
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string UnitName { get; set; }
+    public string? UnitName { get; set; }
 
     /// <summary>
     /// Desc:单位转换率
@@ -197,7 +197,7 @@ public class MaterialGoodUnitResultDto
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string LastEditor { get; set; }
+    public string? LastEditor { get; set; }
 
     /// <summary>
     /// Desc:
@@ -211,7 +211,7 @@ public class MaterialGoodUnitResultDto
     /// Default:
     /// Nullable:True
     /// </summary>           
-    public string Creator { get; set; }
+    public string? Creator { get; set; }
 
     /// <summary>
     /// Desc:最后更新时间
@@ -256,7 +256,7 @@ public class MaterialGoodUnitResultDto
     /// <summary>
     /// 
     /// </summary>
-    public string RateName { get; set; }
+    public string? RateName { get; set; }
 
     public static MaterialUnit ToEntity(MaterialGoodUnitResultDto dto, int materialId)
     {

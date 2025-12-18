@@ -44,7 +44,7 @@ public interface IAuthenticationService
     /// 获取当前用户会话
     /// </summary>
     /// <returns>用户会话信息，如果不存在则返回 null</returns>
-    Task<UserSession> GetCurrentSessionAsync();
+    Task<UserSession?> GetCurrentSessionAsync();
 
     /// <summary>
     /// 检查是否有活跃的会话
@@ -323,7 +323,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         return session;
     }
 
-    public async Task<UserSession> GetCurrentSessionAsync()
+    public async Task<UserSession?> GetCurrentSessionAsync()
     {
         return await _sessionRepository.FirstOrDefaultAsync();
     }
@@ -369,7 +369,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
         try
         {
             var decryptedPassword = _passwordEncryptionService.Decrypt(credential.EncryptedPassword);
-            return (credential.Username, decryptedPassword);
+            return (credential.Username ?? string.Empty, decryptedPassword);
         }
         catch
         {
@@ -406,8 +406,8 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     /// <param name="session">用户会话信息</param>
     private void SetCurrentUser(UserSession session)
     {
-        var userName = !string.IsNullOrWhiteSpace(session.TrueName) 
-            ? session.TrueName 
+        var userName = !string.IsNullOrWhiteSpace(session.TrueName)
+            ? session.TrueName
             : session.Username;
 
         var claims = new List<Claim>

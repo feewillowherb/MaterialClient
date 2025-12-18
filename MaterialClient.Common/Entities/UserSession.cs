@@ -87,13 +87,13 @@ public class UserSession : Entity<Guid>
     /// </summary>
     [Required]
     [MaxLength(100)]
-    public string Username { get; set; }
+    public string? Username { get; set; }
 
     /// <summary>
     /// 真实姓名
     /// </summary>
     [MaxLength(100)]
-    public string TrueName { get; set; }
+    public string? TrueName { get; set; }
 
     /// <summary>
     /// 客户端ID（从基础平台获取）
@@ -106,7 +106,7 @@ public class UserSession : Entity<Guid>
     /// </summary>
     [Required]
     [MaxLength(512)]
-    public string AccessToken { get; set; }
+    public string? AccessToken { get; set; }
 
     /// <summary>
     /// 是否是管理员
@@ -142,7 +142,7 @@ public class UserSession : Entity<Guid>
     /// 产品名称
     /// </summary>
     [MaxLength(200)]
-    public string ProductName { get; set; }
+    public string? ProductName { get; set; }
 
     /// <summary>
     /// 公司ID
@@ -154,13 +154,13 @@ public class UserSession : Entity<Guid>
     /// 公司名称
     /// </summary>
     [MaxLength(200)]
-    public string CompanyName { get; set; }
+    public string? CompanyName { get; set; }
 
     /// <summary>
     /// API URL
     /// </summary>
     [MaxLength(500)]
-    public string ApiUrl { get; set; }
+    public string? ApiUrl { get; set; }
 
     /// <summary>
     /// 授权结束时间（来自基础平台）
