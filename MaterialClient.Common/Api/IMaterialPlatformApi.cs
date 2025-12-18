@@ -7,6 +7,17 @@ namespace MaterialClient.Common.Api;
 
 public interface IMaterialPlatformApi
 {
+    [Post("/api/Order/SynchronizationOrder")]
+    Task<bool> SynchronizationOrderAsync(
+        [Body] dynamic request,
+        CancellationToken cancellationToken = default);
+
+
+    [Post("/api/Order/SynchronizationModifyOrder")]
+    Task<bool> SynchronizationModifyOrderAsync(
+        [Body] dynamic request,
+        CancellationToken cancellationToken = default);
+
     [Post("/api/Material/MaterialGoodList")]
     Task<List<MaterialGoodListResultDto>> GetMaterialGoodListAsync(
         [Body] GetMaterialGoodListInput request,

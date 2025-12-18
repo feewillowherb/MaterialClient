@@ -111,6 +111,11 @@ public class Waybill : FullAuditedEntity<long>
     public DateTime? LastSyncTime { get; set; }
 
     /// <summary>
+    /// 是否需要同步
+    /// </summary>
+    public bool IsPendingSync { get; set; } = false;
+
+    /// <summary>
     /// 是否预警
     /// </summary>
     public bool IsEarlyWarn { get; set; } = false;
@@ -239,6 +244,17 @@ public class Waybill : FullAuditedEntity<long>
         OrderPcs = calc.ActualQuantity;
         OffsetRate = calc.DeviationRate;
         OffsetResult = calc.OffsetResult;
+    }
+
+
+    public void ResetPendingSync()
+    {
+        IsPendingSync = true;
+    }
+
+    public void SetPendingSync()
+    {
+        IsPendingSync = false;
     }
 }
 
