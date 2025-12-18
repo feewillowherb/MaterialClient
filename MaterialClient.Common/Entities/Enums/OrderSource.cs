@@ -7,6 +7,7 @@ namespace MaterialClient.Common.Entities.Enums;
 /// </summary>
 public enum OrderSource : short
 {
+    
     /// <summary>
     /// 有人值守
     /// </summary>

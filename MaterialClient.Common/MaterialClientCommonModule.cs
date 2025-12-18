@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using Volo.Abp;
 using Serilog;
 using Serilog.Events;
+using Yitter.IdGenerator;
 
 namespace MaterialClient.Common;
 
@@ -120,6 +121,12 @@ public class MaterialClientCommonModule : AbpModule
         // Repositories are automatically registered by ABP framework
         // when using IRepository<TEntity, TKey> interface
         // No manual registration needed for repositories
+
+
+
+        var options = new IdGeneratorOptions(1);
+        // 2. 保存配置并初始化
+        YitIdHelper.SetIdGenerator(options);
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)

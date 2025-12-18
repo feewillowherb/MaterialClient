@@ -3,17 +3,20 @@ using System;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 
 #nullable disable
 
-namespace MaterialClient.Common.EntityFrameworkCore.Migrations
+namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    partial class MaterialClientDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251218063542_Update_Waybill_IsPendingSync")]
+    partial class Update_Waybill_IsPendingSync
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -580,17 +583,13 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<string>("AbortReason")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("AddDate")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("CreationTime");
 
-                    b.Property<int?>("AddTime")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreateUserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Creator")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("CreatorId");
 
                     b.Property<Guid?>("DeleterId")
                         .HasColumnType("TEXT")
@@ -621,11 +620,13 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.Property<DateTime?>("JoinTime")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("LastEditUserId")
-                        .HasColumnType("INTEGER");
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("LastModificationTime");
 
-                    b.Property<string>("LastEditor")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("LastModifierId");
 
                     b.Property<DateTime?>("LastSyncTime")
                         .HasColumnType("TEXT");
@@ -687,12 +688,6 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.Property<string>("Remark")
                         .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("UpdateDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("UpdateTime")
-                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 

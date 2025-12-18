@@ -1,14 +1,16 @@
 using System;
-using Volo.Abp.Domain.Entities.Auditing;
+using Volo.Abp.Auditing;
+using Volo.Abp.Domain.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
+using Yitter.IdGenerator;
 
 namespace MaterialClient.Common.Entities;
 
 /// <summary>
 /// 运单实体
 /// </summary>
-public class Waybill : FullAuditedEntity<long>
+public class Waybill : Entity<long>, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
     /// <summary>
     /// 构造函数（用于EF Core）
@@ -18,15 +20,15 @@ public class Waybill : FullAuditedEntity<long>
     }
 
     /// <summary>
-    /// 构造函数（用于自增主键）
+    /// 构造函数（用于指定Id）
     /// </summary>
-    public Waybill(string orderNo)
+    public Waybill(long id, string orderNo) : base(id)
     {
         OrderNo = orderNo;
     }
 
     /// <summary>
-    /// 构造函数（用于指定Id）
+    /// 构造函数（用于指定Id和供应商）
     /// </summary>
     public Waybill(long id, string orderNo, int providerId)
         : base(id)
@@ -164,7 +166,7 @@ public class Waybill : FullAuditedEntity<long>
     public decimal? MaterialUnitRate { get; set; }
 
 
-    public void SyncCompleted(DateTime now)
+    public void PushCompleted(DateTime now)
     {
         LastSyncTime = now;
     }
@@ -211,6 +213,11 @@ public class Waybill : FullAuditedEntity<long>
         return content;
     }
 
+    public static long GenerateOrderId()
+    {
+        return YitIdHelper.NextId();
+    }
+
 
     public void SetWeight(WeighingRecord joinRecord, WeighingRecord outRecord, DeliveryType deliveryType)
     {
@@ -247,15 +254,32 @@ public class Waybill : FullAuditedEntity<long>
     }
 
 
-    public void ResetPendingSync()
+    public void ResetPendingSync(DateTime now)
     {
-        IsPendingSync = true;
+        IsPendingSync = false;
+        LastSyncTime = now;
     }
 
     public void SetPendingSync()
     {
-        IsPendingSync = false;
+        IsPendingSync = true;
     }
+
+    #region Audited Properties
+
+    public int? LastEditUserId { get; set; }
+    public string? LastEditor { get; set; }
+    public int? CreateUserId { get; set; }
+    public string? Creator { get; set; }
+    public int? UpdateTime { get; set; }
+    public int? AddTime { get; set; }
+    public DateTime? UpdateDate { get; set; }
+    public DateTime? AddDate { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletionTime { get; set; }
+    public Guid? DeleterId { get; set; }
+
+    #endregion
 }
 
 public enum OrderTypeEnum

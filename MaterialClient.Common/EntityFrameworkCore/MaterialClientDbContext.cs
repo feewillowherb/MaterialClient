@@ -4,19 +4,15 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Configuration;
 using Volo.Abp.EntityFrameworkCore.Modeling;
-using Volo.Abp.Users;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace MaterialClient.EFCore;
 
 public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 {
-    private readonly ICurrentUser _currentUser;
-
-    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options, ICurrentUser currentUser)
+    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options)
         : base(options)
     {
-        _currentUser = currentUser;
     }
 
     // DbSets
@@ -239,32 +235,28 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         int? currentUserId = null;
         string? currentUserName = null;
 
-        if (_currentUser.IsAuthenticated)
+        // 直接从 UserSessions 获取第一个会话（当前活跃会话）
+        var userSession = UserSessions
+            .AsNoTracking()
+            .FirstOrDefault();
+
+        if (userSession != null)
         {
-            currentUserName = _currentUser.UserName;
+            // 使用真实姓名，如果没有则使用用户名
+            currentUserName = !string.IsNullOrWhiteSpace(userSession.TrueName)
+                ? userSession.TrueName
+                : userSession.Username;
 
-            // 从数据库查询当前会话以获取业务用户ID
-            // 使用 _currentUser.Id (Guid) 来查找对应的 UserSession
-            if (_currentUser.Id.HasValue)
+            // 将 long 类型的业务用户ID转换为 int
+            var businessUserId = userSession.UserId;
+            if (businessUserId <= int.MaxValue && businessUserId >= int.MinValue)
             {
-                var userSession = UserSessions
-                    .AsNoTracking()
-                    .FirstOrDefault(s => s.Id == _currentUser.Id.Value);
-
-                if (userSession != null)
-                {
-                    // 将 long 类型的业务用户ID转换为 int
-                    var businessUserId = userSession.UserId;
-                    if (businessUserId <= int.MaxValue && businessUserId >= int.MinValue)
-                    {
-                        currentUserId = (int)businessUserId;
-                    }
-                    else
-                    {
-                        // 如果超出 int 范围，使用取模策略
-                        currentUserId = (int)(businessUserId % int.MaxValue);
-                    }
-                }
+                currentUserId = (int)businessUserId;
+            }
+            else
+            {
+                // 如果超出 int 范围，使用取模策略
+                currentUserId = (int)(businessUserId % int.MaxValue);
             }
         }
 
