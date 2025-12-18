@@ -12,6 +12,7 @@ using MaterialClient.Views;
 using MaterialClient.Services;
 using Volo.Abp;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace MaterialClient;
 
@@ -54,8 +55,8 @@ public partial class App : Application
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Web host startup error: {ex.Message}");
-                        System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                        var logger = _abpApplication?.ServiceProvider.GetService<ILogger<App>>();
+                        logger?.LogError(ex, "Web host 启动错误");
                     }
                 });
 
@@ -79,8 +80,8 @@ public partial class App : Application
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Startup error: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                var logger = _abpApplication?.ServiceProvider.GetService<ILogger<App>>();
+                logger?.LogError(ex, "启动错误");
                 desktop.Shutdown();
             }
         }
