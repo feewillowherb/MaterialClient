@@ -8,18 +8,12 @@ namespace MaterialClient.Common.Events;
 /// <summary>
 /// 尝试匹配称重记录的事件处理器
 /// </summary>
-public class TryMatchEventHandler : ILocalEventHandler<TryMatchEvent>, ITransientDependency
+[AutoConstructor]
+public partial class TryMatchEventHandler : ILocalEventHandler<TryMatchEvent>, ITransientDependency
 {
     private readonly IWeighingMatchingService _weighingMatchingService;
     private readonly ILogger<TryMatchEventHandler>? _logger;
 
-    public TryMatchEventHandler(
-        IWeighingMatchingService weighingMatchingService,
-        ILogger<TryMatchEventHandler>? logger = null)
-    {
-        _weighingMatchingService = weighingMatchingService;
-        _logger = logger;
-    }
 
     public async Task HandleEventAsync(TryMatchEvent eventData)
     {
@@ -52,4 +46,3 @@ public class TryMatchEventHandler : ILocalEventHandler<TryMatchEvent>, ITransien
         }
     }
 }
-
