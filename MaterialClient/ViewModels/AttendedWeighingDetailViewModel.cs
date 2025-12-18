@@ -14,6 +14,7 @@ using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Avalonia;
+using Avalonia.Threading;
 
 namespace MaterialClient.ViewModels;
 
@@ -90,7 +91,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
 
         InitializeData();
-        _ = LoadDropdownDataAsync();
 
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -168,7 +168,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             DeviationResult = "-"
         });
 
-        _ = LoadWeighingRecordDetailsAsync();
+        // 延迟加载数据，避免阻塞 UI 渲染
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await LoadWeighingRecordDetailsAsync();
+            await LoadDropdownDataAsync();
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     private async Task LoadDropdownDataAsync()
