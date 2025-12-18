@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Api.Dtos;
 
@@ -245,6 +248,131 @@ public class SynchronizationOrderInputDto
     public string? TruckNum { get; set; }
 
     public bool? IsConfirm { get; set; }
+
+    /// <summary>
+    /// 将 DateTime? 转换为 Unix 时间戳（秒）
+    /// </summary>
+    private static int? DateTimeToUnixTimestamp(DateTime? dateTime)
+    {
+        if (!dateTime.HasValue)
+            return null;
+
+        var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var unixTimestamp = (int)(dateTime.Value.ToUniversalTime() - epoch).TotalSeconds;
+        return unixTimestamp;
+    }
+
+    /// <summary>
+    /// 从 Waybill 实体转换为 SynchronizationOrderInputDto
+    /// </summary>
+    /// <param name="waybill">运单实体</param>
+    /// <param name="waybillMaterials">运单物料集合（可选）</param>
+    /// <param name="proId">项目ID（必需）</param>
+    /// <param name="receivederId">收货方ID（可选）</param>
+    /// <returns>SynchronizationOrderInputDto 实例</returns>
+    public static SynchronizationOrderInputDto FromWaybill(
+        Waybill waybill,
+        List<WaybillMaterial>? waybillMaterials = null,
+        string? proId = null,
+        int? receivederId = null)
+    {
+        if (waybill == null)
+            throw new ArgumentNullException(nameof(waybill));
+
+        var dto = new SynchronizationOrderInputDto
+        {
+            // 必需参数字段
+            ProId = proId ?? throw new ArgumentException("ProId 不能为空", nameof(proId)),
+            ReceivederId = receivederId ?? 0,
+
+            // 直接映射字段
+            ProviderId = waybill.ProviderId,
+            OrderNo = waybill.OrderNo,
+            TruckNo = waybill.PlateNumber,
+            TruckNum = waybill.PlateNumber,
+            JoinTime = waybill.JoinTime,
+            OutTime = waybill.OutTime,
+            Remark = waybill.Remark,
+            OrderPlanOnWeight = waybill.OrderPlanOnWeight,
+            OrderPlanOnPcs = waybill.OrderPlanOnPcs,
+            OrderPcs = waybill.OrderPcs,
+            OrderTotalWeight = waybill.OrderTotalWeight,
+            OrderTruckWeight = waybill.OrderTruckWeight,
+            OrderGoodsWeight = waybill.OrderGoodsWeight,
+            AbortReason = waybill.AbortReason,
+            EarlyWarnType = waybill.EarlyWarnType,
+
+            // 枚举类型转换
+            OrderType = waybill.OrderType.HasValue ? (int?)waybill.OrderType.Value : null,
+            DeliveryType = waybill.DeliveryType.HasValue ? (int?)waybill.DeliveryType.Value : null,
+            OffsetResult = (short?)waybill.OffsetResult,
+            OrderSource = (short?)waybill.OrderSource,
+            EarlyWarnStatus = waybill.IsEarlyWarn ? (short?)1 : (short?)0,
+            PrintCount = waybill.PrintCount <= short.MaxValue ? (short?)waybill.PrintCount : (short?)short.MaxValue,
+
+            // 审计字段映射（来自 FullAuditedEntity）
+            OrderId = waybill.Id,
+            StrOrderId = waybill.Id.ToString(),
+            UpdateDate = waybill.LastModificationTime,
+            AddDate = waybill.CreationTime,
+            UpdateTime = DateTimeToUnixTimestamp(waybill.LastModificationTime),
+            AddTime = DateTimeToUnixTimestamp(waybill.CreationTime),
+
+            // 审计字段映射（FullAuditedEntity 只提供 Guid 类型的 CreatorId 和 LastModifierId，DTO 需要 int?，设为 null）
+            LastEditUserId = null,
+            LastEditor = null,
+            CreateUserId = null,
+            Creator = null,
+
+            // 删除状态
+            DeleteStatus = waybill.IsDeleted ? 1 : 0,
+
+            // Waybill 中没有对应字段的字段
+            DispatchNo = null,
+            IsConfirm = null,
+
+            // OrderGoodList 将在后面处理
+            OrderGoodList = new List<OrderGoodsDto>()
+        };
+
+        // 处理 OrderGoodList
+        if (waybillMaterials != null && waybillMaterials.Any())
+        {
+            // 从 WaybillMaterial 集合转换
+            dto.OrderGoodList = waybillMaterials.Select(OrderGoodsDto.FromWaybillMaterial).ToList();
+        }
+        else if (waybill.MaterialId.HasValue)
+        {
+            // 如果未提供 WaybillMaterial 集合但 Waybill 有 MaterialId，创建单个 OrderGoodsDto
+            dto.OrderGoodList.Add(new OrderGoodsDto
+            {
+                GoodsId = waybill.MaterialId.Value,
+                UnitId = waybill.MaterialUnitId,
+                GoodsPlanOnWeight = waybill.OrderPlanOnWeight,
+                GoodsPlanOnPcs = waybill.OrderPlanOnPcs,
+                GoodsPcs = waybill.OrderPcs,
+                GoodsWeight = waybill.OrderGoodsWeight,
+                GoodsTakeWeight = null, // Waybill 中没有对应字段
+                OffsetResult = (short?)waybill.OffsetResult,
+                OffsetWeight = waybill.OrderGoodsWeight.HasValue && waybill.OrderPlanOnWeight.HasValue
+                    ? waybill.OrderGoodsWeight.Value - waybill.OrderPlanOnWeight.Value
+                    : null,
+                OffsetCount = null, // Waybill 中没有对应字段
+                OffsetRate = waybill.OffsetRate,
+                DeleteStatus = waybill.IsDeleted ? 1 : 0,
+                LastEditUserId = null, // Waybill 没有 IMaterialClientAuditedObject 属性
+                LastEditor = null,
+                CreateUserId = null,
+                Creator = null,
+                UpdateTime = DateTimeToUnixTimestamp(waybill.LastModificationTime),
+                AddTime = DateTimeToUnixTimestamp(waybill.CreationTime),
+                UpdateDate = waybill.LastModificationTime,
+                AddDate = waybill.CreationTime
+            });
+        }
+
+        return dto;
+    }
 }
 
 /// <summary>
@@ -383,4 +511,59 @@ public class OrderGoodsDto
     /// 偏差百分比，负数表示比预期的少
     /// </summary>
     public decimal? OffsetRate { get; set; } = 0;
+
+    /// <summary>
+    /// 将 DateTime? 转换为 Unix 时间戳（秒）
+    /// </summary>
+    private static int? DateTimeToUnixTimestamp(DateTime? dateTime)
+    {
+        if (!dateTime.HasValue)
+            return null;
+
+        var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var unixTimestamp = (int)(dateTime.Value.ToUniversalTime() - epoch).TotalSeconds;
+        return unixTimestamp;
+    }
+
+    /// <summary>
+    /// 从 WaybillMaterial 实体转换为 OrderGoodsDto
+    /// </summary>
+    /// <param name="waybillMaterial">运单物料实体</param>
+    /// <returns>OrderGoodsDto 实例</returns>
+    public static OrderGoodsDto FromWaybillMaterial(WaybillMaterial waybillMaterial)
+    {
+        if (waybillMaterial == null)
+            throw new ArgumentNullException(nameof(waybillMaterial));
+
+        return new OrderGoodsDto
+        {
+            // 物料信息
+            GoodsId = waybillMaterial.MaterialId,
+            UnitId = waybillMaterial.MaterialUnitId,
+            GoodsPlanOnWeight = waybillMaterial.GoodsPlanOnWeight,
+            GoodsPlanOnPcs = waybillMaterial.GoodsPlanOnPcs,
+            GoodsPcs = waybillMaterial.GoodsPcs,
+            GoodsWeight = waybillMaterial.GoodsWeight,
+            GoodsTakeWeight = waybillMaterial.GoodsTakeWeight,
+
+            // 偏差信息
+            OffsetResult = (short?)waybillMaterial.OffsetResult,
+            OffsetWeight = waybillMaterial.OffsetWeight,
+            OffsetCount = waybillMaterial.OffsetCount,
+            OffsetRate = waybillMaterial.OffsetRate,
+
+            // 审计字段
+            LastEditUserId = waybillMaterial.LastEditUserId,
+            LastEditor = waybillMaterial.LastEditor,
+            CreateUserId = waybillMaterial.CreateUserId,
+            Creator = waybillMaterial.Creator,
+            UpdateTime = DateTimeToUnixTimestamp(waybillMaterial.UpdateDate),
+            AddTime = DateTimeToUnixTimestamp(waybillMaterial.AddDate),
+            UpdateDate = waybillMaterial.UpdateDate,
+            AddDate = waybillMaterial.AddDate,
+
+            // 删除状态（WaybillMaterial 没有 IsDeleted，设为 0）
+            DeleteStatus = 0
+        };
+    }
 }
