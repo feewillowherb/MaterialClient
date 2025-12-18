@@ -13,7 +13,7 @@ public class LoginUserDto
     /// <summary>
     /// 用户名（手机号）
     /// </summary>
-    public string UserName { get; set; }
+    public string UserName { get; set; } = string.Empty;
 
     /// <summary>
     /// 客户端标识
@@ -23,7 +23,7 @@ public class LoginUserDto
     /// <summary>
     /// 真实姓名
     /// </summary>
-    public string TrueName { get; set; }
+    public string TrueName { get; set; } = string.Empty;
 
     /// <summary>
     /// 是否管理员
@@ -53,7 +53,7 @@ public class LoginUserDto
     /// <summary>
     /// 产品名称
     /// </summary>
-    public string ProductName { get; set; }
+    public string ProductName { get; set; } = string.Empty;
 
     /// <summary>
     /// 公司ID
@@ -63,21 +63,20 @@ public class LoginUserDto
     /// <summary>
     /// 公司名称
     /// </summary>
-    public string CoName { get; set; }
+    public string CoName { get; set; } = string.Empty;
 
     /// <summary>
     /// 产品路径
     /// </summary>
-    public string Url { get; set; }
+    public string Url { get; set; } = string.Empty;
 
     /// <summary>
     /// 登录Token
     /// </summary>
-    public string Token { get; set; }
+    public string Token { get; set; } = string.Empty;
 
     /// <summary>
     /// 授权到期时间
     /// </summary>
     public DateTime? AuthEndTime { get; set; }
 }
-

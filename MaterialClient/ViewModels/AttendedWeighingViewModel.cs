@@ -14,6 +14,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using MaterialClient.Views;
@@ -105,7 +106,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         IServiceProvider serviceProvider,
         ITruckScaleWeightService truckScaleWeightService,
         IAttendedWeighingService attendedWeighingService
-    )
+    ) : base(serviceProvider.GetService<ILogger<AttendedWeighingViewModel>>())
     {
         _weighingMatchingService = weighingMatchingService;
         _serviceProvider = serviceProvider;
@@ -183,7 +184,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error starting devices: {ex.Message}");
+            Logger?.LogError(ex, "启动设备失败");
         }
     }
 
@@ -516,7 +517,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"打开详情视图失败: {ex.Message}");
+            Logger?.LogError(ex, "打开详情视图失败");
         }
 
         return Task.CompletedTask;
@@ -768,12 +769,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _attendedWeighingService.WeighingRecordCreated
+            _attendedWeighingService.WeighingRecordCreated
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async weighingRecord =>
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"AttendedWeighingViewModel: Received new weighing record creation event, ID: {weighingRecord.Id}");
+                Logger?.LogInformation("接收到新称重记录创建事件, ID: {WeighingRecordId}", weighingRecord.Id);
                 await RefreshAsync();
             })
             .DisposeWith(_disposables);

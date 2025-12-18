@@ -9,6 +9,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace MaterialClient.ViewModels;
 
@@ -116,6 +117,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     private bool _isLoading;
 
     public ManualMatchWindowViewModel(WeighingRecord currentRecord, IServiceProvider serviceProvider)
+        : base(serviceProvider.GetService<ILogger<ManualMatchWindowViewModel>>())
     {
         _currentRecord = currentRecord;
         _serviceProvider = serviceProvider;
@@ -177,7 +179,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载候选记录失败: {ex.Message}");
+            Logger?.LogError(ex, "加载候选记录失败");
         }
         finally
         {
@@ -263,7 +265,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载照片失败: {ex.Message}");
+            Logger?.LogError(ex, "加载照片失败");
         }
     }
 

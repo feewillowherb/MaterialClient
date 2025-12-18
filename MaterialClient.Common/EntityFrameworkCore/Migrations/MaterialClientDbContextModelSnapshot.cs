@@ -18,7 +18,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("_Abp_DatabaseProvider", EfCoreDatabaseProvider.Sqlite)
-                .HasAnnotation("ProductVersion", "9.0.10");
+                .HasAnnotation("ProductVersion", "10.0.1");
 
             modelBuilder.Entity("MaterialClient.Common.Entities.AttachmentFile", b =>
                 {
@@ -72,7 +72,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AttachmentFiles");
+                    b.ToTable("AttachmentFiles", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.LicenseInfo", b =>
@@ -104,7 +104,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("LicenseInfo");
+                    b.ToTable("LicenseInfo", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.Material", b =>
@@ -192,7 +192,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Materials");
+                    b.ToTable("Materials", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.MaterialType", b =>
@@ -284,7 +284,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasIndex("TypeCode");
 
-                    b.ToTable("MaterialTypes");
+                    b.ToTable("MaterialTypes", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.MaterialUnit", b =>
@@ -352,7 +352,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MaterialUnits");
+                    b.ToTable("MaterialUnits", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.Provider", b =>
@@ -423,7 +423,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Providers");
+                    b.ToTable("Providers", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.SettingsEntity", b =>
@@ -454,7 +454,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Settings");
+                    b.ToTable("Settings", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.UserCredential", b =>
@@ -489,7 +489,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.HasIndex("ProjectId")
                         .IsUnique();
 
-                    b.ToTable("UserCredentials");
+                    b.ToTable("UserCredentials", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.UserSession", b =>
@@ -571,7 +571,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.HasIndex("ProjectId")
                         .IsUnique();
 
-                    b.ToTable("UserSessions");
+                    b.ToTable("UserSessions", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.Waybill", b =>
@@ -688,7 +688,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Waybills");
+                    b.ToTable("Waybills", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.WaybillAttachment", b =>
@@ -708,7 +708,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.HasIndex("WaybillId", "AttachmentFileId")
                         .IsUnique();
 
-                    b.ToTable("WaybillAttachments");
+                    b.ToTable("WaybillAttachments", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.WaybillMaterial", b =>
@@ -786,7 +786,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WaybillMaterials");
+                    b.ToTable("WaybillMaterials", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.WeighingRecord", b =>
@@ -851,7 +851,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WeighingRecords");
+                    b.ToTable("WeighingRecords", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.WeighingRecordAttachment", b =>
@@ -871,7 +871,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
                     b.HasIndex("WeighingRecordId", "AttachmentFileId")
                         .IsUnique();
 
-                    b.ToTable("WeighingRecordAttachments");
+                    b.ToTable("WeighingRecordAttachments", (string)null);
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.WorkSettingsEntity", b =>
@@ -891,7 +891,7 @@ namespace MaterialClient.Common.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WorkSettings");
+                    b.ToTable("WorkSettings", (string)null);
                 });
 #pragma warning restore 612, 618
         }

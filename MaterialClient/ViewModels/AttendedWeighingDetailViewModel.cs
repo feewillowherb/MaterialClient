@@ -12,7 +12,9 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Avalonia;
+using Avalonia.Threading;
 
 namespace MaterialClient.ViewModels;
 
@@ -79,6 +81,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     public AttendedWeighingDetailViewModel(
         WeighingListItemDto listItem,
         IServiceProvider serviceProvider)
+        : base(serviceProvider.GetService<ILogger<AttendedWeighingDetailViewModel>>())
     {
         _listItem = listItem;
         _serviceProvider = serviceProvider;
@@ -88,7 +91,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
 
         InitializeData();
-        _ = LoadDropdownDataAsync();
 
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -166,7 +168,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             DeviationResult = "-"
         });
 
-        _ = LoadWeighingRecordDetailsAsync();
+        // 延迟加载数据，避免阻塞 UI 渲染
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await LoadWeighingRecordDetailsAsync();
+            await LoadDropdownDataAsync();
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     private async Task LoadDropdownDataAsync()
@@ -353,7 +360,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"保存失败: {ex.Message}");
+            Logger?.LogError(ex, "保存失败");
         }
     }
 
@@ -394,7 +401,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"匹配失败: {ex.Message}");
+            Logger?.LogError(ex, "匹配失败");
         }
     }
 
@@ -419,7 +426,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"废单失败: {ex.Message}");
+            Logger?.LogError(ex, "废单失败");
         }
     }
 
@@ -449,7 +456,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"完成本次收货失败: {ex.Message}");
+            Logger?.LogError(ex, "完成本次收货失败");
         }
     }
 

@@ -23,5 +23,5 @@ public class LicenseInfoDto
     /// <summary>
     /// 机器码
     /// </summary>
-    public string MachineCode { get; set; }
+    public string? MachineCode { get; set; }
 }

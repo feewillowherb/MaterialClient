@@ -5,6 +5,7 @@ using MaterialClient.Views.AttendedWeighing;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace MaterialClient.Services;
 
@@ -17,15 +18,18 @@ public class StartupService
     private readonly ILicenseService _licenseService;
     private readonly IAuthenticationService _authenticationService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<StartupService>? _logger;
 
     public StartupService(
         ILicenseService licenseService,
         IAuthenticationService authenticationService,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ILogger<StartupService>? logger = null)
     {
         _licenseService = licenseService;
         _authenticationService = authenticationService;
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     /// <summary>
@@ -85,7 +89,7 @@ public class StartupService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Startup failed: {ex.Message}");
+            _logger?.LogError(ex, "启动失败");
             return null;
         }
     }

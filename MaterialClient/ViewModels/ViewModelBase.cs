@@ -1,4 +1,5 @@
 using ReactiveUI;
+using Microsoft.Extensions.Logging;
 
 namespace MaterialClient.ViewModels;
 
@@ -7,6 +8,18 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class ViewModelBase : ReactiveObject
 {
+    /// <summary>
+    /// Logger instance (can be null if not injected)
+    /// </summary>
+    protected readonly ILogger? Logger;
+
+    /// <summary>
+    /// Constructor with optional logger
+    /// </summary>
+    protected ViewModelBase(ILogger? logger = null)
+    {
+        Logger = logger;
+    }
 }
 
 /// <summary>

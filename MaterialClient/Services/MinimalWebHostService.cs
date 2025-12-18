@@ -66,15 +66,17 @@ public class MinimalWebHostService : IDisposable
             var urls = builder.Configuration["Urls"] ?? "http://localhost:9960";
             _webApplication.Urls.Add(urls);
 
-            System.Diagnostics.Debug.WriteLine($"启动 Web 服务于 {urls}");
-            System.Diagnostics.Debug.WriteLine($"API 端点: {urls}/api/hardware/plate-number");
+            var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
+            logger?.LogInformation("启动 Web 服务于 {Urls}", urls);
+            logger?.LogInformation("API 端点: {Urls}/api/hardware/plate-number", urls);
 
             // Start the web application
             await _webApplication.RunAsync();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Web Host 启动失败: {ex.Message}");
+            var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
+            logger?.LogError(ex, "Web Host 启动失败");
             lock (_lock)
             {
                 _isRunning = false;
@@ -91,7 +93,8 @@ public class MinimalWebHostService : IDisposable
     {
         if (_webApplication != null)
         {
-            System.Diagnostics.Debug.WriteLine("正在停止 Web Host...");
+            var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
+            logger?.LogInformation("正在停止 Web Host...");
 
             try
             {
@@ -101,7 +104,7 @@ public class MinimalWebHostService : IDisposable
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"停止 Web Host 时出错: {ex.Message}");
+                logger?.LogError(ex, "停止 Web Host 时出错");
             }
             finally
             {

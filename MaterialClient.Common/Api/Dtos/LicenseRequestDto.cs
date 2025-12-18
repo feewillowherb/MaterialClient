@@ -8,11 +8,11 @@ public class LicenseRequestDto
     /// <summary>
     /// 产品代码（固定为"5000"）
     /// </summary>
-    public string ProductCode { get; set; }
+    public string? ProductCode { get; set; }
 
     /// <summary>
     /// 用户输入的授权码
     /// </summary>
-    public string Code { get; set; }
+    public string? Code { get; set; }
 }
 

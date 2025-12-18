@@ -9,6 +9,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
@@ -108,6 +109,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         WeighingRecord matchedRecord,
         DeliveryType deliveryType,
         IServiceProvider serviceProvider)
+        : base(serviceProvider.GetService<ILogger<ManualMatchEditWindowViewModel>>())
     {
         _currentRecord = currentRecord;
         _matchedRecord = matchedRecord;
@@ -253,7 +255,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载下拉数据失败: {ex.Message}");
+            Logger?.LogError(ex, "加载下拉数据失败");
         }
         finally
         {
@@ -283,7 +285,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载供应商失败: {ex.Message}");
+            Logger?.LogError(ex, "加载供应商失败");
         }
     }
 
@@ -302,7 +304,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载材料失败: {ex.Message}");
+            Logger?.LogError(ex, "加载材料失败");
         }
     }
 
@@ -331,7 +333,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载材料单位失败: {ex.Message}");
+            Logger?.LogError(ex, "加载材料单位失败");
         }
     }
 
@@ -397,7 +399,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载照片失败: {ex.Message}");
+            Logger?.LogError(ex, "加载照片失败");
         }
     }
 
@@ -436,7 +438,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"保存失败: {ex.Message}");
+            Logger?.LogError(ex, "保存失败");
             return false;
         }
     }

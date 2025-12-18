@@ -6,6 +6,7 @@ using Avalonia.Input;
 using MaterialClient.ViewModels;
 using MaterialClient.Backgrounds;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace MaterialClient.Views.AttendedWeighing;
 
@@ -45,7 +46,8 @@ public partial class AttendedWeighingWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"启动轮询后台服务失败: {ex.Message}");
+                var logger = _serviceProvider?.GetService<ILogger<AttendedWeighingWindow>>();
+                logger?.LogError(ex, "启动轮询后台服务失败");
             }
         }
     }

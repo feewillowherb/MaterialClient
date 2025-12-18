@@ -19,7 +19,7 @@ public class HttpResult<T>
     /// <summary>
     /// 响应消息
     /// </summary>
-    public string Msg { get; set; }
+    public string? Msg { get; set; }
 
     /// <summary>
     /// 是否成功

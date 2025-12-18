@@ -54,6 +54,12 @@
   - 在文件里 Interface 应该放在 Impl 前面（先定义接口，后定义实现类）。
 - **数据绑定框架约束（NON-NEGOTIABLE）**：
   - 所有数据绑定强制使用 ReactiveUI，不要使用 CommunityToolkit.Mvvm。
+- **Record 替代 Tuple（NON-NEGOTIABLE）**：
+  - 禁止使用 tuple（如 `(string, int)` 或 `ValueTuple`）作为返回值或参数类型。
+  - 应使用 `record` 类型替代 tuple，以提高代码可读性、可维护性和类型安全性。
+  - Record 类型应具有清晰的命名，反映其业务含义，例如 `record UserInfo(string Name, int Age)` 而非 `(string, int)`。
+  - 对于简单的值组合，优先使用命名 record，避免使用匿名类型或 tuple。
+  - 此规则适用于方法返回值、方法参数、局部变量和字段定义。
 
 ## Architecture & Technology Principles
 
@@ -108,6 +114,41 @@
     - 测试依赖项：使用 NSubstitute 进行模拟、Shouldly 进行断言、Reqnroll.NUnit 进行 BDD 测试。
 - 可观测性：对关键路径（后台同步、HTTP 调用、数据库写入）记录结构化日志与指标，便于追踪与告警。
 
+### Design Patterns
+
+- **意图揭示接口（Intention Revealing Interface）**：
+  - 接口和方法命名应清晰表达其业务意图，避免使用技术性命名。
+  - 方法名应反映业务操作而非实现细节，例如使用 `CalculateTotalPrice()` 而非 `ProcessData()`。
+  - 接口设计应面向领域概念，使代码自文档化，降低理解成本。
+  - 优先使用领域语言（Ubiquitous Language）进行命名，确保业务人员和技术人员对概念理解一致。
+
+- **信息专家模式（Information Expert Pattern）**：
+  - 将职责分配给拥有完成该职责所需信息的类。
+  - 业务逻辑应放在最了解相关数据的对象中，减少不必要的依赖和耦合。
+  - 领域实体和值对象应封装与其数据相关的行为，而非将逻辑外置到服务类。
+  - 遵循"谁拥有数据，谁负责操作"的原则，提高内聚性和可维护性。
+
+- **富模型设计（Rich Domain Model）**：
+  - 领域模型应包含业务逻辑和行为，而不仅仅是数据容器。
+  - 实体和值对象应封装业务规则、验证逻辑和领域行为。
+  - 避免贫血模型（Anemic Domain Model），将业务逻辑从服务层移回领域层。
+  - 领域对象应通过方法暴露业务操作，保持封装性和不变性约束。
+  - 复杂业务逻辑应通过领域服务协调多个领域对象，而非在应用服务中实现。
+
+- **命令方法模式（Command Method Pattern）**：
+  - 方法命名应使用命令式动词，明确表达操作意图，例如 `CreateOrder()`、`CancelOrder()`、`ApproveRequest()`。
+  - 命令方法应执行单一职责的业务操作，避免副作用和多重职责。
+  - 查询方法应使用查询式命名（如 `GetOrderById()`、`IsOrderValid()`），与命令方法区分。
+  - 命令方法应返回操作结果或领域对象，而非 void，以便调用方了解操作状态。
+  - 对于可能失败的操作，应通过返回值、异常或结果对象明确表达失败原因。
+
+- **单一职责原则（Single Responsibility Principle）**：
+  - **任何代码都要明确的职责，不能出现职责混乱（NON-NEGOTIABLE）**。
+  - 每个类、方法、模块都应只有一个明确的职责，遵循单一职责原则（SRP）。
+  - 当发现类或方法承担多个职责时，应进行重构，将其拆分为多个更小、职责更明确的单元。
+  - 职责边界应清晰，避免一个组件同时处理数据访问、业务逻辑、UI 渲染等不同层面的职责。
+  - 通过职责分离提高代码的可测试性、可维护性和可理解性。
+
 ## Governance
 
 - Constitution 优先于所有其他实践；修改需要文档、批准和迁移计划。
@@ -115,4 +156,4 @@
 - 测试代码必须遵循与生产代码相同的代码字符约束和命名约定。
 - 集成测试必须使用统一的测试基础设施，确保测试的一致性和可维护性。
 
-**Version**: 1.2.1 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-31
+**Version**: 1.3.2 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-31
