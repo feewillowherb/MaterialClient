@@ -3,17 +3,20 @@ using System;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 
 #nullable disable
 
-namespace MaterialClient.Common.EntityFrameworkCore.Migrations
+namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    partial class MaterialClientDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251218082155_Update_Waybill_AuditObject")]
+    partial class Update_Waybill_AuditObject
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
