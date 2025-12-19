@@ -108,6 +108,7 @@ public class MaterialClientCommonModule : AbpModule
         services.AddSingleton<IVehiclePhotoService, VehiclePhotoService>();
         services.AddSingleton<IBillPhotoService, BillPhotoService>();
         services.AddSingleton<IHikvisionService, HikvisionService>();
+        services.AddSingleton<IUsbCameraService, UsbCameraService>();
 
         // Register WeighingService (transient, registered via ITransientDependency)
         // No need to register explicitly, ABP will auto-register it

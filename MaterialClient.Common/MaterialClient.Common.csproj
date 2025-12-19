@@ -41,6 +41,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="8.0.0-dev-02318" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Yitter.IdGenerator" Version="1.0.14" />
+    <PackageReference Include="FlashCap" Version="1.11.0" />
   </ItemGroup>
 
 

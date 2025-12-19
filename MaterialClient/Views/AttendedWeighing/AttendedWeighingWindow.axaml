@@ -262,7 +262,7 @@
             BorderBrush="#E5E7EB" 
             BorderThickness="0,1,0,0"
             Padding="16,8">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
         <!-- Scale Status Indicator -->
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <!-- Online Indicator -->
@@ -351,8 +351,46 @@
           </Popup>
         </Grid>
         
+        <!-- USB Camera Status Indicator -->
+        <StackPanel Grid.Column="2" 
+                    Orientation="Horizontal" 
+                    Spacing="8" 
+                    VerticalAlignment="Center"
+                    Margin="24,0,0,0">
+          <!-- Online Indicator -->
+          <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding IsUsbCameraOnline}">
+            <Ellipse.Fill>
+              <SolidColorBrush Color="#10B981"/>
+            </Ellipse.Fill>
+          </Ellipse>
+          <!-- Offline Indicator -->
+          <Ellipse Width="10" Height="10" VerticalAlignment="Center" IsVisible="{Binding !IsUsbCameraOnline}">
+            <Ellipse.Fill>
+              <SolidColorBrush Color="#EF4444"/>
+            </Ellipse.Fill>
+          </Ellipse>
+          <TextBlock Text="USB摄像头" 
+                     FontSize="13" 
+                     Foreground="#666"
+                     VerticalAlignment="Center"/>
+          <!-- Online Status Text -->
+          <TextBlock Text="在线" 
+                     FontSize="13" 
+                     Foreground="#10B981"
+                     VerticalAlignment="Center"
+                     FontWeight="SemiBold"
+                     IsVisible="{Binding IsUsbCameraOnline}"/>
+          <!-- Offline Status Text -->
+          <TextBlock Text="离线" 
+                     FontSize="13" 
+                     Foreground="#EF4444"
+                     VerticalAlignment="Center"
+                     FontWeight="SemiBold"
+                     IsVisible="{Binding !IsUsbCameraOnline}"/>
+        </StackPanel>
+        
         <!-- Right side info (can be extended later) -->
-        <TextBlock Grid.Column="3" 
+        <TextBlock Grid.Column="4" 
                    Text="{Binding CurrentTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" 
                    FontSize="12" 
                    Foreground="#999"

@@ -68,6 +68,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [Reactive] private bool _isCameraOnline;
 
+    [Reactive] private bool _isUsbCameraOnline;
+
     [Reactive] private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
 
     public bool HasCameraStatuses => CameraStatuses.Count > 0;
@@ -163,6 +165,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         StartScaleStatusCheckTimer();
         StartCameraStatusCheckTimer();
+        StartUsbCameraStatusCheckTimer();
         _ = StartAllDevicesAsync();
         StartPlateNumberObservable();
         StartStatusObservable();
@@ -224,6 +227,47 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
 
         _disposables.Add(cameraStatusTimer);
+    }
+
+    private void StartUsbCameraStatusCheckTimer()
+    {
+        var usbCameraStatusTimer = new Timer(_ =>
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await CheckUsbCameraOnlineStatusAsync();
+                }
+                catch
+                {
+                    Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
+                }
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+
+        _disposables.Add(usbCameraStatusTimer);
+    }
+
+    private async Task CheckUsbCameraOnlineStatusAsync()
+    {
+        try
+        {
+            var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
+            if (usbCameraService == null)
+            {
+                Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
+                return;
+            }
+
+            var isOnline = await usbCameraService.IsAvailableAsync();
+            Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = isOnline; });
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "检查 USB 摄像头状态时发生错误");
+            Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
+        }
     }
 
     private async Task CheckCameraOnlineStatusAsync()
