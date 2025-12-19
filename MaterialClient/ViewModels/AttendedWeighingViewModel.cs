@@ -7,6 +7,8 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
@@ -69,6 +71,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     [Reactive] private bool _isCameraOnline;
 
     [Reactive] private bool _isUsbCameraOnline;
+
+    [Reactive] private Bitmap? _usbCameraPreview;
 
     [Reactive] private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
 
@@ -171,6 +175,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartStatusObservable();
         StartWeighingRecordCreatedObservable();
         StartDeliveryTypeObservable();
+        _ = StartUsbCameraPreviewAsync();
     }
 
     private async Task StartAllDevicesAsync()
@@ -270,6 +275,87 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private async Task StartUsbCameraPreviewAsync()
+    {
+        try
+        {
+            var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
+            if (usbCameraService == null)
+            {
+                return;
+            }
+
+            var isAvailable = await usbCameraService.IsAvailableAsync();
+            if (!isAvailable)
+            {
+                Logger?.LogInformation("USB 摄像头不可用，跳过预览启动");
+                return;
+            }
+
+            await usbCameraService.StartPreviewAsync((imageBytes, width, height) =>
+            {
+                try
+                {
+                    // 在 UI 线程上更新图像
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        try
+                        {
+                            // 释放旧的 Bitmap
+                            var oldBitmap = UsbCameraPreview;
+                            
+                            // 将字节数组转换为 Bitmap
+                            using var stream = new System.IO.MemoryStream(imageBytes);
+                            var bitmap = new Bitmap(stream);
+                            UsbCameraPreview = bitmap;
+                            
+                            // 释放旧的 Bitmap
+                            oldBitmap?.Dispose();
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger?.LogWarning(ex, "更新 USB 摄像头预览图像时发生错误");
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "处理 USB 摄像头帧数据时发生错误");
+                }
+            });
+
+            Logger?.LogInformation("USB 摄像头预览已启动");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "启动 USB 摄像头预览时发生错误");
+        }
+    }
+
+    private async Task StopUsbCameraPreviewAsync()
+    {
+        try
+        {
+            var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
+            if (usbCameraService == null)
+            {
+                return;
+            }
+
+            await usbCameraService.StopPreviewAsync();
+            Dispatcher.UIThread.Post(() => 
+            { 
+                UsbCameraPreview?.Dispose();
+                UsbCameraPreview = null; 
+            });
+            Logger?.LogInformation("USB 摄像头预览已停止");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "停止 USB 摄像头预览时发生错误");
+        }
+    }
+
     private async Task CheckCameraOnlineStatusAsync()
     {
         try
@@ -359,6 +445,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _ = StopUsbCameraPreviewAsync();
         _disposables.Dispose();
     }
 

@@ -235,10 +235,27 @@
                       CornerRadius="4"
                       BorderBrush="#D1D5DB"
                       BorderThickness="1">
-                <Image Source="{Binding BillPhotoPath}" 
-                       Stretch="Uniform"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
+                <Grid>
+                  <!-- USB 摄像头预览 -->
+                  <Image Source="{Binding UsbCameraPreview}" 
+                         Stretch="UniformToFill"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Stretch"
+                         IsVisible="{Binding IsUsbCameraOnline}"/>
+                  <!-- 静态照片显示（当没有预览时显示） -->
+                  <Image Source="{Binding BillPhotoPath}" 
+                         Stretch="Uniform"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding !IsUsbCameraOnline}"/>
+                  <!-- 无预览时的占位文本 -->
+                  <TextBlock Text="USB摄像头未连接" 
+                             FontSize="14" 
+                             Foreground="#999"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding !IsUsbCameraOnline}"/>
+                </Grid>
               </Border>
               
               <Button Grid.Row="1" 
@@ -248,7 +265,8 @@
                       Padding="48,8"
                       HorizontalAlignment="Center"
                       Margin="0,12,0,0"
-                      Command="{Binding TakeBillPhotoCommand}"/>
+                      Command="{Binding TakeBillPhotoCommand}"
+                      IsEnabled="{Binding IsUsbCameraOnline}"/>
             </Grid>
           </Border>
         </Grid>
