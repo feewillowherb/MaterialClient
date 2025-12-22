@@ -1,6 +1,6 @@
 using FlashCap;
 using Microsoft.Extensions.Logging;
-using System.Reactive.Subjects;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hardware;
 
@@ -43,7 +43,7 @@ public interface IUsbCameraService
 /// USB 摄像头服务实现
 /// 使用 FlashCap 库来检测和访问 USB 摄像头设备
 /// </summary>
-public class UsbCameraService : IUsbCameraService
+public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDisposable
 {
     private readonly ILogger<UsbCameraService>? _logger;
     private CaptureDevice? _currentDevice;
@@ -286,5 +286,46 @@ public class UsbCameraService : IUsbCameraService
                 _currentDescriptor = null;
             }
         }
+    }
+
+    /// <summary>
+    /// 释放资源（实现 IAsyncDisposable）
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        // 先停止预览，确保资源正确释放
+        try
+        {
+            await StopPreviewAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "在 DisposeAsync 中停止预览时发生错误");
+        }
+
+        // 额外检查并释放设备（防止 StopPreviewAsync 失败时仍有资源未释放）
+        CaptureDevice? deviceToDispose = null;
+        lock (_lockObject)
+        {
+            deviceToDispose = _currentDevice;
+            _currentDevice = null;
+            _currentDescriptor = null;
+            _frameCallback = null;
+            IsPreviewing = false;
+        }
+
+        if (deviceToDispose != null)
+        {
+            try
+            {
+                await deviceToDispose.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "释放 USB 摄像头设备时发生错误");
+            }
+        }
+
+        _logger?.LogDebug("USB 摄像头服务资源已释放");
     }
 }

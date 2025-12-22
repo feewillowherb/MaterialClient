@@ -14,7 +14,7 @@ namespace MaterialClient.Common.Services.Hardware;
 /// <summary>
 /// Truck scale weight service interface
 /// </summary>
-public interface ITruckScaleWeightService : IDisposable
+public interface ITruckScaleWeightService : IAsyncDisposable
 {
     /// <summary>
     /// Observable stream of weight updates from truck scale
