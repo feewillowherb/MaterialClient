@@ -428,7 +428,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 materialId,
                 materialUnitId,
                 waybillQuantity,
-                null
+                null,
+                Remark
             ));
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
             CompleteCompleted?.Invoke(this, EventArgs.Empty);
