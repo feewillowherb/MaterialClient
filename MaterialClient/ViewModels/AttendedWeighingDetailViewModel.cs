@@ -134,9 +134,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     ActualWeight = materialDto.Weight ?? GoodsWeight,
                     Difference = null,
                     DeviationRate = null,
-                    DeviationResult = "-",
-                    MaterialNameFromDto = materialDto.MaterialName,
-                    MaterialUnitDisplayNameFromDto = materialDto.MaterialUnitDisplayName
+                    DeviationResult = "-"
                 });
             }
         }
@@ -465,16 +463,6 @@ public partial class MaterialItemRow : ReactiveObject
     /// </summary>
     public bool IsWaybill { get; set; }
 
-    /// <summary>
-    /// 物料名称（从 WeighingListItemMaterialDto 获取，用于初始显示）
-    /// </summary>
-    [Reactive] public string? MaterialNameFromDto { get; set; }
-
-    /// <summary>
-    /// 物料单位显示名称（从 WeighingListItemMaterialDto 获取，用于初始显示）
-    /// </summary>
-    [Reactive] public string? MaterialUnitDisplayNameFromDto { get; set; }
-
     [Reactive] private Material? _selectedMaterial;
 
     [Reactive] private MaterialUnitDto? _selectedMaterialUnit;
@@ -502,16 +490,6 @@ public partial class MaterialItemRow : ReactiveObject
     public string DifferenceDisplay => Difference?.ToString("F2") ?? "-";
     public string DeviationRateDisplay => DeviationRate.HasValue ? $"{DeviationRate.Value:F2}%" : "-";
     public string RateDisplay => SelectedMaterialUnit?.Rate.ToString("F2") ?? "";
-    
-    /// <summary>
-    /// 材料名称显示（优先显示 SelectedMaterial.Name，否则显示 MaterialNameFromDto）
-    /// </summary>
-    public string MaterialNameDisplay => SelectedMaterial?.Name ?? MaterialNameFromDto ?? string.Empty;
-    
-    /// <summary>
-    /// 材料单位显示名称（优先显示 SelectedMaterialUnit.DisplayName，否则显示 MaterialUnitDisplayNameFromDto）
-    /// </summary>
-    public string MaterialUnitDisplayNameDisplay => SelectedMaterialUnit?.DisplayName ?? MaterialUnitDisplayNameFromDto ?? string.Empty;
 
     public MaterialItemRow()
     {
@@ -581,14 +559,6 @@ public partial class MaterialItemRow : ReactiveObject
 
         this.WhenAnyValue(x => x.DeviationRate)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(DeviationRateDisplay)));
-
-        // 当 SelectedMaterial 或 MaterialNameFromDto 变化时，更新 MaterialNameDisplay
-        this.WhenAnyValue(x => x.SelectedMaterial, x => x.MaterialNameFromDto)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(MaterialNameDisplay)));
-
-        // 当 SelectedMaterialUnit 或 MaterialUnitDisplayNameFromDto 变化时，更新 MaterialUnitDisplayNameDisplay
-        this.WhenAnyValue(x => x.SelectedMaterialUnit, x => x.MaterialUnitDisplayNameFromDto)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(MaterialUnitDisplayNameDisplay)));
     }
 
     /// <summary>

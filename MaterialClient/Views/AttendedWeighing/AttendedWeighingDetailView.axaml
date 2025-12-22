@@ -1,14 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
-             xmlns:converters="using:MaterialClient.Converters"
              x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingDetailView"
              x:DataType="vm:AttendedWeighingDetailViewModel"
              x:Name="DetailViewRoot">
-    
-    <UserControl.Resources>
-        <converters:WeighingListItemMaterialConverter x:Key="MaterialConverter" />
-    </UserControl.Resources>
     
     
     <UserControl.Styles>
@@ -163,7 +158,7 @@
                         <DataGridTemplateColumn Header="材料名称" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding MaterialNameDisplay}" 
+                                    <TextBlock Text="{Binding SelectedMaterial.Name}" 
                                                HorizontalAlignment="Left" 
                                                VerticalAlignment="Center"
                                                FontSize="12" 
@@ -193,7 +188,7 @@
                         <DataGridTemplateColumn Header="单位" Width="72">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding MaterialUnitDisplayNameDisplay}" 
+                                    <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}" 
                                                HorizontalAlignment="Left" 
                                                VerticalAlignment="Center"
                                                FontSize="12" 
