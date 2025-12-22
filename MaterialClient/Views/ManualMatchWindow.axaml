@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:MaterialClient.ViewModels"
+        xmlns:converters="using:MaterialClient.Converters"
         mc:Ignorable="d"
         x:Class="MaterialClient.Views.ManualMatchWindow"
         x:DataType="vm:ManualMatchWindowViewModel"
@@ -14,6 +15,10 @@
         SystemDecorations="None"
         Background="White"
         Icon="/Assets/fd-ico.ico">
+
+    <Window.Resources>
+        <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter"/>
+    </Window.Resources>
 
     <Border BorderBrush="LightGray" BorderThickness="1">
         <Grid RowDefinitions="50,Auto,Auto,Auto,*,Auto,50">
@@ -101,7 +106,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
-                                        <Image Source="{Binding}" Stretch="UniformToFill"/>
+                                        <Image Source="{Binding ., Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -113,7 +118,7 @@
                         <TextBlock Text="运单照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
                             <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
-                                <Image Source="{Binding TicketPhoto}" Stretch="UniformToFill"/>
+                                <Image Source="{Binding TicketPhoto, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                             </Border>
                         </StackPanel>
                     </Grid>

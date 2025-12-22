@@ -109,7 +109,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         GoodsWeight = AllWeight - TruckWeight;
         PlateNumber = _listItem.PlateNumber;
         SelectedProviderId = _listItem.ProviderId;
-        Remark = string.Empty;
+        Remark = _listItem.Remark ?? string.Empty;
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
@@ -331,7 +331,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 materialId,
                 materialUnitId,
                 waybillQuantity,
-                null
+                null,
+                Remark
             ));
 
             SaveCompleted?.Invoke(this, EventArgs.Empty);

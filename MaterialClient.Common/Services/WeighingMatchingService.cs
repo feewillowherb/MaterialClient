@@ -210,6 +210,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         // 更新基本字段
         if (input.PlateNumber != null) waybill.PlateNumber = input.PlateNumber;
         if (input.ProviderId.HasValue) waybill.ProviderId = input.ProviderId.Value;
+        if (input.Remark != null) waybill.Remark = input.Remark;
 
         // 计算物料信息
         await TryCalculateMaterialAsync(waybill,
@@ -288,7 +289,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 input.ProviderId,
                 input.MaterialId,
                 input.MaterialUnitId,
-                input.WaybillQuantity
+                input.WaybillQuantity,
+                input.Remark
             ));
         }
     }
@@ -982,7 +984,8 @@ public record UpdateWaybillInput(
     int? ProviderId,
     int? MaterialId,
     int? MaterialUnitId,
-    decimal? WaybillQuantity
+    decimal? WaybillQuantity,
+    string? Remark
 );
 
 public record UpdateWeighingRecordInput(
@@ -1003,5 +1006,6 @@ public record UpdateListItemInput(
     int? MaterialId,
     int? MaterialUnitId,
     decimal? WaybillQuantity,
-    DeliveryType? DeliveryType
+    DeliveryType? DeliveryType,
+    string? Remark
 );

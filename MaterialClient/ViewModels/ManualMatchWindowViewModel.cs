@@ -10,6 +10,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
@@ -21,6 +22,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     private readonly WeighingRecord _currentRecord;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWeighingMatchingService _weighingMatchingService;
+    private readonly IRepository<Provider, int>? _providerRepository;
 
     /// <summary>
     /// 当前称重记录
@@ -122,6 +124,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         _currentRecord = currentRecord;
         _serviceProvider = serviceProvider;
         _weighingMatchingService = serviceProvider.GetRequiredService<IWeighingMatchingService>();
+        _providerRepository = serviceProvider.GetService<IRepository<Provider, int>>();
 
         // 初始化当前记录信息
         PlateNumber = currentRecord.PlateNumber;
@@ -147,6 +150,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
 
     private async Task InitializeAsync()
     {
+        await LoadProviderNameAsync();
         await LoadPhotosAsync();
         await LoadCandidateRecordsAsync();
     }
@@ -232,6 +236,26 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
     #endregion
 
     #region 私有方法
+
+    private async Task LoadProviderNameAsync()
+    {
+        try
+        {
+            if (_providerRepository == null || !_currentRecord.ProviderId.HasValue)
+            {
+                ProviderName = null;
+                return;
+            }
+
+            var provider = await _providerRepository.GetAsync(_currentRecord.ProviderId.Value);
+            ProviderName = provider?.ProviderName;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "加载供应商名称失败，ProviderId={ProviderId}", _currentRecord.ProviderId);
+            ProviderName = null;
+        }
+    }
 
     private async Task LoadPhotosAsync()
     {

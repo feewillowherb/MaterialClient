@@ -87,6 +87,11 @@ public class WeighingListItemDto
     /// </summary>
     public string? Operator { get; set; }
 
+    /// <summary>
+    /// 备注（仅运单有值）
+    /// </summary>
+    public string? Remark { get; set; }
+
 
     /// <summary>
     /// 订单类型
@@ -219,6 +224,7 @@ public class WeighingListItemDto
             OrderNo = waybill.OrderNo,
             WaybillQuantity = waybill.OrderPlanOnPcs,
             OrderType = waybill.OrderType,
+            Remark = waybill.Remark,
             // 预计算偏差信息
             OffsetInfo = waybill.OffsetRate.HasValue ? $"{waybill.OffsetRate.Value:F2}%" : null
         };
