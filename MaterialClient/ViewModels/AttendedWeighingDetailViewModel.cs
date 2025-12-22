@@ -439,7 +439,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     }
 
     [ReactiveCommand]
-    private async Task AddGoodsAsync()
+    private async Task AddMaterialAsync()
     {
         try
         {

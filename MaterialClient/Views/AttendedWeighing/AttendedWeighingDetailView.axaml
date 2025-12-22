@@ -357,7 +357,7 @@
                         Width="80" Height="32" FontSize="13"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
-                        Command="{Binding AddGoodsCommand}" />
+                        Command="{Binding AddMaterialCommand}" />
                 
                 <!-- 中间按钮组 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" 
