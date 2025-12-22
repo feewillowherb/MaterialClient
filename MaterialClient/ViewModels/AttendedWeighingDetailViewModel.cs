@@ -528,6 +528,7 @@ public partial class MaterialItemRow : ReactiveObject
 
     public MaterialItemRow()
     {
+        // 延迟订阅，避免在初始化时触发大量计算
         this.WhenAnyValue(x => x.SelectedMaterial)
             .Subscribe(async value =>
             {
@@ -559,6 +560,7 @@ public partial class MaterialItemRow : ReactiveObject
                 }
             });
 
+        // 只订阅显示相关的属性变化，避免不必要的 RaisePropertyChanged
         this.WhenAnyValue(x => x.WaybillQuantity)
             .Subscribe(_ =>
             {

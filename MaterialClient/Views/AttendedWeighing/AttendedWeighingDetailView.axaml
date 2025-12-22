@@ -159,6 +159,17 @@
                         <DataGridTemplateColumn Header="材料名称" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
+                                    <TextBlock Text="{Binding SelectedMaterial.Name}" 
+                                               HorizontalAlignment="Left" 
+                                               VerticalAlignment="Center"
+                                               FontSize="12" 
+                                               Foreground="#333333" 
+                                               TextTrimming="CharacterEllipsis"
+                                               Padding="4,0" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
                                     <ComboBox ItemsSource="{Binding #DetailViewRoot.((vm:AttendedWeighingDetailViewModel)DataContext).Materials}"
                                               SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
                                               DisplayMemberBinding="{Binding Name}"
@@ -167,12 +178,23 @@
                                               Padding="4,2"
                                               FontSize="12" />
                                 </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
                         
                         <!-- 单位 (2字: 48 + 16 = 64) -->
                         <DataGridTemplateColumn Header="单位" Width="64">
                             <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}" 
+                                               HorizontalAlignment="Left" 
+                                               VerticalAlignment="Center"
+                                               FontSize="12" 
+                                               Foreground="#333333" 
+                                               TextTrimming="CharacterEllipsis"
+                                               Padding="4,0" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
                                     <ComboBox ItemsSource="{Binding MaterialUnits}"
                                               SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
@@ -182,7 +204,7 @@
                                               Padding="4,2"
                                               FontSize="12" />
                                 </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
                         
                         <!-- 换算率 (3字: 60 + 16 = 76) -->
@@ -203,6 +225,16 @@
                         <DataGridTemplateColumn Header="运单数量" Width="92">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
+                                    <TextBlock Text="{Binding WaybillQuantityDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#333333" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
                                     <NumericUpDown Value="{Binding WaybillQuantity, Mode=TwoWay}"
                                                    FormatString="F2"
                                                    Increment="0.01"
@@ -214,7 +246,7 @@
                                                    BorderThickness="0"
                                                    Background="Transparent" />
                                 </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
                         
                         <!-- 运单重量 (4字: 76 + 16 = 92) -->
