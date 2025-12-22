@@ -50,6 +50,7 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
     private CaptureDeviceDescriptor? _currentDescriptor;
     private Action<byte[], int, int>? _frameCallback;
     private readonly object _lockObject = new();
+    private bool? _lastAvailabilityStatus; // 缓存上次的可用性状态，用于避免重复日志
 
     public bool IsPreviewing { get; private set; }
 
@@ -110,7 +111,16 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
 
                     // 如果成功打开，返回设备描述
                     var deviceInfo = $"{descriptor.Name} ({descriptor.Characteristics[0].PixelFormat})";
-                    _logger?.LogInformation("找到可用的 USB 摄像头设备: {DeviceInfo}", deviceInfo);
+                    // 只在状态改变时记录 Information 级别日志，避免重复日志
+                    if (_lastAvailabilityStatus != true)
+                    {
+                        _logger?.LogInformation("找到可用的 USB 摄像头设备: {DeviceInfo}", deviceInfo);
+                        _lastAvailabilityStatus = true;
+                    }
+                    else
+                    {
+                        _logger?.LogDebug("找到可用的 USB 摄像头设备: {DeviceInfo}", deviceInfo);
+                    }
                     return deviceInfo;
                 }
                 catch (Exception ex)
@@ -121,7 +131,16 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
                 }
             }
 
-            _logger?.LogInformation("未找到可用的 USB 摄像头设备");
+            // 只在状态改变时记录 Information 级别日志，避免重复日志
+            if (_lastAvailabilityStatus != false)
+            {
+                _logger?.LogInformation("未找到可用的 USB 摄像头设备");
+                _lastAvailabilityStatus = false;
+            }
+            else
+            {
+                _logger?.LogDebug("未找到可用的 USB 摄像头设备");
+            }
             return null;
         }
         catch (Exception ex)
