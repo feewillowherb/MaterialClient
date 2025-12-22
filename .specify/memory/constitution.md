@@ -8,12 +8,33 @@
 - 使用 ABP 框架提供的基础设施（依赖注入、领域驱动设计、数据访问等）。
 
 ### II. ABP Framework Integration
-- 统一使用 ABP 框架（版本 9.3.6）提供的核心功能。
+- 统一使用 ABP 框架（版本 10.0.1）提供的核心功能。
 - 依赖注入使用 Autofac（通过 ABP Autofac 模块）。
 - 数据访问使用 ABP EntityFrameworkCore 集成。
 - 领域驱动设计使用 ABP Domain 包。
 
-### III. Test-First (NON-NEGOTIABLE)
+### III. .NET 10 & Modern C# Syntax (NON-NEGOTIABLE)
+- **目标框架要求**：项目必须使用 .NET 10（`net10.0`）作为目标框架，充分利用最新的语言特性和运行时优化。
+- **启用现代 C# 特性（NON-NEGOTIABLE）**：
+  - 必须启用 `ImplicitUsings`：在项目文件中设置 `<ImplicitUsings>enable</ImplicitUsings>`，减少重复的 using 语句。
+  - 必须启用 `Nullable`：在项目文件中设置 `<Nullable>enable</Nullable>`，利用可空引用类型提高代码安全性。
+- **优先使用最新语法糖（NON-NEGOTIABLE）**：
+  - **File-scoped Namespaces**：优先使用文件作用域命名空间（`namespace MaterialClient.Common;`）而非传统的大括号命名空间，减少缩进层级。
+  - **Collection Expressions（C# 12）**：优先使用集合表达式 `[]` 替代 `new List<T>()` 或数组初始化，例如 `var items = [1, 2, 3];`。
+  - **Primary Constructors（C# 12）**：对于简单的类，优先使用主构造函数减少样板代码，例如 `public class Service(ILogger logger) { }`。
+  - **Using Alias for Types（C# 12）**：使用类型别名简化复杂类型引用，例如 `using StringList = System.Collections.Generic.List<string>;`。
+  - **Record Types**：优先使用 `record` 类型替代传统类，特别是用于 DTO、值对象和不可变数据。
+  - **Pattern Matching**：充分利用模式匹配（switch 表达式、is 模式、when 子句等）简化条件逻辑。
+  - **Null-coalescing Operators**：优先使用 `??` 和 `??=` 运算符处理空值。
+  - **Expression-bodied Members**：对于简单的属性和方法，使用表达式体成员减少代码量。
+  - **String Interpolation**：优先使用字符串插值（`$"text {variable}"`）而非字符串拼接。
+  - **Async/Await**：异步操作必须使用 `async/await` 模式，避免阻塞调用。
+  - **IAsyncDisposable**：对于需要异步清理的资源，实现 `IAsyncDisposable` 接口。
+- **源生成器优先**：优先使用源生成器（如 AutoConstructor、ReactiveUI.SourceGenerators）减少样板代码，提高编译时安全性。
+- **性能优化语法**：在性能敏感场景中，优先使用 `Span<T>`、`Memory<T>`、`ReadOnlySpan<T>` 等现代内存类型。
+- **代码风格一致性**：所有新代码必须遵循上述语法糖规范，旧代码在重构时应逐步迁移到现代语法。
+
+### IV. Test-First (NON-NEGOTIABLE)
 - TDD 强制要求：测试先行编写 → 用户批准 → 测试失败 → 然后实现；严格遵循 Red-Green-Refactor 循环。
 - 集成测试风格：采用 ABP 集成测试框架，使用内存 SQLite 进行数据库测试，支持事务隔离与数据种子。
 - BDD 测试：使用 Reqnroll.NUnit 进行行为驱动开发，通过 `.feature` 文件和 `Steps.cs` 定义测试场景。
@@ -21,7 +42,7 @@
   - Feature 中的 Background 最好初始化当前 feature 需要用到的一些通用数据，如 Material、MaterialUnit、Provider 等环境数据。
   - 避免在业务测试中找不到对应的环境数据，确保测试场景的完整性和可重复性。
 
-### IV. Integration Testing
+### V. Integration Testing
 - 集成测试重点领域：新库契约测试、契约变更、服务间通信、共享模式。
 - 测试项目结构：所有测试统一在 `MaterialClient.Common.Tests` 项目中，包含 TestBase、EntityFrameworkCore、Domain 三个测试层次。
 - 测试基础设施：基于 ABP TestBase 模块，提供统一的测试环境、配置和基类。
@@ -30,7 +51,7 @@
   - 避免在测试步骤中直接操作仓储或 DbContext，通过领域服务进行数据操作，确保测试代码与生产代码的一致性。
   - 如果业务中没用到仅测试中使用到的接口，必须显式使用 `ITestService` 接口实现，表示只能在测试中使用该接口。
 
-### V. Observability & Simplicity
+### VI. Observability & Simplicity
 - 可观测性：对关键路径（后台同步、HTTP 调用、数据库写入）记录结构化日志与指标，便于追踪与告警。
 - 测试中使用 Serilog 进行日志记录，支持详细调试信息。
 - 简单性原则：遵循 YAGNI（You Aren't Gonna Need It）原则，从简单开始，避免过度设计。
@@ -68,7 +89,7 @@
 - 依赖注入：统一使用 IoC 管理依赖，首选 Autofac；类构造函数依赖可使用 AutoConstructor 源生成器以减少样板代码。
 - HTTP 客户端：统一使用 Refit 生成类型安全的 REST 客户端接口，与 `HttpClientFactory` 集成以获得连接复用与可配置的处理管线。
 - 数据访问：
-  - **ABP EntityFrameworkCore Sqlite 包**：必须引用 `Volo.Abp.EntityFrameworkCore.Sqlite` 包（当前版本：9.3.6），用于提供 SQLite 数据库的 ABP 集成支持。
+  - **ABP EntityFrameworkCore Sqlite 包**：必须引用 `Volo.Abp.EntityFrameworkCore.Sqlite` 包（当前版本：10.0.1），用于提供 SQLite 数据库的 ABP 集成支持。
   - **DbContext 基类**：`DbContext` 应继承自 `Volo.Abp.EntityFrameworkCore.AbpDbContext<TDbContext>`，以获得 ABP 的审计、多租户、软删除等特性支持。
   - **仓储模式**：使用 `Volo.Abp.Domain.Repositories.IRepository<TEntity, TKey>` 接口访问数据，避免直接使用 `DbContext`。通过 ABP 的依赖注入容器自动提供仓储实现。
   - **SQLite 配置**：
@@ -86,7 +107,7 @@
     - 测试中使用 `FakeCurrentPrincipalAccessor` 模拟当前用户上下文。
     - 使用 `WithUnitOfWorkAsync` 方法进行工作单元测试，确保事务隔离。
 - 领域驱动设计（DDD）与实体模型：
-  - **ABP Domain 包**：必须引用 `Volo.Abp.Ddd.Domain` 包（当前版本：9.3.6），提供领域驱动设计基础设施。
+  - **ABP Domain 包**：必须引用 `Volo.Abp.Ddd.Domain` 包（当前版本：10.0.1），提供领域驱动设计基础设施。
   - **命名空间**：使用 `Volo.Abp.Domain.Entities` 命名空间下的基类。
   - **实体基类**：
     - 普通实体：继承 `Volo.Abp.Domain.Entities.Entity<TKey>`，提供主键（Id）和领域一致性约束；
@@ -156,4 +177,4 @@
 - 测试代码必须遵循与生产代码相同的代码字符约束和命名约定。
 - 集成测试必须使用统一的测试基础设施，确保测试的一致性和可维护性。
 
-**Version**: 1.3.2 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-31
+**Version**: 1.4.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-02-01
