@@ -128,6 +128,17 @@ public class WeighingListItemDto
     /// </summary>
     public static WeighingListItemDto FromWeighingRecord(WeighingRecord record)
     {
+        return FromWeighingRecord(record, null, null);
+    }
+
+    /// <summary>
+    /// 从 WeighingRecord 创建 DTO（带 Material 和 MaterialUnit 信息）
+    /// </summary>
+    public static WeighingListItemDto FromWeighingRecord(
+        WeighingRecord record,
+        Dictionary<int, Material>? materialsDict,
+        Dictionary<int, MaterialUnit>? materialUnitsDict)
+    {
         var materials = record.Materials;
         var firstMaterial = materials.FirstOrDefault();
 
@@ -146,12 +157,31 @@ public class WeighingListItemDto
             Weight = record.TotalWeight,
             OrderNo = null,
             WaybillQuantity = firstMaterial?.WaybillQuantity,
-            Materials = materials.Select(m => new WeighingListItemMaterialDto
+            Materials = materials.Select(m =>
             {
-                MaterialId = m.MaterialId,
-                MaterialUnitId = m.MaterialUnitId,
-                Weight = m.Weight,
-                WaybillQuantity = m.WaybillQuantity
+                var dto = new WeighingListItemMaterialDto
+                {
+                    MaterialId = m.MaterialId,
+                    MaterialUnitId = m.MaterialUnitId,
+                    Weight = m.Weight,
+                    WaybillQuantity = m.WaybillQuantity
+                };
+
+                // 填充渲染字段
+                if (m.MaterialId.HasValue && materialsDict != null && 
+                    materialsDict.TryGetValue(m.MaterialId.Value, out var material))
+                {
+                    dto.MaterialName = material.Name;
+                }
+
+                if (m.MaterialUnitId.HasValue && materialUnitsDict != null && 
+                    materialUnitsDict.TryGetValue(m.MaterialUnitId.Value, out var materialUnit))
+                {
+                    dto.MaterialUnitName = materialUnit.UnitName;
+                    dto.MaterialUnitRate = materialUnit.Rate ?? 0m;
+                }
+
+                return dto;
             }).ToList()
         };
     }
@@ -160,6 +190,17 @@ public class WeighingListItemDto
     /// 从 Waybill 创建 DTO
     /// </summary>
     public static WeighingListItemDto FromWaybill(Waybill waybill)
+    {
+        return FromWaybill(waybill, null, null);
+    }
+
+    /// <summary>
+    /// 从 Waybill 创建 DTO（带 Material 和 MaterialUnit 信息）
+    /// </summary>
+    public static WeighingListItemDto FromWaybill(
+        Waybill waybill,
+        Dictionary<int, Material>? materialsDict,
+        Dictionary<int, MaterialUnit>? materialUnitsDict)
     {
         var dto = new WeighingListItemDto
         {
@@ -185,13 +226,28 @@ public class WeighingListItemDto
         // 如果有物料信息，添加到 Materials 列表
         if (waybill.MaterialId.HasValue)
         {
-            dto.Materials.Add(new WeighingListItemMaterialDto
+            var materialDto = new WeighingListItemMaterialDto
             {
                 MaterialId = waybill.MaterialId,
                 MaterialUnitId = waybill.MaterialUnitId,
                 Weight = waybill.OrderGoodsWeight,
                 WaybillQuantity = waybill.OrderPlanOnPcs
-            });
+            };
+
+            // 填充渲染字段
+            if (materialsDict != null && materialsDict.TryGetValue(waybill.MaterialId.Value, out var material))
+            {
+                materialDto.MaterialName = material.Name;
+            }
+
+            if (waybill.MaterialUnitId.HasValue && materialUnitsDict != null && 
+                materialUnitsDict.TryGetValue(waybill.MaterialUnitId.Value, out var materialUnit))
+            {
+                materialDto.MaterialUnitName = materialUnit.UnitName;
+                materialDto.MaterialUnitRate = materialUnit.Rate ?? 0m;
+            }
+
+            dto.Materials.Add(materialDto);
         }
 
         return dto;
@@ -222,4 +278,27 @@ public class WeighingListItemMaterialDto
     /// 运单数量
     /// </summary>
     public decimal? WaybillQuantity { get; set; }
+
+    /// <summary>
+    /// 物料名称（用于渲染，避免查询）
+    /// </summary>
+    public string? MaterialName { get; set; }
+
+    /// <summary>
+    /// 物料单位名称（用于渲染，避免查询）
+    /// </summary>
+    public string? MaterialUnitName { get; set; }
+
+    /// <summary>
+    /// 物料单位换算率（用于渲染，避免查询）
+    /// </summary>
+    public decimal? MaterialUnitRate { get; set; }
+
+    /// <summary>
+    /// 物料单位显示名称（格式：Rate/UnitName，用于渲染，避免查询）
+    /// </summary>
+    public string MaterialUnitDisplayName => 
+        string.IsNullOrEmpty(MaterialUnitName) 
+            ? string.Empty 
+            : $"{MaterialUnitRate ?? 0:F2}/{MaterialUnitName}";
 }

@@ -1,9 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:converters="using:MaterialClient.Converters"
              x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingDetailView"
              x:DataType="vm:AttendedWeighingDetailViewModel"
              x:Name="DetailViewRoot">
+    
+    <UserControl.Resources>
+        <converters:WeighingListItemMaterialConverter x:Key="MaterialConverter" />
+    </UserControl.Resources>
     
     
     <UserControl.Styles>
@@ -158,7 +163,7 @@
                         <DataGridTemplateColumn Header="材料名称" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding SelectedMaterial.Name}" 
+                                    <TextBlock Text="{Binding MaterialNameDisplay}" 
                                                HorizontalAlignment="Left" 
                                                VerticalAlignment="Center"
                                                FontSize="12" 
@@ -169,7 +174,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding #DetailViewRoot.((vm:AttendedWeighingDetailViewModel)DataContext).Materials}"
+                                    <ComboBox ItemsSource="{Binding #DetailViewRoot.DataContext.Materials}"
                                               SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
                                               DisplayMemberBinding="{Binding Name}"
                                               HorizontalAlignment="Stretch"
@@ -188,7 +193,7 @@
                         <DataGridTemplateColumn Header="单位" Width="72">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}" 
+                                    <TextBlock Text="{Binding MaterialUnitDisplayNameDisplay}" 
                                                HorizontalAlignment="Left" 
                                                VerticalAlignment="Center"
                                                FontSize="12" 

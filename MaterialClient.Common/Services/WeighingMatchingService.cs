@@ -439,6 +439,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     {
         var result = new List<WeighingListItemDto>();
         var isCompleted = input.IsCompleted;
+        var allRecords = new List<WeighingRecord>();
+        var allWaybills = new List<Waybill>();
 
         if (isCompleted == null || isCompleted == false)
         {
@@ -447,22 +449,14 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             var unmatchedRecords = await weighingRecordQuery
                 .Where(r => r.MatchedId == null)
                 .ToListAsync();
-
-            foreach (var record in unmatchedRecords)
-            {
-                result.Add(WeighingListItemDto.FromWeighingRecord(record));
-            }
+            allRecords.AddRange(unmatchedRecords);
 
             // 获取未完成的 Waybill（OrderType == FirstWeight）
             var waybillQuery = await _waybillRepository.GetQueryableAsync();
             var firstWeightWaybills = await waybillQuery
                 .Where(w => w.OrderType == OrderTypeEnum.FirstWeight)
                 .ToListAsync();
-
-            foreach (var waybill in firstWeightWaybills)
-            {
-                result.Add(WeighingListItemDto.FromWaybill(waybill));
-            }
+            allWaybills.AddRange(firstWeightWaybills);
         }
 
         if (isCompleted == null || isCompleted == true)
@@ -472,11 +466,50 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             var completedWaybills = await waybillQuery
                 .Where(w => w.OrderType == OrderTypeEnum.Completed)
                 .ToListAsync();
+            allWaybills.AddRange(completedWaybills);
+        }
 
-            foreach (var waybill in completedWaybills)
+        // 收集所有需要查询的 MaterialId 和 MaterialUnitId
+        var materialIds = new HashSet<int>();
+        var materialUnitIds = new HashSet<int>();
+
+        foreach (var record in allRecords)
+        {
+            foreach (var material in record.Materials)
             {
-                result.Add(WeighingListItemDto.FromWaybill(waybill));
+                if (material.MaterialId.HasValue)
+                    materialIds.Add(material.MaterialId.Value);
+                if (material.MaterialUnitId.HasValue)
+                    materialUnitIds.Add(material.MaterialUnitId.Value);
             }
+        }
+
+        foreach (var waybill in allWaybills)
+        {
+            if (waybill.MaterialId.HasValue)
+                materialIds.Add(waybill.MaterialId.Value);
+            if (waybill.MaterialUnitId.HasValue)
+                materialUnitIds.Add(waybill.MaterialUnitId.Value);
+        }
+
+        // 批量查询 Material 和 MaterialUnit
+        var materialsDict = materialIds.Count > 0
+            ? (await _materialRepository.GetListAsync(m => materialIds.Contains(m.Id))).ToDictionary(m => m.Id)
+            : new Dictionary<int, Material>();
+
+        var materialUnitsDict = materialUnitIds.Count > 0
+            ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
+            : new Dictionary<int, MaterialUnit>();
+
+        // 创建 DTO
+        foreach (var record in allRecords)
+        {
+            result.Add(WeighingListItemDto.FromWeighingRecord(record, materialsDict, materialUnitsDict));
+        }
+
+        foreach (var waybill in allWaybills)
+        {
+            result.Add(WeighingListItemDto.FromWaybill(waybill, materialsDict, materialUnitsDict));
         }
 
         // 获取总数
