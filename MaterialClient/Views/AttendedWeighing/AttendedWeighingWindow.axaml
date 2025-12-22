@@ -241,14 +241,14 @@
                          Stretch="UniformToFill"
                          HorizontalAlignment="Stretch"
                          VerticalAlignment="Stretch"
-                         IsVisible="{Binding IsUsbCameraOnline}"/>
+                         IsVisible="{Binding ShouldShowPreview}"/>
                   <!-- 静态照片显示（当没有预览时显示） -->
                   <Image Source="{Binding BillPhotoPath}" 
                          Stretch="Uniform"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         IsVisible="{Binding !IsUsbCameraOnline}"/>
-                  <!-- 无预览时的占位文本 -->
+                         IsVisible="{Binding !ShouldShowPreview}"/>
+                  <!-- 无预览且无照片时的占位文本 -->
                   <TextBlock Text="USB摄像头未连接" 
                              FontSize="14" 
                              Foreground="#999"
@@ -259,7 +259,7 @@
               </Border>
               
               <Button Grid.Row="1" 
-                      Content="拍照" 
+                      Content="{Binding BillPhotoButtonText}" 
                       Classes="success-button"
                       CornerRadius="6"
                       Padding="48,8"

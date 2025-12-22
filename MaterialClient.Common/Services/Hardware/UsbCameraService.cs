@@ -37,6 +37,12 @@ public interface IUsbCameraService
     /// 获取当前预览状态
     /// </summary>
     bool IsPreviewing { get; }
+
+    /// <summary>
+    /// 捕获当前预览帧
+    /// </summary>
+    /// <returns>图像字节数组，如果失败则返回null</returns>
+    Task<byte[]?> CaptureCurrentFrameAsync();
 }
 
 /// <summary>
@@ -51,6 +57,8 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
     private Action<byte[], int, int>? _frameCallback;
     private readonly object _lockObject = new();
     private bool? _lastAvailabilityStatus; // 缓存上次的可用性状态，用于避免重复日志
+    private byte[]? _lastFrameData; // 保存最后一帧数据，供拍照使用
+    private readonly object _frameLockObject = new(); // 用于保护最后一帧数据的锁
 
     public bool IsPreviewing { get; private set; }
 
@@ -222,6 +230,12 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
                         var imageBytes = args.Buffer.ExtractImage();
                         if (imageBytes != null && imageBytes.Length > 0)
                         {
+                            // 保存最后一帧数据，供拍照使用
+                            lock (_frameLockObject)
+                            {
+                                _lastFrameData = imageBytes;
+                            }
+
                             var callback = _frameCallback;
                             if (callback != null)
                             {
@@ -293,6 +307,12 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
                 _frameCallback = null;
             }
 
+            // 清空最后一帧数据
+            lock (_frameLockObject)
+            {
+                _lastFrameData = null;
+            }
+
             _logger?.LogInformation("USB 摄像头预览已停止");
         }
         catch (Exception ex)
@@ -304,6 +324,32 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
                 _currentDevice = null;
                 _currentDescriptor = null;
             }
+
+            // 清空最后一帧数据
+            lock (_frameLockObject)
+            {
+                _lastFrameData = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 捕获当前预览帧
+    /// </summary>
+    public Task<byte[]?> CaptureCurrentFrameAsync()
+    {
+        lock (_frameLockObject)
+        {
+            if (_lastFrameData == null)
+            {
+                _logger?.LogWarning("没有可用的帧数据，预览可能未启动或未接收到帧");
+                return Task.FromResult<byte[]?>(null);
+            }
+
+            // 创建副本，避免外部修改影响内部数据
+            var frameCopy = new byte[_lastFrameData.Length];
+            Array.Copy(_lastFrameData, frameCopy, _lastFrameData.Length);
+            return Task.FromResult<byte[]?>(frameCopy);
         }
     }
 
@@ -331,6 +377,7 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
             _currentDescriptor = null;
             _frameCallback = null;
             IsPreviewing = false;
+            _lastFrameData = null;
         }
 
         if (deviceToDispose != null)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -11,6 +12,7 @@ using MaterialClient.Views;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Uow;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Avalonia;
@@ -29,6 +31,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IServiceProvider _serviceProvider;
+    private readonly AttendedWeighingViewModel? _parentViewModel;
 
     #region 属性
 
@@ -70,11 +73,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     public AttendedWeighingDetailViewModel(
         WeighingListItemDto listItem,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        AttendedWeighingViewModel? parentViewModel = null)
         : base(serviceProvider.GetService<ILogger<AttendedWeighingDetailViewModel>>())
     {
         _listItem = listItem;
         _serviceProvider = serviceProvider;
+        _parentViewModel = parentViewModel;
         _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
         _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
         _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
@@ -335,11 +340,101 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 Remark
             ));
 
+            // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
+            if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
+            {
+                var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
+                
+                // 检查文件是否存在
+                if (File.Exists(billPhotoPath))
+                {
+                    await CreateBillPhotoAttachmentAsync(billPhotoPath);
+                    
+                    // 清空临时文件路径
+                    _parentViewModel.ClearCapturedBillPhotoPath();
+                }
+            }
+
             SaveCompleted?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "保存失败");
+        }
+    }
+
+    /// <summary>
+    /// 创建BillPhoto附件
+    /// </summary>
+    private async Task CreateBillPhotoAttachmentAsync(string photoPath)
+    {
+        try
+        {
+            var unitOfWorkManager = _serviceProvider.GetRequiredService<IUnitOfWorkManager>();
+            var attachmentFileRepository = _serviceProvider.GetRequiredService<IRepository<AttachmentFile, int>>();
+            var attachmentService = _serviceProvider.GetRequiredService<IAttachmentService>();
+
+            using var uow = unitOfWorkManager.Begin();
+
+            // 先删除旧的TicketPhoto附件（如果存在）
+            var existingAttachments = await attachmentService.GetAttachmentsByListItemAsync(_listItem);
+            var existingTicketPhoto = existingAttachments.FirstOrDefault(a => a.AttachType == AttachType.TicketPhoto);
+            
+            if (existingTicketPhoto != null)
+            {
+                // 删除关联记录
+                if (_listItem.ItemType == WeighingListItemType.WeighingRecord)
+                {
+                    var weighingRecordAttachmentRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecordAttachment, int>>();
+                    var existingRecordAttachments = await weighingRecordAttachmentRepository.GetListAsync(
+                        predicate: ra => ra.WeighingRecordId == _listItem.Id && ra.AttachmentFileId == existingTicketPhoto.Id);
+                    foreach (var recordAttachment in existingRecordAttachments)
+                    {
+                        await weighingRecordAttachmentRepository.DeleteAsync(recordAttachment);
+                    }
+                }
+                else if (_listItem.ItemType == WeighingListItemType.Waybill)
+                {
+                    var waybillAttachmentRepository = _serviceProvider.GetRequiredService<IRepository<WaybillAttachment, int>>();
+                    var existingWaybillAttachments = await waybillAttachmentRepository.GetListAsync(
+                        predicate: wa => wa.WaybillId == _listItem.Id && wa.AttachmentFileId == existingTicketPhoto.Id);
+                    foreach (var waybillAttachment in existingWaybillAttachments)
+                    {
+                        await waybillAttachmentRepository.DeleteAsync(waybillAttachment);
+                    }
+                }
+
+                // 删除AttachmentFile
+                await attachmentFileRepository.DeleteAsync(existingTicketPhoto);
+                Logger?.LogInformation("已删除旧的BillPhoto附件: {FileId}", existingTicketPhoto.Id);
+            }
+
+            // 创建新的AttachmentFile
+            var fileName = Path.GetFileName(photoPath);
+            var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.TicketPhoto);
+            await attachmentFileRepository.InsertAsync(attachmentFile, true);
+
+            // 根据ItemType创建关联记录
+            if (_listItem.ItemType == WeighingListItemType.WeighingRecord)
+            {
+                var weighingRecordAttachmentRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecordAttachment, int>>();
+                var weighingRecordAttachment = new WeighingRecordAttachment(_listItem.Id, attachmentFile.Id);
+                await weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment, true);
+            }
+            else if (_listItem.ItemType == WeighingListItemType.Waybill)
+            {
+                var waybillAttachmentRepository = _serviceProvider.GetRequiredService<IRepository<WaybillAttachment, int>>();
+                var waybillAttachment = new WaybillAttachment(_listItem.Id, attachmentFile.Id);
+                await waybillAttachmentRepository.InsertAsync(waybillAttachment, true);
+            }
+
+            await uow.CompleteAsync();
+            Logger?.LogInformation("成功创建BillPhoto附件: {FilePath}", photoPath);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "创建BillPhoto附件失败: {FilePath}", photoPath);
+            throw;
         }
     }
 
