@@ -76,7 +76,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     private bool _isClosing = false;
 
     private readonly System.Threading.ReaderWriterLockSlim _rwLock =
-        new(System.Threading.LockRecursionPolicy.SupportsRecursion);
+        new(System.Threading.LockRecursionPolicy.NoRecursion);
 
     private ScaleSettings? _currentSettings;
 
@@ -196,22 +196,31 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         {
             if (_isClosing) return;
 
-            using var _ = _rwLock.WriteLock();
-            if (_serialPort == null || !_serialPort.IsOpen) return;
-
-            _isListening = true;
-
-            switch (_receType)
+            // Use read lock to check state (allows concurrent access)
+            using (_rwLock.ReadLock())
             {
-                case ReceType.Hex:
-                    ReceiveHex();
-                    break;
-                case ReceType.String:
-                    ReceiveString();
-                    break;
+                if (_serialPort == null || !_serialPort.IsOpen) return;
             }
 
-            _isListening = false;
+            // I/O and parsing completely outside of lock
+            _isListening = true;
+
+            try
+            {
+                switch (_receType)
+                {
+                    case ReceType.Hex:
+                        ReceiveHex();  // Internal lock management
+                        break;
+                    case ReceType.String:
+                        ReceiveString();  // Internal lock management
+                        break;
+                }
+            }
+            finally
+            {
+                _isListening = false;
+            }
         }
         catch (Exception ex)
         {
@@ -227,25 +236,43 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     {
         try
         {
-            if (_serialPort == null) return;
+            // Use read lock to get serial port reference (allows concurrent access)
+            SerialPort? port;
+            using (_rwLock.ReadLock())
+            {
+                port = _serialPort;
+                if (port == null) return;
+            }
 
+            // I/O operation outside of lock (non-blocking for other threads)
             int receivedCount = 0;
             byte[] readBuffer = new byte[_byteCount];
 
             while (receivedCount < _byteCount)
             {
-                int bytesRead = _serialPort.Read(readBuffer, receivedCount, _byteCount - receivedCount);
+                int bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
                 receivedCount += bytesRead;
             }
 
             // Check frame format: 0x02 at start, 0x03 at end
             if (readBuffer[0] == 0x02 && readBuffer[_byteCount - 1] == 0x03)
             {
-                ParseHexWeight(readBuffer);
+                // Parse data outside of lock
+                var parsedWeight = ParseHexWeight(readBuffer);
+                
+                // Only use write lock to update state (hold time < 50ns)
+                if (parsedWeight.HasValue)
+                {
+                    using var _ = _rwLock.WriteLock();
+                    _currentWeight = parsedWeight.Value;
+                    _weightSubject.OnNext(parsedWeight.Value);
+                }
             }
             else
             {
-                _serialPort.DiscardInBuffer();
+                // Discard buffer also needs read lock
+                using var _ = _rwLock.ReadLock();
+                _serialPort?.DiscardInBuffer();
             }
         }
         catch (Exception ex)
@@ -261,18 +288,34 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     {
         try
         {
-            if (_serialPort == null) return;
+            // Use read lock to get serial port reference (allows concurrent access)
+            SerialPort? port;
+            using (_rwLock.ReadLock())
+            {
+                port = _serialPort;
+                if (port == null) return;
+            }
 
-            string receivedData = _serialPort.ReadTo(_endChar);
+            // I/O operation outside of lock (non-blocking for other threads)
+            string receivedData = port.ReadTo(_endChar);
 
-            // Reverse the string as per reference implementation
+            // Reverse the string as per reference implementation (outside of lock)
             var reversed = string.Empty;
             for (int i = receivedData.Length - 1; i >= 0; i--)
             {
                 reversed += receivedData[i];
             }
 
-            ParseStringWeight(reversed);
+            // Parse data outside of lock
+            var parsedWeight = ParseStringWeight(reversed);
+            
+            // Only use write lock to update state (hold time < 50ns)
+            if (parsedWeight.HasValue)
+            {
+                using var _ = _rwLock.WriteLock();
+                _currentWeight = parsedWeight.Value;
+                _weightSubject.OnNext(parsedWeight.Value);
+            }
         }
         catch (Exception ex)
         {
@@ -286,17 +329,18 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     /// Example: 02 2B 30 30 30 32 30 35 32 31 45 03
     ///          STX '+' "0002" "05" "21" 'E' ETX = 2.05
     /// </summary>
-    private void ParseHexWeight(byte[] buffer)
+    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
+    private decimal? ParseHexWeight(byte[] buffer)
     {
         try
         {
-            if (buffer.Length < 12) return;
+            if (buffer.Length < 12) return null;
 
             // Check frame format: 0x02 at start, 0x03 at end
             if (buffer[0] != 0x02 || buffer[buffer.Length - 1] != 0x03)
             {
                 _logger?.LogWarning($"Invalid frame format: STX={buffer[0]:X2}, ETX={buffer[buffer.Length - 1]:X2}");
-                return;
+                return null;
             }
 
             // Parse sign byte (byte 1): 0x2B = '+', 0x2D = '-'
@@ -344,13 +388,10 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                         parsedWeight = -parsedWeight;
                     }
 
-                    using var _ = _rwLock.WriteLock();
-                    _currentWeight = parsedWeight;
-
                     _logger?.LogDebug(
                         $"Parsed HEX weight: {parsedWeight} t (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
-                    // Push weight update to Rx stream
-                    _weightSubject.OnNext(parsedWeight);
+                    
+                    return parsedWeight;
                 }
                 else
                 {
@@ -366,6 +407,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         {
             _logger?.LogWarning(ex, "Error parsing HEX weight data");
         }
+        
+        return null;
     }
 
     /// <summary>
@@ -373,7 +416,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     /// Format: reversed string ending with "="
     /// Example: "=76.54321" reversed = "12345.67="
     /// </summary>
-    private void ParseStringWeight(string data)
+    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
+    private decimal? ParseStringWeight(string data)
     {
         try
         {
@@ -383,12 +427,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             // Try to parse as decimal
             if (decimal.TryParse(weightString, out decimal weight))
             {
-                using var _ = _rwLock.WriteLock();
-                _currentWeight = weight;
-
                 _logger?.LogDebug($"Parsed String weight: {weight} t");
-                // Push weight update to Rx stream
-                _weightSubject.OnNext(weight);
+                return weight;
             }
             else
             {
@@ -399,6 +439,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         {
             _logger?.LogWarning(ex, $"Error parsing String weight data: {data}");
         }
+        
+        return null;
     }
 
     /// <summary>
@@ -460,21 +502,23 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     /// </summary>
     private void CloseInternal()
     {
+        // Set closing flag outside of lock
+        _isClosing = true;
+
+        // Wait for any ongoing receive operation to complete (outside of lock)
+        int waitCount = 0;
+        while (_isListening && waitCount < 100)
+        {
+            Thread.Sleep(10);
+            waitCount++;
+        }
+
+        // Acquire write lock only for cleanup
         using var _ = _rwLock.WriteLock();
         try
         {
             if (_serialPort != null && _serialPort.IsOpen)
             {
-                _isClosing = true;
-
-                // Wait for any ongoing receive operation to complete
-                int waitCount = 0;
-                while (_isListening && waitCount < 100)
-                {
-                    Thread.Sleep(10);
-                    waitCount++;
-                }
-
                 _serialPort.DataReceived -= SerialPort_DataReceived;
                 _serialPort.Close();
                 _serialPort.Dispose();
