@@ -180,7 +180,7 @@
                         </DataGridTemplateColumn>
                         
                         <!-- 单位 (2字) -->
-                        <DataGridTemplateColumn Header="单位" Width="48">
+                        <DataGridTemplateColumn Header="单位" Width="72">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}" 
