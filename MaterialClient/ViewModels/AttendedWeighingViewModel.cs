@@ -175,6 +175,26 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartStatusObservable();
         StartWeighingRecordCreatedObservable();
         StartDeliveryTypeObservable();
+        
+        // 监听 USB 摄像头在线状态变化，自动启动/停止预览
+        this.WhenAnyValue(x => x.IsUsbCameraOnline)
+            .DistinctUntilChanged()
+            .Subscribe(async isOnline =>
+            {
+                if (isOnline)
+                {
+                    // 摄像头上线，启动预览
+                    await StartUsbCameraPreviewAsync();
+                }
+                else
+                {
+                    // 摄像头下线，停止预览
+                    await StopUsbCameraPreviewAsync();
+                }
+            })
+            .DisposeWith(_disposables);
+        
+        // 尝试初始启动预览（如果摄像头已经在线）
         _ = StartUsbCameraPreviewAsync();
     }
 
@@ -285,10 +305,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 return;
             }
 
+            // 如果预览已经在运行，跳过
+            if (usbCameraService.IsPreviewing)
+            {
+                Logger?.LogDebug("USB 摄像头预览已在运行中，跳过启动");
+                return;
+            }
+
             var isAvailable = await usbCameraService.IsAvailableAsync();
             if (!isAvailable)
             {
-                Logger?.LogInformation("USB 摄像头不可用，跳过预览启动");
+                Logger?.LogDebug("USB 摄像头不可用，跳过预览启动");
                 return;
             }
 
@@ -339,6 +366,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
             if (usbCameraService == null)
             {
+                return;
+            }
+
+            // 如果预览未在运行，跳过
+            if (!usbCameraService.IsPreviewing)
+            {
+                Logger?.LogDebug("USB 摄像头预览未在运行，跳过停止");
                 return;
             }
 
