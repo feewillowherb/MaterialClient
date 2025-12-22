@@ -540,15 +540,6 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
         }
     }
 
-    /// <summary>
-    /// Dispose resources
-    /// </summary>
-    public void Dispose()
-    {
-        Close();
-        _weightSubject?.Dispose();
-        _rwLock?.Dispose();
-    }
 
     /// <summary>
     /// Set weight for testing purposes (for hardware simulation API)
@@ -583,5 +574,13 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
         {
             _rwLock.ExitReadLock();
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Close();
+        _weightSubject?.Dispose();
+        _rwLock?.Dispose();
+        await Task.CompletedTask;
     }
 }
