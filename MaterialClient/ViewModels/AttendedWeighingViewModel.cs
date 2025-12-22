@@ -158,7 +158,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .Subscribe(_ => this.RaisePropertyChanged(nameof(IsSending)))
             .DisposeWith(_disposables);
 
-        _ = RefreshAsync();
+        _ = InitializeOnFirstLoadAsync();
         StartTimeUpdateTimer();
 
         _truckScaleWeightService.WeightUpdates
@@ -196,6 +196,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         
         // 尝试初始启动预览（如果摄像头已经在线）
         _ = StartUsbCameraPreviewAsync();
+    }
+
+    /// <summary>
+    /// 页面首次加载时的初始化逻辑
+    /// </summary>
+    private async Task InitializeOnFirstLoadAsync()
+    {
+        await RefreshAsync();
+        BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async Task StartAllDevicesAsync()
@@ -708,36 +718,36 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private async void OnDetailSaveCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailMatchCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailCompleteCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     /// <summary>
