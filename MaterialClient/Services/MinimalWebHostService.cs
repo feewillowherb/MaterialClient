@@ -15,7 +15,7 @@ namespace MaterialClient.Services;
 /// Web Host 服务，负责启动和管理 Web API 服务
 /// 与桌面应用共享同一个 ServiceProvider 和 DbContext
 /// </summary>
-public class MinimalWebHostService : IDisposable
+public class MinimalWebHostService : IAsyncDisposable
 {
     private WebApplication? _webApplication;
     private bool _isRunning;
@@ -129,11 +129,11 @@ public class MinimalWebHostService : IDisposable
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         if (_webApplication != null)
         {
-            Task.Run(async () => await StopAsync()).Wait();
+            await StopAsync();
         }
     }
 

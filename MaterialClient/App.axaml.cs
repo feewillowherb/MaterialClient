@@ -94,10 +94,10 @@ public partial class App : Application
         // Stop Web Host and ABP application synchronously
         Task.Run(async () =>
         {
-            // Stop Web Host service
+            // Dispose Web Host service (will stop it if running)
             if (_webHostService != null)
             {
-                await _webHostService.StopAsync();
+                await _webHostService.DisposeAsync();
             }
 
             // Shutdown ABP application
