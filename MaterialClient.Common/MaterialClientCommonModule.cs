@@ -51,9 +51,9 @@ public class MaterialClientCommonModule : AbpModule
 
         services.Configure<AbpDbContextOptions>(options =>
         {
-            options.Configure(context =>
+            options.Configure(c =>
             {
-                context.DbContextOptions.UseSqlite(connectionString)
+                c.DbContextOptions.UseSqlite(connectionString)
                     .EnableDetailedErrors() // 启用详细的错误信息
                     .EnableSensitiveDataLogging(); // 启用敏感数据日志记录（包含参数值）
             });
@@ -94,37 +94,6 @@ public class MaterialClientCommonModule : AbpModule
                     sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
                 ));
 
-        // Register Authentication Services
-        services.AddSingleton<IMachineCodeService, MachineCodeService>();
-        services.AddSingleton<IPasswordEncryptionService, PasswordEncryptionService>();
-        // ILicenseService and IAuthenticationService are auto-registered by ABP (ITransientDependency)
-
-        // Register Services
-        services.AddSingleton<HikvisionService>();
-
-        // Register Hardware Services (singleton for test value persistence)
-        services.AddSingleton<ITruckScaleWeightService, TruckScaleWeightService>();
-        services.AddSingleton<IPlateNumberCaptureService, PlateNumberCaptureService>();
-        services.AddSingleton<IVehiclePhotoService, VehiclePhotoService>();
-        services.AddSingleton<IBillPhotoService, BillPhotoService>();
-        services.AddSingleton<IHikvisionService, HikvisionService>();
-        services.AddSingleton<IUsbCameraService, UsbCameraService>();
-
-        // Register WeighingService (transient, registered via ITransientDependency)
-        // No need to register explicitly, ABP will auto-register it
-
-        // Register SettingsService (transient, registered via ITransientDependency)
-        // No need to register explicitly, ABP will auto-register it
-
-        // Register AttendedWeighingService as singleton (needs to maintain state and listen continuously)
-        services.AddSingleton<IAttendedWeighingService, AttendedWeighingService>();
-
-        // Repositories are automatically registered by ABP framework
-        // when using IRepository<TEntity, TKey> interface
-        // No manual registration needed for repositories
-
-
-
         var options = new IdGeneratorOptions(1);
         // 2. 保存配置并初始化
         YitIdHelper.SetIdGenerator(options);
@@ -145,20 +114,27 @@ public class MaterialClientCommonModule : AbpModule
         // 配置日志文件路径，按日期滚动
         var logFilePath = Path.Combine(logsDirectory, "MaterialClient-.log");
 
+        // 从配置文件读取日志级别
+        var defaultLevel = GetLogLevel(configuration, "Logging:LogLevel:Default", "Information");
+        var microsoftLevel = GetLogLevel(configuration, "Logging:LogLevel:Microsoft", "Warning");
+        var efCoreLevel = GetLogLevel(configuration, "Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");
+        var abpLevel = GetLogLevel(configuration, "Logging:LogLevel:Volo.Abp", "Warning");
+
         // 配置 Serilog
-        Log.Logger = new LoggerConfiguration()
+        var loggerConfig = new LoggerConfiguration()
             .Enrich.FromLogContext()
-            .MinimumLevel.Information()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
-            .MinimumLevel.Override("Volo.Abp", LogEventLevel.Warning)
+            .MinimumLevel.Is(ParseLogEventLevel(defaultLevel))
+            .MinimumLevel.Override("Microsoft", ParseLogEventLevel(microsoftLevel))
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", ParseLogEventLevel(efCoreLevel))
+            .MinimumLevel.Override("Volo.Abp", ParseLogEventLevel(abpLevel))
             .WriteTo.File(
                 path: logFilePath,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 30,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
-                encoding: System.Text.Encoding.UTF8)
-            .CreateLogger();
+                encoding: System.Text.Encoding.UTF8);
+
+        Log.Logger = loggerConfig.CreateLogger();
 
         // 将 Serilog 添加到日志提供程序
         services.AddLogging(logging =>
@@ -166,6 +142,18 @@ public class MaterialClientCommonModule : AbpModule
             logging.ClearProviders();
             logging.AddSerilog(Log.Logger);
         });
+    }
+
+    private string GetLogLevel(IConfiguration configuration, string key, string defaultValue)
+    {
+        return configuration[key] ?? defaultValue;
+    }
+
+    private LogEventLevel ParseLogEventLevel(string level)
+    {
+        return Enum.TryParse<LogEventLevel>(level, ignoreCase: true, out var result)
+            ? result
+            : LogEventLevel.Information;
     }
 
     public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)

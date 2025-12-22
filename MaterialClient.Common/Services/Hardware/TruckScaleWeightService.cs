@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hardware;
 
@@ -63,7 +64,7 @@ public interface ITruckScaleWeightService : IAsyncDisposable
 /// Uses serial port communication to read weight from truck scale
 /// </summary>
 [AutoConstructor]
-public partial class TruckScaleWeightService : ITruckScaleWeightService
+public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingletonDependency
 {
     private readonly ISettingsService _settingsService;
     private readonly ILogger<TruckScaleWeightService>? _logger;

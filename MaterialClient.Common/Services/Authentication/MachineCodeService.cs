@@ -23,7 +23,7 @@ public interface IMachineCodeService
 /// <summary>
 /// 机器码服务实现
 /// </summary>
-public class MachineCodeService : IMachineCodeService, ITransientDependency
+public class MachineCodeService : IMachineCodeService, ISingletonDependency
 {
     public string GetMachineCode()
     {

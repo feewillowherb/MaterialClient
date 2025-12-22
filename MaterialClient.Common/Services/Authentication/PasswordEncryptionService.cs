@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Authentication;
 
@@ -28,7 +29,7 @@ public interface IPasswordEncryptionService
 /// <summary>
 /// 密码加密服务实现（AES-256-CBC）
 /// </summary>
-public class PasswordEncryptionService : IPasswordEncryptionService
+public class PasswordEncryptionService : IPasswordEncryptionService, ISingletonDependency
 {
     private readonly byte[] _key;
     private readonly ILogger<PasswordEncryptionService> _logger;
@@ -138,4 +139,3 @@ public class PasswordEncryptionService : IPasswordEncryptionService
         }
     }
 }
-
