@@ -16,9 +16,7 @@
         </Style>
     </UserControl.Styles>
     
-    <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollBarVisibility="Auto">
-        <Grid Background="#F5F6FA" Margin="10">
+    <Grid Background="#F5F6FA" Margin="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -155,8 +153,8 @@
                     
                     <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
                     <DataGrid.Columns>
-                        <!-- 材料名称 (4字: 76 + 16 = 92) -->
-                        <DataGridTemplateColumn Header="材料名称" Width="92">
+                        <!-- 材料名称 (4字) -->
+                        <DataGridTemplateColumn Header="材料名称" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding SelectedMaterial.Name}" 
@@ -181,8 +179,8 @@
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 单位 (2字: 48 + 16 = 64) -->
-                        <DataGridTemplateColumn Header="单位" Width="64">
+                        <!-- 单位 (2字) -->
+                        <DataGridTemplateColumn Header="单位" Width="48">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}" 
@@ -207,8 +205,8 @@
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 换算率 (3字: 60 + 16 = 76) -->
-                        <DataGridTemplateColumn Header="换算率" Width="76">
+                        <!-- 换算率 (3字) -->
+                        <DataGridTemplateColumn Header="换算率" Width="62">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding RateDisplay}"
@@ -221,8 +219,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 运单数量 (4字: 76 + 16 = 92) -->
-                        <DataGridTemplateColumn Header="运单数量" Width="92">
+                        <!-- 运单数量 (4字) -->
+                        <DataGridTemplateColumn Header="运单数量" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding WaybillQuantityDisplay}"
@@ -249,8 +247,8 @@
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 运单重量 (4字: 76 + 16 = 92) -->
-                        <DataGridTemplateColumn Header="运单重量" Width="92">
+                        <!-- 运单重量 (4字) -->
+                        <DataGridTemplateColumn Header="运单重量" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding WaybillWeightDisplay}"
@@ -263,8 +261,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 实际数量 (4字: 76 + 16 = 92) -->
-                        <DataGridTemplateColumn Header="实际数量" Width="92">
+                        <!-- 实际数量 (4字) -->
+                        <DataGridTemplateColumn Header="实际数量" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ActualQuantityDisplay}"
@@ -277,8 +275,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 实际重量 (4字: 76 + 16 = 92) -->
-                        <DataGridTemplateColumn Header="实际重量" Width="92">
+                        <!-- 实际重量 (4字) -->
+                        <DataGridTemplateColumn Header="实际重量" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ActualWeightDisplay}"
@@ -291,8 +289,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 正负差 (3字: 60 + 16 = 76) -->
-                        <DataGridTemplateColumn Header="正负差" Width="76">
+                        <!-- 正负差 (3字) -->
+                        <DataGridTemplateColumn Header="正负差" Width="62">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DifferenceDisplay}"
@@ -305,8 +303,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 偏差率 (3字: 60 + 16 = 76) -->
-                        <DataGridTemplateColumn Header="偏差率" Width="76">
+                        <!-- 偏差率 (3字) -->
+                        <DataGridTemplateColumn Header="偏差率" Width="62">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DeviationRateDisplay}"
@@ -319,8 +317,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- 偏差结果 (4字: 76 + 16 = 92) -->
-                        <DataGridTemplateColumn Header="偏差结果" Width="92">
+                        <!-- 偏差结果 (4字) -->
+                        <DataGridTemplateColumn Header="偏差结果" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DeviationResult}"
@@ -389,5 +387,4 @@
                 </StackPanel>
             </Grid>
         </Grid>
-    </ScrollViewer>
 </UserControl>
