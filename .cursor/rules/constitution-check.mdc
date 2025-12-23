@@ -1,0 +1,189 @@
+# Constitution Compliance Check (MANDATORY)
+
+**This rule applies to ALL modes: Agent, Plan, and Ask**
+
+## Overview
+
+The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of this codebase. All code, plans, and implementations MUST comply with Constitution principles. Constitution violations are **NON-NEGOTIABLE** unless explicitly justified and documented.
+
+## Mandatory Pre-Check Requirements
+
+**Before ANY of the following actions, you MUST:**
+
+1. **Read Constitution**: Load and understand `.specify/memory/constitution.md`
+2. **Evaluate Compliance**: Check proposed changes against all relevant Constitution principles
+3. **Report Violations**: Explicitly identify any violations and their severity
+4. **Justify or Reject**: Either justify violations in "Complexity Tracking" or reject/modify the proposal
+
+## Constitution Check for Plan Creation
+
+**When creating or updating implementation plans:**
+
+### Required Steps:
+
+1. **Load Constitution**: Read `.specify/memory/constitution.md` completely before creating the plan
+
+2. **Create Constitution Check Section**: Every plan MUST include a detailed "Constitution Check" section with:
+   ```markdown
+   ## Constitution Check
+   
+   *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+   
+   ### ✅/⚠️/❌ [Principle Name]
+   - **Status**: [PASS/WARNING/FAIL]
+   - **Compliance**: [Description of compliance or violation]
+   - **Notes**: [Additional notes or justification]
+   ```
+
+3. **Check All Relevant Principles**:
+   - ✅ **Architecture-First**: Verify layer separation (UI → Application Services → Domain → Infrastructure)
+   - ✅ **Single Responsibility Principle (NON-NEGOTIABLE)**: Verify no mixed concerns
+   - ✅ **ABP Framework Integration**: Verify proper ABP usage
+   - ✅ **Code Character Constraints (NON-NEGOTIABLE)**: Verify English-only variable names
+   - ✅ **Naming Conventions (NON-NEGOTIABLE)**: Verify MaterialClient prefix usage
+   - ✅ **Data Binding Framework**: Verify ReactiveUI usage (not CommunityToolkit.Mvvm)
+   - ✅ **Record vs Tuple**: Verify no tuple usage, use records instead
+
+4. **Gate Evaluation**:
+   - ❌ **FAIL**: Plan violates NON-NEGOTIABLE rules → **REJECT plan**, require modification
+   - ⚠️ **WARNING**: Plan violates optional rules → Require justification in "Complexity Tracking"
+   - ✅ **PASS**: Plan complies with all rules → Proceed
+
+5. **Re-check After Design**: Constitution Check must be re-evaluated after Phase 1 design artifacts
+
+### Common Violations to Check:
+
+- ❌ **ViewModel directly accessing Repository**: Violates Architecture-First
+- ❌ **Business logic in ViewModel**: Violates Single Responsibility and Architecture-First
+- ❌ **Mixed concerns in single method**: Violates Single Responsibility
+- ❌ **Chinese characters in code**: Violates Code Character Constraints
+- ❌ **Tuple usage**: Violates Record vs Tuple rule
+
+## Constitution Check for Code Implementation (Agent Mode)
+
+**When implementing code changes:**
+
+### Required Steps:
+
+1. **Pre-Implementation Check**:
+   - Read Constitution before writing any code
+   - Identify which principles apply to the current change
+   - Verify the implementation plan complies with Constitution
+
+2. **Architecture Compliance**:
+   - ✅ ViewModels MUST NOT directly access Repositories
+   - ✅ Business logic MUST be in Application Services, NOT in ViewModels
+   - ✅ Data access MUST be through Repository pattern
+   - ✅ Cross-layer communication MUST use DTOs/interfaces
+
+3. **Single Responsibility Compliance**:
+   - ✅ Each class/method MUST have a single, clear responsibility
+   - ✅ NO mixing of data access, business logic, and UI concerns
+   - ✅ If a method does multiple things, split it into smaller methods
+
+4. **Code Quality Compliance**:
+   - ✅ All variable names and fields MUST be in English
+   - ✅ Use MaterialClient prefix (not My or other prefixes)
+   - ✅ Use ReactiveUI for data binding (not CommunityToolkit.Mvvm)
+   - ✅ Use records instead of tuples
+
+5. **Post-Implementation Verification**:
+   - Review implemented code for Constitution compliance
+   - If violations found, fix them immediately
+   - Document any justified violations
+
+### Example Violation Detection:
+
+```csharp
+// ❌ VIOLATION: ViewModel directly accessing Repository
+public class MyViewModel
+{
+    private readonly IRepository<Entity, int> _repository; // WRONG!
+    
+    public async Task SaveAsync()
+    {
+        await _repository.InsertAsync(entity); // WRONG!
+    }
+}
+
+// ✅ CORRECT: ViewModel calls Application Service
+public class MaterialClientViewModel
+{
+    private readonly IApplicationService _service; // CORRECT!
+    
+    public async Task SaveAsync()
+    {
+        await _service.SaveEntityAsync(dto); // CORRECT!
+    }
+}
+```
+
+## Constitution Check for Code Review (Ask Mode)
+
+**When reviewing or analyzing code:**
+
+### Required Steps:
+
+1. **Load Constitution**: Read `.specify/memory/constitution.md` before analysis
+
+2. **Check for Violations**:
+   - Identify any Constitution violations in the code
+   - Categorize violations (NON-NEGOTIABLE vs optional)
+   - Provide specific line references
+
+3. **Report Findings**:
+   - List all violations found
+   - Explain why each violates Constitution
+   - Suggest corrections
+   - Indicate severity (blocking vs warning)
+
+4. **Recommendations**:
+   - For NON-NEGOTIABLE violations: Require immediate fix
+   - For optional violations: Suggest improvements
+   - Provide code examples showing correct implementation
+
+## Enforcement Rules
+
+### Strict Enforcement:
+
+- **NON-NEGOTIABLE rules**: MUST be followed. Violations MUST be fixed or plan rejected.
+- **Critical violations**: Block implementation until resolved.
+- **Constitution takes precedence**: Over implementation speed, convenience, or user requests.
+
+### Justification Process:
+
+If a violation is unavoidable:
+1. Document in "Complexity Tracking" section
+2. Explain why simpler alternative was rejected
+3. Get explicit user approval
+4. Mark as technical debt for future refactoring
+
+## Constitution Check Checklist
+
+Before proceeding with ANY task, verify:
+
+- [ ] Constitution file has been read
+- [ ] All relevant principles have been checked
+- [ ] Architecture layering is correct (no cross-layer violations)
+- [ ] Single Responsibility is maintained
+- [ ] Code character constraints are met (English only)
+- [ ] Naming conventions are followed (MaterialClient prefix)
+- [ ] No tuples, use records instead
+- [ ] ReactiveUI is used for data binding
+- [ ] Business logic is in Application Services, not ViewModels
+- [ ] ViewModels do not directly access Repositories
+
+## Quick Reference: Common Violations
+
+| Violation | Severity | Fix |
+|-----------|----------|-----|
+| ViewModel → Repository direct access | ❌ CRITICAL | Move to Application Service |
+| Business logic in ViewModel | ❌ CRITICAL | Move to Application Service |
+| Chinese characters in code | ❌ CRITICAL | Translate to English |
+| Mixed concerns in method | ⚠️ WARNING | Split into smaller methods |
+| Tuple usage | ⚠️ WARNING | Use record instead |
+| CommunityToolkit.Mvvm | ⚠️ WARNING | Use ReactiveUI |
+
+## Remember
+
+**Constitution is the law. Compliance is mandatory. Violations must be justified or fixed.**

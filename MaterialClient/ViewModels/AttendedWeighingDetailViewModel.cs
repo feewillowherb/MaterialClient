@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -29,6 +30,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IServiceProvider _serviceProvider;
+    private readonly AttendedWeighingViewModel? _parentViewModel;
 
     #region 属性
 
@@ -50,16 +52,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     [Reactive] private ObservableCollection<Material> _materials = new();
 
-    [Reactive] private Material? _selectedMaterial;
-
-    [Reactive] private int? _selectedMaterialId;
-
-    [Reactive] private ObservableCollection<MaterialUnitDto> _materialUnits = new();
-
-    [Reactive] private MaterialUnitDto? _selectedMaterialUnit;
-
-    [Reactive] private int? _selectedMaterialUnitId;
-
     [Reactive] private string? _remark;
 
     [Reactive] private DateTime? _joinTime;
@@ -80,11 +72,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     public AttendedWeighingDetailViewModel(
         WeighingListItemDto listItem,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        AttendedWeighingViewModel? parentViewModel = null)
         : base(serviceProvider.GetService<ILogger<AttendedWeighingDetailViewModel>>())
     {
         _listItem = listItem;
         _serviceProvider = serviceProvider;
+        _parentViewModel = parentViewModel;
         _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
         _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
         _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
@@ -107,31 +101,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     SelectedProviderId = provider.Id;
                 }
             });
-
-        this.WhenAnyValue(x => x.SelectedMaterial)
-            .Subscribe(async material =>
-            {
-                if (material != null)
-                {
-                    SelectedMaterialId = material.Id;
-                    await LoadMaterialUnitsAsync(material.Id);
-                }
-                else
-                {
-                    SelectedMaterialId = null;
-                    MaterialUnits.Clear();
-                    SelectedMaterialUnit = null;
-                }
-            });
-
-        this.WhenAnyValue(x => x.SelectedMaterialUnit)
-            .Subscribe(unit =>
-            {
-                if (unit != null)
-                {
-                    SelectedMaterialUnitId = unit.Id;
-                }
-            });
     }
 
     #region 初始化
@@ -144,9 +113,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         GoodsWeight = AllWeight - TruckWeight;
         PlateNumber = _listItem.PlateNumber;
         SelectedProviderId = _listItem.ProviderId;
-        SelectedMaterialId = _listItem.MaterialId;
-        SelectedMaterialUnitId = _listItem.MaterialUnitId;
-        Remark = string.Empty;
+        Remark = _listItem.Remark ?? string.Empty;
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
@@ -155,25 +122,58 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
 
         MaterialItems.Clear();
-        MaterialItems.Add(new MaterialItemRow
+        
+        // 从 _listItem.Materials 创建 MaterialItemRow
+        if (_listItem.Materials.Count > 0)
         {
-            LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
-            IsWaybill = _listItem.ItemType == WeighingListItemType.Waybill,
-            WaybillQuantity = _listItem.WaybillQuantity,
-            WaybillWeight = null,
-            ActualQuantity = null,
-            ActualWeight = GoodsWeight,
-            Difference = null,
-            DeviationRate = null,
-            DeviationResult = "-"
-        });
+            foreach (var materialDto in _listItem.Materials)
+            {
+                MaterialItems.Add(new MaterialItemRow
+                {
+                    LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
+                    IsWaybill = _listItem.ItemType == WeighingListItemType.Waybill,
+                    WaybillQuantity = materialDto.WaybillQuantity,
+                    WaybillWeight = null,
+                    ActualQuantity = null,
+                    ActualWeight = materialDto.Weight ?? GoodsWeight,
+                    Difference = null,
+                    DeviationRate = null,
+                    DeviationResult = "-"
+                });
+            }
+        }
+        else
+        {
+            // 如果没有 Materials，创建一个空行（兼容旧代码）
+            MaterialItems.Add(new MaterialItemRow
+            {
+                LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
+                IsWaybill = _listItem.ItemType == WeighingListItemType.Waybill,
+                WaybillQuantity = _listItem.WaybillQuantity,
+                WaybillWeight = null,
+                ActualQuantity = null,
+                ActualWeight = GoodsWeight,
+                Difference = null,
+                DeviationRate = null,
+                DeviationResult = "-"
+            });
+        }
 
         // 延迟加载数据，避免阻塞 UI 渲染
-        Dispatcher.UIThread.Post(async () =>
+        Dispatcher.UIThread.Post(LoadDataSafelyAsync, DispatcherPriority.Background);
+    }
+
+    private async void LoadDataSafelyAsync()
+    {
+        try
         {
             await LoadWeighingRecordDetailsAsync();
             await LoadDropdownDataAsync();
-        }, Avalonia.Threading.DispatcherPriority.Background);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "加载详情数据失败");
+        }
     }
 
     private async Task LoadDropdownDataAsync()
@@ -190,32 +190,37 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 SelectedProvider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
             }
 
-            Material? selectedMaterial = null;
-
-            if (SelectedMaterialId.HasValue)
+            // 根据 _listItem.Materials 初始化每个 MaterialItemRow
+            for (int i = 0; i < MaterialItems.Count && i < _listItem.Materials.Count; i++)
             {
-                selectedMaterial = Materials.FirstOrDefault(m => m.Id == SelectedMaterialId.Value);
-                SelectedMaterial = selectedMaterial;
+                var materialDto = _listItem.Materials[i];
+                var row = MaterialItems[i];
 
-                if (selectedMaterial != null)
+                if (materialDto.MaterialId.HasValue)
                 {
-                    await LoadMaterialUnitsAsync(selectedMaterial.Id);
-                    if (SelectedMaterialUnitId.HasValue)
+                    var selectedMaterial = Materials.FirstOrDefault(m => m.Id == materialDto.MaterialId.Value);
+                    if (selectedMaterial != null)
                     {
-                        SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == SelectedMaterialUnitId.Value);
+                        var units = await LoadMaterialUnitsForRowAsync(selectedMaterial.Id);
+                        row.SetMaterialUnits(units);
+
+                        if (materialDto.MaterialUnitId.HasValue)
+                        {
+                            row.InitializeSelection(selectedMaterial, units, materialDto.MaterialUnitId);
+                        }
+                        else
+                        {
+                            row.InitializeSelection(selectedMaterial, units, null);
+                        }
                     }
                 }
-            }
 
-            if (MaterialItems.Count > 0)
-            {
-                var firstRow = MaterialItems[0];
-                firstRow.InitializeSelection(selectedMaterial, MaterialUnits, SelectedMaterialUnitId);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 如果加载失败，保持空列表
+            Logger?.LogError(ex, "加载下拉列表数据失败");
+            // 如果加载失败，保持当前状态
         }
     }
 
@@ -226,8 +231,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
             IsMatchButtonVisible = weighingRecord.MatchedId == null;
         }
-        catch
+        catch (Exception ex)
         {
+            Logger?.LogError(ex, "加载称重记录详情失败，RecordId={RecordId}", _listItem.Id);
             // 如果加载失败，保持默认值
         }
     }
@@ -250,8 +256,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 });
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Logger?.LogError(ex, "加载供应商列表失败");
             // 如果加载失败，保持空列表
         }
     }
@@ -267,35 +274,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 Materials.Add(material);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 如果加载失败，保持空列表
-        }
-    }
-
-    private async Task LoadMaterialUnitsAsync(int materialId)
-    {
-        try
-        {
-            var units = await _materialUnitRepository.GetListAsync(
-                predicate: u => u.MaterialId == materialId
-            );
-            MaterialUnits.Clear();
-            foreach (var unit in units.OrderBy(u => u.UnitName))
-            {
-                MaterialUnits.Add(new MaterialUnitDto
-                {
-                    Id = unit.Id,
-                    MaterialId = unit.MaterialId,
-                    UnitName = unit.UnitName,
-                    Rate = unit.Rate ?? 0m,
-                    RateName = unit.RateName,
-                    ProviderId = unit.ProviderId
-                });
-            }
-        }
-        catch
-        {
+            Logger?.LogError(ex, "加载材料列表失败");
             // 如果加载失败，保持空列表
         }
     }
@@ -321,8 +302,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 });
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Logger?.LogError(ex, "加载材料单位失败，MaterialId={MaterialId}", materialId);
             // 如果加载失败，返回空列表
         }
 
@@ -353,8 +335,25 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 materialId,
                 materialUnitId,
                 waybillQuantity,
-                null
+                null,
+                Remark
             ));
+
+            // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
+            if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
+            {
+                var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
+                
+                // 检查文件是否存在
+                if (File.Exists(billPhotoPath))
+                {
+                    var attachmentService = _serviceProvider.GetRequiredService<IAttachmentService>();
+                    await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
+                    
+                    // 清空临时文件路径
+                    _parentViewModel.ClearCapturedBillPhotoPath();
+                }
+            }
 
             SaveCompleted?.Invoke(this, EventArgs.Empty);
         }
@@ -363,6 +362,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             Logger?.LogError(ex, "保存失败");
         }
     }
+
 
     [ReactiveCommand]
     private async Task MatchAsync()
@@ -449,7 +449,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 materialId,
                 materialUnitId,
                 waybillQuantity,
-                null
+                null,
+                Remark
             ));
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
             CompleteCompleted?.Invoke(this, EventArgs.Empty);
@@ -461,8 +462,31 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     }
 
     [ReactiveCommand]
-    private async Task AddGoodsAsync()
+    private async Task AddMaterialAsync()
     {
+        try
+        {
+            var newRow = new MaterialItemRow
+            {
+                LoadMaterialUnitsFunc = LoadMaterialUnitsForRowAsync,
+                IsWaybill = _listItem.ItemType == WeighingListItemType.Waybill,
+                WaybillQuantity = null,
+                WaybillWeight = null,
+                ActualQuantity = null,
+                ActualWeight = 0,
+                Difference = null,
+                DeviationRate = null,
+                DeviationResult = "-"
+            };
+            
+            MaterialItems.Add(newRow);
+            Logger?.LogInformation("已添加新的材料行");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "添加材料行失败");
+        }
+        
         await Task.CompletedTask;
     }
 
@@ -528,12 +552,14 @@ public partial class MaterialItemRow : ReactiveObject
 
     public MaterialItemRow()
     {
+        // 延迟订阅，避免在初始化时触发大量计算
         this.WhenAnyValue(x => x.SelectedMaterial)
-            .Subscribe(async value =>
+            .Subscribe(value =>
             {
                 if (value != null && LoadMaterialUnitsFunc != null)
                 {
-                    await LoadMaterialUnitsInternalAsync(value.Id);
+                    // 使用 fire-and-forget 模式，但确保异常被捕获
+                    _ = LoadMaterialUnitsSafelyAsync(value.Id);
                 }
                 else
                 {
@@ -559,6 +585,7 @@ public partial class MaterialItemRow : ReactiveObject
                 }
             });
 
+        // 只订阅显示相关的属性变化，避免不必要的 RaisePropertyChanged
         this.WhenAnyValue(x => x.WaybillQuantity)
             .Subscribe(_ =>
             {
@@ -623,10 +650,26 @@ public partial class MaterialItemRow : ReactiveObject
                     MaterialUnits.Add(unit);
                 }
             }
-            catch
+            catch (Exception)
             {
                 // 如果加载失败，保持空列表
+                MaterialUnits.Clear();
+                SelectedMaterialUnit = null;
             }
+        }
+    }
+
+    private async Task LoadMaterialUnitsSafelyAsync(int materialId)
+    {
+        try
+        {
+            await LoadMaterialUnitsInternalAsync(materialId);
+        }
+        catch (Exception)
+        {
+            // 确保异常不会导致应用崩溃
+            MaterialUnits.Clear();
+            SelectedMaterialUnit = null;
         }
     }
 

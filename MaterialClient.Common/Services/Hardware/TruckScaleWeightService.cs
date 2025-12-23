@@ -6,15 +6,17 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hardware;
 
 /// <summary>
 /// Truck scale weight service interface
 /// </summary>
-public interface ITruckScaleWeightService : IDisposable
+public interface ITruckScaleWeightService : IAsyncDisposable
 {
     /// <summary>
     /// Observable stream of weight updates from truck scale
@@ -63,7 +65,7 @@ public interface ITruckScaleWeightService : IDisposable
 /// Uses serial port communication to read weight from truck scale
 /// </summary>
 [AutoConstructor]
-public partial class TruckScaleWeightService : ITruckScaleWeightService
+public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingletonDependency
 {
     private readonly ISettingsService _settingsService;
     private readonly ILogger<TruckScaleWeightService>? _logger;
@@ -74,7 +76,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     private bool _isClosing = false;
 
     private readonly System.Threading.ReaderWriterLockSlim _rwLock =
-        new(System.Threading.LockRecursionPolicy.SupportsRecursion);
+        new(System.Threading.LockRecursionPolicy.NoRecursion);
 
     private ScaleSettings? _currentSettings;
 
@@ -106,15 +108,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     {
         get
         {
-            _rwLock.EnterReadLock();
-            try
-            {
-                return _serialPort != null && _serialPort.IsOpen && !_isClosing;
-            }
-            finally
-            {
-                _rwLock.ExitReadLock();
-            }
+            using var _ = _rwLock.ReadLock();
+            return _serialPort != null && _serialPort.IsOpen && !_isClosing;
         }
     }
 
@@ -128,68 +123,61 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
         {
             try
             {
-                _rwLock.EnterWriteLock();
-                try
+                using var _ = _rwLock.WriteLock();
+                if (_serialPort != null && _serialPort.IsOpen)
                 {
-                    if (_serialPort != null && _serialPort.IsOpen)
+                    if (_currentSettings != null &&
+                        _currentSettings.SerialPort == settings.SerialPort &&
+                        _currentSettings.BaudRate == settings.BaudRate &&
+                        _currentSettings.CommunicationMethod == settings.CommunicationMethod)
                     {
-                        if (_currentSettings != null &&
-                            _currentSettings.SerialPort == settings.SerialPort &&
-                            _currentSettings.BaudRate == settings.BaudRate &&
-                            _currentSettings.CommunicationMethod == settings.CommunicationMethod)
-                        {
-                            // Settings haven't changed, keep existing connection
-                            return true;
-                        }
-
-                        // Settings changed, close and reopen
-                        CloseInternal();
+                        // Settings haven't changed, keep existing connection
+                        return true;
                     }
 
-                    _currentSettings = settings;
-
-                    // Determine receiving type based on communication method
-                    if (settings.CommunicationMethod == "TF0")
-                    {
-                        _receType = ReceType.Hex;
-                        _byteCount = 12;
-                    }
-                    else
-                    {
-                        _receType = ReceType.String;
-                        _endChar = "=";
-                    }
-
-                    // Create and configure serial port
-                    _serialPort = new SerialPort
-                    {
-                        PortName = settings.SerialPort,
-                        BaudRate = int.Parse(settings.BaudRate),
-                        DataBits = 8,
-                        StopBits = StopBits.One,
-                        Parity = Parity.None,
-                        WriteBufferSize = 1048576,
-                        ReadBufferSize = 2097152,
-                        Encoding = Encoding.GetEncoding("UTF-8"),
-                        Handshake = Handshake.None,
-                        RtsEnable = true
-                    };
-
-                    // Subscribe to data received event
-                    _serialPort.DataReceived += SerialPort_DataReceived;
-
-                    // Open serial port
-                    _serialPort.Open();
-                    _isClosing = false;
-                    _logger?.LogInformation(
-                        $"Truck scale serial port opened: {settings.SerialPort} at {settings.BaudRate} baud");
-
-                    return true;
+                    // Settings changed, close and reopen
+                    CloseInternal();
                 }
-                finally
+
+                _currentSettings = settings;
+
+                // Determine receiving type based on communication method
+                if (settings.CommunicationMethod == "TF0")
                 {
-                    _rwLock.ExitWriteLock();
+                    _receType = ReceType.Hex;
+                    _byteCount = 12;
                 }
+                else
+                {
+                    _receType = ReceType.String;
+                    _endChar = "=";
+                }
+
+                // Create and configure serial port
+                _serialPort = new SerialPort
+                {
+                    PortName = settings.SerialPort,
+                    BaudRate = int.Parse(settings.BaudRate),
+                    DataBits = 8,
+                    StopBits = StopBits.One,
+                    Parity = Parity.None,
+                    WriteBufferSize = 1048576,
+                    ReadBufferSize = 2097152,
+                    Encoding = Encoding.GetEncoding("UTF-8"),
+                    Handshake = Handshake.None,
+                    RtsEnable = true
+                };
+
+                // Subscribe to data received event
+                _serialPort.DataReceived += SerialPort_DataReceived;
+
+                // Open serial port
+                _serialPort.Open();
+                _isClosing = false;
+                _logger?.LogInformation(
+                    $"Truck scale serial port opened: {settings.SerialPort} at {settings.BaudRate} baud");
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -208,28 +196,30 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
         {
             if (_isClosing) return;
 
-            _rwLock.EnterWriteLock();
-            try
+            // Use read lock to check state (allows concurrent access)
+            using (_rwLock.ReadLock())
             {
                 if (_serialPort == null || !_serialPort.IsOpen) return;
+            }
 
-                _isListening = true;
+            // I/O and parsing completely outside of lock
+            _isListening = true;
 
+            try
+            {
                 switch (_receType)
                 {
                     case ReceType.Hex:
-                        ReceiveHex();
+                        ReceiveHex();  // Internal lock management
                         break;
                     case ReceType.String:
-                        ReceiveString();
+                        ReceiveString();  // Internal lock management
                         break;
                 }
-
-                _isListening = false;
             }
             finally
             {
-                _rwLock.ExitWriteLock();
+                _isListening = false;
             }
         }
         catch (Exception ex)
@@ -246,25 +236,43 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     {
         try
         {
-            if (_serialPort == null) return;
+            // Use read lock to get serial port reference (allows concurrent access)
+            SerialPort? port;
+            using (_rwLock.ReadLock())
+            {
+                port = _serialPort;
+                if (port == null) return;
+            }
 
+            // I/O operation outside of lock (non-blocking for other threads)
             int receivedCount = 0;
             byte[] readBuffer = new byte[_byteCount];
 
             while (receivedCount < _byteCount)
             {
-                int bytesRead = _serialPort.Read(readBuffer, receivedCount, _byteCount - receivedCount);
+                int bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
                 receivedCount += bytesRead;
             }
 
             // Check frame format: 0x02 at start, 0x03 at end
             if (readBuffer[0] == 0x02 && readBuffer[_byteCount - 1] == 0x03)
             {
-                ParseHexWeight(readBuffer);
+                // Parse data outside of lock
+                var parsedWeight = ParseHexWeight(readBuffer);
+                
+                // Only use write lock to update state (hold time < 50ns)
+                if (parsedWeight.HasValue)
+                {
+                    using var _ = _rwLock.WriteLock();
+                    _currentWeight = parsedWeight.Value;
+                    _weightSubject.OnNext(parsedWeight.Value);
+                }
             }
             else
             {
-                _serialPort.DiscardInBuffer();
+                // Discard buffer also needs read lock
+                using var _ = _rwLock.ReadLock();
+                _serialPort?.DiscardInBuffer();
             }
         }
         catch (Exception ex)
@@ -280,18 +288,34 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     {
         try
         {
-            if (_serialPort == null) return;
+            // Use read lock to get serial port reference (allows concurrent access)
+            SerialPort? port;
+            using (_rwLock.ReadLock())
+            {
+                port = _serialPort;
+                if (port == null) return;
+            }
 
-            string receivedData = _serialPort.ReadTo(_endChar);
+            // I/O operation outside of lock (non-blocking for other threads)
+            string receivedData = port.ReadTo(_endChar);
 
-            // Reverse the string as per reference implementation
+            // Reverse the string as per reference implementation (outside of lock)
             var reversed = string.Empty;
             for (int i = receivedData.Length - 1; i >= 0; i--)
             {
                 reversed += receivedData[i];
             }
 
-            ParseStringWeight(reversed);
+            // Parse data outside of lock
+            var parsedWeight = ParseStringWeight(reversed);
+            
+            // Only use write lock to update state (hold time < 50ns)
+            if (parsedWeight.HasValue)
+            {
+                using var _ = _rwLock.WriteLock();
+                _currentWeight = parsedWeight.Value;
+                _weightSubject.OnNext(parsedWeight.Value);
+            }
         }
         catch (Exception ex)
         {
@@ -305,17 +329,18 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     /// Example: 02 2B 30 30 30 32 30 35 32 31 45 03
     ///          STX '+' "0002" "05" "21" 'E' ETX = 2.05
     /// </summary>
-    private void ParseHexWeight(byte[] buffer)
+    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
+    private decimal? ParseHexWeight(byte[] buffer)
     {
         try
         {
-            if (buffer.Length < 12) return;
+            if (buffer.Length < 12) return null;
 
             // Check frame format: 0x02 at start, 0x03 at end
             if (buffer[0] != 0x02 || buffer[buffer.Length - 1] != 0x03)
             {
                 _logger?.LogWarning($"Invalid frame format: STX={buffer[0]:X2}, ETX={buffer[buffer.Length - 1]:X2}");
-                return;
+                return null;
             }
 
             // Parse sign byte (byte 1): 0x2B = '+', 0x2D = '-'
@@ -363,20 +388,10 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
                         parsedWeight = -parsedWeight;
                     }
 
-                    _rwLock.EnterWriteLock();
-                    try
-                    {
-                        _currentWeight = parsedWeight;
-                    }
-                    finally
-                    {
-                        _rwLock.ExitWriteLock();
-                    }
-
                     _logger?.LogDebug(
                         $"Parsed HEX weight: {parsedWeight} t (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
-                    // Push weight update to Rx stream
-                    _weightSubject.OnNext(parsedWeight);
+                    
+                    return parsedWeight;
                 }
                 else
                 {
@@ -392,6 +407,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
         {
             _logger?.LogWarning(ex, "Error parsing HEX weight data");
         }
+        
+        return null;
     }
 
     /// <summary>
@@ -399,7 +416,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     /// Format: reversed string ending with "="
     /// Example: "=76.54321" reversed = "12345.67="
     /// </summary>
-    private void ParseStringWeight(string data)
+    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
+    private decimal? ParseStringWeight(string data)
     {
         try
         {
@@ -409,19 +427,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
             // Try to parse as decimal
             if (decimal.TryParse(weightString, out decimal weight))
             {
-                _rwLock.EnterWriteLock();
-                try
-                {
-                    _currentWeight = weight;
-                }
-                finally
-                {
-                    _rwLock.ExitWriteLock();
-                }
-
                 _logger?.LogDebug($"Parsed String weight: {weight} t");
-                // Push weight update to Rx stream
-                _weightSubject.OnNext(weight);
+                return weight;
             }
             else
             {
@@ -432,6 +439,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
         {
             _logger?.LogWarning(ex, $"Error parsing String weight data: {data}");
         }
+        
+        return null;
     }
 
     /// <summary>
@@ -449,15 +458,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
             }
 
             // Return the last received weight
-            _rwLock.EnterReadLock();
-            try
-            {
-                return _currentWeight;
-            }
-            finally
-            {
-                _rwLock.ExitReadLock();
-            }
+            using var _ = _rwLock.ReadLock();
+            return _currentWeight;
         }
         catch (Exception ex)
         {
@@ -500,70 +502,49 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     /// </summary>
     private void CloseInternal()
     {
-        _rwLock.EnterWriteLock();
+        // Set closing flag outside of lock
+        _isClosing = true;
+
+        // Wait for any ongoing receive operation to complete (outside of lock)
+        int waitCount = 0;
+        while (_isListening && waitCount < 100)
+        {
+            Thread.Sleep(10);
+            waitCount++;
+        }
+
+        // Acquire write lock only for cleanup
+        using var _ = _rwLock.WriteLock();
         try
         {
-            try
+            if (_serialPort != null && _serialPort.IsOpen)
             {
-                if (_serialPort != null && _serialPort.IsOpen)
-                {
-                    _isClosing = true;
+                _serialPort.DataReceived -= SerialPort_DataReceived;
+                _serialPort.Close();
+                _serialPort.Dispose();
+                _serialPort = null;
 
-                    // Wait for any ongoing receive operation to complete
-                    int waitCount = 0;
-                    while (_isListening && waitCount < 100)
-                    {
-                        Thread.Sleep(10);
-                        waitCount++;
-                    }
-
-                    _serialPort.DataReceived -= SerialPort_DataReceived;
-                    _serialPort.Close();
-                    _serialPort.Dispose();
-                    _serialPort = null;
-
-                    _logger?.LogInformation("Truck scale serial port closed");
-                }
+                _logger?.LogInformation("Truck scale serial port closed");
             }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, $"Error closing serial port: {ex.Message}");
-            }
-            finally
-            {
-                _isClosing = false;
-            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"Error closing serial port: {ex.Message}");
         }
         finally
         {
-            _rwLock.ExitWriteLock();
+            _isClosing = false;
         }
     }
 
-    /// <summary>
-    /// Dispose resources
-    /// </summary>
-    public void Dispose()
-    {
-        Close();
-        _weightSubject?.Dispose();
-        _rwLock?.Dispose();
-    }
 
     /// <summary>
     /// Set weight for testing purposes (for hardware simulation API)
     /// </summary>
     public void SetWeight(decimal weight)
     {
-        _rwLock.EnterWriteLock();
-        try
-        {
-            _currentWeight = weight;
-        }
-        finally
-        {
-            _rwLock.ExitWriteLock();
-        }
+        using var _ = _rwLock.WriteLock();
+        _currentWeight = weight;
 
         // Push weight update to Rx stream
         _weightSubject.OnNext(weight);
@@ -574,14 +555,15 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService
     /// </summary>
     public decimal GetCurrentWeight()
     {
-        _rwLock.EnterReadLock();
-        try
-        {
-            return _currentWeight;
-        }
-        finally
-        {
-            _rwLock.ExitReadLock();
-        }
+        using var _ = _rwLock.ReadLock();
+        return _currentWeight;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Close();
+        _weightSubject?.Dispose();
+        _rwLock?.Dispose();
+        await Task.CompletedTask;
     }
 }

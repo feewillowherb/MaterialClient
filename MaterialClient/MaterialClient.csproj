@@ -13,7 +13,6 @@
         <PublishReadyToRun>true</PublishReadyToRun>
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>true</SelfContained>
-        <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
     </PropertyGroup>
 
     <ItemGroup>

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hikvision;
 
@@ -14,13 +15,16 @@ public interface IHikvisionService
     void AddOrUpdateDevice(HikvisionDeviceConfig config);
     bool IsOnline(HikvisionDeviceConfig config);
     bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90);
-    bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError, int quality = 1);
+
+    bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError,
+        int quality = 1);
+
     bool TryOpenRealStream(HikvisionDeviceConfig config, int channel);
     bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath);
     Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests);
 }
 
-public sealed class HikvisionService : IHikvisionService
+public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 {
     private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
 
@@ -42,13 +46,15 @@ public sealed class HikvisionService : IHikvisionService
         {
             NET_DVR.NET_DVR_Logout(userId);
         }
+
         return login;
     }
 
     public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90)
     {
         ArgumentNullException.ThrowIfNull(config);
-        if (string.IsNullOrWhiteSpace(saveFullPath)) throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+        if (string.IsNullOrWhiteSpace(saveFullPath))
+            throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
         EnsureInitialized();
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
@@ -75,11 +81,13 @@ public sealed class HikvisionService : IHikvisionService
         }
     }
 
-    public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError, int quality = 1)
+    public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError,
+        int quality = 1)
     {
         lastError = 0;
         ArgumentNullException.ThrowIfNull(config);
-        if (string.IsNullOrWhiteSpace(saveFullPath)) throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+        if (string.IsNullOrWhiteSpace(saveFullPath))
+            throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
         EnsureInitialized();
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
@@ -103,6 +111,7 @@ public sealed class HikvisionService : IHikvisionService
             {
                 lastError = NET_DVR.NET_DVR_GetLastError();
             }
+
             return ok;
         }
         finally
@@ -125,11 +134,13 @@ public sealed class HikvisionService : IHikvisionService
         return CaptureJpegFromStream(config, channel, saveFullPath, out _);
     }
 
-    public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath, out int playM4Error)
+    public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
+        out int playM4Error)
     {
         playM4Error = 0;
         ArgumentNullException.ThrowIfNull(config);
-        if (string.IsNullOrWhiteSpace(saveFullPath)) throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+        if (string.IsNullOrWhiteSpace(saveFullPath))
+            throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
         EnsureInitialized();
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
@@ -170,6 +181,7 @@ public sealed class HikvisionService : IHikvisionService
                                 // 可以根据需要记录日志或抛出异常
                             }
                         }
+
                         break;
 
                     case NET_DVR.NET_DVR_STREAMDATA: // 码流数据
@@ -178,6 +190,7 @@ public sealed class HikvisionService : IHikvisionService
                             // 将码流数据输入到播放库进行解码
                             decoder.InputData(buffer, bufSize);
                         }
+
                         break;
 
                     case NET_DVR.NET_DVR_AUDIOSTREAMDATA: // 音频数据
@@ -190,6 +203,7 @@ public sealed class HikvisionService : IHikvisionService
                                 decoder.InputData(buffer, bufSize);
                             }
                         }
+
                         break;
 
                     case NET_DVR.NET_DVR_PRIVATE_DATA: // 私有数据（包括智能信息）
@@ -198,6 +212,7 @@ public sealed class HikvisionService : IHikvisionService
                             // 收到私有数据，可能包含智能分析信息
                             // 可以根据需要处理这些数据
                         }
+
                         break;
 
                     default:
@@ -206,6 +221,7 @@ public sealed class HikvisionService : IHikvisionService
                         {
                             decoder.InputData(buffer, bufSize);
                         }
+
                         break;
                 }
             }
@@ -260,6 +276,7 @@ public sealed class HikvisionService : IHikvisionService
                 {
                     playM4Error = decoder.GetLastError();
                 }
+
                 return false;
             }
 
@@ -286,6 +303,7 @@ public sealed class HikvisionService : IHikvisionService
                 {
                     playM4Error = decoder.GetLastError();
                 }
+
                 decoder.Dispose();
             }
 
@@ -293,6 +311,7 @@ public sealed class HikvisionService : IHikvisionService
             {
                 NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
             }
+
             NET_DVR.NET_DVR_Logout(userId);
         }
     }
@@ -323,7 +342,8 @@ public sealed class HikvisionService : IHikvisionService
                 await Task.Run(() =>
                 {
                     int playM4Error = 0;
-                    result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath, out playM4Error);
+                    result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
+                        out playM4Error);
                     result.PlayM4Error = playM4Error;
 
                     if (!result.Success)
@@ -376,6 +396,7 @@ public sealed class HikvisionService : IHikvisionService
             {
                 throw new InvalidOperationException("NET_DVR_Init failed.");
             }
+
             NET_DVR._initialized = true;
             AppDomain.CurrentDomain.ProcessExit += (_, __) => NET_DVR.NET_DVR_Cleanup();
         }
@@ -447,7 +468,10 @@ internal static class NET_DVR
     internal struct NET_DVR_DEVICEINFO_V30
     {
         public int dwSize;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)] public byte[] sSerialNumber;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)]
+        public byte[] sSerialNumber;
+
         public int byAlarmInPortNum;
         public int byAlarmOutPortNum;
         public int byDiskNum;
@@ -468,17 +492,26 @@ internal static class NET_DVR
         public int byProxyType;
         public int dwSurplusLockTime;
         public int byCharEncodeType;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)] public byte[] byRes2;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
+        public byte[] byRes2;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct NET_DVR_USER_LOGIN_INFO
     {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 129)] public byte[] sDeviceAddress;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 129)]
+        public byte[] sDeviceAddress;
+
         public byte byUseTransport;
         public ushort wPort;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)] public byte[] sUserName;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)] public byte[] sPassword;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+        public byte[] sUserName;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+        public byte[] sPassword;
+
         public IntPtr cbLoginResult;
         public IntPtr pUser;
         public int bUseAsynLogin;
@@ -508,13 +541,15 @@ internal static class NET_DVR
     internal static extern void NET_DVR_Cleanup();
 
     [DllImport("HCNetSDK.dll")]
-    internal static extern int NET_DVR_Login_V40(ref NET_DVR_USER_LOGIN_INFO pLoginInfo, ref NET_DVR_DEVICEINFO_V40 lpDeviceInfo);
+    internal static extern int NET_DVR_Login_V40(ref NET_DVR_USER_LOGIN_INFO pLoginInfo,
+        ref NET_DVR_DEVICEINFO_V40 lpDeviceInfo);
 
     [DllImport("HCNetSDK.dll")]
     internal static extern bool NET_DVR_Logout(int lUserID);
 
     [DllImport("HCNetSDK.dll")]
-    internal static extern bool NET_DVR_CaptureJPEGPicture(int lUserID, int lChannel, ref NET_DVR_JPEGPARA lpJpegPara, byte[] sPicFileName);
+    internal static extern bool NET_DVR_CaptureJPEGPicture(int lUserID, int lChannel, ref NET_DVR_JPEGPARA lpJpegPara,
+        byte[] sPicFileName);
 
     [DllImport("HCNetSDK.dll")]
     internal static extern uint NET_DVR_GetLastError();
@@ -526,24 +561,29 @@ internal static class NET_DVR
         public uint dwStreamType; // 码流类型，0-主码流，1-子码流，2-码流3，3-码流4 等以此类推
         public uint dwLinkMode; // 0：TCP方式,1：UDP方式,2：多播方式,3 - RTP方式，4-RTP/RTSP,5-RSTP/HTTP
         public IntPtr hPlayWnd; // 播放窗口的句柄,为NULL表示不播放图象
+
         [MarshalAs(UnmanagedType.Bool)]
         public bool bBlocked; // 0-非阻塞取流, 1-阻塞取流, 如果阻塞SDK内部connect失败将会有5s的超时才能够返回,不适合于轮询取流操作.
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool bPassbackRecord; // 0-不启用录像回传,1启用录像回传
+
+        [MarshalAs(UnmanagedType.Bool)] public bool bPassbackRecord; // 0-不启用录像回传,1启用录像回传
         public byte byPreviewMode; // 预览模式，0-正常预览，1-延迟预览
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = STREAM_ID_LEN, ArraySubType = UnmanagedType.I1)]
         public byte[] byStreamID; // 流ID，lChannel为0xffffffff时启用此参数
+
         public byte byProtoType; // 应用层取流协议，0-私有协议，1-RTSP协议
         public byte byRes1;
         public byte byVideoCodingType; // 码流数据编解码类型 0-通用编码数据 1-热成像探测器产生的原始数据（温度数据的加密信息，通过去加密运算，将原始数据算出真实的温度值）
         public uint dwDisplayBufNum; // 播放库播放缓冲区最大缓冲帧数，范围1-50，置0时默认为1
         public byte byNPQMode; // NPQ是直连模式，还是过流媒体 0-直连 1-过流媒体
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 215, ArraySubType = UnmanagedType.I1)]
         public byte[] byRes;
     }
 
     [DllImport("HCNetSDK.dll")]
-    internal static extern int NET_DVR_RealPlay_V40(int lUserID, ref NET_DVR_PREVIEWINFO lpPreviewInfo, NET_DVR.REALDATACALLBACK fRealDataCallBack, IntPtr pUser);
+    internal static extern int NET_DVR_RealPlay_V40(int lUserID, ref NET_DVR_PREVIEWINFO lpPreviewInfo,
+        NET_DVR.REALDATACALLBACK fRealDataCallBack, IntPtr pUser);
 
     [DllImport("HCNetSDK.dll")]
     internal static extern bool NET_DVR_StopRealPlay(int lRealHandle);
@@ -554,7 +594,6 @@ internal static class NET_DVR
     [DllImport("user32.dll")]
     internal static extern IntPtr GetDesktopWindow();
 
-    internal delegate void REALDATACALLBACK(int lRealHandle, uint dwDataType, IntPtr pBuffer, uint dwBufSize, IntPtr pUser);
+    internal delegate void REALDATACALLBACK(int lRealHandle, uint dwDataType, IntPtr pBuffer, uint dwBufSize,
+        IntPtr pUser);
 }
-
-

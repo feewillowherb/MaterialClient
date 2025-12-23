@@ -12,7 +12,7 @@
         Background="#1E1E1E">
   
   <Window.Resources>
-    <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter"/>
+    <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
   </Window.Resources>
   
   <Grid>
@@ -54,7 +54,7 @@
       <Grid HorizontalAlignment="Center" 
             VerticalAlignment="Center"
             Margin="20">
-        <Image Source="{Binding ImagePath, Converter={StaticResource NullOrEmptyImageConverter}}" 
+        <Image Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}" 
                Stretch="Uniform"
                MaxWidth="1100"
                MaxHeight="700"/>

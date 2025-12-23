@@ -6,7 +6,7 @@
              x:DataType="vm:AttendedWeighingViewModel">
   
   <UserControl.Resources>
-    <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter"/>
+    <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
   </UserControl.Resources>
   
   <Border Padding="24">
@@ -244,7 +244,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.EntryPhoto1}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
               <Button Grid.Column="1"
@@ -254,7 +254,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.EntryPhoto2}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
               <Button Grid.Row="1"
@@ -264,7 +264,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.EntryPhoto3}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
               <Button Grid.Row="1" Grid.Column="1"
@@ -274,7 +274,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.EntryPhoto4}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
             </Grid>
@@ -302,7 +302,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.ExitPhoto1}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
               <Button Grid.Column="1"
@@ -312,7 +312,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.ExitPhoto2}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
               <Button Grid.Row="1"
@@ -322,7 +322,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.ExitPhoto3}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
               <Button Grid.Row="1" Grid.Column="1"
@@ -332,7 +332,7 @@
                       Command="{Binding OpenImageViewerCommand}"
                       CommandParameter="{Binding PhotoGridViewModel.ExitPhoto4}">
                 <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                 </Border>
               </Button>
             </Grid>

@@ -6,7 +6,10 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 using Avalonia.Threading;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
@@ -68,6 +71,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [Reactive] private bool _isCameraOnline;
 
+    [Reactive] private bool _isUsbCameraOnline;
+
+    [Reactive] private Bitmap? _usbCameraPreview;
+
     [Reactive] private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
 
     public bool HasCameraStatuses => CameraStatuses.Count > 0;
@@ -94,10 +101,42 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     [Reactive] private string? _searchPlateNumber;
 
+    private string? _capturedBillPhotoPath; // 临时保存的拍照文件路径（在保存前不创建AttachmentFile）
+    private bool _isRetakingPhoto; // 是否在重新拍照模式
+    private int _frameCounter; // 帧计数器，用于只处理一半的帧
+
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
     public bool IsCompletedWaybillSelected => SelectedListItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
     public bool IsSending => !IsReceiving;
+
+    /// <summary>
+    /// 检查当前SelectedListItem是否已有TicketPhoto类型的附件
+    /// </summary>
+    public bool HasBillPhoto => !string.IsNullOrEmpty(BillPhotoPath);
+
+    /// <summary>
+    /// 拍照按钮文本
+    /// </summary>
+    public string BillPhotoButtonText => HasBillPhoto && !_isRetakingPhoto ? "重新拍照" : "拍照";
+
+    /// <summary>
+    /// 是否应该显示预览（当存在BillPhoto且未点击重新拍照时不显示预览）
+    /// </summary>
+    public bool ShouldShowPreview => !HasBillPhoto || _isRetakingPhoto;
+
+    /// <summary>
+    /// 获取临时保存的拍照文件路径（供DetailViewModel使用）
+    /// </summary>
+    public string? CapturedBillPhotoPath => _capturedBillPhotoPath;
+
+    /// <summary>
+    /// 清空临时保存的拍照文件路径（供DetailViewModel保存后调用）
+    /// </summary>
+    public void ClearCapturedBillPhotoPath()
+    {
+        _capturedBillPhotoPath = null;
+    }
 
     #endregion
 
@@ -125,13 +164,35 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 {
                     await LoadListItemPhotos(item);
                     UpdateDisplayInfoFromListItem(item);
+                    
+                    // 更新预览状态
+                    this.RaisePropertyChanged(nameof(HasBillPhoto));
+                    this.RaisePropertyChanged(nameof(BillPhotoButtonText));
+                    this.RaisePropertyChanged(nameof(ShouldShowPreview));
+                    
+                    // 根据ShouldShowPreview决定是否启动预览
+                    if (IsUsbCameraOnline && ShouldShowPreview)
+                    {
+                        _ = StartUsbCameraPreviewAsync();
+                    }
+                    else
+                    {
+                        _ = StopUsbCameraPreviewAsync();
+                    }
                 }
                 else
                 {
                     VehiclePhotos.Clear();
                     BillPhotoPath = null;
+                    _capturedBillPhotoPath = null;
+                    _isRetakingPhoto = false;
                     PhotoGridViewModel?.Clear();
                     ClearDisplayInfo();
+                    
+                    // 更新预览状态
+                    this.RaisePropertyChanged(nameof(HasBillPhoto));
+                    this.RaisePropertyChanged(nameof(BillPhotoButtonText));
+                    this.RaisePropertyChanged(nameof(ShouldShowPreview));
                 }
             })
             .DisposeWith(_disposables);
@@ -152,7 +213,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .Subscribe(_ => this.RaisePropertyChanged(nameof(IsSending)))
             .DisposeWith(_disposables);
 
-        _ = RefreshAsync();
+        // 监听BillPhotoPath变化，更新相关计算属性
+        this.WhenAnyValue(x => x.BillPhotoPath)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(HasBillPhoto));
+                this.RaisePropertyChanged(nameof(BillPhotoButtonText));
+                this.RaisePropertyChanged(nameof(ShouldShowPreview));
+            })
+            .DisposeWith(_disposables);
+
+        _ = InitializeOnFirstLoadAsync();
         StartTimeUpdateTimer();
 
         _truckScaleWeightService.WeightUpdates
@@ -163,11 +234,44 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         StartScaleStatusCheckTimer();
         StartCameraStatusCheckTimer();
+        StartUsbCameraStatusCheckTimer();
         _ = StartAllDevicesAsync();
         StartPlateNumberObservable();
         StartStatusObservable();
         StartWeighingRecordCreatedObservable();
         StartDeliveryTypeObservable();
+        
+        // 监听 USB 摄像头在线状态变化和ShouldShowPreview变化，自动启动/停止预览
+        this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview)
+            .DistinctUntilChanged()
+            .Subscribe(async tuple =>
+            {
+                var (isOnline, shouldShow) = tuple;
+                if (isOnline && shouldShow)
+                {
+                    // 摄像头上线且应该显示预览，启动预览
+                    await StartUsbCameraPreviewAsync();
+                }
+                else
+                {
+                    // 摄像头下线或不应显示预览，停止预览
+                    await StopUsbCameraPreviewAsync();
+                }
+            })
+            .DisposeWith(_disposables);
+        
+        // 尝试初始启动预览（如果摄像头已经在线且应该显示预览）
+        _ = StartUsbCameraPreviewAsync();
+    }
+
+    /// <summary>
+    /// 页面首次加载时的初始化逻辑
+    /// </summary>
+    private async Task InitializeOnFirstLoadAsync()
+    {
+        await RefreshAsync();
+        BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async Task StartAllDevicesAsync()
@@ -224,6 +328,156 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
 
         _disposables.Add(cameraStatusTimer);
+    }
+
+    private void StartUsbCameraStatusCheckTimer()
+    {
+        var usbCameraStatusTimer = new Timer(_ =>
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await CheckUsbCameraOnlineStatusAsync();
+                }
+                catch
+                {
+                    Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
+                }
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+
+        _disposables.Add(usbCameraStatusTimer);
+    }
+
+    private async Task CheckUsbCameraOnlineStatusAsync()
+    {
+        try
+        {
+            var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
+            if (usbCameraService == null)
+            {
+                Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
+                return;
+            }
+
+            var isOnline = await usbCameraService.IsAvailableAsync();
+            Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = isOnline; });
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "检查 USB 摄像头状态时发生错误");
+            Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
+        }
+    }
+
+    private async Task StartUsbCameraPreviewAsync()
+    {
+        try
+        {
+            // 如果不应显示预览（已存在BillPhoto且未在重新拍照模式），则不启动预览
+            if (!ShouldShowPreview)
+            {
+                Logger?.LogDebug("已存在BillPhoto且未在重新拍照模式，跳过预览启动");
+                return;
+            }
+
+            var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
+            if (usbCameraService == null)
+            {
+                return;
+            }
+
+            // 如果预览已经在运行，跳过
+            if (usbCameraService.IsPreviewing)
+            {
+                Logger?.LogDebug("USB 摄像头预览已在运行中，跳过启动");
+                return;
+            }
+
+            var isAvailable = await usbCameraService.IsAvailableAsync();
+            if (!isAvailable)
+            {
+                Logger?.LogDebug("USB 摄像头不可用，跳过预览启动");
+                return;
+            }
+
+            await usbCameraService.StartPreviewAsync((imageBytes, width, height) =>
+            {
+                try
+                {
+                    // 帧计数器递增，只处理一半的帧（每两帧处理一帧）
+                    _frameCounter++;
+                    if (_frameCounter % 2 != 0)
+                    {
+                        return; // 跳过奇数帧，只处理偶数帧
+                    }
+
+                    // 在 UI 线程上更新图像
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        try
+                        {
+                            // 释放旧的 Bitmap
+                            var oldBitmap = UsbCameraPreview;
+                            
+                            // 将字节数组转换为 Bitmap
+                            using var stream = new System.IO.MemoryStream(imageBytes);
+                            var bitmap = new Bitmap(stream);
+                            UsbCameraPreview = bitmap;
+                            
+                            // 释放旧的 Bitmap
+                            oldBitmap?.Dispose();
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger?.LogWarning(ex, "更新 USB 摄像头预览图像时发生错误");
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "处理 USB 摄像头帧数据时发生错误");
+                }
+            });
+
+            Logger?.LogInformation("USB 摄像头预览已启动");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "启动 USB 摄像头预览时发生错误");
+        }
+    }
+
+    private async Task StopUsbCameraPreviewAsync()
+    {
+        try
+        {
+            var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
+            if (usbCameraService == null)
+            {
+                return;
+            }
+
+            // 如果预览未在运行，跳过
+            if (!usbCameraService.IsPreviewing)
+            {
+                Logger?.LogDebug("USB 摄像头预览未在运行，跳过停止");
+                return;
+            }
+
+            await usbCameraService.StopPreviewAsync();
+            Dispatcher.UIThread.Post(() => 
+            { 
+                UsbCameraPreview?.Dispose();
+                UsbCameraPreview = null; 
+            });
+            Logger?.LogInformation("USB 摄像头预览已停止");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "停止 USB 摄像头预览时发生错误");
+        }
     }
 
     private async Task CheckCameraOnlineStatusAsync()
@@ -315,6 +569,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _ = StopUsbCameraPreviewAsync();
         _disposables.Dispose();
     }
 
@@ -504,7 +759,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         {
             DetailViewModel = new AttendedWeighingDetailViewModel(
                 item,
-                _serviceProvider
+                _serviceProvider,
+                this
             );
 
             DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
@@ -543,36 +799,36 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private async void OnDetailSaveCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailMatchCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailCompleteCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync();
         BackToMain();
+        await SelectLatestCompletedItemAsync();
     }
 
     /// <summary>
@@ -614,9 +870,87 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     [ReactiveCommand]
-    private void TakeBillPhoto()
+    private async Task TakeBillPhotoAsync()
     {
-        // TODO: Implement bill photo capture
+        try
+        {
+            // 如果已存在BillPhoto且未在重新拍照模式，则进入重新拍照模式
+            if (HasBillPhoto && !_isRetakingPhoto)
+            {
+                _isRetakingPhoto = true;
+                this.RaisePropertyChanged(nameof(BillPhotoButtonText));
+                this.RaisePropertyChanged(nameof(ShouldShowPreview));
+                
+                // 清除旧的BillPhotoPath（但保留数据库中的记录，直到保存时更新）
+                BillPhotoPath = null;
+                _capturedBillPhotoPath = null;
+                
+                // 启动预览
+                if (IsUsbCameraOnline)
+                {
+                    await StartUsbCameraPreviewAsync();
+                }
+                
+                Logger?.LogInformation("进入重新拍照模式");
+                return;
+            }
+
+            // 如果正在预览，则捕获当前帧
+            var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
+            if (usbCameraService == null)
+            {
+                Logger?.LogWarning("USB摄像头服务不可用");
+                return;
+            }
+
+            if (!usbCameraService.IsPreviewing)
+            {
+                Logger?.LogWarning("摄像头预览未启动，无法拍照");
+                return;
+            }
+
+            // 捕获当前帧
+            var frameData = await usbCameraService.CaptureCurrentFrameAsync();
+            if (frameData == null || frameData.Length == 0)
+            {
+                Logger?.LogWarning("捕获帧数据失败");
+                return;
+            }
+
+            // 生成文件名
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var fileName = $"bill_{timestamp}.jpg";
+            var photosDir = Path.Combine(AppContext.BaseDirectory, "Photos");
+            
+            // 确保Photos目录存在
+            if (!Directory.Exists(photosDir))
+            {
+                Directory.CreateDirectory(photosDir);
+            }
+
+            var filePath = Path.Combine(photosDir, fileName);
+
+            // 保存文件
+            await File.WriteAllBytesAsync(filePath, frameData);
+
+            // 更新属性
+            _capturedBillPhotoPath = filePath;
+            BillPhotoPath = filePath;
+            _isRetakingPhoto = false;
+            
+            this.RaisePropertyChanged(nameof(HasBillPhoto));
+            this.RaisePropertyChanged(nameof(BillPhotoButtonText));
+            this.RaisePropertyChanged(nameof(ShouldShowPreview));
+
+            // 停止预览（显示静态图片）
+            await StopUsbCameraPreviewAsync();
+
+            Logger?.LogInformation("拍照成功，文件已保存: {FilePath}", filePath);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "拍照时发生错误");
+        }
     }
 
     [ReactiveCommand]
@@ -845,6 +1179,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                         }
                     }
                 }
+
+                // 重置重新拍照状态和临时文件路径
+                _isRetakingPhoto = false;
+                _capturedBillPhotoPath = null;
             }
         }
         catch

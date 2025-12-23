@@ -13,25 +13,12 @@ namespace MaterialClient.Services;
 /// 应用启动服务
 /// 负责协调授权检查、登录流程和主窗口显示
 /// </summary>
-public class StartupService
+public class StartupService(
+    ILicenseService licenseService,
+    IAuthenticationService authenticationService,
+    IServiceProvider serviceProvider,
+    ILogger<StartupService>? logger = null)
 {
-    private readonly ILicenseService _licenseService;
-    private readonly IAuthenticationService _authenticationService;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<StartupService>? _logger;
-
-    public StartupService(
-        ILicenseService licenseService,
-        IAuthenticationService authenticationService,
-        IServiceProvider serviceProvider,
-        ILogger<StartupService>? logger = null)
-    {
-        _licenseService = licenseService;
-        _authenticationService = authenticationService;
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
-
     /// <summary>
     /// 执行启动流程
     /// 1. 检查授权状态
@@ -44,7 +31,7 @@ public class StartupService
         try
         {
             // Step 1: Check license
-            var isLicenseValid = await _licenseService.IsLicenseValidAsync();
+            var isLicenseValid = await licenseService.IsLicenseValidAsync();
 
             bool licenseWasInvalid = !isLicenseValid;
 
@@ -64,10 +51,10 @@ public class StartupService
             // 如果刚刚完成授权验证，清除旧的会话，要求重新登录
             if (licenseWasInvalid)
             {
-                await _authenticationService.LogoutAsync();
+                await authenticationService.LogoutAsync();
             }
 
-            var hasActiveSession = await _authenticationService.HasActiveSessionAsync();
+            var hasActiveSession = await authenticationService.HasActiveSessionAsync();
 
             if (!hasActiveSession)
             {
@@ -83,13 +70,13 @@ public class StartupService
 
             // Step 3: Show attended weighing window (有人值守过磅窗口)
             // Resolve Window from Autofac container (ViewModel is injected via constructor)
-            var attendedWeighingWindow = _serviceProvider.GetRequiredService<AttendedWeighingWindow>();
+            var attendedWeighingWindow = serviceProvider.GetRequiredService<AttendedWeighingWindow>();
 
             return attendedWeighingWindow;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "启动失败");
+            logger?.LogError(ex, "启动失败");
             return null;
         }
     }
@@ -99,12 +86,9 @@ public class StartupService
         var tcs = new TaskCompletionSource<bool>();
 
         // Resolve Window from Autofac container (ViewModel is injected via constructor)
-        var authWindow = _serviceProvider.GetRequiredService<AuthCodeWindow>();
+        var authWindow = serviceProvider.GetRequiredService<AuthCodeWindow>();
 
-        authWindow.Closed += (sender, args) =>
-        {
-            tcs.SetResult(authWindow.IsVerified);
-        };
+        authWindow.Closed += (sender, args) => { tcs.SetResult(authWindow.IsVerified); };
 
         authWindow.Show();
 
@@ -116,16 +100,12 @@ public class StartupService
         var tcs = new TaskCompletionSource<bool>();
 
         // Resolve Window from Autofac container (ViewModel is injected via constructor)
-        var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
+        var loginWindow = serviceProvider.GetRequiredService<LoginWindow>();
 
-        loginWindow.Closed += (sender, args) =>
-        {
-            tcs.SetResult(loginWindow.IsLoginSuccessful);
-        };
+        loginWindow.Closed += (sender, args) => { tcs.SetResult(loginWindow.IsLoginSuccessful); };
 
         loginWindow.Show();
 
         return await tcs.Task;
     }
 }
-

@@ -10,6 +10,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.EventBus.Local;
@@ -104,7 +105,7 @@ public interface IAttendedWeighingService : IAsyncDisposable
 /// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
 /// </summary>
 [AutoConstructor]
-public partial class AttendedWeighingService : IAttendedWeighingService
+public partial class AttendedWeighingService : IAttendedWeighingService, ISingletonDependency
 {
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
@@ -661,7 +662,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService
                 _logger?.LogWarning(
                     $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
             }
-            
+
             await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
         }
         catch (Exception ex)
@@ -748,14 +749,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService
 
             using var uow = _unitOfWorkManager.Begin();
             var weighingRecord = await _weighingRecordRepository.GetAsync(recordId.Value);
-            
+
             if (weighingRecord.PlateNumber != plateNumber)
             {
                 var oldPlateNumber = weighingRecord.PlateNumber;
                 weighingRecord.PlateNumber = plateNumber;
                 await _weighingRecordRepository.UpdateAsync(weighingRecord);
                 await uow.CompleteAsync();
-                
+
                 _logger?.LogInformation(
                     $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
             }

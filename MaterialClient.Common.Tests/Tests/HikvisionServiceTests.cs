@@ -13,7 +13,7 @@ public class UnitTest1
         {
             Ip = "192.168.3.245",
             Username = "admin",
-            Password = "fdkj112233",
+            Password = "12345",
             Port = 8000,
             StreamType = 0,
             Channels = [1]
@@ -62,7 +62,7 @@ public class UnitTest1
         {
             Ip = "192.168.3.245",
             Username = "admin",
-            Password = "fdkj112233",
+            Password = "12345",
             Port = 8000,
             StreamType = 0,
             Channels = [1]
@@ -112,7 +112,7 @@ public class UnitTest1
         {
             Ip = "192.168.3.3",
             Username = "admin",
-            Password = "fdkj123456",
+            Password = "12345",
             Port = 8000,
             StreamType = 0,
             Channels = [1]

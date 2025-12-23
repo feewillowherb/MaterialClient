@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:MaterialClient.ViewModels"
+        xmlns:converters="using:MaterialClient.Converters"
         mc:Ignorable="d"
         x:Class="MaterialClient.Views.ManualMatchEditWindow"
         x:DataType="vm:ManualMatchEditWindowViewModel"
@@ -14,6 +15,10 @@
         SystemDecorations="None"
         Background="White"
         Icon="/Assets/fd-ico.ico">
+
+    <Window.Resources>
+        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
+    </Window.Resources>
 
     <Border BorderBrush="LightGray" BorderThickness="1">
         <Grid RowDefinitions="50,*">
@@ -223,7 +228,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                            <Image Source="{Binding}" Stretch="UniformToFill"/>
+                                            <Image Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -250,7 +255,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                            <Image Source="{Binding}" Stretch="UniformToFill"/>
+                                            <Image Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -277,7 +282,7 @@
                                     Height="180" 
                                     CornerRadius="4" 
                                     Margin="5">
-                                <Image Source="{Binding TicketPhoto}" Stretch="UniformToFill"/>
+                                <Image Source="{Binding TicketPhoto, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                             </Border>
                             <!-- 视频预览区（用静态占位） -->
                             <Border Grid.Column="1" 

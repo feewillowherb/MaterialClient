@@ -1,23 +1,34 @@
 using System;
 using System.Globalization;
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 
 namespace MaterialClient.Converters;
 
 /// <summary>
-/// 将 null 或空字符串的图片路径转换为 null（用于 BillPhoto 等不需要默认图片的场景）
+/// 将 null 或空字符串的图片路径转换为默认图片（用于车辆照片）
 /// </summary>
-public class NullOrEmptyImageConverter : IValueConverter
+public class CarNullOrEmptyImageConverter : IValueConverter
 {
+    private const string DefaultCarImage = "avares://MaterialClient/Assets/Car_Default.png";
+    private static Bitmap? _defaultBitmap;
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         var path = value as string;
         
-        // 如果值为 null 或空字符串，返回 null
+        // 如果值为 null 或空字符串，返回默认图片
         if (string.IsNullOrWhiteSpace(path))
         {
-            return null;
+            // 懒加载默认图片
+            if (_defaultBitmap == null)
+            {
+                var assets = AssetLoader.Open(new Uri(DefaultCarImage));
+                _defaultBitmap = new Bitmap(assets);
+            }
+            return _defaultBitmap;
         }
 
         // 否则尝试加载指定路径的图片
@@ -33,15 +44,15 @@ public class NullOrEmptyImageConverter : IValueConverter
             if (path.StartsWith("avares://") || path.StartsWith("/Assets/"))
             {
                 var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient{path}") : new Uri(path);
-                var stream = Avalonia.Platform.AssetLoader.Open(uri);
+                var stream = AssetLoader.Open(uri);
                 return new Bitmap(stream);
             }
             
-            return null;
+            return _defaultBitmap;
         }
         catch
         {
-            return null;
+            return _defaultBitmap;
         }
     }
 
@@ -50,3 +61,4 @@ public class NullOrEmptyImageConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+

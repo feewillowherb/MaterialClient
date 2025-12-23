@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using MaterialClient.ViewModels;
 using MaterialClient.Backgrounds;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ public partial class AttendedWeighingWindow : Window
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
     private readonly IServiceProvider? _serviceProvider;
+    private AttendedWeighingDetailView? _warmupDetailView;
 
     public AttendedWeighingWindow(AttendedWeighingViewModel viewModel, IServiceProvider? serviceProvider = null)
     {
@@ -50,6 +52,22 @@ public partial class AttendedWeighingWindow : Window
                 logger?.LogError(ex, "启动轮询后台服务失败");
             }
         }
+        
+        // 预热 DetailView：在空闲时创建一次以初始化样式和模板
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                // 创建一个临时的 DetailView 实例来预热控件模板
+                _warmupDetailView = new AttendedWeighingDetailView();
+                // 不需要设置 DataContext，只是为了触发控件和样式的初始化
+            }
+            catch (Exception ex)
+            {
+                var logger = _serviceProvider?.GetService<ILogger<AttendedWeighingWindow>>();
+                logger?.LogWarning(ex, "预热 DetailView 失败，不影响正常使用");
+            }
+        }, DispatcherPriority.Background);
     }
 
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)
