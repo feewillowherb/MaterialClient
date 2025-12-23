@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.ChangeTracking;
 using Volo.Abp.Domain.Repositories;
-using Volo.Abp.Domain.Uow;
+using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
 
