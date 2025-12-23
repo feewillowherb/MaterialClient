@@ -103,6 +103,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
     private string? _capturedBillPhotoPath; // 临时保存的拍照文件路径（在保存前不创建AttachmentFile）
     private bool _isRetakingPhoto; // 是否在重新拍照模式
+    private int _frameCounter; // 帧计数器，用于只处理一半的帧
 
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
     public bool IsCompletedWaybillSelected => SelectedListItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
@@ -405,6 +406,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             {
                 try
                 {
+                    // 帧计数器递增，只处理一半的帧（每两帧处理一帧）
+                    _frameCounter++;
+                    if (_frameCounter % 2 != 0)
+                    {
+                        return; // 跳过奇数帧，只处理偶数帧
+                    }
+
                     // 在 UI 线程上更新图像
                     Dispatcher.UIThread.Post(() =>
                     {

@@ -17,7 +17,7 @@
         Icon="/Assets/fd-ico.ico">
 
     <Window.Resources>
-        <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter"/>
+        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
     </Window.Resources>
 
     <Border BorderBrush="LightGray" BorderThickness="1">
@@ -228,7 +228,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                            <Image Source="{Binding ., Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                                            <Image Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -255,7 +255,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="#E5E7EB" Margin="2" CornerRadius="4">
-                                            <Image Source="{Binding ., Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                                            <Image Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -282,7 +282,7 @@
                                     Height="180" 
                                     CornerRadius="4" 
                                     Margin="5">
-                                <Image Source="{Binding TicketPhoto, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                                <Image Source="{Binding TicketPhoto, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                             </Border>
                             <!-- 视频预览区（用静态占位） -->
                             <Border Grid.Column="1" 

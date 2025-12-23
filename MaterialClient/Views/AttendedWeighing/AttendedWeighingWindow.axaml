@@ -17,6 +17,7 @@
   
   <Window.Resources>
     <converters:EqualityToColorConverter x:Key="EqualityToColorConverter"/>
+    <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
     <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter"/>
     <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
   </Window.Resources>
@@ -243,10 +244,10 @@
                          VerticalAlignment="Stretch"
                          IsVisible="{Binding ShouldShowPreview}"/>
                   <!-- 静态照片显示（当没有预览时显示） -->
-                  <Image Source="{Binding BillPhotoPath}" 
-                         Stretch="Uniform"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
+                  <Image Source="{Binding BillPhotoPath, Converter={StaticResource NullOrEmptyImageConverter}}" 
+                         Stretch="UniformToFill"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Stretch"
                          IsVisible="{Binding !ShouldShowPreview}"/>
                   <!-- 无预览且无照片时的占位文本 -->
                   <TextBlock Text="USB摄像头未连接" 

@@ -17,7 +17,7 @@
         Icon="/Assets/fd-ico.ico">
 
     <Window.Resources>
-        <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter"/>
+        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
     </Window.Resources>
 
     <Border BorderBrush="LightGray" BorderThickness="1">
@@ -106,7 +106,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
-                                        <Image Source="{Binding ., Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                                        <Image Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -118,7 +118,7 @@
                         <TextBlock Text="运单照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
                             <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
-                                <Image Source="{Binding TicketPhoto, Converter={StaticResource NullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                                <Image Source="{Binding TicketPhoto, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
                             </Border>
                         </StackPanel>
                     </Grid>
