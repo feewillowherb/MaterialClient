@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.ChangeTracking;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Uow;
 
 namespace MaterialClient.Common.Services;
 
@@ -37,6 +40,13 @@ public interface IAttachmentService
     /// <param name="item">列表项</param>
     /// <returns>附件文件列表</returns>
     Task<List<AttachmentFile>> GetAttachmentsByListItemAsync(WeighingListItemDto item);
+
+    /// <summary>
+    /// 创建或替换指定列表项的 BillPhoto 附件
+    /// </summary>
+    /// <param name="listItem">列表项</param>
+    /// <param name="photoPath">照片文件路径</param>
+    Task CreateOrReplaceBillPhotoAsync(WeighingListItemDto listItem, string photoPath);
 }
 
 /// <summary>
@@ -48,6 +58,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
+    private readonly ILogger<AttachmentService>? _logger;
 
 
     /// <summary>
@@ -182,5 +193,77 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
         }
 
         return new List<AttachmentFile>();
+    }
+
+    /// <summary>
+    /// 创建或替换指定列表项的 BillPhoto 附件
+    /// </summary>
+    [UnitOfWork]
+    public async Task CreateOrReplaceBillPhotoAsync(WeighingListItemDto listItem, string photoPath)
+    {
+        try
+        {
+            // 检查文件是否存在
+            if (!File.Exists(photoPath))
+            {
+                _logger?.LogWarning("BillPhoto file does not exist: {PhotoPath}", photoPath);
+                return;
+            }
+
+            // 先删除旧的TicketPhoto附件（如果存在）
+            var existingAttachments = await GetAttachmentsByListItemAsync(listItem);
+            var existingTicketPhoto = existingAttachments.FirstOrDefault(a => a.AttachType == AttachType.TicketPhoto);
+
+            if (existingTicketPhoto != null)
+            {
+                // 删除关联记录
+                if (listItem.ItemType == WeighingListItemType.WeighingRecord)
+                {
+                    var existingRecordAttachments = await _weighingRecordAttachmentRepository.GetListAsync(
+                        predicate: ra => ra.WeighingRecordId == listItem.Id && ra.AttachmentFileId == existingTicketPhoto.Id);
+                    foreach (var recordAttachment in existingRecordAttachments)
+                    {
+                        await _weighingRecordAttachmentRepository.DeleteAsync(recordAttachment);
+                    }
+                }
+                else if (listItem.ItemType == WeighingListItemType.Waybill)
+                {
+                    var existingWaybillAttachments = await _waybillAttachmentRepository.GetListAsync(
+                        predicate: wa => wa.WaybillId == listItem.Id && wa.AttachmentFileId == existingTicketPhoto.Id);
+                    foreach (var waybillAttachment in existingWaybillAttachments)
+                    {
+                        await _waybillAttachmentRepository.DeleteAsync(waybillAttachment);
+                    }
+                }
+
+                // 删除AttachmentFile
+                await _attachmentFileRepository.DeleteAsync(existingTicketPhoto);
+                _logger?.LogInformation("Deleted old BillPhoto attachment: FileId={FileId}", existingTicketPhoto.Id);
+            }
+
+            // 创建新的AttachmentFile
+            var fileName = Path.GetFileName(photoPath);
+            var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.TicketPhoto);
+            await _attachmentFileRepository.InsertAsync(attachmentFile, true);
+
+            // 根据ItemType创建关联记录
+            if (listItem.ItemType == WeighingListItemType.WeighingRecord)
+            {
+                var weighingRecordAttachment = new WeighingRecordAttachment(listItem.Id, attachmentFile.Id);
+                await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment, true);
+            }
+            else if (listItem.ItemType == WeighingListItemType.Waybill)
+            {
+                var waybillAttachment = new WaybillAttachment(listItem.Id, attachmentFile.Id);
+                await _waybillAttachmentRepository.InsertAsync(waybillAttachment, true);
+            }
+
+            _logger?.LogInformation("Successfully created BillPhoto attachment: FilePath={FilePath}, FileId={FileId}", photoPath, attachmentFile.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to create BillPhoto attachment: FilePath={FilePath}", photoPath);
+            throw;
+        }
     }
 }
