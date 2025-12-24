@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
 using MaterialClient.Backgrounds;
@@ -155,6 +156,24 @@ public partial class AttendedWeighingWindow : Window
         {
             // Cancelled, mouse moved back
         }
+    }
+
+    private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            BeginMoveDrag(e);
+        }
+    }
+
+    private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
+    {
+        Close();
     }
 
     protected override void OnClosed(EventArgs e)

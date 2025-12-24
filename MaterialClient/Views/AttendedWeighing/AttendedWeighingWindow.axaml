@@ -15,6 +15,8 @@
         Title="有人值守"
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="White"
         Icon="/Assets/fd-ico.ico">
   
   <Window.Resources>
@@ -29,7 +31,11 @@
   <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
     
     <!-- Top Blue Header Bar -->
-    <Border Grid.Row="0" Background="#4169E1" Padding="16,12">
+    <Border Grid.Row="0" 
+            Background="#4169E1" 
+            Padding="16,12,0,12"
+            PointerPressed="TitleBar_OnPointerPressed"
+            Cursor="Arrow">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <!-- Logo and Title -->
         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -61,6 +67,48 @@
                   Padding="8,4"/>
         </StackPanel>
         
+        <!-- Window Control Buttons -->
+        <StackPanel Grid.Column="2" 
+                    Orientation="Horizontal" 
+                    Spacing="0"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Right">
+          <!-- Minimize Button -->
+          <Button Content="─"
+                  FontSize="16"
+                  Foreground="White"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  Width="40"
+                  Height="40"
+                  Cursor="Hand"
+                  Click="OnMinimizeButtonClick"
+                  Classes="transparent-button">
+            <Button.Styles>
+              <Style Selector="Button:pointerover">
+                <Setter Property="Background" Value="#5A7FE6"/>
+              </Style>
+            </Button.Styles>
+          </Button>
+          
+          <!-- Close Button -->
+          <Button Content="✕"
+                  FontSize="18"
+                  Foreground="White"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  Width="40"
+                  Height="40"
+                  Cursor="Hand"
+                  Click="OnCloseButtonClick"
+                  Classes="transparent-button">
+            <Button.Styles>
+              <Style Selector="Button:pointerover">
+                <Setter Property="Background" Value="#DC3545"/>
+              </Style>
+            </Button.Styles>
+          </Button>
+        </StackPanel>
       </Grid>
     </Border>
 
