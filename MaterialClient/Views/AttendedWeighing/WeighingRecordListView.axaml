@@ -3,6 +3,8 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:models="using:MaterialClient.Common.Models"
              xmlns:converters="using:MaterialClient.Converters"
+             xmlns:semi="https://irihi.tech/semi"
+             xmlns:u="https://irihi.tech/ursa"
              x:Class="MaterialClient.Views.AttendedWeighing.WeighingRecordListView"
              x:DataType="vm:AttendedWeighingViewModel">
   
@@ -48,32 +50,47 @@
               Classes="card-border"
               Margin="12,12,12,8"
               Padding="12">
-        <Grid RowDefinitions="Auto,Auto,Auto">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto">
         
-        <!-- Row 1: 进场时间 + 两个日期框 -->
+        <!-- Row 1: 进场时间 + 开始日期时间选择器 -->
         <Grid Grid.Row="0" 
-              ColumnDefinitions="Auto,Auto,Auto"
+              ColumnDefinitions="Auto,Auto"
               Margin="0,0,0,8">
           <TextBlock Text="进场时间" 
                      VerticalAlignment="Center" 
                      Margin="0,0,8,0"
                      FontSize="13"
                      Foreground="#666"/>
-          <CalendarDatePicker Grid.Column="1"
-                              Width="80"
+          <u:DateTimePicker Grid.Column="1"
+                              Width="150"
                               FontSize="10"
                               Margin="0,0,8,0"
-                              Watermark=""
-                              SelectedDate="{Binding SearchStartDate}"/>
-          <CalendarDatePicker Grid.Column="2"
-                              Width="80"
-                              FontSize="10"
-                              Watermark=""
-                              SelectedDate="{Binding SearchEndDate}"/>
+                              SelectedDate="{Binding SearchStartDate}"
+                              DisplayFormat="yyyy-MM-dd HH:mm"
+                              PanelFormat="yyyy-MM-dd HH:mm"/>
         </Grid>
         
-        <!-- Row 2: 车牌号码 + 输入框 -->
+        <!-- Row 2: 结束日期时间选择器 -->
         <Grid Grid.Row="1" 
+              ColumnDefinitions="Auto,Auto"
+              Margin="0,0,0,8">
+          <TextBlock Text="进场时间" 
+                     VerticalAlignment="Center" 
+                     Margin="0,0,8,0"
+                     FontSize="13"
+                     Foreground="#666"
+                     Opacity="0"/>
+          <u:DateTimePicker Grid.Column="1"
+                              Width="150"
+                              FontSize="10"
+                              Margin="0,0,8,0"
+                              SelectedDate="{Binding SearchEndDate}"
+                              DisplayFormat="yyyy-MM-dd HH:mm"
+                              PanelFormat="yyyy-MM-dd HH:mm"/>
+        </Grid>
+        
+        <!-- Row 3: 车牌号码 + 输入框 -->
+        <Grid Grid.Row="2" 
               ColumnDefinitions="Auto,Auto"
               Margin="0,0,0,8">
           <TextBlock Text="车牌号码" 
@@ -82,29 +99,27 @@
                      FontSize="13"
                      Foreground="#666"/>
           <TextBox Grid.Column="1"
-                   Width="100"
+                   Width="150"
                    FontSize="13"
                    Text="{Binding SearchPlateNumber}"/>
         </Grid>
         
-        <!-- Row 3: 搜索 + 重置按钮 -->
-        <Grid Grid.Row="2" 
+        <!-- Row 4: 搜索按钮 -->
+        <Grid Grid.Row="3" 
               ColumnDefinitions="Auto,Auto">
-          <Button Grid.Column="0" 
+          <TextBlock Text="进场时间" 
+                     VerticalAlignment="Center" 
+                     Margin="0,0,8,0"
+                     FontSize="13"
+                     Foreground="#666"
+                     Opacity="0"/>
+          <Button Grid.Column="1" 
                   Content="搜索" 
                   Classes="primary-button"
                   CornerRadius="4"
                   Padding="20,6"
                   FontSize="13"
-                  Margin="0,0,4,0"
                   Command="{Binding SearchCommand}"/>
-          <Button Grid.Column="1" 
-                  Content="重置" 
-                  Classes="secondary-button"
-                  CornerRadius="4"
-                  Padding="20,6"
-                  FontSize="13"
-                  Command="{Binding ResetSearchCommand}"/>
         </Grid>
         </Grid>
       </Border>
