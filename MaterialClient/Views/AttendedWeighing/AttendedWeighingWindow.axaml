@@ -89,6 +89,9 @@
                   Padding="20,12"
                   VerticalAlignment="Center"
                   MinWidth="180">
+            <Border.RenderTransform>
+              <TranslateTransform X="-60"/>
+            </Border.RenderTransform>
             <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}" 
                        Foreground="White" 
                        FontSize="16"/>
@@ -189,7 +192,10 @@
                    Text="{Binding CurrentWeighingStatusText}" 
                    Foreground="White" 
                    FontSize="18"
-                   VerticalAlignment="Center"/>
+                   FontWeight="Bold"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Right"
+                   Margin="-180,0,0,0"/>
       </Grid>
     </Grid>
 
