@@ -103,8 +103,8 @@
                   Background="#5A7FE6"
                   CornerRadius="8"
                   BorderThickness="0"
-                  Margin="16,0,0,0"
                   VerticalAlignment="Center"
+                  HorizontalAlignment="Center"
                   Padding="0">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
               <!-- DeliveryType Selector -->
