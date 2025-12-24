@@ -8,6 +8,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Providers;
 using MaterialClient.Views;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -15,6 +16,10 @@ using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Notifications;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 
 namespace MaterialClient.ViewModels;
@@ -369,9 +374,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(PlateNumber))
+            // 验证车牌号格式
+            if (!PlateNumberValidator.IsValidChinesePlateNumber(PlateNumber))
             {
-                PlateNumberError = "请先在上方填写车牌号后再进行匹配";
+                await ShowMessageBoxAsync("车牌号不符合规范请修改");
                 return;
             }
 
@@ -403,6 +409,20 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         {
             Logger?.LogError(ex, "匹配失败");
         }
+    }
+
+    private async Task ShowMessageBoxAsync(string message)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var parentWin = GetParentWindow();
+            if (parentWin is Views.AttendedWeighing.AttendedWeighingWindow attendedWindow 
+                && attendedWindow.NotificationManager != null)
+            {
+                attendedWindow.NotificationManager.Show(
+                    new Notification("提示", message, NotificationType.Information));
+            }
+        });
     }
 
     private Avalonia.Controls.Window? GetParentWindow()

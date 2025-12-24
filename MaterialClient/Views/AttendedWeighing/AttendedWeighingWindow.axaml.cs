@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
@@ -13,10 +14,13 @@ namespace MaterialClient.Views.AttendedWeighing;
 
 public partial class AttendedWeighingWindow : Window
 {
+    private WindowNotificationManager? _notificationManager;
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
     private readonly IServiceProvider? _serviceProvider;
     private AttendedWeighingDetailView? _warmupDetailView;
+
+    public WindowNotificationManager? NotificationManager => _notificationManager;
 
     public AttendedWeighingWindow(AttendedWeighingViewModel viewModel, IServiceProvider? serviceProvider = null)
     {
@@ -30,12 +34,26 @@ public partial class AttendedWeighingWindow : Window
             CameraStatusPopup.PlacementTarget = CameraStatusPanel;
         }
         
-        // 窗口打开时启动轮询后台服务
+        // 窗口打开时启动轮询后台服务和创建 NotificationManager
         Opened += AttendedWeighingWindow_Opened;
     }
     
     private async void AttendedWeighingWindow_Opened(object? sender, EventArgs e)
     {
+        // 创建 WindowNotificationManager（窗口打开后才能获取 TopLevel）
+        if (_notificationManager == null)
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel != null)
+            {
+                _notificationManager = new WindowNotificationManager(topLevel)
+                {
+                    Position = NotificationPosition.TopCenter,
+                    MaxItems = 3
+                };
+            }
+        }
+        
         if (_serviceProvider != null)
         {
             try
