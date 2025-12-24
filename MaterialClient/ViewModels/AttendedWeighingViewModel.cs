@@ -223,6 +223,21 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             })
             .DisposeWith(_disposables);
 
+        // 实时搜索响应（带防抖）
+        this.WhenAnyValue(
+            x => x.SearchStartDate,
+            x => x.SearchEndDate,
+            x => x.SearchPlateNumber)
+            .Throttle(TimeSpan.FromMilliseconds(500)) // 防抖500ms
+            .DistinctUntilChanged()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async _ =>
+            {
+                CurrentPage = 1; // 重置到第一页
+                await RefreshAsync();
+            })
+            .DisposeWith(_disposables);
+
         _ = InitializeOnFirstLoadAsync();
         StartTimeUpdateTimer();
 
