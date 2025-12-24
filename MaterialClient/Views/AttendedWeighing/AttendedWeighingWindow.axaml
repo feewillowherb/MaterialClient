@@ -71,8 +71,9 @@
         <StackPanel Grid.Column="2" 
                     Orientation="Horizontal" 
                     Spacing="0"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Right">
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Right"
+                    Margin="0,-4,0,0">
           <!-- Minimize Button -->
           <Button Content="─"
                   FontSize="16"

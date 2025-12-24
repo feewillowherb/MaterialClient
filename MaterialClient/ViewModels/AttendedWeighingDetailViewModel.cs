@@ -127,7 +127,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
 
         MaterialItems.Clear();
-        
+
         // 从 _listItem.Materials 创建 MaterialItemRow
         if (_listItem.Materials.Count > 0)
         {
@@ -219,7 +219,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                         }
                     }
                 }
-
             }
         }
         catch (Exception ex)
@@ -233,6 +232,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
+            if (_listItem.ItemType != WeighingListItemType.WeighingRecord)
+            {
+                return;
+            }
+
+
             var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
             IsMatchButtonVisible = weighingRecord.MatchedId == null;
         }
@@ -348,13 +353,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
             {
                 var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
-                
+
                 // 检查文件是否存在
                 if (File.Exists(billPhotoPath))
                 {
                     var attachmentService = _serviceProvider.GetRequiredService<IAttachmentService>();
                     await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
-                    
+
                     // 清空临时文件路径
                     _parentViewModel.ClearCapturedBillPhotoPath();
                 }
@@ -416,7 +421,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var parentWin = GetParentWindow();
-            if (parentWin is Views.AttendedWeighing.AttendedWeighingWindow attendedWindow 
+            if (parentWin is Views.AttendedWeighing.AttendedWeighingWindow attendedWindow
                 && attendedWindow.NotificationManager != null)
             {
                 attendedWindow.NotificationManager.Show(
@@ -498,7 +503,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 DeviationRate = null,
                 DeviationResult = "-"
             };
-            
+
             MaterialItems.Add(newRow);
             Logger?.LogInformation("已添加新的材料行");
         }
@@ -506,7 +511,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         {
             Logger?.LogError(ex, "添加材料行失败");
         }
-        
+
         await Task.CompletedTask;
     }
 

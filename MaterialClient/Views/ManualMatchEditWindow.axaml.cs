@@ -10,6 +10,7 @@ namespace MaterialClient.Views;
 public partial class ManualMatchEditWindow : Window
 {
     private readonly ManualMatchEditWindowViewModel? _viewModel;
+    private bool _isSaving;
 
     /// <summary>
     /// 无参构造函数（用于设计器）
@@ -43,19 +44,54 @@ public partial class ManualMatchEditWindow : Window
 
     private async void OnConfirmButtonClick(object? sender, RoutedEventArgs e)
     {
+        // 防止重复点击
+        if (_isSaving)
+        {
+            return;
+        }
+
         if (_viewModel == null)
         {
             Close((bool?)false);
             return;
         }
 
-        // 执行保存操作
-        var result = await _viewModel.SaveAsync();
-        
-        // 如果保存成功，关闭窗口并返回 true
-        if (result)
+        // 禁用按钮防止重复点击
+        _isSaving = true;
+        if (sender is Button button)
         {
-            Close((bool?)true);
+            button.IsEnabled = false;
+        }
+
+        try
+        {
+            // 执行保存操作
+            var result = await _viewModel.SaveAsync();
+            
+            // 如果保存成功，关闭窗口并返回 true
+            if (result)
+            {
+                Close((bool?)true);
+            }
+            else
+            {
+                // 如果保存失败，重新启用按钮
+                _isSaving = false;
+                if (sender is Button btn)
+                {
+                    btn.IsEnabled = true;
+                }
+            }
+        }
+        catch
+        {
+            // 如果出现异常，重新启用按钮
+            _isSaving = false;
+            if (sender is Button btn)
+            {
+                btn.IsEnabled = true;
+            }
+            throw;
         }
     }
 }
