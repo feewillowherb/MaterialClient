@@ -123,6 +123,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
             entity.Property(e => e.FileName).IsRequired();
             entity.Property(e => e.LocalPath).IsRequired();
+            entity.Property(e => e.LastSyncTime);
         });
 
         // Configure WaybillAttachment relationships

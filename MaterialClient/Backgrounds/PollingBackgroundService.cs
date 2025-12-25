@@ -1,10 +1,14 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using MaterialClient.Common.Entities;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.BackgroundWorkers;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Threading;
 using Volo.Abp.Uow;
 
@@ -51,6 +55,9 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
             
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(UploadWaybillAttachmentsAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -124,5 +131,22 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("开始推送运单数据...");
         await service.PushWaybillAsync(cancellationToken);
         Logger.LogInformation("运单数据推送完成");
+    }
+
+    private async Task UploadWaybillAttachmentsAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    {
+        try
+        {
+            var attachmentService = serviceProvider.GetRequiredService<IAttachmentService>();
+
+            Logger.LogInformation("开始上传运单附件到OSS...");
+            await attachmentService.SyncPendingAttachmentsToOssAsync();
+            Logger.LogInformation("运单附件上传完成");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "上传运单附件时发生异常");
+            // 不抛出异常，避免影响主流程
+        }
     }
 }
