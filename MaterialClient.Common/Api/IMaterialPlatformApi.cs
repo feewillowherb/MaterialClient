@@ -7,6 +7,12 @@ namespace MaterialClient.Common.Api;
 
 public interface IMaterialPlatformApi
 {
+    [Post("/api/File/UpdateAttaches")]
+    Task<HttpResult<object>> UpdateAttachesAsync(
+        [Body] UpdateAttachesInputDto request,
+        CancellationToken cancellationToken = default);
+
+
     [Post("/api/Order/SynchronizationOrder")]
     Task<HttpResult<object?>> SynchronizationOrderAsync(
         [Body] SynchronizationOrderInputDto request,
