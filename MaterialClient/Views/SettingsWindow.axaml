@@ -49,7 +49,8 @@
                          Grid.Row="1" 
                          Grid.Column="0"
                          VerticalAlignment="Center"
-                         Foreground="Black"/>
+                         Foreground="Black"
+                         Width="120"/>
               <TextBox Text="{Binding ScaleBaudRate}" 
                        Grid.Row="1" 
                        Grid.Column="1"
@@ -59,7 +60,8 @@
                          Grid.Row="2" 
                          Grid.Column="0"
                          VerticalAlignment="Center"
-                         Foreground="Black"/>
+                         Foreground="Black"
+                         Width="120"/>
               <TextBox Text="{Binding ScaleCommunicationMethod}" 
                        Grid.Row="2" 
                        Grid.Column="1"
@@ -108,7 +110,8 @@
                                  Grid.Row="1" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
-                                 Foreground="Black"/>
+                                 Foreground="Black"
+                                 Width="80"/>
                       <TextBox Text="{Binding Ip}" 
                                Grid.Row="1" 
                                Grid.Column="1"
@@ -118,7 +121,8 @@
                                  Grid.Row="2" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
-                                 Foreground="Black"/>
+                                 Foreground="Black"
+                                 Width="80"/>
                       <TextBox Text="{Binding Port}" 
                                Grid.Row="2" 
                                Grid.Column="1"
@@ -128,7 +132,8 @@
                                  Grid.Row="3" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
-                                 Foreground="Black"/>
+                                 Foreground="Black"
+                                 Width="80"/>
                       <TextBox Text="{Binding Channel}" 
                                Grid.Row="3" 
                                Grid.Column="1"
@@ -138,7 +143,8 @@
                                  Grid.Row="4" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
-                                 Foreground="Black"/>
+                                 Foreground="Black"
+                                 Width="80"/>
                       <TextBox Text="{Binding UserName}" 
                                Grid.Row="4" 
                                Grid.Column="1"
@@ -148,7 +154,8 @@
                                  Grid.Row="5" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
-                                 Foreground="Black"/>
+                                 Foreground="Black"
+                                 Width="80"/>
                       <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="*,Auto">
                         <TextBox Text="{Binding Password}" 
                                  Grid.Column="0"
@@ -168,29 +175,6 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-          </StackPanel>
-        </Border>
-        
-        <!-- Document Scanner Settings Group -->
-        <Border Classes="section-border"
-                Padding="16">
-          <StackPanel Spacing="12">
-            <TextBlock Text="高拍仪设置" 
-                       FontSize="18" 
-                       FontWeight="SemiBold"
-                       Foreground="Black"
-                       Margin="0,0,0,8"/>
-            
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-              <TextBlock Text="USB设备:" 
-                         Grid.Column="0"
-                         VerticalAlignment="Center"
-                         Foreground="Black"
-                         Width="120"/>
-              <TextBox Text="{Binding DocumentScannerUsbDevice}" 
-                       Grid.Column="1"
-                       Watermark="USB设备标识"/>
-            </Grid>
           </StackPanel>
         </Border>
         
@@ -234,7 +218,8 @@
                                  Grid.Row="1" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
-                                 Foreground="Black"/>
+                                 Foreground="Black"
+                                 Width="80"/>
                       <TextBox Text="{Binding Ip}" 
                                Grid.Row="1" 
                                Grid.Column="1"
@@ -244,7 +229,8 @@
                                  Grid.Row="2" 
                                  Grid.Column="0"
                                  VerticalAlignment="Center"
-                                 Foreground="Black"/>
+                                 Foreground="Black"
+                                 Width="80"/>
                       <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto">
                         <ComboBox SelectedIndex="{Binding DirectionIndex}"
                                   Grid.Column="0">
