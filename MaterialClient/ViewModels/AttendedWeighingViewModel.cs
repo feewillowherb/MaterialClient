@@ -933,11 +933,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             }
 
             // 生成文件名
-            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var now = DateTime.Now;
+            var timestamp = now.ToString("yyyyMMddHHmmss");
             var fileName = $"bill_{timestamp}.jpg";
-            var photosDir = Path.Combine(AppContext.BaseDirectory, "Photos");
+            var photosDir = $"PhotoPiaoJu/{now.Year}/{now:MM}/{now:dd}/";
             
-            // 确保Photos目录存在
+            // 确保目录存在
             if (!Directory.Exists(photosDir))
             {
                 Directory.CreateDirectory(photosDir);

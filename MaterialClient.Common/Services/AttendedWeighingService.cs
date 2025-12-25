@@ -534,8 +534,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // 转换为 BatchCaptureRequest
             var requests = new List<BatchCaptureRequest>();
-            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            var basePath = Path.Combine(AppContext.BaseDirectory, "Photos", timestamp);
+            var now = DateTime.Now;
+            var timestamp = now.ToString("yyyyMMddHHmmss");
+            var basePath = $"\\PhotoJianKong\\{now.Year}\\{now:MM}\\{now:dd}\\";
 
             foreach (var cameraConfig in cameraConfigs)
             {
