@@ -139,10 +139,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // 当前收发料类型（默认为收料）
     private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
 
-    // 重量稳定判定
-    private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
-    private const decimal WeightStabilityTolerance = 0.1m; // 0.1t = 100kg
-    private const int StabilityDurationMs = 10000; // 10秒
+    // 最小称重重量稳定判定
+    private const decimal MinWeightThreshold = 0.5m; // 0.5t = 500kg
 
     private decimal? _stableWeight = null; // 进入稳定状态时的重量值
 
@@ -394,7 +392,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             case AttendedWeighingStatus.OffScale:
                 // OffScale -> WaitingForStability: weight increases from <0.5t to >0.5t
-                if (currentWeight > WeightThreshold)
+                if (currentWeight > MinWeightThreshold)
                 {
                     _currentStatus = AttendedWeighingStatus.WaitingForStability;
                     _stableWeight = null;
@@ -406,7 +404,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 break;
 
             case AttendedWeighingStatus.WaitingForStability:
-                if (currentWeight < WeightThreshold)
+                if (currentWeight < MinWeightThreshold)
                 {
                     // Unstable weighing flow: directly from WaitingForStability to OffScale
                     _currentStatus = AttendedWeighingStatus.OffScale;
@@ -447,7 +445,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 break;
 
             case AttendedWeighingStatus.WeightStabilized:
-                if (currentWeight < WeightThreshold)
+                if (currentWeight < MinWeightThreshold)
                 {
                     // WeightStabilized -> OffScale: normal flow
                     _currentStatus = AttendedWeighingStatus.OffScale;
