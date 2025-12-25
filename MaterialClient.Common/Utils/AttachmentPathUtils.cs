@@ -41,7 +41,7 @@ public static class AttachmentPathUtils
     {
         var now = date ?? DateTime.Now;
         var basePath = GetBasePath(attachType);
-        return $"{basePath}\\{now.Year}\\{now:MM}\\{now:dd}\\";
+        return $"{basePath}/{now.Year}/{now:MM}/{now:dd}/";
     }
 
     /// <summary>
