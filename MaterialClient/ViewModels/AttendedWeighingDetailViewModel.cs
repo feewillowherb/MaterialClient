@@ -477,6 +477,23 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 null,
                 Remark
             ));
+            
+            // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
+            if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
+            {
+                var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
+
+                // 检查文件是否存在
+                if (File.Exists(billPhotoPath))
+                {
+                    var attachmentService = _serviceProvider.GetRequiredService<IAttachmentService>();
+                    await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
+
+                    // 清空临时文件路径
+                    _parentViewModel.ClearCapturedBillPhotoPath();
+                }
+            }
+            
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
             CompleteCompleted?.Invoke(this, EventArgs.Empty);
         }
