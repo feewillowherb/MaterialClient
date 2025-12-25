@@ -9,6 +9,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -533,8 +534,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // 转换为 BatchCaptureRequest
             var requests = new List<BatchCaptureRequest>();
             var now = DateTime.Now;
-            var timestamp = now.ToString("yyyyMMddHHmmss");
-            var basePath = $"\\PhotoJianKong\\{now.Year}\\{now:MM}\\{now:dd}\\";
+            var basePath = AttachmentPathUtils.GetLocalStoragePath(AttachType.EntryPhoto, now);
 
             foreach (var cameraConfig in cameraConfigs)
             {
@@ -561,7 +561,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     Channels = new[] { channel }
                 };
 
-                var fileName = $"{cameraConfig.Name}_{channel}_{Guid.NewGuid():N}.jpg";
+                var fileName = AttachmentPathUtils.GenerateMonitoringPhotoFileName(cameraConfig.Name, channel);
                 var savePath = Path.Combine(basePath, fileName);
 
                 requests.Add(new BatchCaptureRequest

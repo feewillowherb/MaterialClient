@@ -3,6 +3,7 @@ using Aliyun.OSS;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Models;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
@@ -99,9 +100,12 @@ public class OssUploadService : IOssUploadService, ITransientDependency
                     continue;
                 }
 
-                // 构建OSS对象键：waybill/{waybillId}/{attachmentId}_{fileName}
+                // 根据附件类型构建OSS对象键
                 var fileName = Path.GetFileName(item.Attachment.LocalPath);
-                var ossObjectKey = $"waybill/{item.WaybillId}/{item.Attachment.Id}_{fileName}";
+                var ossObjectKey = AttachmentPathUtils.GetOssObjectKey(
+                    item.Attachment.AttachType,
+                    item.Attachment.Id,
+                    fileName);
 
                 await Task.Run(() => { _ossClient.PutObject(bucketName, ossObjectKey, item.Attachment.LocalPath); });
 

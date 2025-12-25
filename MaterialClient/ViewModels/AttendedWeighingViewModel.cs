@@ -12,10 +12,12 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -255,6 +257,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartStatusObservable();
         StartWeighingRecordCreatedObservable();
         StartDeliveryTypeObservable();
+        StartMatchSucceededMessageBusSubscription();
         
         // 监听 USB 摄像头在线状态变化和ShouldShowPreview变化，自动启动/停止预览
         this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview)
@@ -932,11 +935,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            // 生成文件名
+            // 生成文件路径
             var now = DateTime.Now;
-            var timestamp = now.ToString("yyyyMMddHHmmss");
-            var fileName = $"bill_{timestamp}.jpg";
-            var photosDir = $"PhotoPiaoJu/{now.Year}/{now:MM}/{now:dd}/";
+            var photosDir = AttachmentPathUtils.GetLocalStoragePath(AttachType.TicketPhoto, now);
+            var fileName = AttachmentPathUtils.GenerateBillPhotoFileName(now);
             
             // 确保目录存在
             if (!Directory.Exists(photosDir))
@@ -1145,6 +1147,55 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .Subscribe(deliveryType =>
             {
                 IsReceiving = deliveryType == DeliveryType.Receiving;
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    /// 订阅匹配成功消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartMatchSucceededMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<MatchSucceededMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
+            {
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received MatchSucceededMessage for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+                    message.WaybillId, message.WeighingRecordId);
+
+                try
+                {
+                    // 刷新列表
+                    await RefreshAsync();
+
+                    // 查找匹配成功的 Waybill 列表项
+                    var matchedItem = ListItems
+                        .FirstOrDefault(item => 
+                            item.ItemType == WeighingListItemType.Waybill && 
+                            item.Id == message.WaybillId);
+
+                    if (matchedItem != null)
+                    {
+                        // 使用 Command 选择匹配成功的 Waybill
+                        SelectListItemCommand?.Execute(matchedItem);
+                        Logger?.LogInformation(
+                            "AttendedWeighingViewModel: Selected matched Waybill {WaybillId}",
+                            message.WaybillId);
+                    }
+                    else
+                    {
+                        Logger?.LogWarning(
+                            "AttendedWeighingViewModel: Matched Waybill {WaybillId} not found in current list",
+                            message.WaybillId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error while handling MatchSucceededMessage for WaybillId {WaybillId}",
+                        message.WaybillId);
+                }
             })
             .DisposeWith(_disposables);
     }
