@@ -696,7 +696,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     }
 
                     var fileName = Path.GetFileName(photoPath);
-                    var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.EntryPhoto);
+                    var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.UnmatchedEntryPhoto);
 
                     await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 
