@@ -313,7 +313,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             // 过滤掉本地文件不存在的
             var validAttachments = attachmentFiles
                 .Where(af => File.Exists(af.LocalPath))
-                .Select(af => (attachment: af, waybillId: waybillId))
+                .Select(af => new AttachmentWithWaybill(af, waybillId))
                 .ToList();
 
             if (validAttachments.Count == 0)
@@ -327,12 +327,12 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 更新上传成功的附件
             var now = DateTime.Now;
-            foreach (var (attachmentId, ossFullPath) in uploadResults)
+            foreach (var kvp in uploadResults)
             {
-                var attachment = validAttachments.FirstOrDefault(x => x.attachment.Id == attachmentId).attachment;
+                var attachment = validAttachments.FirstOrDefault(x => x.Attachment.Id == kvp.Key)?.Attachment;
                 if (attachment != null)
                 {
-                    attachment.OssFullPath = ossFullPath;
+                    attachment.OssFullPath = kvp.Value;
                     attachment.LastSyncTime = now;
                     await _attachmentFileRepository.UpdateAsync(attachment);
                 }
@@ -388,7 +388,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             // 过滤掉本地文件不存在的
             var validAttachments = pendingAttachments
                 .Where(x => File.Exists(x.AttachmentFile.LocalPath))
-                .Select(x => (attachment: x.AttachmentFile, waybillId: x.Id))
+                .Select(x => new AttachmentWithWaybill(x.AttachmentFile, x.Id))
                 .ToList();
 
             if (validAttachments.Count == 0)
@@ -400,7 +400,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             _logger?.LogInformation("SyncPendingAttachmentsToOssAsync: 找到 {Count} 个需要上传的附件", validAttachments.Count);
 
             // 按运单ID分组，便于统计
-            var groupedByWaybill = validAttachments.GroupBy(x => x.waybillId).ToList();
+            var groupedByWaybill = validAttachments.GroupBy(x => x.WaybillId).ToList();
 
             // 批量上传到OSS
             var uploadResults = await _ossUploadService.UploadFilesAsync(validAttachments);
@@ -408,12 +408,12 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             // 更新上传成功的附件
             var now = DateTime.Now;
             var successCount = 0;
-            foreach (var (attachmentId, ossFullPath) in uploadResults)
+            foreach (var kvp in uploadResults)
             {
-                var attachment = validAttachments.FirstOrDefault(x => x.attachment.Id == attachmentId).attachment;
+                var attachment = validAttachments.FirstOrDefault(x => x.Attachment.Id == kvp.Key)?.Attachment;
                 if (attachment != null)
                 {
-                    attachment.OssFullPath = ossFullPath;
+                    attachment.OssFullPath = kvp.Value;
                     attachment.LastSyncTime = now;
                     await _attachmentFileRepository.UpdateAsync(attachment);
                     successCount++;

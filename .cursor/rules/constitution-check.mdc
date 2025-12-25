@@ -2,6 +2,22 @@
 
 **This rule applies to ALL modes: Agent, Plan, and Ask**
 
+## ⚠️ CRITICAL: Constitution File Loading Requirement
+
+**YOU MUST READ THE CONSTITUTION FILE BEFORE PROCEEDING WITH ANY TASK.**
+
+**File Path**: `.specify/memory/constitution.md`
+
+**MANDATORY ACTION**: 
+1. **IMMEDIATELY** call the `read_file` tool to load `.specify/memory/constitution.md` at the START of your response
+2. **VERIFY** you have successfully loaded the complete constitution content
+3. **PRINT** a confirmation message in your response indicating:
+   - ✅ "Constitution loaded successfully" if you read the file
+   - ❌ "Constitution NOT loaded - ERROR" if you failed to read the file
+4. **ONLY THEN** proceed with the task
+
+**This is NON-NEGOTIABLE. Failure to load the constitution file is a critical error.**
+
 ## Overview
 
 The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of this codebase. All code, plans, and implementations MUST comply with Constitution principles. Constitution violations are **NON-NEGOTIABLE** unless explicitly justified and documented.
@@ -10,7 +26,11 @@ The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of t
 
 **Before ANY of the following actions, you MUST:**
 
-1. **Read Constitution**: Load and understand `.specify/memory/constitution.md`
+1. **Read Constitution**: 
+   - **MUST** use `read_file` tool to load `.specify/memory/constitution.md` 
+   - **MUST** verify the file was loaded completely
+   - **MUST** print confirmation in your response: "✅ Constitution loaded: `.specify/memory/constitution.md` (X lines)" or "❌ Constitution NOT loaded"
+   - Understand all principles in the constitution
 2. **Evaluate Compliance**: Check proposed changes against all relevant Constitution principles
 3. **Report Violations**: Explicitly identify any violations and their severity
 4. **Justify or Reject**: Either justify violations in "Complexity Tracking" or reject/modify the proposal
@@ -21,9 +41,15 @@ The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of t
 
 ### Required Steps:
 
-1. **Load Constitution**: Read `.specify/memory/constitution.md` completely before creating the plan
+1. **Load Constitution**: 
+   - **MUST** use `read_file` tool to read `.specify/memory/constitution.md` completely before creating the plan
+   - **MUST** print confirmation: "✅ Constitution loaded for plan creation"
+   - **MUST** reference specific constitution sections/line numbers when checking compliance
 
 2. **Create Constitution Check Section**: Every plan MUST include a detailed "Constitution Check" section with:
+   - **Explicit references** to constitution sections (e.g., "Constitution III. .NET 10 & Modern C# Syntax (lines 16-49)")
+   - **Specific principle names** from the constitution
+   - **Line number references** where applicable (e.g., "Code Character Constraints (NON-NEGOTIABLE) - Constitution line 78-81")
    ```markdown
    ## Constitution Check
    
@@ -66,8 +92,9 @@ The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of t
 ### Required Steps:
 
 1. **Pre-Implementation Check**:
-   - Read Constitution before writing any code
-   - Identify which principles apply to the current change
+   - **MUST** use `read_file` tool to read Constitution before writing any code
+   - **MUST** print confirmation: "✅ Constitution loaded for implementation"
+   - Identify which principles apply to the current change (with constitution section references)
    - Verify the implementation plan complies with Constitution
 
 2. **Architecture Compliance**:
@@ -124,8 +151,10 @@ public class MaterialClientViewModel
 
 ### Required Steps:
 
-1. **Load Constitution**: Read `.specify/memory/constitution.md` before analysis
-
+1. **Load Constitution**: 
+   - **MUST** use `read_file` tool to read `.specify/memory/constitution.md` before analysis
+   - **MUST** print confirmation: "✅ Constitution loaded for code review"
+   
 2. **Check for Violations**:
    - Identify any Constitution violations in the code
    - Categorize violations (NON-NEGOTIABLE vs optional)
@@ -162,7 +191,9 @@ If a violation is unavoidable:
 
 Before proceeding with ANY task, verify:
 
-- [ ] Constitution file has been read
+- [ ] Constitution file has been read using `read_file` tool
+- [ ] Confirmation message printed in response (✅ or ❌)
+- [ ] Constitution content verified and understood
 - [ ] All relevant principles have been checked
 - [ ] Architecture layering is correct (no cross-layer violations)
 - [ ] Single Responsibility is maintained

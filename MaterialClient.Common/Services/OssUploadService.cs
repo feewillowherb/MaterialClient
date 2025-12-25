@@ -2,11 +2,33 @@ using System.IO;
 using Aliyun.OSS;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
+
+/// <summary>
+/// OSS上传服务接口
+/// </summary>
+public interface IOssUploadService
+{
+    /// <summary>
+    /// 上传单个文件到OSS
+    /// </summary>
+    /// <param name="localPath">本地文件路径</param>
+    /// <param name="ossObjectKey">OSS对象键（完整路径）</param>
+    /// <returns>OSS完整URL，失败返回null</returns>
+    Task<string?> UploadFileAsync(string localPath, string ossObjectKey);
+
+    /// <summary>
+    /// 批量上传文件到OSS
+    /// </summary>
+    /// <param name="attachments">附件文件列表（需要包含waybillId信息）</param>
+    /// <returns>上传结果字典，key为AttachmentFile.Id，value为OSS完整路径</returns>
+    Task<Dictionary<int, string>> UploadFilesAsync(List<AttachmentWithWaybill> attachments);
+}
 
 /// <summary>
 /// OSS上传服务实现
@@ -40,10 +62,7 @@ public class OssUploadService : IOssUploadService, ITransientDependency
 
             var bucketName = _config.BucketName;
 
-            await Task.Run(() =>
-            {
-                _ossClient.PutObject(bucketName, ossObjectKey, localPath);
-            });
+            await Task.Run(() => { _ossClient.PutObject(bucketName, ossObjectKey, localPath); });
 
             // 构建OSS完整URL
             var ossUrl = $"https://{bucketName}.{_config.RegionId}/{ossObjectKey}";
@@ -52,13 +71,14 @@ public class OssUploadService : IOssUploadService, ITransientDependency
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "OssUploadService: 文件上传失败: {LocalPath}, OSS Key: {OssObjectKey}", localPath, ossObjectKey);
+            _logger?.LogError(ex, "OssUploadService: 文件上传失败: {LocalPath}, OSS Key: {OssObjectKey}", localPath,
+                ossObjectKey);
             return null;
         }
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<int, string>> UploadFilesAsync(List<(AttachmentFile attachment, long waybillId)> attachments)
+    public async Task<Dictionary<int, string>> UploadFilesAsync(List<AttachmentWithWaybill> attachments)
     {
         var result = new Dictionary<int, string>();
 
@@ -67,37 +87,37 @@ public class OssUploadService : IOssUploadService, ITransientDependency
 
         var bucketName = _config.BucketName;
 
-        foreach (var (attachment, waybillId) in attachments)
+        foreach (var item in attachments)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(attachment.LocalPath) || !File.Exists(attachment.LocalPath))
+                if (string.IsNullOrWhiteSpace(item.Attachment.LocalPath) || !File.Exists(item.Attachment.LocalPath))
                 {
-                    _logger?.LogWarning("OssUploadService: 跳过不存在的文件: AttachmentId={AttachmentId}, LocalPath={LocalPath}",
-                        attachment.Id, attachment.LocalPath);
+                    _logger?.LogWarning(
+                        "OssUploadService: 跳过不存在的文件: AttachmentId={AttachmentId}, LocalPath={LocalPath}",
+                        item.Attachment.Id, item.Attachment.LocalPath);
                     continue;
                 }
 
                 // 构建OSS对象键：waybill/{waybillId}/{attachmentId}_{fileName}
-                var fileName = Path.GetFileName(attachment.LocalPath);
-                var ossObjectKey = $"waybill/{waybillId}/{attachment.Id}_{fileName}";
+                var fileName = Path.GetFileName(item.Attachment.LocalPath);
+                var ossObjectKey = $"waybill/{item.WaybillId}/{item.Attachment.Id}_{fileName}";
 
-                await Task.Run(() =>
-                {
-                    _ossClient.PutObject(bucketName, ossObjectKey, attachment.LocalPath);
-                });
+                await Task.Run(() => { _ossClient.PutObject(bucketName, ossObjectKey, item.Attachment.LocalPath); });
 
                 // 构建OSS完整URL
                 var ossUrl = $"https://{bucketName}.{_config.RegionId}/{ossObjectKey}";
-                result[attachment.Id] = ossUrl;
+                result[item.Attachment.Id] = ossUrl;
 
-                _logger?.LogInformation("OssUploadService: 附件上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}, OssUrl={OssUrl}",
-                    attachment.Id, waybillId, ossUrl);
+                _logger?.LogInformation(
+                    "OssUploadService: 附件上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}, OssUrl={OssUrl}",
+                    item.Attachment.Id, item.WaybillId, ossUrl);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "OssUploadService: 附件上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, LocalPath={LocalPath}",
-                    attachment.Id, waybillId, attachment.LocalPath);
+                _logger?.LogError(ex,
+                    "OssUploadService: 附件上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, LocalPath={LocalPath}",
+                    item.Attachment.Id, item.WaybillId, item.Attachment.LocalPath);
                 // 继续处理下一个文件，不中断批量上传
             }
         }
@@ -105,4 +125,3 @@ public class OssUploadService : IOssUploadService, ITransientDependency
         return result;
     }
 }
-
