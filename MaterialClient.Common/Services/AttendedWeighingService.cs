@@ -758,6 +758,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
                 _logger?.LogInformation(
                     $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
+
+                await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
             }
             else
             {
