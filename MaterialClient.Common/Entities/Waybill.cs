@@ -137,7 +137,9 @@ public class Waybill : Entity<long>, IMaterialClientAuditedObject, IDeletionAudi
     /// </summary>
     public OffsetResultType OffsetResult { get; set; } = OffsetResultType.Default;
 
-    public decimal? OffsetRate { get; set; }
+    public decimal OffsetRate { get; set; }
+
+    public decimal OffsetCount { get; set; }
 
     /// <summary>
     /// 预警类型
@@ -208,8 +210,8 @@ public class Waybill : Entity<long>, IMaterialClientAuditedObject, IDeletionAudi
     public static string GenerateOrderNo(DeliveryType deliveryType, DateTime dateTime, int todayCount)
     {
         var content = deliveryType == Enums.DeliveryType.Receiving
-            ? $"sl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}"
-            : $"fl-{dateTime:yyyyMMddHHmmSS}-{todayCount:D4}";
+            ? $"sl-{dateTime:yyyyMMddHHmmss}-{todayCount:D4}"
+            : $"fl-{dateTime:yyyyMMddHHmmss}-{todayCount:D4}";
         return content;
     }
 
@@ -249,7 +251,7 @@ public class Waybill : Entity<long>, IMaterialClientAuditedObject, IDeletionAudi
 
         OrderPlanOnWeight = calc.PlanWeight;
         OrderPcs = calc.ActualQuantity;
-        OffsetRate = calc.DeviationRate;
+        OffsetRate = calc.DeviationRate ?? 0;
         OffsetResult = calc.OffsetResult;
     }
 

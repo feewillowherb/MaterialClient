@@ -226,7 +226,7 @@ public class WeighingListItemDto
             OrderType = waybill.OrderType,
             Remark = waybill.Remark,
             // 预计算偏差信息
-            OffsetInfo = waybill.OffsetRate.HasValue ? $"{waybill.OffsetRate.Value:F2}%" : null
+            OffsetInfo = $"{waybill.OffsetRate:F2}%"
         };
 
         // 如果有物料信息，添加到 Materials 列表

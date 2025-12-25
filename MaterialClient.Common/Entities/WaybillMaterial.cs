@@ -40,6 +40,9 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
 
     public decimal GoodsWeight { get; set; }
 
+    /// <summary>
+    /// 扣重 暂不用
+    /// </summary>
     public decimal GoodsTakeWeight { get; set; }
 
     public OffsetResultType OffsetResult { get; set; }
@@ -68,8 +71,11 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
     public void UpdateOffsetFromWaybill(Waybill waybill)
     {
         OffsetWeight = waybill.OrderGoodsWeight!.Value - waybill.OrderPlanOnWeight!.Value;
+        GoodsWeight = waybill.OrderGoodsWeight!.Value;
+        OffsetCount = waybill.OffsetCount;
+        OffsetRate = waybill.OffsetRate;
         OffsetResult = waybill.OffsetResult;
-        OffsetRate = waybill.OffsetRate!.Value;
+        OffsetRate = Math.Round(waybill.OffsetRate / 100, 2);
         GoodsPlanOnWeight = waybill.OrderPlanOnWeight!.Value;
     }
 }
