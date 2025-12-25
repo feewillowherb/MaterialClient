@@ -39,11 +39,11 @@ public partial class LoginWindow : Window
                             IsLoginSuccessful = isSuccessful;  // 保存到窗口属性
                             if (isSuccessful)
                             {
-                                // Close window after a short delay to show success message
+                                // 隐藏窗口而不是关闭，以便StartupService可以管理窗口生命周期
                                 Dispatcher.UIThread.Post(async () =>
                                 {
                                     await Task.Delay(TimeSpan.FromSeconds(0.5));
-                                    Close();
+                                    Hide();
                                 }, DispatcherPriority.Background);
                             }
                         });

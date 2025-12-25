@@ -94,7 +94,7 @@
                   <Border Classes="card-border"
                           Padding="12"
                           Margin="0,0,0,8">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="12">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="12">
                       <TextBlock Text="名称:" 
                                  Grid.Row="0" 
                                  Grid.Column="0"
@@ -104,7 +104,8 @@
                       <TextBox Text="{Binding Name}" 
                                Grid.Row="0" 
                                Grid.Column="1"
-                               Watermark="camera_1"/>
+                               Watermark="camera_1"
+                               HorizontalAlignment="Stretch"/>
                       
                       <TextBlock Text="IP地址:" 
                                  Grid.Row="1" 
@@ -115,7 +116,8 @@
                       <TextBox Text="{Binding Ip}" 
                                Grid.Row="1" 
                                Grid.Column="1"
-                               Watermark="192.168.3.245"/>
+                               Watermark="192.168.3.245"
+                               HorizontalAlignment="Stretch"/>
                       
                       <TextBlock Text="端口:" 
                                  Grid.Row="2" 
@@ -126,7 +128,8 @@
                       <TextBox Text="{Binding Port}" 
                                Grid.Row="2" 
                                Grid.Column="1"
-                               Watermark="8000"/>
+                               Watermark="8000"
+                               HorizontalAlignment="Stretch"/>
                       
                       <TextBlock Text="通道:" 
                                  Grid.Row="3" 
@@ -137,7 +140,8 @@
                       <TextBox Text="{Binding Channel}" 
                                Grid.Row="3" 
                                Grid.Column="1"
-                               Watermark="1"/>
+                               Watermark="1"
+                               HorizontalAlignment="Stretch"/>
                       
                       <TextBlock Text="用户名:" 
                                  Grid.Row="4" 
@@ -148,7 +152,8 @@
                       <TextBox Text="{Binding UserName}" 
                                Grid.Row="4" 
                                Grid.Column="1"
-                               Watermark="admin"/>
+                               Watermark="admin"
+                               HorizontalAlignment="Stretch"/>
                       
                       <TextBlock Text="密码:" 
                                  Grid.Row="5" 
@@ -160,7 +165,8 @@
                         <TextBox Text="{Binding Password}" 
                                  Grid.Column="0"
                                  Watermark="fdkj112233"
-                                 PasswordChar="*"/>
+                                 PasswordChar="*"
+                                 HorizontalAlignment="Stretch"/>
                         <Button Content="删除" 
                                 Grid.Column="1"
                                 Command="{Binding $parent[ItemsControl].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
@@ -202,7 +208,7 @@
                   <Border Classes="card-border"
                           Padding="12"
                           Margin="0,0,0,8">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="12">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="12">
                       <TextBlock Text="名称:" 
                                  Grid.Row="0" 
                                  Grid.Column="0"
@@ -212,7 +218,8 @@
                       <TextBox Text="{Binding Name}" 
                                Grid.Row="0" 
                                Grid.Column="1"
-                               Watermark="camera_1"/>
+                               Watermark="camera_1"
+                               HorizontalAlignment="Stretch"/>
                       
                       <TextBlock Text="IP地址:" 
                                  Grid.Row="1" 
@@ -223,7 +230,8 @@
                       <TextBox Text="{Binding Ip}" 
                                Grid.Row="1" 
                                Grid.Column="1"
-                               Watermark="192.168.3.245"/>
+                               Watermark="192.168.3.245"
+                               HorizontalAlignment="Stretch"/>
                       
                       <TextBlock Text="方向:" 
                                  Grid.Row="2" 
@@ -233,7 +241,8 @@
                                  Width="80"/>
                       <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto">
                         <ComboBox SelectedIndex="{Binding DirectionIndex}"
-                                  Grid.Column="0">
+                                  Grid.Column="0"
+                                  HorizontalAlignment="Stretch">
                           <ComboBoxItem Content="进场"/>
                           <ComboBoxItem Content="出场"/>
                         </ComboBox>

@@ -43,7 +43,8 @@ public partial class AuthCodeWindow : Window
                                 Dispatcher.UIThread.Post(async () =>
                                 {
                                     await Task.Delay(TimeSpan.FromSeconds(0.5));
-                                    Close();
+                                    // 隐藏窗口而不是关闭，以便StartupService可以管理窗口生命周期
+                                    Hide();
                                 }, DispatcherPriority.Background);
                             }
                         });
