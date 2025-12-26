@@ -42,7 +42,7 @@ public partial class TryMatchEventHandler : ILocalEventHandler<TryMatchEvent>, I
                     // 通过 ReactiveUI MessageBus 发送匹配成功消息
                     var message = new MatchSucceededMessage(weighingRecord.WaybillId.Value, eventData.WeighingRecordId);
                     MessageBus.Current.SendMessage(message);
-                    
+
                     _logger?.LogInformation(
                         "TryMatchEventHandler: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
                         weighingRecord.WaybillId.Value, eventData.WeighingRecordId);

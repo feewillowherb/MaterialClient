@@ -52,12 +52,13 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
 
             if (workerContext.CancellationToken.IsCancellationRequested) return;
-            await WithUow(UploadWaybillAttachmentsAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            await WithUow(UploadWaybillAttachmentsAsync, workerContext.ServiceProvider,
+                workerContext.CancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -69,10 +70,11 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         }
     }
 
-    private async Task WithUow(Func<IServiceProvider, System.Threading.CancellationToken, Task> action, IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task WithUow(Func<IServiceProvider, System.Threading.CancellationToken, Task> action,
+        IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        
+
         var uowManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
@@ -80,7 +82,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         await uow.CompleteAsync(cancellationToken);
     }
 
-    private async Task SyncMaterialAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task SyncMaterialAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -89,7 +92,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("物料数据同步完成");
     }
 
-    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -98,7 +102,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("物料类型数据同步完成");
     }
 
-    private async Task SyncProviderAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task SyncProviderAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -107,7 +112,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("供应商数据同步完成");
     }
 
-    private async Task VerifyAuthAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task VerifyAuthAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var licenseService = serviceProvider.GetRequiredService<ILicenseService>();
 
@@ -124,7 +130,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         }
     }
 
-    private async Task PushWaybillAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task PushWaybillAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<IWeighingMatchingService>();
 
@@ -133,7 +140,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("运单数据推送完成");
     }
 
-    private async Task UploadWaybillAttachmentsAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task UploadWaybillAttachmentsAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         try
         {

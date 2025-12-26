@@ -28,8 +28,8 @@ public partial class ManualMatchEditWindow : Window
     /// <param name="deliveryType">收发料类型</param>
     /// <param name="serviceProvider">服务提供者</param>
     public ManualMatchEditWindow(
-        WeighingRecord currentRecord, 
-        WeighingRecord matchedRecord, 
+        WeighingRecord currentRecord,
+        WeighingRecord matchedRecord,
         DeliveryType deliveryType,
         IServiceProvider serviceProvider) : this()
     {
@@ -67,7 +67,7 @@ public partial class ManualMatchEditWindow : Window
         {
             // 执行保存操作
             var result = await _viewModel.SaveAsync();
-            
+
             // 如果保存成功，关闭窗口并返回 true
             if (result)
             {
@@ -91,6 +91,7 @@ public partial class ManualMatchEditWindow : Window
             {
                 btn.IsEnabled = true;
             }
+
             throw;
         }
     }

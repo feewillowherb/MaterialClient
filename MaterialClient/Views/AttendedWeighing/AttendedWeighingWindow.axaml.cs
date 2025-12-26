@@ -28,17 +28,17 @@ public partial class AttendedWeighingWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         _serviceProvider = serviceProvider;
-        
+
         // Set PlacementTarget for Popup
         if (CameraStatusPopup != null && CameraStatusPanel != null)
         {
             CameraStatusPopup.PlacementTarget = CameraStatusPanel;
         }
-        
+
         // 窗口打开时启动轮询后台服务和创建 NotificationManager
         Opened += AttendedWeighingWindow_Opened;
     }
-    
+
     private async void AttendedWeighingWindow_Opened(object? sender, EventArgs e)
     {
         // 创建 WindowNotificationManager（窗口打开后才能获取 TopLevel）
@@ -54,7 +54,7 @@ public partial class AttendedWeighingWindow : Window
                 };
             }
         }
-        
+
         if (_serviceProvider != null)
         {
             try
@@ -71,7 +71,7 @@ public partial class AttendedWeighingWindow : Window
                 logger?.LogError(ex, "启动轮询后台服务失败");
             }
         }
-        
+
         // 预热 DetailView：在空闲时创建一次以初始化样式和模板
         Dispatcher.UIThread.Post(() =>
         {
@@ -108,7 +108,7 @@ public partial class AttendedWeighingWindow : Window
         {
             _closePopupCts?.Cancel();
             _closePopupCts = new CancellationTokenSource();
-            
+
             try
             {
                 // Wait a bit to allow mouse to move to popup
@@ -129,7 +129,7 @@ public partial class AttendedWeighingWindow : Window
     private void CameraStatusPopup_OnPointerEntered(object? sender, PointerEventArgs e)
     {
         _isMouseOverPopup = true;
-        
+
         // Cancel any pending close operation when mouse enters popup
         _closePopupCts?.Cancel();
         _closePopupCts = null;
@@ -138,11 +138,11 @@ public partial class AttendedWeighingWindow : Window
     private async void CameraStatusPopup_OnPointerExited(object? sender, PointerEventArgs e)
     {
         _isMouseOverPopup = false;
-        
+
         // Delay closing when mouse leaves popup
         _closePopupCts?.Cancel();
         _closePopupCts = new CancellationTokenSource();
-        
+
         try
         {
             await Task.Delay(150, _closePopupCts.Token);
@@ -179,14 +179,15 @@ public partial class AttendedWeighingWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _closePopupCts?.Cancel();
-        
+
         // 不需要手动停止 PollingBackgroundService
         // ABP 框架会在应用退出时自动停止所有 BackgroundWorker
-        
+
         if (DataContext is IDisposable disposable)
         {
             disposable.Dispose();
         }
+
         base.OnClosed(e);
     }
 }

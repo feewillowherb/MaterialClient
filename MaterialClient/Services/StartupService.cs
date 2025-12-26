@@ -113,6 +113,7 @@ public class StartupService(
         {
             _loginWindow.Hide();
         }
+
         if (_attendedWeighingWindow != null)
         {
             _attendedWeighingWindow.Hide();
@@ -134,6 +135,7 @@ public class StartupService(
                     {
                         _loginWindow.Show();
                     }
+
                     verifiedSubscription?.Dispose();
                     tcs.TrySetResult(true);
                 });
@@ -174,6 +176,7 @@ public class StartupService(
         {
             _attendedWeighingWindow.Hide();
         }
+
         // AuthCodeWindow 应该已经隐藏，但为了安全也隐藏它
         if (_authCodeWindow != null && _authCodeWindow.IsVisible)
         {
@@ -196,6 +199,7 @@ public class StartupService(
                     {
                         _attendedWeighingWindow.Show();
                     }
+
                     loginSuccessSubscription?.Dispose();
                     tcs.TrySetResult(true);
                 });
@@ -234,6 +238,7 @@ public class StartupService(
         {
             _authCodeWindow.Hide();
         }
+
         if (_loginWindow != null && _loginWindow.IsVisible)
         {
             _loginWindow.Hide();

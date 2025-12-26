@@ -30,4 +30,3 @@ public class AliyunOssConfig
     /// </summary>
     public string MaxSize { get; set; } = "100";
 }
-

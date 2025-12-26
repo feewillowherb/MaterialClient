@@ -353,7 +353,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 af => af.Id,
                 (ra, af) => new { Attachment = ra, AttachmentFile = af })
             .Where(x => (x.Attachment.WeighingRecordId == joinRecordId || x.Attachment.WeighingRecordId == outRecordId)
-                     && x.AttachmentFile.AttachType == AttachType.UnmatchedEntryPhoto)
+                        && x.AttachmentFile.AttachType == AttachType.UnmatchedEntryPhoto)
             .ToListAsync();
 
         foreach (var item in entryPhotos)
@@ -376,7 +376,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 af => af.Id,
                 (ra, af) => new { Attachment = ra, AttachmentFile = af })
             .Where(x => (x.Attachment.WeighingRecordId == joinRecordId || x.Attachment.WeighingRecordId == outRecordId)
-                     && x.AttachmentFile.AttachType == AttachType.TicketPhoto)
+                        && x.AttachmentFile.AttachType == AttachType.TicketPhoto)
             .OrderBy(x => x.Attachment.WeighingRecordId == joinRecordId ? 0 : 1) // 优先 joinRecordId
             .FirstOrDefaultAsync();
 

@@ -61,4 +61,3 @@ public class AttachmentFile : FullAuditedEntity<int>
     /// </summary>
     public DateTime? LastSyncTime { get; set; }
 }
-

@@ -6,4 +6,3 @@ namespace MaterialClient.Common.Models;
 /// 附件与运单关联信息
 /// </summary>
 public record AttachmentWithWaybill(AttachmentFile Attachment, long WaybillId);
-

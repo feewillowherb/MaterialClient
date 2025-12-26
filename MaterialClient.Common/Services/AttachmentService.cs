@@ -241,7 +241,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                 if (listItem.ItemType == WeighingListItemType.WeighingRecord)
                 {
                     var existingRecordAttachments = await _weighingRecordAttachmentRepository.GetListAsync(
-                        predicate: ra => ra.WeighingRecordId == listItem.Id && ra.AttachmentFileId == existingTicketPhoto.Id);
+                        predicate: ra =>
+                            ra.WeighingRecordId == listItem.Id && ra.AttachmentFileId == existingTicketPhoto.Id);
                     foreach (var recordAttachment in existingRecordAttachments)
                     {
                         await _weighingRecordAttachmentRepository.DeleteAsync(recordAttachment);
@@ -279,7 +280,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                 await _waybillAttachmentRepository.InsertAsync(waybillAttachment, true);
             }
 
-            _logger?.LogInformation("Successfully created BillPhoto attachment: FilePath={FilePath}, FileId={FileId}", photoPath, attachmentFile.Id);
+            _logger?.LogInformation("Successfully created BillPhoto attachment: FilePath={FilePath}, FileId={FileId}",
+                photoPath, attachmentFile.Id);
         }
         catch (Exception ex)
         {
@@ -312,9 +314,9 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 查询附件文件，只选择未上传的（OssFullPath == null）且本地文件存在的
             var attachmentFiles = await _attachmentFileRepository.GetListAsync(
-                predicate: x => attachmentFileIds.Contains(x.Id) 
-                    && x.OssFullPath == null 
-                    && !string.IsNullOrWhiteSpace(x.LocalPath)
+                predicate: x => attachmentFileIds.Contains(x.Id)
+                                && x.OssFullPath == null
+                                && !string.IsNullOrWhiteSpace(x.LocalPath)
             );
 
             // 过滤掉本地文件不存在的
@@ -384,7 +386,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                     af => af.Id,
                     (wa, af) => new { wa.Waybill, wa.WaybillAttachment, AttachmentFile = af })
                 .Where(x => x.AttachmentFile.OssFullPath == null
-                    && !string.IsNullOrWhiteSpace(x.AttachmentFile.LocalPath))
+                            && !string.IsNullOrWhiteSpace(x.AttachmentFile.LocalPath))
                 .Select(x => new
                 {
                     x.AttachmentFile,
@@ -415,16 +417,16 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             // 更新上传成功的附件并上传到服务器
             var now = DateTime.Now;
             var successCount = 0;
-            
+
             // 获取 LicenseInfo 以获取 ProId
             var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync();
             var proId = licenseInfo?.ProjectId.ToString();
-            
+
             if (string.IsNullOrWhiteSpace(proId))
             {
                 _logger?.LogWarning("SyncPendingAttachmentsToOssAsync: 未找到许可证信息，跳过附件信息上传到服务器");
             }
-            
+
             foreach (var kvp in uploadResults)
             {
                 var attachmentWithWaybill = validAttachments.FirstOrDefault(x => x.Attachment.Id == kvp.Key);
@@ -435,7 +437,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                     attachment.LastSyncTime = now;
                     await _attachmentFileRepository.UpdateAsync(attachment);
                     successCount++;
-                    
+
                     // 上传附件信息到服务器
                     if (!string.IsNullOrWhiteSpace(proId) && !string.IsNullOrWhiteSpace(kvp.Value))
                     {
@@ -449,7 +451,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                         }
                         catch (Exception ex)
                         {
-                            _logger?.LogError(ex, 
+                            _logger?.LogError(ex,
                                 "SyncPendingAttachmentsToOssAsync: 上传附件信息到服务器失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
                                 attachment.Id, attachmentWithWaybill.WaybillId);
                             // 不抛出异常，继续处理下一个附件
@@ -485,7 +487,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             var bucketKey = ExtractBucketKeyFromOssUrl(ossFullPath);
             if (string.IsNullOrWhiteSpace(bucketKey))
             {
-                _logger?.LogWarning("UploadAttachmentInfoToServerAsync: 无法从OSS路径提取BucketKey: {OssFullPath}", ossFullPath);
+                _logger?.LogWarning("UploadAttachmentInfoToServerAsync: 无法从OSS路径提取BucketKey: {OssFullPath}",
+                    ossFullPath);
                 return;
             }
 
@@ -518,7 +521,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 调用API上传
             var result = await _materialPlatformApi.UpdateAttachesAsync(request);
-            
+
             if (result?.Success == true)
             {
                 _logger?.LogInformation(
@@ -555,16 +558,16 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
         {
             // 格式：https://{bucketName}.{regionId}/{bucketKey}
             // 例如：https://findong-materialsys.oss-cn-hangzhou.aliyuncs.com/PhotoJianKong/2024/12/22/123_file.jpg
-            
+
             var uri = new Uri(ossFullPath);
             var path = uri.AbsolutePath;
-            
+
             // 去掉开头的斜杠
             if (path.StartsWith("/"))
             {
                 path = path.Substring(1);
             }
-            
+
             return path;
         }
         catch (Exception ex)

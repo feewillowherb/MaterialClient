@@ -70,7 +70,8 @@ public static class MaterialMath
     /// <param name="lowerLimit">下限阈值</param>
     /// <param name="upperLimit">上限阈值</param>
     /// <returns>偏差结果类型</returns>
-    public static OffsetResultType DetermineOffsetResult(decimal? deviationRate, decimal? lowerLimit, decimal? upperLimit)
+    public static OffsetResultType DetermineOffsetResult(decimal? deviationRate, decimal? lowerLimit,
+        decimal? upperLimit)
     {
         if (!deviationRate.HasValue)
             return OffsetResultType.Default;
@@ -98,10 +99,9 @@ public static class MaterialMath
     /// <returns>如果参数有效返回 true，否则返回 false</returns>
     public static bool IsValidCalculation(decimal? planQuantity, decimal? actualWeight, decimal? unitRate)
     {
-        return planQuantity.HasValue 
-            && unitRate.HasValue 
-            && unitRate.Value != 0 
-            && actualWeight.HasValue;
+        return planQuantity.HasValue
+               && unitRate.HasValue
+               && unitRate.Value != 0
+               && actualWeight.HasValue;
     }
 }
-

@@ -88,7 +88,8 @@ public static class AttachmentPathUtils
     /// <param name="channel">通道号</param>
     /// <param name="date">日期，如果为 null 则使用当前日期</param>
     /// <returns>完整路径：{basePath}\{year}\{MM}\{dd}\{cameraName}_{channel}_{guid}.jpg</returns>
-    public static string GetMonitoringPhotoFullPath(AttachType attachType, string cameraName, int channel, DateTime? date = null)
+    public static string GetMonitoringPhotoFullPath(AttachType attachType, string cameraName, int channel,
+        DateTime? date = null)
     {
         var basePath = GetLocalStoragePath(attachType, date);
         var fileName = GenerateMonitoringPhotoFileName(cameraName, channel);
@@ -103,10 +104,10 @@ public static class AttachmentPathUtils
     /// <param name="fileName">文件名</param>
     /// <param name="date">日期，如果为 null 则使用当前日期</param>
     /// <returns>完整路径：{basePath}/{year}/{MM}/{dd}/{attachmentId}_{fileName}</returns>
-    public static string GetOssObjectKey(AttachType attachType, int attachmentId, string fileName, DateTime? date = null)
+    public static string GetOssObjectKey(AttachType attachType, int attachmentId, string fileName,
+        DateTime? date = null)
     {
         var path = GetStoragePath(attachType, date);
         return $"{path}{attachmentId}_{fileName}";
     }
 }
-

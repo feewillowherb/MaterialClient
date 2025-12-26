@@ -30,8 +30,8 @@
         <PackageReference Include="Irihi.Ursa" Version="1.14.0" />
         <PackageReference Include="Irihi.Ursa.Themes.Semi" Version="1.14.0" />
         <PackageReference Include="ReactiveUI.SourceGenerators" Version="2.5.1">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Avalonia.Diagnostics" Version="11.3.9">
@@ -39,38 +39,38 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Volo.Abp.Autofac" Version="10.0.1" />
         <PackageReference Include="Semi.Avalonia" Version="11.3.7.1" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+        <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="appsettings.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
+        <None Update="appsettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Update="Views\ManualMatchEditWindow.axaml.cs">
-        <DependentUpon>ManualMatchEditWindow.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Views\PlateNumberInputWindow.axaml.cs">
-        <DependentUpon>PlateNumberInputWindow.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Views\PhotoGridView.axaml.cs">
-        <DependentUpon>PhotoGridView.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Views\AttendedWeighing\AttendedWeighingDetailView.axaml.cs">
-        <DependentUpon>AttendedWeighingDetailView.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Views\AttendedWeighing\WeighingRecordListView.axaml.cs">
-        <DependentUpon>WeighingRecordListView.axaml</DependentUpon>
-      </Compile>
+        <Compile Update="Views\ManualMatchEditWindow.axaml.cs">
+            <DependentUpon>ManualMatchEditWindow.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Views\PlateNumberInputWindow.axaml.cs">
+            <DependentUpon>PlateNumberInputWindow.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Views\PhotoGridView.axaml.cs">
+            <DependentUpon>PhotoGridView.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Views\AttendedWeighing\AttendedWeighingDetailView.axaml.cs">
+            <DependentUpon>AttendedWeighingDetailView.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Views\AttendedWeighing\WeighingRecordListView.axaml.cs">
+            <DependentUpon>WeighingRecordListView.axaml</DependentUpon>
+        </Compile>
     </ItemGroup>
 </Project>
