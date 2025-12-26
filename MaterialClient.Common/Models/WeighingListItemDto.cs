@@ -149,7 +149,7 @@ public class WeighingListItemDto
         {
             Id = record.Id,
             PlateNumber = record.PlateNumber,
-            JoinTime = record.CreationTime,
+            JoinTime = record.AddDate!.Value,
             OutTime = null,
             IsCompleted = false,
             ItemType = WeighingListItemType.WeighingRecord,

@@ -150,7 +150,7 @@
 
                     <!-- Scrollable List - 统一的列表 -->
                     <ScrollViewer Grid.Row="1">
-                        <ItemsControl ItemsSource="{Binding PagedListItems}">
+                        <ItemsControl ItemsSource="{Binding ListItems}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:WeighingListItemDto">
                                     <Button Classes="transparent-button"

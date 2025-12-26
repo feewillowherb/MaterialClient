@@ -9,6 +9,7 @@ using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
+using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Local;
@@ -787,6 +788,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
 
                 await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+
+                // 通过 ReactiveUI MessageBus 发送更新车牌号消息
+                var updateMessage = new UpdatePlateNumberMessage(weighingRecord.Id, plateNumber);
+                MessageBus.Current.SendMessage(updateMessage);
+
+                _logger?.LogInformation(
+                    "AttendedWeighingService: Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                    weighingRecord.Id, plateNumber);
             }
             else
             {

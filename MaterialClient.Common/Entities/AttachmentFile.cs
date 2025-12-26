@@ -1,4 +1,6 @@
 using MaterialClient.Common.Entities.Enums;
+using Volo.Abp.Auditing;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace MaterialClient.Common.Entities;
@@ -6,7 +8,7 @@ namespace MaterialClient.Common.Entities;
 /// <summary>
 ///     附件文件实体
 /// </summary>
-public class AttachmentFile : FullAuditedEntity<int>
+public class AttachmentFile : Entity<int>, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
     /// <summary>
     ///     构造函数（用于EF Core）
@@ -60,4 +62,20 @@ public class AttachmentFile : FullAuditedEntity<int>
     ///     最后同步到OSS的时间
     /// </summary>
     public DateTime? LastSyncTime { get; set; }
+
+    #region Audited Properties
+
+    public int? LastEditUserId { get; set; }
+    public string? LastEditor { get; set; }
+    public int? CreateUserId { get; set; }
+    public string? Creator { get; set; }
+    public int? UpdateTime { get; set; }
+    public int? AddTime { get; set; }
+    public DateTime? UpdateDate { get; set; }
+    public DateTime? AddDate { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletionTime { get; set; }
+    public Guid? DeleterId { get; set; }
+
+    #endregion
 }

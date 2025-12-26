@@ -144,7 +144,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var unmatchedRecords = await query
             .Where(r => r.PlateNumber == record.PlateNumber && r.Id != record.Id)
             .Where(r => r.MatchedId == null)
-            .OrderByDescending(r => r.CreationTime)
+            .OrderByDescending(r => r.AddDate)
             .ToListAsync();
         if (unmatchedRecords.Count == 0)
         {
@@ -154,9 +154,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             return false;
         }
 
-        var validTime = record.CreationTime.AddMinutes(-_maxIntervalMinutes);
+        var validTime = record.AddDate!.Value.AddMinutes(-_maxIntervalMinutes);
         var timeoutOrders = unmatchedRecords
-            .Where(r => r.CreationTime < validTime)
+            .Where(r => r.AddDate < validTime)
             .ToList();
         if (timeoutOrders.Any())
             _logger?.LogInformation(
@@ -166,10 +166,10 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (record.DeliveryType == null || record.DeliveryType == DeliveryType.Receiving)
         {
             var candidateRecords = unmatchedRecords
-                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.AddDate!.Value >= validTime)
                 .Where(r => r.TotalWeight > record.TotalWeight)
                 .Where(r => r.TotalWeight - record.TotalWeight > _minWeightDiff)
-                .OrderByDescending(r => r.CreationTime)
+                .OrderByDescending(r => r.AddDate!.Value)
                 .ToList();
             if (candidateRecords.Count == 0)
             {
@@ -180,7 +180,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             }
 
             var matchedRecord = candidateRecords
-                .OrderBy(r => r.CreationTime - record.CreationTime)
+                .OrderBy(r => r.AddDate!.Value - record.AddDate!.Value)
                 .First();
 
             await CreateWaybillAsync(record, matchedRecord, DeliveryType.Receiving);
@@ -190,10 +190,10 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (record.DeliveryType == DeliveryType.Sending)
         {
             var candidateRecords = unmatchedRecords
-                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.AddDate!.Value >= validTime)
                 .Where(r => r.TotalWeight < record.TotalWeight)
                 .Where(r => record.TotalWeight - r.TotalWeight > _minWeightDiff)
-                .OrderByDescending(r => r.CreationTime)
+                .OrderByDescending(r => r.AddDate!.Value)
                 .ToList();
             if (candidateRecords.Count == 0)
             {
@@ -204,7 +204,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             }
 
             var matchedRecord = candidateRecords
-                .OrderBy(r => r.CreationTime - record.CreationTime)
+                .OrderBy(r => r.AddDate!.Value - record.AddDate!.Value)
                 .First();
 
             await CreateWaybillAsync(matchedRecord, record, DeliveryType.Sending);
@@ -332,7 +332,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var unmatchedRecords = await query
             .Where(r => r.PlateNumber == record.PlateNumber && r.Id != record.Id)
             .Where(r => r.MatchedId == null)
-            .OrderByDescending(r => r.CreationTime)
+            .OrderByDescending(r => r.AddDate!.Value)
             .ToListAsync();
 
         if (unmatchedRecords.Count == 0)
@@ -346,7 +346,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         // 使用 TryMatch 过滤可匹配的候选记录
         return unmatchedRecords
             .Where(r => WeighingRecord.TryMatch(record, r, deliveryType, _maxIntervalMinutes, _minWeightDiff).IsMatch)
-            .OrderByDescending(r => r.CreationTime)
+            .OrderByDescending(r => r.AddDate!.Value)
             .ToList();
     }
 
@@ -361,7 +361,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         await LoadConfigurationAsync();
 
         // 使用领域方法自动判断 join/out
-        var matchResult = WeighingRecord.TryMatch(currentRecord, matchedRecord, deliveryType, _maxIntervalMinutes, _minWeightDiff);
+        var matchResult = WeighingRecord.TryMatch(currentRecord, matchedRecord, deliveryType, _maxIntervalMinutes,
+            _minWeightDiff);
 
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
             throw new BusinessException("无法匹配这两条记录");
@@ -589,14 +590,14 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var todayCount = await _waybillRepository.CountAsync(w =>
             w.AddDate!.Value.Date == DateTime.Today);
 
-        var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.CreationTime, todayCount);
+        var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.AddDate!.Value, todayCount);
         var orderId = Waybill.GenerateOrderId();
         var waybill = new Waybill(orderId, orderNo)
         {
             ProviderId = joinRecord.ProviderId ?? outRecord.ProviderId,
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
-            JoinTime = joinRecord.CreationTime,
-            OutTime = outRecord.CreationTime,
+            JoinTime = joinRecord.AddDate,
+            OutTime = outRecord.AddDate,
             DeliveryType = deliveryType,
             OrderSource = OrderSource.MannedStation,
             OrderType = OrderTypeEnum.FirstWeight
@@ -753,11 +754,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         // 选择时间最接近的候选记录
         var matchedRecord = candidates
-            .OrderBy(r => Math.Abs((r.CreationTime - record.CreationTime).TotalMinutes))
+            .OrderBy(r => Math.Abs((r.AddDate!.Value - record.AddDate!.Value).TotalMinutes))
             .First();
 
         // 使用领域方法自动判断 join/out
-        var matchResult = WeighingRecord.TryMatch(record, matchedRecord, deliveryType, _maxIntervalMinutes, _minWeightDiff);
+        var matchResult =
+            WeighingRecord.TryMatch(record, matchedRecord, deliveryType, _maxIntervalMinutes, _minWeightDiff);
 
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
         {
