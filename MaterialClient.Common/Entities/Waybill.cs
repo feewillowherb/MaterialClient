@@ -249,6 +249,7 @@ public class Waybill : Entity<long>, IMaterialClientAuditedObject, IDeletionAudi
 
         if (!calc.IsValid) return;
 
+        OffsetCount = calc.DifferenceCount;
         OrderPlanOnWeight = calc.PlanWeight;
         OrderPcs = calc.ActualQuantity;
         OffsetRate = calc.DeviationRate ?? 0;

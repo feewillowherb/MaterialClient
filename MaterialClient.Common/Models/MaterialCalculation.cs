@@ -65,6 +65,12 @@ public record MaterialCalculation
     /// </summary>
     public OffsetResultType OffsetResult { get; }
 
+
+    /// <summary>
+    /// 偏差数量
+    /// </summary>
+    public decimal DifferenceCount { get; set; }
+
     /// <summary>
     /// 计算是否有效
     /// </summary>
@@ -105,6 +111,9 @@ public record MaterialCalculation
         // 差值 = 实际重量 - 计划重量
         Difference = MaterialMath.CalculateDifference(actualWeight, PlanWeight);
 
+        // 偏差数量 = 实际件数 - 计划件数
+        DifferenceCount = ActualQuantity!.Value - PlanQuantity!.Value;
+
         // 偏差率计算
         DeviationRate = MaterialMath.CalculateDeviationRate(Difference, PlanWeight);
         OffsetResult = MaterialMath.DetermineOffsetResult(DeviationRate, lowerLimit, upperLimit);
@@ -127,4 +136,3 @@ public record MaterialCalculation
 
     #endregion
 }
-
