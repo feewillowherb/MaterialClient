@@ -286,14 +286,12 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         if (cameraConfigs.Count == 0)
         {
-            // Send notification: no cameras configured
-            MessageBus.Current.SendMessage(new TestCaptureCompletedMessage
-            {
-                Success = false,
-                Message = "未配置相机"
-            });
             return new List<BatchCaptureResult>();
         }
+
+        // Get stream type for filename suffix
+        var streamType = settings.SystemSettings.CaptureStreamType;
+        var streamTypeSuffix = streamType == StreamType.Substream ? "sub" : "main";
 
         // Create test image directory
         var appDirectory = AppContext.BaseDirectory;
@@ -328,7 +326,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 Channels = new[] { channel }
             };
 
-            var fileName = $"test_{cameraConfig.Name}_ch{channel}_{timestamp}.jpg";
+            var fileName = $"test_{cameraConfig.Name}_ch{channel}_{streamTypeSuffix}_{timestamp}.jpg";
             var savePath = Path.Combine(testImageDir, fileName);
 
             requests.Add(new BatchCaptureRequest
