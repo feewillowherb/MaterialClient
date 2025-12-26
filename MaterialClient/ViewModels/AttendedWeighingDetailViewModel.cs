@@ -11,6 +11,7 @@ using Avalonia.Threading;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
@@ -323,6 +324,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     _parentViewModel.ClearCapturedBillPhotoPath();
                 }
             }
+
+            // 发送保存完成消息，通知 UI 选择保存的项
+            var message = new SaveCompletedMessage(_listItem.Id, _listItem.ItemType);
+            MessageBus.Current.SendMessage(message);
 
             SaveCompleted?.Invoke(this, EventArgs.Empty);
         }

@@ -2,9 +2,11 @@ using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ReactiveUI;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
@@ -183,7 +185,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 .OrderBy(r => r.AddDate - record.AddDate)
                 .First();
 
-            await CreateWaybillAsync(record, matchedRecord, DeliveryType.Receiving);
+            _ = await CreateWaybillAsync(record, matchedRecord, DeliveryType.Receiving);
             return true;
         }
 
@@ -207,7 +209,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 .OrderBy(r => r.AddDate - record.AddDate)
                 .First();
 
-            await CreateWaybillAsync(matchedRecord, record, DeliveryType.Sending);
+            _ = await CreateWaybillAsync(matchedRecord, record, DeliveryType.Sending);
             return true;
         }
 
@@ -367,7 +369,15 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
             throw new BusinessException("无法匹配这两条记录");
 
-        await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
+        var waybillId = await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
+
+        // 发送匹配成功消息，通知 UI 选择匹配结果
+        var message = new MatchSucceededMessage(waybillId, currentRecord.Id);
+        MessageBus.Current.SendMessage(message);
+
+        _logger?.LogInformation(
+            "ManualMatchAsync: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+            waybillId, currentRecord.Id);
     }
 
     /// <summary>
@@ -584,7 +594,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     }
 
     [UnitOfWork]
-    private async Task CreateWaybillAsync(WeighingRecord joinRecord, WeighingRecord outRecord,
+    private async Task<long> CreateWaybillAsync(WeighingRecord joinRecord, WeighingRecord outRecord,
         DeliveryType deliveryType)
     {
         var todayCount = await _waybillRepository.CountAsync(w =>
@@ -621,6 +631,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var materialUnitId = joinMaterial?.MaterialUnitId ?? outMaterial?.MaterialUnitId;
         var waybillQuantity = joinMaterial?.WaybillQuantity ?? outMaterial?.WaybillQuantity;
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
+
+        return waybill.Id;
     }
 
     /// <summary>
@@ -769,7 +781,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             return false;
         }
 
-        await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
+        _ = await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
 
         _logger?.LogInformation(
             "AutoMatchAsync: Successfully matched record {RecordId} with {MatchedId}, DeliveryType: {DeliveryType}",
