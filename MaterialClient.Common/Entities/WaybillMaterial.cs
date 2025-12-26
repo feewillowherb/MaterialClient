@@ -71,6 +71,7 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
     public void UpdateOffsetFromWaybill(Waybill waybill)
     {
         OffsetWeight = waybill.OrderGoodsWeight!.Value - waybill.OrderPlanOnWeight!.Value;
+        GoodsPcs = waybill.OrderPcs!.Value;
         GoodsWeight = waybill.OrderGoodsWeight!.Value;
         OffsetCount = waybill.OffsetCount;
         OffsetRate = waybill.OffsetRate;
