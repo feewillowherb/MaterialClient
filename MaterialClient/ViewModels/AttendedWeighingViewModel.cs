@@ -204,7 +204,24 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.IsShowingMainView)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsShowingDetailView)))
+            .Subscribe(async isShowingMainView =>
+            {
+                this.RaisePropertyChanged(nameof(IsShowingDetailView));
+                
+                // 当切换到 MainView 时，停止摄像头预览
+                if (isShowingMainView)
+                {
+                    await StopUsbCameraPreviewAsync();
+                }
+                // 当从 MainView 切换到 DetailView 时，如果条件满足，启动预览
+                else
+                {
+                    if (IsUsbCameraOnline && ShouldShowPreview)
+                    {
+                        await StartUsbCameraPreviewAsync();
+                    }
+                }
+            })
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
@@ -259,20 +276,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartDeliveryTypeObservable();
         StartMatchSucceededMessageBusSubscription();
         
-        // 监听 USB 摄像头在线状态变化和ShouldShowPreview变化，自动启动/停止预览
-        this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview)
+        // 监听 USB 摄像头在线状态变化、ShouldShowPreview变化和IsShowingMainView变化，自动启动/停止预览
+        this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview, x => x.IsShowingMainView)
             .DistinctUntilChanged()
             .Subscribe(async tuple =>
             {
-                var (isOnline, shouldShow) = tuple;
-                if (isOnline && shouldShow)
+                var (isOnline, shouldShow, isShowingMainView) = tuple;
+                if (isOnline && shouldShow && !isShowingMainView)
                 {
-                    // 摄像头上线且应该显示预览，启动预览
+                    // 摄像头上线且应该显示预览且不在 MainView，启动预览
                     await StartUsbCameraPreviewAsync();
                 }
                 else
                 {
-                    // 摄像头下线或不应显示预览，停止预览
+                    // 摄像头下线、不应显示预览或处于 MainView，停止预览
                     await StopUsbCameraPreviewAsync();
                 }
             })
@@ -393,6 +410,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
+            // 如果处于 MainView，则不启动预览
+            if (IsShowingMainView)
+            {
+                Logger?.LogDebug("处于 MainView，跳过预览启动");
+                return;
+            }
+
             // 如果不应显示预览（已存在BillPhoto且未在重新拍照模式），则不启动预览
             if (!ShouldShowPreview)
             {
