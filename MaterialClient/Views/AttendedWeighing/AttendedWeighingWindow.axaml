@@ -345,8 +345,7 @@
                       HorizontalAlignment="Center"
                       Margin="0,12,0,0"
                       Command="{Binding TakeBillPhotoCommand}"
-                      IsEnabled="{Binding IsUsbCameraOnline}"
-                      IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingDetailView}"/>
+                      IsEnabled="{Binding IsUsbCameraOnline}"/>
             </Grid>
           </Border>
         </Grid>
