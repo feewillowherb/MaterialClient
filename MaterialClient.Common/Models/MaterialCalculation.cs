@@ -1,4 +1,5 @@
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Utils;
 
 namespace MaterialClient.Common.Models;
 
@@ -64,6 +65,12 @@ public record MaterialCalculation
     /// </summary>
     public OffsetResultType OffsetResult { get; }
 
+
+    /// <summary>
+    /// 偏差数量
+    /// </summary>
+    public decimal DifferenceCount { get; set; }
+
     /// <summary>
     /// 计算是否有效
     /// </summary>
@@ -88,53 +95,33 @@ public record MaterialCalculation
         UpperLimit = upperLimit;
 
         // 验证必要参数
-        if (!planQuantity.HasValue || !unitRate.HasValue || unitRate.Value == 0 || !actualWeight.HasValue)
+        IsValid = MaterialMath.IsValidCalculation(planQuantity, actualWeight, unitRate);
+        if (!IsValid)
         {
-            IsValid = false;
             OffsetResult = OffsetResultType.Default;
             return;
         }
 
-        IsValid = true;
-
         // 计划重量 = 计划件数 × 换算率
-        PlanWeight = Math.Round(planQuantity.Value * unitRate.Value, 2, MidpointRounding.AwayFromZero);
+        PlanWeight = MaterialMath.CalculatePlanWeight(planQuantity, unitRate);
 
         // 实际件数 = 实际重量 / 换算率
-        ActualQuantity = Math.Round(actualWeight.Value / unitRate.Value, 4, MidpointRounding.AwayFromZero);
+        ActualQuantity = MaterialMath.CalculateActualQuantity(actualWeight, unitRate);
 
         // 差值 = 实际重量 - 计划重量
-        Difference = actualWeight.Value - PlanWeight.Value;
+        Difference = MaterialMath.CalculateDifference(actualWeight, PlanWeight);
+
+        // 偏差数量 = 实际件数 - 计划件数
+        DifferenceCount = ActualQuantity!.Value - PlanQuantity!.Value;
 
         // 偏差率计算
-        if (PlanWeight.Value != 0)
-        {
-            DeviationRate = Math.Round(Difference.Value * 100 / PlanWeight.Value, 4, MidpointRounding.AwayFromZero);
-            OffsetResult = DetermineOffsetResult(DeviationRate.Value);
-        }
-        else
-        {
-            OffsetResult = OffsetResultType.Default;
-        }
+        DeviationRate = MaterialMath.CalculateDeviationRate(Difference, PlanWeight);
+        OffsetResult = MaterialMath.DetermineOffsetResult(DeviationRate, lowerLimit, upperLimit);
     }
 
     #endregion
 
     #region 辅助方法
-
-    private OffsetResultType DetermineOffsetResult(decimal deviationRate)
-    {
-        if (!LowerLimit.HasValue && !UpperLimit.HasValue)
-            return OffsetResultType.Default;
-
-        if (LowerLimit.HasValue && LowerLimit < 0 && deviationRate < 0 && deviationRate < LowerLimit)
-            return OffsetResultType.OverNegativeDeviation;
-
-        if (UpperLimit.HasValue && UpperLimit > 0 && deviationRate > 0 && deviationRate > UpperLimit)
-            return OffsetResultType.OverPositiveDeviation;
-
-        return OffsetResultType.Normal;
-    }
 
     /// <summary>
     /// 获取偏差结果的显示文本
@@ -149,4 +136,3 @@ public record MaterialCalculation
 
     #endregion
 }
-

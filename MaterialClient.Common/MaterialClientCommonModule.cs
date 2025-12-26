@@ -12,6 +12,7 @@ using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Api;
+using MaterialClient.Common.Configuration;
 using Refit;
 using Polly;
 using System;
@@ -97,6 +98,10 @@ public class MaterialClientCommonModule : AbpModule
         var options = new IdGeneratorOptions(1);
         // 2. 保存配置并初始化
         YitIdHelper.SetIdGenerator(options);
+
+        // Configure AliyunOss
+        services.Configure<AliyunOssConfig>(
+            configuration.GetSection("AliyunOss"));
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)

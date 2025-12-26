@@ -1,62 +1,64 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-      <_Parameter1>MaterialClient.Common.Tests</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+            <_Parameter1>MaterialClient.Common.Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="AutoConstructor" Version="5.6.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Refit.HttpClientFactory" Version="9.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.1" />
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Volo.Abp.AspNetCore" Version="10.0.1" />
-    <PackageReference Include="Volo.Abp.Autofac" Version="10.0.1" />
-    <PackageReference Include="Volo.Abp.Core" Version="10.0.1" />
-    <PackageReference Include="Volo.Abp.Ddd.Domain" Version="10.0.1" />
-    <PackageReference Include="Volo.Abp.Ddd.Application.Contracts" Version="10.0.1" />
-    <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite" Version="10.0.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
-    <PackageReference Include="System.Management" Version="10.0.1" />
-    <PackageReference Include="System.IO.Ports" Version="10.0.1" />
-    <PackageReference Include="System.Reactive" Version="7.0.0-preview.1" />
-    <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="8.0.0-dev-02318" />
-    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
-    <PackageReference Include="Yitter.IdGenerator" Version="1.0.14" />
-    <PackageReference Include="FlashCap" Version="1.11.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="AutoConstructor" Version="5.6.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Refit.HttpClientFactory" Version="9.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.1" />
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Volo.Abp.AspNetCore" Version="10.0.1" />
+        <PackageReference Include="Volo.Abp.Autofac" Version="10.0.1" />
+        <PackageReference Include="Volo.Abp.Core" Version="10.0.1" />
+        <PackageReference Include="Volo.Abp.Ddd.Domain" Version="10.0.1" />
+        <PackageReference Include="Volo.Abp.Ddd.Application.Contracts" Version="10.0.1" />
+        <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite" Version="10.0.1" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
+        <PackageReference Include="System.Management" Version="10.0.1" />
+        <PackageReference Include="System.IO.Ports" Version="10.0.1" />
+        <PackageReference Include="System.Reactive" Version="7.0.0-preview.1" />
+        <PackageReference Include="ReactiveUI" Version="20.1.1" />
+        <PackageReference Include="Serilog" Version="4.3.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="8.0.0-dev-02318" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+        <PackageReference Include="Yitter.IdGenerator" Version="1.0.14" />
+        <PackageReference Include="FlashCap" Version="1.11.0" />
+        <PackageReference Include="Aliyun.OSS.SDK.NetCore" Version="2.14.1" />
+    </ItemGroup>
 
 
-  <ItemGroup>
-<!--   将 HCNetSDK 根目录下的 dll 和 lib 直接输出到输出目录根目录 -->
-  <None Include="HCNetSDK\*.dll" CopyToOutputDirectory="PreserveNewest">
-    <Link>%(Filename)%(Extension)</Link>
-  </None>
-  <None Include="HCNetSDK\*.lib" CopyToOutputDirectory="PreserveNewest">
-    <Link>%(Filename)%(Extension)</Link>
-  </None>
-<!--   HCNetSDKCom 文件夹保持相对路径结构（与 HCNetSDK.dll 同级） -->
-  <None Include="HCNetSDK\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest">
-    <Link>HCNetSDKCom\%(RecursiveDir)%(Filename)%(Extension)</Link>
-  </None>
-</ItemGroup>
+    <ItemGroup>
+        <!--   将 HCNetSDK 根目录下的 dll 和 lib 直接输出到输出目录根目录 -->
+        <None Include="HCNetSDK\*.dll" CopyToOutputDirectory="PreserveNewest">
+            <Link>%(Filename)%(Extension)</Link>
+        </None>
+        <None Include="HCNetSDK\*.lib" CopyToOutputDirectory="PreserveNewest">
+            <Link>%(Filename)%(Extension)</Link>
+        </None>
+        <!--   HCNetSDKCom 文件夹保持相对路径结构（与 HCNetSDK.dll 同级） -->
+        <None Include="HCNetSDK\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest">
+            <Link>HCNetSDKCom\%(RecursiveDir)%(Filename)%(Extension)</Link>
+        </None>
+    </ItemGroup>
 
 </Project>

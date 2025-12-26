@@ -8,6 +8,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Providers;
 using MaterialClient.Views;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -15,6 +16,10 @@ using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Notifications;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 
 namespace MaterialClient.ViewModels;
@@ -122,7 +127,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
 
         MaterialItems.Clear();
-        
+
         // 从 _listItem.Materials 创建 MaterialItemRow
         if (_listItem.Materials.Count > 0)
         {
@@ -214,7 +219,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                         }
                     }
                 }
-
             }
         }
         catch (Exception ex)
@@ -228,6 +232,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
+            if (_listItem.ItemType != WeighingListItemType.WeighingRecord)
+            {
+                return;
+            }
+
+
             var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
             IsMatchButtonVisible = weighingRecord.MatchedId == null;
         }
@@ -343,13 +353,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
             {
                 var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
-                
+
                 // 检查文件是否存在
                 if (File.Exists(billPhotoPath))
                 {
                     var attachmentService = _serviceProvider.GetRequiredService<IAttachmentService>();
                     await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
-                    
+
                     // 清空临时文件路径
                     _parentViewModel.ClearCapturedBillPhotoPath();
                 }
@@ -369,9 +379,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(PlateNumber))
+            // 验证车牌号格式
+            if (!PlateNumberValidator.IsValidChinesePlateNumber(PlateNumber))
             {
-                PlateNumberError = "请先在上方填写车牌号后再进行匹配";
+                await ShowMessageBoxAsync("车牌号不符合规范请修改");
                 return;
             }
 
@@ -403,6 +414,20 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         {
             Logger?.LogError(ex, "匹配失败");
         }
+    }
+
+    private async Task ShowMessageBoxAsync(string message)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var parentWin = GetParentWindow();
+            if (parentWin is Views.AttendedWeighing.AttendedWeighingWindow attendedWindow
+                && attendedWindow.NotificationManager != null)
+            {
+                attendedWindow.NotificationManager.Show(
+                    new Notification("提示", message, NotificationType.Information));
+            }
+        });
     }
 
     private Avalonia.Controls.Window? GetParentWindow()
@@ -452,6 +477,23 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 null,
                 Remark
             ));
+
+            // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
+            if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
+            {
+                var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
+
+                // 检查文件是否存在
+                if (File.Exists(billPhotoPath))
+                {
+                    var attachmentService = _serviceProvider.GetRequiredService<IAttachmentService>();
+                    await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
+
+                    // 清空临时文件路径
+                    _parentViewModel.ClearCapturedBillPhotoPath();
+                }
+            }
+
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
             CompleteCompleted?.Invoke(this, EventArgs.Empty);
         }
@@ -478,7 +520,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 DeviationRate = null,
                 DeviationResult = "-"
             };
-            
+
             MaterialItems.Add(newRow);
             Logger?.LogInformation("已添加新的材料行");
         }
@@ -486,7 +528,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         {
             Logger?.LogError(ex, "添加材料行失败");
         }
-        
+
         await Task.CompletedTask;
     }
 

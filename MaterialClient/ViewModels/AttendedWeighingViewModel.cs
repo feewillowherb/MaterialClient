@@ -12,10 +12,12 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -106,7 +108,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private int _frameCounter; // 帧计数器，用于只处理一半的帧
 
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
-    public bool IsCompletedWaybillSelected => SelectedListItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
+
+    public bool IsCompletedWaybillSelected => SelectedListItem is
+        { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
+
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
     public bool IsSending => !IsReceiving;
 
@@ -159,17 +164,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .Subscribe(async item =>
             {
                 this.RaisePropertyChanged(nameof(IsCompletedWaybillSelected));
-                
+
                 if (item != null)
                 {
                     await LoadListItemPhotos(item);
                     UpdateDisplayInfoFromListItem(item);
-                    
+
                     // 更新预览状态
                     this.RaisePropertyChanged(nameof(HasBillPhoto));
                     this.RaisePropertyChanged(nameof(BillPhotoButtonText));
                     this.RaisePropertyChanged(nameof(ShouldShowPreview));
-                    
+
                     // 根据ShouldShowPreview决定是否启动预览
                     if (IsUsbCameraOnline && ShouldShowPreview)
                     {
@@ -188,7 +193,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                     _isRetakingPhoto = false;
                     PhotoGridViewModel?.Clear();
                     ClearDisplayInfo();
-                    
+
                     // 更新预览状态
                     this.RaisePropertyChanged(nameof(HasBillPhoto));
                     this.RaisePropertyChanged(nameof(BillPhotoButtonText));
@@ -202,7 +207,24 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.IsShowingMainView)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsShowingDetailView)))
+            .Subscribe(async isShowingMainView =>
+            {
+                this.RaisePropertyChanged(nameof(IsShowingDetailView));
+
+                // 当切换到 MainView 时，停止摄像头预览
+                if (isShowingMainView)
+                {
+                    await StopUsbCameraPreviewAsync();
+                }
+                // 当从 MainView 切换到 DetailView 时，如果条件满足，启动预览
+                else
+                {
+                    if (IsUsbCameraOnline && ShouldShowPreview)
+                    {
+                        await StartUsbCameraPreviewAsync();
+                    }
+                }
+            })
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
@@ -223,6 +245,21 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             })
             .DisposeWith(_disposables);
 
+        // 实时搜索响应（带防抖）
+        this.WhenAnyValue(
+                x => x.SearchStartDate,
+                x => x.SearchEndDate,
+                x => x.SearchPlateNumber)
+            .Throttle(TimeSpan.FromMilliseconds(500)) // 防抖500ms
+            .DistinctUntilChanged()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async _ =>
+            {
+                CurrentPage = 1; // 重置到第一页
+                await RefreshAsync();
+            })
+            .DisposeWith(_disposables);
+
         _ = InitializeOnFirstLoadAsync();
         StartTimeUpdateTimer();
 
@@ -240,26 +277,27 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartStatusObservable();
         StartWeighingRecordCreatedObservable();
         StartDeliveryTypeObservable();
-        
-        // 监听 USB 摄像头在线状态变化和ShouldShowPreview变化，自动启动/停止预览
-        this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview)
+        StartMatchSucceededMessageBusSubscription();
+
+        // 监听 USB 摄像头在线状态变化、ShouldShowPreview变化和IsShowingMainView变化，自动启动/停止预览
+        this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview, x => x.IsShowingMainView)
             .DistinctUntilChanged()
             .Subscribe(async tuple =>
             {
-                var (isOnline, shouldShow) = tuple;
-                if (isOnline && shouldShow)
+                var (isOnline, shouldShow, isShowingMainView) = tuple;
+                if (isOnline && shouldShow && !isShowingMainView)
                 {
-                    // 摄像头上线且应该显示预览，启动预览
+                    // 摄像头上线且应该显示预览且不在 MainView，启动预览
                     await StartUsbCameraPreviewAsync();
                 }
                 else
                 {
-                    // 摄像头下线或不应显示预览，停止预览
+                    // 摄像头下线、不应显示预览或处于 MainView，停止预览
                     await StopUsbCameraPreviewAsync();
                 }
             })
             .DisposeWith(_disposables);
-        
+
         // 尝试初始启动预览（如果摄像头已经在线且应该显示预览）
         _ = StartUsbCameraPreviewAsync();
     }
@@ -375,6 +413,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     {
         try
         {
+            // 如果处于 MainView，则不启动预览
+            if (IsShowingMainView)
+            {
+                Logger?.LogDebug("处于 MainView，跳过预览启动");
+                return;
+            }
+
             // 如果不应显示预览（已存在BillPhoto且未在重新拍照模式），则不启动预览
             if (!ShouldShowPreview)
             {
@@ -420,12 +465,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                         {
                             // 释放旧的 Bitmap
                             var oldBitmap = UsbCameraPreview;
-                            
+
                             // 将字节数组转换为 Bitmap
                             using var stream = new System.IO.MemoryStream(imageBytes);
                             var bitmap = new Bitmap(stream);
                             UsbCameraPreview = bitmap;
-                            
+
                             // 释放旧的 Bitmap
                             oldBitmap?.Dispose();
                         }
@@ -467,10 +512,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             }
 
             await usbCameraService.StopPreviewAsync();
-            Dispatcher.UIThread.Post(() => 
-            { 
+            Dispatcher.UIThread.Post(() =>
+            {
                 UsbCameraPreview?.Dispose();
-                UsbCameraPreview = null; 
+                UsbCameraPreview = null;
             });
             Logger?.LogInformation("USB 摄像头预览已停止");
         }
@@ -602,26 +647,26 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
             // 应用搜索过滤
             var filteredItems = result.Items.AsEnumerable();
-            
+
             // 按日期范围过滤
             if (SearchStartDate.HasValue)
             {
                 var startDate = SearchStartDate.Value.Date;
                 filteredItems = filteredItems.Where(item => item.JoinTime.Date >= startDate);
             }
-            
+
             if (SearchEndDate.HasValue)
             {
                 var endDate = SearchEndDate.Value.Date.AddDays(1); // 包含结束日期当天
                 filteredItems = filteredItems.Where(item => item.JoinTime.Date < endDate);
             }
-            
+
             // 按车牌号过滤
             if (!string.IsNullOrWhiteSpace(SearchPlateNumber))
             {
                 var plateNumber = SearchPlateNumber.Trim();
-                filteredItems = filteredItems.Where(item => 
-                    !string.IsNullOrEmpty(item.PlateNumber) && 
+                filteredItems = filteredItems.Where(item =>
+                    !string.IsNullOrEmpty(item.PlateNumber) &&
                     item.PlateNumber.Contains(plateNumber, StringComparison.OrdinalIgnoreCase));
             }
 
@@ -855,7 +900,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 IsShowUnmatched = false;
                 CurrentPage = 1;
                 await RefreshAsync();
-                
+
                 // 刷新后选择第一条（应该就是已完成的第一个）
                 if (ListItems.Count > 0)
                 {
@@ -880,17 +925,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 _isRetakingPhoto = true;
                 this.RaisePropertyChanged(nameof(BillPhotoButtonText));
                 this.RaisePropertyChanged(nameof(ShouldShowPreview));
-                
+
                 // 清除旧的BillPhotoPath（但保留数据库中的记录，直到保存时更新）
                 BillPhotoPath = null;
                 _capturedBillPhotoPath = null;
-                
+
                 // 启动预览
                 if (IsUsbCameraOnline)
                 {
                     await StartUsbCameraPreviewAsync();
                 }
-                
+
                 Logger?.LogInformation("进入重新拍照模式");
                 return;
             }
@@ -917,12 +962,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            // 生成文件名
-            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            var fileName = $"bill_{timestamp}.jpg";
-            var photosDir = Path.Combine(AppContext.BaseDirectory, "Photos");
-            
-            // 确保Photos目录存在
+            // 生成文件路径
+            var now = DateTime.Now;
+            var photosDir = AttachmentPathUtils.GetLocalStoragePath(AttachType.TicketPhoto, now);
+            var fileName = AttachmentPathUtils.GenerateBillPhotoFileName(now);
+
+            // 确保目录存在
             if (!Directory.Exists(photosDir))
             {
                 Directory.CreateDirectory(photosDir);
@@ -937,7 +982,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             _capturedBillPhotoPath = filePath;
             BillPhotoPath = filePath;
             _isRetakingPhoto = false;
-            
+
             this.RaisePropertyChanged(nameof(HasBillPhoto));
             this.RaisePropertyChanged(nameof(BillPhotoButtonText));
             this.RaisePropertyChanged(nameof(ShouldShowPreview));
@@ -990,7 +1035,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             // 先创建并设置 ViewModel
             var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
             viewModel.SetImage(imagePath);
-            
+
             // 手动创建窗口，传入已设置的 ViewModel
             var window = new ImageViewerWindow(viewModel);
             window.Show();
@@ -1103,7 +1148,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             return;
         }
 
-            _attendedWeighingService.WeighingRecordCreated
+        _attendedWeighingService.WeighingRecordCreated
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async weighingRecord =>
             {
@@ -1126,9 +1171,55 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         // 订阅 DeliveryType 变化
         _attendedWeighingService.DeliveryTypeChanges
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(deliveryType =>
+            .Subscribe(deliveryType => { IsReceiving = deliveryType == DeliveryType.Receiving; })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    /// 订阅匹配成功消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartMatchSucceededMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<MatchSucceededMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
             {
-                IsReceiving = deliveryType == DeliveryType.Receiving;
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received MatchSucceededMessage for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+                    message.WaybillId, message.WeighingRecordId);
+
+                try
+                {
+                    // 刷新列表
+                    await RefreshAsync();
+
+                    // 查找匹配成功的 Waybill 列表项
+                    var matchedItem = ListItems
+                        .FirstOrDefault(item =>
+                            item.ItemType == WeighingListItemType.Waybill &&
+                            item.Id == message.WaybillId);
+
+                    if (matchedItem != null)
+                    {
+                        // 使用 Command 选择匹配成功的 Waybill
+                        SelectListItemCommand?.Execute(matchedItem);
+                        Logger?.LogInformation(
+                            "AttendedWeighingViewModel: Selected matched Waybill {WaybillId}",
+                            message.WaybillId);
+                    }
+                    else
+                    {
+                        Logger?.LogWarning(
+                            "AttendedWeighingViewModel: Matched Waybill {WaybillId} not found in current list",
+                            message.WaybillId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error while handling MatchSucceededMessage for WaybillId {WaybillId}",
+                        message.WaybillId);
+                }
             })
             .DisposeWith(_disposables);
     }

@@ -173,13 +173,13 @@ public class WeighingListItemDto
                 };
 
                 // 填充渲染字段
-                if (m.MaterialId.HasValue && materialsDict != null && 
+                if (m.MaterialId.HasValue && materialsDict != null &&
                     materialsDict.TryGetValue(m.MaterialId.Value, out var material))
                 {
                     dto.MaterialName = material.Name;
                 }
 
-                if (m.MaterialUnitId.HasValue && materialUnitsDict != null && 
+                if (m.MaterialUnitId.HasValue && materialUnitsDict != null &&
                     materialUnitsDict.TryGetValue(m.MaterialUnitId.Value, out var materialUnit))
                 {
                     dto.MaterialUnitName = materialUnit.UnitName;
@@ -226,7 +226,7 @@ public class WeighingListItemDto
             OrderType = waybill.OrderType,
             Remark = waybill.Remark,
             // 预计算偏差信息
-            OffsetInfo = waybill.OffsetRate.HasValue ? $"{waybill.OffsetRate.Value:F2}%" : null
+            OffsetInfo = $"{waybill.OffsetRate:F2}%"
         };
 
         // 如果有物料信息，添加到 Materials 列表
@@ -246,7 +246,7 @@ public class WeighingListItemDto
                 materialDto.MaterialName = material.Name;
             }
 
-            if (waybill.MaterialUnitId.HasValue && materialUnitsDict != null && 
+            if (waybill.MaterialUnitId.HasValue && materialUnitsDict != null &&
                 materialUnitsDict.TryGetValue(waybill.MaterialUnitId.Value, out var materialUnit))
             {
                 materialDto.MaterialUnitName = materialUnit.UnitName;
@@ -303,8 +303,8 @@ public class WeighingListItemMaterialDto
     /// <summary>
     /// 物料单位显示名称（格式：Rate/UnitName，用于渲染，避免查询）
     /// </summary>
-    public string MaterialUnitDisplayName => 
-        string.IsNullOrEmpty(MaterialUnitName) 
-            ? string.Empty 
+    public string MaterialUnitDisplayName =>
+        string.IsNullOrEmpty(MaterialUnitName)
+            ? string.Empty
             : $"{MaterialUnitRate ?? 0:F2}/{MaterialUnitName}";
 }

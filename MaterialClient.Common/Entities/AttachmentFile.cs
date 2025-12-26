@@ -55,5 +55,9 @@ public class AttachmentFile : FullAuditedEntity<int>
     /// 附件类型
     /// </summary>
     public AttachType AttachType { get; set; }
-}
 
+    /// <summary>
+    /// 最后同步到OSS的时间
+    /// </summary>
+    public DateTime? LastSyncTime { get; set; }
+}

@@ -1,10 +1,14 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using MaterialClient.Common.Entities;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.BackgroundWorkers;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Threading;
 using Volo.Abp.Uow;
 
@@ -22,7 +26,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         : base(timer, serviceScopeFactory)
     {
         // 设置定时器间隔为 10 分钟
-        Timer.Period = (int)TimeSpan.FromMinutes(10).TotalMilliseconds;
+        Timer.Period = (int)TimeSpan.FromMinutes(1).TotalMilliseconds;
     }
 
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
@@ -48,9 +52,13 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(UploadWaybillAttachmentsAsync, workerContext.ServiceProvider,
+                workerContext.CancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -62,10 +70,11 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         }
     }
 
-    private async Task WithUow(Func<IServiceProvider, System.Threading.CancellationToken, Task> action, IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task WithUow(Func<IServiceProvider, System.Threading.CancellationToken, Task> action,
+        IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        
+
         var uowManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
@@ -73,7 +82,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         await uow.CompleteAsync(cancellationToken);
     }
 
-    private async Task SyncMaterialAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task SyncMaterialAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -82,7 +92,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("物料数据同步完成");
     }
 
-    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task SyncMaterialTypeAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -91,7 +102,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("物料类型数据同步完成");
     }
 
-    private async Task SyncProviderAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task SyncProviderAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<ISyncMaterialService>();
 
@@ -100,7 +112,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("供应商数据同步完成");
     }
 
-    private async Task VerifyAuthAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task VerifyAuthAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var licenseService = serviceProvider.GetRequiredService<ILicenseService>();
 
@@ -117,12 +130,31 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         }
     }
 
-    private async Task PushWaybillAsync(IServiceProvider serviceProvider, System.Threading.CancellationToken cancellationToken)
+    private async Task PushWaybillAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
     {
         var service = serviceProvider.GetRequiredService<IWeighingMatchingService>();
 
         Logger.LogInformation("开始推送运单数据...");
         await service.PushWaybillAsync(cancellationToken);
         Logger.LogInformation("运单数据推送完成");
+    }
+
+    private async Task UploadWaybillAttachmentsAsync(IServiceProvider serviceProvider,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        try
+        {
+            var attachmentService = serviceProvider.GetRequiredService<IAttachmentService>();
+
+            Logger.LogInformation("开始上传运单附件到OSS...");
+            await attachmentService.SyncPendingAttachmentsToOssAsync();
+            Logger.LogInformation("运单附件上传完成");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "上传运单附件时发生异常");
+            // 不抛出异常，避免影响主流程
+        }
     }
 }

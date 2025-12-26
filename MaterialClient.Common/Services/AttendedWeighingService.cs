@@ -9,6 +9,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -139,10 +140,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // 当前收发料类型（默认为收料）
     private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
 
-    // 重量稳定判定
-    private const decimal WeightThreshold = 0.5m; // 0.5t = 500kg
-    private const decimal WeightStabilityTolerance = 0.1m; // 0.1t = 100kg
-    private const int StabilityDurationMs = 10000; // 10秒
+    // 最小称重重量稳定判定
+    private const decimal MinWeightThreshold = 0.5m; // 0.5t = 500kg
 
     private decimal? _stableWeight = null; // 进入稳定状态时的重量值
 
@@ -394,7 +393,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             case AttendedWeighingStatus.OffScale:
                 // OffScale -> WaitingForStability: weight increases from <0.5t to >0.5t
-                if (currentWeight > WeightThreshold)
+                if (currentWeight > MinWeightThreshold)
                 {
                     _currentStatus = AttendedWeighingStatus.WaitingForStability;
                     _stableWeight = null;
@@ -406,7 +405,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 break;
 
             case AttendedWeighingStatus.WaitingForStability:
-                if (currentWeight < WeightThreshold)
+                if (currentWeight < MinWeightThreshold)
                 {
                     // Unstable weighing flow: directly from WaitingForStability to OffScale
                     _currentStatus = AttendedWeighingStatus.OffScale;
@@ -447,7 +446,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 break;
 
             case AttendedWeighingStatus.WeightStabilized:
-                if (currentWeight < WeightThreshold)
+                if (currentWeight < MinWeightThreshold)
                 {
                     // WeightStabilized -> OffScale: normal flow
                     _currentStatus = AttendedWeighingStatus.OffScale;
@@ -534,8 +533,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // 转换为 BatchCaptureRequest
             var requests = new List<BatchCaptureRequest>();
-            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            var basePath = Path.Combine(AppContext.BaseDirectory, "Photos", timestamp);
+            var now = DateTime.Now;
+            var basePath = AttachmentPathUtils.GetLocalStoragePath(AttachType.EntryPhoto, now);
 
             foreach (var cameraConfig in cameraConfigs)
             {
@@ -562,7 +561,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     Channels = new[] { channel }
                 };
 
-                var fileName = $"{cameraConfig.Name}_{channel}_{Guid.NewGuid():N}.jpg";
+                var fileName = AttachmentPathUtils.GenerateMonitoringPhotoFileName(cameraConfig.Name, channel);
                 var savePath = Path.Combine(basePath, fileName);
 
                 requests.Add(new BatchCaptureRequest
@@ -696,7 +695,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     }
 
                     var fileName = Path.GetFileName(photoPath);
-                    var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.EntryPhoto);
+                    var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.UnmatchedEntryPhoto);
 
                     await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 
@@ -759,6 +758,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
                 _logger?.LogInformation(
                     $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
+
+                await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
             }
             else
             {

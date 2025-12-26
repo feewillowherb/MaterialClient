@@ -10,19 +10,20 @@ public enum AttachType : short
     /// <summary>
     /// 进场照片
     /// </summary>
-    [Description("进场照片")]
-    EntryPhoto = 0,
+    [Description("未匹配榜单照片")] UnmatchedEntryPhoto = 0,
+
+    /// <summary>
+    /// 进场照片
+    /// </summary>
+    [Description("进场照片")] EntryPhoto = 1,
 
     /// <summary>
     /// 出场照片
     /// </summary>
-    [Description("出场照片")]
-    ExitPhoto = 1,
+    [Description("出场照片")] ExitPhoto = 2,
 
     /// <summary>
     /// 票据照片
     /// </summary>
-    [Description("票据照片")]
-    TicketPhoto = 2
+    [Description("票据照片")] TicketPhoto = 3
 }
-

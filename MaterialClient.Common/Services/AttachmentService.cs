@@ -3,10 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using MaterialClient.Common.Api;
+using MaterialClient.Common.Api.Dtos;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.ChangeTracking;
 using Volo.Abp.Domain.Repositories;
@@ -47,6 +52,17 @@ public interface IAttachmentService
     /// <param name="listItem">列表项</param>
     /// <param name="photoPath">照片文件路径</param>
     Task CreateOrReplaceBillPhotoAsync(WeighingListItemDto listItem, string photoPath);
+
+    /// <summary>
+    /// 同步指定运单的附件到OSS
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    Task SyncWaybillAttachmentsToOssAsync(long waybillId);
+
+    /// <summary>
+    /// 批量同步已推送运单的附件到OSS（使用关联查询）
+    /// </summary>
+    Task SyncPendingAttachmentsToOssAsync();
 }
 
 /// <summary>
@@ -58,7 +74,12 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
+    private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
     private readonly ILogger<AttachmentService>? _logger;
+    private readonly IOssUploadService _ossUploadService;
+    private readonly IMaterialPlatformApi _materialPlatformApi;
+    private readonly IOptions<AliyunOssConfig> _ossConfig;
 
 
     /// <summary>
@@ -220,7 +241,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                 if (listItem.ItemType == WeighingListItemType.WeighingRecord)
                 {
                     var existingRecordAttachments = await _weighingRecordAttachmentRepository.GetListAsync(
-                        predicate: ra => ra.WeighingRecordId == listItem.Id && ra.AttachmentFileId == existingTicketPhoto.Id);
+                        predicate: ra =>
+                            ra.WeighingRecordId == listItem.Id && ra.AttachmentFileId == existingTicketPhoto.Id);
                     foreach (var recordAttachment in existingRecordAttachments)
                     {
                         await _weighingRecordAttachmentRepository.DeleteAsync(recordAttachment);
@@ -258,12 +280,300 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                 await _waybillAttachmentRepository.InsertAsync(waybillAttachment, true);
             }
 
-            _logger?.LogInformation("Successfully created BillPhoto attachment: FilePath={FilePath}, FileId={FileId}", photoPath, attachmentFile.Id);
+            _logger?.LogInformation("Successfully created BillPhoto attachment: FilePath={FilePath}, FileId={FileId}",
+                photoPath, attachmentFile.Id);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to create BillPhoto attachment: FilePath={FilePath}", photoPath);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 同步指定运单的附件到OSS
+    /// </summary>
+    [UnitOfWork]
+    public async Task SyncWaybillAttachmentsToOssAsync(long waybillId)
+    {
+        try
+        {
+            // 查询运单的所有附件
+            var attachments = await _waybillAttachmentRepository.GetListAsync(
+                predicate: x => x.WaybillId == waybillId
+            );
+
+            if (attachments.Count == 0)
+            {
+                _logger?.LogInformation("SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 没有附件", waybillId);
+                return;
+            }
+
+            // 获取所有附件文件ID
+            var attachmentFileIds = attachments.Select(x => x.AttachmentFileId).Distinct().ToList();
+
+            // 查询附件文件，只选择未上传的（OssFullPath == null）且本地文件存在的
+            var attachmentFiles = await _attachmentFileRepository.GetListAsync(
+                predicate: x => attachmentFileIds.Contains(x.Id)
+                                && x.OssFullPath == null
+                                && !string.IsNullOrWhiteSpace(x.LocalPath)
+            );
+
+            // 过滤掉本地文件不存在的
+            var validAttachments = attachmentFiles
+                .Where(af => File.Exists(af.LocalPath))
+                .Select(af => new AttachmentWithWaybill(af, waybillId))
+                .ToList();
+
+            if (validAttachments.Count == 0)
+            {
+                _logger?.LogInformation("SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 没有需要上传的附件", waybillId);
+                return;
+            }
+
+            // 批量上传到OSS
+            var uploadResults = await _ossUploadService.UploadFilesAsync(validAttachments);
+
+            // 更新上传成功的附件
+            var now = DateTime.Now;
+            foreach (var kvp in uploadResults)
+            {
+                var attachment = validAttachments.FirstOrDefault(x => x.Attachment.Id == kvp.Key)?.Attachment;
+                if (attachment != null)
+                {
+                    attachment.OssFullPath = kvp.Value;
+                    attachment.LastSyncTime = now;
+                    await _attachmentFileRepository.UpdateAsync(attachment);
+                }
+            }
+
+            _logger?.LogInformation(
+                "SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 附件同步完成，成功: {SuccessCount}/{TotalCount}",
+                waybillId, uploadResults.Count, validAttachments.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 附件同步失败", waybillId);
+            // 不抛出异常，避免影响主流程
+        }
+    }
+
+    /// <summary>
+    /// 批量同步已推送运单的附件到OSS（使用关联查询）
+    /// </summary>
+    [UnitOfWork]
+    public async Task SyncPendingAttachmentsToOssAsync()
+    {
+        try
+        {
+            // 获取查询对象
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var waybillAttachmentQuery = await _waybillAttachmentRepository.GetQueryableAsync();
+            var attachmentQuery = await _attachmentFileRepository.GetQueryableAsync();
+
+            // 使用关联查询获取需要上传的附件
+            // 条件：1. 运单已推送（LastSyncTime != null）
+            //       2. 附件未上传（OssFullPath == null）
+            //       3. 本地文件存在
+            var pendingAttachments = await waybillQuery
+                .Where(w => w.LastSyncTime != null)
+                .Join(waybillAttachmentQuery,
+                    w => w.Id,
+                    wa => wa.WaybillId,
+                    (w, wa) => new { Waybill = w, WaybillAttachment = wa })
+                .Join(attachmentQuery,
+                    wa => wa.WaybillAttachment.AttachmentFileId,
+                    af => af.Id,
+                    (wa, af) => new { wa.Waybill, wa.WaybillAttachment, AttachmentFile = af })
+                .Where(x => x.AttachmentFile.OssFullPath == null
+                            && !string.IsNullOrWhiteSpace(x.AttachmentFile.LocalPath))
+                .Select(x => new
+                {
+                    x.AttachmentFile,
+                    x.Waybill.Id
+                })
+                .ToListAsync();
+
+            // 过滤掉本地文件不存在的
+            var validAttachments = pendingAttachments
+                .Where(x => File.Exists(x.AttachmentFile.LocalPath))
+                .Select(x => new AttachmentWithWaybill(x.AttachmentFile, x.Id))
+                .ToList();
+
+            if (validAttachments.Count == 0)
+            {
+                _logger?.LogInformation("SyncPendingAttachmentsToOssAsync: 没有需要上传的附件");
+                return;
+            }
+
+            _logger?.LogInformation("SyncPendingAttachmentsToOssAsync: 找到 {Count} 个需要上传的附件", validAttachments.Count);
+
+            // 按运单ID分组，便于统计
+            var groupedByWaybill = validAttachments.GroupBy(x => x.WaybillId).ToList();
+
+            // 批量上传到OSS
+            var uploadResults = await _ossUploadService.UploadFilesAsync(validAttachments);
+
+            // 更新上传成功的附件并上传到服务器
+            var now = DateTime.Now;
+            var successCount = 0;
+
+            // 获取 LicenseInfo 以获取 ProId
+            var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync();
+            var proId = licenseInfo?.ProjectId.ToString();
+
+            if (string.IsNullOrWhiteSpace(proId))
+            {
+                _logger?.LogWarning("SyncPendingAttachmentsToOssAsync: 未找到许可证信息，跳过附件信息上传到服务器");
+            }
+
+            foreach (var kvp in uploadResults)
+            {
+                var attachmentWithWaybill = validAttachments.FirstOrDefault(x => x.Attachment.Id == kvp.Key);
+                if (attachmentWithWaybill?.Attachment != null)
+                {
+                    var attachment = attachmentWithWaybill.Attachment;
+                    attachment.OssFullPath = kvp.Value;
+                    attachment.LastSyncTime = now;
+                    await _attachmentFileRepository.UpdateAsync(attachment);
+                    successCount++;
+
+                    // 上传附件信息到服务器
+                    if (!string.IsNullOrWhiteSpace(proId) && !string.IsNullOrWhiteSpace(kvp.Value))
+                    {
+                        try
+                        {
+                            await UploadAttachmentInfoToServerAsync(
+                                attachment,
+                                attachmentWithWaybill.WaybillId,
+                                kvp.Value,
+                                proId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex,
+                                "SyncPendingAttachmentsToOssAsync: 上传附件信息到服务器失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
+                                attachment.Id, attachmentWithWaybill.WaybillId);
+                            // 不抛出异常，继续处理下一个附件
+                        }
+                    }
+                }
+            }
+
+            _logger?.LogInformation(
+                "SyncPendingAttachmentsToOssAsync: 批量同步完成，成功: {SuccessCount}/{TotalCount}, 涉及运单数: {WaybillCount}",
+                successCount, validAttachments.Count, groupedByWaybill.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "SyncPendingAttachmentsToOssAsync: 批量同步失败");
+            // 不抛出异常，避免影响主流程
+        }
+    }
+
+    /// <summary>
+    /// 上传附件信息到服务器
+    /// </summary>
+    private async Task UploadAttachmentInfoToServerAsync(
+        AttachmentFile attachment,
+        long waybillId,
+        string ossFullPath,
+        string proId)
+    {
+        try
+        {
+            // 从 OSS 完整路径中提取 BucketKey（去掉域名部分）
+            // 格式：https://{bucketName}.{regionId}/{bucketKey}
+            var bucketKey = ExtractBucketKeyFromOssUrl(ossFullPath);
+            if (string.IsNullOrWhiteSpace(bucketKey))
+            {
+                _logger?.LogWarning("UploadAttachmentInfoToServerAsync: 无法从OSS路径提取BucketKey: {OssFullPath}",
+                    ossFullPath);
+                return;
+            }
+
+            // 获取文件大小（KB）
+            int? fileSize = null;
+            if (File.Exists(attachment.LocalPath))
+            {
+                var fileInfo = new FileInfo(attachment.LocalPath);
+                fileSize = (int)(fileInfo.Length / 1024); // 转换为KB
+            }
+
+            // 将 AttachType 转换为 BizType
+            // BizType: 1.进场照片 2.出场照片 3.票据照片
+            var bizType = (int)attachment.AttachType;
+
+            // 构建请求DTO
+            var now = DateTime.Now;
+            var request = new UpdateAttachesInputDto
+            {
+                BizId = waybillId.ToString(),
+                BizType = bizType,
+                FileName = attachment.FileName,
+                Bucket = _ossConfig.Value.BucketName,
+                BucketKey = bucketKey,
+                FileSize = fileSize,
+                DeleteStatus = 0, // 0：正常
+                AddDate = now,
+                UpdateDate = now
+            };
+
+            // 调用API上传
+            var result = await _materialPlatformApi.UpdateAttachesAsync(request);
+
+            if (result?.Success == true)
+            {
+                _logger?.LogInformation(
+                    "UploadAttachmentInfoToServerAsync: 附件信息上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
+                    attachment.Id, waybillId);
+            }
+            else
+            {
+                _logger?.LogWarning(
+                    "UploadAttachmentInfoToServerAsync: 附件信息上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, Error={Error}",
+                    attachment.Id, waybillId, result?.Msg ?? "未知错误");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex,
+                "UploadAttachmentInfoToServerAsync: 上传附件信息到服务器异常: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
+                attachment.Id, waybillId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 从OSS完整URL中提取BucketKey
+    /// </summary>
+    /// <param name="ossFullPath">OSS完整URL，格式：https://{bucketName}.{regionId}/{bucketKey}</param>
+    /// <returns>BucketKey，如果提取失败返回null</returns>
+    private string? ExtractBucketKeyFromOssUrl(string ossFullPath)
+    {
+        if (string.IsNullOrWhiteSpace(ossFullPath))
+            return null;
+
+        try
+        {
+            // 格式：https://{bucketName}.{regionId}/{bucketKey}
+            // 例如：https://findong-materialsys.oss-cn-hangzhou.aliyuncs.com/PhotoJianKong/2024/12/22/123_file.jpg
+
+            var uri = new Uri(ossFullPath);
+            var path = uri.AbsolutePath;
+
+            // 去掉开头的斜杠
+            if (path.StartsWith("/"))
+            {
+                path = path.Substring(1);
+            }
+
+            return path;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "ExtractBucketKeyFromOssUrl: 解析OSS URL失败: {OssFullPath}", ossFullPath);
+            return null;
         }
     }
 }

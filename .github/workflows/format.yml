@@ -1,4 +1,4 @@
-name: Code Format
+name: dotnet pr format
 
 on:
   push:
@@ -7,37 +7,53 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  issues: read
+  checks: write
+  pull-requests: write
+
 jobs:
   format:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Setup .NET 10
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '10.x'
-
-    - name: Restore dependencies
-      run: dotnet restore MaterialClient.sln
-
-    - name: Check code format
-      run: dotnet format MaterialClient.sln --verify-no-changes --verbosity diagnostic
-
-    - name: Format code (if check failed)
-      if: failure()
-      run: |
-        dotnet format MaterialClient.sln --verbosity diagnostic
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add .
-        if git diff --staged --quiet; then
-          echo "No formatting changes needed"
-        else
-          git commit -m "Auto-format code with dotnet format"
-          git push
-        fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+      - uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget
+      - name: Run clean code
+        run: |
+          dotnet tool restore
+          dotnet restore MaterialClient.sln
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} || echo "")
+            if [ -n "$CHANGED_FILES" ]; then
+              dotnet tool run jb cleanupcode --verbosity=INFO --exclude=**Tests/**.* $CHANGED_FILES
+            else
+              echo "No changed files to format"
+            fi
+          else
+            dotnet tool run jb cleanupcode --verbosity=INFO --exclude=**Tests/**.* MaterialClient.sln
+          fi
+          git add .
+          if [ -n "$(git status --porcelain)" ]; then
+              git config --global user.name 'ReSharper CLI CleanupCode GitHub Action'
+              git config --global user.email 'niceformate@nice.com'
+              git commit -m "Cleanup code by ReSharper CLI CleanupCode GitHub Action"
+              if [ "${{ github.event_name }}" = "pull_request" ]; then
+                git push origin HEAD:${{ github.head_ref }}
+              else
+                git push origin ${{ github.ref_name }}
+              fi
+          else
+              echo "No changes detected"
+          fi

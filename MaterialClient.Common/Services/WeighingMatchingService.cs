@@ -344,41 +344,46 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private async Task CopyAttachmentsToWaybillAsync(long waybillId, long joinRecordId, long outRecordId)
     {
         var attachmentQuery = await _weighingRecordAttachmentRepository.GetQueryableAsync();
+        var attachmentFileQuery = await _attachmentFileRepository.GetQueryableAsync();
 
-        // 处理 joinRecord 的附件（设为 EntryPhoto）
-        var joinAttachments = await attachmentQuery
-            .Where(ra => ra.WeighingRecordId == joinRecordId)
+        // 处理 joinRecordId 和 outRecordId 的 UnmatchedEntryPhoto
+        var entryPhotos = await attachmentQuery
+            .Join(attachmentFileQuery,
+                ra => ra.AttachmentFileId,
+                af => af.Id,
+                (ra, af) => new { Attachment = ra, AttachmentFile = af })
+            .Where(x => (x.Attachment.WeighingRecordId == joinRecordId || x.Attachment.WeighingRecordId == outRecordId)
+                        && x.AttachmentFile.AttachType == AttachType.UnmatchedEntryPhoto)
             .ToListAsync();
 
-        foreach (var attachment in joinAttachments)
+        foreach (var item in entryPhotos)
         {
-            var attachmentFile = await _attachmentFileRepository.GetAsync(attachment.AttachmentFileId);
-            attachmentFile.AttachType = AttachType.EntryPhoto;
-            await _attachmentFileRepository.UpdateAsync(attachmentFile);
+            // 根据 WeighingRecordId 决定目标 AttachType
+            var targetAttachType = item.Attachment.WeighingRecordId == joinRecordId
+                ? AttachType.EntryPhoto
+                : AttachType.ExitPhoto;
 
+            item.AttachmentFile.AttachType = targetAttachType;
+            await _attachmentFileRepository.UpdateAsync(item.AttachmentFile);
             await _waybillAttachmentRepository.InsertAsync(
-                new WaybillAttachment(waybillId, attachment.AttachmentFileId));
+                new WaybillAttachment(waybillId, item.AttachmentFile.Id));
         }
 
-        // 处理 outRecord 的附件（设为 ExitPhoto）
-        var outAttachments = await attachmentQuery
-            .Where(ra => ra.WeighingRecordId == outRecordId)
-            .ToListAsync();
+        // 处理 TicketPhoto：优先取 joinRecordId，如果没有再取 outRecordId，如果都不存在则忽略
+        var ticketPhoto = await attachmentQuery
+            .Join(attachmentFileQuery,
+                ra => ra.AttachmentFileId,
+                af => af.Id,
+                (ra, af) => new { Attachment = ra, AttachmentFile = af })
+            .Where(x => (x.Attachment.WeighingRecordId == joinRecordId || x.Attachment.WeighingRecordId == outRecordId)
+                        && x.AttachmentFile.AttachType == AttachType.TicketPhoto)
+            .OrderBy(x => x.Attachment.WeighingRecordId == joinRecordId ? 0 : 1) // 优先 joinRecordId
+            .FirstOrDefaultAsync();
 
-        foreach (var attachment in outAttachments)
+        if (ticketPhoto != null)
         {
-            // 避免重复插入（如果同一个附件同时关联了 joinRecord 和 outRecord）
-            var alreadyAdded = joinAttachments.Any(ja => ja.AttachmentFileId == attachment.AttachmentFileId);
-
-            var attachmentFile = await _attachmentFileRepository.GetAsync(attachment.AttachmentFileId);
-            attachmentFile.AttachType = AttachType.ExitPhoto;
-            await _attachmentFileRepository.UpdateAsync(attachmentFile);
-
-            if (!alreadyAdded)
-            {
-                await _waybillAttachmentRepository.InsertAsync(
-                    new WaybillAttachment(waybillId, attachment.AttachmentFileId));
-            }
+            await _waybillAttachmentRepository.InsertAsync(
+                new WaybillAttachment(waybillId, ticketPhoto.AttachmentFile.Id));
         }
     }
 

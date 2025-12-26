@@ -7,12 +7,16 @@
         xmlns:views="using:MaterialClient.Views.AttendedWeighing"
         xmlns:converters="using:MaterialClient.Converters"
         xmlns:views1="clr-namespace:MaterialClient.Views"
+        xmlns:semi="https://irihi.tech/semi"
+        xmlns:ursa="https://irihi.tech/ursa"
         x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingWindow"
         x:DataType="vm:AttendedWeighingViewModel"
         x:Name="AttendedWeighingWindowRoot"
         Title="有人值守"
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="White"
         Icon="/Assets/fd-ico.ico">
   
   <Window.Resources>
@@ -27,7 +31,11 @@
   <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
     
     <!-- Top Blue Header Bar -->
-    <Border Grid.Row="0" Background="#4169E1" Padding="16,12">
+    <Border Grid.Row="0" 
+            Background="#4169E1" 
+            Padding="16,12,0,12"
+            PointerPressed="TitleBar_OnPointerPressed"
+            Cursor="Arrow">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <!-- Logo and Title -->
         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -59,6 +67,49 @@
                   Padding="8,4"/>
         </StackPanel>
         
+        <!-- Window Control Buttons -->
+        <StackPanel Grid.Column="2" 
+                    Orientation="Horizontal" 
+                    Spacing="0"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Right"
+                    Margin="0,-4,0,0">
+          <!-- Minimize Button -->
+          <Button Content="─"
+                  FontSize="16"
+                  Foreground="White"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  Width="40"
+                  Height="40"
+                  Cursor="Hand"
+                  Click="OnMinimizeButtonClick"
+                  Classes="transparent-button">
+            <Button.Styles>
+              <Style Selector="Button:pointerover">
+                <Setter Property="Background" Value="#5A7FE6"/>
+              </Style>
+            </Button.Styles>
+          </Button>
+          
+          <!-- Close Button -->
+          <Button Content="✕"
+                  FontSize="18"
+                  Foreground="White"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  Width="40"
+                  Height="40"
+                  Cursor="Hand"
+                  Click="OnCloseButtonClick"
+                  Classes="transparent-button">
+            <Button.Styles>
+              <Style Selector="Button:pointerover">
+                <Setter Property="Background" Value="#DC3545"/>
+              </Style>
+            </Button.Styles>
+          </Button>
+        </StackPanel>
       </Grid>
     </Border>
 
@@ -89,99 +140,123 @@
                   Padding="20,12"
                   VerticalAlignment="Center"
                   MinWidth="180">
+            <Border.RenderTransform>
+              <TranslateTransform X="-60"/>
+            </Border.RenderTransform>
             <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}" 
                        Foreground="White" 
                        FontSize="16"/>
           </Border>
           
-          <!-- DeliveryType Selector -->
+          <!-- DeliveryType Selector, Weight Value and Unit with Outer Border -->
           <Border Grid.Column="1"
+                  Grid.ColumnSpan="3"
                   Background="#5A7FE6"
                   CornerRadius="8"
-                  Margin="16,0,0,0"
-                  VerticalAlignment="Center">
-            <StackPanel Orientation="Vertical">
-              <RadioButton GroupName="DeliveryType"
-                           IsChecked="{Binding IsReceiving}"
-                           Command="{Binding SetReceivingCommand}"
-                           Cursor="Hand">
-                <RadioButton.Template>
-                  <ControlTemplate TargetType="RadioButton">
-                    <Border Name="bd" 
-                            BorderThickness="1" 
-                            CornerRadius="8,8,0,0"
-                            BorderBrush="Transparent" 
-                            Background="Transparent"
-                            Padding="20,6">
-                      <TextBlock Name="bdText" 
-                                 Text="收料" 
-                                 Foreground="#FFFFFF"
-                                 FontSize="14" 
-                                 VerticalAlignment="Center"
-                                 HorizontalAlignment="Center"/>
-                    </Border>
-                  </ControlTemplate>
-                </RadioButton.Template>
-                <RadioButton.Styles>
-                  <Style Selector="RadioButton:checked /template/ Border#bd">
-                    <Setter Property="Background" Value="#FFFFFF"/>
-                    <Setter Property="BorderBrush" Value="#FFFFFF"/>
-                  </Style>
-                  <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
-                    <Setter Property="Foreground" Value="#5A7FE6"/>
-                  </Style>
-                </RadioButton.Styles>
-              </RadioButton>
-              <RadioButton GroupName="DeliveryType"
-                           IsChecked="{Binding IsSending}"
-                           Command="{Binding SetSendingCommand}"
-                           Cursor="Hand">
-                <RadioButton.Template>
-                  <ControlTemplate TargetType="RadioButton">
-                    <Border Name="bd" 
-                            BorderThickness="1" 
-                            CornerRadius="0,0,8,8"
-                            BorderBrush="Transparent" 
-                            Background="Transparent"
-                            Padding="20,6">
-                      <TextBlock Name="bdText" 
-                                 Text="发料" 
-                                 Foreground="#FFFFFF"
-                                 FontSize="14" 
-                                 VerticalAlignment="Center"
-                                 HorizontalAlignment="Center"/>
-                    </Border>
-                  </ControlTemplate>
-                </RadioButton.Template>
-                <RadioButton.Styles>
-                  <Style Selector="RadioButton:checked /template/ Border#bd">
-                    <Setter Property="Background" Value="#FFFFFF"/>
-                    <Setter Property="BorderBrush" Value="#FFFFFF"/>
-                  </Style>
-                  <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
-                    <Setter Property="Foreground" Value="#5A7FE6"/>
-                  </Style>
-                </RadioButton.Styles>
-              </RadioButton>
-            </StackPanel>
+                  BorderThickness="0"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Center"
+                  Padding="0">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+              <!-- DeliveryType Selector -->
+              <Border Grid.Column="0"
+                      Background="Transparent"
+                      CornerRadius="8"
+                      VerticalAlignment="Center">
+                <StackPanel Orientation="Vertical">
+                  <RadioButton GroupName="DeliveryType"
+                               IsChecked="{Binding IsReceiving}"
+                               Command="{Binding SetReceivingCommand}"
+                               Cursor="Hand">
+                    <RadioButton.Template>
+                      <ControlTemplate TargetType="RadioButton">
+                        <Border Name="bd" 
+                                BorderThickness="1" 
+                                CornerRadius="8,8,0,0"
+                                BorderBrush="Transparent" 
+                                Background="Transparent"
+                                Padding="20,6">
+                          <TextBlock Name="bdText" 
+                                     Text="收料" 
+                                     Foreground="#FFFFFF"
+                                     FontSize="14" 
+                                     VerticalAlignment="Center"
+                                     HorizontalAlignment="Center"/>
+                        </Border>
+                      </ControlTemplate>
+                    </RadioButton.Template>
+                    <RadioButton.Styles>
+                      <Style Selector="RadioButton:checked /template/ Border#bd">
+                        <Setter Property="Background" Value="#FFFFFF"/>
+                        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+                      </Style>
+                      <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
+                        <Setter Property="Foreground" Value="#5A7FE6"/>
+                      </Style>
+                    </RadioButton.Styles>
+                  </RadioButton>
+                  <RadioButton GroupName="DeliveryType"
+                               IsChecked="{Binding IsSending}"
+                               Command="{Binding SetSendingCommand}"
+                               Cursor="Hand">
+                    <RadioButton.Template>
+                      <ControlTemplate TargetType="RadioButton">
+                        <Border Name="bd" 
+                                BorderThickness="1" 
+                                CornerRadius="0,0,8,8"
+                                BorderBrush="Transparent" 
+                                Background="Transparent"
+                                Padding="20,6">
+                          <TextBlock Name="bdText" 
+                                     Text="发料" 
+                                     Foreground="#FFFFFF"
+                                     FontSize="14" 
+                                     VerticalAlignment="Center"
+                                     HorizontalAlignment="Center"/>
+                        </Border>
+                      </ControlTemplate>
+                    </RadioButton.Template>
+                    <RadioButton.Styles>
+                      <Style Selector="RadioButton:checked /template/ Border#bd">
+                        <Setter Property="Background" Value="#FFFFFF"/>
+                        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+                      </Style>
+                      <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
+                        <Setter Property="Foreground" Value="#5A7FE6"/>
+                      </Style>
+                    </RadioButton.Styles>
+                  </RadioButton>
+                </StackPanel>
+              </Border>
+              
+              <!-- Weight Value -->
+              <TextBlock Grid.Column="2" 
+                         Text="{Binding CurrentWeight, StringFormat='{}{0:F2}'}" 
+                         Foreground="White" 
+                         FontSize="64" 
+                         FontWeight="Bold"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Center"
+                         Margin="90,0,90,0"/>
+              
+              <!-- Separator and Unit -->
+              <StackPanel Grid.Column="3"
+                          Orientation="Horizontal"
+                          VerticalAlignment="Center"
+                          Margin="8,0,16,0">
+                <Border Width="1"
+                        Height="30"
+                        Background="White"
+                        Opacity="0.3"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"/>
+                <TextBlock Text="吨" 
+                           Foreground="White" 
+                           FontSize="24"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
+            </Grid>
           </Border>
-          
-          <!-- Weight Value -->
-          <TextBlock Grid.Column="2" 
-                     Text="{Binding CurrentWeight, StringFormat='{}{0:F2}'}" 
-                     Foreground="White" 
-                     FontSize="64" 
-                     FontWeight="Bold"
-                     VerticalAlignment="Center"
-                     Margin="16,0"/>
-          
-          <!-- Unit -->
-          <TextBlock Grid.Column="3" 
-                     Text="吨" 
-                     Foreground="White" 
-                     FontSize="24"
-                     VerticalAlignment="Center"
-                     Margin="8,0,0,0"/>
         </Grid>
         
         <!-- Right Side Info -->
@@ -189,7 +264,10 @@
                    Text="{Binding CurrentWeighingStatusText}" 
                    Foreground="White" 
                    FontSize="18"
-                   VerticalAlignment="Center"/>
+                   FontWeight="Bold"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Right"
+                   Margin="-180,0,0,0"/>
       </Grid>
     </Grid>
 
@@ -267,6 +345,7 @@
                       HorizontalAlignment="Center"
                       Margin="0,12,0,0"
                       Command="{Binding TakeBillPhotoCommand}"
+                      IsVisible="{Binding IsShowingDetailView}"
                       IsEnabled="{Binding IsUsbCameraOnline}"/>
             </Grid>
           </Border>
@@ -416,5 +495,6 @@
                    VerticalAlignment="Center"/>
       </Grid>
     </Border>
+    
   </Grid>
 </Window>
