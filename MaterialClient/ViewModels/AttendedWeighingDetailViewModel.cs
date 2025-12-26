@@ -119,7 +119,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
-        IsMatchButtonVisible = true;
+        // 根据 ItemType 判断是否显示匹配按钮：Waybill 类型不显示，WeighingRecord 类型在 LoadWeighingRecordDetailsAsync 中根据 MatchedId 判断
+        IsMatchButtonVisible = _listItem.ItemType != WeighingListItemType.Waybill;
         // 仅当为 Waybill 且 OrderType == FirstWeight（即未完成）时显示"完成本次收货"按钮
         IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
 
@@ -163,7 +164,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
-            await LoadWeighingRecordDetailsAsync();
             await LoadDropdownDataAsync();
         }
         catch (Exception ex)
@@ -212,23 +212,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             // 如果加载失败，保持当前状态
         }
     }
-
-    private async Task LoadWeighingRecordDetailsAsync()
-    {
-        try
-        {
-            if (_listItem.ItemType != WeighingListItemType.WeighingRecord) return;
-
-
-            var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
-            IsMatchButtonVisible = weighingRecord.MatchedId == null;
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "加载称重记录详情失败，RecordId={RecordId}", _listItem.Id);
-            // 如果加载失败，保持默认值
-        }
-    }
+    
 
     private async Task LoadProvidersAsync()
     {
