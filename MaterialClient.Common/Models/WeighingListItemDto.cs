@@ -149,7 +149,7 @@ public class WeighingListItemDto
         {
             Id = record.Id,
             PlateNumber = record.PlateNumber,
-            JoinTime = record.AddDate!.Value,
+            JoinTime = record.AddDate,
             OutTime = null,
             IsCompleted = false,
             ItemType = WeighingListItemType.WeighingRecord,
@@ -207,7 +207,7 @@ public class WeighingListItemDto
         {
             Id = waybill.Id,
             PlateNumber = waybill.PlateNumber,
-            JoinTime = waybill.JoinTime ?? waybill.AddDate!.Value,
+            JoinTime = waybill.JoinTime ?? waybill.AddDate,
             OutTime = waybill.OutTime,
             IsCompleted = waybill.OrderType == OrderTypeEnum.Completed,
             ItemType = WeighingListItemType.Waybill,

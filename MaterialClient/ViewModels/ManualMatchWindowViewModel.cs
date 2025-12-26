@@ -102,7 +102,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
         // 初始化当前记录信息
         PlateNumber = currentRecord.PlateNumber;
         Weight = currentRecord.TotalWeight;
-        JoinTime = currentRecord.AddDate!.Value;
+        JoinTime = currentRecord.AddDate;
 
         // 如果记录已有 DeliveryType，使用它；否则默认收料
         IsReceiving = currentRecord.DeliveryType == null || currentRecord.DeliveryType == DeliveryType.Receiving;
@@ -156,7 +156,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
                 SelectedDeliveryType);
 
             foreach (var record in candidates)
-                CandidateRecords.Add(new CandidateRecordViewModel(record, CurrentRecord.AddDate!.Value));
+                CandidateRecords.Add(new CandidateRecordViewModel(record, CurrentRecord.AddDate));
 
             TotalCount = CandidateRecords.Count;
             TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / 10.0));
@@ -278,7 +278,7 @@ public partial class CandidateRecordViewModel : ReactiveObject
         Record = record;
 
         // 计算时间差
-        var diff = record.AddDate!.Value - currentRecordTime;
+        var diff = record.AddDate - currentRecordTime;
         if (diff.TotalDays >= 1)
             SeparatedTime = $"{(int)diff.TotalDays}天{diff.Hours}时";
         else if (diff.TotalHours >= 1)
@@ -305,7 +305,7 @@ public partial class CandidateRecordViewModel : ReactiveObject
     /// <summary>
     ///     进场时间
     /// </summary>
-    public DateTime JoinTime => Record.AddDate!.Value;
+    public DateTime JoinTime => Record.AddDate;
 
     /// <summary>
     ///     相隔时间（与当前记录的时间差）

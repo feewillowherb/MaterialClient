@@ -30,7 +30,7 @@ public interface IMaterialClientAuditedObject
     /// <summary>
     ///     添加时间（时间戳）
     /// </summary>
-    public int? AddTime { get; set; }
+    public int AddTime { get; set; }
 
     /// <summary>
     ///     最后更新时间
@@ -40,5 +40,5 @@ public interface IMaterialClientAuditedObject
     /// <summary>
     ///     添加时间
     /// </summary>
-    public DateTime? AddDate { get; set; }
+    public DateTime AddDate { get; set; }
 }

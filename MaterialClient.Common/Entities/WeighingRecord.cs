@@ -189,7 +189,7 @@ public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDelet
         decimal minWeightDiff = 1m)
     {
         // 验证时间差
-        var timeDiff = Math.Abs((record1.AddDate!.Value - record2.AddDate!.Value).TotalMinutes);
+        var timeDiff = Math.Abs((record1.AddDate - record2.AddDate).TotalMinutes);
         if (timeDiff > maxIntervalMinutes)
             return new WeighingMatchResult(false, null, null);
 
@@ -222,9 +222,9 @@ public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDelet
     public int? CreateUserId { get; set; }
     public string? Creator { get; set; }
     public int? UpdateTime { get; set; }
-    public int? AddTime { get; set; }
+    public int AddTime { get; set; }
     public DateTime? UpdateDate { get; set; }
-    public DateTime? AddDate { get; set; }
+    public DateTime AddDate { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletionTime { get; set; }
     public Guid? DeleterId { get; set; }
