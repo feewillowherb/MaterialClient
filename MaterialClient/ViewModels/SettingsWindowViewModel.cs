@@ -206,53 +206,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
     {
         try
         {
-            // Check if there are any camera configs
-            if (CameraConfigs.Count == 0)
-            {
-                // Show error message - in a real app you'd use a dialog service
-                return;
-            }
-
-            // Get first camera config
-            var firstCamera = CameraConfigs[0];
-            if (string.IsNullOrWhiteSpace(firstCamera.Ip) ||
-                string.IsNullOrWhiteSpace(firstCamera.Port) ||
-                string.IsNullOrWhiteSpace(firstCamera.Channel))
-            {
-                // Show error message - camera config incomplete
-                return;
-            }
-
-            if (!int.TryParse(firstCamera.Port, out var port) ||
-                !int.TryParse(firstCamera.Channel, out var channel))
-            {
-                // Show error message - invalid port or channel
-                return;
-            }
-
-            // Create HikvisionDeviceConfig
-            var hikvisionConfig = new HikvisionDeviceConfig
-            {
-                Ip = firstCamera.Ip,
-                Port = port,
-                Username = firstCamera.UserName,
-                Password = firstCamera.Password,
-                Channels = new[] { channel }
-            };
-
-            // Call test capture service method
-            var result = await _hikvisionService.TestCaptureAsync(hikvisionConfig, channel);
-            
-            if (result != null && result.Success)
-            {
-                // Show success message - in a real app you'd use a dialog service
-                // File saved to: result.Request.SaveFullPath
-            }
-            else
-            {
-                // Show error message - in a real app you'd use a dialog service
-                // Error: result?.ErrorMessage ?? "Unknown error"
-            }
+            // Call test capture service method - it will handle all cameras and send notification
+            await _hikvisionService.TestCaptureAsync();
         }
         catch (Exception ex)
         {

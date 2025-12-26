@@ -19,7 +19,7 @@ public interface IHikvisionService
     bool TryOpenRealStream(HikvisionDeviceConfig config, int channel);
     bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath);
     Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests);
-    Task<BatchCaptureResult?> TestCaptureAsync(HikvisionDeviceConfig config, int channel);
+    Task<List<BatchCaptureResult>> TestCaptureAsync();
 }
 
 public sealed class HikvisionService : IHikvisionService, ISingletonDependency
@@ -273,32 +273,82 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         return results.ToList();
     }
 
-    public async Task<BatchCaptureResult?> TestCaptureAsync(HikvisionDeviceConfig config, int channel)
+    public async Task<List<BatchCaptureResult>> TestCaptureAsync()
     {
-        ArgumentNullException.ThrowIfNull(config);
-        
+        if (_settingsService == null)
+        {
+            return new List<BatchCaptureResult>();
+        }
+
+        // Get all camera configurations (excluding USB cameras)
+        var settings = await _settingsService.GetSettingsAsync();
+        var cameraConfigs = settings.CameraConfigs;
+
+        if (cameraConfigs.Count == 0)
+        {
+            // Send notification: no cameras configured
+            MessageBus.Current.SendMessage(new TestCaptureCompletedMessage
+            {
+                Success = false,
+                Message = "未配置相机"
+            });
+            return new List<BatchCaptureResult>();
+        }
+
         // Create test image directory
         var appDirectory = AppContext.BaseDirectory;
         var testImageDir = Path.Combine(appDirectory, "TestImage");
         Directory.CreateDirectory(testImageDir);
 
-        // Generate filename with timestamp
+        // Create batch requests for all cameras
+        var requests = new List<BatchCaptureRequest>();
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-        var fileName = $"test_{config.Ip.Replace(".", "_")}_ch{channel}_{timestamp}.jpg";
-        var savePath = Path.Combine(testImageDir, fileName);
 
-        // Create batch request
-        var request = new BatchCaptureRequest
+        foreach (var cameraConfig in cameraConfigs)
         {
-            Config = config,
-            Channel = channel,
-            SaveFullPath = savePath,
-            DeviceKey = $"{config.Ip}:{config.Port}"
-        };
+            if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
+                string.IsNullOrWhiteSpace(cameraConfig.Port) ||
+                string.IsNullOrWhiteSpace(cameraConfig.Channel))
+            {
+                continue;
+            }
+
+            if (!int.TryParse(cameraConfig.Port, out var port) ||
+                !int.TryParse(cameraConfig.Channel, out var channel))
+            {
+                continue;
+            }
+
+            var hikvisionConfig = new HikvisionDeviceConfig
+            {
+                Ip = cameraConfig.Ip,
+                Port = port,
+                Username = cameraConfig.UserName,
+                Password = cameraConfig.Password,
+                Channels = new[] { channel }
+            };
+
+            var fileName = $"test_{cameraConfig.Name}_ch{channel}_{timestamp}.jpg";
+            var savePath = Path.Combine(testImageDir, fileName);
+
+            requests.Add(new BatchCaptureRequest
+            {
+                Config = hikvisionConfig,
+                Channel = channel,
+                SaveFullPath = savePath,
+                DeviceKey = $"{cameraConfig.Ip}:{port}"
+            });
+        }
+
+        if (requests.Count == 0)
+        {
+            return new List<BatchCaptureResult>();
+        }
 
         // Use unified interface - it will automatically route based on settings
-        var results = await CaptureJpegFromStreamBatchAsync(new List<BatchCaptureRequest> { request });
-        return results.FirstOrDefault();
+        var results = await CaptureJpegFromStreamBatchAsync(requests);
+
+        return results;
     }
 
     public static uint GetLastErrorCode()
