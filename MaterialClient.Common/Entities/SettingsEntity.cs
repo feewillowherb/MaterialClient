@@ -20,6 +20,7 @@ public class SettingsEntity : Entity<int>
         SystemSettingsJson = string.Empty;
         CameraConfigsJson = string.Empty;
         LicensePlateRecognitionConfigsJson = string.Empty;
+        WeighingConfigurationJson = string.Empty;
     }
 
     /// <summary>
@@ -30,13 +31,15 @@ public class SettingsEntity : Entity<int>
         DocumentScannerConfig documentScannerConfig,
         SystemSettings systemSettings,
         List<CameraConfig> cameraConfigs,
-        List<LicensePlateRecognitionConfig> licensePlateRecognitionConfigs)
+        List<LicensePlateRecognitionConfig> licensePlateRecognitionConfigs,
+        WeighingConfiguration weighingConfiguration)
     {
         ScaleSettings = scaleSettings;
         DocumentScannerConfig = documentScannerConfig;
         SystemSettings = systemSettings;
         CameraConfigs = cameraConfigs;
         LicensePlateRecognitionConfigs = licensePlateRecognitionConfigs;
+        WeighingConfiguration = weighingConfiguration;
     }
 
     /// <summary>
@@ -63,6 +66,11 @@ public class SettingsEntity : Entity<int>
     ///     License plate recognition configs JSON (serialized list)
     /// </summary>
     public string LicensePlateRecognitionConfigsJson { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     Weighing configuration JSON (serialized)
+    /// </summary>
+    public string WeighingConfigurationJson { get; set; } = string.Empty;
 
     /// <summary>
     ///     Scale settings (deserialized)
@@ -179,5 +187,29 @@ public class SettingsEntity : Entity<int>
             }
         }
         set => LicensePlateRecognitionConfigsJson = JsonSerializer.Serialize(value);
+    }
+
+    /// <summary>
+    ///     Weighing configuration (deserialized)
+    /// </summary>
+    [JsonIgnore]
+    public WeighingConfiguration WeighingConfiguration
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(WeighingConfigurationJson))
+                return new WeighingConfiguration();
+
+            try
+            {
+                return JsonSerializer.Deserialize<WeighingConfiguration>(WeighingConfigurationJson) ??
+                       new WeighingConfiguration();
+            }
+            catch
+            {
+                return new WeighingConfiguration();
+            }
+        }
+        set => WeighingConfigurationJson = JsonSerializer.Serialize(value);
     }
 }

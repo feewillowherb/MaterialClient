@@ -197,7 +197,8 @@ public class WeightScaleRxTests
             new DocumentScannerConfig(),
             new SystemSettings(),
             new List<CameraConfig>(),
-            new List<LicensePlateRecognitionConfig>()
+            new List<LicensePlateRecognitionConfig>(),
+            new WeighingConfiguration()
         );
         settingsService.GetSettingsAsync().Returns(Task.FromResult(settingsEntity));
 

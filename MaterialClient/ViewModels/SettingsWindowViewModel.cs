@@ -43,6 +43,12 @@ public partial class SettingsWindowViewModel : ViewModelBase
     // Scale settings
     [Reactive] private string _scaleSerialPort = "COM3";
 
+    // Weighing configuration
+    [Reactive] private decimal _minWeightThreshold = 0.5m;
+    [Reactive] private decimal _weightStabilityThreshold = 0.05m;
+    [Reactive] private int _stabilityWindowMs = 3000;
+    [Reactive] private int _stabilityCheckIntervalMs = 200;
+
     public SettingsWindowViewModel(
         ISettingsService settingsService,
         ITruckScaleWeightService truckScaleWeightService)
@@ -102,7 +108,14 @@ public partial class SettingsWindowViewModel : ViewModelBase
                     Name = l.Name,
                     Ip = l.Ip,
                     Direction = l.Direction
-                }).ToList()
+                }).ToList(),
+                new WeighingConfiguration
+                {
+                    MinWeightThreshold = MinWeightThreshold,
+                    WeightStabilityThreshold = WeightStabilityThreshold,
+                    StabilityWindowMs = StabilityWindowMs,
+                    StabilityCheckIntervalMs = StabilityCheckIntervalMs
+                }
             );
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -202,6 +215,12 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
             // Load system settings
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
+
+            // Load weighing configuration
+            MinWeightThreshold = settings.WeighingConfiguration.MinWeightThreshold;
+            WeightStabilityThreshold = settings.WeighingConfiguration.WeightStabilityThreshold;
+            StabilityWindowMs = settings.WeighingConfiguration.StabilityWindowMs;
+            StabilityCheckIntervalMs = settings.WeighingConfiguration.StabilityCheckIntervalMs;
 
             // Load camera configs
             CameraConfigs.Clear();

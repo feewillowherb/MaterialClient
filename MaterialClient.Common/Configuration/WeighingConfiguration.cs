@@ -6,22 +6,22 @@ namespace MaterialClient.Common.Configuration;
 public class WeighingConfiguration
 {
     /// <summary>
-    ///     偏移范围下限
+    ///     最小称重重量稳定判定（吨）
     /// </summary>
-    public decimal WeightOffsetRangeMin { get; set; } = -1m;
+    public decimal MinWeightThreshold { get; set; } = 0.5m; // 0.5t = 500kg
 
     /// <summary>
-    ///     偏移范围上限
+    ///     重量稳定性阈值（吨）
     /// </summary>
-    public decimal WeightOffsetRangeMax { get; set; } = 1m;
+    public decimal WeightStabilityThreshold { get; set; } = 0.05m; // ±0.05m = 0.1m total range
 
     /// <summary>
-    ///     稳定时间（毫秒）
+    ///     稳定性监控窗口时间（毫秒）
     /// </summary>
-    public int WeightStableDurationMs { get; set; } = 2000;
+    public int StabilityWindowMs { get; set; } = 3000;
 
     /// <summary>
-    ///     匹配时间窗口（小时）
+    ///     稳定性检查间隔（毫秒）
     /// </summary>
-    public int WeighingMatchDurationHours { get; set; } = 3;
+    public int StabilityCheckIntervalMs { get; set; } = 200; // 默认 200ms
 }
