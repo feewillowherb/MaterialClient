@@ -42,6 +42,16 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     // Scale settings
     [Reactive] private string _scaleSerialPort = "COM3";
+    [Reactive] private ScaleUnit _scaleUnit = ScaleUnit.Ton;
+
+    /// <summary>
+    ///     Scale unit options for ComboBox
+    /// </summary>
+    public ObservableCollection<ScaleUnit> ScaleUnitOptions { get; } = new()
+    {
+        ScaleUnit.Kg,
+        ScaleUnit.Ton
+    };
 
     // Weighing configuration
     [Reactive] private decimal _minWeightThreshold = 0.5m;
@@ -86,7 +96,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
                 {
                     SerialPort = ScaleSerialPort,
                     BaudRate = ScaleBaudRate,
-                    CommunicationMethod = ScaleCommunicationMethod
+                    CommunicationMethod = ScaleCommunicationMethod,
+                    ScaleUnit = ScaleUnit
                 },
                 new DocumentScannerConfig
                 {
@@ -209,6 +220,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
             ScaleSerialPort = settings.ScaleSettings.SerialPort;
             ScaleBaudRate = settings.ScaleSettings.BaudRate;
             ScaleCommunicationMethod = settings.ScaleSettings.CommunicationMethod;
+            ScaleUnit = settings.ScaleSettings.ScaleUnit;
 
             // Ensure the loaded serial port is in the available list
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))

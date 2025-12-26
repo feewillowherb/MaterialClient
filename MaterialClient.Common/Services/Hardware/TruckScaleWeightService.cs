@@ -3,7 +3,9 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Extensions;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
@@ -334,9 +336,12 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 // Only use write lock to update state (hold time < 50ns)
                 if (parsedWeight.HasValue)
                 {
+                    // Convert weight based on scale unit
+                    var convertedWeight = ConvertWeight(parsedWeight.Value);
+                    
                     using var _ = _rwLock.WriteLock();
-                    _currentWeight = parsedWeight.Value;
-                    _weightSubject.OnNext(parsedWeight.Value);
+                    _currentWeight = convertedWeight;
+                    _weightSubject.OnNext(convertedWeight);
                 }
             }
             else
@@ -380,9 +385,12 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             // Only use write lock to update state (hold time < 50ns)
             if (parsedWeight.HasValue)
             {
+                // Convert weight based on scale unit
+                var convertedWeight = ConvertWeight(parsedWeight.Value);
+                
                 using var _ = _rwLock.WriteLock();
-                _currentWeight = parsedWeight.Value;
-                _weightSubject.OnNext(parsedWeight.Value);
+                _currentWeight = convertedWeight;
+                _weightSubject.OnNext(convertedWeight);
             }
         }
         catch (Exception ex)
@@ -442,13 +450,15 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 // The string contains integer part + decimal part without decimal point
                 if (decimal.TryParse(weightString, out var weightInt))
                 {
+                    // Parse as kg (raw value divided by 100 to get decimal kg)
+                    // Example: "000205" -> 205 / 100 = 2.05 kg
                     var parsedWeight = weightInt / TonDecimal;
 
                     // Apply sign
                     if (isNegative) parsedWeight = -parsedWeight;
 
                     _logger?.LogDebug(
-                        $"Parsed HEX weight: {parsedWeight} t (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
+                        $"Parsed HEX weight: {parsedWeight} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
 
                     return parsedWeight;
                 }
@@ -472,8 +482,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     ///     Parse weight from String data
     ///     Format: reversed string ending with "="
     ///     Example: "=76.54321" reversed = "12345.67="
+    ///     Note: The unit of returned value depends on ScaleUnit setting (kg or ton)
     /// </summary>
-    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
+    /// <returns>Parsed weight in decimal (unit depends on ScaleUnit setting) or null if parsing failed</returns>
     private decimal? ParseStringWeight(string data)
     {
         try
@@ -481,10 +492,10 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             // Remove the end character if present
             var weightString = data.TrimEnd('=');
 
-            // Try to parse as decimal
+            // Try to parse as decimal (weight in kg)
             if (decimal.TryParse(weightString, out var weight))
             {
-                _logger?.LogDebug($"Parsed String weight: {weight} t");
+                _logger?.LogDebug($"Parsed String weight: {weight}");
                 return weight;
             }
 
@@ -496,6 +507,40 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         }
 
         return null;
+    }
+
+    /// <summary>
+    ///     Convert weight based on scale unit setting
+    ///     ScaleUnit represents the unit of the value returned by the device
+    ///     Software always uses ton (t) as the weight unit
+    ///     If ScaleUnit is Kg, convert from kg to ton using MaterialMath.ConvertKgToTon
+    ///     If ScaleUnit is Ton, no conversion needed (device already returns ton)
+    /// </summary>
+    /// <param name="weightFromDevice">Weight from device (unit depends on ScaleUnit setting)</param>
+    /// <returns>Weight in ton (t) for software use</returns>
+    private decimal ConvertWeight(decimal weightFromDevice)
+    {
+        // Get current settings (read-only access)
+        ScaleSettings? settings;
+        using (_rwLock.ReadLock())
+        {
+            settings = _currentSettings;
+        }
+
+        // If no settings, assume device returns kg and convert to ton (default behavior)
+        if (settings == null)
+        {
+            return MaterialMath.ConvertKgToTon(weightFromDevice);
+        }
+
+        // If ScaleUnit is Kg, device returns kg, convert to ton
+        if (settings.ScaleUnit == ScaleUnit.Kg)
+        {
+            return MaterialMath.ConvertKgToTon(weightFromDevice);
+        }
+
+        // If ScaleUnit is Ton, device already returns ton, no conversion needed
+        return weightFromDevice;
     }
 
     /// <summary>

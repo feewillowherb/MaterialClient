@@ -1,3 +1,5 @@
+using MaterialClient.Common.Entities.Enums;
+
 namespace MaterialClient.Common.Configuration;
 
 /// <summary>
@@ -19,4 +21,9 @@ public class ScaleSettings
     ///     Communication method (e.g., TF0)
     /// </summary>
     public string CommunicationMethod { get; set; } = "TF0";
+
+    /// <summary>
+    ///     Scale unit (default: Ton)
+    /// </summary>
+    public ScaleUnit ScaleUnit { get; set; } = ScaleUnit.Kg;
 }

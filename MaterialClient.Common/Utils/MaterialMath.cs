@@ -104,4 +104,14 @@ public static class MaterialMath
                && unitRate.Value != 0
                && actualWeight.HasValue;
     }
+
+    /// <summary>
+    ///     将重量从千克(kg)转换为吨(t)，保留两位小数
+    /// </summary>
+    /// <param name="weightInKg">重量（千克）</param>
+    /// <returns>重量（吨），保留两位小数</returns>
+    public static decimal ConvertKgToTon(decimal weightInKg)
+    {
+        return Math.Round(weightInKg / 1000m, 2, MidpointRounding.AwayFromZero);
+    }
 }
