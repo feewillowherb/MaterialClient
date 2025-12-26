@@ -377,11 +377,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 return;
             }
 
+            // 如果 matchedRecord 不为 null，说明 ManualMatchWindow 已经处理了匹配和保存
+            // 不需要再次打开 ManualMatchEditWindow，因为它已经在 ManualMatchWindow 中打开过了
             if (matchedRecord != null)
             {
-                var editWindow = new ManualMatchEditWindow(weighingRecord, matchedRecord,
-                    matchWindow.SelectedDeliveryType, _serviceProvider);
-                await editWindow.ShowDialog(parentWin);
                 MatchCompleted?.Invoke(this, EventArgs.Empty);
             }
         }
