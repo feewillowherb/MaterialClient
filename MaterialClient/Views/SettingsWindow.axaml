@@ -80,7 +80,7 @@
                                    Foreground="Black"
                                    Margin="0,0,0,8" />
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
                               ColumnSpacing="12">
                             <TextBlock Text="最小称重阈值(吨):"
                                        Grid.Row="0"
@@ -125,6 +125,28 @@
                                      Grid.Row="3"
                                      Grid.Column="1"
                                      Watermark="200" />
+
+                            <TextBlock Text="匹配最大时间间隔(分钟):"
+                                       Grid.Row="4"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       Width="120" />
+                            <TextBox Text="{Binding MaxIntervalMinutes}"
+                                     Grid.Row="4"
+                                     Grid.Column="1"
+                                     Watermark="300" />
+
+                            <TextBlock Text="匹配最小重量差(吨):"
+                                       Grid.Row="5"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       Width="120" />
+                            <TextBox Text="{Binding MinWeightDiff}"
+                                     Grid.Row="5"
+                                     Grid.Column="1"
+                                     Watermark="1" />
                         </Grid>
                     </StackPanel>
                 </Border>

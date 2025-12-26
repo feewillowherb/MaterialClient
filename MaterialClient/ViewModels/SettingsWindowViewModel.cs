@@ -48,6 +48,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
     [Reactive] private decimal _weightStabilityThreshold = 0.05m;
     [Reactive] private int _stabilityWindowMs = 3000;
     [Reactive] private int _stabilityCheckIntervalMs = 200;
+    [Reactive] private int _maxIntervalMinutes = 300;
+    [Reactive] private decimal _minWeightDiff = 1m;
 
     public SettingsWindowViewModel(
         ISettingsService settingsService,
@@ -114,7 +116,9 @@ public partial class SettingsWindowViewModel : ViewModelBase
                     MinWeightThreshold = MinWeightThreshold,
                     WeightStabilityThreshold = WeightStabilityThreshold,
                     StabilityWindowMs = StabilityWindowMs,
-                    StabilityCheckIntervalMs = StabilityCheckIntervalMs
+                    StabilityCheckIntervalMs = StabilityCheckIntervalMs,
+                    MaxIntervalMinutes = MaxIntervalMinutes,
+                    MinWeightDiff = MinWeightDiff
                 }
             );
 
@@ -221,6 +225,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
             WeightStabilityThreshold = settings.WeighingConfiguration.WeightStabilityThreshold;
             StabilityWindowMs = settings.WeighingConfiguration.StabilityWindowMs;
             StabilityCheckIntervalMs = settings.WeighingConfiguration.StabilityCheckIntervalMs;
+            MaxIntervalMinutes = settings.WeighingConfiguration.MaxIntervalMinutes;
+            MinWeightDiff = settings.WeighingConfiguration.MinWeightDiff;
 
             // Load camera configs
             CameraConfigs.Clear();

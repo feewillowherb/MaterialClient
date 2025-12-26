@@ -24,4 +24,14 @@ public class WeighingConfiguration
     ///     稳定性检查间隔（毫秒）
     /// </summary>
     public int StabilityCheckIntervalMs { get; set; } = 200; // 默认 200ms
+
+    /// <summary>
+    ///     匹配最大时间间隔（分钟）
+    /// </summary>
+    public int MaxIntervalMinutes { get; set; } = 300;
+
+    /// <summary>
+    ///     匹配最小重量差（吨）
+    /// </summary>
+    public decimal MinWeightDiff { get; set; } = 1m;
 }
