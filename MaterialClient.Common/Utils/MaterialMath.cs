@@ -3,12 +3,12 @@ using MaterialClient.Common.Entities.Enums;
 namespace MaterialClient.Common.Utils;
 
 /// <summary>
-/// 物料计算工具类（静态方法）
+///     物料计算工具类（静态方法）
 /// </summary>
 public static class MaterialMath
 {
     /// <summary>
-    /// 计算计划重量 = 计划件数 × 换算率
+    ///     计算计划重量 = 计划件数 × 换算率
     /// </summary>
     /// <param name="planQuantity">计划件数</param>
     /// <param name="unitRate">单位换算率</param>
@@ -22,7 +22,7 @@ public static class MaterialMath
     }
 
     /// <summary>
-    /// 计算实际件数 = 实际重量 / 换算率
+    ///     计算实际件数 = 实际重量 / 换算率
     /// </summary>
     /// <param name="actualWeight">实际重量（货物重量）</param>
     /// <param name="unitRate">单位换算率</param>
@@ -36,7 +36,7 @@ public static class MaterialMath
     }
 
     /// <summary>
-    /// 计算差值 = 实际重量 - 计划重量
+    ///     计算差值 = 实际重量 - 计划重量
     /// </summary>
     /// <param name="actualWeight">实际重量</param>
     /// <param name="planWeight">计划重量</param>
@@ -50,7 +50,7 @@ public static class MaterialMath
     }
 
     /// <summary>
-    /// 计算偏差率 = 差值 / 计划重量 × 100
+    ///     计算偏差率 = 差值 / 计划重量 × 100
     /// </summary>
     /// <param name="difference">差值</param>
     /// <param name="planWeight">计划重量</param>
@@ -64,7 +64,7 @@ public static class MaterialMath
     }
 
     /// <summary>
-    /// 确定偏差结果类型
+    ///     确定偏差结果类型
     /// </summary>
     /// <param name="deviationRate">偏差率（百分比）</param>
     /// <param name="lowerLimit">下限阈值</param>
@@ -91,7 +91,7 @@ public static class MaterialMath
     }
 
     /// <summary>
-    /// 验证计算参数是否有效
+    ///     验证计算参数是否有效
     /// </summary>
     /// <param name="planQuantity">计划件数</param>
     /// <param name="actualWeight">实际重量</param>

@@ -1,7 +1,3 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
@@ -12,54 +8,38 @@ using Volo.Abp.Domain.Services;
 namespace MaterialClient.Common.Services;
 
 /// <summary>
-/// Device manager service interface
+///     Device manager service interface
 /// </summary>
 public interface IDeviceManagerService
 {
     /// <summary>
-    /// Start all devices
+    ///     Start all devices
     /// </summary>
     Task StartAsync();
 
     /// <summary>
-    /// Close all devices
+    ///     Close all devices
     /// </summary>
     Task CloseAsync();
 
     /// <summary>
-    /// Restart all devices
+    ///     Restart all devices
     /// </summary>
     Task RestartAsync();
 }
 
 /// <summary>
-/// Device manager service implementation
+///     Device manager service implementation
 /// </summary>
 [AutoConstructor]
 public partial class DeviceManagerService : DomainService, IDeviceManagerService
 {
+    private readonly ILogger<DeviceManagerService>? _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly ISettingsService _settingsService;
-    private readonly ILogger<DeviceManagerService>? _logger;
 
     /// <summary>
-    /// Get truck scale weight service lazily to avoid circular dependency
-    /// </summary>
-    private ITruckScaleWeightService GetTruckScaleWeightService()
-    {
-        return _serviceProvider.GetRequiredService<ITruckScaleWeightService>();
-    }
-
-    /// <summary>
-    /// Get Hikvision service lazily to avoid circular dependency
-    /// </summary>
-    private IHikvisionService GetHikvisionService()
-    {
-        return _serviceProvider.GetRequiredService<IHikvisionService>();
-    }
-
-    /// <summary>
-    /// Start all devices
+    ///     Start all devices
     /// </summary>
     public async Task StartAsync()
     {
@@ -70,13 +50,9 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             var truckScaleService = GetTruckScaleWeightService();
             var initialized = await truckScaleService.InitializeAsync(settings.ScaleSettings);
             if (initialized)
-            {
                 _logger?.LogInformation("Truck scale service started successfully");
-            }
             else
-            {
                 _logger?.LogWarning("Failed to start truck scale service");
-            }
 
             // Start Hikvision camera services
             await StartHikvisionCamerasAsync(settings);
@@ -93,7 +69,7 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     }
 
     /// <summary>
-    /// Close all devices
+    ///     Close all devices
     /// </summary>
     public async Task CloseAsync()
     {
@@ -122,7 +98,7 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     }
 
     /// <summary>
-    /// Restart all devices
+    ///     Restart all devices
     /// </summary>
     public async Task RestartAsync()
     {
@@ -132,13 +108,9 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             var truckScaleService = GetTruckScaleWeightService();
             var restarted = await truckScaleService.RestartAsync();
             if (restarted)
-            {
                 _logger?.LogInformation("Truck scale service restarted successfully");
-            }
             else
-            {
                 _logger?.LogWarning("Failed to restart truck scale service");
-            }
 
             // Restart Hikvision camera services
             var settings = await _settingsService.GetSettingsAsync();
@@ -156,7 +128,23 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     }
 
     /// <summary>
-    /// Start Hikvision cameras (login and verify)
+    ///     Get truck scale weight service lazily to avoid circular dependency
+    /// </summary>
+    private ITruckScaleWeightService GetTruckScaleWeightService()
+    {
+        return _serviceProvider.GetRequiredService<ITruckScaleWeightService>();
+    }
+
+    /// <summary>
+    ///     Get Hikvision service lazily to avoid circular dependency
+    /// </summary>
+    private IHikvisionService GetHikvisionService()
+    {
+        return _serviceProvider.GetRequiredService<IHikvisionService>();
+    }
+
+    /// <summary>
+    ///     Start Hikvision cameras (login and verify)
     /// </summary>
     private async Task StartHikvisionCamerasAsync(SettingsEntity settings)
     {
@@ -171,8 +159,8 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
                 return;
             }
 
-            int successCount = 0;
-            int failCount = 0;
+            var successCount = 0;
+            var failCount = 0;
 
             foreach (var cameraConfig in cameraConfigs)
             {
@@ -188,7 +176,8 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
 
                 if (!int.TryParse(cameraConfig.Port, out var port))
                 {
-                    _logger?.LogWarning($"Hikvision camera '{cameraConfig.Name}' has invalid port: {cameraConfig.Port}");
+                    _logger?.LogWarning(
+                        $"Hikvision camera '{cameraConfig.Name}' has invalid port: {cameraConfig.Port}");
                     failCount++;
                     continue;
                 }
@@ -208,24 +197,21 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
                 var isOnline = await Task.Run(() => hikvisionService.IsOnline(hikvisionConfig));
                 if (isOnline)
                 {
-                    _logger?.LogInformation($"Hikvision camera '{cameraConfig.Name}' ({cameraConfig.Ip}:{port}) started successfully");
+                    _logger?.LogInformation(
+                        $"Hikvision camera '{cameraConfig.Name}' ({cameraConfig.Ip}:{port}) started successfully");
                     successCount++;
                 }
                 else
                 {
-                    _logger?.LogWarning($"Hikvision camera '{cameraConfig.Name}' ({cameraConfig.Ip}:{port}) failed to login");
+                    _logger?.LogWarning(
+                        $"Hikvision camera '{cameraConfig.Name}' ({cameraConfig.Ip}:{port}) failed to login");
                     failCount++;
                 }
             }
 
             if (successCount > 0)
-            {
                 _logger?.LogInformation($"Hikvision cameras: {successCount} online, {failCount} offline");
-            }
-            else if (failCount > 0)
-            {
-                _logger?.LogWarning($"All Hikvision cameras failed to start ({failCount} cameras)");
-            }
+            else if (failCount > 0) _logger?.LogWarning($"All Hikvision cameras failed to start ({failCount} cameras)");
         }
         catch (Exception ex)
         {

@@ -4,341 +4,357 @@
              xmlns:converters="using:MaterialClient.Converters"
              x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingMainView"
              x:DataType="vm:AttendedWeighingViewModel">
-  
-  <UserControl.Resources>
-    <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
-  </UserControl.Resources>
-  
-  <Border Padding="24">
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
-      <!-- Title Bar -->
-      <Border Background="White" 
-              BorderBrush="#E4E4E4" 
-              BorderThickness="1"
-              Padding="15,0"
-              Height="50">
-        <TextBlock Text="上一车次物料信息" 
-                   FontSize="20" 
-                   Foreground="#222222"
-                   VerticalAlignment="Center"/>
-      </Border>
-      
-      <!-- Info Blocks Grid - Row 1 -->
-      <Border Grid.Row="1" Background="#F5F6FA" Padding="0">
-        <UniformGrid Rows="1" 
-                     Columns="3" 
-                     Margin="0,0,0,0">
-          
-          <!-- Block 1: 车牌号 (Blue) -->
-          <Border Background="White" 
-                  BorderBrush="#B1EBFF" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,5">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10,6"
-                      Height="40">
-                <TextBlock Text="车牌号" 
-                           FontSize="14" 
+
+    <UserControl.Resources>
+        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
+    </UserControl.Resources>
+
+    <Border Padding="24">
+        <Grid RowDefinitions="Auto,Auto,Auto,*">
+            <!-- Title Bar -->
+            <Border Background="White"
+                    BorderBrush="#E4E4E4"
+                    BorderThickness="1"
+                    Padding="15,0"
+                    Height="50">
+                <TextBlock Text="上一车次物料信息"
+                           FontSize="20"
                            Foreground="#222222"
-                           VerticalAlignment="Center"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding SelectedListItem.PlateNumber, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="50"
-                         TextAlignment="Center"
-                         Padding="0,12,0,0"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 2: 进场 (Orange) -->
-          <Border Background="White" 
-                  BorderBrush="#F4D59C" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,5">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10,6"
-                      Height="40">
-                <TextBlock Text="进场" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Center"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding JoinWeightInfo, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="50"
-                         TextAlignment="Center"
-                         Padding="0,12,0,0"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 3: 出场 (Purple) -->
-          <Border Background="White" 
-                  BorderBrush="#D3AEF5" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,0,5">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10,6"
-                      Height="40">
-                <TextBlock Text="出场" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Center"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding OutWeightInfo, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="50"
-                         TextAlignment="Center"
-                         Padding="0,12,0,0"/>
-            </StackPanel>
-          </Border>
-        </UniformGrid>
-      </Border>
-      
-      <!-- Info Blocks Grid - Row 2 -->
-      <Border Grid.Row="2" Background="#F5F6FA" Padding="0" Margin="0,0,0,20">
-        <UniformGrid Rows="1" 
-                     Columns="3"
-                     Margin="0,0,0,0">
-          
-          <!-- Block 4: 供应商 (Blue) -->
-          <Border Background="White" 
-                  BorderBrush="#B1EBFF" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,0">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10,6"
-                      Height="40">
-                <TextBlock Text="供应商" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Center"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding SelectedListItem.ProviderName, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="50"
-                         TextAlignment="Center"
-                         Padding="0,12,0,0"
-                         TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 5: 材料 (Orange) -->
-          <Border Background="White" 
-                  BorderBrush="#F4D59C" 
-                  BorderThickness="0,5,0,0"
-                  Margin="0,0,5,0">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10,6"
-                      Height="40">
-                <TextBlock Text="材料" 
-                           FontSize="14" 
-                           Foreground="#222222"
-                           VerticalAlignment="Center"/>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding MaterialInfo, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="50"
-                         TextAlignment="Center"
-                         Padding="0,12,0,0"
-                         TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
-          </Border>
-          
-          <!-- Block 6: 偏差 (Purple) -->
-          <Border Background="White" 
-                  BorderBrush="#D3AEF5" 
-                  BorderThickness="0,5,0,0">
-            <StackPanel>
-              <!-- Title -->
-              <Border Background="#FCFCFE" 
-                      BorderBrush="#E4E4E4" 
-                      BorderThickness="0,0,0,3"
-                      Padding="10,6"
-                      Height="40">
-                <Grid>
-                  <TextBlock Text="偏差" 
-                             FontSize="14" 
-                             Foreground="#222222"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"/>
-                  <TextBlock Text="-" 
-                             FontSize="18" 
-                             Foreground="#BCBCBC"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Right"/>
-                </Grid>
-              </Border>
-              <!-- Value -->
-              <TextBlock Text="{Binding OffsetInfo, TargetNullValue='--'}" 
-                         FontSize="22" 
-                         Foreground="#222222"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         Height="50"
-                         TextAlignment="Center"
-                         Padding="0,12,0,0"/>
-            </StackPanel>
-          </Border>
-        </UniformGrid>
-      </Border>
-      
-      <!-- Photos Section -->
-      <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="16">
-        <!-- Entry Photos -->
-        <Border Background="#F8F9FA" 
-                CornerRadius="8" 
-                Padding="16">
-          <Grid RowDefinitions="Auto,*">
-            <TextBlock Text="上一车进场照片" 
-                       FontSize="14" 
-                       FontWeight="SemiBold"
-                       Margin="0,0,0,12"/>
-            <Grid Grid.Row="1" 
-                  RowDefinitions="*,*" 
-                  ColumnDefinitions="*,*"
-                  RowSpacing="8"
-                  ColumnSpacing="8">
-              <Button Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto1}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                           VerticalAlignment="Center" />
+            </Border>
+
+            <!-- Info Blocks Grid - Row 1 -->
+            <Border Grid.Row="1" Background="#F5F6FA" Padding="0">
+                <UniformGrid Rows="1"
+                             Columns="3"
+                             Margin="0,0,0,0">
+
+                    <!-- Block 1: 车牌号 (Blue) -->
+                    <Border Background="White"
+                            BorderBrush="#B1EBFF"
+                            BorderThickness="0,5,0,0"
+                            Margin="0,0,5,5">
+                        <StackPanel>
+                            <!-- Title -->
+                            <Border Background="#FCFCFE"
+                                    BorderBrush="#E4E4E4"
+                                    BorderThickness="0,0,0,3"
+                                    Padding="10,6"
+                                    Height="40">
+                                <TextBlock Text="车牌号"
+                                           FontSize="14"
+                                           Foreground="#222222"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <!-- Value -->
+                            <TextBlock Text="{Binding SelectedListItem.PlateNumber, TargetNullValue='--'}"
+                                       FontSize="22"
+                                       Foreground="#222222"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Height="50"
+                                       TextAlignment="Center"
+                                       Padding="0,12,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Block 2: 进场 (Orange) -->
+                    <Border Background="White"
+                            BorderBrush="#F4D59C"
+                            BorderThickness="0,5,0,0"
+                            Margin="0,0,5,5">
+                        <StackPanel>
+                            <!-- Title -->
+                            <Border Background="#FCFCFE"
+                                    BorderBrush="#E4E4E4"
+                                    BorderThickness="0,0,0,3"
+                                    Padding="10,6"
+                                    Height="40">
+                                <TextBlock Text="进场"
+                                           FontSize="14"
+                                           Foreground="#222222"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <!-- Value -->
+                            <TextBlock Text="{Binding JoinWeightInfo, TargetNullValue='--'}"
+                                       FontSize="22"
+                                       Foreground="#222222"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Height="50"
+                                       TextAlignment="Center"
+                                       Padding="0,12,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Block 3: 出场 (Purple) -->
+                    <Border Background="White"
+                            BorderBrush="#D3AEF5"
+                            BorderThickness="0,5,0,0"
+                            Margin="0,0,0,5">
+                        <StackPanel>
+                            <!-- Title -->
+                            <Border Background="#FCFCFE"
+                                    BorderBrush="#E4E4E4"
+                                    BorderThickness="0,0,0,3"
+                                    Padding="10,6"
+                                    Height="40">
+                                <TextBlock Text="出场"
+                                           FontSize="14"
+                                           Foreground="#222222"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <!-- Value -->
+                            <TextBlock Text="{Binding OutWeightInfo, TargetNullValue='--'}"
+                                       FontSize="22"
+                                       Foreground="#222222"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Height="50"
+                                       TextAlignment="Center"
+                                       Padding="0,12,0,0" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </Border>
+
+            <!-- Info Blocks Grid - Row 2 -->
+            <Border Grid.Row="2" Background="#F5F6FA" Padding="0" Margin="0,0,0,20">
+                <UniformGrid Rows="1"
+                             Columns="3"
+                             Margin="0,0,0,0">
+
+                    <!-- Block 4: 供应商 (Blue) -->
+                    <Border Background="White"
+                            BorderBrush="#B1EBFF"
+                            BorderThickness="0,5,0,0"
+                            Margin="0,0,5,0">
+                        <StackPanel>
+                            <!-- Title -->
+                            <Border Background="#FCFCFE"
+                                    BorderBrush="#E4E4E4"
+                                    BorderThickness="0,0,0,3"
+                                    Padding="10,6"
+                                    Height="40">
+                                <TextBlock Text="供应商"
+                                           FontSize="14"
+                                           Foreground="#222222"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <!-- Value -->
+                            <TextBlock Text="{Binding SelectedListItem.ProviderName, TargetNullValue='--'}"
+                                       FontSize="22"
+                                       Foreground="#222222"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Height="50"
+                                       TextAlignment="Center"
+                                       Padding="0,12,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Block 5: 材料 (Orange) -->
+                    <Border Background="White"
+                            BorderBrush="#F4D59C"
+                            BorderThickness="0,5,0,0"
+                            Margin="0,0,5,0">
+                        <StackPanel>
+                            <!-- Title -->
+                            <Border Background="#FCFCFE"
+                                    BorderBrush="#E4E4E4"
+                                    BorderThickness="0,0,0,3"
+                                    Padding="10,6"
+                                    Height="40">
+                                <TextBlock Text="材料"
+                                           FontSize="14"
+                                           Foreground="#222222"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <!-- Value -->
+                            <TextBlock Text="{Binding MaterialInfo, TargetNullValue='--'}"
+                                       FontSize="22"
+                                       Foreground="#222222"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Height="50"
+                                       TextAlignment="Center"
+                                       Padding="0,12,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Block 6: 偏差 (Purple) -->
+                    <Border Background="White"
+                            BorderBrush="#D3AEF5"
+                            BorderThickness="0,5,0,0">
+                        <StackPanel>
+                            <!-- Title -->
+                            <Border Background="#FCFCFE"
+                                    BorderBrush="#E4E4E4"
+                                    BorderThickness="0,0,0,3"
+                                    Padding="10,6"
+                                    Height="40">
+                                <Grid>
+                                    <TextBlock Text="偏差"
+                                               FontSize="14"
+                                               Foreground="#222222"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left" />
+                                    <TextBlock Text="-"
+                                               FontSize="18"
+                                               Foreground="#BCBCBC"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                </Grid>
+                            </Border>
+                            <!-- Value -->
+                            <TextBlock Text="{Binding OffsetInfo, TargetNullValue='--'}"
+                                       FontSize="22"
+                                       Foreground="#222222"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Height="50"
+                                       TextAlignment="Center"
+                                       Padding="0,12,0,0" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </Border>
+
+            <!-- Photos Section -->
+            <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="16">
+                <!-- Entry Photos -->
+                <Border Background="#F8F9FA"
+                        CornerRadius="8"
+                        Padding="16">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Text="上一车进场照片"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,12" />
+                        <Grid Grid.Row="1"
+                              RowDefinitions="*,*"
+                              ColumnDefinitions="*,*"
+                              RowSpacing="8"
+                              ColumnSpacing="8">
+                            <Button Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.EntryPhoto1}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                            <Button Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.EntryPhoto2}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                            <Button Grid.Row="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.EntryPhoto3}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                            <Button Grid.Row="1" Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.EntryPhoto4}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                        </Grid>
+                    </Grid>
                 </Border>
-              </Button>
-              <Button Grid.Column="1"
-                      Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto2}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+
+                <!-- Exit Photos -->
+                <Border Grid.Column="1"
+                        Background="#F8F9FA"
+                        CornerRadius="8"
+                        Padding="16">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Text="上一车退场照片"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,12" />
+                        <Grid Grid.Row="1"
+                              RowDefinitions="*,*"
+                              ColumnDefinitions="*,*"
+                              RowSpacing="8"
+                              ColumnSpacing="8">
+                            <Button Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.ExitPhoto1}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                            <Button Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.ExitPhoto2}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                            <Button Grid.Row="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.ExitPhoto3}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                            <Button Grid.Row="1" Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Command="{Binding OpenImageViewerCommand}"
+                                    CommandParameter="{Binding PhotoGridViewModel.ExitPhoto4}">
+                                <Border Background="#E5E7EB" CornerRadius="4">
+                                    <Image
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                            </Button>
+                        </Grid>
+                    </Grid>
                 </Border>
-              </Button>
-              <Button Grid.Row="1"
-                      Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto3}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Button>
-              <Button Grid.Row="1" Grid.Column="1"
-                      Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.EntryPhoto4}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Button>
             </Grid>
-          </Grid>
-        </Border>
-        
-        <!-- Exit Photos -->
-        <Border Grid.Column="1" 
-                Background="#F8F9FA" 
-                CornerRadius="8" 
-                Padding="16">
-          <Grid RowDefinitions="Auto,*">
-            <TextBlock Text="上一车退场照片" 
-                       FontSize="14" 
-                       FontWeight="SemiBold"
-                       Margin="0,0,0,12"/>
-            <Grid Grid.Row="1" 
-                  RowDefinitions="*,*" 
-                  ColumnDefinitions="*,*"
-                  RowSpacing="8"
-                  ColumnSpacing="8">
-              <Button Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto1}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Button>
-              <Button Grid.Column="1"
-                      Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto2}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Button>
-              <Button Grid.Row="1"
-                      Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto3}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Button>
-              <Button Grid.Row="1" Grid.Column="1"
-                      Background="Transparent" 
-                      BorderThickness="0" 
-                      Padding="0"
-                      Command="{Binding OpenImageViewerCommand}"
-                      CommandParameter="{Binding PhotoGridViewModel.ExitPhoto4}">
-                <Border Background="#E5E7EB" CornerRadius="4">
-                  <Image Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
-                </Border>
-              </Button>
-            </Grid>
-          </Grid>
-        </Border>
-      </Grid>
-    </Grid>
-  </Border>
+        </Grid>
+    </Border>
 </UserControl>

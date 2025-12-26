@@ -10,56 +10,55 @@
         Icon="/Assets/fd-ico.ico"
         SystemDecorations="None"
         Background="#1E1E1E">
-  
-  <Window.Resources>
-    <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
-  </Window.Resources>
-  
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
-    
-    <!-- Title Bar -->
-    <Border Grid.Row="0" 
-            Background="#2D2D2D" 
-            Padding="16,12"
-            BorderBrush="#3D3D3D"
-            BorderThickness="0,0,0,1"
-            PointerPressed="TitleBar_OnPointerPressed"
-            Cursor="Arrow">
-      <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Text="{Binding ImageTitle, TargetNullValue='图片查看'}" 
-                   FontSize="16" 
-                   Foreground="White"
-                   VerticalAlignment="Center"/>
-        <Button Grid.Column="1"
-                Content="✕"
-                FontSize="18"
-                Foreground="White"
-                Background="Transparent"
-                BorderThickness="0"
-                Padding="12,6"
-                Cursor="Hand"
-                Command="{Binding CloseCommand}"/>
-      </Grid>
-    </Border>
-    
-    <!-- Image Container -->
-    <ScrollViewer Grid.Row="1" 
-                  HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollBarVisibility="Auto"
-                  Background="#1E1E1E">
-      <Grid HorizontalAlignment="Center" 
-            VerticalAlignment="Center"
-            Margin="20">
-        <Image Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}" 
-               Stretch="Uniform"
-               MaxWidth="1100"
-               MaxHeight="700"/>
-      </Grid>
-    </ScrollViewer>
-  </Grid>
-</Window>
 
+    <Window.Resources>
+        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <Border Grid.Row="0"
+                Background="#2D2D2D"
+                Padding="16,12"
+                BorderBrush="#3D3D3D"
+                BorderThickness="0,0,0,1"
+                PointerPressed="TitleBar_OnPointerPressed"
+                Cursor="Arrow">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding ImageTitle, TargetNullValue='图片查看'}"
+                           FontSize="16"
+                           Foreground="White"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1"
+                        Content="✕"
+                        FontSize="18"
+                        Foreground="White"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="12,6"
+                        Cursor="Hand"
+                        Command="{Binding CloseCommand}" />
+            </Grid>
+        </Border>
+
+        <!-- Image Container -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="#1E1E1E">
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Margin="20">
+                <Image Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                       Stretch="Uniform"
+                       MaxWidth="1100"
+                       MaxHeight="700" />
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>

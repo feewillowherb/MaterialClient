@@ -7,19 +7,19 @@ using Volo.Abp.DependencyInjection;
 namespace MaterialClient.Common.Services.Authentication;
 
 /// <summary>
-/// 密码加密服务接口
+///     密码加密服务接口
 /// </summary>
 public interface IPasswordEncryptionService
 {
     /// <summary>
-    /// 加密密码（AES-256-CBC）
+    ///     加密密码（AES-256-CBC）
     /// </summary>
     /// <param name="plainText">明文密码</param>
     /// <returns>加密后的Base64编码字符串（包含IV）</returns>
     string Encrypt(string plainText);
 
     /// <summary>
-    /// 解密密码
+    ///     解密密码
     /// </summary>
     /// <param name="cipherText">加密的Base64编码字符串</param>
     /// <returns>明文密码</returns>
@@ -27,7 +27,7 @@ public interface IPasswordEncryptionService
 }
 
 /// <summary>
-/// 密码加密服务实现（AES-256-CBC）
+///     密码加密服务实现（AES-256-CBC）
 /// </summary>
 public class PasswordEncryptionService : IPasswordEncryptionService, ISingletonDependency
 {
@@ -43,20 +43,16 @@ public class PasswordEncryptionService : IPasswordEncryptionService, ISingletonD
         var keyString = configuration["Encryption:AesKey"];
 
         if (string.IsNullOrEmpty(keyString))
-        {
             throw new InvalidOperationException(
                 "Encryption:AesKey is not configured in appsettings.json");
-        }
 
         try
         {
             _key = Convert.FromBase64String(keyString);
 
             if (_key.Length != 32)
-            {
                 throw new ArgumentException(
                     $"AES key must be 256 bits (32 bytes), but got {_key.Length} bytes");
-            }
 
             _logger.LogInformation("Password encryption service initialized successfully");
         }
@@ -68,14 +64,12 @@ public class PasswordEncryptionService : IPasswordEncryptionService, ISingletonD
     }
 
     /// <summary>
-    /// 加密密码（使用随机IV确保每次加密结果不同）
+    ///     加密密码（使用随机IV确保每次加密结果不同）
     /// </summary>
     public string Encrypt(string plainText)
     {
         if (string.IsNullOrEmpty(plainText))
-        {
             throw new ArgumentException("Plain text cannot be null or empty", nameof(plainText));
-        }
 
         using var aes = Aes.Create();
         aes.Key = _key;
@@ -98,14 +92,12 @@ public class PasswordEncryptionService : IPasswordEncryptionService, ISingletonD
     }
 
     /// <summary>
-    /// 解密密码
+    ///     解密密码
     /// </summary>
     public string Decrypt(string cipherText)
     {
         if (string.IsNullOrEmpty(cipherText))
-        {
             throw new ArgumentException("Cipher text cannot be null or empty", nameof(cipherText));
-        }
 
         try
         {

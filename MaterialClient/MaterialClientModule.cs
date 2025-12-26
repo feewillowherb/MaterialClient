@@ -1,15 +1,15 @@
 using System.Threading.Tasks;
 using MaterialClient.Backgrounds;
-using Microsoft.Extensions.DependencyInjection;
-using Volo.Abp.Autofac;
-using Volo.Abp.Modularity;
 using MaterialClient.Common;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
+using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
+using Volo.Abp.Autofac;
 using Volo.Abp.BackgroundWorkers;
+using Volo.Abp.Modularity;
 
 namespace MaterialClient;
 
@@ -50,9 +50,8 @@ public class MaterialClientModule : AbpModule
 
         // Register Web Host service
         services.AddSingleton<MinimalWebHostService>();
-        
     }
-    
+
     public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
     {
         // 注册并启动后台工作器

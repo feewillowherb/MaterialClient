@@ -1,10 +1,8 @@
+using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
-using MaterialClient.Common.Entities;
-using MaterialClient.Common.Entities.Enums;
-using MaterialClient.Common.Configuration;
 using Volo.Abp.EntityFrameworkCore.Modeling;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace MaterialClient.EFCore;
 
@@ -251,18 +249,13 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             // 将 long 类型的业务用户ID转换为 int
             var businessUserId = userSession.UserId;
             if (businessUserId <= int.MaxValue && businessUserId >= int.MinValue)
-            {
                 currentUserId = (int)businessUserId;
-            }
             else
-            {
                 // 如果超出 int 范围，使用取模策略
                 currentUserId = (int)(businessUserId % int.MaxValue);
-            }
         }
 
         foreach (var entry in ChangeTracker.Entries<IMaterialClientAuditedObject>())
-        {
             switch (entry.State)
             {
                 case EntityState.Added:
@@ -283,6 +276,5 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
                     entry.Entity.UpdateDate = now;
                     break;
             }
-        }
     }
 }

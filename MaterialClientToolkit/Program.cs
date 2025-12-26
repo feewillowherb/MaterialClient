@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Configuration;
-using MaterialClient.Common.Services.Hikvision;
 
 namespace MaterialClientToolkit;
 
-class Program
+internal class Program
 {
-    static async Task<int> Main(string[] args)
+    private static async Task<int> Main(string[] args)
     {
         try
         {
@@ -18,17 +13,11 @@ class Program
             var deviceConfigs = LoadConfigurations();
 
             // 命令行参数可以覆盖配置文件的值（如果只有一个设备）
-            if (deviceConfigs.Count == 1)
-            {
-                ApplyCommandLineArguments(deviceConfigs[0], args);
-            }
+            if (deviceConfigs.Count == 1) ApplyCommandLineArguments(deviceConfigs[0], args);
 
             // 创建服务实例
             var service = new HikvisionService();
-            foreach (var config in deviceConfigs)
-            {
-                service.AddOrUpdateDevice(config);
-            }
+            foreach (var config in deviceConfigs) service.AddOrUpdateDevice(config);
 
             // 创建 captures 文件夹（与工具目录相同）
             var toolDirectory = GetToolDirectory();
@@ -57,7 +46,7 @@ class Program
                 }
             }
 
-            Console.WriteLine($"开始批量捕获图片...");
+            Console.WriteLine("开始批量捕获图片...");
             Console.WriteLine($"设备数量: {deviceConfigs.Count}");
             Console.WriteLine($"总任务数: {requests.Count}");
             Console.WriteLine($"保存目录: {captureDir}");
@@ -95,14 +84,11 @@ class Program
                 {
                     Console.WriteLine($"✗ {deviceInfo} {channelInfo} - 失败");
                     if (!string.IsNullOrEmpty(result.ErrorMessage))
-                    {
                         Console.WriteLine($"  错误: {result.ErrorMessage}");
-                    }
                     else
-                    {
                         Console.WriteLine($"  HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}");
-                    }
                 }
+
                 Console.WriteLine();
             }
 
@@ -117,13 +103,13 @@ class Program
         }
     }
 
-    static List<HikvisionDeviceConfig> LoadConfigurations()
+    private static List<HikvisionDeviceConfig> LoadConfigurations()
     {
         // 使用可执行文件所在目录，而不是临时解压目录
         var basePath = GetToolDirectory();
         var builder = new ConfigurationBuilder()
             .SetBasePath(basePath)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
+            .AddJsonFile("appsettings.json", false, false);
 
         var configuration = builder.Build();
 
@@ -132,16 +118,11 @@ class Program
         // 首先尝试读取 HikvisionDeviceList（多个设备）
         var deviceListSection = configuration.GetSection("HikvisionDeviceList");
         if (deviceListSection.Exists())
-        {
             foreach (var deviceSection in deviceListSection.GetChildren())
             {
                 var config = ParseDeviceConfig(deviceSection);
-                if (config != null)
-                {
-                    configs.Add(config);
-                }
+                if (config != null) configs.Add(config);
             }
-        }
 
         // 如果没有找到设备列表，尝试读取单个设备配置（向后兼容）
         if (configs.Count == 0)
@@ -150,16 +131,12 @@ class Program
             if (section.Exists())
             {
                 var config = ParseDeviceConfig(section);
-                if (config != null)
-                {
-                    configs.Add(config);
-                }
+                if (config != null) configs.Add(config);
             }
         }
 
         // 如果还是没有配置，使用默认值
         if (configs.Count == 0)
-        {
             configs.Add(new HikvisionDeviceConfig
             {
                 Ip = "192.168.3.245",
@@ -169,12 +146,11 @@ class Program
                 StreamType = 0,
                 Channels = [1]
             });
-        }
 
         return configs;
     }
 
-    static HikvisionDeviceConfig? ParseDeviceConfig(IConfigurationSection section)
+    private static HikvisionDeviceConfig? ParseDeviceConfig(IConfigurationSection section)
     {
         var config = new HikvisionDeviceConfig();
 
@@ -182,23 +158,15 @@ class Program
         config.Username = section["Username"] ?? "admin";
         config.Password = section["Password"] ?? "fdkj112233";
 
-        if (int.TryParse(section["Port"], out int port))
-        {
+        if (int.TryParse(section["Port"], out var port))
             config.Port = port;
-        }
         else
-        {
             config.Port = 8000;
-        }
 
-        if (int.TryParse(section["StreamType"], out int streamType))
-        {
+        if (int.TryParse(section["StreamType"], out var streamType))
             config.StreamType = streamType;
-        }
         else
-        {
             config.StreamType = 0;
-        }
 
         // 解析 Channels 数组
         var channelsSection = section.GetSection("Channels");
@@ -206,12 +174,9 @@ class Program
         {
             var channels = new List<int>();
             foreach (var channelValue in channelsSection.GetChildren())
-            {
-                if (int.TryParse(channelValue.Value, out int channel))
-                {
+                if (int.TryParse(channelValue.Value, out var channel))
                     channels.Add(channel);
-                }
-            }
+
             config.Channels = channels.Count > 0 ? channels.ToArray() : [1];
         }
         else
@@ -222,52 +187,35 @@ class Program
         return config;
     }
 
-    static void ApplyCommandLineArguments(HikvisionDeviceConfig config, string[] args)
+    private static void ApplyCommandLineArguments(HikvisionDeviceConfig config, string[] args)
     {
         // 解析命令行参数，覆盖配置文件的值
-        for (int i = 0; i < args.Length; i++)
-        {
+        for (var i = 0; i < args.Length; i++)
             switch (args[i].ToLower())
             {
                 case "-ip" or "--ip":
-                    if (i + 1 < args.Length)
-                    {
-                        config.Ip = args[++i];
-                    }
+                    if (i + 1 < args.Length) config.Ip = args[++i];
                     break;
                 case "-u" or "--username" or "-user":
-                    if (i + 1 < args.Length)
-                    {
-                        config.Username = args[++i];
-                    }
+                    if (i + 1 < args.Length) config.Username = args[++i];
                     break;
                 case "-p" or "--password":
-                    if (i + 1 < args.Length)
-                    {
-                        config.Password = args[++i];
-                    }
+                    if (i + 1 < args.Length) config.Password = args[++i];
                     break;
                 case "-port" or "--port":
-                    if (i + 1 < args.Length && int.TryParse(args[++i], out int port))
-                    {
-                        config.Port = port;
-                    }
+                    if (i + 1 < args.Length && int.TryParse(args[++i], out var port)) config.Port = port;
                     break;
                 case "-c" or "--channel" or "-ch":
-                    if (i + 1 < args.Length && int.TryParse(args[++i], out int channel))
-                    {
-                        config.Channels = [channel];
-                    }
+                    if (i + 1 < args.Length && int.TryParse(args[++i], out var channel)) config.Channels = [channel];
                     break;
                 case "-h" or "--help":
                     PrintHelp();
                     Environment.Exit(0);
                     break;
             }
-        }
     }
 
-    static string GetToolDirectory()
+    private static string GetToolDirectory()
     {
         // 对于单文件发布，Environment.ProcessPath 返回可执行文件的完整路径
         // 获取其所在目录，而不是临时解压目录
@@ -275,17 +223,14 @@ class Program
         {
             var exePath = Environment.ProcessPath;
             var directory = Path.GetDirectoryName(exePath);
-            if (!string.IsNullOrEmpty(directory))
-            {
-                return directory;
-            }
+            if (!string.IsNullOrEmpty(directory)) return directory;
         }
 
         // 回退方案：使用 AppContext.BaseDirectory
         return AppContext.BaseDirectory;
     }
 
-    static void PrintHelp()
+    private static void PrintHelp()
     {
         Console.WriteLine("海康威视设备拍照工具");
         Console.WriteLine();

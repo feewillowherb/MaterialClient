@@ -1,42 +1,42 @@
 namespace MaterialClient.Common.Api.Dtos;
 
 /// <summary>
-/// 材料单位DTO（用于下拉列表）
+///     材料单位DTO（用于下拉列表）
 /// </summary>
 public class MaterialUnitDto
 {
     /// <summary>
-    /// 单位ID
+    ///     单位ID
     /// </summary>
     public int Id { get; set; }
 
     /// <summary>
-    /// 材料ID
+    ///     材料ID
     /// </summary>
     public int MaterialId { get; set; }
 
     /// <summary>
-    /// 单位名称
+    ///     单位名称
     /// </summary>
     public string UnitName { get; set; } = string.Empty;
 
     /// <summary>
-    /// 换算率
+    ///     换算率
     /// </summary>
     public decimal Rate { get; set; }
 
     /// <summary>
-    /// 换算率名称
+    ///     换算率名称
     /// </summary>
     public string? RateName { get; set; }
 
     /// <summary>
-    /// 供应商ID
+    ///     供应商ID
     /// </summary>
     public int? ProviderId { get; set; }
 
     /// <summary>
-    /// 格式化显示名称（用于下拉框）：Rate/UnitName，未选择时为空
+    ///     格式化显示名称（用于下拉框）：Rate/UnitName，未选择时为空
     /// </summary>
     public string DisplayName => string.IsNullOrEmpty(UnitName) ? string.Empty : $"{Rate:F2}/{UnitName}";
 }

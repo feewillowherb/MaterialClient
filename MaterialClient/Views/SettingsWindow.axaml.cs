@@ -23,10 +23,7 @@ public partial class SettingsWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         // Unsubscribe from event
-        if (DataContext is SettingsWindowViewModel viewModel)
-        {
-            viewModel.CloseRequested -= OnCloseRequested;
-        }
+        if (DataContext is SettingsWindowViewModel viewModel) viewModel.CloseRequested -= OnCloseRequested;
         base.OnClosed(e);
     }
 }

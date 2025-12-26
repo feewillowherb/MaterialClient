@@ -1,5 +1,3 @@
-using System.Linq;
-using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using Volo.Abp.Domain.Repositories;
@@ -9,23 +7,23 @@ using Volo.Abp.Uow;
 namespace MaterialClient.Common.Services;
 
 /// <summary>
-/// Settings service interface
+///     Settings service interface
 /// </summary>
 public interface ISettingsService
 {
     /// <summary>
-    /// Get current settings
+    ///     Get current settings
     /// </summary>
     Task<SettingsEntity> GetSettingsAsync();
 
     /// <summary>
-    /// Save settings
+    ///     Save settings
     /// </summary>
     Task SaveSettingsAsync(SettingsEntity settings);
 }
 
 /// <summary>
-/// Settings service implementation
+///     Settings service implementation
 /// </summary>
 public class SettingsService : DomainService, ISettingsService
 {
@@ -41,7 +39,7 @@ public class SettingsService : DomainService, ISettingsService
     }
 
     /// <summary>
-    /// Get current settings
+    ///     Get current settings
     /// </summary>
     public async Task<SettingsEntity> GetSettingsAsync()
     {
@@ -68,7 +66,7 @@ public class SettingsService : DomainService, ISettingsService
     }
 
     /// <summary>
-    /// Save settings
+    ///     Save settings
     /// </summary>
     [UnitOfWork]
     public async Task SaveSettingsAsync(SettingsEntity settings)

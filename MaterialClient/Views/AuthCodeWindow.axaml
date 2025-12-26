@@ -13,29 +13,29 @@
         WindowStartupLocation="CenterScreen"
         Background="White"
         Icon="/Assets/fd-ico.ico">
-    
+
     <Design.DataContext>
         <vm:AuthCodeWindowViewModel />
     </Design.DataContext>
 
     <Grid>
         <!-- Border -->
-        <Border BorderBrush="#CCCCCC" BorderThickness="1"/>
-        
+        <Border BorderBrush="#CCCCCC" BorderThickness="1" />
+
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="50"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="50" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            
+
             <!-- Title Bar -->
             <Grid Grid.Row="0" Background="#6498FE">
                 <TextBlock Text="软件授权"
-                          FontSize="14"
-                          Foreground="White"
-                          VerticalAlignment="Center"
-                          Margin="20,0,0,0"/>
-                
+                           FontSize="14"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="20,0,0,0" />
+
                 <Button Content="×"
                         Classes="transparent-button"
                         FontSize="30"
@@ -44,26 +44,26 @@
                         Height="35"
                         Width="35"
                         Click="OnCloseButtonClick"
-                        Cursor="Hand"/>
+                        Cursor="Hand" />
             </Grid>
-            
+
             <!-- Content Area -->
             <Grid Grid.Row="1" Margin="0,30,0,0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                
+
                 <!-- Input Row -->
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="30,0,30,5">
                     <TextBlock Text="授权码"
-                              FontSize="14"
-                              Width="100"
-                              VerticalAlignment="Center"
-                              Padding="10"/>
-                    
+                               FontSize="14"
+                               Width="100"
+                               VerticalAlignment="Center"
+                               Padding="10" />
+
                     <TextBox x:Name="AuthCodeTextBox"
                              Text="{Binding AuthorizationCode}"
                              Watermark="请填写授权码"
@@ -71,36 +71,36 @@
                              Height="35"
                              FontSize="16"
                              VerticalContentAlignment="Center"
-                             IsEnabled="{Binding !IsVerifying}"/>
-                    
+                             IsEnabled="{Binding !IsVerifying}" />
+
                     <TextBlock Text="{Binding StatusMessage}"
-                              Foreground="{Binding StatusMessageColor}"
-                              FontSize="14"
-                              Width="250"
-                              VerticalAlignment="Center"
-                              Padding="10"
-                              TextWrapping="Wrap"/>
+                               Foreground="{Binding StatusMessageColor}"
+                               FontSize="14"
+                               Width="250"
+                               VerticalAlignment="Center"
+                               Padding="10"
+                               TextWrapping="Wrap" />
                 </StackPanel>
-                
+
                 <!-- Loading Indicator -->
-                <StackPanel Grid.Row="1" 
-                           Orientation="Horizontal" 
-                           HorizontalAlignment="Center"
-                           IsVisible="{Binding IsVerifying}"
-                           Margin="0,10,0,0">
+                <StackPanel Grid.Row="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            IsVisible="{Binding IsVerifying}"
+                            Margin="0,10,0,0">
                     <TextBlock Text="正在验证授权码..."
-                              FontSize="12"
-                              Foreground="#6498FE"/>
+                               FontSize="12"
+                               Foreground="#6498FE" />
                 </StackPanel>
-                
+
                 <!-- Spacer -->
-                <Border Grid.Row="2"/>
-                
+                <Border Grid.Row="2" />
+
                 <!-- Button Row -->
-                <StackPanel Grid.Row="3" 
-                           Orientation="Horizontal" 
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,20">
+                <StackPanel Grid.Row="3"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,20">
                     <Button Content="确定"
                             Command="{Binding VerifyAuthorizationCodeCommand}"
                             Classes="primary-button"
@@ -109,8 +109,8 @@
                             Padding="30,8"
                             FontSize="14"
                             IsEnabled="{Binding !IsVerifying}"
-                            Cursor="Hand"/>
-                    
+                            Cursor="Hand" />
+
                     <Button Content="重试"
                             Command="{Binding RetryCommand}"
                             Classes="warning-button"
@@ -120,10 +120,9 @@
                             FontSize="14"
                             IsVisible="{Binding ShowRetryButton}"
                             Margin="10,0,0,0"
-                            Cursor="Hand"/>
+                            Cursor="Hand" />
                 </StackPanel>
             </Grid>
         </Grid>
     </Grid>
 </Window>
-

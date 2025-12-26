@@ -1,25 +1,25 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
-using Volo.Abp.Domain.Entities.Auditing;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
+using Volo.Abp.Domain.Entities.Auditing;
 
 namespace MaterialClient.Common.Entities;
 
 /// <summary>
-/// 称重记录实体
+///     称重记录实体
 /// </summary>
 public class WeighingRecord : FullAuditedEntity<long>
 {
     /// <summary>
-    /// 构造函数（用于EF Core）
+    ///     构造函数（用于EF Core）
     /// </summary>
     protected WeighingRecord()
     {
     }
 
     /// <summary>
-    /// 构造函数（用于自增主键）
+    ///     构造函数（用于自增主键）
     /// </summary>
     public WeighingRecord(decimal totalWeight)
     {
@@ -33,7 +33,7 @@ public class WeighingRecord : FullAuditedEntity<long>
     }
 
     /// <summary>
-    /// 构造函数（用于指定Id）
+    ///     构造函数（用于指定Id）
     /// </summary>
     public WeighingRecord(long id, decimal totalWeight)
         : base(id)
@@ -41,58 +41,52 @@ public class WeighingRecord : FullAuditedEntity<long>
         TotalWeight = totalWeight;
     }
 
-    public void Update(string? plateNumber, int? providerId)
-    {
-        PlateNumber = plateNumber;
-        ProviderId = providerId;
-    }
-
     /// <summary>
-    /// 总重量
+    ///     总重量
     /// </summary>
     public decimal TotalWeight { get; set; }
 
     /// <summary>
-    /// 车牌号
+    ///     车牌号
     /// </summary>
     public string? PlateNumber { get; set; }
 
 
     /// <summary>
-    /// 供应商Id
+    ///     供应商Id
     /// </summary>
     public int? ProviderId { get; set; }
 
 
     /// <summary>
-    /// 显示收发料模式
+    ///     显示收发料模式
     /// </summary>
     public DeliveryType? DeliveryType { get; set; }
 
 
     /// <summary>
-    /// 匹配WeighingRecord的Id
+    ///     匹配WeighingRecord的Id
     /// </summary>
     public long? MatchedId { get; set; }
 
     /// <summary>
-    /// 关联的运单Id
+    ///     关联的运单Id
     /// </summary>
     public long? WaybillId { get; set; }
 
 
     /// <summary>
-    /// 匹配类型
+    ///     匹配类型
     /// </summary>
     public WeighingRecordMatchType? MatchedType { get; set; }
 
     /// <summary>
-    /// 物料列表的 JSON 存储字段
+    ///     物料列表的 JSON 存储字段
     /// </summary>
     public string? MaterialsJson { get; set; }
 
     /// <summary>
-    /// 物料集合（从 JSON 反序列化）
+    ///     物料集合（从 JSON 反序列化）
     /// </summary>
     [NotMapped]
     public List<WeighingRecordMaterial> Materials
@@ -112,16 +106,20 @@ public class WeighingRecord : FullAuditedEntity<long>
                 return new List<WeighingRecordMaterial>();
             }
         }
-        set
-        {
+        set =>
             MaterialsJson = value == null || value.Count == 0
                 ? null
                 : JsonSerializer.Serialize(value);
-        }
+    }
+
+    public void Update(string? plateNumber, int? providerId)
+    {
+        PlateNumber = plateNumber;
+        ProviderId = providerId;
     }
 
     /// <summary>
-    /// 添加物料
+    ///     添加物料
     /// </summary>
     public void AddMaterial(WeighingRecordMaterial material)
     {
@@ -131,7 +129,7 @@ public class WeighingRecord : FullAuditedEntity<long>
     }
 
     /// <summary>
-    /// 清空并设置物料
+    ///     清空并设置物料
     /// </summary>
     public void SetMaterials(IEnumerable<WeighingRecordMaterial> materials)
     {
@@ -139,7 +137,7 @@ public class WeighingRecord : FullAuditedEntity<long>
     }
 
     /// <summary>
-    /// 验证车牌号是否为有效的中国车牌号
+    ///     验证车牌号是否为有效的中国车牌号
     /// </summary>
     /// <returns>如果车牌号有效返回true，否则返回false</returns>
     public bool IsValidChinesePlateNumber()
@@ -148,7 +146,7 @@ public class WeighingRecord : FullAuditedEntity<long>
     }
 
     /// <summary>
-    /// 验证指定的车牌号是否为有效的中国车牌号（静态方法）
+    ///     验证指定的车牌号是否为有效的中国车牌号（静态方法）
     /// </summary>
     /// <param name="plateNumber">要验证的车牌号</param>
     /// <returns>如果车牌号有效返回true，否则返回false</returns>
@@ -173,7 +171,7 @@ public class WeighingRecord : FullAuditedEntity<long>
     }
 
     /// <summary>
-    /// 判断两个记录是否可以配对，并返回 join/out 分配结果
+    ///     判断两个记录是否可以配对，并返回 join/out 分配结果
     /// </summary>
     /// <param name="record1">记录1</param>
     /// <param name="record2">记录2</param>
@@ -184,7 +182,7 @@ public class WeighingRecord : FullAuditedEntity<long>
     public static WeighingMatchResult TryMatch(
         WeighingRecord record1,
         WeighingRecord record2,
-        Enums.DeliveryType deliveryType,
+        DeliveryType deliveryType,
         int maxIntervalMinutes = 300,
         decimal minWeightDiff = 1m)
     {
@@ -211,13 +209,13 @@ public class WeighingRecord : FullAuditedEntity<long>
 
         if (deliveryType == Enums.DeliveryType.Receiving)
             return new WeighingMatchResult(true, grossRecord, tareRecord);
-        else // Sending
-            return new WeighingMatchResult(true, tareRecord, grossRecord);
+        // Sending
+        return new WeighingMatchResult(true, tareRecord, grossRecord);
     }
 }
 
 /// <summary>
-/// 称重记录匹配结果
+///     称重记录匹配结果
 /// </summary>
 /// <param name="IsMatch">是否匹配成功</param>
 /// <param name="JoinRecord">进场记录</param>

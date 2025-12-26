@@ -9,35 +9,27 @@ using Volo.Abp;
 namespace MaterialClient.ViewModels;
 
 /// <summary>
-/// 登录窗口 ViewModel
+///     登录窗口 ViewModel
 /// </summary>
 public partial class LoginWindowViewModel : ReactiveViewModelBase
 {
     private readonly IAuthenticationService _authenticationService;
 
-    [Reactive]
-    private string _username = string.Empty;
+    [Reactive] private string _errorMessage = string.Empty;
 
-    [Reactive]
-    private string _password = string.Empty;
+    [Reactive] private bool _hasError;
 
-    [Reactive]
-    private bool _rememberMe;
+    [Reactive] private bool _isLoggingIn;
 
-    [Reactive]
-    private bool _isLoggingIn;
+    [Reactive] private bool _isLoginSuccessful;
 
-    [Reactive]
-    private bool _hasError;
+    [Reactive] private string _password = string.Empty;
 
-    [Reactive]
-    private bool _showRetryButton;
+    [Reactive] private bool _rememberMe;
 
-    [Reactive]
-    private bool _isLoginSuccessful;
+    [Reactive] private bool _showRetryButton;
 
-    [Reactive]
-    private string _errorMessage = string.Empty;
+    [Reactive] private string _username = string.Empty;
 
     public LoginWindowViewModel(IAuthenticationService authenticationService)
     {

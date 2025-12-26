@@ -1,22 +1,22 @@
+using MaterialClient.Common.Entities;
+using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus;
-using MaterialClient.Common.Entities;
-using MaterialClient.Common.Services;
 
 namespace MaterialClient.Common.Events;
 
 /// <summary>
-/// 尝试匹配称重记录的事件处理器
+///     尝试匹配称重记录的事件处理器
 /// </summary>
 [AutoConstructor]
 public partial class TryMatchEventHandler : ILocalEventHandler<TryMatchEvent>, ITransientDependency
 {
+    private readonly ILogger<TryMatchEventHandler>? _logger;
     private readonly IWeighingMatchingService _weighingMatchingService;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
-    private readonly ILogger<TryMatchEventHandler>? _logger;
 
 
     public async Task HandleEventAsync(TryMatchEvent eventData)

@@ -20,15 +20,15 @@ public interface ISyncMaterialService
 [AutoConstructor]
 public partial class SyncMaterialService : DomainService, ISyncMaterialService
 {
+    private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
+    private readonly ILogger<SyncMaterialService> _logger;
     private readonly IMaterialPlatformApi _materialPlatformApi;
 
     private readonly IRepository<Material, int> _materialRepository;
-    private readonly IRepository<WorkSettingsEntity, int> _workSettingRepository;
-    private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
-    private readonly ILogger<SyncMaterialService> _logger;
-    private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IRepository<MaterialType, int> _materialTypeRepository;
+    private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IRepository<Provider, int> _providerRepository;
+    private readonly IRepository<WorkSettingsEntity, int> _workSettingRepository;
 
 
     [UnitOfWork]
@@ -48,13 +48,11 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             long timestamp = 0;
 
             if (workSetting?.MaterialUpdatedTime != null)
-            {
                 timestamp = new DateTimeOffset(workSetting.MaterialUpdatedTime.Value).ToUnixTimeSeconds();
-            }
 
             var request = new GetMaterialGoodListInput(
-                ProId: licenseInfo.ProjectId.ToString(),
-                UpdateTime: timestamp
+                licenseInfo.ProjectId.ToString(),
+                timestamp
             );
 
             _logger.LogInformation("开始获取物料数据，项目ID: {ProjectId}, 时间戳: {Timestamp}",
@@ -89,15 +87,9 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             var materialsToUpdate = list.Where(x => existingMaterialIds.Contains(x.Id)).ToList();
             var materialsToInsert = list.Where(x => !existingMaterialIds.Contains(x.Id)).ToList();
 
-            if (materialsToUpdate.Count > 0)
-            {
-                await _materialRepository.UpdateManyAsync(materialsToUpdate);
-            }
+            if (materialsToUpdate.Count > 0) await _materialRepository.UpdateManyAsync(materialsToUpdate);
 
-            if (materialsToInsert.Count > 0)
-            {
-                await _materialRepository.InsertManyAsync(materialsToInsert);
-            }
+            if (materialsToInsert.Count > 0) await _materialRepository.InsertManyAsync(materialsToInsert);
 
             _logger.LogInformation("物料同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
                 materialsToUpdate.Count, materialsToInsert.Count);
@@ -126,63 +118,6 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
         }
     }
 
-    /// <summary>
-    /// 同步物料单位
-    /// </summary>
-    private async Task SyncMaterialUnitsAsync(List<MaterialGoodListResultDto> materialList)
-    {
-        try
-        {
-            // 收集所有需要同步的物料单位
-            var allUnits = new List<MaterialUnit>();
-            foreach (var material in materialList)
-            {
-                if (material.Units?.Count > 0)
-                {
-                    var units = material.Units
-                        .Select(u => MaterialGoodUnitResultDto.ToEntity(u, material.GoodsId))
-                        .ToList();
-                    allUnits.AddRange(units);
-                }
-            }
-
-            if (allUnits.Count == 0)
-            {
-                _logger.LogInformation("没有需要同步的物料单位数据");
-                return;
-            }
-
-            var unitQuery = await _materialUnitRepository.GetQueryableAsync();
-
-            // 查询已存在的物料单位ID
-            var existingUnitIds = await unitQuery
-                .Where(u => allUnits.Select(au => au.Id).Contains(u.Id))
-                .Select(u => u.Id)
-                .ToListAsync();
-
-            var unitsToUpdate = allUnits.Where(u => existingUnitIds.Contains(u.Id)).ToList();
-            var unitsToInsert = allUnits.Where(u => !existingUnitIds.Contains(u.Id)).ToList();
-
-            if (unitsToUpdate.Count > 0)
-            {
-                await _materialUnitRepository.UpdateManyAsync(unitsToUpdate);
-            }
-
-            if (unitsToInsert.Count > 0)
-            {
-                await _materialUnitRepository.InsertManyAsync(unitsToInsert);
-            }
-
-            _logger.LogInformation("物料单位同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
-                unitsToUpdate.Count, unitsToInsert.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "同步物料单位时发生异常");
-            throw;
-        }
-    }
-
     [UnitOfWork]
     public async Task SyncMaterialTypeAsync()
     {
@@ -200,13 +135,11 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             long timestamp = 0;
 
             if (workSetting?.MaterialTypeUpdatedTime != null)
-            {
                 timestamp = new DateTimeOffset(workSetting.MaterialTypeUpdatedTime.Value).ToUnixTimeSeconds();
-            }
 
             var request = new GetMaterialGoodTypeListInput(
-                ProId: licenseInfo.ProjectId.ToString(),
-                UpdateTime: timestamp
+                licenseInfo.ProjectId.ToString(),
+                timestamp
             );
 
             _logger.LogInformation("开始获取物料类型数据，项目ID: {ProjectId}, 时间戳: {Timestamp}",
@@ -241,15 +174,9 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             var typesToUpdate = list.Where(x => existingTypeIds.Contains(x.Id)).ToList();
             var typesToInsert = list.Where(x => !existingTypeIds.Contains(x.Id)).ToList();
 
-            if (typesToUpdate.Count > 0)
-            {
-                await _materialTypeRepository.UpdateManyAsync(typesToUpdate);
-            }
+            if (typesToUpdate.Count > 0) await _materialTypeRepository.UpdateManyAsync(typesToUpdate);
 
-            if (typesToInsert.Count > 0)
-            {
-                await _materialTypeRepository.InsertManyAsync(typesToInsert);
-            }
+            if (typesToInsert.Count > 0) await _materialTypeRepository.InsertManyAsync(typesToInsert);
 
             _logger.LogInformation("物料类型同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
                 typesToUpdate.Count, typesToInsert.Count);
@@ -292,13 +219,11 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             long timestamp = 0;
 
             if (workSetting?.ProviderUpdatedTime != null)
-            {
                 timestamp = new DateTimeOffset(workSetting.ProviderUpdatedTime.Value).ToUnixTimeSeconds();
-            }
 
             var request = new GetMaterialProviderListInput(
-                ProId: licenseInfo.ProjectId.ToString(),
-                UploadTime: timestamp
+                licenseInfo.ProjectId.ToString(),
+                timestamp
             );
 
             _logger.LogInformation("开始获取供应商数据，项目ID: {ProjectId}, 时间戳: {Timestamp}",
@@ -333,15 +258,9 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
             var providersToUpdate = list.Where(x => existingProviderIds.Contains(x.Id)).ToList();
             var providersToInsert = list.Where(x => !existingProviderIds.Contains(x.Id)).ToList();
 
-            if (providersToUpdate.Count > 0)
-            {
-                await _providerRepository.UpdateManyAsync(providersToUpdate);
-            }
+            if (providersToUpdate.Count > 0) await _providerRepository.UpdateManyAsync(providersToUpdate);
 
-            if (providersToInsert.Count > 0)
-            {
-                await _providerRepository.InsertManyAsync(providersToInsert);
-            }
+            if (providersToInsert.Count > 0) await _providerRepository.InsertManyAsync(providersToInsert);
 
             _logger.LogInformation("供应商同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
                 providersToUpdate.Count, providersToInsert.Count);
@@ -363,6 +282,55 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
         catch (Exception ex)
         {
             _logger.LogError(ex, "同步供应商数据时发生异常");
+            throw;
+        }
+    }
+
+    /// <summary>
+    ///     同步物料单位
+    /// </summary>
+    private async Task SyncMaterialUnitsAsync(List<MaterialGoodListResultDto> materialList)
+    {
+        try
+        {
+            // 收集所有需要同步的物料单位
+            var allUnits = new List<MaterialUnit>();
+            foreach (var material in materialList)
+                if (material.Units?.Count > 0)
+                {
+                    var units = material.Units
+                        .Select(u => MaterialGoodUnitResultDto.ToEntity(u, material.GoodsId))
+                        .ToList();
+                    allUnits.AddRange(units);
+                }
+
+            if (allUnits.Count == 0)
+            {
+                _logger.LogInformation("没有需要同步的物料单位数据");
+                return;
+            }
+
+            var unitQuery = await _materialUnitRepository.GetQueryableAsync();
+
+            // 查询已存在的物料单位ID
+            var existingUnitIds = await unitQuery
+                .Where(u => allUnits.Select(au => au.Id).Contains(u.Id))
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            var unitsToUpdate = allUnits.Where(u => existingUnitIds.Contains(u.Id)).ToList();
+            var unitsToInsert = allUnits.Where(u => !existingUnitIds.Contains(u.Id)).ToList();
+
+            if (unitsToUpdate.Count > 0) await _materialUnitRepository.UpdateManyAsync(unitsToUpdate);
+
+            if (unitsToInsert.Count > 0) await _materialUnitRepository.InsertManyAsync(unitsToInsert);
+
+            _logger.LogInformation("物料单位同步完成，更新 {UpdateCount} 条，新增 {InsertCount} 条",
+                unitsToUpdate.Count, unitsToInsert.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "同步物料单位时发生异常");
             throw;
         }
     }

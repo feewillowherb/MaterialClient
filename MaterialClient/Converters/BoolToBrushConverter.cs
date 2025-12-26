@@ -6,8 +6,8 @@ using Avalonia.Media;
 namespace MaterialClient.Converters;
 
 /// <summary>
-/// 将布尔值转换为画刷，true返回第一个颜色，false返回第二个颜色
-/// 参数格式: "TrueColor|FalseColor"，例如 "#3B82F6|White"
+///     将布尔值转换为画刷，true返回第一个颜色，false返回第二个颜色
+///     参数格式: "TrueColor|FalseColor"，例如 "#3B82F6|White"
 /// </summary>
 public class BoolToBrushConverter : IValueConverter
 {
@@ -21,13 +21,13 @@ public class BoolToBrushConverter : IValueConverter
             return new SolidColorBrush(Colors.Transparent);
 
         var colorStr = boolValue ? colors[0] : colors[1];
-        
+
         // 处理命名颜色
         if (colorStr.Equals("White", StringComparison.OrdinalIgnoreCase))
             return new SolidColorBrush(Colors.White);
         if (colorStr.Equals("Transparent", StringComparison.OrdinalIgnoreCase))
             return new SolidColorBrush(Colors.Transparent);
-            
+
         // 尝试解析为颜色代码
         try
         {
@@ -44,5 +44,3 @@ public class BoolToBrushConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
-
-

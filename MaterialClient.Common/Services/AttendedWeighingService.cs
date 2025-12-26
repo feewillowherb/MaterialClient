@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -13,163 +11,158 @@ using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
-using Volo.Abp.Domain.Services;
 using Volo.Abp.EventBus.Local;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
 
 /// <summary>
-/// 车牌缓存记录
+///     车牌缓存记录
 /// </summary>
 public record PlateNumberCacheRecord
 {
     /// <summary>
-    /// 识别次数
+    ///     识别次数
     /// </summary>
     public int Count { get; init; }
 
     /// <summary>
-    /// 最后更新时间
+    ///     最后更新时间
     /// </summary>
     public DateTime LastUpdateTime { get; init; }
 }
 
 /// <summary>
-/// 有人值守称重服务接口
+///     有人值守称重服务接口
 /// </summary>
 public interface IAttendedWeighingService : IAsyncDisposable
 {
     /// <summary>
-    /// 启动监听
-    /// </summary>
-    Task StartAsync();
-
-    /// <summary>
-    /// 停止监听
-    /// </summary>
-    Task StopAsync();
-
-    /// <summary>
-    /// 获取当前状态
-    /// </summary>
-    AttendedWeighingStatus GetCurrentStatus();
-
-    /// <summary>
-    /// 接收车牌识别结果
-    /// </summary>
-    void OnPlateNumberRecognized(string plateNumber);
-
-    /// <summary>
-    /// 获取当前识别次数最大的车牌号
-    /// </summary>
-    string? GetMostFrequentPlateNumber();
-
-    /// <summary>
-    /// Observable stream of status changes
+    ///     Observable stream of status changes
     /// </summary>
     IObservable<AttendedWeighingStatus> StatusChanges { get; }
 
     /// <summary>
-    /// Observable stream of most frequent plate number changes
+    ///     Observable stream of most frequent plate number changes
     /// </summary>
     IObservable<string?> MostFrequentPlateNumberChanges { get; }
 
     /// <summary>
-    /// Check if weight is stable (changes less than ±0.1m within 3 seconds)
+    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
     /// </summary>
     bool IsWeightStable { get; }
 
     /// <summary>
-    /// Observable stream of new weighing record creation events
+    ///     Observable stream of new weighing record creation events
     /// </summary>
     IObservable<WeighingRecord> WeighingRecordCreated { get; }
 
     /// <summary>
-    /// 获取当前收发料类型
+    ///     获取当前收发料类型
     /// </summary>
     DeliveryType CurrentDeliveryType { get; }
 
     /// <summary>
-    /// 设置收发料类型
-    /// </summary>
-    void SetDeliveryType(DeliveryType deliveryType);
-
-    /// <summary>
-    /// Observable stream of delivery type changes
+    ///     Observable stream of delivery type changes
     /// </summary>
     IObservable<DeliveryType> DeliveryTypeChanges { get; }
+
+    /// <summary>
+    ///     启动监听
+    /// </summary>
+    Task StartAsync();
+
+    /// <summary>
+    ///     停止监听
+    /// </summary>
+    Task StopAsync();
+
+    /// <summary>
+    ///     获取当前状态
+    /// </summary>
+    AttendedWeighingStatus GetCurrentStatus();
+
+    /// <summary>
+    ///     接收车牌识别结果
+    /// </summary>
+    void OnPlateNumberRecognized(string plateNumber);
+
+    /// <summary>
+    ///     获取当前识别次数最大的车牌号
+    /// </summary>
+    string? GetMostFrequentPlateNumber();
+
+    /// <summary>
+    ///     设置收发料类型
+    /// </summary>
+    void SetDeliveryType(DeliveryType deliveryType);
 }
 
 /// <summary>
-/// 有人值守称重服务
-/// 监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
+///     有人值守称重服务
+///     监听地磅重量变化，管理称重状态，处理车牌识别缓存，并在适当时机进行抓拍和创建称重记录
 /// </summary>
 [AutoConstructor]
 public partial class AttendedWeighingService : IAttendedWeighingService, ISingletonDependency
 {
-    private readonly ITruckScaleWeightService _truckScaleWeightService;
-    private readonly IHikvisionService _hikvisionService;
-    private readonly ISettingsService _settingsService;
-    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
-    private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
-    private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
-    private readonly IUnitOfWorkManager _unitOfWorkManager;
-    private readonly ILocalEventBus _localEventBus;
-    private readonly ILogger<AttendedWeighingService> _logger;
-
-    // Status management
-    private AttendedWeighingStatus _currentStatus = AttendedWeighingStatus.OffScale;
-    private readonly Lock _statusLock = new Lock();
-
-    // Rx Subject for status updates
-    private readonly Subject<AttendedWeighingStatus> _statusSubject = new();
-
-    // Rx Subject for plate number updates
-    private readonly Subject<string?> _plateNumberSubject = new();
-
-    // Rx Subject for weighing record creation events
-    private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
-
-    // Rx Subject for delivery type changes
-    private readonly Subject<DeliveryType> _deliveryTypeSubject = new();
-
-    // 最近创建的称重记录ID，用于重写车牌号
-    private long? _lastCreatedWeighingRecordId = null;
-
-    // 当前收发料类型（默认为收料）
-    private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
-
     // 最小称重重量稳定判定
     private const decimal MinWeightThreshold = 0.5m; // 0.5t = 500kg
-
-    private decimal? _stableWeight = null; // 进入稳定状态时的重量值
-
-    // 车牌识别缓存
-    private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
-
-    // 订阅管理
-    private IDisposable? _weightSubscription;
-    private IDisposable? _stabilitySubscription;
 
     // 重量稳定性监控
     private const decimal WeightStabilityThreshold = 0.05m; // ±0.05m = 0.1m total range
     private const int StabilityWindowMs = 3000;
-    private bool _isWeightStable = false;
     private const int StabilityCheckIntervalMs = 200; // 默认 200ms
+    private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
+
+    // Rx Subject for delivery type changes
+    private readonly Subject<DeliveryType> _deliveryTypeSubject = new();
+    private readonly IHikvisionService _hikvisionService;
+    private readonly ILocalEventBus _localEventBus;
+    private readonly ILogger<AttendedWeighingService> _logger;
+
+    // 车牌识别缓存
+    private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
+
+    // Rx Subject for plate number updates
+    private readonly Subject<string?> _plateNumberSubject = new();
+    private readonly ISettingsService _settingsService;
+    private readonly Lock _statusLock = new();
+
+    // Rx Subject for status updates
+    private readonly Subject<AttendedWeighingStatus> _statusSubject = new();
+    private readonly ITruckScaleWeightService _truckScaleWeightService;
+    private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
+
+    // Rx Subject for weighing record creation events
+    private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
+    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+
+    // 当前收发料类型（默认为收料）
+    private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
+
+    // Status management
+    private AttendedWeighingStatus _currentStatus = AttendedWeighingStatus.OffScale;
+    private bool _isWeightStable;
+
+    // 最近创建的称重记录ID，用于重写车牌号
+    private long? _lastCreatedWeighingRecordId;
+    private IDisposable? _stabilitySubscription;
+
+    private decimal? _stableWeight; // 进入稳定状态时的重量值
+
+    // 订阅管理
+    private IDisposable? _weightSubscription;
 
 
     /// <summary>
-    /// 启动监听
+    ///     启动监听
     /// </summary>
     public async Task StartAsync()
     {
         lock (_statusLock)
         {
-            if (_weightSubscription != null)
-            {
-                return; // 已经启动
-            }
+            if (_weightSubscription != null) return; // 已经启动
 
             // 重置状态
             _currentStatus = AttendedWeighingStatus.OffScale;
@@ -181,10 +174,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 .ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(buffer =>
                 {
-                    if (buffer.Count > 0)
-                    {
-                        OnWeightChanged(buffer.Last()); // 只处理最新的
-                    }
+                    if (buffer.Count > 0) OnWeightChanged(buffer.Last()); // 只处理最新的
                 });
 
             // Initialize weight stability monitoring
@@ -197,7 +187,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 停止监听
+    ///     停止监听
     /// </summary>
     public async Task StopAsync()
     {
@@ -215,7 +205,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 获取当前状态
+    ///     获取当前状态
     /// </summary>
     public AttendedWeighingStatus GetCurrentStatus()
     {
@@ -226,17 +216,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// Observable stream of status changes
+    ///     Observable stream of status changes
     /// </summary>
     public IObservable<AttendedWeighingStatus> StatusChanges => _statusSubject;
 
     /// <summary>
-    /// Observable stream of most frequent plate number changes
+    ///     Observable stream of most frequent plate number changes
     /// </summary>
     public IObservable<string?> MostFrequentPlateNumberChanges => _plateNumberSubject;
 
     /// <summary>
-    /// Check if weight is stable (changes less than ±0.1m within 3 seconds)
+    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
     /// </summary>
     public bool IsWeightStable
     {
@@ -250,12 +240,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// Observable stream of new weighing record creation events
+    ///     Observable stream of new weighing record creation events
     /// </summary>
     public IObservable<WeighingRecord> WeighingRecordCreated => _weighingRecordCreatedSubject;
 
     /// <summary>
-    /// 获取当前收发料类型
+    ///     获取当前收发料类型
     /// </summary>
     public DeliveryType CurrentDeliveryType
     {
@@ -269,7 +259,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 设置收发料类型
+    ///     设置收发料类型
     /// </summary>
     public void SetDeliveryType(DeliveryType deliveryType)
     {
@@ -285,19 +275,16 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// Observable stream of delivery type changes
+    ///     Observable stream of delivery type changes
     /// </summary>
     public IObservable<DeliveryType> DeliveryTypeChanges => _deliveryTypeSubject;
 
     /// <summary>
-    /// 接收车牌识别结果
+    ///     接收车牌识别结果
     /// </summary>
     public void OnPlateNumberRecognized(string plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
         lock (_statusLock)
         {
@@ -321,8 +308,40 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// Initialize weight stability monitoring using Rx
-    /// Monitors weight changes within 3 seconds window, considers stable if variation is less than ±0.1m
+    ///     获取当前识别次数最大的车牌号
+    /// </summary>
+    public string? GetMostFrequentPlateNumber()
+    {
+        lock (_statusLock)
+        {
+            if (_plateNumberCache.IsEmpty) return null;
+
+            var mostFrequent = _plateNumberCache
+                .OrderByDescending(kvp => kvp.Value.Count)
+                .FirstOrDefault();
+
+            return mostFrequent.Key;
+        }
+    }
+
+    /// <summary>
+    ///     释放资源
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+        _stabilitySubscription?.Dispose();
+        _statusSubject?.OnCompleted();
+        _statusSubject?.Dispose();
+        _plateNumberSubject?.OnCompleted();
+        _plateNumberSubject?.Dispose();
+        _weighingRecordCreatedSubject?.OnCompleted();
+        _weighingRecordCreatedSubject?.Dispose();
+    }
+
+    /// <summary>
+    ///     Initialize weight stability monitoring using Rx
+    ///     Monitors weight changes within 3 seconds window, considers stable if variation is less than ±0.1m
     /// </summary>
     private void InitializeWeightStabilityMonitoring()
     {
@@ -341,7 +360,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var range = max - min;
 
                     // Consider stable if range is within ±0.1m (0.2m total range)
-                    bool isStable = range <= WeightStabilityThreshold * 2;
+                    var isStable = range <= WeightStabilityThreshold * 2;
 
                     lock (_statusLock)
                     {
@@ -363,7 +382,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 重量变化处理
+    ///     重量变化处理
     /// </summary>
     private void OnWeightChanged(decimal weight)
     {
@@ -385,7 +404,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 处理重量变化
+    ///     处理重量变化
     /// </summary>
     private void ProcessWeightChange(decimal currentWeight)
     {
@@ -416,15 +435,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     {
                         var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
                         if (photos.Count == 0)
-                        {
                             _logger?.LogWarning(
-                                $"AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
-                        }
+                                "AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
                         else
-                        {
                             _logger?.LogInformation(
                                 $"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
-                        }
                     });
 
                     // Try to rewrite plate number, then clear cache
@@ -467,7 +482,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 检查重量稳定性
+    ///     检查重量稳定性
     /// </summary>
     private void CheckWeightStability(decimal currentWeight)
     {
@@ -496,7 +511,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 重量已稳定时的处理
+    ///     重量已稳定时的处理
     /// </summary>
     private async Task OnWeightStabilizedAsync(decimal currentWeight)
     {
@@ -515,7 +530,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 抓拍所有相机
+    ///     抓拍所有相机
     /// </summary>
     /// <returns>成功抓拍的照片路径列表</returns>
     private async Task<List<string>> CaptureAllCamerasAsync(string reason)
@@ -541,9 +556,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
                     string.IsNullOrWhiteSpace(cameraConfig.Port) ||
                     string.IsNullOrWhiteSpace(cameraConfig.Channel))
-                {
                     continue;
-                }
 
                 if (!int.TryParse(cameraConfig.Port, out var port) ||
                     !int.TryParse(cameraConfig.Channel, out var channel))
@@ -593,10 +606,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // Log detailed failure information
             foreach (var result in results.Where(r => !r.Success))
-            {
                 _logger?.LogWarning(
                     $"AttendedWeighingService: Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
-            }
 
             // Return list of successfully captured photo paths
             var photoPaths = results.Where(r => r.Success && File.Exists(r.Request.SaveFullPath))
@@ -605,10 +616,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // Log if photo list is empty
             if (photoPaths.Count == 0)
-            {
                 _logger?.LogWarning(
                     $"AttendedWeighingService: Capture completed, but no photos were successfully obtained ({reason})");
-            }
 
             return photoPaths;
         }
@@ -621,7 +630,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 创建称重记录
+    ///     创建称重记录
     /// </summary>
     private async Task CreateWeighingRecordAsync(decimal weight, List<string> photoPaths)
     {
@@ -653,14 +662,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // Save captured photos to WeighingRecordAttachment
             if (photoPaths.Count > 0)
-            {
                 await SaveCapturePhotosAsync(weighingRecord.Id, photoPaths);
-            }
             else
-            {
                 _logger?.LogWarning(
                     $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
-            }
 
             await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
         }
@@ -671,21 +676,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 保存抓拍的照片
+    ///     保存抓拍的照片
     /// </summary>
     private async Task SaveCapturePhotosAsync(long weighingRecordId, List<string> photoPaths)
     {
         try
         {
-            if (photoPaths.Count == 0)
-            {
-                return;
-            }
+            if (photoPaths.Count == 0) return;
 
             using var uow = _unitOfWorkManager.Begin();
 
             foreach (var photoPath in photoPaths)
-            {
                 try
                 {
                     if (!File.Exists(photoPath))
@@ -706,7 +707,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     _logger?.LogWarning(ex, $"AttendedWeighingService: Failed to save photo: {photoPath}");
                 }
-            }
 
             await uow.CompleteAsync();
             _logger?.LogInformation(
@@ -714,13 +714,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"AttendedWeighingService: Error occurred while saving captured photos");
+            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while saving captured photos");
         }
     }
 
     /// <summary>
-    /// 尝试重写称重记录的车牌号
-    /// 在清空车牌缓存前调用，用最频繁识别的车牌号更新最近创建的称重记录
+    ///     尝试重写称重记录的车牌号
+    ///     在清空车牌缓存前调用，用最频繁识别的车牌号更新最近创建的称重记录
     /// </summary>
     private async Task TryReWritePlateNumberAsync()
     {
@@ -774,7 +774,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    /// 清空车牌缓存
+    ///     清空车牌缓存
     /// </summary>
     private void ClearPlateNumberCache()
     {
@@ -783,40 +783,5 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // Notify observers that plate number is cleared
         _plateNumberSubject.OnNext(null);
-    }
-
-    /// <summary>
-    /// 获取当前识别次数最大的车牌号
-    /// </summary>
-    public string? GetMostFrequentPlateNumber()
-    {
-        lock (_statusLock)
-        {
-            if (_plateNumberCache.IsEmpty)
-            {
-                return null;
-            }
-
-            var mostFrequent = _plateNumberCache
-                .OrderByDescending(kvp => kvp.Value.Count)
-                .FirstOrDefault();
-
-            return mostFrequent.Key;
-        }
-    }
-
-    /// <summary>
-    /// 释放资源
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        await StopAsync();
-        _stabilitySubscription?.Dispose();
-        _statusSubject?.OnCompleted();
-        _statusSubject?.Dispose();
-        _plateNumberSubject?.OnCompleted();
-        _plateNumberSubject?.Dispose();
-        _weighingRecordCreatedSubject?.OnCompleted();
-        _weighingRecordCreatedSubject?.Dispose();
     }
 }

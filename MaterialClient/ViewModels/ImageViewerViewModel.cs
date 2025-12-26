@@ -1,4 +1,3 @@
-using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
 namespace MaterialClient.ViewModels;

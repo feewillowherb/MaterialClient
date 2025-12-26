@@ -1,11 +1,6 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hikvision;
@@ -28,8 +23,6 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 {
     private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
 
-    public static uint GetLastErrorCode() => NET_DVR.NET_DVR_GetLastError();
-
     public void AddOrUpdateDevice(HikvisionDeviceConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -42,10 +35,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         ArgumentNullException.ThrowIfNull(config);
         EnsureInitialized();
         var login = TryLogin(config, out var userId);
-        if (login)
-        {
-            NET_DVR.NET_DVR_Logout(userId);
-        }
+        if (login) NET_DVR.NET_DVR_Logout(userId);
 
         return login;
     }
@@ -59,20 +49,17 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
 
-        if (!TryLogin(config, out var userId))
-        {
-            return false;
-        }
+        if (!TryLogin(config, out var userId)) return false;
 
         try
         {
-            NET_DVR.NET_DVR_JPEGPARA para = new NET_DVR.NET_DVR_JPEGPARA
+            var para = new NET_DVR.NET_DVR_JPEGPARA
             {
                 wPicQuality = (ushort)Math.Clamp(quality, 0, 100),
-                wPicSize = 0xFF, // use device default
+                wPicSize = 0xFF // use device default
             };
             var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
-            bool ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
+            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
             return ok;
         }
         finally
@@ -100,17 +87,14 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         try
         {
-            NET_DVR.NET_DVR_JPEGPARA para = new NET_DVR.NET_DVR_JPEGPARA
+            var para = new NET_DVR.NET_DVR_JPEGPARA
             {
                 wPicQuality = (ushort)Math.Clamp(quality, 1, 100),
-                wPicSize = 0xFF,
+                wPicSize = 0xFF
             };
             var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
-            bool ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
-            if (!ok)
-            {
-                lastError = NET_DVR.NET_DVR_GetLastError();
-            }
+            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
+            if (!ok) lastError = NET_DVR.NET_DVR_GetLastError();
 
             return ok;
         }
@@ -134,194 +118,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         return CaptureJpegFromStream(config, channel, saveFullPath, out _);
     }
 
-    public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
-        out int playM4Error)
-    {
-        playM4Error = 0;
-        ArgumentNullException.ThrowIfNull(config);
-        if (string.IsNullOrWhiteSpace(saveFullPath))
-            throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
-        EnsureInitialized();
-
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
-
-        if (!TryLogin(config, out var userId))
-        {
-            return false;
-        }
-
-        int lRealHandle = -1;
-        // 当 hPlayWnd 为 NULL 时，需要设置回调函数来处理码流数据
-        // 参考文档：hPlayWnd 为 NULL 时仅取流不解码，需要手动解码（使用播放库 PlayM4）
-        // 使用 PlayM4Decoder 进行手动解码
-        IntPtr hPlayWnd = IntPtr.Zero; // NULL - 仅取流不解码，需要手动解码
-
-        // 创建 PlayM4 解码器实例
-        PlayM4Decoder? decoder = null;
-        object streamLock = new object();
-
-        // 回调函数用于接收码流数据（当 hPlayWnd 为 NULL 时）
-        // 数据类型：NET_DVR_SYSHEAD(系统头), NET_DVR_STREAMDATA(码流数据) 等
-        // 使用 PlayM4Decoder 进行手动解码
-        NET_DVR.REALDATACALLBACK realDataCallback = (handle, dataType, buffer, bufSize, user) =>
-        {
-            lock (streamLock)
-            {
-                switch (dataType)
-                {
-                    case NET_DVR.NET_DVR_SYSHEAD: // 系统头数据
-                        if (bufSize > 0 && decoder != null && !decoder.IsInitialized)
-                        {
-                            // 使用系统头数据初始化播放库
-                            // 获取桌面窗口句柄用于播放（即使不显示，也需要有效句柄）
-                            IntPtr hWnd = NET_DVR.GetDesktopWindow();
-                            if (!decoder.OpenStream(buffer, bufSize, hWnd))
-                            {
-                                // 初始化失败，记录错误
-                                // 可以根据需要记录日志或抛出异常
-                            }
-                        }
-
-                        break;
-
-                    case NET_DVR.NET_DVR_STREAMDATA: // 码流数据
-                        if (bufSize > 0 && decoder != null && decoder.IsPlaying)
-                        {
-                            // 将码流数据输入到播放库进行解码
-                            decoder.InputData(buffer, bufSize);
-                        }
-
-                        break;
-
-                    case NET_DVR.NET_DVR_AUDIOSTREAMDATA: // 音频数据
-                        if (bufSize > 0)
-                        {
-                            // 音频数据处理（如果需要）
-                            // PlayM4 也可以处理音频数据
-                            if (decoder != null && decoder.IsPlaying)
-                            {
-                                decoder.InputData(buffer, bufSize);
-                            }
-                        }
-
-                        break;
-
-                    case NET_DVR.NET_DVR_PRIVATE_DATA: // 私有数据（包括智能信息）
-                        if (bufSize > 0)
-                        {
-                            // 收到私有数据，可能包含智能分析信息
-                            // 可以根据需要处理这些数据
-                        }
-
-                        break;
-
-                    default:
-                        // 其他类型的数据，也尝试输入到播放库
-                        if (bufSize > 0 && decoder != null && decoder.IsPlaying)
-                        {
-                            decoder.InputData(buffer, bufSize);
-                        }
-
-                        break;
-                }
-            }
-        };
-
-        try
-        {
-            // 创建 PlayM4 解码器实例
-            decoder = new PlayM4Decoder();
-
-            // 启动实时预览
-            // hPlayWnd 为 NULL 时仅取流不解码，需要手动解码；设为有效值则 SDK 自动解码
-            NET_DVR.NET_DVR_PREVIEWINFO previewInfo = new NET_DVR.NET_DVR_PREVIEWINFO
-            {
-                lChannel = channel,
-                dwStreamType = 0, // 主码流
-                dwLinkMode = 0, // TCP模式
-                hPlayWnd = hPlayWnd, // NULL - 仅取流不解码，需要手动解码
-                bBlocked = true, // 阻塞取流
-                bPassbackRecord = false, // 不启用录像回传
-                byPreviewMode = 0, // 正常预览
-                byStreamID = new byte[32],
-                byProtoType = 0, // 私有协议
-                byRes1 = 0,
-                byVideoCodingType = 0, // 通用编码数据
-                dwDisplayBufNum = 1, // 播放缓冲区最大缓冲帧数
-                byNPQMode = 0, // 直连模式
-                byRes = new byte[215]
-            };
-
-            // 当 hPlayWnd 为 NULL 时，必须设置回调函数来处理码流数据
-            // 回调函数签名：void CALLBACK fRealDataCallBack(LONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
-            lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, realDataCallback, IntPtr.Zero);
-            if (lRealHandle < 0)
-            {
-                return false;
-            }
-
-            // 等待解码器初始化和第一帧数据
-            // 等待系统头数据被处理，解码器初始化完成
-            int waitCount = 0;
-            while (!decoder.IsPlaying && waitCount < 50) // 最多等待5秒
-            {
-                System.Threading.Thread.Sleep(100);
-                waitCount++;
-            }
-
-            if (!decoder.IsPlaying)
-            {
-                // 解码器初始化失败
-                if (decoder != null && decoder.Port >= 0)
-                {
-                    playM4Error = decoder.GetLastError();
-                }
-
-                return false;
-            }
-
-            // 等待一帧数据解码完成
-            System.Threading.Thread.Sleep(500);
-
-            // 使用 PlayM4_GetJPEG 捕获当前帧为 JPEG 图片
-            bool ok = decoder.CaptureJpeg(saveFullPath);
-
-            if (!ok && decoder != null && decoder.Port >= 0)
-            {
-                playM4Error = decoder.GetLastError();
-            }
-
-            return ok;
-        }
-        finally
-        {
-            // 释放解码器资源
-            if (decoder != null)
-            {
-                // 如果之前没有获取错误码，现在尝试获取
-                if (playM4Error == 0 && decoder.Port >= 0)
-                {
-                    playM4Error = decoder.GetLastError();
-                }
-
-                decoder.Dispose();
-            }
-
-            if (lRealHandle >= 0)
-            {
-                NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
-            }
-
-            NET_DVR.NET_DVR_Logout(userId);
-        }
-    }
-
     public async Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests)
     {
-        if (requests == null || requests.Count == 0)
-        {
-            return new List<BatchCaptureResult>();
-        }
+        if (requests == null || requests.Count == 0) return new List<BatchCaptureResult>();
 
         // 使用并发处理多个设备
         var tasks = requests.Select(async request =>
@@ -341,7 +140,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 // 在后台线程中执行拍照操作（因为 CaptureJpegFromStream 是同步的阻塞操作）
                 await Task.Run(() =>
                 {
-                    int playM4Error = 0;
+                    var playM4Error = 0;
                     result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
                         out playM4Error);
                     result.PlayM4Error = playM4Error;
@@ -385,17 +184,176 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         return results.ToList();
     }
 
+    public static uint GetLastErrorCode()
+    {
+        return NET_DVR.NET_DVR_GetLastError();
+    }
+
+    public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
+        out int playM4Error)
+    {
+        playM4Error = 0;
+        ArgumentNullException.ThrowIfNull(config);
+        if (string.IsNullOrWhiteSpace(saveFullPath))
+            throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+        EnsureInitialized();
+
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
+
+        if (!TryLogin(config, out var userId)) return false;
+
+        var lRealHandle = -1;
+        // 当 hPlayWnd 为 NULL 时，需要设置回调函数来处理码流数据
+        // 参考文档：hPlayWnd 为 NULL 时仅取流不解码，需要手动解码（使用播放库 PlayM4）
+        // 使用 PlayM4Decoder 进行手动解码
+        var hPlayWnd = IntPtr.Zero; // NULL - 仅取流不解码，需要手动解码
+
+        // 创建 PlayM4 解码器实例
+        PlayM4Decoder? decoder = null;
+        var streamLock = new object();
+
+        // 回调函数用于接收码流数据（当 hPlayWnd 为 NULL 时）
+        // 数据类型：NET_DVR_SYSHEAD(系统头), NET_DVR_STREAMDATA(码流数据) 等
+        // 使用 PlayM4Decoder 进行手动解码
+        NET_DVR.REALDATACALLBACK realDataCallback = (handle, dataType, buffer, bufSize, user) =>
+        {
+            lock (streamLock)
+            {
+                switch (dataType)
+                {
+                    case NET_DVR.NET_DVR_SYSHEAD: // 系统头数据
+                        if (bufSize > 0 && decoder != null && !decoder.IsInitialized)
+                        {
+                            // 使用系统头数据初始化播放库
+                            // 获取桌面窗口句柄用于播放（即使不显示，也需要有效句柄）
+                            var hWnd = NET_DVR.GetDesktopWindow();
+                            if (!decoder.OpenStream(buffer, bufSize, hWnd))
+                            {
+                                // 初始化失败，记录错误
+                                // 可以根据需要记录日志或抛出异常
+                            }
+                        }
+
+                        break;
+
+                    case NET_DVR.NET_DVR_STREAMDATA: // 码流数据
+                        if (bufSize > 0 && decoder != null && decoder.IsPlaying)
+                            // 将码流数据输入到播放库进行解码
+                            decoder.InputData(buffer, bufSize);
+
+                        break;
+
+                    case NET_DVR.NET_DVR_AUDIOSTREAMDATA: // 音频数据
+                        if (bufSize > 0)
+                            // 音频数据处理（如果需要）
+                            // PlayM4 也可以处理音频数据
+                            if (decoder != null && decoder.IsPlaying)
+                                decoder.InputData(buffer, bufSize);
+
+                        break;
+
+                    case NET_DVR.NET_DVR_PRIVATE_DATA: // 私有数据（包括智能信息）
+                        if (bufSize > 0)
+                        {
+                            // 收到私有数据，可能包含智能分析信息
+                            // 可以根据需要处理这些数据
+                        }
+
+                        break;
+
+                    default:
+                        // 其他类型的数据，也尝试输入到播放库
+                        if (bufSize > 0 && decoder != null && decoder.IsPlaying) decoder.InputData(buffer, bufSize);
+
+                        break;
+                }
+            }
+        };
+
+        try
+        {
+            // 创建 PlayM4 解码器实例
+            decoder = new PlayM4Decoder();
+
+            // 启动实时预览
+            // hPlayWnd 为 NULL 时仅取流不解码，需要手动解码；设为有效值则 SDK 自动解码
+            var previewInfo = new NET_DVR.NET_DVR_PREVIEWINFO
+            {
+                lChannel = channel,
+                dwStreamType = 0, // 主码流
+                dwLinkMode = 0, // TCP模式
+                hPlayWnd = hPlayWnd, // NULL - 仅取流不解码，需要手动解码
+                bBlocked = true, // 阻塞取流
+                bPassbackRecord = false, // 不启用录像回传
+                byPreviewMode = 0, // 正常预览
+                byStreamID = new byte[32],
+                byProtoType = 0, // 私有协议
+                byRes1 = 0,
+                byVideoCodingType = 0, // 通用编码数据
+                dwDisplayBufNum = 1, // 播放缓冲区最大缓冲帧数
+                byNPQMode = 0, // 直连模式
+                byRes = new byte[215]
+            };
+
+            // 当 hPlayWnd 为 NULL 时，必须设置回调函数来处理码流数据
+            // 回调函数签名：void CALLBACK fRealDataCallBack(LONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
+            lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, realDataCallback, IntPtr.Zero);
+            if (lRealHandle < 0) return false;
+
+            // 等待解码器初始化和第一帧数据
+            // 等待系统头数据被处理，解码器初始化完成
+            var waitCount = 0;
+            while (!decoder.IsPlaying && waitCount < 50) // 最多等待5秒
+            {
+                Thread.Sleep(100);
+                waitCount++;
+            }
+
+            if (!decoder.IsPlaying)
+            {
+                // 解码器初始化失败
+                if (decoder != null && decoder.Port >= 0) playM4Error = decoder.GetLastError();
+
+                return false;
+            }
+
+            // 等待一帧数据解码完成
+            Thread.Sleep(500);
+
+            // 使用 PlayM4_GetJPEG 捕获当前帧为 JPEG 图片
+            var ok = decoder.CaptureJpeg(saveFullPath);
+
+            if (!ok && decoder != null && decoder.Port >= 0) playM4Error = decoder.GetLastError();
+
+            return ok;
+        }
+        finally
+        {
+            // 释放解码器资源
+            if (decoder != null)
+            {
+                // 如果之前没有获取错误码，现在尝试获取
+                if (playM4Error == 0 && decoder.Port >= 0) playM4Error = decoder.GetLastError();
+
+                decoder.Dispose();
+            }
+
+            if (lRealHandle >= 0) NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
+
+            NET_DVR.NET_DVR_Logout(userId);
+        }
+    }
+
     private static string BuildDeviceKey(HikvisionDeviceConfig config)
-        => $"{config.Ip}:{config.Port}:{config.Username}";
+    {
+        return $"{config.Ip}:{config.Port}:{config.Username}";
+    }
 
     private static void EnsureInitialized()
     {
         if (!NET_DVR._initialized)
         {
-            if (!NET_DVR.NET_DVR_Init())
-            {
-                throw new InvalidOperationException("NET_DVR_Init failed.");
-            }
+            if (!NET_DVR.NET_DVR_Init()) throw new InvalidOperationException("NET_DVR_Init failed.");
 
             NET_DVR._initialized = true;
             AppDomain.CurrentDomain.ProcessExit += (_, __) => NET_DVR.NET_DVR_Cleanup();
@@ -404,7 +362,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
     private static bool TryLogin(HikvisionDeviceConfig config, out int userId)
     {
-        NET_DVR.NET_DVR_DEVICEINFO_V40 devInfo = new NET_DVR.NET_DVR_DEVICEINFO_V40();
+        var devInfo = new NET_DVR.NET_DVR_DEVICEINFO_V40();
         var loginInfo = new NET_DVR.NET_DVR_USER_LOGIN_INFO
         {
             sDeviceAddress = ToFixedBytes(config.Ip, 129),
@@ -455,7 +413,6 @@ public sealed class BatchCaptureResult
 
 internal static class NET_DVR
 {
-    internal static bool _initialized;
     private const int STREAM_ID_LEN = 32;
 
     // 码流数据类型定义
@@ -463,6 +420,40 @@ internal static class NET_DVR
     internal const uint NET_DVR_STREAMDATA = 2; // 码流数据
     internal const uint NET_DVR_AUDIOSTREAMDATA = 3; // 音频数据
     internal const uint NET_DVR_PRIVATE_DATA = 112; // 私有数据，包括智能信息
+    internal static bool _initialized;
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern bool NET_DVR_Init();
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern void NET_DVR_Cleanup();
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern int NET_DVR_Login_V40(ref NET_DVR_USER_LOGIN_INFO pLoginInfo,
+        ref NET_DVR_DEVICEINFO_V40 lpDeviceInfo);
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern bool NET_DVR_Logout(int lUserID);
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern bool NET_DVR_CaptureJPEGPicture(int lUserID, int lChannel, ref NET_DVR_JPEGPARA lpJpegPara,
+        byte[] sPicFileName);
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern uint NET_DVR_GetLastError();
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern int NET_DVR_RealPlay_V40(int lUserID, ref NET_DVR_PREVIEWINFO lpPreviewInfo,
+        REALDATACALLBACK fRealDataCallBack, IntPtr pUser);
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern bool NET_DVR_StopRealPlay(int lRealHandle);
+
+    [DllImport(@".\HCNetSDK.dll")]
+    internal static extern bool NET_DVR_CapturePicture(int lRealHandle, string sPicFileName);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr GetDesktopWindow();
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct NET_DVR_DEVICEINFO_V30
@@ -534,26 +525,6 @@ internal static class NET_DVR
         public ushort wPicQuality;
     }
 
-    [DllImport("HCNetSDK.dll")]
-    internal static extern bool NET_DVR_Init();
-
-    [DllImport("HCNetSDK.dll")]
-    internal static extern void NET_DVR_Cleanup();
-
-    [DllImport("HCNetSDK.dll")]
-    internal static extern int NET_DVR_Login_V40(ref NET_DVR_USER_LOGIN_INFO pLoginInfo,
-        ref NET_DVR_DEVICEINFO_V40 lpDeviceInfo);
-
-    [DllImport("HCNetSDK.dll")]
-    internal static extern bool NET_DVR_Logout(int lUserID);
-
-    [DllImport("HCNetSDK.dll")]
-    internal static extern bool NET_DVR_CaptureJPEGPicture(int lUserID, int lChannel, ref NET_DVR_JPEGPARA lpJpegPara,
-        byte[] sPicFileName);
-
-    [DllImport("HCNetSDK.dll")]
-    internal static extern uint NET_DVR_GetLastError();
-
     [StructLayout(LayoutKind.Sequential)]
     internal struct NET_DVR_PREVIEWINFO
     {
@@ -580,19 +551,6 @@ internal static class NET_DVR
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 215, ArraySubType = UnmanagedType.I1)]
         public byte[] byRes;
     }
-
-    [DllImport("HCNetSDK.dll")]
-    internal static extern int NET_DVR_RealPlay_V40(int lUserID, ref NET_DVR_PREVIEWINFO lpPreviewInfo,
-        NET_DVR.REALDATACALLBACK fRealDataCallBack, IntPtr pUser);
-
-    [DllImport("HCNetSDK.dll")]
-    internal static extern bool NET_DVR_StopRealPlay(int lRealHandle);
-
-    [DllImport(@".\HCNetSDK.dll")]
-    internal static extern bool NET_DVR_CapturePicture(Int32 lRealHandle, string sPicFileName);
-
-    [DllImport("user32.dll")]
-    internal static extern IntPtr GetDesktopWindow();
 
     internal delegate void REALDATACALLBACK(int lRealHandle, uint dwDataType, IntPtr pBuffer, uint dwBufSize,
         IntPtr pUser);

@@ -17,19 +17,19 @@
         Icon="/Assets/fd-ico.ico">
 
     <Window.Resources>
-        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter"/>
+        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
     </Window.Resources>
 
     <Border BorderBrush="LightGray" BorderThickness="1">
         <Grid RowDefinitions="50,Auto,Auto,Auto,*,Auto,50">
-            
+
             <!-- 标题栏 -->
             <Grid Grid.Row="0" Background="#6498FE">
                 <TextBlock Text="订单数据匹配"
                            FontSize="14"
                            Foreground="White"
                            VerticalAlignment="Center"
-                           Margin="15,0,0,0"/>
+                           Margin="15,0,0,0" />
                 <Button Content="✕"
                         Classes="transparent-button"
                         HorizontalAlignment="Right"
@@ -39,99 +39,114 @@
                         Width="40"
                         Height="35"
                         Click="OnCloseButtonClick"
-                        Cursor="Hand"/>
+                        Cursor="Hand" />
             </Grid>
-            
+
             <!-- 当前订单信息标题 -->
-            <TextBlock Grid.Row="1" 
-                       Text="当前订单信息" 
-                       FontSize="14" 
+            <TextBlock Grid.Row="1"
+                       Text="当前订单信息"
+                       FontSize="14"
                        Foreground="Black"
-                       Margin="10,10,10,5"/>
-            
+                       Margin="10,10,10,5" />
+
             <!-- 当前订单信息区域 -->
-            <Border Grid.Row="2" 
-                    Background="#F2F2F2" 
+            <Border Grid.Row="2"
+                    Background="#F2F2F2"
                     Margin="10,0,10,10"
                     Padding="10">
                 <StackPanel Spacing="10">
                     <!-- 第一行：车牌号、供料单位 -->
                     <Grid ColumnDefinitions="*,*">
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="车牌号：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
-                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="车牌号：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                                       Margin="10,5" />
+                            <TextBlock Text="{Binding PlateNumber, TargetNullValue='未识别'}" FontSize="14"
+                                       Foreground="Black" VerticalAlignment="Center" Margin="10,5" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <TextBlock Text="供料单位：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
-                            <TextBlock Text="{Binding ProviderName, TargetNullValue='-'}" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="供料单位：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                                       Margin="10,5" />
+                            <TextBlock Text="{Binding ProviderName, TargetNullValue='-'}" FontSize="14"
+                                       Foreground="Black" VerticalAlignment="Center" Margin="10,5" />
                         </StackPanel>
                     </Grid>
-                    
+
                     <!-- 第二行：收发料类型选择 -->
                     <Grid ColumnDefinitions="*,*">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="收发类型：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
-                            <RadioButton Content="收料" 
+                            <TextBlock Text="收发类型：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                                       Margin="10,5" />
+                            <RadioButton Content="收料"
                                          IsChecked="{Binding IsReceiving}"
                                          GroupName="DeliveryType"
-                                         Margin="5,0"/>
-                            <RadioButton Content="发料" 
+                                         Margin="5,0" />
+                            <RadioButton Content="发料"
                                          IsChecked="{Binding !IsReceiving}"
                                          GroupName="DeliveryType"
-                                         Margin="5,0"/>
+                                         Margin="5,0" />
                         </StackPanel>
                     </Grid>
-                    
+
                     <!-- 第三行：车辆重量、进场时间 -->
                     <Grid ColumnDefinitions="*,*">
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="车辆重量（吨）：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
-                            <TextBlock Text="{Binding Weight, StringFormat='{}{0:F2}'}" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="车辆重量（吨）：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                                       Margin="10,5" />
+                            <TextBlock Text="{Binding Weight, StringFormat='{}{0:F2}'}" FontSize="14"
+                                       Foreground="Black" VerticalAlignment="Center" Margin="10,5" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <TextBlock Text="进场时间：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
-                            <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                            <TextBlock Text="进场时间：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                                       Margin="10,5" />
+                            <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"
+                                       FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5" />
                         </StackPanel>
                     </Grid>
-                    
+
                     <!-- 进场照片 -->
                     <Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
-                        <TextBlock Text="进场照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        <TextBlock Text="进场照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                                   Margin="10,5" />
                         <ItemsControl Grid.Column="1" ItemsSource="{Binding EntryPhotos}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="5"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="5" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
-                                        <Image Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                                        <Image
+                                            Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                            Stretch="UniformToFill" />
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </Grid>
-                    
+
                     <!-- 运单照片 -->
                     <Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
-                        <TextBlock Text="运单照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center" Margin="10,5"/>
+                        <TextBlock Text="运单照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                                   Margin="10,5" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
                             <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
-                                <Image Source="{Binding TicketPhoto, Converter={StaticResource CarNullOrEmptyImageConverter}}" Stretch="UniformToFill"/>
+                                <Image
+                                    Source="{Binding TicketPhoto, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                    Stretch="UniformToFill" />
                             </Border>
                         </StackPanel>
                     </Grid>
                 </StackPanel>
             </Border>
-            
+
             <!-- 可匹配订单信息标题 -->
-            <TextBlock Grid.Row="3" 
-                       Text="可匹配订单信息" 
-                       FontSize="14" 
+            <TextBlock Grid.Row="3"
+                       Text="可匹配订单信息"
+                       FontSize="14"
                        Foreground="Black"
-                       Margin="10,5,10,5"/>
-            
+                       Margin="10,5,10,5" />
+
             <!-- 可匹配订单列表 -->
             <Border Grid.Row="4" Margin="10,0,10,10">
                 <DataGrid x:Name="CandidateDataGrid"
@@ -146,69 +161,72 @@
                           BorderBrush="#E5E7EB"
                           SelectionMode="Single">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="车牌号" Width="100" Binding="{Binding PlateNumber}"/>
-                        <DataGridTextColumn Header="供料单位" Width="120" Binding="{Binding ProviderName}"/>
-                        <DataGridTextColumn Header="车辆重量（吨）" Width="100" Binding="{Binding Weight, StringFormat='{}{0:F2}'}"/>
-                        <DataGridTextColumn Header="进场时间" Width="150" Binding="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
-                        <DataGridTextColumn Header="相隔时间" Width="80" Binding="{Binding SeparatedTime}"/>
+                        <DataGridTextColumn Header="车牌号" Width="100" Binding="{Binding PlateNumber}" />
+                        <DataGridTextColumn Header="供料单位" Width="120" Binding="{Binding ProviderName}" />
+                        <DataGridTextColumn Header="车辆重量（吨）" Width="100"
+                                            Binding="{Binding Weight, StringFormat='{}{0:F2}'}" />
+                        <DataGridTextColumn Header="进场时间" Width="150"
+                                            Binding="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" />
+                        <DataGridTextColumn Header="相隔时间" Width="80" Binding="{Binding SeparatedTime}" />
                         <DataGridTemplateColumn Header="操作" Width="100">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Content="查看详情" 
+                                    <Button Content="查看详情"
                                             Classes="transparent-button"
                                             Foreground="#40A9FF"
                                             Padding="8,4"
-                                            FontSize="12"/>
+                                            FontSize="12" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
-            
+
             <!-- 分页控件区域 -->
             <Border Grid.Row="5" Margin="10,0,10,10">
                 <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
-                    <TextBlock Grid.Column="0" 
-                               Text="{Binding TotalCount, StringFormat='共 {0} 条'}" 
-                               FontSize="12" 
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding TotalCount, StringFormat='共 {0} 条'}"
+                               FontSize="12"
                                Foreground="#666"
-                               VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="1" 
-                               FontSize="12" 
+                               VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               FontSize="12"
                                Foreground="#666"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Center">
                         <TextBlock.Text>
                             <MultiBinding StringFormat="第 {0}/{1} 页">
-                                <Binding Path="CurrentPage"/>
-                                <Binding Path="TotalPages"/>
+                                <Binding Path="CurrentPage" />
+                                <Binding Path="TotalPages" />
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
-                    <Button Grid.Column="2" 
-                            Content="上一页" 
+                    <Button Grid.Column="2"
+                            Content="上一页"
                             Classes="outline-button"
                             CornerRadius="4"
                             Padding="12,6"
                             FontSize="12"
                             Margin="0,0,8,0"
-                            Command="{Binding PreviousPageCommand}"/>
-                    <Button Grid.Column="3" 
-                            Content="下一页" 
+                            Command="{Binding PreviousPageCommand}" />
+                    <Button Grid.Column="3"
+                            Content="下一页"
                             Classes="outline-button"
                             CornerRadius="4"
                             Padding="12,6"
                             FontSize="12"
-                            Command="{Binding NextPageCommand}"/>
+                            Command="{Binding NextPageCommand}" />
                     <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="8,0,0,0">
-                        <TextBlock Text="跳至" FontSize="12" Foreground="#666" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <TextBox Width="40" Height="24" FontSize="12" Text="{Binding CurrentPage}"/>
-                        <TextBlock Text="页" FontSize="12" Foreground="#666" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        <TextBlock Text="跳至" FontSize="12" Foreground="#666" VerticalAlignment="Center"
+                                   Margin="0,0,4,0" />
+                        <TextBox Width="40" Height="24" FontSize="12" Text="{Binding CurrentPage}" />
+                        <TextBlock Text="页" FontSize="12" Foreground="#666" VerticalAlignment="Center" Margin="4,0,0,0" />
                     </StackPanel>
                 </Grid>
             </Border>
-            
+
             <!-- 底部按钮 -->
             <Border Grid.Row="6" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
                 <Grid ColumnDefinitions="*,*">
@@ -219,7 +237,7 @@
                             CornerRadius="4"
                             Padding="24,8"
                             Margin="0,0,10,0"
-                            Click="OnCloseButtonClick"/>
+                            Click="OnCloseButtonClick" />
                     <Button Grid.Column="1"
                             Content="确定"
                             Classes="primary-button"
@@ -228,7 +246,7 @@
                             Padding="24,8"
                             Margin="10,0,0,0"
                             IsEnabled="{Binding CanConfirm}"
-                            Click="OnConfirmButtonClick"/>
+                            Click="OnConfirmButtonClick" />
                 </Grid>
             </Border>
         </Grid>

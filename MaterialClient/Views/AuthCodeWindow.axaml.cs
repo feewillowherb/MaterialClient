@@ -1,9 +1,7 @@
 using System;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.ReactiveUI;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
 using ReactiveUI;
@@ -13,11 +11,6 @@ namespace MaterialClient.Views;
 public partial class AuthCodeWindow : Window
 {
     private IDisposable? _authSuccessSubscription;
-
-    /// <summary>
-    /// 公开的验证结果属性，用于在窗口关闭后读取
-    /// </summary>
-    public bool IsVerified { get; private set; }
 
     public AuthCodeWindow(AuthCodeWindowViewModel authCodeWindowViewModel)
     {
@@ -31,7 +24,6 @@ public partial class AuthCodeWindow : Window
                 _authSuccessSubscription?.Dispose();
 
                 if (dataContext is AuthCodeWindowViewModel viewModel)
-                {
                     // Watch for successful authorization
                     _authSuccessSubscription = viewModel
                         .WhenAnyValue(vm => vm.IsVerified)
@@ -39,27 +31,26 @@ public partial class AuthCodeWindow : Window
                         {
                             IsVerified = isVerified; // 保存到窗口属性
                             if (isVerified)
-                            {
                                 Dispatcher.UIThread.Post(async () =>
                                 {
                                     await Task.Delay(TimeSpan.FromSeconds(0.5));
                                     // 隐藏窗口而不是关闭，以便StartupService可以管理窗口生命周期
                                     Hide();
                                 }, DispatcherPriority.Background);
-                            }
                         });
-                }
             });
     }
+
+    /// <summary>
+    ///     公开的验证结果属性，用于在窗口关闭后读取
+    /// </summary>
+    public bool IsVerified { get; private set; }
 
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         // When user closes the window without completing authorization,
         // the application should exit (as per FR-003)
-        if (DataContext is AuthCodeWindowViewModel viewModel)
-        {
-            viewModel.HandleWindowClose();
-        }
+        if (DataContext is AuthCodeWindowViewModel viewModel) viewModel.HandleWindowClose();
 
         Close();
     }

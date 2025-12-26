@@ -1,88 +1,67 @@
 using System;
-using System.Linq;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
-using ReactiveUI;
-using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
-using Microsoft.Extensions.DependencyInjection;
 using MaterialClient.Views;
+using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
-/// 照片网格视图的 ViewModel，负责显示进场照片和出场照片
+///     照片网格视图的 ViewModel，负责显示进场照片和出场照片
 /// </summary>
 public partial class PhotoGridViewModel : ViewModelBase
 {
     private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
-    /// 当前选中的照片标签 (0 = 进场照片, 1 = 出场照片)
+    ///     进场照片1
     /// </summary>
-    [Reactive]
-    private int _selectedPhotoTabIndex = 0;
+    [Reactive] private string? _entryPhoto1;
 
     /// <summary>
-    /// 进场照片1
+    ///     进场照片2
     /// </summary>
-    [Reactive]
-    private string? _entryPhoto1;
+    [Reactive] private string? _entryPhoto2;
 
     /// <summary>
-    /// 进场照片2
+    ///     进场照片3
     /// </summary>
-    [Reactive]
-    private string? _entryPhoto2;
+    [Reactive] private string? _entryPhoto3;
 
     /// <summary>
-    /// 进场照片3
+    ///     进场照片4
     /// </summary>
-    [Reactive]
-    private string? _entryPhoto3;
+    [Reactive] private string? _entryPhoto4;
 
     /// <summary>
-    /// 进场照片4
+    ///     出场照片1
     /// </summary>
-    [Reactive]
-    private string? _entryPhoto4;
+    [Reactive] private string? _exitPhoto1;
 
     /// <summary>
-    /// 出场照片1
+    ///     出场照片2
     /// </summary>
-    [Reactive]
-    private string? _exitPhoto1;
+    [Reactive] private string? _exitPhoto2;
 
     /// <summary>
-    /// 出场照片2
+    ///     出场照片3
     /// </summary>
-    [Reactive]
-    private string? _exitPhoto2;
+    [Reactive] private string? _exitPhoto3;
 
     /// <summary>
-    /// 出场照片3
+    ///     出场照片4
     /// </summary>
-    [Reactive]
-    private string? _exitPhoto3;
+    [Reactive] private string? _exitPhoto4;
 
     /// <summary>
-    /// 出场照片4
+    ///     当前选中的照片标签 (0 = 进场照片, 1 = 出场照片)
     /// </summary>
-    [Reactive]
-    private string? _exitPhoto4;
-
-    /// <summary>
-    /// 是否选中进场照片标签
-    /// </summary>
-    public bool IsEntryPhotoTabSelected => SelectedPhotoTabIndex == 0;
-
-    /// <summary>
-    /// 是否选中出场照片标签
-    /// </summary>
-    public bool IsExitPhotoTabSelected => SelectedPhotoTabIndex == 1;
+    [Reactive] private int _selectedPhotoTabIndex;
 
     public PhotoGridViewModel(IServiceProvider serviceProvider)
     {
@@ -97,7 +76,17 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 切换到进场照片标签
+    ///     是否选中进场照片标签
+    /// </summary>
+    public bool IsEntryPhotoTabSelected => SelectedPhotoTabIndex == 0;
+
+    /// <summary>
+    ///     是否选中出场照片标签
+    /// </summary>
+    public bool IsExitPhotoTabSelected => SelectedPhotoTabIndex == 1;
+
+    /// <summary>
+    ///     切换到进场照片标签
     /// </summary>
     [ReactiveCommand]
     private void ShowEntryPhotos()
@@ -106,7 +95,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 切换到出场照片标签
+    ///     切换到出场照片标签
     /// </summary>
     [ReactiveCommand]
     private void ShowExitPhotos()
@@ -115,7 +104,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 打开图片查看窗口
+    ///     打开图片查看窗口
     /// </summary>
     [ReactiveCommand]
     private void OpenImageViewer(string? imagePath)
@@ -128,7 +117,7 @@ public partial class PhotoGridViewModel : ViewModelBase
             // 先创建并设置 ViewModel
             var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
             viewModel.SetImage(imagePath);
-            
+
             // 手动创建窗口，传入已设置的 ViewModel
             var window = new ImageViewerWindow(viewModel);
             window.Show();
@@ -140,7 +129,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 从称重记录加载照片
+    ///     从称重记录加载照片
     /// </summary>
     public async Task LoadFromWeighingRecordAsync(WeighingRecord record)
     {
@@ -155,8 +144,8 @@ public partial class PhotoGridViewModel : ViewModelBase
             if (!attachmentsDict.TryGetValue(record.Id, out var attachmentFiles))
                 return;
 
-            int entryIndex = 0;
-            int exitIndex = 0;
+            var entryIndex = 0;
+            var exitIndex = 0;
 
             foreach (var file in attachmentFiles)
             {
@@ -164,13 +153,8 @@ public partial class PhotoGridViewModel : ViewModelBase
                     continue;
 
                 if (file.AttachType == AttachType.EntryPhoto)
-                {
                     SetEntryPhoto(entryIndex++, file.LocalPath);
-                }
-                else if (file.AttachType == AttachType.ExitPhoto)
-                {
-                    SetExitPhoto(exitIndex++, file.LocalPath);
-                }
+                else if (file.AttachType == AttachType.ExitPhoto) SetExitPhoto(exitIndex++, file.LocalPath);
             }
         }
         catch
@@ -180,7 +164,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 从运单加载照片
+    ///     从运单加载照片
     /// </summary>
     public async Task LoadFromWaybillAsync(Waybill waybill)
     {
@@ -195,8 +179,8 @@ public partial class PhotoGridViewModel : ViewModelBase
             if (!attachmentsDict.TryGetValue(waybill.Id, out var attachmentFiles))
                 return;
 
-            int entryIndex = 0;
-            int exitIndex = 0;
+            var entryIndex = 0;
+            var exitIndex = 0;
 
             foreach (var file in attachmentFiles)
             {
@@ -204,13 +188,8 @@ public partial class PhotoGridViewModel : ViewModelBase
                     continue;
 
                 if (file.AttachType == AttachType.EntryPhoto)
-                {
                     SetEntryPhoto(entryIndex++, file.LocalPath);
-                }
-                else if (file.AttachType == AttachType.ExitPhoto)
-                {
-                    SetExitPhoto(exitIndex++, file.LocalPath);
-                }
+                else if (file.AttachType == AttachType.ExitPhoto) SetExitPhoto(exitIndex++, file.LocalPath);
             }
         }
         catch
@@ -220,7 +199,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 从列表项加载照片（统一接口，根据 ItemType 自动路由）
+    ///     从列表项加载照片（统一接口，根据 ItemType 自动路由）
     /// </summary>
     public async Task LoadFromListItemAsync(WeighingListItemDto item)
     {
@@ -233,8 +212,8 @@ public partial class PhotoGridViewModel : ViewModelBase
 
             var attachmentFiles = await attachmentService.GetAttachmentsByListItemAsync(item);
 
-            int entryIndex = 0;
-            int exitIndex = 0;
+            var entryIndex = 0;
+            var exitIndex = 0;
 
             foreach (var file in attachmentFiles)
             {
@@ -242,13 +221,8 @@ public partial class PhotoGridViewModel : ViewModelBase
                     continue;
 
                 if (file.AttachType == AttachType.EntryPhoto)
-                {
                     SetEntryPhoto(entryIndex++, file.LocalPath);
-                }
-                else if (file.AttachType == AttachType.ExitPhoto)
-                {
-                    SetExitPhoto(exitIndex++, file.LocalPath);
-                }
+                else if (file.AttachType == AttachType.ExitPhoto) SetExitPhoto(exitIndex++, file.LocalPath);
             }
         }
         catch
@@ -258,7 +232,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 清空所有照片
+    ///     清空所有照片
     /// </summary>
     public void Clear()
     {

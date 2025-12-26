@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
@@ -12,11 +11,6 @@ namespace MaterialClient.Views;
 public partial class LoginWindow : Window
 {
     private IDisposable? _loginSuccessSubscription;
-
-    /// <summary>
-    /// 公开的登录成功属性，用于在窗口关闭后读取
-    /// </summary>
-    public bool IsLoginSuccessful { get; private set; }
 
     public LoginWindow(LoginWindowViewModel viewModel)
     {
@@ -30,7 +24,6 @@ public partial class LoginWindow : Window
                 _loginSuccessSubscription?.Dispose();
 
                 if (dataContext is LoginWindowViewModel viewModel)
-                {
                     // Watch for successful login
                     _loginSuccessSubscription = viewModel
                         .WhenAnyValue(vm => vm.IsLoginSuccessful)
@@ -38,18 +31,20 @@ public partial class LoginWindow : Window
                         {
                             IsLoginSuccessful = isSuccessful; // 保存到窗口属性
                             if (isSuccessful)
-                            {
                                 // 隐藏窗口而不是关闭，以便StartupService可以管理窗口生命周期
                                 Dispatcher.UIThread.Post(async () =>
                                 {
                                     await Task.Delay(TimeSpan.FromSeconds(0.5));
                                     Hide();
                                 }, DispatcherPriority.Background);
-                            }
                         });
-                }
             });
     }
+
+    /// <summary>
+    ///     公开的登录成功属性，用于在窗口关闭后读取
+    /// </summary>
+    public bool IsLoginSuccessful { get; private set; }
 
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {

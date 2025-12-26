@@ -5,62 +5,60 @@ using Volo.Abp.DependencyInjection;
 namespace MaterialClient.Common.Services.Hardware;
 
 /// <summary>
-/// USB 摄像头服务接口
+///     USB 摄像头服务接口
 /// </summary>
 public interface IUsbCameraService
 {
     /// <summary>
-    /// 检查是否有可用的 USB 摄像头设备
+    ///     获取当前预览状态
+    /// </summary>
+    bool IsPreviewing { get; }
+
+    /// <summary>
+    ///     检查是否有可用的 USB 摄像头设备
     /// </summary>
     /// <returns>如果存在可用的 USB 摄像头设备返回 true，否则返回 false</returns>
     Task<bool> IsAvailableAsync();
 
     /// <summary>
-    /// 获取第一个有效的 USB 摄像头设备信息
+    ///     获取第一个有效的 USB 摄像头设备信息
     /// </summary>
     /// <returns>摄像头设备描述信息，如果没有可用设备则返回 null</returns>
     Task<string?> GetFirstAvailableDeviceAsync();
 
     /// <summary>
-    /// 启动摄像头预览
+    ///     启动摄像头预览
     /// </summary>
     /// <param name="frameCallback">帧数据回调函数，参数为图像字节数组、宽度、高度</param>
     /// <returns>是否成功启动</returns>
     Task<bool> StartPreviewAsync(Action<byte[], int, int> frameCallback);
 
     /// <summary>
-    /// 停止摄像头预览
+    ///     停止摄像头预览
     /// </summary>
     Task StopPreviewAsync();
 
     /// <summary>
-    /// 获取当前预览状态
-    /// </summary>
-    bool IsPreviewing { get; }
-
-    /// <summary>
-    /// 捕获当前预览帧
+    ///     捕获当前预览帧
     /// </summary>
     /// <returns>图像字节数组，如果失败则返回null</returns>
     Task<byte[]?> CaptureCurrentFrameAsync();
 }
 
 /// <summary>
-/// USB 摄像头服务实现
-/// 使用 FlashCap 库来检测和访问 USB 摄像头设备
+///     USB 摄像头服务实现
+///     使用 FlashCap 库来检测和访问 USB 摄像头设备
 /// </summary>
-public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDisposable
+public class UsbCameraService : IUsbCameraService, ISingletonDependency, IAsyncDisposable
 {
-    private readonly ILogger<UsbCameraService>? _logger;
-    private CaptureDevice? _currentDevice;
-    private CaptureDeviceDescriptor? _currentDescriptor;
-    private Action<byte[], int, int>? _frameCallback;
+    private readonly object _frameLockObject = new(); // 用于保护最后一帧数据的锁
     private readonly object _lockObject = new();
+    private readonly ILogger<UsbCameraService>? _logger;
+    private CaptureDeviceDescriptor? _currentDescriptor;
+    private CaptureDevice? _currentDevice;
+    private Action<byte[], int, int>? _frameCallback;
     private bool? _lastAvailabilityStatus; // 缓存上次的可用性状态，用于避免重复日志
     private byte[]? _lastFrameData; // 保存最后一帧数据，供拍照使用
-    private readonly object _frameLockObject = new(); // 用于保护最后一帧数据的锁
-
-    public bool IsPreviewing { get; private set; }
 
     public UsbCameraService(ILogger<UsbCameraService>? logger = null)
     {
@@ -68,7 +66,49 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
     }
 
     /// <summary>
-    /// 检查是否有可用的 USB 摄像头设备
+    ///     释放资源（实现 IAsyncDisposable）
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        // 先停止预览，确保资源正确释放
+        try
+        {
+            await StopPreviewAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "在 DisposeAsync 中停止预览时发生错误");
+        }
+
+        // 额外检查并释放设备（防止 StopPreviewAsync 失败时仍有资源未释放）
+        CaptureDevice? deviceToDispose = null;
+        lock (_lockObject)
+        {
+            deviceToDispose = _currentDevice;
+            _currentDevice = null;
+            _currentDescriptor = null;
+            _frameCallback = null;
+            IsPreviewing = false;
+            _lastFrameData = null;
+        }
+
+        if (deviceToDispose != null)
+            try
+            {
+                await deviceToDispose.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "释放 USB 摄像头设备时发生错误");
+            }
+
+        _logger?.LogDebug("USB 摄像头服务资源已释放");
+    }
+
+    public bool IsPreviewing { get; private set; }
+
+    /// <summary>
+    ///     检查是否有可用的 USB 摄像头设备
     /// </summary>
     public async Task<bool> IsAvailableAsync()
     {
@@ -85,7 +125,7 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
     }
 
     /// <summary>
-    /// 获取第一个有效的 USB 摄像头设备信息
+    ///     获取第一个有效的 USB 摄像头设备信息
     /// </summary>
     public async Task<string?> GetFirstAvailableDeviceAsync()
     {
@@ -98,7 +138,6 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
                 .ToList();
 
             foreach (var descriptor in descriptors)
-            {
                 try
                 {
                     // 检查设备是否有可用的特性
@@ -129,15 +168,14 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
                     {
                         _logger?.LogDebug("找到可用的 USB 摄像头设备: {DeviceInfo}", deviceInfo);
                     }
+
                     return deviceInfo;
                 }
                 catch (Exception ex)
                 {
                     _logger?.LogDebug(ex, "无法打开设备: {DeviceName}", descriptor.Name);
                     // 继续尝试下一个设备
-                    continue;
                 }
-            }
 
             // 只在状态改变时记录 Information 级别日志，避免重复日志
             if (_lastAvailabilityStatus != false)
@@ -149,6 +187,7 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
             {
                 _logger?.LogDebug("未找到可用的 USB 摄像头设备");
             }
+
             return null;
         }
         catch (Exception ex)
@@ -159,7 +198,7 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
     }
 
     /// <summary>
-    /// 启动摄像头预览
+    ///     启动摄像头预览
     /// </summary>
     public async Task<bool> StartPreviewAsync(Action<byte[], int, int> frameCallback)
     {
@@ -187,13 +226,9 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
 
             // 查找第一个可用的设备
             foreach (var descriptor in descriptors)
-            {
                 try
                 {
-                    if (descriptor.Characteristics == null || descriptor.Characteristics.Length == 0)
-                    {
-                        continue;
-                    }
+                    if (descriptor.Characteristics == null || descriptor.Characteristics.Length == 0) continue;
 
                     // 选择第一个特性
                     targetDescriptor = descriptor;
@@ -203,9 +238,7 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
                 catch (Exception ex)
                 {
                     _logger?.LogDebug(ex, "无法使用设备: {DeviceName}", descriptor.Name);
-                    continue;
                 }
-            }
 
             if (targetDescriptor == null || targetCharacteristics == null)
             {
@@ -238,11 +271,9 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
 
                             var callback = _frameCallback;
                             if (callback != null)
-                            {
                                 // 使用 VideoCharacteristics 中保存的宽度和高度
                                 // ExtractImage() 只返回字节数组，不包含尺寸信息
                                 callback(imageBytes, width, height);
-                            }
                         }
 
                         await Task.CompletedTask;
@@ -279,16 +310,13 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
     }
 
     /// <summary>
-    /// 停止摄像头预览
+    ///     停止摄像头预览
     /// </summary>
     public async Task StopPreviewAsync()
     {
         lock (_lockObject)
         {
-            if (!IsPreviewing)
-            {
-                return;
-            }
+            if (!IsPreviewing) return;
         }
 
         try
@@ -334,7 +362,7 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
     }
 
     /// <summary>
-    /// 捕获当前预览帧
+    ///     捕获当前预览帧
     /// </summary>
     public Task<byte[]?> CaptureCurrentFrameAsync()
     {
@@ -351,47 +379,5 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency,IAsyncDi
             Array.Copy(_lastFrameData, frameCopy, _lastFrameData.Length);
             return Task.FromResult<byte[]?>(frameCopy);
         }
-    }
-
-    /// <summary>
-    /// 释放资源（实现 IAsyncDisposable）
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        // 先停止预览，确保资源正确释放
-        try
-        {
-            await StopPreviewAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "在 DisposeAsync 中停止预览时发生错误");
-        }
-
-        // 额外检查并释放设备（防止 StopPreviewAsync 失败时仍有资源未释放）
-        CaptureDevice? deviceToDispose = null;
-        lock (_lockObject)
-        {
-            deviceToDispose = _currentDevice;
-            _currentDevice = null;
-            _currentDescriptor = null;
-            _frameCallback = null;
-            IsPreviewing = false;
-            _lastFrameData = null;
-        }
-
-        if (deviceToDispose != null)
-        {
-            try
-            {
-                await deviceToDispose.DisposeAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "释放 USB 摄像头设备时发生错误");
-            }
-        }
-
-        _logger?.LogDebug("USB 摄像头服务资源已释放");
     }
 }

@@ -13,7 +13,7 @@ public partial class ManualMatchEditWindow : Window
     private bool _isSaving;
 
     /// <summary>
-    /// 无参构造函数（用于设计器）
+    ///     无参构造函数（用于设计器）
     /// </summary>
     public ManualMatchEditWindow()
     {
@@ -21,7 +21,7 @@ public partial class ManualMatchEditWindow : Window
     }
 
     /// <summary>
-    /// 带参数构造函数
+    ///     带参数构造函数
     /// </summary>
     /// <param name="currentRecord">当前称重记录</param>
     /// <param name="matchedRecord">匹配的称重记录</param>
@@ -45,10 +45,7 @@ public partial class ManualMatchEditWindow : Window
     private async void OnConfirmButtonClick(object? sender, RoutedEventArgs e)
     {
         // 防止重复点击
-        if (_isSaving)
-        {
-            return;
-        }
+        if (_isSaving) return;
 
         if (_viewModel == null)
         {
@@ -58,10 +55,7 @@ public partial class ManualMatchEditWindow : Window
 
         // 禁用按钮防止重复点击
         _isSaving = true;
-        if (sender is Button button)
-        {
-            button.IsEnabled = false;
-        }
+        if (sender is Button button) button.IsEnabled = false;
 
         try
         {
@@ -77,20 +71,14 @@ public partial class ManualMatchEditWindow : Window
             {
                 // 如果保存失败，重新启用按钮
                 _isSaving = false;
-                if (sender is Button btn)
-                {
-                    btn.IsEnabled = true;
-                }
+                if (sender is Button btn) btn.IsEnabled = true;
             }
         }
         catch
         {
             // 如果出现异常，重新启用按钮
             _isSaving = false;
-            if (sender is Button btn)
-            {
-                btn.IsEnabled = true;
-            }
+            if (sender is Button btn) btn.IsEnabled = true;
 
             throw;
         }

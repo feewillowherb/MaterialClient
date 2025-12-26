@@ -1,18 +1,17 @@
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Volo.Abp.Domain.Entities;
 using MaterialClient.Common.Configuration;
+using Volo.Abp.Domain.Entities;
 
 namespace MaterialClient.Common.Entities;
 
 /// <summary>
-/// System settings entity
+///     System settings entity
 /// </summary>
 public class SettingsEntity : Entity<int>
 {
     /// <summary>
-    /// Constructor for EF Core
+    ///     Constructor for EF Core
     /// </summary>
     protected SettingsEntity()
     {
@@ -24,7 +23,7 @@ public class SettingsEntity : Entity<int>
     }
 
     /// <summary>
-    /// Constructor
+    ///     Constructor
     /// </summary>
     public SettingsEntity(
         ScaleSettings scaleSettings,
@@ -41,32 +40,32 @@ public class SettingsEntity : Entity<int>
     }
 
     /// <summary>
-    /// Scale settings JSON (serialized)
+    ///     Scale settings JSON (serialized)
     /// </summary>
     public string ScaleSettingsJson { get; set; } = string.Empty;
 
     /// <summary>
-    /// Document scanner config JSON (serialized)
+    ///     Document scanner config JSON (serialized)
     /// </summary>
     public string DocumentScannerConfigJson { get; set; } = string.Empty;
 
     /// <summary>
-    /// System settings JSON (serialized)
+    ///     System settings JSON (serialized)
     /// </summary>
     public string SystemSettingsJson { get; set; } = string.Empty;
 
     /// <summary>
-    /// Camera configs JSON (serialized list)
+    ///     Camera configs JSON (serialized list)
     /// </summary>
     public string CameraConfigsJson { get; set; } = string.Empty;
 
     /// <summary>
-    /// License plate recognition configs JSON (serialized list)
+    ///     License plate recognition configs JSON (serialized list)
     /// </summary>
     public string LicensePlateRecognitionConfigsJson { get; set; } = string.Empty;
 
     /// <summary>
-    /// Scale settings (deserialized)
+    ///     Scale settings (deserialized)
     /// </summary>
     [JsonIgnore]
     public ScaleSettings ScaleSettings
@@ -85,14 +84,11 @@ public class SettingsEntity : Entity<int>
                 return new ScaleSettings();
             }
         }
-        set
-        {
-            ScaleSettingsJson = JsonSerializer.Serialize(value);
-        }
+        set => ScaleSettingsJson = JsonSerializer.Serialize(value);
     }
 
     /// <summary>
-    /// Document scanner config (deserialized)
+    ///     Document scanner config (deserialized)
     /// </summary>
     [JsonIgnore]
     public DocumentScannerConfig DocumentScannerConfig
@@ -104,21 +100,19 @@ public class SettingsEntity : Entity<int>
 
             try
             {
-                return JsonSerializer.Deserialize<DocumentScannerConfig>(DocumentScannerConfigJson) ?? new DocumentScannerConfig();
+                return JsonSerializer.Deserialize<DocumentScannerConfig>(DocumentScannerConfigJson) ??
+                       new DocumentScannerConfig();
             }
             catch
             {
                 return new DocumentScannerConfig();
             }
         }
-        set
-        {
-            DocumentScannerConfigJson = JsonSerializer.Serialize(value);
-        }
+        set => DocumentScannerConfigJson = JsonSerializer.Serialize(value);
     }
 
     /// <summary>
-    /// System settings (deserialized)
+    ///     System settings (deserialized)
     /// </summary>
     [JsonIgnore]
     public SystemSettings SystemSettings
@@ -137,14 +131,11 @@ public class SettingsEntity : Entity<int>
                 return new SystemSettings();
             }
         }
-        set
-        {
-            SystemSettingsJson = JsonSerializer.Serialize(value);
-        }
+        set => SystemSettingsJson = JsonSerializer.Serialize(value);
     }
 
     /// <summary>
-    /// Camera configs (deserialized list)
+    ///     Camera configs (deserialized list)
     /// </summary>
     [JsonIgnore]
     public List<CameraConfig> CameraConfigs
@@ -163,14 +154,11 @@ public class SettingsEntity : Entity<int>
                 return new List<CameraConfig>();
             }
         }
-        set
-        {
-            CameraConfigsJson = JsonSerializer.Serialize(value);
-        }
+        set => CameraConfigsJson = JsonSerializer.Serialize(value);
     }
 
     /// <summary>
-    /// License plate recognition configs (deserialized list)
+    ///     License plate recognition configs (deserialized list)
     /// </summary>
     [JsonIgnore]
     public List<LicensePlateRecognitionConfig> LicensePlateRecognitionConfigs
@@ -182,16 +170,14 @@ public class SettingsEntity : Entity<int>
 
             try
             {
-                return JsonSerializer.Deserialize<List<LicensePlateRecognitionConfig>>(LicensePlateRecognitionConfigsJson) ?? new List<LicensePlateRecognitionConfig>();
+                return JsonSerializer.Deserialize<List<LicensePlateRecognitionConfig>>(
+                    LicensePlateRecognitionConfigsJson) ?? new List<LicensePlateRecognitionConfig>();
             }
             catch
             {
                 return new List<LicensePlateRecognitionConfig>();
             }
         }
-        set
-        {
-            LicensePlateRecognitionConfigsJson = JsonSerializer.Serialize(value);
-        }
+        set => LicensePlateRecognitionConfigsJson = JsonSerializer.Serialize(value);
     }
 }

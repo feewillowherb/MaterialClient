@@ -3,21 +3,18 @@ using System.Text.RegularExpressions;
 namespace MaterialClient.Common.Providers;
 
 /// <summary>
-/// 车牌号验证提供者
+///     车牌号验证提供者
 /// </summary>
 public static class PlateNumberValidator
 {
     /// <summary>
-    /// 验证指定的车牌号是否为有效的中国车牌号
+    ///     验证指定的车牌号是否为有效的中国车牌号
     /// </summary>
     /// <param name="plateNumber">要验证的车牌号</param>
     /// <returns>如果车牌号有效返回true，否则返回false</returns>
     public static bool IsValidChinesePlateNumber(string? plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return false;
 
         // 移除空格
         var normalizedPlateNumber = plateNumber.Trim();
@@ -29,16 +26,13 @@ public static class PlateNumberValidator
     }
 
     /// <summary>
-    /// 验证是否为普通车牌
+    ///     验证是否为普通车牌
     /// </summary>
     /// <param name="plateNumber">车牌号</param>
     /// <returns>如果是普通车牌返回true，否则返回false</returns>
     public static bool IsNormalPlate(string plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return false;
 
         // 普通车牌格式：省份简称 + 字母 + 5位数字/字母组合（7位）
         // 例如：京A12345、粤B88888
@@ -48,16 +42,13 @@ public static class PlateNumberValidator
     }
 
     /// <summary>
-    /// 验证是否为新能源车牌
+    ///     验证是否为新能源车牌
     /// </summary>
     /// <param name="plateNumber">车牌号</param>
     /// <returns>如果是新能源车牌返回true，否则返回false</returns>
     public static bool IsNewEnergyPlate(string plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return false;
 
         // 新能源车牌格式：省份简称 + 字母 + 6位数字/字母组合（8位）
         // 小型新能源车：第6位为D或F，例如：京AD12345
@@ -67,16 +58,13 @@ public static class PlateNumberValidator
     }
 
     /// <summary>
-    /// 验证是否为武警车牌
+    ///     验证是否为武警车牌
     /// </summary>
     /// <param name="plateNumber">车牌号</param>
     /// <returns>如果是武警车牌返回true，否则返回false</returns>
     public static bool IsPolicePlate(string plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return false;
 
         // 武警车牌：WJ + 省份简称 + 4位数字 + 1位字母/数字（8位）
         // 例如：WJ京0001警
@@ -85,39 +73,27 @@ public static class PlateNumberValidator
     }
 
     /// <summary>
-    /// 获取车牌号类型描述
+    ///     获取车牌号类型描述
     /// </summary>
     /// <param name="plateNumber">车牌号</param>
     /// <returns>车牌类型描述</returns>
     public static string GetPlateType(string? plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return "无效车牌";
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return "无效车牌";
 
         var normalized = plateNumber.Trim();
 
-        if (IsNewEnergyPlate(normalized))
-        {
-            return "新能源车牌";
-        }
+        if (IsNewEnergyPlate(normalized)) return "新能源车牌";
 
-        if (IsNormalPlate(normalized))
-        {
-            return "普通车牌";
-        }
+        if (IsNormalPlate(normalized)) return "普通车牌";
 
-        if (IsPolicePlate(normalized))
-        {
-            return "武警车牌";
-        }
+        if (IsPolicePlate(normalized)) return "武警车牌";
 
         return "无效车牌";
     }
 
     /// <summary>
-    /// 获取支持的所有省份简称
+    ///     获取支持的所有省份简称
     /// </summary>
     /// <returns>省份简称数组</returns>
     public static string[] GetSupportedProvinces()
@@ -133,18 +109,14 @@ public static class PlateNumberValidator
     }
 
     /// <summary>
-    /// 格式化车牌号（移除空格，转换为大写）
+    ///     格式化车牌号（移除空格，转换为大写）
     /// </summary>
     /// <param name="plateNumber">车牌号</param>
     /// <returns>格式化后的车牌号</returns>
     public static string? NormalizePlateNumber(string? plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return null;
 
         return plateNumber.Trim().ToUpper();
     }
 }
-

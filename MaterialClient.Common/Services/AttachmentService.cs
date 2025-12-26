@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Configuration;
@@ -20,12 +15,12 @@ using Volo.Abp.Uow;
 namespace MaterialClient.Common.Services;
 
 /// <summary>
-/// 附件服务接口
+///     附件服务接口
 /// </summary>
 public interface IAttachmentService
 {
     /// <summary>
-    /// 批量查询称重记录的附件
+    ///     批量查询称重记录的附件
     /// </summary>
     /// <param name="weighingRecordIds">称重记录ID列表</param>
     /// <returns>字典，key为称重记录ID，value为附件文件列表</returns>
@@ -33,57 +28,57 @@ public interface IAttachmentService
         IEnumerable<long> weighingRecordIds);
 
     /// <summary>
-    /// 批量查询运单的附件
+    ///     批量查询运单的附件
     /// </summary>
     /// <param name="waybillIds">运单ID列表</param>
     /// <returns>字典，key为运单ID，value为附件文件列表</returns>
     Task<Dictionary<long, List<AttachmentFile>>> GetAttachmentsByWaybillIdsAsync(IEnumerable<long> waybillIds);
 
     /// <summary>
-    /// 根据列表项获取附件（统一接口，自动根据 ItemType 路由）
+    ///     根据列表项获取附件（统一接口，自动根据 ItemType 路由）
     /// </summary>
     /// <param name="item">列表项</param>
     /// <returns>附件文件列表</returns>
     Task<List<AttachmentFile>> GetAttachmentsByListItemAsync(WeighingListItemDto item);
 
     /// <summary>
-    /// 创建或替换指定列表项的 BillPhoto 附件
+    ///     创建或替换指定列表项的 BillPhoto 附件
     /// </summary>
     /// <param name="listItem">列表项</param>
     /// <param name="photoPath">照片文件路径</param>
     Task CreateOrReplaceBillPhotoAsync(WeighingListItemDto listItem, string photoPath);
 
     /// <summary>
-    /// 同步指定运单的附件到OSS
+    ///     同步指定运单的附件到OSS
     /// </summary>
     /// <param name="waybillId">运单ID</param>
     Task SyncWaybillAttachmentsToOssAsync(long waybillId);
 
     /// <summary>
-    /// 批量同步已推送运单的附件到OSS（使用关联查询）
+    ///     批量同步已推送运单的附件到OSS（使用关联查询）
     /// </summary>
     Task SyncPendingAttachmentsToOssAsync();
 }
 
 /// <summary>
-/// 附件服务实现
+///     附件服务实现
 /// </summary>
 [AutoConstructor]
 public partial class AttachmentService : IAttachmentService, ITransientDependency
 {
-    private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
-    private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
-    private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
     private readonly ILogger<AttachmentService>? _logger;
-    private readonly IOssUploadService _ossUploadService;
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IOptions<AliyunOssConfig> _ossConfig;
+    private readonly IOssUploadService _ossUploadService;
+    private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
+    private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
 
 
     /// <summary>
-    /// 批量查询称重记录的附件
+    ///     批量查询称重记录的附件
     /// </summary>
     [DisableEntityChangeTracking]
     public async Task<Dictionary<long, List<AttachmentFile>>> GetAttachmentsByWeighingRecordIdsAsync(
@@ -96,16 +91,13 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             return result;
 
         // 初始化所有ID的空列表
-        foreach (var id in idList)
-        {
-            result[id] = new List<AttachmentFile>();
-        }
+        foreach (var id in idList) result[id] = new List<AttachmentFile>();
 
         try
         {
             // 批量查询关联记录
             var attachments = await _weighingRecordAttachmentRepository.GetListAsync(
-                predicate: x => idList.Contains(x.WeighingRecordId)
+                x => idList.Contains(x.WeighingRecordId)
             );
 
             if (attachments.Count == 0)
@@ -116,7 +108,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 批量查询附件文件
             var attachmentFiles = await _attachmentFileRepository.GetListAsync(
-                predicate: x => attachmentFileIds.Contains(x.Id)
+                x => attachmentFileIds.Contains(x.Id)
             );
 
             // 构建附件文件ID到实体的映射
@@ -124,12 +116,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 填充结果
             foreach (var attachment in attachments)
-            {
                 if (fileDict.TryGetValue(attachment.AttachmentFileId, out var file))
-                {
                     result[attachment.WeighingRecordId].Add(file);
-                }
-            }
         }
         catch
         {
@@ -140,7 +128,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     }
 
     /// <summary>
-    /// 批量查询运单的附件
+    ///     批量查询运单的附件
     /// </summary>
     [DisableEntityChangeTracking]
     public async Task<Dictionary<long, List<AttachmentFile>>> GetAttachmentsByWaybillIdsAsync(
@@ -153,16 +141,13 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             return result;
 
         // 初始化所有ID的空列表
-        foreach (var id in idList)
-        {
-            result[id] = new List<AttachmentFile>();
-        }
+        foreach (var id in idList) result[id] = new List<AttachmentFile>();
 
         try
         {
             // 批量查询关联记录
             var attachments = await _waybillAttachmentRepository.GetListAsync(
-                predicate: x => idList.Contains(x.WaybillId)
+                x => idList.Contains(x.WaybillId)
             );
 
             if (attachments.Count == 0)
@@ -173,7 +158,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 批量查询附件文件
             var attachmentFiles = await _attachmentFileRepository.GetListAsync(
-                predicate: x => attachmentFileIds.Contains(x.Id)
+                x => attachmentFileIds.Contains(x.Id)
             );
 
             // 构建附件文件ID到实体的映射
@@ -181,12 +166,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 填充结果
             foreach (var attachment in attachments)
-            {
                 if (fileDict.TryGetValue(attachment.AttachmentFileId, out var file))
-                {
                     result[attachment.WaybillId].Add(file);
-                }
-            }
         }
         catch
         {
@@ -197,7 +178,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     }
 
     /// <summary>
-    /// 根据列表项获取附件（统一接口，自动根据 ItemType 路由）
+    ///     根据列表项获取附件（统一接口，自动根据 ItemType 路由）
     /// </summary>
     [DisableEntityChangeTracking]
     public async Task<List<AttachmentFile>> GetAttachmentsByListItemAsync(WeighingListItemDto item)
@@ -207,7 +188,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             var result = await GetAttachmentsByWeighingRecordIdsAsync(new[] { item.Id });
             return result.TryGetValue(item.Id, out var files) ? files : new List<AttachmentFile>();
         }
-        else if (item.ItemType == WeighingListItemType.Waybill)
+
+        if (item.ItemType == WeighingListItemType.Waybill)
         {
             var result = await GetAttachmentsByWaybillIdsAsync(new[] { item.Id });
             return result.TryGetValue(item.Id, out var files) ? files : new List<AttachmentFile>();
@@ -217,7 +199,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     }
 
     /// <summary>
-    /// 创建或替换指定列表项的 BillPhoto 附件
+    ///     创建或替换指定列表项的 BillPhoto 附件
     /// </summary>
     [UnitOfWork]
     public async Task CreateOrReplaceBillPhotoAsync(WeighingListItemDto listItem, string photoPath)
@@ -241,21 +223,17 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                 if (listItem.ItemType == WeighingListItemType.WeighingRecord)
                 {
                     var existingRecordAttachments = await _weighingRecordAttachmentRepository.GetListAsync(
-                        predicate: ra =>
+                        ra =>
                             ra.WeighingRecordId == listItem.Id && ra.AttachmentFileId == existingTicketPhoto.Id);
                     foreach (var recordAttachment in existingRecordAttachments)
-                    {
                         await _weighingRecordAttachmentRepository.DeleteAsync(recordAttachment);
-                    }
                 }
                 else if (listItem.ItemType == WeighingListItemType.Waybill)
                 {
                     var existingWaybillAttachments = await _waybillAttachmentRepository.GetListAsync(
-                        predicate: wa => wa.WaybillId == listItem.Id && wa.AttachmentFileId == existingTicketPhoto.Id);
+                        wa => wa.WaybillId == listItem.Id && wa.AttachmentFileId == existingTicketPhoto.Id);
                     foreach (var waybillAttachment in existingWaybillAttachments)
-                    {
                         await _waybillAttachmentRepository.DeleteAsync(waybillAttachment);
-                    }
                 }
 
                 // 删除AttachmentFile
@@ -291,7 +269,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     }
 
     /// <summary>
-    /// 同步指定运单的附件到OSS
+    ///     同步指定运单的附件到OSS
     /// </summary>
     [UnitOfWork]
     public async Task SyncWaybillAttachmentsToOssAsync(long waybillId)
@@ -300,7 +278,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
         {
             // 查询运单的所有附件
             var attachments = await _waybillAttachmentRepository.GetListAsync(
-                predicate: x => x.WaybillId == waybillId
+                x => x.WaybillId == waybillId
             );
 
             if (attachments.Count == 0)
@@ -314,9 +292,9 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 查询附件文件，只选择未上传的（OssFullPath == null）且本地文件存在的
             var attachmentFiles = await _attachmentFileRepository.GetListAsync(
-                predicate: x => attachmentFileIds.Contains(x.Id)
-                                && x.OssFullPath == null
-                                && !string.IsNullOrWhiteSpace(x.LocalPath)
+                x => attachmentFileIds.Contains(x.Id)
+                     && x.OssFullPath == null
+                     && !string.IsNullOrWhiteSpace(x.LocalPath)
             );
 
             // 过滤掉本地文件不存在的
@@ -359,7 +337,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     }
 
     /// <summary>
-    /// 批量同步已推送运单的附件到OSS（使用关联查询）
+    ///     批量同步已推送运单的附件到OSS（使用关联查询）
     /// </summary>
     [UnitOfWork]
     public async Task SyncPendingAttachmentsToOssAsync()
@@ -423,9 +401,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             var proId = licenseInfo?.ProjectId.ToString();
 
             if (string.IsNullOrWhiteSpace(proId))
-            {
                 _logger?.LogWarning("SyncPendingAttachmentsToOssAsync: 未找到许可证信息，跳过附件信息上传到服务器");
-            }
 
             foreach (var kvp in uploadResults)
             {
@@ -440,7 +416,6 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
                     // 上传附件信息到服务器
                     if (!string.IsNullOrWhiteSpace(proId) && !string.IsNullOrWhiteSpace(kvp.Value))
-                    {
                         try
                         {
                             await UploadAttachmentInfoToServerAsync(
@@ -456,7 +431,6 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                                 attachment.Id, attachmentWithWaybill.WaybillId);
                             // 不抛出异常，继续处理下一个附件
                         }
-                    }
                 }
             }
 
@@ -472,7 +446,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     }
 
     /// <summary>
-    /// 上传附件信息到服务器
+    ///     上传附件信息到服务器
     /// </summary>
     private async Task UploadAttachmentInfoToServerAsync(
         AttachmentFile attachment,
@@ -523,17 +497,13 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             var result = await _materialPlatformApi.UpdateAttachesAsync(request);
 
             if (result?.Success == true)
-            {
                 _logger?.LogInformation(
                     "UploadAttachmentInfoToServerAsync: 附件信息上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
                     attachment.Id, waybillId);
-            }
             else
-            {
                 _logger?.LogWarning(
                     "UploadAttachmentInfoToServerAsync: 附件信息上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, Error={Error}",
                     attachment.Id, waybillId, result?.Msg ?? "未知错误");
-            }
         }
         catch (Exception ex)
         {
@@ -545,7 +515,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     }
 
     /// <summary>
-    /// 从OSS完整URL中提取BucketKey
+    ///     从OSS完整URL中提取BucketKey
     /// </summary>
     /// <param name="ossFullPath">OSS完整URL，格式：https://{bucketName}.{regionId}/{bucketKey}</param>
     /// <returns>BucketKey，如果提取失败返回null</returns>
@@ -563,10 +533,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             var path = uri.AbsolutePath;
 
             // 去掉开头的斜杠
-            if (path.StartsWith("/"))
-            {
-                path = path.Substring(1);
-            }
+            if (path.StartsWith("/")) path = path.Substring(1);
 
             return path;
         }

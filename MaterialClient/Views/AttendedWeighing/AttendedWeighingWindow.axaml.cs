@@ -6,8 +6,8 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MaterialClient.ViewModels;
 using MaterialClient.Backgrounds;
+using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -15,13 +15,10 @@ namespace MaterialClient.Views.AttendedWeighing;
 
 public partial class AttendedWeighingWindow : Window
 {
-    private WindowNotificationManager? _notificationManager;
+    private readonly IServiceProvider? _serviceProvider;
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
-    private readonly IServiceProvider? _serviceProvider;
     private AttendedWeighingDetailView? _warmupDetailView;
-
-    public WindowNotificationManager? NotificationManager => _notificationManager;
 
     public AttendedWeighingWindow(AttendedWeighingViewModel viewModel, IServiceProvider? serviceProvider = null)
     {
@@ -31,46 +28,39 @@ public partial class AttendedWeighingWindow : Window
 
         // Set PlacementTarget for Popup
         if (CameraStatusPopup != null && CameraStatusPanel != null)
-        {
             CameraStatusPopup.PlacementTarget = CameraStatusPanel;
-        }
 
         // 窗口打开时启动轮询后台服务和创建 NotificationManager
         Opened += AttendedWeighingWindow_Opened;
     }
 
+    public WindowNotificationManager? NotificationManager { get; private set; }
+
     private async void AttendedWeighingWindow_Opened(object? sender, EventArgs e)
     {
         // 创建 WindowNotificationManager（窗口打开后才能获取 TopLevel）
-        if (_notificationManager == null)
+        if (NotificationManager == null)
         {
-            var topLevel = TopLevel.GetTopLevel(this);
+            var topLevel = GetTopLevel(this);
             if (topLevel != null)
-            {
-                _notificationManager = new WindowNotificationManager(topLevel)
+                NotificationManager = new WindowNotificationManager(topLevel)
                 {
                     Position = NotificationPosition.TopCenter,
                     MaxItems = 3
                 };
-            }
         }
 
         if (_serviceProvider != null)
-        {
             try
             {
                 var pollingService = _serviceProvider.GetService<PollingBackgroundService>();
-                if (pollingService != null)
-                {
-                    await pollingService.StartAsync(CancellationToken.None);
-                }
+                if (pollingService != null) await pollingService.StartAsync(CancellationToken.None);
             }
             catch (Exception ex)
             {
                 var logger = _serviceProvider?.GetService<ILogger<AttendedWeighingWindow>>();
                 logger?.LogError(ex, "启动轮询后台服务失败");
             }
-        }
 
         // 预热 DetailView：在空闲时创建一次以初始化样式和模板
         Dispatcher.UIThread.Post(() =>
@@ -95,10 +85,7 @@ public partial class AttendedWeighingWindow : Window
         _closePopupCts?.Cancel();
         _closePopupCts = null;
 
-        if (CameraStatusPopup != null)
-        {
-            CameraStatusPopup.IsOpen = true;
-        }
+        if (CameraStatusPopup != null) CameraStatusPopup.IsOpen = true;
     }
 
     private async void CameraStatusPanel_OnPointerExited(object? sender, PointerEventArgs e)
@@ -114,10 +101,7 @@ public partial class AttendedWeighingWindow : Window
                 // Wait a bit to allow mouse to move to popup
                 await Task.Delay(150, _closePopupCts.Token);
                 // Only close if mouse is still not over popup
-                if (!_isMouseOverPopup && CameraStatusPopup != null)
-                {
-                    CameraStatusPopup.IsOpen = false;
-                }
+                if (!_isMouseOverPopup && CameraStatusPopup != null) CameraStatusPopup.IsOpen = false;
             }
             catch (TaskCanceledException)
             {
@@ -147,10 +131,7 @@ public partial class AttendedWeighingWindow : Window
         {
             await Task.Delay(150, _closePopupCts.Token);
             // Only close if mouse is still not over popup
-            if (!_isMouseOverPopup && CameraStatusPopup != null)
-            {
-                CameraStatusPopup.IsOpen = false;
-            }
+            if (!_isMouseOverPopup && CameraStatusPopup != null) CameraStatusPopup.IsOpen = false;
         }
         catch (TaskCanceledException)
         {
@@ -160,10 +141,7 @@ public partial class AttendedWeighingWindow : Window
 
     private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e);
     }
 
     private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
@@ -183,10 +161,7 @@ public partial class AttendedWeighingWindow : Window
         // 不需要手动停止 PollingBackgroundService
         // ABP 框架会在应用退出时自动停止所有 BackgroundWorker
 
-        if (DataContext is IDisposable disposable)
-        {
-            disposable.Dispose();
-        }
+        if (DataContext is IDisposable disposable) disposable.Dispose();
 
         base.OnClosed(e);
     }

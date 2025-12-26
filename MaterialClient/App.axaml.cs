@@ -1,22 +1,18 @@
-using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core;
-using Avalonia.Data.Core.Plugins;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
-using MaterialClient.ViewModels;
-using MaterialClient.Views;
 using MaterialClient.Services;
-using Volo.Abp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Volo.Abp;
 
 namespace MaterialClient;
 
-public partial class App : Application
+public class App : Application
 {
     private IAbpApplicationWithInternalServiceProvider? _abpApplication;
     private MinimalWebHostService? _webHostService;
@@ -68,7 +64,7 @@ public partial class App : Application
                 {
                     desktop.MainWindow = mainWindow;
                     mainWindow.Show();
-                    
+
                     // Register exit handler
                     desktop.Exit += OnApplicationExit;
                 }
@@ -95,10 +91,7 @@ public partial class App : Application
         Task.Run(async () =>
         {
             // Dispose Web Host service (will stop it if running)
-            if (_webHostService != null)
-            {
-                await _webHostService.DisposeAsync();
-            }
+            if (_webHostService != null) await _webHostService.DisposeAsync();
 
             // Shutdown ABP application
             if (_abpApplication != null)
@@ -116,9 +109,6 @@ public partial class App : Application
             BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
 
         // remove each entry found
-        foreach (var plugin in dataValidationPluginsToRemove)
-        {
-            BindingPlugins.DataValidators.Remove(plugin);
-        }
+        foreach (var plugin in dataValidationPluginsToRemove) BindingPlugins.DataValidators.Remove(plugin);
     }
 }

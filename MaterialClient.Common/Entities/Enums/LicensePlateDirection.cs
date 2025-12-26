@@ -1,17 +1,17 @@
 namespace MaterialClient.Common.Entities.Enums;
 
 /// <summary>
-/// License plate recognition direction enum
+///     License plate recognition direction enum
 /// </summary>
 public enum LicensePlateDirection
 {
     /// <summary>
-    /// In direction
+    ///     In direction
     /// </summary>
     In = 0,
 
     /// <summary>
-    /// Out direction
+    ///     Out direction
     /// </summary>
     Out = 1
 }

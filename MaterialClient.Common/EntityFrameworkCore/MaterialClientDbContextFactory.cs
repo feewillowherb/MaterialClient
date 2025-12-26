@@ -19,4 +19,3 @@ public class MaterialClientDbContextFactory : IDesignTimeDbContextFactory<Materi
         return new MaterialClientDbContext(optionsBuilder.Options);
     }
 }
-

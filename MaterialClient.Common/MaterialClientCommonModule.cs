@@ -1,26 +1,20 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Volo.Abp.Modularity;
-using Volo.Abp.EntityFrameworkCore;
-using Volo.Abp.EntityFrameworkCore.Sqlite;
-using Volo.Abp.Uow;
-using MaterialClient.EFCore;
-using MaterialClient.Common.Services.Hikvision;
-using MaterialClient.Common.Services.Hardware;
-using MaterialClient.Common.Services.Authentication;
-using MaterialClient.Common.Services;
+using System.Text;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Configuration;
-using Refit;
+using MaterialClient.EFCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Polly;
-using System;
-using System.IO;
-using System.Threading.Tasks;
-using Volo.Abp;
+using Refit;
 using Serilog;
 using Serilog.Events;
+using Volo.Abp;
+using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore.Sqlite;
+using Volo.Abp.Modularity;
+using Volo.Abp.Uow;
 using Yitter.IdGenerator;
 
 namespace MaterialClient.Common;
@@ -43,7 +37,7 @@ public class MaterialClientCommonModule : AbpModule
         services.AddAbpDbContext<MaterialClientDbContext>(options =>
         {
             // Enable default repositories for all entities
-            options.AddDefaultRepositories(includeAllEntities: true);
+            options.AddDefaultRepositories(true);
         });
 
         // Configure SQLite connection from configuration
@@ -72,8 +66,8 @@ public class MaterialClientCommonModule : AbpModule
             })
             .AddTransientHttpErrorPolicy(policy =>
                 policy.WaitAndRetryAsync(
-                    retryCount: 3,
-                    sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                    3,
+                    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
                 ));
 
         // Register Material Platform Refit API Client with bearer token handler
@@ -91,8 +85,8 @@ public class MaterialClientCommonModule : AbpModule
             .AddHttpMessageHandler<MaterialPlatformBearerTokenHandler>()
             .AddTransientHttpErrorPolicy(policy =>
                 policy.WaitAndRetryAsync(
-                    retryCount: 3,
-                    sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                    3,
+                    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
                 ));
 
         var options = new IdGeneratorOptions(1);
@@ -111,10 +105,7 @@ public class MaterialClientCommonModule : AbpModule
         var logsDirectory = Path.Combine(appDirectory, "Logs");
 
         // 确保 Logs 目录存在
-        if (!Directory.Exists(logsDirectory))
-        {
-            Directory.CreateDirectory(logsDirectory);
-        }
+        if (!Directory.Exists(logsDirectory)) Directory.CreateDirectory(logsDirectory);
 
         // 配置日志文件路径，按日期滚动
         var logFilePath = Path.Combine(logsDirectory, "MaterialClient-.log");
@@ -133,11 +124,11 @@ public class MaterialClientCommonModule : AbpModule
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", ParseLogEventLevel(efCoreLevel))
             .MinimumLevel.Override("Volo.Abp", ParseLogEventLevel(abpLevel))
             .WriteTo.File(
-                path: logFilePath,
+                logFilePath,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 30,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
-                encoding: System.Text.Encoding.UTF8);
+                encoding: Encoding.UTF8);
 
         Log.Logger = loggerConfig.CreateLogger();
 
@@ -156,7 +147,7 @@ public class MaterialClientCommonModule : AbpModule
 
     private LogEventLevel ParseLogEventLevel(string level)
     {
-        return Enum.TryParse<LogEventLevel>(level, ignoreCase: true, out var result)
+        return Enum.TryParse<LogEventLevel>(level, true, out var result)
             ? result
             : LogEventLevel.Information;
     }
@@ -170,7 +161,7 @@ public class MaterialClientCommonModule : AbpModule
             var dbContextProvider =
                 context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
 
-            using var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false);
+            using var uow = unitOfWorkManager.Begin(true, false);
             await using var dbContext = await dbContextProvider.GetDbContextAsync();
             await dbContext.Database.MigrateAsync();
             await uow.CompleteAsync();

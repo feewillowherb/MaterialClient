@@ -2,29 +2,29 @@
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using MaterialClient.Common.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MaterialClient.Common.Services;
 
 namespace MaterialClient.Services;
 
 /// <summary>
-/// Web Host 服务，负责启动和管理 Web API 服务
-/// 与桌面应用共享同一个 ServiceProvider 和 DbContext
+///     Web Host 服务，负责启动和管理 Web API 服务
+///     与桌面应用共享同一个 ServiceProvider 和 DbContext
 /// </summary>
 public class MinimalWebHostService : IAsyncDisposable
 {
-    private WebApplication? _webApplication;
-    private bool _isRunning;
+    private readonly IConfiguration _configuration;
     private readonly Lock _lock = new();
     private readonly IServiceProvider _sharedServiceProvider;
-    private readonly IConfiguration _configuration;
+    private bool _isRunning;
+    private WebApplication? _webApplication;
 
     /// <summary>
-    /// 构造函数，注入共享的服务提供者
+    ///     构造函数，注入共享的服务提供者
     /// </summary>
     /// <param name="serviceProvider">来自桌面应用的共享服务提供者</param>
     /// <param name="configuration">应用配置</param>
@@ -35,16 +35,32 @@ public class MinimalWebHostService : IAsyncDisposable
     }
 
     /// <summary>
-    /// 启动 Web Host
+    ///     获取 Web Host 运行状态
+    /// </summary>
+    public bool IsRunning
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _isRunning;
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_webApplication != null) await StopAsync();
+    }
+
+    /// <summary>
+    ///     启动 Web Host
     /// </summary>
     public async Task StartAsync()
     {
         lock (_lock)
         {
-            if (_isRunning)
-            {
-                throw new InvalidOperationException("Web Host is already running");
-            }
+            if (_isRunning) throw new InvalidOperationException("Web Host is already running");
 
             _isRunning = true;
         }
@@ -86,7 +102,7 @@ public class MinimalWebHostService : IAsyncDisposable
     }
 
     /// <summary>
-    /// 停止 Web Host
+    ///     停止 Web Host
     /// </summary>
     public async Task StopAsync()
     {
@@ -116,29 +132,7 @@ public class MinimalWebHostService : IAsyncDisposable
     }
 
     /// <summary>
-    /// 获取 Web Host 运行状态
-    /// </summary>
-    public bool IsRunning
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _isRunning;
-            }
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_webApplication != null)
-        {
-            await StopAsync();
-        }
-    }
-
-    /// <summary>
-    /// 配置 API 端点
+    ///     配置 API 端点
     /// </summary>
     private void ConfigureEndpoints(WebApplication app)
     {
@@ -205,7 +199,7 @@ public class MinimalWebHostService : IAsyncDisposable
     #region 海康威视车牌识别数据模型
 
     /// <summary>
-    /// 海康威视车牌识别回调数据模型
+    ///     海康威视车牌识别回调数据模型
     /// </summary>
     private record HikVisionPlateCallback(
         [property: JsonPropertyName("AlarmInfoPlate")]
@@ -213,7 +207,7 @@ public class MinimalWebHostService : IAsyncDisposable
     );
 
     /// <summary>
-    /// 报警信息
+    ///     报警信息
     /// </summary>
     private record AlarmInfoPlate(
         [property: JsonPropertyName("channel")]
@@ -225,7 +219,7 @@ public class MinimalWebHostService : IAsyncDisposable
     );
 
     /// <summary>
-    /// 车牌结果包装
+    ///     车牌结果包装
     /// </summary>
     private record PlateResultWrapper(
         [property: JsonPropertyName("PlateResult")]
@@ -233,7 +227,7 @@ public class MinimalWebHostService : IAsyncDisposable
     );
 
     /// <summary>
-    /// 车牌结果
+    ///     车牌结果
     /// </summary>
     private record PlateResult(
         [property: JsonPropertyName("license")]

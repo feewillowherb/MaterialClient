@@ -14,31 +14,31 @@
         Background="Transparent"
         TransparencyLevelHint="None"
         Icon="/Assets/fd-ico.ico">
-    
+
     <Design.DataContext>
         <vm:LoginWindowViewModel />
     </Design.DataContext>
 
     <Grid>
         <!-- Main Border with Rounded Corners -->
-        <Border BorderBrush="Gray" 
-                BorderThickness="1" 
-                CornerRadius="15" 
-                Background="White"/>
-        
+        <Border BorderBrush="Gray"
+                BorderThickness="1"
+                CornerRadius="15"
+                Background="White" />
+
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="540"/>
-                <ColumnDefinition Width="540"/>
+                <ColumnDefinition Width="540" />
+                <ColumnDefinition Width="540" />
             </Grid.ColumnDefinitions>
-            
+
             <!-- Left Panel with Image -->
             <Grid Grid.Column="0">
-                <Image Source="/Assets/login-left.png" 
+                <Image Source="/Assets/login-left.png"
                        Stretch="UniformToFill"
-                       Width="540"/>
+                       Width="540" />
             </Grid>
-            
+
             <!-- Right Panel with Login Form -->
             <Grid Grid.Column="1">
                 <StackPanel Orientation="Vertical">
@@ -51,33 +51,33 @@
                             Height="54"
                             Width="54"
                             Click="OnCloseButtonClick"
-                            Cursor="Hand"/>
-                    
+                            Cursor="Hand" />
+
                     <!-- Logo and Title -->
-                    <StackPanel Orientation="Horizontal" 
-                               HorizontalAlignment="Center"
-                               Margin="0,50,0,50">
-                        <Image Source="/Assets/fd-ico.ico" 
-                               Width="44" 
-                               Margin="0,0,8,0"/>
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Margin="0,50,0,50">
+                        <Image Source="/Assets/fd-ico.ico"
+                               Width="44"
+                               Margin="0,0,8,0" />
                         <StackPanel Margin="0,-1,0,0">
                             <TextBlock Text="凡东智能物料验收系统"
-                                      FontSize="24"
-                                      HorizontalAlignment="Center"
-                                      Margin="0,0,0,5"/>
+                                       FontSize="24"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,5" />
                             <TextBlock Text="MATERIAL ACCEPTANCE CHECK SYSTEM"
-                                      FontSize="12"
-                                      HorizontalAlignment="Center"
-                                      Margin="0,3,0,0"
-                                      Foreground="#888"/>
+                                       FontSize="12"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,3,0,0"
+                                       Foreground="#888" />
                         </StackPanel>
                     </StackPanel>
-                    
+
                     <!-- Username Input -->
-                    <TextBlock Text="账号" 
-                              Width="350" 
-                              Margin="0,0,0,5"
-                              FontSize="14"/>
+                    <TextBlock Text="账号"
+                               Width="350"
+                               Margin="0,0,0,5"
+                               FontSize="14" />
                     <TextBox x:Name="UsernameTextBox"
                              Text="{Binding Username}"
                              Watermark="请输入手机号/账号"
@@ -87,13 +87,13 @@
                              Padding="10,4,0,0"
                              FontSize="14"
                              VerticalContentAlignment="Center"
-                             IsEnabled="{Binding !IsLoggingIn}"/>
-                    
+                             IsEnabled="{Binding !IsLoggingIn}" />
+
                     <!-- Password Input -->
-                    <TextBlock Text="密码" 
-                              Width="350" 
-                              Margin="0,0,0,5"
-                              FontSize="14"/>
+                    <TextBlock Text="密码"
+                               Width="350"
+                               Margin="0,0,0,5"
+                               FontSize="14" />
                     <TextBox x:Name="PasswordTextBox"
                              Text="{Binding Password}"
                              Watermark="请输入您的密码"
@@ -104,29 +104,29 @@
                              Padding="10,4,0,0"
                              FontSize="14"
                              VerticalContentAlignment="Center"
-                             IsEnabled="{Binding !IsLoggingIn}"/>
-                    
+                             IsEnabled="{Binding !IsLoggingIn}" />
+
                     <!-- Error Message -->
                     <TextBlock Text="{Binding ErrorMessage}"
-                              Foreground="#F44336"
-                              FontSize="12"
-                              Width="350"
-                              TextAlignment="Center"
-                              Margin="0,0,0,10"
-                              TextWrapping="Wrap"
-                              IsVisible="{Binding HasError}"/>
-                    
-                    <!-- Loading Indicator -->
-                    <StackPanel Orientation="Horizontal" 
-                               HorizontalAlignment="Center"
+                               Foreground="#F44336"
+                               FontSize="12"
                                Width="350"
-                               IsVisible="{Binding IsLoggingIn}"
-                               Margin="0,0,0,10">
+                               TextAlignment="Center"
+                               Margin="0,0,0,10"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding HasError}" />
+
+                    <!-- Loading Indicator -->
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Width="350"
+                                IsVisible="{Binding IsLoggingIn}"
+                                Margin="0,0,0,10">
                         <TextBlock Text="正在登录..."
-                                  FontSize="12"
-                                  Foreground="#4C82FC"/>
+                                   FontSize="12"
+                                   Foreground="#4C82FC" />
                     </StackPanel>
-                    
+
                     <!-- Login Button -->
                     <Button Content="立即登录"
                             Command="{Binding LoginCommand}"
@@ -138,19 +138,19 @@
                             HorizontalAlignment="Center"
                             HorizontalContentAlignment="Center"
                             IsEnabled="{Binding !IsLoggingIn}"
-                            Cursor="Hand"/>
-                    
+                            Cursor="Hand" />
+
                     <!-- Remember Me CheckBox -->
                     <CheckBox Content="记住密码"
-                             IsChecked="{Binding RememberMe}"
-                             Width="350"
-                             Margin="0,15,0,0"
-                             FontSize="12"
-                             HorizontalAlignment="Center"
-                             Padding="4,0,0,0"
-                             Height="20"
-                             IsEnabled="{Binding !IsLoggingIn}"/>
-                    
+                              IsChecked="{Binding RememberMe}"
+                              Width="350"
+                              Margin="0,15,0,0"
+                              FontSize="12"
+                              HorizontalAlignment="Center"
+                              Padding="4,0,0,0"
+                              Height="20"
+                              IsEnabled="{Binding !IsLoggingIn}" />
+
                     <!-- Retry Button for Network Errors -->
                     <Button Content="重试"
                             Command="{Binding RetryCommand}"
@@ -161,10 +161,9 @@
                             Margin="0,10,0,0"
                             HorizontalAlignment="Center"
                             IsVisible="{Binding ShowRetryButton}"
-                            Cursor="Hand"/>
+                            Cursor="Hand" />
                 </StackPanel>
             </Grid>
         </Grid>
     </Grid>
 </Window>
-

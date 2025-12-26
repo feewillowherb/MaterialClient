@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO.Ports;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
@@ -15,41 +14,34 @@ using ReactiveUI.SourceGenerators;
 namespace MaterialClient.ViewModels;
 
 /// <summary>
-/// Settings window ViewModel
+///     Settings window ViewModel
 /// </summary>
 public partial class SettingsWindowViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
 
-    // Scale settings
-    [Reactive]
-    private string _scaleSerialPort = "COM3";
-
-    [Reactive]
-    private string _scaleBaudRate = "9600";
-
-    [Reactive]
-    private string _scaleCommunicationMethod = "TF0";
-
-    [Reactive]
-    private ObservableCollection<string> _availableSerialPorts = new();
-
-    // Document scanner settings
-    [Reactive]
-    private string? _documentScannerUsbDevice;
-
-    // System settings
-    [Reactive]
-    private bool _enableAutoStart;
+    [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
     // Camera configs
-    [Reactive]
-    private ObservableCollection<CameraConfigViewModel> _cameraConfigs = new();
+    [Reactive] private ObservableCollection<CameraConfigViewModel> _cameraConfigs = new();
+
+    // Document scanner settings
+    [Reactive] private string? _documentScannerUsbDevice;
+
+    // System settings
+    [Reactive] private bool _enableAutoStart;
 
     // License plate recognition configs
-    [Reactive]
-    private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs = new();
+    [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
+        new();
+
+    [Reactive] private string _scaleBaudRate = "9600";
+
+    [Reactive] private string _scaleCommunicationMethod = "TF0";
+
+    // Scale settings
+    [Reactive] private string _scaleSerialPort = "COM3";
 
     public SettingsWindowViewModel(
         ISettingsService settingsService,
@@ -64,6 +56,15 @@ public partial class SettingsWindowViewModel : ViewModelBase
         // Load settings
         _ = LoadSettingsAsync();
     }
+
+    #region Events
+
+    /// <summary>
+    ///     Event raised when the window should be closed
+    /// </summary>
+    public event EventHandler? CloseRequested;
+
+    #endregion
 
     #region Commands
 
@@ -137,10 +138,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
     [ReactiveCommand]
     private void RemoveCamera(CameraConfigViewModel? config)
     {
-        if (config != null)
-        {
-            CameraConfigs.Remove(config);
-        }
+        if (config != null) CameraConfigs.Remove(config);
     }
 
     [ReactiveCommand]
@@ -156,27 +154,15 @@ public partial class SettingsWindowViewModel : ViewModelBase
     [ReactiveCommand]
     private void RemoveLicensePlateRecognition(LicensePlateRecognitionConfigViewModel? config)
     {
-        if (config != null)
-        {
-            LicensePlateRecognitionConfigs.Remove(config);
-        }
+        if (config != null) LicensePlateRecognitionConfigs.Remove(config);
     }
-
-    #endregion
-
-    #region Events
-
-    /// <summary>
-    /// Event raised when the window should be closed
-    /// </summary>
-    public event EventHandler? CloseRequested;
 
     #endregion
 
     #region Methods
 
     /// <summary>
-    /// Refresh available serial ports from system
+    ///     Refresh available serial ports from system
     /// </summary>
     private void RefreshAvailableSerialPorts()
     {
@@ -184,16 +170,11 @@ public partial class SettingsWindowViewModel : ViewModelBase
         {
             var ports = SerialPort.GetPortNames().OrderBy(p => p).ToList();
             AvailableSerialPorts.Clear();
-            foreach (var port in ports)
-            {
-                AvailableSerialPorts.Add(port);
-            }
+            foreach (var port in ports) AvailableSerialPorts.Add(port);
 
             // If current selected port is not in the list, add it (might be disconnected)
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
-            {
                 AvailableSerialPorts.Insert(0, ScaleSerialPort);
-            }
         }
         catch
         {
@@ -214,9 +195,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
             // Ensure the loaded serial port is in the available list
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
-            {
                 AvailableSerialPorts.Insert(0, ScaleSerialPort);
-            }
 
             // Load document scanner settings
             DocumentScannerUsbDevice = settings.DocumentScannerConfig.UsbDevice;
@@ -227,7 +206,6 @@ public partial class SettingsWindowViewModel : ViewModelBase
             // Load camera configs
             CameraConfigs.Clear();
             foreach (var config in settings.CameraConfigs)
-            {
                 CameraConfigs.Add(new CameraConfigViewModel
                 {
                     Name = config.Name,
@@ -237,19 +215,16 @@ public partial class SettingsWindowViewModel : ViewModelBase
                     UserName = config.UserName,
                     Password = config.Password
                 });
-            }
 
             // Load license plate recognition configs
             LicensePlateRecognitionConfigs.Clear();
             foreach (var config in settings.LicensePlateRecognitionConfigs)
-            {
                 LicensePlateRecognitionConfigs.Add(new LicensePlateRecognitionConfigViewModel
                 {
                     Name = config.Name,
                     Ip = config.Ip,
                     Direction = config.Direction
                 });
-            }
         }
         catch
         {
@@ -261,61 +236,49 @@ public partial class SettingsWindowViewModel : ViewModelBase
 }
 
 /// <summary>
-/// Camera config ViewModel for UI binding
+///     Camera config ViewModel for UI binding
 /// </summary>
 public partial class CameraConfigViewModel : ReactiveObject
 {
-    [Reactive]
-    private string _name = string.Empty;
+    [Reactive] private string _channel = string.Empty;
 
-    [Reactive]
-    private string _ip = string.Empty;
+    [Reactive] private string _ip = string.Empty;
 
-    [Reactive]
-    private string _port = string.Empty;
+    [Reactive] private string _name = string.Empty;
 
-    [Reactive]
-    private string _channel = string.Empty;
+    [Reactive] private string _password = string.Empty;
 
-    [Reactive]
-    private string _userName = string.Empty;
+    [Reactive] private string _port = string.Empty;
 
-    [Reactive]
-    private string _password = string.Empty;
+    [Reactive] private string _userName = string.Empty;
 }
 
 /// <summary>
-/// License plate recognition config ViewModel for UI binding
+///     License plate recognition config ViewModel for UI binding
 /// </summary>
 public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 {
-    [Reactive]
-    private string _name = string.Empty;
+    [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.In;
 
-    [Reactive]
-    private string _ip = string.Empty;
+    [Reactive] private string _ip = string.Empty;
 
-    [Reactive]
-    private LicensePlateDirection _direction = LicensePlateDirection.In;
+    [Reactive] private string _name = string.Empty;
+
+    public LicensePlateRecognitionConfigViewModel()
+    {
+        this.WhenAnyValue(x => x.Direction)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(DirectionIndex)));
+    }
 
     /// <summary>
-    /// Direction as int for ComboBox binding
+    ///     Direction as int for ComboBox binding
     /// </summary>
     public int DirectionIndex
     {
         get => (int)Direction;
         set
         {
-            if (value is >= 0 and <= 1)
-            {
-                Direction = (LicensePlateDirection)value;
-            }
+            if (value is >= 0 and <= 1) Direction = (LicensePlateDirection)value;
         }
-    }
-
-    public LicensePlateRecognitionConfigViewModel()
-    {
-        this.WhenAnyValue(x => x.Direction)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(DirectionIndex)));
     }
 }

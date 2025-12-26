@@ -1,36 +1,29 @@
 using System;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
-using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
-/// 授权码输入窗口 ViewModel
+///     授权码输入窗口 ViewModel
 /// </summary>
 public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
 {
     private readonly ILicenseService _licenseService;
 
-    [Reactive]
-    private string _authorizationCode = string.Empty;
+    [Reactive] private string _authorizationCode = string.Empty;
 
-    [Reactive]
-    private string _statusMessage = string.Empty;
+    [Reactive] private bool _isVerified;
 
-    [Reactive]
-    private string _statusMessageColor = "#000000";
+    [Reactive] private bool _isVerifying;
 
-    [Reactive]
-    private bool _isVerifying;
+    [Reactive] private bool _showRetryButton;
 
-    [Reactive]
-    private bool _showRetryButton;
+    [Reactive] private string _statusMessage = string.Empty;
 
-    [Reactive]
-    private bool _isVerified;
+    [Reactive] private string _statusMessageColor = "#000000";
 
     public AuthCodeWindowViewModel(ILicenseService licenseService)
     {
@@ -131,11 +124,9 @@ public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
     public void HandleWindowClose()
     {
         if (!IsVerified)
-        {
             // User closed window without completing authorization
             // Application should exit (as per FR-003)
             Environment.Exit(0);
-        }
     }
 
     #endregion

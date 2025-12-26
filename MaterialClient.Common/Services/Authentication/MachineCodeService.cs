@@ -1,27 +1,24 @@
-using System;
-using System.Linq;
 using System.Management;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Authentication;
 
 /// <summary>
-/// 机器码服务接口
+///     机器码服务接口
 /// </summary>
 public interface IMachineCodeService
 {
     /// <summary>
-    /// 获取当前机器的机器码（基于硬件标识的SHA256哈希）
+    ///     获取当前机器的机器码（基于硬件标识的SHA256哈希）
     /// </summary>
     /// <returns>机器码（十六进制格式的SHA256哈希值）</returns>
     string GetMachineCode();
 }
 
 /// <summary>
-/// 机器码服务实现
+///     机器码服务实现
 /// </summary>
 public class MachineCodeService : IMachineCodeService, ISingletonDependency
 {
@@ -43,10 +40,7 @@ public class MachineCodeService : IMachineCodeService, ISingletonDependency
         {
             using (var searcher = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor"))
             {
-                foreach (var obj in searcher.Get())
-                {
-                    return obj["ProcessorId"]?.ToString() ?? string.Empty;
-                }
+                foreach (var obj in searcher.Get()) return obj["ProcessorId"]?.ToString() ?? string.Empty;
             }
         }
         catch
@@ -64,10 +58,7 @@ public class MachineCodeService : IMachineCodeService, ISingletonDependency
         {
             using (var searcher = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BaseBoard"))
             {
-                foreach (var obj in searcher.Get())
-                {
-                    return obj["SerialNumber"]?.ToString() ?? string.Empty;
-                }
+                foreach (var obj in searcher.Get()) return obj["SerialNumber"]?.ToString() ?? string.Empty;
             }
         }
         catch
@@ -87,10 +78,7 @@ public class MachineCodeService : IMachineCodeService, ISingletonDependency
                    new ManagementObjectSearcher(
                        "SELECT MACAddress FROM Win32_NetworkAdapter WHERE MACAddress IS NOT NULL"))
             {
-                foreach (var obj in searcher.Get())
-                {
-                    return obj["MACAddress"]?.ToString() ?? string.Empty;
-                }
+                foreach (var obj in searcher.Get()) return obj["MACAddress"]?.ToString() ?? string.Empty;
             }
         }
         catch

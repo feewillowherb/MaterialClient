@@ -5,17 +5,17 @@
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              RequestedThemeVariant="Light">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
-        <local:ViewLocator/>
+        <local:ViewLocator />
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
         <semi:SemiTheme Locale="zh-CN" />
-        <u-semi:SemiTheme Locale="zh-CN"/>
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <u-semi:SemiTheme Locale="zh-CN" />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
         <!-- 全局颜色资源 -->
         <Style>
             <Style.Resources>
@@ -31,143 +31,143 @@
                 <SolidColorBrush x:Key="TextSecondary">#666666</SolidColorBrush>
             </Style.Resources>
         </Style>
-        
+
         <!-- TextBox 全局样式 -->
         <Style Selector="TextBox">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="TextBox:focus">
-            <Setter Property="BorderBrush" Value="#4169E1"/>
-            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="2" />
         </Style>
         <!-- <Style Selector="TextBox:pointerover"> -->
         <!--     <Setter Property="BorderBrush" Value="#E5E7EB"/> -->
         <!-- </Style> -->
-        
+
         <!-- ComboBox 全局样式 -->
         <Style Selector="ComboBox">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="ComboBox:focus">
-            <Setter Property="BorderBrush" Value="#4169E1"/>
-            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="2" />
         </Style>
         <!-- <Style Selector="ComboBox:pointerover"> -->
         <!--     <Setter Property="BorderBrush" Value="#E5E7EB"/> -->
         <!-- </Style> -->
-        
+
         <!-- CalendarDatePicker 全局样式 -->
         <Style Selector="CalendarDatePicker">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="CalendarDatePicker:focus">
-            <Setter Property="BorderBrush" Value="#4169E1"/>
+            <Setter Property="BorderBrush" Value="#4169E1" />
         </Style>
-        
+
         <!-- Button 主按钮样式 -->
         <Style Selector="Button.primary-button">
-            <Setter Property="Background" Value="#4169E1"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#4169E1"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#4169E1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <!-- <Style Selector="Button.primary-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#3158D0"/> -->
         <!-- </Style> -->
-        
+
         <!-- Button 次要按钮样式 -->
         <Style Selector="Button.secondary-button">
-            <Setter Property="Background" Value="#E5E7EB"/>
-            <Setter Property="Foreground" Value="#333"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#E5E7EB" />
+            <Setter Property="Foreground" Value="#333" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <!-- <Style Selector="Button.secondary-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#D1D5DB"/> -->
         <!-- </Style> -->
-        
+
         <!-- Button 成功按钮样式 -->
         <Style Selector="Button.success-button">
-            <Setter Property="Background" Value="#20C9A6"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#20C9A6"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#20C9A6" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#20C9A6" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <!-- <Style Selector="Button.success-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#1CB396"/> -->
         <!-- </Style> -->
-        
+
         <!-- Button 警告按钮样式 -->
         <Style Selector="Button.warning-button">
-            <Setter Property="Background" Value="#F5AA19"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#F5AA19"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#F5AA19" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#F5AA19" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <!-- <Style Selector="Button.warning-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#E09915"/> -->
         <!-- </Style> -->
-        
+
         <!-- Button 危险按钮样式 -->
         <Style Selector="Button.danger-button">
-            <Setter Property="Background" Value="#DC3545"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#DC3545"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#DC3545" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#DC3545" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <!-- <Style Selector="Button.danger-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#C82333"/> -->
         <!-- </Style> -->
-        
+
         <!-- Button 透明按钮样式 -->
         <Style Selector="Button.transparent-button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <!-- <Style Selector="Button.transparent-button:pointerover"> -->
         <!--     <Setter Property="Opacity" Value="0.8"/> -->
         <!-- </Style> -->
-        
+
         <!-- Button 白色边框按钮样式 -->
         <Style Selector="Button.outline-button">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#4169E1"/>
-            <Setter Property="BorderBrush" Value="#4169E1"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#4169E1" />
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
         <!-- <Style Selector="Button.outline-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#F0F7FF"/> -->
         <!-- </Style> -->
-        
+
         <!-- delivery-button 样式：收料/发料切换按钮 -->
         <Style Selector="Button.delivery-button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#333"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#333" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <!-- <Style Selector="Button.delivery-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="Transparent"/> -->
         <!--     <Setter Property="Opacity" Value="1"/> -->
         <!-- </Style> -->
         <Style Selector="Button.delivery-button.selected">
-            <Setter Property="Background" Value="#E0E7FF"/>
+            <Setter Property="Background" Value="#E0E7FF" />
         </Style>
         <!-- <Style Selector="Button.delivery-button.selected:pointerover"> -->
         <!--     <Setter Property="Background" Value="#E0E7FF"/> -->
         <!--     <Setter Property="Opacity" Value="1"/> -->
         <!-- </Style> -->
-        
+
         <!-- tab-button 样式：标签页按钮 -->
         <Style Selector="Button.tab-button">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#666"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#666" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
         <!-- <Style Selector="Button.tab-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="White"/> -->
@@ -176,9 +176,9 @@
         <!--     <Setter Property="Opacity" Value="1"/> -->
         <!-- </Style> -->
         <Style Selector="Button.tab-button.active">
-            <Setter Property="Background" Value="#F0F7FF"/>
-            <Setter Property="Foreground" Value="#4169E1"/>
-            <Setter Property="BorderBrush" Value="#4169E1"/>
+            <Setter Property="Background" Value="#F0F7FF" />
+            <Setter Property="Foreground" Value="#4169E1" />
+            <Setter Property="BorderBrush" Value="#4169E1" />
         </Style>
         <!-- <Style Selector="Button.tab-button.active:pointerover"> -->
         <!--     <Setter Property="Background" Value="#F0F7FF"/> -->
@@ -186,55 +186,55 @@
         <!--     <Setter Property="BorderBrush" Value="#4169E1"/> -->
         <!--     <Setter Property="Opacity" Value="1"/> -->
         <!-- </Style> -->
-        
+
         <!-- Border 卡片样式 -->
         <Style Selector="Border.card-border">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
         </Style>
-        
+
         <!-- Border 区块样式 -->
         <Style Selector="Border.section-border">
-            <Setter Property="Background" Value="#F8F9FA"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="#F8F9FA" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
         </Style>
-        
+
         <!-- DataGrid 样式 -->
         <Style Selector="DataGrid">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="RowBackground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="RowBackground" Value="#FFFFFF" />
         </Style>
-        
+
         <!-- DataGrid 表头样式 -->
         <Style Selector="DataGridColumnHeader">
-            <Setter Property="Background" Value="#6498FE"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="4,8"/>
-            <Setter Property="Height" Value="36"/>
+            <Setter Property="Background" Value="#6498FE" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="4,8" />
+            <Setter Property="Height" Value="36" />
         </Style>
-        
+
         <!-- DataGrid 选中行样式 -->
         <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-            <Setter Property="Fill" Value="#C8DCFF"/>
+            <Setter Property="Fill" Value="#C8DCFF" />
         </Style>
-        
+
         <!-- DataGrid 未选中行悬停样式 -->
         <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
-            <Setter Property="Fill" Value="#F0F7FF"/>
+            <Setter Property="Fill" Value="#F0F7FF" />
         </Style>
-        
+
         <!-- DataGrid 单元格样式 -->
         <Style Selector="DataGridCell">
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
         </Style>
-        
+
     </Application.Styles>
 </Application>

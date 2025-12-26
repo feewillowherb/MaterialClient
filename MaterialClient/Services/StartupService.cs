@@ -2,9 +2,9 @@ using System;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
-using MaterialClient.Views.AttendedWeighing;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -12,8 +12,8 @@ using ReactiveUI;
 namespace MaterialClient.Services;
 
 /// <summary>
-/// 应用启动服务
-/// 负责协调授权检查、登录流程和主窗口显示
+///     应用启动服务
+///     负责协调授权检查、登录流程和主窗口显示
 /// </summary>
 public class StartupService(
     ILicenseService licenseService,
@@ -21,18 +21,19 @@ public class StartupService(
     IServiceProvider serviceProvider,
     ILogger<StartupService>? logger = null)
 {
+    private AttendedWeighingWindow? _attendedWeighingWindow;
+
     // 在启动时创建的三个窗口
     private AuthCodeWindow? _authCodeWindow;
     private LoginWindow? _loginWindow;
-    private AttendedWeighingWindow? _attendedWeighingWindow;
 
     /// <summary>
-    /// 执行启动流程
-    /// 1. 在启动时同时创建三个窗口
-    /// 2. 检查授权状态
-    /// 3. 如果无授权或授权过期，显示授权窗口（隐藏另外两个）
-    /// 4. 显示登录窗口（隐藏AttendedWeighingWindow）
-    /// 5. 成功登录后显示有人值守过磅窗口
+    ///     执行启动流程
+    ///     1. 在启动时同时创建三个窗口
+    ///     2. 检查授权状态
+    ///     3. 如果无授权或授权过期，显示授权窗口（隐藏另外两个）
+    ///     4. 显示登录窗口（隐藏AttendedWeighingWindow）
+    ///     5. 成功登录后显示有人值守过磅窗口
     /// </summary>
     public async Task<AttendedWeighingWindow?> StartupAsync()
     {
@@ -51,26 +52,21 @@ public class StartupService(
             // Step 1: Check license
             var isLicenseValid = await licenseService.IsLicenseValidAsync();
 
-            bool licenseWasInvalid = !isLicenseValid;
+            var licenseWasInvalid = !isLicenseValid;
 
             if (!isLicenseValid)
             {
                 // No license or expired license - show authorization window
                 var authResult = await ShowAuthorizationWindowAsync();
                 if (!authResult)
-                {
                     // User closed authorization window or authorization failed
                     // Application will exit
                     return null;
-                }
             }
 
             // Step 2: Check for active session
             // 如果刚刚完成授权验证，清除旧的会话，要求重新登录
-            if (licenseWasInvalid)
-            {
-                await authenticationService.LogoutAsync();
-            }
+            if (licenseWasInvalid) await authenticationService.LogoutAsync();
 
             var hasActiveSession = await authenticationService.HasActiveSessionAsync();
 
@@ -79,11 +75,9 @@ public class StartupService(
                 // No active session - show login window
                 var loginResult = await ShowLoginWindowAsync();
                 if (!loginResult)
-                {
                     // User closed login window or login failed
                     // Application will exit
                     return null;
-                }
             }
 
             // Step 3: Show attended weighing window (有人值守过磅窗口)
@@ -102,28 +96,18 @@ public class StartupService(
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        if (_authCodeWindow == null)
-        {
-            return false;
-        }
+        if (_authCodeWindow == null) return false;
 
         // 显示 AuthCodeWindow，隐藏另外两个
         _authCodeWindow.Show();
-        if (_loginWindow != null)
-        {
-            _loginWindow.Hide();
-        }
+        if (_loginWindow != null) _loginWindow.Hide();
 
-        if (_attendedWeighingWindow != null)
-        {
-            _attendedWeighingWindow.Hide();
-        }
+        if (_attendedWeighingWindow != null) _attendedWeighingWindow.Hide();
 
         IDisposable? verifiedSubscription = null;
 
         // 监听验证成功事件（通过ViewModel的IsVerified属性变化）
         if (_authCodeWindow.DataContext is AuthCodeWindowViewModel viewModel)
-        {
             verifiedSubscription = viewModel
                 .WhenAnyValue(vm => vm.IsVerified)
                 .Where(isVerified => isVerified)
@@ -131,15 +115,11 @@ public class StartupService(
                 {
                     // 验证成功，隐藏AuthCodeWindow，显示LoginWindow
                     _authCodeWindow?.Hide();
-                    if (_loginWindow != null)
-                    {
-                        _loginWindow.Show();
-                    }
+                    if (_loginWindow != null) _loginWindow.Show();
 
                     verifiedSubscription?.Dispose();
                     tcs.TrySetResult(true);
                 });
-        }
 
         // 监听窗口关闭事件（用户点击关闭按钮）
         void OnWindowClosed(object? sender, EventArgs args)
@@ -149,10 +129,8 @@ public class StartupService(
                 _authCodeWindow.Closed -= OnWindowClosed;
                 verifiedSubscription?.Dispose();
                 if (!_authCodeWindow.IsVerified)
-                {
                     // 未验证成功就关闭，返回false
                     tcs.TrySetResult(false);
-                }
             }
         }
 
@@ -165,29 +143,19 @@ public class StartupService(
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        if (_loginWindow == null)
-        {
-            return false;
-        }
+        if (_loginWindow == null) return false;
 
         // 显示 LoginWindow，隐藏 AttendedWeighingWindow
         _loginWindow.Show();
-        if (_attendedWeighingWindow != null)
-        {
-            _attendedWeighingWindow.Hide();
-        }
+        if (_attendedWeighingWindow != null) _attendedWeighingWindow.Hide();
 
         // AuthCodeWindow 应该已经隐藏，但为了安全也隐藏它
-        if (_authCodeWindow != null && _authCodeWindow.IsVisible)
-        {
-            _authCodeWindow.Hide();
-        }
+        if (_authCodeWindow != null && _authCodeWindow.IsVisible) _authCodeWindow.Hide();
 
         IDisposable? loginSuccessSubscription = null;
 
         // 监听登录成功事件（通过ViewModel的IsLoginSuccessful属性变化）
         if (_loginWindow.DataContext is LoginWindowViewModel viewModel)
-        {
             loginSuccessSubscription = viewModel
                 .WhenAnyValue(vm => vm.IsLoginSuccessful)
                 .Where(isSuccessful => isSuccessful)
@@ -195,15 +163,11 @@ public class StartupService(
                 {
                     // 登录成功，隐藏LoginWindow，显示AttendedWeighingWindow
                     _loginWindow?.Hide();
-                    if (_attendedWeighingWindow != null)
-                    {
-                        _attendedWeighingWindow.Show();
-                    }
+                    if (_attendedWeighingWindow != null) _attendedWeighingWindow.Show();
 
                     loginSuccessSubscription?.Dispose();
                     tcs.TrySetResult(true);
                 });
-        }
 
         // 监听窗口关闭事件（用户点击关闭按钮）
         void OnWindowClosed(object? sender, EventArgs args)
@@ -213,10 +177,8 @@ public class StartupService(
                 _loginWindow.Closed -= OnWindowClosed;
                 loginSuccessSubscription?.Dispose();
                 if (!_loginWindow.IsLoginSuccessful)
-                {
                     // 未登录成功就关闭，返回false
                     tcs.TrySetResult(false);
-                }
             }
         }
 
@@ -227,21 +189,12 @@ public class StartupService(
 
     private void ShowAttendedWeighingWindow()
     {
-        if (_attendedWeighingWindow == null)
-        {
-            return;
-        }
+        if (_attendedWeighingWindow == null) return;
 
         // 显示 AttendedWeighingWindow，隐藏其他窗口
         _attendedWeighingWindow.Show();
-        if (_authCodeWindow != null && _authCodeWindow.IsVisible)
-        {
-            _authCodeWindow.Hide();
-        }
+        if (_authCodeWindow != null && _authCodeWindow.IsVisible) _authCodeWindow.Hide();
 
-        if (_loginWindow != null && _loginWindow.IsVisible)
-        {
-            _loginWindow.Hide();
-        }
+        if (_loginWindow != null && _loginWindow.IsVisible) _loginWindow.Hide();
     }
 }

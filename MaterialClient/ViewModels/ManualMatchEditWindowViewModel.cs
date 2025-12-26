@@ -2,107 +2,27 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using ReactiveUI;
-using ReactiveUI.SourceGenerators;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
-/// 手动匹配编辑窗口 ViewModel
+///     手动匹配编辑窗口 ViewModel
 /// </summary>
 public partial class ManualMatchEditWindowViewModel : ViewModelBase
 {
-    private readonly WeighingRecord _currentRecord;
-    private readonly WeighingRecord _matchedRecord;
-    private readonly DeliveryType _deliveryType;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IRepository<Provider, int>? _providerRepository;
     private readonly IRepository<Material, int>? _materialRepository;
     private readonly IRepository<MaterialUnit, int>? _materialUnitRepository;
-
-    #region 属性
-
-    [Reactive]
-    private string? _plateNumber;
-
-    [Reactive]
-    private ObservableCollection<ProviderDto> _providers = new();
-
-    [Reactive]
-    private ProviderDto? _selectedProvider;
-
-    [Reactive]
-    private DateTime? _grossWeightTime;
-
-    [Reactive]
-    private DateTime? _tareWeightTime;
-
-    [Reactive]
-    private decimal _grossWeight;
-
-    [Reactive]
-    private decimal _tareWeight;
-
-    [Reactive]
-    private decimal _netWeight;
-
-    [Reactive]
-    private string? _materialCategory;
-
-    [Reactive]
-    private string? _remark;
-
-    [Reactive]
-    private ObservableCollection<Material> _materials = new();
-
-    [Reactive]
-    private Material? _selectedMaterial;
-
-    [Reactive]
-    private ObservableCollection<MaterialUnitDto> _materialUnits = new();
-
-    [Reactive]
-    private MaterialUnitDto? _selectedMaterialUnit;
-
-    [Reactive]
-    private string? _specifications;
-
-    [Reactive]
-    private string? _unitName;
-
-    [Reactive]
-    private decimal _conversionRate = 1.00m;
-
-    [Reactive]
-    private string? _waybillQuantity;
-
-    [Reactive]
-    private decimal _waybillWeight;
-
-    [Reactive]
-    private ObservableCollection<string> _entryPhotos = new();
-
-    [Reactive]
-    private ObservableCollection<string> _exitPhotos = new();
-
-    [Reactive]
-    private string? _ticketPhoto;
-
-    [Reactive]
-    private bool _isLoading;
-
-    public DeliveryType DeliveryType => _deliveryType;
-    public WeighingRecord CurrentRecord => _currentRecord;
-    public WeighingRecord MatchedRecord => _matchedRecord;
-
-    #endregion
+    private readonly IRepository<Provider, int>? _providerRepository;
+    private readonly IServiceProvider _serviceProvider;
 
     public ManualMatchEditWindowViewModel(
         WeighingRecord currentRecord,
@@ -111,9 +31,9 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         IServiceProvider serviceProvider)
         : base(serviceProvider.GetService<ILogger<ManualMatchEditWindowViewModel>>())
     {
-        _currentRecord = currentRecord;
-        _matchedRecord = matchedRecord;
-        _deliveryType = deliveryType;
+        CurrentRecord = currentRecord;
+        MatchedRecord = matchedRecord;
+        DeliveryType = deliveryType;
         _serviceProvider = serviceProvider;
 
         _providerRepository = serviceProvider.GetService<IRepository<Provider, int>>();
@@ -164,44 +84,111 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         _ = LoadPhotosAsync();
     }
 
+    #region 辅助方法
+
+    private void UpdateWaybillWeight()
+    {
+        if (!string.IsNullOrWhiteSpace(WaybillQuantity) &&
+            decimal.TryParse(WaybillQuantity, out var qty))
+            WaybillWeight = qty * ConversionRate;
+    }
+
+    #endregion
+
+    #region 属性
+
+    [Reactive] private string? _plateNumber;
+
+    [Reactive] private ObservableCollection<ProviderDto> _providers = new();
+
+    [Reactive] private ProviderDto? _selectedProvider;
+
+    [Reactive] private DateTime? _grossWeightTime;
+
+    [Reactive] private DateTime? _tareWeightTime;
+
+    [Reactive] private decimal _grossWeight;
+
+    [Reactive] private decimal _tareWeight;
+
+    [Reactive] private decimal _netWeight;
+
+    [Reactive] private string? _materialCategory;
+
+    [Reactive] private string? _remark;
+
+    [Reactive] private ObservableCollection<Material> _materials = new();
+
+    [Reactive] private Material? _selectedMaterial;
+
+    [Reactive] private ObservableCollection<MaterialUnitDto> _materialUnits = new();
+
+    [Reactive] private MaterialUnitDto? _selectedMaterialUnit;
+
+    [Reactive] private string? _specifications;
+
+    [Reactive] private string? _unitName;
+
+    [Reactive] private decimal _conversionRate = 1.00m;
+
+    [Reactive] private string? _waybillQuantity;
+
+    [Reactive] private decimal _waybillWeight;
+
+    [Reactive] private ObservableCollection<string> _entryPhotos = new();
+
+    [Reactive] private ObservableCollection<string> _exitPhotos = new();
+
+    [Reactive] private string? _ticketPhoto;
+
+    [Reactive] private bool _isLoading;
+
+    public DeliveryType DeliveryType { get; }
+
+    public WeighingRecord CurrentRecord { get; }
+
+    public WeighingRecord MatchedRecord { get; }
+
+    #endregion
+
     #region 初始化
 
     private void InitializeData()
     {
-        PlateNumber = _currentRecord.PlateNumber ?? _matchedRecord.PlateNumber;
+        PlateNumber = CurrentRecord.PlateNumber ?? MatchedRecord.PlateNumber;
 
-        if (_deliveryType == DeliveryType.Receiving)
+        if (DeliveryType == DeliveryType.Receiving)
         {
-            if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
+            if (CurrentRecord.CreationTime <= MatchedRecord.CreationTime)
             {
-                GrossWeight = _currentRecord.TotalWeight;
-                GrossWeightTime = _currentRecord.CreationTime;
-                TareWeight = _matchedRecord.TotalWeight;
-                TareWeightTime = _matchedRecord.CreationTime;
+                GrossWeight = CurrentRecord.TotalWeight;
+                GrossWeightTime = CurrentRecord.CreationTime;
+                TareWeight = MatchedRecord.TotalWeight;
+                TareWeightTime = MatchedRecord.CreationTime;
             }
             else
             {
-                GrossWeight = _matchedRecord.TotalWeight;
-                GrossWeightTime = _matchedRecord.CreationTime;
-                TareWeight = _currentRecord.TotalWeight;
-                TareWeightTime = _currentRecord.CreationTime;
+                GrossWeight = MatchedRecord.TotalWeight;
+                GrossWeightTime = MatchedRecord.CreationTime;
+                TareWeight = CurrentRecord.TotalWeight;
+                TareWeightTime = CurrentRecord.CreationTime;
             }
         }
         else
         {
-            if (_currentRecord.CreationTime <= _matchedRecord.CreationTime)
+            if (CurrentRecord.CreationTime <= MatchedRecord.CreationTime)
             {
-                TareWeight = _currentRecord.TotalWeight;
-                TareWeightTime = _currentRecord.CreationTime;
-                GrossWeight = _matchedRecord.TotalWeight;
-                GrossWeightTime = _matchedRecord.CreationTime;
+                TareWeight = CurrentRecord.TotalWeight;
+                TareWeightTime = CurrentRecord.CreationTime;
+                GrossWeight = MatchedRecord.TotalWeight;
+                GrossWeightTime = MatchedRecord.CreationTime;
             }
             else
             {
-                TareWeight = _matchedRecord.TotalWeight;
-                TareWeightTime = _matchedRecord.CreationTime;
-                GrossWeight = _currentRecord.TotalWeight;
-                GrossWeightTime = _currentRecord.CreationTime;
+                TareWeight = MatchedRecord.TotalWeight;
+                TareWeightTime = MatchedRecord.CreationTime;
+                GrossWeight = CurrentRecord.TotalWeight;
+                GrossWeightTime = CurrentRecord.CreationTime;
             }
         }
 
@@ -221,15 +208,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 LoadMaterialsAsync()
             );
 
-            var providerId = _currentRecord.ProviderId ?? _matchedRecord.ProviderId;
-            if (providerId.HasValue)
-            {
-                SelectedProvider = Providers.FirstOrDefault(p => p.Id == providerId.Value);
-            }
+            var providerId = CurrentRecord.ProviderId ?? MatchedRecord.ProviderId;
+            if (providerId.HasValue) SelectedProvider = Providers.FirstOrDefault(p => p.Id == providerId.Value);
 
             // 从 Materials 集合获取物料信息
-            var currentMaterial = _currentRecord.Materials?.FirstOrDefault();
-            var matchedMaterial = _matchedRecord.Materials?.FirstOrDefault();
+            var currentMaterial = CurrentRecord.Materials?.FirstOrDefault();
+            var matchedMaterial = MatchedRecord.Materials?.FirstOrDefault();
             var materialId = currentMaterial?.MaterialId ?? matchedMaterial?.MaterialId;
             if (materialId.HasValue)
             {
@@ -241,17 +225,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
                     var materialUnitId = currentMaterial?.MaterialUnitId ?? matchedMaterial?.MaterialUnitId;
                     if (materialUnitId.HasValue)
-                    {
                         SelectedMaterialUnit = MaterialUnits.FirstOrDefault(u => u.Id == materialUnitId.Value);
-                    }
                 }
             }
 
             var waybillQuantity = currentMaterial?.WaybillQuantity ?? matchedMaterial?.WaybillQuantity;
-            if (waybillQuantity.HasValue)
-            {
-                WaybillQuantity = waybillQuantity.Value.ToString("F2");
-            }
+            if (waybillQuantity.HasValue) WaybillQuantity = waybillQuantity.Value.ToString("F2");
         }
         catch (Exception ex)
         {
@@ -272,7 +251,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             var providers = await _providerRepository.GetListAsync();
             Providers.Clear();
             foreach (var provider in providers.OrderBy(p => p.ProviderName))
-            {
                 Providers.Add(new ProviderDto
                 {
                     Id = provider.Id,
@@ -281,7 +259,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                     ContactName = provider.ContectName,
                     ContactPhone = provider.ContectPhone
                 });
-            }
         }
         catch (Exception ex)
         {
@@ -297,10 +274,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         {
             var materials = await _materialRepository.GetListAsync();
             Materials.Clear();
-            foreach (var material in materials.OrderBy(m => m.Name))
-            {
-                Materials.Add(material);
-            }
+            foreach (var material in materials.OrderBy(m => m.Name)) Materials.Add(material);
         }
         catch (Exception ex)
         {
@@ -315,11 +289,10 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         try
         {
             var units = await _materialUnitRepository.GetListAsync(
-                predicate: u => u.MaterialId == materialId
+                u => u.MaterialId == materialId
             );
             MaterialUnits.Clear();
             foreach (var unit in units.OrderBy(u => u.UnitName))
-            {
                 MaterialUnits.Add(new MaterialUnitDto
                 {
                     Id = unit.Id,
@@ -329,7 +302,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                     RateName = unit.RateName,
                     ProviderId = unit.ProviderId
                 });
-            }
         }
         catch (Exception ex)
         {
@@ -345,57 +317,41 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         try
         {
             var attachmentsDict = await attachmentService.GetAttachmentsByWeighingRecordIdsAsync(
-                new[] { _currentRecord.Id, _matchedRecord.Id });
+                new[] { CurrentRecord.Id, MatchedRecord.Id });
 
-            attachmentsDict.TryGetValue(_currentRecord.Id, out var currentFiles);
-            attachmentsDict.TryGetValue(_matchedRecord.Id, out var matchedFiles);
+            attachmentsDict.TryGetValue(CurrentRecord.Id, out var currentFiles);
+            attachmentsDict.TryGetValue(MatchedRecord.Id, out var matchedFiles);
 
             EntryPhotos.Clear();
             ExitPhotos.Clear();
             TicketPhoto = null;
 
-            var earlierRecord = _currentRecord.CreationTime <= _matchedRecord.CreationTime
-                ? _currentRecord
-                : _matchedRecord;
-            var earlierFiles = earlierRecord.Id == _currentRecord.Id ? currentFiles : matchedFiles;
-            var laterFiles = earlierRecord.Id == _currentRecord.Id ? matchedFiles : currentFiles;
+            var earlierRecord = CurrentRecord.CreationTime <= MatchedRecord.CreationTime
+                ? CurrentRecord
+                : MatchedRecord;
+            var earlierFiles = earlierRecord.Id == CurrentRecord.Id ? currentFiles : matchedFiles;
+            var laterFiles = earlierRecord.Id == CurrentRecord.Id ? matchedFiles : currentFiles;
 
             if (earlierFiles != null)
-            {
                 foreach (var file in earlierFiles)
-                {
                     if (!string.IsNullOrEmpty(file.LocalPath))
                     {
                         if (file.AttachType == AttachType.EntryPhoto)
-                        {
                             EntryPhotos.Add(file.LocalPath);
-                        }
                         else if (file.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
-                        {
                             TicketPhoto = file.LocalPath;
-                        }
                     }
-                }
-            }
 
             if (laterFiles != null)
-            {
                 foreach (var file in laterFiles)
-                {
                     if (!string.IsNullOrEmpty(file.LocalPath))
                     {
                         if (file.AttachType == AttachType.EntryPhoto ||
                             file.AttachType == AttachType.ExitPhoto)
-                        {
                             ExitPhotos.Add(file.LocalPath);
-                        }
                         else if (file.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
-                        {
                             TicketPhoto = file.LocalPath;
-                        }
                     }
-                }
-            }
         }
         catch (Exception ex)
         {
@@ -419,20 +375,18 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             decimal? waybillQuantity = null;
             if (!string.IsNullOrWhiteSpace(WaybillQuantity) &&
                 decimal.TryParse(WaybillQuantity, out var qty))
-            {
                 waybillQuantity = qty;
-            }
 
-            _currentRecord.Update(PlateNumber, SelectedProvider?.Id);
-            _currentRecord.DeliveryType = _deliveryType;
-            UpdateRecordMaterial(_currentRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
+            CurrentRecord.Update(PlateNumber, SelectedProvider?.Id);
+            CurrentRecord.DeliveryType = DeliveryType;
+            UpdateRecordMaterial(CurrentRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
 
-            _matchedRecord.Update(PlateNumber, SelectedProvider?.Id);
-            _matchedRecord.DeliveryType = _deliveryType;
-            UpdateRecordMaterial(_matchedRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
+            MatchedRecord.Update(PlateNumber, SelectedProvider?.Id);
+            MatchedRecord.DeliveryType = DeliveryType;
+            UpdateRecordMaterial(MatchedRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
 
             // 调用 ManualMatchAsync 执行匹配和创建运单
-            await matchingService.ManualMatchAsync(_currentRecord, _matchedRecord, _deliveryType);
+            await matchingService.ManualMatchAsync(CurrentRecord, MatchedRecord, DeliveryType);
 
             return true;
         }
@@ -443,11 +397,12 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
         }
     }
 
-    private void UpdateRecordMaterial(WeighingRecord record, int? materialId, int? materialUnitId, decimal? waybillQuantity)
+    private void UpdateRecordMaterial(WeighingRecord record, int? materialId, int? materialUnitId,
+        decimal? waybillQuantity)
     {
         var materials = record.Materials;
         var firstMaterial = materials.FirstOrDefault();
-        
+
         if (firstMaterial != null)
         {
             firstMaterial.MaterialId = materialId;
@@ -461,8 +416,8 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             // 如果没有现有物料记录但需要设置值，创建新的
             var newMaterial = new WeighingRecordMaterial(
                 0, // Weight 将在业务逻辑中设置
-                materialId, 
-                materialUnitId, 
+                materialId,
+                materialUnitId,
                 waybillQuantity);
             record.AddMaterial(newMaterial);
         }
@@ -484,19 +439,6 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
     private void TakePhoto()
     {
         // TODO: 实现拍照逻辑
-    }
-
-    #endregion
-
-    #region 辅助方法
-
-    private void UpdateWaybillWeight()
-    {
-        if (!string.IsNullOrWhiteSpace(WaybillQuantity) &&
-            decimal.TryParse(WaybillQuantity, out var qty))
-        {
-            WaybillWeight = qty * ConversionRate;
-        }
     }
 
     #endregion

@@ -1,11 +1,7 @@
-using System;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
-using Microsoft.EntityFrameworkCore;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -16,13 +12,13 @@ using Volo.Abp.Uow;
 namespace MaterialClient.Common.Services.Authentication;
 
 /// <summary>
-/// 用户认证服务接口
-/// 负责用户登录、会话管理和凭证管理
+///     用户认证服务接口
+///     负责用户登录、会话管理和凭证管理
 /// </summary>
 public interface IAuthenticationService
 {
     /// <summary>
-    /// 用户登录
+    ///     用户登录
     /// </summary>
     /// <param name="username">用户名</param>
     /// <param name="password">密码（明文）</param>
@@ -32,7 +28,7 @@ public interface IAuthenticationService
     Task<UserSession> LoginAsync(string username, string password, bool rememberMe);
 
     /// <summary>
-    /// 测试方法：用户登录（不联网，返回固定有效的会话信息）
+    ///     测试方法：用户登录（不联网，返回固定有效的会话信息）
     /// </summary>
     /// <param name="username">用户名（测试方法中不进行实际验证）</param>
     /// <param name="password">密码（测试方法中不进行实际验证）</param>
@@ -41,77 +37,65 @@ public interface IAuthenticationService
     Task<UserSession> LoginTestAsync(string username, string password, bool rememberMe);
 
     /// <summary>
-    /// 获取当前用户会话
+    ///     获取当前用户会话
     /// </summary>
     /// <returns>用户会话信息，如果不存在则返回 null</returns>
     Task<UserSession?> GetCurrentSessionAsync();
 
     /// <summary>
-    /// 检查是否有活跃的会话
+    ///     检查是否有活跃的会话
     /// </summary>
     /// <returns>true 表示有活跃会话，false 表示无会话或会话已过期</returns>
     Task<bool> HasActiveSessionAsync();
 
     /// <summary>
-    /// 登出当前用户
+    ///     登出当前用户
     /// </summary>
     Task LogoutAsync();
 
     /// <summary>
-    /// 获取保存的用户凭证（用于自动登录）
+    ///     获取保存的用户凭证（用于自动登录）
     /// </summary>
     /// <returns>用户名和密码（明文），如果不存在则返回 null</returns>
     Task<(string username, string password)?> GetSavedCredentialAsync();
 
     /// <summary>
-    /// 清除保存的用户凭证
+    ///     清除保存的用户凭证
     /// </summary>
     Task ClearSavedCredentialAsync();
 
     /// <summary>
-    /// 更新会话活动时间
+    ///     更新会话活动时间
     /// </summary>
     Task UpdateSessionActivityAsync();
 }
 
 /// <summary>
-/// 用户认证服务实现
+///     用户认证服务实现
 /// </summary>
 [AutoConstructor]
 public partial class AuthenticationService : DomainService, IAuthenticationService
 {
-    private readonly IMaterialPlatformApi _materialPlatformApi;
-    private readonly ILicenseService _licenseService;
-    private readonly IPasswordEncryptionService _passwordEncryptionService;
     private readonly IRepository<UserCredential, Guid> _credentialRepository;
-    private readonly IRepository<UserSession, Guid> _sessionRepository;
-    private readonly IJsonSerializer _jsonSerializer;
     private readonly ICurrentPrincipalAccessor _currentPrincipalAccessor;
+    private readonly IJsonSerializer _jsonSerializer;
+    private readonly ILicenseService _licenseService;
+    private readonly IMaterialPlatformApi _materialPlatformApi;
+    private readonly IPasswordEncryptionService _passwordEncryptionService;
+    private readonly IRepository<UserSession, Guid> _sessionRepository;
 
     [UnitOfWork]
     public async Task<UserSession> LoginAsync(string username, string password, bool rememberMe)
     {
-        if (string.IsNullOrWhiteSpace(username))
-        {
-            throw new BusinessException("AUTH:EMPTY_USERNAME", "用户名不能为空");
-        }
+        if (string.IsNullOrWhiteSpace(username)) throw new BusinessException("AUTH:EMPTY_USERNAME", "用户名不能为空");
 
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            throw new BusinessException("AUTH:EMPTY_PASSWORD", "密码不能为空");
-        }
+        if (string.IsNullOrWhiteSpace(password)) throw new BusinessException("AUTH:EMPTY_PASSWORD", "密码不能为空");
 
         // Get current license
         var license = await _licenseService.GetCurrentLicenseAsync();
-        if (license == null)
-        {
-            throw new BusinessException("AUTH:NO_LICENSE", "未找到授权信息，请先进行授权激活");
-        }
+        if (license == null) throw new BusinessException("AUTH:NO_LICENSE", "未找到授权信息，请先进行授权激活");
 
-        if (license.IsExpired)
-        {
-            throw new BusinessException("AUTH:LICENSE_EXPIRED", "授权已过期，请重新激活");
-        }
+        if (license.IsExpired) throw new BusinessException("AUTH:LICENSE_EXPIRED", "授权已过期，请重新激活");
 
         // Call base platform API to login
         var request = new LoginRequestDto
@@ -174,10 +158,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
 
         // Delete existing session (only one session per project)
         var existingSession = await _sessionRepository.FirstOrDefaultAsync();
-        if (existingSession != null)
-        {
-            await _sessionRepository.DeleteAsync(existingSession);
-        }
+        if (existingSession != null) await _sessionRepository.DeleteAsync(existingSession);
 
         // Create new session
         var session = new UserSession(
@@ -210,8 +191,8 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     }
 
     /// <summary>
-    /// 测试方法：用户登录（不联网，返回固定有效的会话信息）
-    /// 仅用于测试阶段，总是返回一个固定的有效会话信息
+    ///     测试方法：用户登录（不联网，返回固定有效的会话信息）
+    ///     仅用于测试阶段，总是返回一个固定的有效会话信息
     /// </summary>
     /// <param name="username">用户名（测试方法中不进行实际验证）</param>
     /// <param name="password">密码（测试方法中不进行实际验证）</param>
@@ -220,24 +201,16 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     [UnitOfWork]
     public async Task<UserSession> LoginTestAsync(string username, string password, bool rememberMe)
     {
-        if (string.IsNullOrWhiteSpace(username))
-        {
-            throw new BusinessException("AUTH:EMPTY_USERNAME", "用户名不能为空");
-        }
+        if (string.IsNullOrWhiteSpace(username)) throw new BusinessException("AUTH:EMPTY_USERNAME", "用户名不能为空");
 
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            throw new BusinessException("AUTH:EMPTY_PASSWORD", "密码不能为空");
-        }
+        if (string.IsNullOrWhiteSpace(password)) throw new BusinessException("AUTH:EMPTY_PASSWORD", "密码不能为空");
 
         // 获取当前授权信息（确保外键约束满足）
         var license = await _licenseService.GetCurrentLicenseAsync();
         if (license == null)
-        {
             // 如果不存在授权信息，提示用户先进行授权验证
             // 这里不自动创建，而是要求用户先调用 VerifyAuthorizationCodeTestAsync
             throw new BusinessException("AUTH:NO_LICENSE", "未找到授权信息，请先进行授权激活");
-        }
 
         // 使用 LicenseInfo 的主键 ID 作为外键值（外键 ProjectId 实际指向 LicenseInfo.Id）
         var projectId = license.ProjectId;
@@ -272,16 +245,13 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
 
         // 删除已存在的会话（每个项目只有一个会话）
         var existingSession = await _sessionRepository.FirstOrDefaultAsync();
-        if (existingSession != null)
-        {
-            await _sessionRepository.DeleteAsync(existingSession);
-        }
+        if (existingSession != null) await _sessionRepository.DeleteAsync(existingSession);
 
         // 创建固定的测试会话信息
         var testUserId = 10001L; // 固定的测试用户ID
         var testTrueName = "测试用户"; // 固定的真实姓名
         var testClientId = Guid.Parse("22222222-2222-2222-2222-222222222222"); // 固定的客户端ID
-        var testAccessToken = "TEST_ACCESS_TOKEN_" + Guid.NewGuid().ToString(); // 固定的访问令牌模式
+        var testAccessToken = "TEST_ACCESS_TOKEN_" + Guid.NewGuid(); // 固定的访问令牌模式
         var testIsAdmin = true; // 管理员权限
         var testIsCompany = false; // 不是公司账号
         var testProductType = 1; // 产品类型
@@ -332,10 +302,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     public async Task<bool> HasActiveSessionAsync()
     {
         var session = await GetCurrentSessionAsync();
-        if (session == null)
-        {
-            return false;
-        }
+        if (session == null) return false;
 
         // Check if session is expired (24 hours of inactivity)
         if (session.IsExpired)
@@ -351,20 +318,14 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     public async Task LogoutAsync()
     {
         var session = await GetCurrentSessionAsync();
-        if (session != null)
-        {
-            await _sessionRepository.DeleteAsync(session);
-        }
+        if (session != null) await _sessionRepository.DeleteAsync(session);
     }
 
     [UnitOfWork]
     public async Task<(string username, string password)?> GetSavedCredentialAsync()
     {
         var credential = await _credentialRepository.FirstOrDefaultAsync();
-        if (credential == null)
-        {
-            return null;
-        }
+        if (credential == null) return null;
 
         try
         {
@@ -383,10 +344,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     public async Task ClearSavedCredentialAsync()
     {
         var credential = await _credentialRepository.FirstOrDefaultAsync();
-        if (credential != null)
-        {
-            await _credentialRepository.DeleteAsync(credential);
-        }
+        if (credential != null) await _credentialRepository.DeleteAsync(credential);
     }
 
     [UnitOfWork]
@@ -401,7 +359,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
     }
 
     /// <summary>
-    /// 设置当前用户信息到 ICurrentPrincipalAccessor
+    ///     设置当前用户信息到 ICurrentPrincipalAccessor
     /// </summary>
     /// <param name="session">用户会话信息</param>
     private void SetCurrentUser(UserSession session)
@@ -412,8 +370,8 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
 
         var claims = new List<Claim>
         {
-            new Claim(AbpClaimTypes.UserId, session.Id.ToString()),
-            new Claim(AbpClaimTypes.UserName, userName)
+            new(AbpClaimTypes.UserId, session.Id.ToString()),
+            new(AbpClaimTypes.UserName, userName)
         };
 
         var claimsIdentity = new ClaimsIdentity(claims);

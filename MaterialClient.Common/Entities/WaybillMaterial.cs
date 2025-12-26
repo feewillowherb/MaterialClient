@@ -41,7 +41,7 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
     public decimal GoodsWeight { get; set; }
 
     /// <summary>
-    /// 扣重 暂不用
+    ///     扣重 暂不用
     /// </summary>
     public decimal GoodsTakeWeight { get; set; }
 
@@ -52,6 +52,19 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
     public decimal OffsetCount { get; set; }
 
     public decimal OffsetRate { get; set; }
+
+
+    public void UpdateOffsetFromWaybill(Waybill waybill)
+    {
+        OffsetWeight = waybill.OrderGoodsWeight!.Value - waybill.OrderPlanOnWeight!.Value;
+        GoodsPcs = waybill.OrderPcs!.Value;
+        GoodsWeight = waybill.OrderGoodsWeight!.Value;
+        OffsetCount = waybill.OffsetCount;
+        OffsetRate = waybill.OffsetRate;
+        OffsetResult = waybill.OffsetResult;
+        OffsetRate = Math.Round(waybill.OffsetRate / 100, 2);
+        GoodsPlanOnWeight = waybill.OrderPlanOnWeight!.Value;
+    }
 
 
     #region Audited Properties
@@ -66,17 +79,4 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
     public DateTime? AddDate { get; set; }
 
     #endregion
-
-
-    public void UpdateOffsetFromWaybill(Waybill waybill)
-    {
-        OffsetWeight = waybill.OrderGoodsWeight!.Value - waybill.OrderPlanOnWeight!.Value;
-        GoodsPcs = waybill.OrderPcs!.Value;
-        GoodsWeight = waybill.OrderGoodsWeight!.Value;
-        OffsetCount = waybill.OffsetCount;
-        OffsetRate = waybill.OffsetRate;
-        OffsetResult = waybill.OffsetResult;
-        OffsetRate = Math.Round(waybill.OffsetRate / 100, 2);
-        GoodsPlanOnWeight = waybill.OrderPlanOnWeight!.Value;
-    }
 }

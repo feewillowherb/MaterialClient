@@ -4,19 +4,19 @@ using Volo.Abp.Domain.Entities;
 namespace MaterialClient.Common.Entities;
 
 /// <summary>
-/// 物料单位实体
+///     物料单位实体
 /// </summary>
 public class MaterialUnit : Entity<int>, IDeletionAuditedObject, IMaterialClientAuditedObject
 {
     /// <summary>
-    /// 构造函数（用于EF Core）
+    ///     构造函数（用于EF Core）
     /// </summary>
     protected MaterialUnit()
     {
     }
 
     /// <summary>
-    /// 构造函数（用于自增主键）
+    ///     构造函数（用于自增主键）
     /// </summary>
     public MaterialUnit(int materialId, string unitName, decimal rate)
     {
@@ -26,7 +26,7 @@ public class MaterialUnit : Entity<int>, IDeletionAuditedObject, IMaterialClient
     }
 
     /// <summary>
-    /// 构造函数（用于指定Id）
+    ///     构造函数（用于指定Id）
     /// </summary>
     public MaterialUnit(int id, int materialId, string unitName, decimal rate)
         : base(id)
@@ -37,35 +37,35 @@ public class MaterialUnit : Entity<int>, IDeletionAuditedObject, IMaterialClient
     }
 
     /// <summary>
-    /// 物料ID (FK to Material)
+    ///     物料ID (FK to Material)
     /// </summary>
     public int MaterialId { get; set; }
 
 
     /// <summary>
-    /// Desc:单位计算类型(0:按重量  1:按数量)
-    /// Default:0
-    /// Nullable:True
-    /// </summary>           
+    ///     Desc:单位计算类型(0:按重量  1:按数量)
+    ///     Default:0
+    ///     Nullable:True
+    /// </summary>
     public int? UnitCalculationType { get; set; }
 
     /// <summary>
-    /// 单位名称
+    ///     单位名称
     /// </summary>
     public string UnitName { get; set; } = string.Empty;
 
     /// <summary>
-    /// 换算率
+    ///     换算率
     /// </summary>
     public decimal? Rate { get; set; }
 
     /// <summary>
-    /// 供应商ID (FK to Provider, optional)
+    ///     供应商ID (FK to Provider, optional)
     /// </summary>
     public int? ProviderId { get; set; }
 
     /// <summary>
-    /// 换算率名称
+    ///     换算率名称
     /// </summary>
     public string? RateName { get; set; }
 
