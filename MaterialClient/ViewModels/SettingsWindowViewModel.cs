@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.Hikvision;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
@@ -20,6 +22,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
+    private readonly IHikvisionService _hikvisionService;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -31,6 +34,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     // System settings
     [Reactive] private bool _enableAutoStart;
+    [Reactive] private StreamType _captureStreamType = StreamType.Substream;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -42,13 +46,42 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     // Scale settings
     [Reactive] private string _scaleSerialPort = "COM3";
+    [Reactive] private ScaleUnit _scaleUnit = ScaleUnit.Ton;
+
+    /// <summary>
+    ///     Scale unit options for ComboBox
+    /// </summary>
+    public ObservableCollection<ScaleUnit> ScaleUnitOptions { get; } = new()
+    {
+        ScaleUnit.Kg,
+        ScaleUnit.Ton
+    };
+
+    /// <summary>
+    ///     Stream type options for ComboBox
+    /// </summary>
+    public ObservableCollection<StreamType> StreamTypeOptions { get; } = new()
+    {
+        StreamType.Substream,
+        StreamType.Mainstream
+    };
+
+    // Weighing configuration
+    [Reactive] private decimal _minWeightThreshold = 0.5m;
+    [Reactive] private decimal _weightStabilityThreshold = 0.05m;
+    [Reactive] private int _stabilityWindowMs = 3000;
+    [Reactive] private int _stabilityCheckIntervalMs = 200;
+    [Reactive] private int _maxIntervalMinutes = 300;
+    [Reactive] private decimal _minWeightDiff = 1m;
 
     public SettingsWindowViewModel(
         ISettingsService settingsService,
-        ITruckScaleWeightService truckScaleWeightService)
+        ITruckScaleWeightService truckScaleWeightService,
+        IHikvisionService hikvisionService)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
+        _hikvisionService = hikvisionService;
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
@@ -78,7 +111,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
                 {
                     SerialPort = ScaleSerialPort,
                     BaudRate = ScaleBaudRate,
-                    CommunicationMethod = ScaleCommunicationMethod
+                    CommunicationMethod = ScaleCommunicationMethod,
+                    ScaleUnit = ScaleUnit
                 },
                 new DocumentScannerConfig
                 {
@@ -86,7 +120,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
                 },
                 new SystemSettings
                 {
-                    EnableAutoStart = EnableAutoStart
+                    EnableAutoStart = EnableAutoStart,
+                    CaptureStreamType = CaptureStreamType
                 },
                 CameraConfigs.Select(c => new CameraConfig
                 {
@@ -102,7 +137,16 @@ public partial class SettingsWindowViewModel : ViewModelBase
                     Name = l.Name,
                     Ip = l.Ip,
                     Direction = l.Direction
-                }).ToList()
+                }).ToList(),
+                new WeighingConfiguration
+                {
+                    MinWeightThreshold = MinWeightThreshold,
+                    WeightStabilityThreshold = WeightStabilityThreshold,
+                    StabilityWindowMs = StabilityWindowMs,
+                    StabilityCheckIntervalMs = StabilityCheckIntervalMs,
+                    MaxIntervalMinutes = MaxIntervalMinutes,
+                    MinWeightDiff = MinWeightDiff
+                }
             );
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -157,6 +201,21 @@ public partial class SettingsWindowViewModel : ViewModelBase
         if (config != null) LicensePlateRecognitionConfigs.Remove(config);
     }
 
+    [ReactiveCommand]
+    private async Task TestCaptureAsync()
+    {
+        try
+        {
+            // Call test capture service method - it will handle all cameras and send notification
+            await _hikvisionService.TestCaptureAsync();
+        }
+        catch (Exception ex)
+        {
+            // Show error message - in a real app you'd use a dialog service
+            // Error: ex.Message
+        }
+    }
+
     #endregion
 
     #region Methods
@@ -192,6 +251,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
             ScaleSerialPort = settings.ScaleSettings.SerialPort;
             ScaleBaudRate = settings.ScaleSettings.BaudRate;
             ScaleCommunicationMethod = settings.ScaleSettings.CommunicationMethod;
+            ScaleUnit = settings.ScaleSettings.ScaleUnit;
 
             // Ensure the loaded serial port is in the available list
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
@@ -202,6 +262,15 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
             // Load system settings
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
+            CaptureStreamType = settings.SystemSettings.CaptureStreamType;
+
+            // Load weighing configuration
+            MinWeightThreshold = settings.WeighingConfiguration.MinWeightThreshold;
+            WeightStabilityThreshold = settings.WeighingConfiguration.WeightStabilityThreshold;
+            StabilityWindowMs = settings.WeighingConfiguration.StabilityWindowMs;
+            StabilityCheckIntervalMs = settings.WeighingConfiguration.StabilityCheckIntervalMs;
+            MaxIntervalMinutes = settings.WeighingConfiguration.MaxIntervalMinutes;
+            MinWeightDiff = settings.WeighingConfiguration.MinWeightDiff;
 
             // Load camera configs
             CameraConfigs.Clear();

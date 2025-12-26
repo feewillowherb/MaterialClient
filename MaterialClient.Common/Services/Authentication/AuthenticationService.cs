@@ -311,6 +311,16 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
             return false;
         }
 
+        // 如果没有保存的凭证（UserCredential），说明用户没有勾选"记住密码"
+        // 即使会话未过期，也应该要求重新登录
+        var credential = await _credentialRepository.FirstOrDefaultAsync();
+        if (credential == null)
+        {
+            // 没有保存凭证，清除会话，要求重新登录
+            await LogoutAsync();
+            return false;
+        }
+
         return true;
     }
 

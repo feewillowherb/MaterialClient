@@ -160,6 +160,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartWeighingRecordCreatedObservable();
         StartDeliveryTypeObservable();
         StartMatchSucceededMessageBusSubscription();
+        StartUpdatePlateNumberMessageBusSubscription();
 
         // 监听 USB 摄像头在线状态变化、ShouldShowPreview变化和IsShowingMainView变化，自动启动/停止预览
         this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview, x => x.IsShowingMainView)
@@ -589,6 +590,38 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             .DisposeWith(_disposables);
     }
 
+    /// <summary>
+    ///     订阅更新车牌号消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartUpdatePlateNumberMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<UpdatePlateNumberMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
+            {
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received UpdatePlateNumberMessage for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                    message.WeighingRecordId, message.PlateNumber);
+
+                try
+                {
+                    // 刷新列表以更新车牌号
+                    await RefreshAsync();
+
+                    Logger?.LogInformation(
+                        "AttendedWeighingViewModel: Refreshed list after plate number update for WeighingRecordId {RecordId}",
+                        message.WeighingRecordId);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error while handling UpdatePlateNumberMessage for WeighingRecordId {RecordId}",
+                        message.WeighingRecordId);
+                }
+            })
+            .DisposeWith(_disposables);
+    }
+
     private static string GetStatusText(AttendedWeighingStatus status)
     {
         return status switch
@@ -640,9 +673,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     #region Properties
 
     [Reactive] private ObservableCollection<WeighingListItemDto> _listItems = new();
-
-    [Reactive] private ObservableCollection<WeighingListItemDto> _pagedListItems = new();
-
+    
     [Reactive] private WeighingListItemDto? _selectedListItem;
 
     [Reactive] private ObservableCollection<string> _vehiclePhotos = new();
@@ -811,11 +842,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                 .ToList();
 
             ListItems.Clear();
-            PagedListItems.Clear();
             foreach (var item in pagedItems)
             {
                 ListItems.Add(item);
-                PagedListItems.Add(item);
             }
         }
         catch

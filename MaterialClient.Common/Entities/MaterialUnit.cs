@@ -77,7 +77,7 @@ public class MaterialUnit : Entity<int>, IDeletionAuditedObject, IMaterialClient
     public int? CreateUserId { get; set; }
     public string? Creator { get; set; }
     public int? UpdateTime { get; set; }
-    public int? AddTime { get; set; }
+    public int AddTime { get; set; }
     public DateTime? UpdateDate { get; set; }
-    public DateTime? AddDate { get; set; }
+    public DateTime AddDate { get; set; }
 }

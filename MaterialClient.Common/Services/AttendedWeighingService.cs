@@ -9,6 +9,7 @@ using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
+using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Local;
@@ -105,13 +106,12 @@ public interface IAttendedWeighingService : IAsyncDisposable
 [AutoConstructor]
 public partial class AttendedWeighingService : IAttendedWeighingService, ISingletonDependency
 {
-    // 最小称重重量稳定判定
-    private const decimal MinWeightThreshold = 0.5m; // 0.5t = 500kg
+    // 称重配置（从设置中加载）
+    private decimal _minWeightThreshold = 0.5m; // 0.5t = 500kg
+    private decimal _weightStabilityThreshold = 0.05m; // ±0.05m = 0.1m total range
+    private int _stabilityWindowMs = 3000;
+    private int _stabilityCheckIntervalMs = 200; // 默认 200ms
 
-    // 重量稳定性监控
-    private const decimal WeightStabilityThreshold = 0.05m; // ±0.05m = 0.1m total range
-    private const int StabilityWindowMs = 3000;
-    private const int StabilityCheckIntervalMs = 200; // 默认 200ms
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
 
     // Rx Subject for delivery type changes
@@ -160,6 +160,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     public async Task StartAsync()
     {
+        // Load configuration from settings
+        await LoadConfigurationAsync();
+
         lock (_statusLock)
         {
             if (_weightSubscription != null) return; // 已经启动
@@ -340,16 +343,41 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
+    ///     Load configuration from settings
+    /// </summary>
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var config = settings.WeighingConfiguration;
+
+            _minWeightThreshold = config.MinWeightThreshold;
+            _weightStabilityThreshold = config.WeightStabilityThreshold;
+            _stabilityWindowMs = config.StabilityWindowMs;
+            _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
+
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Loaded configuration - MinWeightThreshold: {_minWeightThreshold}, WeightStabilityThreshold: {_weightStabilityThreshold}, StabilityWindowMs: {_stabilityWindowMs}, StabilityCheckIntervalMs: {_stabilityCheckIntervalMs}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex,
+                "AttendedWeighingService: Failed to load configuration, using default values");
+        }
+    }
+
+    /// <summary>
     ///     Initialize weight stability monitoring using Rx
-    ///     Monitors weight changes within 3 seconds window, considers stable if variation is less than ±0.1m
+    ///     Monitors weight changes within configured window, considers stable if variation is within threshold
     /// </summary>
     private void InitializeWeightStabilityMonitoring()
     {
         _stabilitySubscription?.Dispose();
 
         _stabilitySubscription = _truckScaleWeightService.WeightUpdates
-            .Buffer(TimeSpan.FromMilliseconds(StabilityWindowMs),
-                TimeSpan.FromMilliseconds(StabilityCheckIntervalMs))
+            .Buffer(TimeSpan.FromMilliseconds(_stabilityWindowMs),
+                TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs))
             .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(buffer =>
             {
@@ -359,8 +387,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var max = buffer.Max();
                     var range = max - min;
 
-                    // Consider stable if range is within ±0.1m (0.2m total range)
-                    var isStable = range <= WeightStabilityThreshold * 2;
+                    // Consider stable if range is within threshold * 2
+                    var isStable = range <= _weightStabilityThreshold * 2;
 
                     lock (_statusLock)
                     {
@@ -411,8 +439,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         switch (_currentStatus)
         {
             case AttendedWeighingStatus.OffScale:
-                // OffScale -> WaitingForStability: weight increases from <0.5t to >0.5t
-                if (currentWeight > MinWeightThreshold)
+                // OffScale -> WaitingForStability: weight increases above threshold
+                if (currentWeight > _minWeightThreshold)
                 {
                     _currentStatus = AttendedWeighingStatus.WaitingForStability;
                     _stableWeight = null;
@@ -424,7 +452,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 break;
 
             case AttendedWeighingStatus.WaitingForStability:
-                if (currentWeight < MinWeightThreshold)
+                if (currentWeight < _minWeightThreshold)
                 {
                     // Unstable weighing flow: directly from WaitingForStability to OffScale
                     _currentStatus = AttendedWeighingStatus.OffScale;
@@ -461,7 +489,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 break;
 
             case AttendedWeighingStatus.WeightStabilized:
-                if (currentWeight < MinWeightThreshold)
+                if (currentWeight < _minWeightThreshold)
                 {
                     // WeightStabilized -> OffScale: normal flow
                     _currentStatus = AttendedWeighingStatus.OffScale;
@@ -760,6 +788,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
 
                 await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+
+                // 通过 ReactiveUI MessageBus 发送更新车牌号消息
+                var updateMessage = new UpdatePlateNumberMessage(weighingRecord.Id, plateNumber);
+                MessageBus.Current.SendMessage(updateMessage);
+
+                _logger?.LogInformation(
+                    "AttendedWeighingService: Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                    weighingRecord.Id, plateNumber);
             }
             else
             {

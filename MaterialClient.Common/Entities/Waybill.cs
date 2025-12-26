@@ -264,9 +264,9 @@ public class Waybill : Entity<long>, IMaterialClientAuditedObject, IDeletionAudi
     public int? CreateUserId { get; set; }
     public string? Creator { get; set; }
     public int? UpdateTime { get; set; }
-    public int? AddTime { get; set; }
+    public int AddTime { get; set; }
     public DateTime? UpdateDate { get; set; }
-    public DateTime? AddDate { get; set; }
+    public DateTime AddDate { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletionTime { get; set; }
     public Guid? DeleterId { get; set; }

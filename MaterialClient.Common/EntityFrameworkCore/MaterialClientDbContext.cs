@@ -42,6 +42,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Ignore<CameraConfig>();
         modelBuilder.Ignore<LicensePlateRecognitionConfig>();
         modelBuilder.Ignore<ScaleSettings>();
+        modelBuilder.Ignore<WeighingConfiguration>();
         modelBuilder.Ignore<DocumentScannerConfig>();
         modelBuilder.Ignore<SystemSettings>();
         modelBuilder.Ignore<WeighingRecordMaterial>(); // Stored as JSON in WeighingRecord
@@ -207,6 +208,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.SystemSettingsJson).IsRequired();
             entity.Property(e => e.CameraConfigsJson).IsRequired();
             entity.Property(e => e.LicensePlateRecognitionConfigsJson).IsRequired();
+            entity.Property(e => e.WeighingConfigurationJson).IsRequired();
         });
 
         // Configure WorkSettingsEntity

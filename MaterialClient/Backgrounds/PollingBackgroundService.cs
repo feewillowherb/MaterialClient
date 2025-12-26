@@ -22,7 +22,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         IServiceScopeFactory serviceScopeFactory)
         : base(timer, serviceScopeFactory)
     {
-        // 设置定时器间隔为 10 分钟
+        // 设置定时器间隔为 1 分钟
         Timer.Period = (int)TimeSpan.FromMinutes(1).TotalMilliseconds;
     }
 

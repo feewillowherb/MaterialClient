@@ -137,9 +137,9 @@ public class MaterialProviderListResultDto
             CreateUserId = dto.CreateUserId,
             Creator = dto.Creator,
             UpdateTime = dto.UpdateTime,
-            AddTime = dto.AddTime,
+            AddTime = dto.AddTime ?? 0,
             UpdateDate = dto.UpdateDate,
-            AddDate = dto.AddDate
+            AddDate = dto.AddDate ?? DateTime.Now
         };
 
         return provider;

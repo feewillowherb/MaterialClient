@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
+using Volo.Abp.Auditing;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace MaterialClient.Common.Entities;
@@ -9,7 +11,7 @@ namespace MaterialClient.Common.Entities;
 /// <summary>
 ///     称重记录实体
 /// </summary>
-public class WeighingRecord : FullAuditedEntity<long>
+public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
     /// <summary>
     ///     构造函数（用于EF Core）
@@ -187,7 +189,7 @@ public class WeighingRecord : FullAuditedEntity<long>
         decimal minWeightDiff = 1m)
     {
         // 验证时间差
-        var timeDiff = Math.Abs((record1.CreationTime - record2.CreationTime).TotalMinutes);
+        var timeDiff = Math.Abs((record1.AddDate - record2.AddDate).TotalMinutes);
         if (timeDiff > maxIntervalMinutes)
             return new WeighingMatchResult(false, null, null);
 
@@ -212,6 +214,22 @@ public class WeighingRecord : FullAuditedEntity<long>
         // Sending
         return new WeighingMatchResult(true, tareRecord, grossRecord);
     }
+
+    #region Audited Properties
+
+    public int? LastEditUserId { get; set; }
+    public string? LastEditor { get; set; }
+    public int? CreateUserId { get; set; }
+    public string? Creator { get; set; }
+    public int? UpdateTime { get; set; }
+    public int AddTime { get; set; }
+    public DateTime? UpdateDate { get; set; }
+    public DateTime AddDate { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletionTime { get; set; }
+    public Guid? DeleterId { get; set; }
+
+    #endregion
 }
 
 /// <summary>

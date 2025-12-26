@@ -84,8 +84,10 @@ public interface IWeighingMatchingService
 [AutoConstructor]
 public partial class WeighingMatchingService : DomainService, IWeighingMatchingService
 {
-    private const int MaxIntervalMinutes = 300;
-    private const decimal MinTon = 1m;
+    // 匹配配置（从设置中加载）
+    private int _maxIntervalMinutes = 300;
+    private decimal _minWeightDiff = 1m;
+
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
     private readonly ILogger<WeighingMatchingService>? _logger;
@@ -98,11 +100,37 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly ISettingsService _settingsService;
 
+    /// <summary>
+    ///     Load configuration from settings
+    /// </summary>
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var config = settings.WeighingConfiguration;
+
+            _maxIntervalMinutes = config.MaxIntervalMinutes;
+            _minWeightDiff = config.MinWeightDiff;
+
+            _logger?.LogInformation(
+                $"WeighingMatchingService: Loaded configuration - MaxIntervalMinutes: {_maxIntervalMinutes}, MinWeightDiff: {_minWeightDiff}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex,
+                "WeighingMatchingService: Failed to load configuration, using default values");
+        }
+    }
 
     [UnitOfWork]
     public async Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record)
     {
+        // Load configuration
+        await LoadConfigurationAsync();
+
         if (!record.IsValidChinesePlateNumber())
         {
             _logger?.LogInformation(
@@ -116,7 +144,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var unmatchedRecords = await query
             .Where(r => r.PlateNumber == record.PlateNumber && r.Id != record.Id)
             .Where(r => r.MatchedId == null)
-            .OrderByDescending(r => r.CreationTime)
+            .OrderByDescending(r => r.AddDate)
             .ToListAsync();
         if (unmatchedRecords.Count == 0)
         {
@@ -126,9 +154,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             return false;
         }
 
-        var validTime = record.CreationTime.AddMinutes(-MaxIntervalMinutes);
+        var validTime = record.AddDate.AddMinutes(-_maxIntervalMinutes);
         var timeoutOrders = unmatchedRecords
-            .Where(r => r.CreationTime < validTime)
+            .Where(r => r.AddDate < validTime)
             .ToList();
         if (timeoutOrders.Any())
             _logger?.LogInformation(
@@ -138,10 +166,10 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (record.DeliveryType == null || record.DeliveryType == DeliveryType.Receiving)
         {
             var candidateRecords = unmatchedRecords
-                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.AddDate >= validTime)
                 .Where(r => r.TotalWeight > record.TotalWeight)
-                .Where(r => r.TotalWeight - record.TotalWeight > MinTon)
-                .OrderByDescending(r => r.CreationTime)
+                .Where(r => r.TotalWeight - record.TotalWeight > _minWeightDiff)
+                .OrderByDescending(r => r.AddDate)
                 .ToList();
             if (candidateRecords.Count == 0)
             {
@@ -152,7 +180,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             }
 
             var matchedRecord = candidateRecords
-                .OrderBy(r => r.CreationTime - record.CreationTime)
+                .OrderBy(r => r.AddDate - record.AddDate)
                 .First();
 
             await CreateWaybillAsync(record, matchedRecord, DeliveryType.Receiving);
@@ -162,10 +190,10 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (record.DeliveryType == DeliveryType.Sending)
         {
             var candidateRecords = unmatchedRecords
-                .Where(r => r.CreationTime >= validTime)
+                .Where(r => r.AddDate >= validTime)
                 .Where(r => r.TotalWeight < record.TotalWeight)
-                .Where(r => record.TotalWeight - r.TotalWeight > MinTon)
-                .OrderByDescending(r => r.CreationTime)
+                .Where(r => record.TotalWeight - r.TotalWeight > _minWeightDiff)
+                .OrderByDescending(r => r.AddDate)
                 .ToList();
             if (candidateRecords.Count == 0)
             {
@@ -176,7 +204,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             }
 
             var matchedRecord = candidateRecords
-                .OrderBy(r => r.CreationTime - record.CreationTime)
+                .OrderBy(r => r.AddDate - record.AddDate)
                 .First();
 
             await CreateWaybillAsync(matchedRecord, record, DeliveryType.Sending);
@@ -290,6 +318,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     [UnitOfWork]
     public async Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType)
     {
+        // Load configuration
+        await LoadConfigurationAsync();
+
         if (string.IsNullOrWhiteSpace(record.PlateNumber))
         {
             _logger?.LogWarning("GetCandidateRecordsAsync: Record {RecordId} has no plate number", record.Id);
@@ -301,7 +332,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var unmatchedRecords = await query
             .Where(r => r.PlateNumber == record.PlateNumber && r.Id != record.Id)
             .Where(r => r.MatchedId == null)
-            .OrderByDescending(r => r.CreationTime)
+            .OrderByDescending(r => r.AddDate)
             .ToListAsync();
 
         if (unmatchedRecords.Count == 0)
@@ -314,8 +345,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         // 使用 TryMatch 过滤可匹配的候选记录
         return unmatchedRecords
-            .Where(r => WeighingRecord.TryMatch(record, r, deliveryType).IsMatch)
-            .OrderByDescending(r => r.CreationTime)
+            .Where(r => WeighingRecord.TryMatch(record, r, deliveryType, _maxIntervalMinutes, _minWeightDiff).IsMatch)
+            .OrderByDescending(r => r.AddDate)
             .ToList();
     }
 
@@ -326,8 +357,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     public async Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
         DeliveryType deliveryType)
     {
+        // Load configuration
+        await LoadConfigurationAsync();
+
         // 使用领域方法自动判断 join/out
-        var matchResult = WeighingRecord.TryMatch(currentRecord, matchedRecord, deliveryType);
+        var matchResult = WeighingRecord.TryMatch(currentRecord, matchedRecord, deliveryType, _maxIntervalMinutes,
+            _minWeightDiff);
 
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
             throw new BusinessException("无法匹配这两条记录");
@@ -553,16 +588,16 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         DeliveryType deliveryType)
     {
         var todayCount = await _waybillRepository.CountAsync(w =>
-            w.AddDate!.Value.Date == DateTime.Today);
+            w.AddDate.Date == DateTime.Today);
 
-        var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.CreationTime, todayCount);
+        var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.AddDate, todayCount);
         var orderId = Waybill.GenerateOrderId();
         var waybill = new Waybill(orderId, orderNo)
         {
             ProviderId = joinRecord.ProviderId ?? outRecord.ProviderId,
             PlateNumber = joinRecord.PlateNumber ?? outRecord.PlateNumber,
-            JoinTime = joinRecord.CreationTime,
-            OutTime = outRecord.CreationTime,
+            JoinTime = joinRecord.AddDate,
+            OutTime = outRecord.AddDate,
             DeliveryType = deliveryType,
             OrderSource = OrderSource.MannedStation,
             OrderType = OrderTypeEnum.FirstWeight
@@ -705,6 +740,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     /// </summary>
     private async Task<bool> TryMatchWithDeliveryTypeAsync(WeighingRecord record, DeliveryType deliveryType)
     {
+        // Load configuration (GetCandidateRecordsAsync also loads it, but ensure it's loaded here too)
+        await LoadConfigurationAsync();
+
         var candidates = await GetCandidateRecordsAsync(record, deliveryType);
         if (candidates.Count == 0)
         {
@@ -716,11 +754,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         // 选择时间最接近的候选记录
         var matchedRecord = candidates
-            .OrderBy(r => Math.Abs((r.CreationTime - record.CreationTime).TotalMinutes))
+            .OrderBy(r => Math.Abs((r.AddDate - record.AddDate).TotalMinutes))
             .First();
 
         // 使用领域方法自动判断 join/out
-        var matchResult = WeighingRecord.TryMatch(record, matchedRecord, deliveryType);
+        var matchResult =
+            WeighingRecord.TryMatch(record, matchedRecord, deliveryType, _maxIntervalMinutes, _minWeightDiff);
 
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
         {

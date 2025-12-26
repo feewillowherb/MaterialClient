@@ -1,12 +1,18 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:MaterialClient.ViewModels"
+        xmlns:converters="using:MaterialClient.Converters"
         x:Class="MaterialClient.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="系统设置"
         Width="800" Height="700"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/fd-ico.ico">
+
+    <Window.Resources>
+        <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
+        <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
+    </Window.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
 
@@ -31,7 +37,7 @@
                                    Foreground="Black"
                                    Margin="0,0,0,8" />
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12"
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
                               ColumnSpacing="12">
                             <TextBlock Text="串口:"
                                        Grid.Row="0"
@@ -66,6 +72,105 @@
                                      Grid.Row="2"
                                      Grid.Column="1"
                                      Watermark="TF0" />
+
+                            <TextBlock Text="地磅单位:"
+                                       Grid.Row="3"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       Width="120" />
+                            <ComboBox ItemsSource="{Binding ScaleUnitOptions}"
+                                      SelectedItem="{Binding ScaleUnit}"
+                                      Grid.Row="3"
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ., Converter={StaticResource ScaleUnitConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Weighing Settings Group -->
+                <Border Classes="section-border"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="称重设置"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="Black"
+                                   Margin="0,0,0,8" />
+
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
+                              ColumnSpacing="12">
+                            <TextBlock Text="最小称重阈值(吨):"
+                                       Grid.Row="0"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding MinWeightThreshold}"
+                                     Grid.Row="0"
+                                     Grid.Column="1"
+                                     Watermark="0.5" />
+
+                            <TextBlock Text="重量稳定性阈值(吨):"
+                                       Grid.Row="1"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding WeightStabilityThreshold}"
+                                     Grid.Row="1"
+                                     Grid.Column="1"
+                                     Watermark="0.05" />
+
+                            <TextBlock Text="稳定性窗口时间(毫秒):"
+                                       Grid.Row="2"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding StabilityWindowMs}"
+                                     Grid.Row="2"
+                                     Grid.Column="1"
+                                     Watermark="3000" />
+
+                            <TextBlock Text="稳定性检查间隔(毫秒):"
+                                       Grid.Row="3"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding StabilityCheckIntervalMs}"
+                                     Grid.Row="3"
+                                     Grid.Column="1"
+                                     Watermark="200" />
+
+                            <TextBlock Text="匹配最大时间间隔(分钟):"
+                                       Grid.Row="4"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding MaxIntervalMinutes}"
+                                     Grid.Row="4"
+                                     Grid.Column="1"
+                                     Watermark="300" />
+
+                            <TextBlock Text="匹配最小重量差(吨):"
+                                       Grid.Row="5"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding MinWeightDiff}"
+                                     Grid.Row="5"
+                                     Grid.Column="1"
+                                     Watermark="1" />
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -277,6 +382,30 @@
 
                         <CheckBox Content="开机自动启动"
                                   IsChecked="{Binding EnableAutoStart}" />
+
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <TextBlock Text="拍照码流类型:"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="120" />
+                            <ComboBox ItemsSource="{Binding StreamTypeOptions}"
+                                      SelectedItem="{Binding CaptureStreamType}"
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ., Converter={StaticResource StreamTypeConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Content="测试拍照"
+                                    Grid.Column="2"
+                                    Command="{Binding TestCaptureCommand}"
+                                    Classes="primary-button"
+                                    Padding="12,6"
+                                    CornerRadius="4" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 

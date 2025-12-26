@@ -159,36 +159,36 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
         if (DeliveryType == DeliveryType.Receiving)
         {
-            if (CurrentRecord.CreationTime <= MatchedRecord.CreationTime)
+            if (CurrentRecord.AddDate <= MatchedRecord.AddDate)
             {
                 GrossWeight = CurrentRecord.TotalWeight;
-                GrossWeightTime = CurrentRecord.CreationTime;
+                GrossWeightTime = CurrentRecord.AddDate;
                 TareWeight = MatchedRecord.TotalWeight;
-                TareWeightTime = MatchedRecord.CreationTime;
+                TareWeightTime = MatchedRecord.AddDate;
             }
             else
             {
                 GrossWeight = MatchedRecord.TotalWeight;
-                GrossWeightTime = MatchedRecord.CreationTime;
+                GrossWeightTime = MatchedRecord.AddDate;
                 TareWeight = CurrentRecord.TotalWeight;
-                TareWeightTime = CurrentRecord.CreationTime;
+                TareWeightTime = CurrentRecord.AddDate;
             }
         }
         else
         {
-            if (CurrentRecord.CreationTime <= MatchedRecord.CreationTime)
+            if (CurrentRecord.AddDate <= MatchedRecord.AddDate)
             {
                 TareWeight = CurrentRecord.TotalWeight;
-                TareWeightTime = CurrentRecord.CreationTime;
+                TareWeightTime = CurrentRecord.AddDate;
                 GrossWeight = MatchedRecord.TotalWeight;
-                GrossWeightTime = MatchedRecord.CreationTime;
+                GrossWeightTime = MatchedRecord.AddDate;
             }
             else
             {
                 TareWeight = MatchedRecord.TotalWeight;
-                TareWeightTime = MatchedRecord.CreationTime;
+                TareWeightTime = MatchedRecord.AddDate;
                 GrossWeight = CurrentRecord.TotalWeight;
-                GrossWeightTime = CurrentRecord.CreationTime;
+                GrossWeightTime = CurrentRecord.AddDate;
             }
         }
 
@@ -326,7 +326,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             ExitPhotos.Clear();
             TicketPhoto = null;
 
-            var earlierRecord = CurrentRecord.CreationTime <= MatchedRecord.CreationTime
+            var earlierRecord = CurrentRecord.AddDate <= MatchedRecord.AddDate
                 ? CurrentRecord
                 : MatchedRecord;
             var earlierFiles = earlierRecord.Id == CurrentRecord.Id ? currentFiles : matchedFiles;

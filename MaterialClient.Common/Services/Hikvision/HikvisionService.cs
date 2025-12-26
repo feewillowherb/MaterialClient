@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text;
+using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Services;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hikvision;
@@ -12,16 +14,23 @@ public interface IHikvisionService
     bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90);
 
     bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError,
-        int quality = 1);
+        int quality = 90);
 
     bool TryOpenRealStream(HikvisionDeviceConfig config, int channel);
     bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath);
     Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests);
+    Task<List<BatchCaptureResult>> TestCaptureAsync();
 }
 
 public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 {
     private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
+    private readonly ISettingsService? _settingsService;
+
+    public HikvisionService(ISettingsService? settingsService = null)
+    {
+        _settingsService = settingsService;
+    }
 
     public void AddOrUpdateDevice(HikvisionDeviceConfig config)
     {
@@ -69,7 +78,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     }
 
     public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError,
-        int quality = 1)
+        int quality = 90)
     {
         lastError = 0;
         ArgumentNullException.ThrowIfNull(config);
@@ -122,6 +131,22 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     {
         if (requests == null || requests.Count == 0) return new List<BatchCaptureResult>();
 
+        // Get settings to determine which capture method to use
+        // Default to Substream if settings service is not available
+        var streamType = StreamType.Substream;
+        if (_settingsService != null)
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            streamType = settings.SystemSettings.CaptureStreamType;
+        }
+
+        // Route to appropriate method based on stream type
+        if (streamType == StreamType.Substream)
+        {
+            return await CaptureJpegBatchInternalAsync(requests);
+        }
+
+        // Mainstream capture (existing implementation)
         // 使用并发处理多个设备
         var tasks = requests.Select(async request =>
         {
@@ -182,6 +207,146 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         var results = await Task.WhenAll(tasks);
         return results.ToList();
+    }
+
+    private async Task<List<BatchCaptureResult>> CaptureJpegBatchInternalAsync(List<BatchCaptureRequest> requests)
+    {
+        if (requests == null || requests.Count == 0) return new List<BatchCaptureResult>();
+
+        // 使用并发处理多个设备（子码流直接拍照）
+        var tasks = requests.Select(async request =>
+        {
+            var result = new BatchCaptureResult
+            {
+                Request = request,
+                Success = false,
+                HcNetSdkError = 0,
+                PlayM4Error = 0,
+                ErrorMessage = null,
+                FileSize = 0
+            };
+
+            try
+            {
+                // 在后台线程中执行拍照操作（因为 CaptureJpeg 是同步的阻塞操作）
+                await Task.Run(() =>
+                {
+                    uint lastError = 0;
+                    result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError);
+                    result.HcNetSdkError = lastError;
+
+                    if (!result.Success)
+                    {
+                        result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}";
+                    }
+                    else
+                    {
+                        // 验证文件
+                        if (File.Exists(request.SaveFullPath))
+                        {
+                            var fileInfo = new FileInfo(request.SaveFullPath);
+                            result.FileSize = fileInfo.Length;
+                            if (fileInfo.Length == 0)
+                            {
+                                result.Success = false;
+                                result.ErrorMessage = "文件大小为0";
+                            }
+                        }
+                        else
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "文件未创建";
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.ErrorMessage = ex.Message;
+            }
+
+            return result;
+        });
+
+        var results = await Task.WhenAll(tasks);
+        return results.ToList();
+    }
+
+    public async Task<List<BatchCaptureResult>> TestCaptureAsync()
+    {
+        if (_settingsService == null)
+        {
+            return new List<BatchCaptureResult>();
+        }
+
+        // Get all camera configurations (excluding USB cameras)
+        var settings = await _settingsService.GetSettingsAsync();
+        var cameraConfigs = settings.CameraConfigs;
+
+        if (cameraConfigs.Count == 0)
+        {
+            return new List<BatchCaptureResult>();
+        }
+
+        // Get stream type for filename suffix
+        var streamType = settings.SystemSettings.CaptureStreamType;
+        var streamTypeSuffix = streamType == StreamType.Substream ? "sub" : "main";
+
+        // Create test image directory
+        var appDirectory = AppContext.BaseDirectory;
+        var testImageDir = Path.Combine(appDirectory, "TestImage");
+        Directory.CreateDirectory(testImageDir);
+
+        // Create batch requests for all cameras
+        var requests = new List<BatchCaptureRequest>();
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+
+        foreach (var cameraConfig in cameraConfigs)
+        {
+            if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
+                string.IsNullOrWhiteSpace(cameraConfig.Port) ||
+                string.IsNullOrWhiteSpace(cameraConfig.Channel))
+            {
+                continue;
+            }
+
+            if (!int.TryParse(cameraConfig.Port, out var port) ||
+                !int.TryParse(cameraConfig.Channel, out var channel))
+            {
+                continue;
+            }
+
+            var hikvisionConfig = new HikvisionDeviceConfig
+            {
+                Ip = cameraConfig.Ip,
+                Port = port,
+                Username = cameraConfig.UserName,
+                Password = cameraConfig.Password,
+                Channels = new[] { channel }
+            };
+
+            var fileName = $"test_{cameraConfig.Name}_ch{channel}_{streamTypeSuffix}_{timestamp}.jpg";
+            var savePath = Path.Combine(testImageDir, fileName);
+
+            requests.Add(new BatchCaptureRequest
+            {
+                Config = hikvisionConfig,
+                Channel = channel,
+                SaveFullPath = savePath,
+                DeviceKey = $"{cameraConfig.Ip}:{port}"
+            });
+        }
+
+        if (requests.Count == 0)
+        {
+            return new List<BatchCaptureResult>();
+        }
+
+        // Use unified interface - it will automatically route based on settings
+        var results = await CaptureJpegFromStreamBatchAsync(requests);
+
+        return results;
     }
 
     public static uint GetLastErrorCode()
