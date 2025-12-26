@@ -25,7 +25,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task SetWeight_Should_UpdateWeight_And_TriggerObservable()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         decimal? receivedWeight = null;
         var subscription = service.WeightUpdates.Subscribe(w => receivedWeight = w);
 
@@ -50,7 +50,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task IsOnline_Should_AllowConcurrentReads()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         const int threadCount = 50;
         const int iterationsPerThread = 1000;
         var errors = 0;
@@ -105,7 +105,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task ConcurrentReadWrite_Should_NotBlockReaders()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         const int readerCount = 30;
         const int writerCount = 5;
         const int iterations = 100;
@@ -193,7 +193,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task GetCurrentWeight_Should_ReturnQuickly()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         service.SetWeight(100.5m);
         const int iterations = 10000;
         var latencies = new long[iterations];
@@ -240,7 +240,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task SetWeight_ConcurrentCalls_Should_NotDeadlock()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         const int threadCount = 10;
         const int iterationsPerThread = 100;
         var errors = 0;
@@ -283,7 +283,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task WeightUpdates_Should_EmitAllUpdates()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
         var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
 
@@ -316,7 +316,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task IsOnline_Should_ReturnFalse_WhenNotInitialized()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
 
         // Act
         var isOnline = service.IsOnline;
@@ -335,7 +335,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task IsOnline_And_SetWeight_Should_NotInterfere()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         const int duration = 1000; // 1 second
         var errors = 0;
         var readCount = 0;
@@ -401,7 +401,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task StressTest_HighFrequency_ConcurrentOperations()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         const int readerCount = 20;
         const int writerCount = 5;
         const int duration = 2000; // 2 seconds
@@ -418,8 +418,8 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
             {
                 try
                 {
-                    _  = service.GetCurrentWeight();
-                    _  = service.IsOnline;
+                    _ = service.GetCurrentWeight();
+                    _ = service.IsOnline;
                     Interlocked.Increment(ref readCount);
                 }
                 catch
@@ -480,7 +480,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task DisposeAsync_Should_CleanupResources()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockSettingsService, _mockLogger);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService);
         var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
         var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
 

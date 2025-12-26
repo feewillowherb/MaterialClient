@@ -6,7 +6,7 @@ namespace MaterialClient.Common.Extensions;
 /// </summary>
 public static class ReaderWriterLockSlimExtensions
 {
-    private extension(ReaderWriterLockSlim rwLock)
+    extension(ReaderWriterLockSlim rwLock)
     {
         /// <summary>
         /// 获取读锁，返回 IDisposable，使用 using 语句自动释放（value-type，避免堆分配）

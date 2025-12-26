@@ -218,15 +218,15 @@ public class WeightScaleRxTests
 
         // 创建服务实例
         return new AttendedWeighingService(
-            truckScaleWeightService,
-            hikvisionService,
-            settingsService,
-            weighingRecordRepo,
-            attachmentRepo,
             fileRepo,
-            uowManager,
+            hikvisionService,
             eventBus,
-            logger
+            logger,
+            settingsService,
+            truckScaleWeightService,
+            uowManager,
+            attachmentRepo,
+            weighingRecordRepo
         );
     }
 }

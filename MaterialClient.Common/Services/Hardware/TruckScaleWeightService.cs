@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Extensions;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
