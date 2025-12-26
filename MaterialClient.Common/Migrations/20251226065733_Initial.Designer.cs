@@ -12,8 +12,8 @@ using Volo.Abp.EntityFrameworkCore;
 namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    [Migration("20251225074422_Update_MaterialDecimal")]
-    partial class Update_MaterialDecimal
+    [Migration("20251226065733_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -29,16 +29,20 @@ namespace MaterialClient.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("AddDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AddTime")
+                        .HasColumnType("INTEGER");
+
                     b.Property<short>("AttachType")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("CreationTime")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("CreationTime");
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("CreatorId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("CreatorId");
+                    b.Property<string>("Creator")
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("DeleterId")
                         .HasColumnType("TEXT")
@@ -58,13 +62,11 @@ namespace MaterialClient.Common.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("IsDeleted");
 
-                    b.Property<DateTime?>("LastModificationTime")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("LastModificationTime");
+                    b.Property<int?>("LastEditUserId")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("LastModifierId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("LastModifierId");
+                    b.Property<string>("LastEditor")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastSyncTime")
                         .HasColumnType("TEXT");
@@ -75,6 +77,12 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<string>("OssFullPath")
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateTime")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -119,10 +127,10 @@ namespace MaterialClient.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("AddDate")
+                    b.Property<DateTime>("AddDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("AddTime")
+                    b.Property<int>("AddTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("BasicUnit")
@@ -207,10 +215,10 @@ namespace MaterialClient.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("AddDate")
+                    b.Property<DateTime>("AddDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("AddTime")
+                    b.Property<int>("AddTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("CoId")
@@ -299,10 +307,10 @@ namespace MaterialClient.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("AddDate")
+                    b.Property<DateTime>("AddDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("AddTime")
+                    b.Property<int>("AddTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("CreateUserId")
@@ -367,10 +375,10 @@ namespace MaterialClient.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("AddDate")
+                    b.Property<DateTime>("AddDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("AddTime")
+                    b.Property<int>("AddTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("CoId")
@@ -455,6 +463,10 @@ namespace MaterialClient.Common.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SystemSettingsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WeighingConfigurationJson")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -586,10 +598,10 @@ namespace MaterialClient.Common.Migrations
                     b.Property<string>("AbortReason")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("AddDate")
+                    b.Property<DateTime>("AddDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("AddTime")
+                    b.Property<int>("AddTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("CreateUserId")
@@ -734,10 +746,10 @@ namespace MaterialClient.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("AddDate")
+                    b.Property<DateTime>("AddDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("AddTime")
+                    b.Property<int>("AddTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("CreateUserId")
@@ -811,13 +823,17 @@ namespace MaterialClient.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("CreationTime")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("CreationTime");
+                    b.Property<DateTime>("AddDate")
+                        .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("CreatorId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("CreatorId");
+                    b.Property<int>("AddTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Creator")
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("DeleterId")
                         .HasColumnType("TEXT")
@@ -836,13 +852,11 @@ namespace MaterialClient.Common.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("IsDeleted");
 
-                    b.Property<DateTime?>("LastModificationTime")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("LastModificationTime");
+                    b.Property<int?>("LastEditUserId")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("LastModifierId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("LastModifierId");
+                    b.Property<string>("LastEditor")
+                        .HasColumnType("TEXT");
 
                     b.Property<long?>("MatchedId")
                         .HasColumnType("INTEGER");
@@ -861,6 +875,12 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<decimal>("TotalWeight")
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateTime")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long?>("WaybillId")
                         .HasColumnType("INTEGER");
