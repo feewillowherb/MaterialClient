@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.Hikvision;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
@@ -20,6 +22,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
+    private readonly IHikvisionService _hikvisionService;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -31,6 +34,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     // System settings
     [Reactive] private bool _enableAutoStart;
+    [Reactive] private StreamType _captureStreamType = StreamType.Substream;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -53,6 +57,15 @@ public partial class SettingsWindowViewModel : ViewModelBase
         ScaleUnit.Ton
     };
 
+    /// <summary>
+    ///     Stream type options for ComboBox
+    /// </summary>
+    public ObservableCollection<StreamType> StreamTypeOptions { get; } = new()
+    {
+        StreamType.Substream,
+        StreamType.Mainstream
+    };
+
     // Weighing configuration
     [Reactive] private decimal _minWeightThreshold = 0.5m;
     [Reactive] private decimal _weightStabilityThreshold = 0.05m;
@@ -63,10 +76,12 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
     public SettingsWindowViewModel(
         ISettingsService settingsService,
-        ITruckScaleWeightService truckScaleWeightService)
+        ITruckScaleWeightService truckScaleWeightService,
+        IHikvisionService hikvisionService)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
+        _hikvisionService = hikvisionService;
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
@@ -105,7 +120,8 @@ public partial class SettingsWindowViewModel : ViewModelBase
                 },
                 new SystemSettings
                 {
-                    EnableAutoStart = EnableAutoStart
+                    EnableAutoStart = EnableAutoStart,
+                    CaptureStreamType = CaptureStreamType
                 },
                 CameraConfigs.Select(c => new CameraConfig
                 {
@@ -185,6 +201,66 @@ public partial class SettingsWindowViewModel : ViewModelBase
         if (config != null) LicensePlateRecognitionConfigs.Remove(config);
     }
 
+    [ReactiveCommand]
+    private async Task TestCaptureAsync()
+    {
+        try
+        {
+            // Check if there are any camera configs
+            if (CameraConfigs.Count == 0)
+            {
+                // Show error message - in a real app you'd use a dialog service
+                return;
+            }
+
+            // Get first camera config
+            var firstCamera = CameraConfigs[0];
+            if (string.IsNullOrWhiteSpace(firstCamera.Ip) ||
+                string.IsNullOrWhiteSpace(firstCamera.Port) ||
+                string.IsNullOrWhiteSpace(firstCamera.Channel))
+            {
+                // Show error message - camera config incomplete
+                return;
+            }
+
+            if (!int.TryParse(firstCamera.Port, out var port) ||
+                !int.TryParse(firstCamera.Channel, out var channel))
+            {
+                // Show error message - invalid port or channel
+                return;
+            }
+
+            // Create HikvisionDeviceConfig
+            var hikvisionConfig = new HikvisionDeviceConfig
+            {
+                Ip = firstCamera.Ip,
+                Port = port,
+                Username = firstCamera.UserName,
+                Password = firstCamera.Password,
+                Channels = new[] { channel }
+            };
+
+            // Call test capture service method
+            var result = await _hikvisionService.TestCaptureAsync(hikvisionConfig, channel);
+            
+            if (result != null && result.Success)
+            {
+                // Show success message - in a real app you'd use a dialog service
+                // File saved to: result.Request.SaveFullPath
+            }
+            else
+            {
+                // Show error message - in a real app you'd use a dialog service
+                // Error: result?.ErrorMessage ?? "Unknown error"
+            }
+        }
+        catch (Exception ex)
+        {
+            // Show error message - in a real app you'd use a dialog service
+            // Error: ex.Message
+        }
+    }
+
     #endregion
 
     #region Methods
@@ -231,6 +307,7 @@ public partial class SettingsWindowViewModel : ViewModelBase
 
             // Load system settings
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
+            CaptureStreamType = settings.SystemSettings.CaptureStreamType;
 
             // Load weighing configuration
             MinWeightThreshold = settings.WeighingConfiguration.MinWeightThreshold;
