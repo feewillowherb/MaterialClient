@@ -498,8 +498,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             }
 
             // 将 AttachType 转换为 BizType
-            // BizType: 1.现场照片 2.票据照片
-            int? bizType = attachment.AttachType == AttachType.TicketPhoto ? 2 : 1;
+            // BizType: 1.进场照片 2.出场照片 3.票据照片
+            var bizType = (int)attachment.AttachType;
 
             // 构建请求DTO
             var now = DateTime.Now;
