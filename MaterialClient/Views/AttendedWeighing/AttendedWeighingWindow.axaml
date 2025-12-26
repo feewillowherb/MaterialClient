@@ -345,6 +345,7 @@
                       HorizontalAlignment="Center"
                       Margin="0,12,0,0"
                       Command="{Binding TakeBillPhotoCommand}"
+                      IsVisible="{Binding IsShowingDetailView}"
                       IsEnabled="{Binding IsUsbCameraOnline}"/>
             </Grid>
           </Border>
