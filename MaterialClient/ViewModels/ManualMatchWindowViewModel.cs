@@ -249,7 +249,7 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
                 foreach (var file in attachmentFiles)
                     if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        if (file.AttachType == AttachType.EntryPhoto)
+                        if (file.AttachType == AttachType.EntryPhoto || file.AttachType == AttachType.UnmatchedEntryPhoto)
                             EntryPhotos.Add(file.LocalPath);
                         else if (file.AttachType == AttachType.TicketPhoto) TicketPhoto = file.LocalPath;
                     }

@@ -43,15 +43,23 @@
             <Grid Grid.Column="1">
                 <StackPanel Orientation="Vertical">
                     <!-- Close Button -->
-                    <Button Content="×"
-                            Classes="transparent-button"
-                            FontSize="60"
-                            Foreground="#CCCCCC"
+                    <Button Content="✕"
+                            FontSize="18"
+                            Foreground="White"
+                            Background="Transparent"
+                            BorderThickness="0"
                             HorizontalAlignment="Right"
-                            Height="54"
-                            Width="54"
+                            Width="40"
+                            Height="40"
+                            Cursor="Hand"
                             Click="OnCloseButtonClick"
-                            Cursor="Hand" />
+                            Classes="transparent-button">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#DC3545" />
+                            </Style>
+                        </Button.Styles>
+                    </Button>
 
                     <!-- Logo and Title -->
                     <StackPanel Orientation="Horizontal"

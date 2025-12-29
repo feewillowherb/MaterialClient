@@ -81,10 +81,10 @@ public static class MaterialMath
 
         var rate = deviationRate.Value;
 
-        if (lowerLimit.HasValue && lowerLimit < 0 && rate < 0 && rate < lowerLimit)
+        if (lowerLimit.HasValue && rate < lowerLimit)
             return OffsetResultType.OverNegativeDeviation;
 
-        if (upperLimit.HasValue && upperLimit > 0 && rate > 0 && rate > upperLimit)
+        if (upperLimit.HasValue && rate > upperLimit)
             return OffsetResultType.OverPositiveDeviation;
 
         return OffsetResultType.Normal;

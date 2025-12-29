@@ -92,13 +92,14 @@ public class App : Application
         Task.Run(async () =>
         {
             // Dispose Web Host service (will stop it if running)
-            if (_webHostService != null) await _webHostService.DisposeAsync();
+            if (_webHostService != null && _webHostService.IsRunning == true) await _webHostService.DisposeAsync();
 
             // Shutdown ABP application
             if (_abpApplication != null)
             {
                 await _abpApplication.ShutdownAsync();
                 _abpApplication.Dispose();
+                _abpApplication = null;
             }
         }).Wait();
     }

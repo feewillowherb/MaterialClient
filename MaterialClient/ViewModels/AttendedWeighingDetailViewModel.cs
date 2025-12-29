@@ -11,6 +11,7 @@ using Avalonia.Threading;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
@@ -119,7 +120,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
-        IsMatchButtonVisible = true;
+        // 根据 ItemType 判断是否显示匹配按钮：Waybill 类型不显示，WeighingRecord 类型在 LoadWeighingRecordDetailsAsync 中根据 MatchedId 判断
+        IsMatchButtonVisible = _listItem.ItemType != WeighingListItemType.Waybill;
         // 仅当为 Waybill 且 OrderType == FirstWeight（即未完成）时显示"完成本次收货"按钮
         IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
 
@@ -163,7 +165,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
-            await LoadWeighingRecordDetailsAsync();
             await LoadDropdownDataAsync();
         }
         catch (Exception ex)
@@ -212,23 +213,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             // 如果加载失败，保持当前状态
         }
     }
-
-    private async Task LoadWeighingRecordDetailsAsync()
-    {
-        try
-        {
-            if (_listItem.ItemType != WeighingListItemType.WeighingRecord) return;
-
-
-            var weighingRecord = await _weighingRecordRepository.GetAsync(_listItem.Id);
-            IsMatchButtonVisible = weighingRecord.MatchedId == null;
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "加载称重记录详情失败，RecordId={RecordId}", _listItem.Id);
-            // 如果加载失败，保持默认值
-        }
-    }
+    
 
     private async Task LoadProvidersAsync()
     {
@@ -340,6 +325,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 }
             }
 
+            // 发送保存完成消息，通知 UI 选择保存的项
+            var message = new SaveCompletedMessage(_listItem.Id, _listItem.ItemType);
+            MessageBus.Current.SendMessage(message);
+
             SaveCompleted?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
@@ -377,11 +366,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 return;
             }
 
+            // 如果 matchedRecord 不为 null，说明 ManualMatchWindow 已经处理了匹配和保存
+            // 不需要再次打开 ManualMatchEditWindow，因为它已经在 ManualMatchWindow 中打开过了
             if (matchedRecord != null)
             {
-                var editWindow = new ManualMatchEditWindow(weighingRecord, matchedRecord,
-                    matchWindow.SelectedDeliveryType, _serviceProvider);
-                await editWindow.ShowDialog(parentWin);
                 MatchCompleted?.Invoke(this, EventArgs.Empty);
             }
         }

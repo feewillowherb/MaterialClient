@@ -694,8 +694,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             else
                 _logger?.LogWarning(
                     $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
-
-            await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+            
         }
         catch (Exception ex)
         {
@@ -799,8 +798,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             }
             else
             {
+                await uow.CompleteAsync();
                 _logger?.LogDebug(
                     $"AttendedWeighingService: Plate number unchanged for weighing record {recordId.Value}");
+                await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
             }
         }
         catch (Exception ex)

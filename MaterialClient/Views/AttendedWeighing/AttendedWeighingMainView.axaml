@@ -9,16 +9,18 @@
         <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
     </UserControl.Resources>
 
-    <Border Padding="24">
+    <Border Padding="10"
+            Background="#F8F9FA"
+            >
         <Grid RowDefinitions="Auto,Auto,Auto,*">
             <!-- Title Bar -->
             <Border Background="White"
                     BorderBrush="#E4E4E4"
                     BorderThickness="1"
-                    Padding="15,0"
+                    Padding="10,0"
                     Height="50">
                 <TextBlock Text="上一车次物料信息"
-                           FontSize="20"
+                           FontSize="14"
                            Foreground="#222222"
                            VerticalAlignment="Center" />
             </Border>
@@ -48,7 +50,7 @@
                             </Border>
                             <!-- Value -->
                             <TextBlock Text="{Binding SelectedListItem.PlateNumber, TargetNullValue='--'}"
-                                       FontSize="22"
+                                       FontSize="15"
                                        Foreground="#222222"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -77,7 +79,7 @@
                             </Border>
                             <!-- Value -->
                             <TextBlock Text="{Binding JoinWeightInfo, TargetNullValue='--'}"
-                                       FontSize="22"
+                                       FontSize="15"
                                        Foreground="#222222"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -106,7 +108,7 @@
                             </Border>
                             <!-- Value -->
                             <TextBlock Text="{Binding OutWeightInfo, TargetNullValue='--'}"
-                                       FontSize="22"
+                                       FontSize="15"
                                        Foreground="#222222"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -143,7 +145,7 @@
                             </Border>
                             <!-- Value -->
                             <TextBlock Text="{Binding SelectedListItem.ProviderName, TargetNullValue='--'}"
-                                       FontSize="22"
+                                       FontSize="15"
                                        Foreground="#222222"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -173,7 +175,7 @@
                             </Border>
                             <!-- Value -->
                             <TextBlock Text="{Binding MaterialInfo, TargetNullValue='--'}"
-                                       FontSize="22"
+                                       FontSize="15"
                                        Foreground="#222222"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -201,16 +203,11 @@
                                                Foreground="#222222"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Left" />
-                                    <TextBlock Text="-"
-                                               FontSize="18"
-                                               Foreground="#BCBCBC"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Right" />
                                 </Grid>
                             </Border>
                             <!-- Value -->
                             <TextBlock Text="{Binding OffsetInfo, TargetNullValue='--'}"
-                                       FontSize="22"
+                                       FontSize="15"
                                        Foreground="#222222"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"

@@ -285,7 +285,7 @@
                     Background="#F8F9FA"
                     BorderBrush="#E5E7EB"
                     BorderThickness="1,0,0,0"
-                    Padding="20">
+                    Padding="10">
                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
                     <!-- Photo Grid View -->
                     <views1:PhotoGridView Grid.RowSpan="2" DataContext="{Binding PhotoGridViewModel}" />

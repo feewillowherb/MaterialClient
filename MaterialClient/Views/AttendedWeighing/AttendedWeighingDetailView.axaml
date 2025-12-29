@@ -9,6 +9,7 @@
     <UserControl.Styles>
         <Style Selector="DataGridColumnHeader">
             <Style.Resources>
+                <x:Double x:Key="DataGridSortIconMinWidth">16</x:Double>
             </Style.Resources>
 
             <!-- setters... -->

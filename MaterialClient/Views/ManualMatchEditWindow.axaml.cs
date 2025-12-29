@@ -1,6 +1,7 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.ViewModels;
@@ -65,7 +66,8 @@ public partial class ManualMatchEditWindow : Window
             // 如果保存成功，关闭窗口并返回 true
             if (result)
             {
-                Close((bool?)true);
+                // 确保在 UI 线程上关闭窗口
+                await Dispatcher.UIThread.InvokeAsync(() => Close((bool?)true), DispatcherPriority.Normal);
             }
             else
             {
