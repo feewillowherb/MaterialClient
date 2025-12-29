@@ -223,7 +223,7 @@
                                            VerticalAlignment="Center"
                                            TextAlignment="Center"
                                            FontSize="12"
-                                           Foreground="#333333" />
+                                           Foreground="#999999" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -265,7 +265,7 @@
                                            VerticalAlignment="Center"
                                            TextAlignment="Center"
                                            FontSize="12"
-                                           Foreground="#333333" />
+                                           Foreground="#999999" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -279,7 +279,7 @@
                                            VerticalAlignment="Center"
                                            TextAlignment="Center"
                                            FontSize="12"
-                                           Foreground="#333333" />
+                                           Foreground="#999999" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -293,7 +293,7 @@
                                            VerticalAlignment="Center"
                                            TextAlignment="Center"
                                            FontSize="12"
-                                           Foreground="#333333" />
+                                           Foreground="#999999" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
