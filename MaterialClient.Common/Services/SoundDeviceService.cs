@@ -5,7 +5,7 @@ using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Refit;
 using System.Text.Json;
-using Volo.Abp.Domain.Services;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
@@ -26,7 +26,7 @@ public interface ISoundDeviceService
 ///     Sound device service implementation
 /// </summary>
 [AutoConstructor]
-public partial class SoundDeviceService : DomainService, ISoundDeviceService
+public partial class SoundDeviceService : ISoundDeviceService, ISingletonDependency
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SoundDeviceService>? _logger;
@@ -62,32 +62,11 @@ public partial class SoundDeviceService : DomainService, ISoundDeviceService
                 return;
             }
 
-            // Create TTS API client
-            var ttsBaseUrl = $"http://{soundDeviceSettings.LocalIP}:10008";
-            var ttsHttpClient = _httpClientFactory.CreateClient();
-            ttsHttpClient.BaseAddress = new Uri(ttsBaseUrl);
-            ttsHttpClient.Timeout = TimeSpan.FromSeconds(30);
-            var ttsApi = RestService.For<ISoundDeviceApi>(ttsHttpClient);
+            // Parse volume (0 means 100)
+            var volume = soundDeviceSettings.SoundVolume == "0" ? 100 : int.Parse(soundDeviceSettings.SoundVolume);
 
-            // Get TTS audio stream
-            _logger?.LogInformation("Getting TTS audio for text: {Text}", text);
-            await using var audioStream = await ttsApi.GetTtsAudioAsync(
-                text,
-                cancellationToken: cancellationToken);
-
-            // Save audio stream to temporary file
-            var tempFilePath = Path.Combine(Path.GetTempPath(), $"tts_{Guid.NewGuid()}.wav");
-            await using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
-            {
-                await audioStream.CopyToAsync(fileStream, cancellationToken);
-            }
-
-            _logger?.LogInformation("TTS audio saved to temporary file: {TempFilePath}", tempFilePath);
-
-            // Create audio URL (using local file path or upload to OSS if needed)
-            // For now, we'll use a local HTTP server URL or file:// URL
-            // In production, you might want to upload to OSS and use the OSS URL
-            var audioUrl = $"file://{tempFilePath}";
+            // Build TTS URI
+            var ttsUri = $"http://{soundDeviceSettings.LocalIP}:10008/tts_xf.single?text={Uri.EscapeDataString(text)}&voice_name=xiaoyan&speed=50&volume={volume}&origin=http://{soundDeviceSettings.LocalIP}:10008";
 
             // Create play API client
             var playBaseUrl = $"http://{soundDeviceSettings.SoundIP}:8888";
@@ -95,9 +74,6 @@ public partial class SoundDeviceService : DomainService, ISoundDeviceService
             playHttpClient.BaseAddress = new Uri(playBaseUrl);
             playHttpClient.Timeout = TimeSpan.FromSeconds(30);
             var playApi = RestService.For<ISoundDeviceApi>(playHttpClient);
-
-            // Parse volume (0 means 100)
-            var volume = soundDeviceSettings.SoundVolume == "0" ? 100 : int.Parse(soundDeviceSettings.SoundVolume);
 
             // Create play request
             var playRequest = new SoundDevicePlayRequestDto
@@ -115,20 +91,20 @@ public partial class SoundDeviceService : DomainService, ISoundDeviceService
                         {
                             Name = "tts_audio",
                             Udp = false,
-                            Uri = audioUrl
+                            Uri = ttsUri
                         }
                     ],
                     Level = 1,
                     Name = "tts_play_task",
                     Count = 1,
-                    Length = 0, // Will be calculated by device
+                    Length = 0,
                     Type = 0,
                     TaskId = Guid.NewGuid().ToString()
                 }
             };
 
             // Play audio
-            _logger?.LogInformation("Playing audio on sound device: {SoundIP}", soundDeviceSettings.SoundIP);
+            _logger?.LogInformation("Playing audio on sound device: {SoundIP}, TTS URI: {TtsUri}", soundDeviceSettings.SoundIP, ttsUri);
             var response = await playApi.PlayAudioAsync(playRequest, cancellationToken);
 
             // Parse response to check if successful
@@ -149,22 +125,6 @@ public partial class SoundDeviceService : DomainService, ISoundDeviceService
             {
                 _logger?.LogError(ex, "Failed to parse play response: {Response}", response);
             }
-
-            // Clean up temporary file after a delay (to allow device to read it)
-            // In production, you might want to keep the file until playback completes
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
-                try
-                {
-                    if (File.Exists(tempFilePath)) File.Delete(tempFilePath);
-                    _logger?.LogInformation("Temporary audio file deleted: {TempFilePath}", tempFilePath);
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to delete temporary file: {TempFilePath}", tempFilePath);
-                }
-            }, cancellationToken);
         }
         catch (Exception ex)
         {
