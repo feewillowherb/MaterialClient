@@ -30,6 +30,7 @@
         <PackageReference Include="Irihi.Avalonia.Shared" Version="0.3.1" />
         <PackageReference Include="Irihi.Ursa" Version="1.14.0" />
         <PackageReference Include="Irihi.Ursa.Themes.Semi" Version="1.14.0" />
+        <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
         <PackageReference Include="ReactiveUI.SourceGenerators" Version="2.5.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

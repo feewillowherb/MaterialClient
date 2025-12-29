@@ -19,6 +19,8 @@ using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
@@ -290,6 +292,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     {
         try
         {
+            // 验证车牌号格式
+            if (!PlateNumberValidator.IsValidChinesePlateNumber(PlateNumber))
+            {
+                await ShowMessageBoxAsync("车牌号不符合规范请修改");
+                return;
+            }
+            
+            
             var firstRow = MaterialItems.FirstOrDefault();
             var materialId = firstRow?.SelectedMaterial?.Id;
             var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
@@ -381,13 +391,31 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     private async Task ShowMessageBoxAsync(string message)
     {
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        await Dispatcher.UIThread.InvokeAsync(async () =>
         {
             var parentWin = GetParentWindow();
-            if (parentWin is AttendedWeighingWindow attendedWindow
-                && attendedWindow.NotificationManager != null)
-                attendedWindow.NotificationManager.Show(
-                    new Notification("提示", message));
+            
+            // 使用 MessageBoxManager.GetMessageBoxStandard
+            var messageBox = MessageBoxManager.GetMessageBoxStandard(
+                "提示",
+                message,
+                ButtonEnum.Ok,
+                Icon.None);
+            
+            if (parentWin != null)
+            {
+                await messageBox.ShowWindowDialogAsync(parentWin);
+            }
+            else
+            {
+                await messageBox.ShowAsync();
+            }
+            
+            // 原来的 NotificationManager 方式（已注释）
+            // if (parentWin is AttendedWeighingWindow attendedWindow
+            //     && attendedWindow.NotificationManager != null)
+            //     attendedWindow.NotificationManager.Show(
+            //         new Notification("提示", message));
         });
     }
 
