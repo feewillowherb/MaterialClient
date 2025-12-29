@@ -5,6 +5,7 @@ using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
 using Volo.Abp.Autofac;
@@ -20,6 +21,25 @@ namespace MaterialClient;
 )]
 public class MaterialClientModule : AbpModule
 {
+    public override void PreConfigureServices(ServiceConfigurationContext context)
+    {
+        // Add User Secrets to configuration before other services are configured
+        // This ensures User Secrets override appsettings.json values
+        #if DEBUG
+        var existingConfig = context.Services.GetConfiguration();
+        if (existingConfig != null)
+        {
+            var configBuilder = new ConfigurationBuilder();
+            // Add existing configuration (includes appsettings.json loaded by ABP)
+            configBuilder.AddConfiguration(existingConfig);
+            // Add User Secrets as the last source (highest priority, overrides appsettings.json)
+            configBuilder.AddUserSecrets<MaterialClientModule>();
+            var enhancedConfig = configBuilder.Build();
+            context.Services.ReplaceConfiguration(enhancedConfig);
+        }
+        #endif
+    }
+
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         var services = context.Services;

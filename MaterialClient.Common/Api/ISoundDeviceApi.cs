@@ -25,7 +25,7 @@ public interface ISoundDeviceApi
     [Get("/tts_xf.single")]
     Task<Stream> GetTtsAudioAsync(
         [Query] string text,
-        [Query(Name = "voice_name")] string voiceName = "xiaoyan",
+        [Query] [AliasAs("voice_name")] string voiceName = "xiaoyan",
         [Query] int speed = 50,
         [Query] int volume = 100,
         [Query] string? origin = null,
@@ -47,4 +47,3 @@ public interface ISoundDeviceApi
         [Body] SoundDevicePlayRequestDto request,
         CancellationToken cancellationToken = default);
 }
-

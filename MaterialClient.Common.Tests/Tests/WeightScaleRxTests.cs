@@ -198,7 +198,8 @@ public class WeightScaleRxTests
             new SystemSettings(),
             new List<CameraConfig>(),
             new List<LicensePlateRecognitionConfig>(),
-            new WeighingConfiguration()
+            new WeighingConfiguration(),
+            new SoundDeviceSettings()
         );
         settingsService.GetSettingsAsync().Returns(Task.FromResult(settingsEntity));
 
