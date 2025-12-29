@@ -41,8 +41,8 @@
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="毛重：" VerticalAlignment="Center"
-                               FontSize="14" Foreground="#666" Width="50" />
-                    <TextBlock VerticalAlignment="Center" FontSize="14">
+                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock VerticalAlignment="Center" FontSize="12">
                         <Run Foreground="#427FF9" FontWeight="Bold"
                              Text="{Binding AllWeight, StringFormat='{}{0:F2}'}" />
                         <Run Foreground="#333333" Text=" 吨" />
@@ -52,8 +52,8 @@
                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="皮重：" VerticalAlignment="Center"
-                               FontSize="14" Foreground="#666" Width="50" />
-                    <TextBlock VerticalAlignment="Center" FontSize="14">
+                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock VerticalAlignment="Center" FontSize="12">
                         <Run Foreground="#427FF9" FontWeight="Bold"
                              Text="{Binding TruckWeight, StringFormat='{}{0:F2}'}" />
                         <Run Foreground="#333333" Text=" 吨" />
@@ -63,8 +63,8 @@
                 <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="净重：" VerticalAlignment="Center"
-                               FontSize="14" Foreground="#666" Width="50" />
-                    <TextBlock VerticalAlignment="Center" FontSize="14">
+                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock VerticalAlignment="Center" FontSize="12">
                         <Run Foreground="#F5A000" FontWeight="Bold"
                              Text="{Binding GoodsWeight, StringFormat='{}{0:F2}'}" />
                         <Run Foreground="#333333" Text=" 吨" />
@@ -75,25 +75,25 @@
                 <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="进场：" VerticalAlignment="Center"
-                               FontSize="13" Foreground="#666" Width="50" />
+                               FontSize="12" Foreground="#666" Width="50" />
                     <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}"
-                               VerticalAlignment="Center" FontSize="13" Foreground="#333" />
+                               VerticalAlignment="Center" FontSize="12" Foreground="#333" />
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="出场：" VerticalAlignment="Center"
-                               FontSize="13" Foreground="#666" Width="50" />
+                               FontSize="12" Foreground="#666" Width="50" />
                     <TextBlock Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}"
-                               VerticalAlignment="Center" FontSize="13" Foreground="#333" />
+                               VerticalAlignment="Center" FontSize="12" Foreground="#333" />
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="操作员：" VerticalAlignment="Center"
-                               FontSize="13" Foreground="#666" Width="50" />
+                               FontSize="12" Foreground="#666" Width="50" />
                     <TextBlock Text="{Binding Operator}" VerticalAlignment="Center"
-                               FontSize="13" Foreground="#333" />
+                               FontSize="12" Foreground="#333" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -105,20 +105,23 @@
                 <!-- 车牌号 -->
                 <Grid ColumnDefinitions="100,*">
                     <Label Content="车牌号" VerticalAlignment="Center"
-                           FontSize="16" Foreground="#333333" />
+                           HorizontalAlignment="Center"
+                           FontSize="12" Foreground="#333333" Margin="0,0,10,0" />
                     <TextBox Grid.Column="1" Height="40"
                              Text="{Binding PlateNumber}"
-                             TextAlignment="Left" FontSize="16" />
+                             TextAlignment="Left" FontSize="12" Margin="10,0,0,0" />
                 </Grid>
                 <!-- 供应商 -->
                 <Grid ColumnDefinitions="100,*">
                     <Label Content="供应商" VerticalAlignment="Center"
-                           FontSize="16" Foreground="#333333" />
+                           HorizontalAlignment="Center"
+                           FontSize="12" Foreground="#333333" Margin="0,0,10,0" />
                     <ComboBox Grid.Column="1" Height="40"
-                              FontSize="16"
+                              FontSize="12"
                               HorizontalAlignment="Stretch"
                               ItemsSource="{Binding Providers}"
-                              SelectedItem="{Binding SelectedProvider}">
+                              SelectedItem="{Binding SelectedProvider}"
+                              Margin="10,0,0,0">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding ProviderName}" />
@@ -129,11 +132,12 @@
                 <!-- 备注 -->
                 <Grid ColumnDefinitions="100,*">
                     <Label Content="备注" VerticalAlignment="Center"
-                           FontSize="16" Foreground="#333333" />
+                           HorizontalAlignment="Center"
+                           FontSize="12" Foreground="#333333" Margin="0,0,10,0" />
                     <TextBox Grid.Column="1" Height="40"
                              TextWrapping="Wrap"
                              Text="{Binding Remark}"
-                             TextAlignment="Left" FontSize="16" />
+                             TextAlignment="Left" FontSize="12" Margin="10,0,0,0" />
                 </Grid>
             </StackPanel>
         </Border>
@@ -144,7 +148,7 @@
             <DataGrid ItemsSource="{Binding MaterialItems}"
                       AutoGenerateColumns="False"
                       CanUserReorderColumns="False"
-                      CanUserResizeColumns="True"
+                      CanUserResizeColumns="False"
                       CanUserSortColumns="False"
                       GridLinesVisibility="All"
                       HeadersVisibility="Column"
@@ -354,7 +358,7 @@
             <!-- 左侧按钮 -->
             <!-- <Button Grid.Column="0" Content="新增材料" -->
             <!--         Classes="success-button" -->
-            <!--         Width="80" Height="32" FontSize="13" -->
+            <!--         Width="80" Height="32" FontSize="12" -->
             <!--         HorizontalContentAlignment="Center" -->
             <!--         VerticalContentAlignment="Center" -->
             <!--         Command="{Binding AddMaterialCommand}" /> -->
@@ -362,17 +366,17 @@
             <!-- 中间按钮组 -->
             <StackPanel Grid.Column="1" Orientation="Horizontal"
                         HorizontalAlignment="Center" Spacing="8">
-                <Button Width="90" Height="32" FontSize="14" Content="保存"
+                <Button Width="90" Height="32" FontSize="12" Content="保存"
                         Classes="primary-button"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
                         Command="{Binding SaveCommand}" />
-                <Button Width="90" Height="32" FontSize="14" Content="关闭"
+                <Button Width="90" Height="32" FontSize="12" Content="关闭"
                         Classes="primary-button"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
                         Command="{Binding CloseCommand}" />
-                <Button Width="110" Height="32" FontSize="14" Content="完成本次收货"
+                <Button Width="110" Height="32" FontSize="12" Content="完成本次收货"
                         Classes="outline-button"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
@@ -382,13 +386,13 @@
 
             <!-- 右侧按钮组 -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                <Button Width="80" Height="32" FontSize="14" Content="匹配"
+                <Button Width="80" Height="32" FontSize="12" Content="匹配"
                         Classes="primary-button"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
                         Command="{Binding MatchCommand}"
                         IsVisible="{Binding IsMatchButtonVisible}" />
-                <Button Width="80" Height="32" FontSize="14" Content="废单"
+                <Button Width="80" Height="32" FontSize="12" Content="废单"
                         Classes="warning-button"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
