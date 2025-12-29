@@ -9,7 +9,9 @@
         <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
     </UserControl.Resources>
 
-    <Border Padding="10">
+    <Border Padding="10"
+            Background="#F8F9FA"
+            >
         <Grid RowDefinitions="Auto,Auto,Auto,*">
             <!-- Title Bar -->
             <Border Background="White"
