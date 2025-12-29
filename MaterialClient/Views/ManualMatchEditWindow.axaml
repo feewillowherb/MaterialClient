@@ -166,7 +166,7 @@
                                               HorizontalAlignment="Stretch"
                                               ItemsSource="{Binding MaterialUnits}"
                                               SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
-                                              DisplayMemberBinding="{Binding UnitName}" />
+                                              DisplayMemberBinding="{Binding DisplayName}" />
                                 </Grid>
                                 <Grid Grid.Column="1" ColumnDefinitions="80,*">
                                     <TextBlock Text="换算系数：" FontSize="13" VerticalAlignment="Center" Foreground="#333" />
@@ -276,10 +276,11 @@
                     </Grid>
 
                     <!-- 运单照片区域 -->
+                    <!--
                     <StackPanel Margin="0,10,0,0" Spacing="5">
                         <TextBlock Text="运单照片" FontSize="13" Foreground="#333" Margin="5,0,0,5" />
                         <Grid ColumnDefinitions="Auto,Auto,*">
-                            <!-- 拍照预览区 -->
+                            拍照预览区
                             <Border Grid.Column="0"
                                     Background="#E5E7EB"
                                     Width="260"
@@ -290,7 +291,7 @@
                                     Source="{Binding TicketPhoto, Converter={StaticResource CarNullOrEmptyImageConverter}}"
                                     Stretch="UniformToFill" />
                             </Border>
-                            <!-- 视频预览区（用静态占位） -->
+                            视频预览区（用静态占位）
                             <Border Grid.Column="1"
                                     Background="#E5E7EB"
                                     Width="260"
@@ -303,7 +304,7 @@
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
                             </Border>
-                            <!-- 拍照按钮 -->
+                            拍照按钮
                             <Button Grid.Column="2"
                                     Content="拍照"
                                     Classes="primary-button"
@@ -314,6 +315,7 @@
                                     Command="{Binding TakePhotoCommand}" />
                         </Grid>
                     </StackPanel>
+                    -->
 
                     <!-- 底部按钮 -->
                     <Grid ColumnDefinitions="*,*" Margin="0,20,0,10">

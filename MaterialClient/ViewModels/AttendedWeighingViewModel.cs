@@ -568,8 +568,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
                     if (matchedItem != null)
                     {
-                        // 使用 Command 选择匹配成功的 Waybill
-                        SelectListItemCommand?.Execute(matchedItem);
+                        // 直接设置 SelectedListItem，确保使用刷新后的对象引用
+                        // 这样 EqualityToColorConverter 才能正确比较对象引用
+                        SelectedListItem = matchedItem;
+                        
+                        // 根据项类型执行相应的选择逻辑
+                        if (matchedItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                            SelectCompletedWaybill(matchedItem);
+                        else
+                            _ = OpenDetail(matchedItem);
+                            
                         Logger?.LogInformation(
                             "AttendedWeighingViewModel: Selected matched Waybill {WaybillId}",
                             message.WaybillId);
@@ -617,8 +625,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
                     if (savedItem != null)
                     {
-                        // 使用 Command 选择保存的项
-                        SelectListItemCommand?.Execute(savedItem);
+                        // 直接设置 SelectedListItem，确保使用刷新后的对象引用
+                        // 这样 EqualityToColorConverter 才能正确比较对象引用
+                        SelectedListItem = savedItem;
+                        
+                        // 根据项类型执行相应的选择逻辑
+                        if (savedItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                            SelectCompletedWaybill(savedItem);
+                        else
+                            _ = OpenDetail(savedItem);
+                            
                         Logger?.LogInformation(
                             "AttendedWeighingViewModel: Selected saved item {ItemId} of type {ItemType}",
                             message.ItemId, message.ItemType);

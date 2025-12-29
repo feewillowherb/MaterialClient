@@ -314,23 +314,60 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency, IAsyncD
     /// </summary>
     public async Task StopPreviewAsync()
     {
+        CaptureDevice? deviceToStop = null;
+        
         lock (_lockObject)
         {
             if (!IsPreviewing) return;
+            
+            // 在锁内获取设备引用，防止并发问题
+            deviceToStop = _currentDevice;
+            IsPreviewing = false; // 先设置状态，防止重复调用
+            _currentDevice = null; // 立即清空引用，防止并发访问
         }
 
         try
         {
-            if (_currentDevice != null)
+            if (deviceToStop != null)
             {
-                await _currentDevice.StopAsync();
-                await _currentDevice.DisposeAsync();
-                _currentDevice = null;
+                try
+                {
+                    // 尝试停止设备
+                    await deviceToStop.StopAsync();
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("Queue empty"))
+                {
+                    // FlashCap 内部队列状态不一致，这是库的已知问题
+                    // 设备可能已经停止，只是锁状态异常，可以安全忽略
+                    _logger?.LogDebug("停止设备时队列已空（FlashCap 内部状态问题，可忽略）: {Message}", ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "停止设备时发生错误，继续清理资源");
+                }
+                
+                try
+                {
+                    // 无论 StopAsync 是否成功，都要尝试释放资源
+                    await deviceToStop.DisposeAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "释放设备资源时发生错误");
+                }
             }
-
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "停止 USB 摄像头预览时发生未预期的错误");
+        }
+        finally
+        {
+            // 确保状态和引用被清理
             lock (_lockObject)
             {
                 IsPreviewing = false;
+                _currentDevice = null;
                 _currentDescriptor = null;
                 _frameCallback = null;
             }
@@ -340,25 +377,9 @@ public class UsbCameraService : IUsbCameraService, ISingletonDependency, IAsyncD
             {
                 _lastFrameData = null;
             }
-
-            _logger?.LogInformation("USB 摄像头预览已停止");
         }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "停止 USB 摄像头预览时发生错误");
-            lock (_lockObject)
-            {
-                IsPreviewing = false;
-                _currentDevice = null;
-                _currentDescriptor = null;
-            }
 
-            // 清空最后一帧数据
-            lock (_frameLockObject)
-            {
-                _lastFrameData = null;
-            }
-        }
+        _logger?.LogInformation("USB 摄像头预览已停止");
     }
 
     /// <summary>

@@ -57,7 +57,8 @@ public class SettingsService : DomainService, ISettingsService
                 new SystemSettings(),
                 new List<CameraConfig>(),
                 new List<LicensePlateRecognitionConfig>(),
-                new WeighingConfiguration());
+                new WeighingConfiguration(),
+                new SoundDeviceSettings());
 
             await _settingsRepository.InsertAsync(settings);
             await uow.CompleteAsync();
@@ -86,6 +87,7 @@ public class SettingsService : DomainService, ISettingsService
             existing.CameraConfigs = settings.CameraConfigs;
             existing.LicensePlateRecognitionConfigs = settings.LicensePlateRecognitionConfigs;
             existing.WeighingConfiguration = settings.WeighingConfiguration;
+            existing.SoundDeviceSettings = settings.SoundDeviceSettings;
 
             await _settingsRepository.UpdateAsync(existing);
         }

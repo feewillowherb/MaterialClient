@@ -74,6 +74,13 @@ public partial class SettingsWindowViewModel : ViewModelBase
     [Reactive] private int _maxIntervalMinutes = 300;
     [Reactive] private decimal _minWeightDiff = 1m;
 
+    // Sound device settings
+    [Reactive] private bool _soundDeviceEnabled = false;
+    [Reactive] private string _soundDeviceLocalIP = string.Empty;
+    [Reactive] private string _soundDeviceSoundIP = string.Empty;
+    [Reactive] private string _soundDeviceSoundSN = string.Empty;
+    [Reactive] private string _soundDeviceSoundVolume = "0";
+
     public SettingsWindowViewModel(
         ISettingsService settingsService,
         ITruckScaleWeightService truckScaleWeightService,
@@ -146,6 +153,14 @@ public partial class SettingsWindowViewModel : ViewModelBase
                     StabilityCheckIntervalMs = StabilityCheckIntervalMs,
                     MaxIntervalMinutes = MaxIntervalMinutes,
                     MinWeightDiff = MinWeightDiff
+                },
+                new SoundDeviceSettings
+                {
+                    Enabled = SoundDeviceEnabled,
+                    LocalIP = SoundDeviceLocalIP,
+                    SoundIP = SoundDeviceSoundIP,
+                    SoundSN = SoundDeviceSoundSN,
+                    SoundVolume = SoundDeviceSoundVolume
                 }
             );
 
@@ -294,6 +309,13 @@ public partial class SettingsWindowViewModel : ViewModelBase
                     Ip = config.Ip,
                     Direction = config.Direction
                 });
+
+            // Load sound device settings
+            SoundDeviceEnabled = settings.SoundDeviceSettings.Enabled;
+            SoundDeviceLocalIP = settings.SoundDeviceSettings.LocalIP;
+            SoundDeviceSoundIP = settings.SoundDeviceSettings.SoundIP;
+            SoundDeviceSoundSN = settings.SoundDeviceSettings.SoundSN;
+            SoundDeviceSoundVolume = settings.SoundDeviceSettings.SoundVolume;
         }
         catch
         {

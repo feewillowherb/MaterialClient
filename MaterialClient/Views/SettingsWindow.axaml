@@ -409,6 +409,68 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Sound Device Settings Group -->
+                <Border Classes="section-border"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="音响设备设置"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="Black"
+                                   Margin="0,0,0,8" />
+
+                        <CheckBox Content="启用音响设备"
+                                  IsChecked="{Binding SoundDeviceEnabled}" />
+
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
+                              ColumnSpacing="12">
+                            <TextBlock Text="本地IP地址:"
+                                       Grid.Row="0"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding SoundDeviceLocalIP}"
+                                     Grid.Row="0"
+                                     Grid.Column="1"
+                                     Watermark="192.168.1.100" />
+
+                            <TextBlock Text="音响设备IP:"
+                                       Grid.Row="1"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding SoundDeviceSoundIP}"
+                                     Grid.Row="1"
+                                     Grid.Column="1"
+                                     Watermark="192.168.1.200" />
+
+                            <TextBlock Text="音响设备序列号:"
+                                       Grid.Row="2"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding SoundDeviceSoundSN}"
+                                     Grid.Row="2"
+                                     Grid.Column="1"
+                                     Watermark="SN123456" />
+
+                            <TextBlock Text="音量(0-100):"
+                                       Grid.Row="3"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="160" />
+                            <TextBox Text="{Binding SoundDeviceSoundVolume}"
+                                     Grid.Row="3"
+                                     Grid.Column="1"
+                                     Watermark="0" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 

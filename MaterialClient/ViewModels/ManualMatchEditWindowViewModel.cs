@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -387,7 +388,14 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
             UpdateRecordMaterial(MatchedRecord, SelectedMaterial?.Id, SelectedMaterialUnit?.Id, waybillQuantity);
 
             // 调用 ManualMatchAsync 执行匹配和创建运单
-            await matchingService.ManualMatchAsync(CurrentRecord, MatchedRecord, DeliveryType);
+            var waybill = await matchingService.ManualMatchAsync(CurrentRecord, MatchedRecord, DeliveryType);
+
+            // 发送匹配成功消息
+            var message = new MatchSucceededMessage(waybill.Id, CurrentRecord.Id);
+            MessageBus.Current.SendMessage(message);
+            Logger?.LogInformation(
+                "SaveAsync: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+                waybill.Id, CurrentRecord.Id);
 
             return true;
         }
