@@ -41,7 +41,8 @@ public interface IWeighingMatchingService
     /// <param name="currentRecord">当前称重记录</param>
     /// <param name="matchedRecord">匹配的称重记录</param>
     /// <param name="deliveryType">收发料类型</param>
-    Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
+    /// <returns>创建的运单</returns>
+    Task<Waybill> ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
 
     /// <summary>
     ///     获取称重列表项（分页）
@@ -356,7 +357,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     ///     手动匹配两条称重记录并创建运单
     /// </summary>
     [UnitOfWork]
-    public async Task ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
+    public async Task<Waybill> ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
         DeliveryType deliveryType)
     {
         // Load configuration
@@ -369,15 +370,17 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
             throw new BusinessException("无法匹配这两条记录");
 
-        var waybillId = await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
+        var waybill = await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
 
         // 发送匹配成功消息，通知 UI 选择匹配结果
-        var message = new MatchSucceededMessage(waybillId, currentRecord.Id);
+        var message = new MatchSucceededMessage(waybill.Id, currentRecord.Id);
         MessageBus.Current.SendMessage(message);
 
         _logger?.LogInformation(
             "ManualMatchAsync: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
-            waybillId, currentRecord.Id);
+            waybill.Id, currentRecord.Id);
+
+        return waybill;
     }
 
     /// <summary>
@@ -594,7 +597,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     }
 
     [UnitOfWork]
-    private async Task<long> CreateWaybillAsync(WeighingRecord joinRecord, WeighingRecord outRecord,
+    private async Task<Waybill> CreateWaybillAsync(WeighingRecord joinRecord, WeighingRecord outRecord,
         DeliveryType deliveryType)
     {
         var todayCount = await _waybillRepository.CountAsync(w =>
@@ -632,7 +635,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var waybillQuantity = joinMaterial?.WaybillQuantity ?? outMaterial?.WaybillQuantity;
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
 
-        return waybill.Id;
+        return waybill;
     }
 
     /// <summary>
