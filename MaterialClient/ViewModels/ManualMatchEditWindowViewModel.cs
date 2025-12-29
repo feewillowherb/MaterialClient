@@ -288,8 +288,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
 
         try
         {
-            var units = await _materialUnitRepository.GetListAsync(
-                u => u.MaterialId == materialId
+            var units = await _materialUnitRepository.GetListAsync(u => u.MaterialId == materialId
             );
             MaterialUnits.Clear();
             foreach (var unit in units.OrderBy(u => u.UnitName))
@@ -336,7 +335,8 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                 foreach (var file in earlierFiles)
                     if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        if (file.AttachType == AttachType.EntryPhoto)
+                        if (file.AttachType == AttachType.EntryPhoto ||
+                            file.AttachType == AttachType.UnmatchedEntryPhoto)
                             EntryPhotos.Add(file.LocalPath);
                         else if (file.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
                             TicketPhoto = file.LocalPath;
@@ -347,7 +347,8 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase
                     if (!string.IsNullOrEmpty(file.LocalPath))
                     {
                         if (file.AttachType == AttachType.EntryPhoto ||
-                            file.AttachType == AttachType.ExitPhoto)
+                            file.AttachType == AttachType.ExitPhoto ||
+                            file.AttachType == AttachType.UnmatchedEntryPhoto)
                             ExitPhotos.Add(file.LocalPath);
                         else if (file.AttachType == AttachType.TicketPhoto && TicketPhoto == null)
                             TicketPhoto = file.LocalPath;

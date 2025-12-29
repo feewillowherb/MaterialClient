@@ -204,15 +204,25 @@ public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDelet
         if (record2.DeliveryType != null && record2.DeliveryType != deliveryType)
             return new WeighingMatchResult(false, null, null);
 
-        // 收料：毛重记录是 Join（先进场），皮重记录是 Out（后出场）
-        // 发料：皮重记录是 Join（先进场），毛重记录是 Out（后出场）
-        var grossRecord = record1.TotalWeight > record2.TotalWeight ? record1 : record2;
-        var tareRecord = record1.TotalWeight > record2.TotalWeight ? record2 : record1;
+        // 根据时间确定 Join（早）和 Out（晚）
+        var joinRecord = record1.AddDate < record2.AddDate ? record1 : record2;
+        var outRecord = record1.AddDate < record2.AddDate ? record2 : record1;
 
+        // 验证重量关系是否符合 deliveryType 要求
         if (deliveryType == Enums.DeliveryType.Receiving)
-            return new WeighingMatchResult(true, grossRecord, tareRecord);
-        // Sending
-        return new WeighingMatchResult(true, tareRecord, grossRecord);
+        {
+            // 收料：JoinRecord 重量必须大于 OutRecord
+            if (joinRecord.TotalWeight <= outRecord.TotalWeight)
+                return new WeighingMatchResult(false, null, null);
+        }
+        else // Sending
+        {
+            // 发料：JoinRecord 重量必须小于 OutRecord
+            if (joinRecord.TotalWeight >= outRecord.TotalWeight)
+                return new WeighingMatchResult(false, null, null);
+        }
+
+        return new WeighingMatchResult(true, joinRecord, outRecord);
     }
 
     #region Audited Properties

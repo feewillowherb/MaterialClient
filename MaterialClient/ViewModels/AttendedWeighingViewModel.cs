@@ -160,6 +160,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartWeighingRecordCreatedObservable();
         StartDeliveryTypeObservable();
         StartMatchSucceededMessageBusSubscription();
+        StartSaveCompletedMessageBusSubscription();
         StartUpdatePlateNumberMessageBusSubscription();
 
         // 监听 USB 摄像头在线状态变化、ShouldShowPreview变化和IsShowingMainView变化，自动启动/停止预览
@@ -591,6 +592,55 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    ///     订阅保存完成消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartSaveCompletedMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<SaveCompletedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
+            {
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received SaveCompletedMessage for ItemId {ItemId}, ItemType {ItemType}",
+                    message.ItemId, message.ItemType);
+
+                try
+                {
+                    // 刷新列表
+                    await RefreshAsync();
+
+                    // 查找保存的列表项
+                    var savedItem = ListItems
+                        .FirstOrDefault(item =>
+                            item.ItemType == message.ItemType &&
+                            item.Id == message.ItemId);
+
+                    if (savedItem != null)
+                    {
+                        // 使用 Command 选择保存的项
+                        SelectListItemCommand?.Execute(savedItem);
+                        Logger?.LogInformation(
+                            "AttendedWeighingViewModel: Selected saved item {ItemId} of type {ItemType}",
+                            message.ItemId, message.ItemType);
+                    }
+                    else
+                    {
+                        Logger?.LogWarning(
+                            "AttendedWeighingViewModel: Saved item {ItemId} of type {ItemType} not found in current list",
+                            message.ItemId, message.ItemType);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error while handling SaveCompletedMessage for ItemId {ItemId}",
+                        message.ItemId);
+                }
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
     ///     订阅更新车牌号消息（通过 ReactiveUI MessageBus）
     /// </summary>
     private void StartUpdatePlateNumberMessageBusSubscription()
@@ -984,8 +1034,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private async void OnDetailSaveCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        BackToMain();
-        await SelectLatestCompletedItemAsync();
+        //BackToMain();
+        //await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
@@ -998,8 +1048,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     private async void OnDetailMatchCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        BackToMain();
-        await SelectLatestCompletedItemAsync();
+        //BackToMain();
+        //await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailCompleteCompleted(object? sender, EventArgs e)

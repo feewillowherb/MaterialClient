@@ -220,7 +220,7 @@ public partial class PhotoGridViewModel : ViewModelBase
                 if (string.IsNullOrEmpty(file.LocalPath))
                     continue;
 
-                if (file.AttachType == AttachType.EntryPhoto)
+                if (file.AttachType == AttachType.EntryPhoto || file.AttachType == AttachType.UnmatchedEntryPhoto)
                     SetEntryPhoto(entryIndex++, file.LocalPath);
                 else if (file.AttachType == AttachType.ExitPhoto) SetExitPhoto(exitIndex++, file.LocalPath);
             }

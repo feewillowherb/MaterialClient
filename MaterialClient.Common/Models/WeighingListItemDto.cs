@@ -1,5 +1,6 @@
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Extensions;
 
 namespace MaterialClient.Common.Models;
 
@@ -222,7 +223,7 @@ public class WeighingListItemDto
             OrderType = waybill.OrderType,
             Remark = waybill.Remark,
             // 预计算偏差信息
-            OffsetInfo = $"{waybill.OffsetRate:F2}%"
+            OffsetInfo = $"{waybill.OffsetRate:F2}% {waybill.OffsetResult.GetDescription()}"
         };
 
         // 如果有物料信息，添加到 Materials 列表
