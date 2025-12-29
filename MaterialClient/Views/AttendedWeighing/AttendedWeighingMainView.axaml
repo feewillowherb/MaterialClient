@@ -15,10 +15,10 @@
             <Border Background="White"
                     BorderBrush="#E4E4E4"
                     BorderThickness="1"
-                    Padding="15,0"
+                    Padding="10,0"
                     Height="50">
                 <TextBlock Text="上一车次物料信息"
-                           FontSize="15"
+                           FontSize="14"
                            Foreground="#222222"
                            VerticalAlignment="Center" />
             </Border>
