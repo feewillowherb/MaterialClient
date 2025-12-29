@@ -166,7 +166,7 @@
                                               HorizontalAlignment="Stretch"
                                               ItemsSource="{Binding MaterialUnits}"
                                               SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
-                                              DisplayMemberBinding="{Binding UnitName}" />
+                                              DisplayMemberBinding="{Binding DisplayName}" />
                                 </Grid>
                                 <Grid Grid.Column="1" ColumnDefinitions="80,*">
                                     <TextBlock Text="换算系数：" FontSize="13" VerticalAlignment="Center" Foreground="#333" />
