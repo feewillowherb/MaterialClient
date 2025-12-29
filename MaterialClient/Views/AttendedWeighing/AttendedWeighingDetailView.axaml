@@ -169,7 +169,7 @@
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding #DetailViewRoot.DataContext.Materials}"
+                                <ComboBox ItemsSource="{Binding  #DetailViewRoot.((vm:AttendedWeighingDetailViewModel)DataContext).Materials}"
                                           SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
                                           DisplayMemberBinding="{Binding Name}"
                                           HorizontalAlignment="Stretch"
