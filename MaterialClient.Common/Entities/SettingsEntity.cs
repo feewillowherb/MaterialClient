@@ -21,6 +21,7 @@ public class SettingsEntity : Entity<int>
         CameraConfigsJson = string.Empty;
         LicensePlateRecognitionConfigsJson = string.Empty;
         WeighingConfigurationJson = string.Empty;
+        SoundDeviceSettingsJson = string.Empty;
     }
 
     /// <summary>
@@ -32,7 +33,8 @@ public class SettingsEntity : Entity<int>
         SystemSettings systemSettings,
         List<CameraConfig> cameraConfigs,
         List<LicensePlateRecognitionConfig> licensePlateRecognitionConfigs,
-        WeighingConfiguration weighingConfiguration)
+        WeighingConfiguration weighingConfiguration,
+        SoundDeviceSettings soundDeviceSettings)
     {
         ScaleSettings = scaleSettings;
         DocumentScannerConfig = documentScannerConfig;
@@ -40,6 +42,7 @@ public class SettingsEntity : Entity<int>
         CameraConfigs = cameraConfigs;
         LicensePlateRecognitionConfigs = licensePlateRecognitionConfigs;
         WeighingConfiguration = weighingConfiguration;
+        SoundDeviceSettings = soundDeviceSettings;
     }
 
     /// <summary>
@@ -71,6 +74,11 @@ public class SettingsEntity : Entity<int>
     ///     Weighing configuration JSON (serialized)
     /// </summary>
     public string WeighingConfigurationJson { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     Sound device settings JSON (serialized)
+    /// </summary>
+    public string SoundDeviceSettingsJson { get; set; } = string.Empty;
 
     /// <summary>
     ///     Scale settings (deserialized)
@@ -211,5 +219,29 @@ public class SettingsEntity : Entity<int>
             }
         }
         set => WeighingConfigurationJson = JsonSerializer.Serialize(value);
+    }
+
+    /// <summary>
+    ///     Sound device settings (deserialized)
+    /// </summary>
+    [JsonIgnore]
+    public SoundDeviceSettings SoundDeviceSettings
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(SoundDeviceSettingsJson))
+                return new SoundDeviceSettings();
+
+            try
+            {
+                return JsonSerializer.Deserialize<SoundDeviceSettings>(SoundDeviceSettingsJson) ??
+                       new SoundDeviceSettings();
+            }
+            catch
+            {
+                return new SoundDeviceSettings();
+            }
+        }
+        set => SoundDeviceSettingsJson = JsonSerializer.Serialize(value);
     }
 }
