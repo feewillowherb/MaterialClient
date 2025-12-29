@@ -49,11 +49,11 @@
                     Classes="card-border"
                     Margin="12,12,12,8"
                     Padding="12">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+                <Grid RowDefinitions="Auto,Auto,Auto">
 
-                    <!-- Row 1: 进场时间 + 开始日期时间选择器 -->
+                    <!-- Row 1: 进场时间 + 开始日期时间选择器 + 至 + 结束日期时间选择器 -->
                     <Grid Grid.Row="0"
-                          ColumnDefinitions="Auto,Auto"
+                          ColumnDefinitions="Auto,Auto,Auto,Auto"
                           Margin="0,0,0,8">
                         <TextBlock Text="进场时间"
                                    VerticalAlignment="Center"
@@ -61,35 +61,23 @@
                                    FontSize="13"
                                    Foreground="#666" />
                         <u:DateTimePicker Grid.Column="1"
-                                          Width="150"
+                                          Width="88"
                                           FontSize="10"
                                           Margin="0,0,8,0"
                                           SelectedDate="{Binding SearchStartDate}"
-                                          DisplayFormat="yyyy-MM-dd HH:mm"
+                                          DisplayFormat="MM-dd HH:mm"
                                           PanelFormat="yyyy-MM-dd HH:mm" />
-                    </Grid>
-
-                    <!-- Row 2: 结束日期时间选择器 -->
-                    <Grid Grid.Row="1"
-                          ColumnDefinitions="Auto,Auto"
-                          Margin="0,0,0,8">
-                        <TextBlock Text="进场时间"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0"
-                                   FontSize="13"
-                                   Foreground="#666"
-                                   Opacity="0" />
-                        <u:DateTimePicker Grid.Column="1"
-                                          Width="150"
+                        <u:DateTimePicker Grid.Column="2"
+                                          Width="88"
                                           FontSize="10"
                                           Margin="0,0,8,0"
                                           SelectedDate="{Binding SearchEndDate}"
-                                          DisplayFormat="yyyy-MM-dd HH:mm"
+                                          DisplayFormat="MM-dd HH:mm"
                                           PanelFormat="yyyy-MM-dd HH:mm" />
                     </Grid>
 
-                    <!-- Row 3: 车牌号码 + 输入框 -->
-                    <Grid Grid.Row="2"
+                    <!-- Row 2: 车牌号码 + 输入框 -->
+                    <Grid Grid.Row="1"
                           ColumnDefinitions="Auto,Auto"
                           Margin="0,0,0,8">
                         <TextBlock Text="车牌号码"
@@ -103,8 +91,8 @@
                                  Text="{Binding SearchPlateNumber}" />
                     </Grid>
 
-                    <!-- Row 4: 搜索 + 重置按钮 -->
-                    <Grid Grid.Row="3"
+                    <!-- Row 3: 搜索 + 重置按钮 -->
+                    <Grid Grid.Row="2"
                           ColumnDefinitions="Auto,Auto,Auto">
                         <TextBlock Text="进场时间"
                                    VerticalAlignment="Center"
