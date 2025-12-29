@@ -46,6 +46,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         modelBuilder.Ignore<DocumentScannerConfig>();
         modelBuilder.Ignore<SystemSettings>();
         modelBuilder.Ignore<WeighingRecordMaterial>(); // Stored as JSON in WeighingRecord
+        modelBuilder.Ignore<SoundDeviceSettings>();
 
         // Configure Material relationships
         modelBuilder.Entity<Material>(entity =>
