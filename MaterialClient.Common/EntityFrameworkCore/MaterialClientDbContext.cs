@@ -8,6 +8,11 @@ namespace MaterialClient.EFCore;
 
 public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 {
+    /// <summary>
+    /// 禁用审计概念应用（用于数据迁移等场景，CSV数据已包含审计信息）
+    /// </summary>
+    public bool DisableAuditConcepts { get; set; }
+
     public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options)
         : base(options)
     {
@@ -218,13 +223,19 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        ApplyAuditConcepts();
+        if (!DisableAuditConcepts)
+        {
+            ApplyAuditConcepts();
+        }
         return await base.SaveChangesAsync(cancellationToken);
     }
 
     public override int SaveChanges()
     {
-        ApplyAuditConcepts();
+        if (!DisableAuditConcepts)
+        {
+            ApplyAuditConcepts();
+        }
         return base.SaveChanges();
     }
 

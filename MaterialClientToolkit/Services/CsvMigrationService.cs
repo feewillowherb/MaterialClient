@@ -2,6 +2,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace MaterialClientToolkit.Services;
 
@@ -45,6 +46,9 @@ public class CsvMigrationService
         var attaches = await _csvReaderService.ReadMaterialAttachesAsync(materialAttachesPath);
 
         _logger?.LogInformation($"读取完成: Orders={orders.Count}, OrderGoods={orderGoods.Count}, Attaches={attaches.Count}");
+
+        // 禁用审计概念，因为CSV数据已经包含了审计信息
+        _dbContext.DisableAuditConcepts = true;
 
         // 使用事务确保数据一致性
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -246,8 +250,79 @@ public class CsvMigrationService
         catch (Exception ex)
         {
             _logger?.LogError(ex, "数据迁移失败，正在回滚事务...");
+            
+            // 构建详细的错误信息
+            var errorBuilder = new StringBuilder();
+            errorBuilder.AppendLine($"错误: {ex.Message}");
+            
+            // 递归显示所有内部异常
+            var innerEx = ex.InnerException;
+            int depth = 1;
+            while (innerEx != null && depth <= 5)
+            {
+                errorBuilder.AppendLine($"内部异常 #{depth}: {innerEx.Message}");
+                errorBuilder.AppendLine($"  类型: {innerEx.GetType().FullName}");
+                if (!string.IsNullOrEmpty(innerEx.StackTrace))
+                {
+                    var stackLines = innerEx.StackTrace.Split('\n').Take(3);
+                    errorBuilder.AppendLine($"  堆栈: {string.Join("", stackLines)}");
+                }
+                innerEx = innerEx.InnerException;
+                depth++;
+            }
+            
+            // 如果是DbUpdateException，显示更多详细信息
+            if (ex is DbUpdateException dbEx)
+            {
+                errorBuilder.AppendLine("\n数据库更新异常详情:");
+                foreach (var entry in dbEx.Entries)
+                {
+                    errorBuilder.AppendLine($"  实体类型: {entry.Entity.GetType().Name}, 状态: {entry.State}");
+                    
+                    // 显示实体的关键属性值
+                    try
+                    {
+                        var entityType = entry.Entity.GetType();
+                        var idProperty = entityType.GetProperty("Id");
+                        if (idProperty != null)
+                        {
+                            var idValue = idProperty.GetValue(entry.Entity);
+                            errorBuilder.AppendLine($"    Id: {idValue}");
+                        }
+                        
+                        // 显示其他关键属性
+                        var keyProperties = new[] { "WaybillId", "MaterialId", "OrderNo", "FileName" };
+                        foreach (var propName in keyProperties)
+                        {
+                            var prop = entityType.GetProperty(propName);
+                            if (prop != null)
+                            {
+                                var propValue = prop.GetValue(entry.Entity);
+                                if (propValue != null)
+                                {
+                                    errorBuilder.AppendLine($"    {propName}: {propValue}");
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略属性访问错误
+                    }
+                }
+            }
+            
+            var errorMessage = errorBuilder.ToString();
+            _logger?.LogError(errorMessage);
+            Console.WriteLine(errorMessage);
+            
             await transaction.RollbackAsync();
             throw;
+        }
+        finally
+        {
+            // 恢复审计概念设置
+            _dbContext.DisableAuditConcepts = false;
         }
     }
 }
