@@ -10,8 +10,7 @@ namespace MaterialClientToolkit;
 /// MaterialClientToolkit ABP模块
 /// </summary>
 [DependsOn(
-    typeof(MaterialClientCommonModule),
-    typeof(AbpEntityFrameworkCoreSqliteModule)
+    typeof(MaterialClientCommonModule)
 )]
 public class MaterialClientToolkitModule : AbpModule
 {
