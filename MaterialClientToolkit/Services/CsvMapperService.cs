@@ -1,6 +1,7 @@
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClientToolkit.Models;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClientToolkit.Services;
 
@@ -8,7 +9,7 @@ namespace MaterialClientToolkit.Services;
 /// CSV数据映射服务
 /// 所有映射逻辑封装在此类中，便于统一修改
 /// </summary>
-public class CsvMapperService
+public class CsvMapperService : ITransientDependency
 {
     /// <summary>
     /// 判断Material_Order记录是否为Waybill（有OutTime则为Waybill）
@@ -162,7 +163,7 @@ public class CsvMapperService
         {
             0 => AttachType.UnmatchedEntryPhoto,
             1 => AttachType.EntryPhoto, // 假设1表示进场照片
-            2 => AttachType.ExitPhoto,  // 假设2表示出场照片
+            2 => AttachType.ExitPhoto, // 假设2表示出场照片
             3 => AttachType.TicketPhoto, // 假设3表示票据照片
             _ => AttachType.UnmatchedEntryPhoto
         };
@@ -306,4 +307,3 @@ public class CsvMapperService
         return status.HasValue && status.Value != 0;
     }
 }
-

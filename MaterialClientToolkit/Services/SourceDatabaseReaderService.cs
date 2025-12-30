@@ -29,13 +29,12 @@ public class SourceDatabaseReaderService
     /// </summary>
     private async Task<SqliteConnection> CreateConnectionAsync()
     {
-        
         Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
 
-        
+
         var connection = new SqliteConnection(_sourceConnectionString);
         await connection.OpenAsync();
-        
+
         // 使用 PRAGMA key 设置 SQLCipher 密码
         // 注意：SQLCipher 的 PRAGMA key 不支持参数化查询，必须使用字面量字符串
         // 需要转义密码中的单引号以防止 SQL 注入
@@ -43,26 +42,6 @@ public class SourceDatabaseReaderService
         var pragmaCommand = connection.CreateCommand();
         pragmaCommand.CommandText = $"PRAGMA key = '{escapedPassword}';";
         await pragmaCommand.ExecuteNonQueryAsync();
-        
-
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = "PRAGMA cipher_version;";
-        var version = cmd.ExecuteScalar();
-        Console.WriteLine(version);
-
-        
-        // 验证密码是否正确：执行一个简单的查询来测试解密是否成功
-        // 如果密码错误，SQLCipher 不会立即报错，而是在查询时抛出 "file is not a database"
-        var testCommand = connection.CreateCommand();
-        testCommand.CommandText = "SELECT COUNT(*) FROM Material_Order;";
-        try
-        {
-            await testCommand.ExecuteScalarAsync();
-        }
-        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 26)
-        {
-            throw new InvalidOperationException("数据库密码错误或数据库文件无效", ex);
-        }
         
         return connection;
     }
@@ -253,9 +232,9 @@ public class SourceDatabaseReaderService
         var placeholders = string.Join(",", materialIds.Select((_, i) => $"@p{i}"));
         var command = connection.CreateCommand();
         command.CommandText = $@"
-            SELECT Id, Name
-            FROM Material
-            WHERE Id IN ({placeholders}) AND (DeleteStatus = 0 OR DeleteStatus IS NULL)";
+            SELECT GoodsId, GoodsName
+            FROM Material_Goods
+            WHERE GoodsId IN ({placeholders}) AND (DeleteStatus = 0 OR DeleteStatus IS NULL)";
 
         // 添加参数
         for (int i = 0; i < materialIds.Count; i++)
@@ -283,12 +262,12 @@ public class SourceDatabaseReaderService
         try
         {
             await using var connection = await CreateConnectionAsync();
-            
+
             // 尝试查询一个简单的表是否存在
             var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Material_Order'";
             var result = await command.ExecuteScalarAsync();
-            
+
             return result != null && Convert.ToInt64(result) > 0;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("密码错误"))
@@ -309,4 +288,3 @@ public class SourceDatabaseReaderService
         }
     }
 }
-

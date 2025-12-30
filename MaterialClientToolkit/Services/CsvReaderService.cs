@@ -1,6 +1,7 @@
 using Magicodes.ExporterAndImporter.Core;
 using Magicodes.ExporterAndImporter.Csv;
 using MaterialClientToolkit.Models;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClientToolkit.Services;
 
@@ -8,7 +9,7 @@ namespace MaterialClientToolkit.Services;
 /// CSV读取服务
 /// 参考: https://github.com/dotnetcore/Magicodes.IE/blob/master/docs/7.Csv%20Import%20and%20Export.md
 /// </summary>
-public class CsvReaderService
+public class CsvReaderService : ITransientDependency
 {
     /// <summary>
     /// 读取Material_Order.csv文件
@@ -17,13 +18,13 @@ public class CsvReaderService
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"CSV文件不存在: {filePath}");
-        
+
         var csvImporter = new CsvImporter();
 
         // 使用Stream方式导入
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         var result = await csvImporter.Import<MaterialOrderCsv>(stream);
-        
+
         if (!result.HasError && result.Data != null)
             return result.Data.ToList();
 
@@ -50,7 +51,7 @@ public class CsvReaderService
         // 使用Stream方式导入
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         var result = await csvImporter.Import<MaterialOrderGoodsCsv>(stream);
-        
+
         if (!result.HasError && result.Data != null)
             return result.Data.ToList();
 
@@ -77,7 +78,7 @@ public class CsvReaderService
         // 使用Stream方式导入
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         var result = await csvImporter.Import<MaterialAttachesCsv>(stream);
-        
+
         if (!result.HasError && result.Data != null)
             return result.Data.ToList();
 
@@ -91,4 +92,3 @@ public class CsvReaderService
         throw new InvalidOperationException($"读取CSV文件失败: {errorMessage}");
     }
 }
-

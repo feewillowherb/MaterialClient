@@ -3,13 +3,14 @@ using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClientToolkit.Services;
 
 /// <summary>
 /// CSV数据迁移服务
 /// </summary>
-public class CsvMigrationService
+public class CsvMigrationService: ITransientDependency
 {
     private readonly CsvReaderService _csvReaderService;
     private readonly CsvMapperService _csvMapperService;

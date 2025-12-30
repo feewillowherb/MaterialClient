@@ -17,12 +17,7 @@ public class MaterialClientToolkitModule : AbpModule
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         var services = context.Services;
-
-        // 注册服务
-        // DbContext配置已在MaterialClientCommonModule中完成
-        services.AddTransient<CsvReaderService>();
-        services.AddTransient<CsvMapperService>();
-        services.AddTransient<DatabaseMigrationService>();
+        
     }
 }
 
