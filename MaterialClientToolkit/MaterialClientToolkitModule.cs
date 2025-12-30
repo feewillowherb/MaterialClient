@@ -23,6 +23,7 @@ public class MaterialClientToolkitModule : AbpModule
         // DbContext配置已在MaterialClientCommonModule中完成
         services.AddTransient<CsvReaderService>();
         services.AddTransient<CsvMapperService>();
+        services.AddTransient<DatabaseMigrationService>();
     }
 }
 
