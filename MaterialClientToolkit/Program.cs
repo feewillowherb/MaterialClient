@@ -1,7 +1,8 @@
-﻿using MaterialClient.Common.Services.Hikvision;
-using MaterialClientToolkit.Services;
+﻿using MaterialClientToolkit.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Volo.Abp;
 
 namespace MaterialClientToolkit;
 
@@ -9,6 +10,8 @@ internal class Program
 {
     private static async Task<int> Main(string[] args)
     {
+        IAbpApplicationWithInternalServiceProvider? abpApplication = null;
+
         try
         {
             // 1. 读取配置
@@ -31,23 +34,32 @@ internal class Program
             }
 
             Console.WriteLine($"数据库连接字符串: {connectionString}");
+            Console.WriteLine("初始化ABP框架...");
+
+            // 3. 创建并初始化ABP应用
+            abpApplication = await AbpApplicationFactory.CreateAsync<MaterialClientToolkitModule>(options =>
+            {
+                options.Services.ReplaceConfiguration(configuration);
+                options.UseAutofac();
+            });
+
+            await abpApplication.InitializeAsync();
+
             Console.WriteLine("开始CSV数据迁移...");
 
-            // 3. 创建服务实例
-            var csvReaderService = new CsvReaderService();
-            var csvMapperService = new CsvMapperService();
-            
-            // 创建简单的控制台日志记录器
-            using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-            var logger = loggerFactory.CreateLogger<CsvMigrationService>();
+            // 4. 从ABP容器获取服务
+            var csvReaderService = abpApplication.ServiceProvider.GetRequiredService<CsvReaderService>();
+            var csvMapperService = abpApplication.ServiceProvider.GetRequiredService<CsvMapperService>();
+            var dbContext = abpApplication.ServiceProvider.GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
+            var logger = abpApplication.ServiceProvider.GetService<ILogger<CsvMigrationService>>();
 
             var migrationService = new CsvMigrationService(
                 csvReaderService,
                 csvMapperService,
-                connectionString,
+                dbContext,
                 logger);
 
-            // 4. 执行迁移
+            // 5. 执行迁移
             var csvDirectory = AppContext.BaseDirectory;
             var exitCode = await migrationService.MigrateAsync(csvDirectory);
 
@@ -72,6 +84,15 @@ internal class Program
             Console.WriteLine($"错误: {ex.Message}");
             Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
             return 1;
+        }
+        finally
+        {
+            // 清理ABP应用
+            if (abpApplication != null)
+            {
+                await abpApplication.ShutdownAsync();
+                abpApplication.Dispose();
+            }
         }
     }
 }

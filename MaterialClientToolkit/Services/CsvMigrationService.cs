@@ -12,18 +12,18 @@ public class CsvMigrationService
 {
     private readonly CsvReaderService _csvReaderService;
     private readonly CsvMapperService _csvMapperService;
+    private readonly MaterialClientDbContext _dbContext;
     private readonly ILogger<CsvMigrationService>? _logger;
-    private readonly string _connectionString;
 
     public CsvMigrationService(
         CsvReaderService csvReaderService,
         CsvMapperService csvMapperService,
-        string connectionString,
+        MaterialClientDbContext dbContext,
         ILogger<CsvMigrationService>? logger = null)
     {
         _csvReaderService = csvReaderService;
         _csvMapperService = csvMapperService;
-        _connectionString = connectionString;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -46,16 +46,8 @@ public class CsvMigrationService
 
         _logger?.LogInformation($"读取完成: Orders={orders.Count}, OrderGoods={orderGoods.Count}, Attaches={attaches.Count}");
 
-        // 创建DbContext
-        var optionsBuilder = new DbContextOptionsBuilder<MaterialClientDbContext>();
-        optionsBuilder.UseSqlite(_connectionString)
-            .EnableDetailedErrors()
-            .EnableSensitiveDataLogging();
-
-        using var dbContext = new MaterialClientDbContext(optionsBuilder.Options);
-
         // 使用事务确保数据一致性
-        using var transaction = await dbContext.Database.BeginTransactionAsync();
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
 
         try
         {
@@ -88,16 +80,16 @@ public class CsvMigrationService
             // 批量插入Waybill
             if (waybills.Any())
             {
-                dbContext.Waybills.AddRange(waybills);
-                await dbContext.SaveChangesAsync();
+                _dbContext.Waybills.AddRange(waybills);
+                await _dbContext.SaveChangesAsync();
                 _logger?.LogInformation($"已插入 {waybills.Count} 条Waybill记录");
             }
 
             // 批量插入WeighingRecord
             if (weighingRecords.Any())
             {
-                dbContext.WeighingRecords.AddRange(weighingRecords);
-                await dbContext.SaveChangesAsync();
+                _dbContext.WeighingRecords.AddRange(weighingRecords);
+                await _dbContext.SaveChangesAsync();
                 _logger?.LogInformation($"已插入 {weighingRecords.Count} 条WeighingRecord记录");
             }
 
@@ -110,7 +102,7 @@ public class CsvMigrationService
             
             if (materialIds.Any())
             {
-                var materials = await dbContext.Materials
+                var materials = await _dbContext.Materials
                     .Where(m => materialIds.Contains(m.Id) && !m.IsDeleted)
                     .Select(m => new { m.Id, m.Name })
                     .ToListAsync();
@@ -141,8 +133,8 @@ public class CsvMigrationService
 
             if (waybillMaterials.Any())
             {
-                dbContext.WaybillMaterials.AddRange(waybillMaterials);
-                await dbContext.SaveChangesAsync();
+                _dbContext.WaybillMaterials.AddRange(waybillMaterials);
+                await _dbContext.SaveChangesAsync();
                 _logger?.LogInformation($"已插入 {waybillMaterials.Count} 条WaybillMaterial记录");
             }
 
@@ -161,8 +153,8 @@ public class CsvMigrationService
             // 3.2 批量插入AttachmentFile（必须先保存以获取真实ID）
             if (attachmentFiles.Any())
             {
-                dbContext.AttachmentFiles.AddRange(attachmentFiles);
-                await dbContext.SaveChangesAsync();
+                _dbContext.AttachmentFiles.AddRange(attachmentFiles);
+                await _dbContext.SaveChangesAsync();
                 _logger?.LogInformation($"已插入 {attachmentFiles.Count} 条AttachmentFile记录");
             }
 
@@ -232,16 +224,16 @@ public class CsvMigrationService
             // 3.4 批量插入WaybillAttachment关联关系
             if (waybillAttachments.Any())
             {
-                dbContext.WaybillAttachments.AddRange(waybillAttachments);
-                await dbContext.SaveChangesAsync();
+                _dbContext.WaybillAttachments.AddRange(waybillAttachments);
+                await _dbContext.SaveChangesAsync();
                 _logger?.LogInformation($"已插入 {waybillAttachments.Count} 条WaybillAttachment关联记录");
             }
 
             // 3.5 批量插入WeighingRecordAttachment关联关系
             if (weighingRecordAttachments.Any())
             {
-                dbContext.WeighingRecordAttachments.AddRange(weighingRecordAttachments);
-                await dbContext.SaveChangesAsync();
+                _dbContext.WeighingRecordAttachments.AddRange(weighingRecordAttachments);
+                await _dbContext.SaveChangesAsync();
                 _logger?.LogInformation($"已插入 {weighingRecordAttachments.Count} 条WeighingRecordAttachment关联记录");
             }
 
