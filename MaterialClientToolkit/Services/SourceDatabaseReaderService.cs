@@ -11,22 +11,60 @@ namespace MaterialClientToolkit.Services;
 public class SourceDatabaseReaderService
 {
     private readonly string _sourceConnectionString;
+    private readonly string _password;
     private readonly ILogger<SourceDatabaseReaderService>? _logger;
 
     public SourceDatabaseReaderService(
         string sourceConnectionString,
+        string password,
         ILogger<SourceDatabaseReaderService>? logger = null)
     {
         _sourceConnectionString = sourceConnectionString;
+        _password = password;
         _logger = logger;
     }
 
     /// <summary>
-    /// 创建数据库连接
+    /// 创建数据库连接并设置密码
     /// </summary>
-    private SqliteConnection CreateConnection()
+    private async Task<SqliteConnection> CreateConnectionAsync()
     {
-        return new SqliteConnection(_sourceConnectionString);
+        
+        Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
+
+        
+        var connection = new SqliteConnection(_sourceConnectionString);
+        await connection.OpenAsync();
+        
+        // 使用 PRAGMA key 设置 SQLCipher 密码
+        // 注意：SQLCipher 的 PRAGMA key 不支持参数化查询，必须使用字面量字符串
+        // 需要转义密码中的单引号以防止 SQL 注入
+        var escapedPassword = _password.Replace("'", "''"); // SQL 单引号转义：' -> ''
+        var pragmaCommand = connection.CreateCommand();
+        pragmaCommand.CommandText = $"PRAGMA key = '{escapedPassword}';";
+        await pragmaCommand.ExecuteNonQueryAsync();
+        
+
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "PRAGMA cipher_version;";
+        var version = cmd.ExecuteScalar();
+        Console.WriteLine(version);
+
+        
+        // 验证密码是否正确：执行一个简单的查询来测试解密是否成功
+        // 如果密码错误，SQLCipher 不会立即报错，而是在查询时抛出 "file is not a database"
+        var testCommand = connection.CreateCommand();
+        testCommand.CommandText = "SELECT COUNT(*) FROM Material_Order;";
+        try
+        {
+            await testCommand.ExecuteScalarAsync();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 26)
+        {
+            throw new InvalidOperationException("数据库密码错误或数据库文件无效", ex);
+        }
+        
+        return connection;
     }
 
     /// <summary>
@@ -36,8 +74,7 @@ public class SourceDatabaseReaderService
     {
         var orders = new List<MaterialOrderCsv>();
 
-        using var connection = CreateConnection();
-        await connection.OpenAsync();
+        await using var connection = await CreateConnectionAsync();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -104,8 +141,7 @@ public class SourceDatabaseReaderService
     {
         var orderGoods = new List<MaterialOrderGoodsCsv>();
 
-        using var connection = CreateConnection();
-        await connection.OpenAsync();
+        await using var connection = await CreateConnectionAsync();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -158,8 +194,7 @@ public class SourceDatabaseReaderService
     {
         var attaches = new List<MaterialAttachesCsv>();
 
-        using var connection = CreateConnection();
-        await connection.OpenAsync();
+        await using var connection = await CreateConnectionAsync();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -212,8 +247,7 @@ public class SourceDatabaseReaderService
 
         var materialNameMap = new Dictionary<int, string?>();
 
-        using var connection = CreateConnection();
-        await connection.OpenAsync();
+        await using var connection = await CreateConnectionAsync();
 
         // 构建IN子句
         var placeholders = string.Join(",", materialIds.Select((_, i) => $"@p{i}"));
@@ -248,8 +282,7 @@ public class SourceDatabaseReaderService
     {
         try
         {
-            using var connection = CreateConnection();
-            await connection.OpenAsync();
+            await using var connection = await CreateConnectionAsync();
             
             // 尝试查询一个简单的表是否存在
             var command = connection.CreateCommand();
@@ -257,6 +290,17 @@ public class SourceDatabaseReaderService
             var result = await command.ExecuteScalarAsync();
             
             return result != null && Convert.ToInt64(result) > 0;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("密码错误"))
+        {
+            // 密码错误的情况已经在 CreateConnectionAsync 中处理并抛出更清晰的异常
+            _logger?.LogError(ex, "源数据库密码错误");
+            throw; // 重新抛出，让调用者知道是密码错误
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 26)
+        {
+            _logger?.LogError(ex, "源数据库文件无效或密码错误");
+            throw new InvalidOperationException("数据库文件无效或密码错误，请检查密码是否正确", ex);
         }
         catch (Exception ex)
         {

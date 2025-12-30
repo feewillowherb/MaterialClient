@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using SQLitePCL;
 using Volo.Abp;
 
 namespace MaterialClientToolkit;
@@ -11,10 +10,10 @@ internal class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        // 初始化SQLCipher（必须在任何数据库操作之前调用）
-        // bundle_e_sqlcipher 会自动设置 SQLCipher 提供程序
-        Batteries.Init();
+        SQLitePCL.Batteries_V2.Init();
 
+        Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
+        
         IAbpApplicationWithInternalServiceProvider? abpApplication = null;
 
         try
@@ -53,18 +52,28 @@ internal class Program
                 return 1;
             }
 
-            // 5. 构建源数据库连接字符串
-            var sourceConnectionString = $"Data Source=encrypted_material.db;Password={password}";
+            // 5. 构建源数据库连接字符串（不包含密码）
+            var sourceConnectionString = "Data Source=encrypted_material.db";
 
             // 6. 验证源数据库连接
             Console.WriteLine("正在验证源数据库连接...");
             var sourceReader = new SourceDatabaseReaderService(
                 sourceConnectionString,
+                password,
                 abpApplication.ServiceProvider.GetService<ILogger<SourceDatabaseReaderService>>());
 
-            if (!await sourceReader.TestConnectionAsync())
+            try
             {
-                Console.WriteLine("错误: 无法连接到源数据库，请检查密码是否正确");
+                if (!await sourceReader.TestConnectionAsync())
+                {
+                    Console.WriteLine("错误: 无法连接到源数据库，请检查密码是否正确");
+                    return 1;
+                }
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("密码错误") || ex.Message.Contains("密码"))
+            {
+                Console.WriteLine($"错误: {ex.Message}");
+                Console.WriteLine("提示: 请确认输入的密码是否正确");
                 return 1;
             }
 
