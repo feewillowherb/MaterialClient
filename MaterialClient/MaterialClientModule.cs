@@ -1,9 +1,11 @@
+using System;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using MaterialClient.Backgrounds;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
-using MaterialClient.Common.EFCore;
+using MaterialClient.EFCore;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
