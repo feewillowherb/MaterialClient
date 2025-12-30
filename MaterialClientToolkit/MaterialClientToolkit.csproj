@@ -24,10 +24,14 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.1" />
+        <PackageReference Include="Magicodes.IE.Csv" Version="2.8.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -39,7 +43,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Csv\" />
+      <None Update="Csv\**\*">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </None>
     </ItemGroup>
 
 </Project>

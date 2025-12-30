@@ -1,9 +1,10 @@
 ﻿using MaterialClient.Common.Entities.Enums;
+using Volo.Abp.Auditing;
 using Volo.Abp.Domain.Entities;
 
 namespace MaterialClient.Common.Entities;
 
-public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
+public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
     public WaybillMaterial()
     {
@@ -77,6 +78,10 @@ public class WaybillMaterial : Entity<int>, IMaterialClientAuditedObject
     public int AddTime { get; set; }
     public DateTime? UpdateDate { get; set; }
     public DateTime AddDate { get; set; }
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletionTime { get; set; }
+    public Guid? DeleterId { get; set; }
 
     #endregion
 }
