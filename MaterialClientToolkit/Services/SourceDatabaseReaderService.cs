@@ -255,6 +255,72 @@ public class SourceDatabaseReaderService
     }
 
     /// <summary>
+    /// 读取Material_GoodsUnits记录（用于查询Rate）
+    /// </summary>
+    public async Task<Dictionary<(int UnitId, int GoodsId), decimal?>> ReadMaterialGoodsUnitsAsync()
+    {
+        var goodsUnitsMap = new Dictionary<(int UnitId, int GoodsId), decimal?>();
+
+        await using var connection = await CreateConnectionAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            SELECT UnitId, GoodsId, Rate
+            FROM Material_GoodsUnits
+            WHERE DeleteStatus = 0 OR DeleteStatus IS NULL";
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var unitId = reader.GetInt32(0);
+            var goodsId = reader.GetInt32(1);
+            var rate = reader.IsDBNull(2) ? (decimal?)null : reader.GetDecimal(2);
+            goodsUnitsMap[(unitId, goodsId)] = rate;
+        }
+
+        _logger?.LogInformation($"从源数据库读取到 {goodsUnitsMap.Count} 条Material_GoodsUnits记录");
+        return goodsUnitsMap;
+    }
+
+    /// <summary>
+    /// 读取Material_Goods记录（用于查询Specifications）
+    /// </summary>
+    public async Task<Dictionary<int, string?>> ReadMaterialGoodsSpecificationsAsync(List<int> goodsIds)
+    {
+        if (!goodsIds.Any())
+            return new Dictionary<int, string?>();
+
+        var specificationsMap = new Dictionary<int, string?>();
+
+        await using var connection = await CreateConnectionAsync();
+
+        // 构建IN子句
+        var placeholders = string.Join(",", goodsIds.Select((_, i) => $"@p{i}"));
+        var command = connection.CreateCommand();
+        command.CommandText = $@"
+            SELECT GoodsId, Specifications
+            FROM Material_Goods
+            WHERE GoodsId IN ({placeholders}) AND (DeleteStatus = 0 OR DeleteStatus IS NULL)";
+
+        // 添加参数
+        for (int i = 0; i < goodsIds.Count; i++)
+        {
+            command.Parameters.AddWithValue($"@p{i}", goodsIds[i]);
+        }
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var goodsId = reader.GetInt32(0);
+            var specifications = reader.IsDBNull(1) ? null : reader.GetString(1);
+            specificationsMap[goodsId] = specifications;
+        }
+
+        _logger?.LogInformation($"从源数据库查询到 {specificationsMap.Count} 个Material_Goods的Specifications，共需要 {goodsIds.Count} 个");
+        return specificationsMap;
+    }
+
+    /// <summary>
     /// 验证数据库连接
     /// </summary>
     public async Task<bool> TestConnectionAsync()

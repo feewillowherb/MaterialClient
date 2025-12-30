@@ -106,7 +106,13 @@ public class DatabaseMigrationService
                 materialNameMap = await _sourceReader.ReadMaterialNameMapAsync(materialIds);
             }
             
-            // 2.2 创建WaybillMaterial，并填充MaterialName
+            // 2.2 批量查询Material_GoodsUnits的Rate和Material_Goods的Specifications
+            var goodsUnitsMap = await _sourceReader.ReadMaterialGoodsUnitsAsync();
+            var goodsSpecificationsMap = await _sourceReader.ReadMaterialGoodsSpecificationsAsync(materialIds);
+            
+            // 2.3 创建WaybillMaterial，并填充MaterialName、Specifications和Rate
+            var waybillMaterialMap = new Dictionary<long, WaybillMaterial>(); // WaybillId -> WaybillMaterial（用于后续更新Waybill）
+            
             foreach (var orderGood in orderGoods)
             {
                 if (waybillIdMap.TryGetValue(orderGood.OrderId, out var waybillId))
@@ -114,7 +120,19 @@ public class DatabaseMigrationService
                     // 从Material表查询MaterialName，查询不到则为null
                     materialNameMap.TryGetValue(orderGood.GoodsId, out var materialName);
                     var waybillMaterial = _mapperService.MapToWaybillMaterial(orderGood, waybillId, materialName);
+                    
+                    // 从Material_Goods查询Specifications
+                    if (goodsSpecificationsMap.TryGetValue(orderGood.GoodsId, out var specifications))
+                    {
+                        waybillMaterial.Specifications = specifications;
+                    }
+                    
                     waybillMaterials.Add(waybillMaterial);
+                    // 保存第一个WaybillMaterial用于更新Waybill（如果有多个，使用第一个）
+                    if (!waybillMaterialMap.ContainsKey(waybillId))
+                    {
+                        waybillMaterialMap[waybillId] = waybillMaterial;
+                    }
                 }
                 else
                 {
@@ -127,6 +145,37 @@ public class DatabaseMigrationService
                 _targetDbContext.WaybillMaterials.AddRange(waybillMaterials);
                 await _targetDbContext.SaveChangesAsync();
                 _logger?.LogInformation($"已插入 {waybillMaterials.Count} 条WaybillMaterial记录");
+            }
+
+            // 2.4 更新Waybill：从WaybillMaterial聚合数据
+            foreach (var waybill in waybills)
+            {
+                if (waybillMaterialMap.TryGetValue(waybill.Id, out var wm))
+                {
+                    // 更新Waybill的字段
+                    waybill.MaterialId = wm.MaterialId;
+                    waybill.MaterialUnitId = wm.MaterialUnitId;
+                    waybill.OffsetRate = wm.OffsetRate;
+                    waybill.OffsetCount = wm.OffsetCount;
+                    
+                    // 从Material_GoodsUnits查询Rate
+                    if (wm.MaterialUnitId.HasValue && wm.MaterialId > 0)
+                    {
+                        var key = (wm.MaterialUnitId.Value, wm.MaterialId);
+                        if (goodsUnitsMap.TryGetValue(key, out var rate))
+                        {
+                            waybill.MaterialUnitRate = rate;
+                        }
+                    }
+                }
+            }
+            
+            // 保存Waybill的更新
+            if (waybills.Any())
+            {
+                _targetDbContext.Waybills.UpdateRange(waybills);
+                await _targetDbContext.SaveChangesAsync();
+                _logger?.LogInformation($"已更新 {waybills.Count} 条Waybill记录");
             }
 
             // 3. 迁移Material_Attaches到AttachmentFile及关联表（复用CSV映射逻辑）
