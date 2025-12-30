@@ -225,8 +225,8 @@ public class CsvMapperService : ITransientDependency
 
         return deliveryType.Value switch
         {
-            0 => DeliveryType.Sending,
-            1 => DeliveryType.Receiving,
+            0 => DeliveryType.Receiving,
+            1 => DeliveryType.Sending,
             _ => null
         };
     }
