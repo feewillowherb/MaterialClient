@@ -88,12 +88,16 @@ public class CsvMapperService
     /// <summary>
     /// Material_OrderGoods → WaybillMaterial 映射
     /// </summary>
-    public WaybillMaterial MapToWaybillMaterial(MaterialOrderGoodsCsv csv, long waybillId)
+    /// <param name="csv">CSV数据</param>
+    /// <param name="waybillId">Waybill ID</param>
+    /// <param name="materialName">物料名称（从Material表查询，如果查询不到则为null）</param>
+    public WaybillMaterial MapToWaybillMaterial(MaterialOrderGoodsCsv csv, long waybillId, string? materialName = null)
     {
         var waybillMaterial = new WaybillMaterial
         {
             WaybillId = waybillId,
             MaterialId = csv.GoodsId, // GoodsId映射到MaterialId
+            MaterialName = materialName, // 从Material表查询的物料名称，查询不到则为null
             MaterialUnitId = csv.UnitId,
             GoodsPlanOnWeight = csv.GoodsPlanOnWeight,
             GoodsPlanOnPcs = csv.GoodsPlanOnPcs,
@@ -176,11 +180,12 @@ public class CsvMapperService
 
     /// <summary>
     /// OrderSource 值映射
+    /// null或0都映射为OrderSource.MannedStation（有人值守）
     /// </summary>
     public OrderSource MapOrderSource(int? orderSource)
     {
-        if (!orderSource.HasValue)
-            return OrderSource.MannedStation; // 默认值
+        if (!orderSource.HasValue || orderSource.Value == 0)
+            return OrderSource.MannedStation; // 默认值：有人值守
 
         return orderSource.Value switch
         {
@@ -188,7 +193,7 @@ public class CsvMapperService
             2 => OrderSource.ManualEntry,
             3 => OrderSource.MobileAcceptance,
             4 => OrderSource.UnmannedStation,
-            _ => OrderSource.MannedStation
+            _ => OrderSource.MannedStation // 未知值也使用默认值
         };
     }
 

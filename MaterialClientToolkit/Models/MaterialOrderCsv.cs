@@ -6,7 +6,6 @@ namespace MaterialClientToolkit.Models;
 /// <summary>
 /// Material_Order CSV数据模型
 /// </summary>
-[CsvImporter(IsLabelingError = true)]
 public class MaterialOrderCsv
 {
     [ImporterHeader(Name = "OrderId")]

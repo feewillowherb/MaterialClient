@@ -103,11 +103,34 @@ public class CsvMigrationService
 
             // 2. 迁移Material_OrderGoods到WaybillMaterial
             var waybillMaterials = new List<WaybillMaterial>();
+            
+            // 2.1 查询所有需要的MaterialId，批量查询MaterialName
+            var materialIds = orderGoods.Select(og => og.GoodsId).Distinct().ToList();
+            var materialNameMap = new Dictionary<int, string?>();
+            
+            if (materialIds.Any())
+            {
+                var materials = await dbContext.Materials
+                    .Where(m => materialIds.Contains(m.Id) && !m.IsDeleted)
+                    .Select(m => new { m.Id, m.Name })
+                    .ToListAsync();
+                
+                foreach (var material in materials)
+                {
+                    materialNameMap[material.Id] = material.Name;
+                }
+                
+                _logger?.LogInformation($"查询到 {materials.Count} 个Material记录，共需要 {materialIds.Count} 个");
+            }
+            
+            // 2.2 创建WaybillMaterial，并填充MaterialName
             foreach (var orderGood in orderGoods)
             {
                 if (waybillIdMap.TryGetValue(orderGood.OrderId, out var waybillId))
                 {
-                    var waybillMaterial = _csvMapperService.MapToWaybillMaterial(orderGood, waybillId);
+                    // 从Material表查询MaterialName，查询不到则为null
+                    materialNameMap.TryGetValue(orderGood.GoodsId, out var materialName);
+                    var waybillMaterial = _csvMapperService.MapToWaybillMaterial(orderGood, waybillId, materialName);
                     waybillMaterials.Add(waybillMaterial);
                 }
                 else
@@ -125,15 +148,37 @@ public class CsvMigrationService
 
             // 3. 迁移Material_Attaches到AttachmentFile及关联表
             var attachmentFiles = new List<AttachmentFile>();
-            var waybillAttachments = new List<WaybillAttachment>();
-            var weighingRecordAttachments = new List<WeighingRecordAttachment>();
-            var attachmentFileIdMap = new Dictionary<int, int>(); // CSV FileId -> 数据库AttachmentFileId
+            var attachmentFileCsvIdMap = new Dictionary<int, AttachmentFile>(); // CSV FileId -> AttachmentFile对象
 
+            // 3.1 先创建所有AttachmentFile对象
             foreach (var attach in attaches)
             {
                 var attachmentFile = _csvMapperService.MapToAttachmentFile(attach);
                 attachmentFiles.Add(attachmentFile);
-                attachmentFileIdMap[attach.FileId] = attachmentFile.Id;
+                attachmentFileCsvIdMap[attach.FileId] = attachmentFile;
+            }
+
+            // 3.2 批量插入AttachmentFile（必须先保存以获取真实ID）
+            if (attachmentFiles.Any())
+            {
+                dbContext.AttachmentFiles.AddRange(attachmentFiles);
+                await dbContext.SaveChangesAsync();
+                _logger?.LogInformation($"已插入 {attachmentFiles.Count} 条AttachmentFile记录");
+            }
+
+            // 3.3 创建关联关系（WaybillAttachment和WeighingRecordAttachment）
+            var waybillAttachments = new List<WaybillAttachment>();
+            var weighingRecordAttachments = new List<WeighingRecordAttachment>();
+            var waybillAttachmentKeys = new HashSet<(long WaybillId, int AttachmentFileId)>(); // 用于去重
+            var weighingRecordAttachmentKeys = new HashSet<(long WeighingRecordId, int AttachmentFileId)>(); // 用于去重
+
+            foreach (var attach in attaches)
+            {
+                if (!attachmentFileCsvIdMap.TryGetValue(attach.FileId, out var attachmentFile))
+                {
+                    _logger?.LogWarning($"FileId {attach.FileId} 对应的AttachmentFile未找到，跳过关联关系创建");
+                    continue;
+                }
 
                 // 判断是Waybill还是WeighingRecord的附件
                 if (_csvMapperService.IsBizTypeForWaybill(attach.BizType))
@@ -141,8 +186,18 @@ public class CsvMigrationService
                     // 查找对应的Waybill
                     if (waybillIdMap.TryGetValue(attach.BizId, out var waybillId))
                     {
-                        var waybillAttachment = new WaybillAttachment(waybillId, attachmentFile.Id);
-                        waybillAttachments.Add(waybillAttachment);
+                        var key = (waybillId, attachmentFile.Id);
+                        // 检查是否已存在，避免重复
+                        if (!waybillAttachmentKeys.Contains(key))
+                        {
+                            var waybillAttachment = new WaybillAttachment(waybillId, attachmentFile.Id);
+                            waybillAttachments.Add(waybillAttachment);
+                            waybillAttachmentKeys.Add(key);
+                        }
+                        else
+                        {
+                            _logger?.LogWarning($"WaybillAttachment已存在: WaybillId={waybillId}, AttachmentFileId={attachmentFile.Id}，跳过重复创建");
+                        }
                     }
                     else
                     {
@@ -154,8 +209,18 @@ public class CsvMigrationService
                     // 查找对应的WeighingRecord（BizId应该对应OrderId）
                     if (weighingRecordIdMap.TryGetValue(attach.BizId, out var weighingRecordId))
                     {
-                        var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
-                        weighingRecordAttachments.Add(weighingRecordAttachment);
+                        var key = (weighingRecordId, attachmentFile.Id);
+                        // 检查是否已存在，避免重复
+                        if (!weighingRecordAttachmentKeys.Contains(key))
+                        {
+                            var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
+                            weighingRecordAttachments.Add(weighingRecordAttachment);
+                            weighingRecordAttachmentKeys.Add(key);
+                        }
+                        else
+                        {
+                            _logger?.LogWarning($"WeighingRecordAttachment已存在: WeighingRecordId={weighingRecordId}, AttachmentFileId={attachmentFile.Id}，跳过重复创建");
+                        }
                     }
                     else
                     {
@@ -164,25 +229,20 @@ public class CsvMigrationService
                 }
             }
 
-            if (attachmentFiles.Any())
-            {
-                dbContext.AttachmentFiles.AddRange(attachmentFiles);
-                await dbContext.SaveChangesAsync();
-                _logger?.LogInformation($"已插入 {attachmentFiles.Count} 条AttachmentFile记录");
-            }
-
+            // 3.4 批量插入WaybillAttachment关联关系
             if (waybillAttachments.Any())
             {
                 dbContext.WaybillAttachments.AddRange(waybillAttachments);
                 await dbContext.SaveChangesAsync();
-                _logger?.LogInformation($"已插入 {waybillAttachments.Count} 条WaybillAttachment记录");
+                _logger?.LogInformation($"已插入 {waybillAttachments.Count} 条WaybillAttachment关联记录");
             }
 
+            // 3.5 批量插入WeighingRecordAttachment关联关系
             if (weighingRecordAttachments.Any())
             {
                 dbContext.WeighingRecordAttachments.AddRange(weighingRecordAttachments);
                 await dbContext.SaveChangesAsync();
-                _logger?.LogInformation($"已插入 {weighingRecordAttachments.Count} 条WeighingRecordAttachment记录");
+                _logger?.LogInformation($"已插入 {weighingRecordAttachments.Count} 条WeighingRecordAttachment关联记录");
             }
 
             // 提交事务

@@ -1,3 +1,4 @@
+using Magicodes.ExporterAndImporter.Core;
 using Magicodes.ExporterAndImporter.Csv;
 using MaterialClientToolkit.Models;
 
@@ -5,16 +6,10 @@ namespace MaterialClientToolkit.Services;
 
 /// <summary>
 /// CSV读取服务
+/// 参考: https://github.com/dotnetcore/Magicodes.IE/blob/master/docs/7.Csv%20Import%20and%20Export.md
 /// </summary>
 public class CsvReaderService
 {
-    private readonly ICsvImporter _csvImporter;
-
-    public CsvReaderService()
-    {
-        _csvImporter = new CsvImporter();
-    }
-
     /// <summary>
     /// 读取Material_Order.csv文件
     /// </summary>
@@ -22,15 +17,24 @@ public class CsvReaderService
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"CSV文件不存在: {filePath}");
-
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-        var result = await _csvImporter.Import<MaterialOrderCsv>(stream);
         
-        if (!result.HasError)
+        var csvImporter = new CsvImporter();
+
+        // 使用Stream方式导入
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        var result = await csvImporter.Import<MaterialOrderCsv>(stream);
+        
+        if (!result.HasError && result.Data != null)
             return result.Data.ToList();
 
-        var errors = string.Join("; ", result.ExceptionList.Select(e => e.ErrorMessage));
-        throw new InvalidOperationException($"读取CSV文件失败: {errors}");
+        // 处理错误信息
+        var errorMessage = "CSV导入过程中发生错误，请检查数据格式";
+        if (result.HasError && result.TemplateErrors != null && result.TemplateErrors.Any())
+        {
+            errorMessage = string.Join("; ", result.TemplateErrors);
+        }
+
+        throw new InvalidOperationException($"读取CSV文件失败: {errorMessage}");
     }
 
     /// <summary>
@@ -41,14 +45,23 @@ public class CsvReaderService
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"CSV文件不存在: {filePath}");
 
+        var csvImporter = new CsvImporter();
+
+        // 使用Stream方式导入
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-        var result = await _csvImporter.Import<MaterialOrderGoodsCsv>(stream);
+        var result = await csvImporter.Import<MaterialOrderGoodsCsv>(stream);
         
-        if (!result.HasError)
+        if (!result.HasError && result.Data != null)
             return result.Data.ToList();
 
-        var errors = string.Join("; ", result.ExceptionList.Select(e => e.ErrorMessage));
-        throw new InvalidOperationException($"读取CSV文件失败: {errors}");
+        // 处理错误信息
+        var errorMessage = "CSV导入过程中发生错误，请检查数据格式";
+        if (result.HasError && result.TemplateErrors != null && result.TemplateErrors.Any())
+        {
+            errorMessage = string.Join("; ", result.TemplateErrors);
+        }
+
+        throw new InvalidOperationException($"读取CSV文件失败: {errorMessage}");
     }
 
     /// <summary>
@@ -59,14 +72,23 @@ public class CsvReaderService
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"CSV文件不存在: {filePath}");
 
+        var csvImporter = new CsvImporter();
+
+        // 使用Stream方式导入
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-        var result = await _csvImporter.Import<MaterialAttachesCsv>(stream);
+        var result = await csvImporter.Import<MaterialAttachesCsv>(stream);
         
-        if (!result.HasError)
+        if (!result.HasError && result.Data != null)
             return result.Data.ToList();
 
-        var errors = string.Join("; ", result.ExceptionList.Select(e => e.ErrorMessage));
-        throw new InvalidOperationException($"读取CSV文件失败: {errors}");
+        // 处理错误信息
+        var errorMessage = "CSV导入过程中发生错误，请检查数据格式";
+        if (result.HasError && result.TemplateErrors != null && result.TemplateErrors.Any())
+        {
+            errorMessage = string.Join("; ", result.TemplateErrors);
+        }
+
+        throw new InvalidOperationException($"读取CSV文件失败: {errorMessage}");
     }
 }
 

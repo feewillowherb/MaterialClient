@@ -6,7 +6,6 @@ namespace MaterialClientToolkit.Models;
 /// <summary>
 /// Material_Attaches CSV数据模型
 /// </summary>
-[CsvImporter(IsLabelingError = true)]
 public class MaterialAttachesCsv
 {
     [ImporterHeader(Name = "FileId")]
