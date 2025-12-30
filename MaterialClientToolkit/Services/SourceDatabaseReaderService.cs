@@ -29,9 +29,6 @@ public class SourceDatabaseReaderService
     /// </summary>
     private async Task<SqliteConnection> CreateConnectionAsync()
     {
-        Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
-
-
         var connection = new SqliteConnection(_sourceConnectionString);
         await connection.OpenAsync();
 
