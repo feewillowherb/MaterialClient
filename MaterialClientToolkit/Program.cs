@@ -1,5 +1,12 @@
-﻿using MaterialClient.Common.Services.Hikvision;
+﻿using MaterialClientToolkit.Services;
+using MaterialClient.EFCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Volo.Abp;
+using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.Uow;
 
 namespace MaterialClientToolkit;
 
@@ -7,246 +14,178 @@ internal class Program
 {
     private static async Task<int> Main(string[] args)
     {
+        SQLitePCL.Batteries_V2.Init();
+
+        Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
+        
+        IAbpApplicationWithInternalServiceProvider? abpApplication = null;
+
         try
         {
-            // 从 appsettings.json 加载配置
-            var deviceConfigs = LoadConfigurations();
+            // 1. 读取配置
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
 
-            // 命令行参数可以覆盖配置文件的值（如果只有一个设备）
-            if (deviceConfigs.Count == 1) ApplyCommandLineArguments(deviceConfigs[0], args);
+            // 2. 获取目标数据库连接字符串（MaterialClient.db）
+            var targetConnectionString = configuration.GetConnectionString("Default")
+                                        ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+                                        ?? "Data Source=MaterialClient.db";
 
-            // 创建服务实例
-            var service = new HikvisionService();
-            foreach (var config in deviceConfigs) service.AddOrUpdateDevice(config);
+            // 从连接字符串中提取数据库文件路径
+            var dbPath = ExtractDatabasePath(targetConnectionString);
+            var dbExists = !string.IsNullOrEmpty(dbPath) && File.Exists(dbPath);
 
-            // 创建 captures 文件夹（与工具目录相同）
-            var toolDirectory = GetToolDirectory();
-            var captureDir = Path.Combine(toolDirectory, "captures");
-            Directory.CreateDirectory(captureDir);
-
-            // 为每个设备的每个通道创建拍照请求
-            var requests = new List<BatchCaptureRequest>();
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-
-            foreach (var config in deviceConfigs)
+            Console.WriteLine($"目标数据库: {targetConnectionString}");
+            if (!dbExists)
             {
-                var deviceKey = $"{config.Ip}:{config.Port}";
-                foreach (var channel in config.Channels)
-                {
-                    var fileName = $"hik_{config.Ip.Replace(".", "_")}_ch{channel}_{timestamp}.jpg";
-                    var fullPath = Path.Combine(captureDir, fileName);
+                Console.WriteLine($"数据库文件不存在，将在初始化时创建: {dbPath ?? "未知路径"}");
+            }
 
-                    requests.Add(new BatchCaptureRequest
-                    {
-                        Config = config,
-                        Channel = channel,
-                        SaveFullPath = fullPath,
-                        DeviceKey = deviceKey
-                    });
+            Console.WriteLine("初始化ABP框架...");
+
+            // 3. 创建并初始化ABP应用
+            abpApplication = await AbpApplicationFactory.CreateAsync<MaterialClientToolkitModule>(options =>
+            {
+                options.Services.ReplaceConfiguration(configuration);
+                options.UseAutofac();
+            });
+
+            await abpApplication.InitializeAsync();
+
+            // 3.5. 如果数据库不存在，执行 Code First 迁移创建数据库和表结构
+            if (!dbExists)
+            {
+                Console.WriteLine("数据库不存在，正在创建数据库和表结构...");
+                try
+                {
+                    var unitOfWorkManager = abpApplication.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                    var dbContextProvider = abpApplication.ServiceProvider
+                        .GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
+
+                    using var uow = unitOfWorkManager.Begin(true, false);
+                    await using var dbContext = await dbContextProvider.GetDbContextAsync();
+                    await dbContext.Database.MigrateAsync();
+                    await uow.CompleteAsync();
+                    Console.WriteLine("数据库和表结构创建成功！");
+                }
+                catch (Exception ex)
+                {
+                    var dbLogger = abpApplication.ServiceProvider.GetService<ILogger<Program>>();
+                    dbLogger?.LogError(ex, "创建数据库和表结构失败");
+                    Console.WriteLine($"错误: 创建数据库失败 - {ex.Message}");
+                    return 1;
                 }
             }
 
-            Console.WriteLine("开始批量捕获图片...");
-            Console.WriteLine($"设备数量: {deviceConfigs.Count}");
-            Console.WriteLine($"总任务数: {requests.Count}");
-            Console.WriteLine($"保存目录: {captureDir}");
-            Console.WriteLine();
-
-            // 执行批量拍照
-            var startTime = DateTime.Now;
-            var results = await service.CaptureJpegFromStreamBatchAsync(requests);
-            var endTime = DateTime.Now;
-            var duration = (endTime - startTime).TotalSeconds;
-
-            // 显示结果
-            Console.WriteLine($"批量捕获完成，耗时: {duration:F2} 秒");
-            Console.WriteLine();
-
-            var successCount = results.Count(r => r.Success);
-            var failCount = results.Count - successCount;
-
-            Console.WriteLine($"成功: {successCount}, 失败: {failCount}");
-            Console.WriteLine();
-
-            // 显示详细信息
-            foreach (var result in results)
+            // 4. 提示用户输入源数据库密码
+            Console.Write("请输入encrypted_material.db的密码: ");
+            var password = Console.ReadLine();
+            
+            if (string.IsNullOrWhiteSpace(password))
             {
-                var deviceInfo = $"{result.Request.Config.Ip}:{result.Request.Config.Port}";
-                var channelInfo = $"通道 {result.Request.Channel}";
-
-                if (result.Success)
-                {
-                    Console.WriteLine($"✓ {deviceInfo} {channelInfo} - 成功");
-                    Console.WriteLine($"  文件: {Path.GetFileName(result.Request.SaveFullPath)}");
-                    Console.WriteLine($"  大小: {result.FileSize} 字节");
-                }
-                else
-                {
-                    Console.WriteLine($"✗ {deviceInfo} {channelInfo} - 失败");
-                    if (!string.IsNullOrEmpty(result.ErrorMessage))
-                        Console.WriteLine($"  错误: {result.ErrorMessage}");
-                    else
-                        Console.WriteLine($"  HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}");
-                }
-
-                Console.WriteLine();
+                Console.WriteLine("错误: 密码不能为空");
+                return 1;
             }
 
-            // 返回状态码：如果有失败则返回1，全部成功返回0
-            return failCount > 0 ? 1 : 0;
+            // 5. 构建源数据库连接字符串（不包含密码）
+            var sourceConnectionString = "Data Source=encrypted_material.db";
+
+            // 6. 验证源数据库连接
+            Console.WriteLine("正在验证源数据库连接...");
+            var sourceReader = new SourceDatabaseReaderService(
+                sourceConnectionString,
+                password,
+                abpApplication.ServiceProvider.GetService<ILogger<SourceDatabaseReaderService>>());
+
+            try
+            {
+                if (!await sourceReader.TestConnectionAsync())
+                {
+                    Console.WriteLine("错误: 无法连接到源数据库，请检查密码是否正确");
+                    return 1;
+                }
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("密码错误") || ex.Message.Contains("密码"))
+            {
+                Console.WriteLine($"错误: {ex.Message}");
+                Console.WriteLine("提示: 请确认输入的密码是否正确");
+                return 1;
+            }
+
+            Console.WriteLine("源数据库连接成功！");
+            Console.WriteLine("开始数据迁移...");
+
+            // 7. 从ABP容器获取服务
+            var csvMapperService = abpApplication.ServiceProvider.GetRequiredService<CsvMapperService>();
+            var targetDbContext = abpApplication.ServiceProvider.GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
+            var logger = abpApplication.ServiceProvider.GetService<ILogger<DatabaseMigrationService>>();
+
+            var migrationService = new DatabaseMigrationService(
+                sourceReader,
+                csvMapperService,
+                targetDbContext,
+                logger);
+
+            // 8. 执行迁移
+            var exitCode = await migrationService.MigrateAsync();
+
+            if (exitCode == 0)
+            {
+                Console.WriteLine("数据迁移成功完成！");
+            }
+            else
+            {
+                Console.WriteLine($"数据迁移失败，退出码: {exitCode}");
+            }
+
+            return exitCode;
+        }
+        catch (FileNotFoundException ex)
+        {
+            Console.WriteLine($"错误: 文件未找到 - {ex.Message}");
+            return 1;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"发生错误: {ex.Message}");
-            Console.Error.WriteLine(ex.StackTrace);
+            Console.WriteLine($"错误: {ex.Message}");
+            Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
             return 1;
         }
-    }
-
-    private static List<HikvisionDeviceConfig> LoadConfigurations()
-    {
-        // 使用可执行文件所在目录，而不是临时解压目录
-        var basePath = GetToolDirectory();
-        var builder = new ConfigurationBuilder()
-            .SetBasePath(basePath)
-            .AddJsonFile("appsettings.json", false, false);
-
-        var configuration = builder.Build();
-
-        var configs = new List<HikvisionDeviceConfig>();
-
-        // 首先尝试读取 HikvisionDeviceList（多个设备）
-        var deviceListSection = configuration.GetSection("HikvisionDeviceList");
-        if (deviceListSection.Exists())
-            foreach (var deviceSection in deviceListSection.GetChildren())
-            {
-                var config = ParseDeviceConfig(deviceSection);
-                if (config != null) configs.Add(config);
-            }
-
-        // 如果没有找到设备列表，尝试读取单个设备配置（向后兼容）
-        if (configs.Count == 0)
+        finally
         {
-            var section = configuration.GetSection("HikvisionDevice");
-            if (section.Exists())
+            // 清理ABP应用
+            if (abpApplication != null)
             {
-                var config = ParseDeviceConfig(section);
-                if (config != null) configs.Add(config);
+                await abpApplication.ShutdownAsync();
+                abpApplication.Dispose();
             }
         }
-
-        // 如果还是没有配置，使用默认值
-        if (configs.Count == 0)
-            configs.Add(new HikvisionDeviceConfig
-            {
-                Ip = "192.168.3.245",
-                Username = "admin",
-                Password = "fdkj112233",
-                Port = 8000,
-                StreamType = 0,
-                Channels = [1]
-            });
-
-        return configs;
     }
 
-    private static HikvisionDeviceConfig? ParseDeviceConfig(IConfigurationSection section)
+    /// <summary>
+    /// 从连接字符串中提取数据库文件路径
+    /// </summary>
+    private static string? ExtractDatabasePath(string connectionString)
     {
-        var config = new HikvisionDeviceConfig();
-
-        config.Ip = section["Ip"] ?? "192.168.3.245";
-        config.Username = section["Username"] ?? "admin";
-        config.Password = section["Password"] ?? "fdkj112233";
-
-        if (int.TryParse(section["Port"], out var port))
-            config.Port = port;
-        else
-            config.Port = 8000;
-
-        if (int.TryParse(section["StreamType"], out var streamType))
-            config.StreamType = streamType;
-        else
-            config.StreamType = 0;
-
-        // 解析 Channels 数组
-        var channelsSection = section.GetSection("Channels");
-        if (channelsSection.Exists())
+        // 解析 "Data Source=MaterialClient.db" 格式的连接字符串
+        var parts = connectionString.Split(';');
+        foreach (var part in parts)
         {
-            var channels = new List<int>();
-            foreach (var channelValue in channelsSection.GetChildren())
-                if (int.TryParse(channelValue.Value, out var channel))
-                    channels.Add(channel);
-
-            config.Channels = channels.Count > 0 ? channels.ToArray() : [1];
-        }
-        else
-        {
-            config.Channels = [1];
-        }
-
-        return config;
-    }
-
-    private static void ApplyCommandLineArguments(HikvisionDeviceConfig config, string[] args)
-    {
-        // 解析命令行参数，覆盖配置文件的值
-        for (var i = 0; i < args.Length; i++)
-            switch (args[i].ToLower())
+            var keyValue = part.Split('=', 2);
+            if (keyValue.Length == 2 && keyValue[0].Trim().Equals("Data Source", StringComparison.OrdinalIgnoreCase))
             {
-                case "-ip" or "--ip":
-                    if (i + 1 < args.Length) config.Ip = args[++i];
-                    break;
-                case "-u" or "--username" or "-user":
-                    if (i + 1 < args.Length) config.Username = args[++i];
-                    break;
-                case "-p" or "--password":
-                    if (i + 1 < args.Length) config.Password = args[++i];
-                    break;
-                case "-port" or "--port":
-                    if (i + 1 < args.Length && int.TryParse(args[++i], out var port)) config.Port = port;
-                    break;
-                case "-c" or "--channel" or "-ch":
-                    if (i + 1 < args.Length && int.TryParse(args[++i], out var channel)) config.Channels = [channel];
-                    break;
-                case "-h" or "--help":
-                    PrintHelp();
-                    Environment.Exit(0);
-                    break;
+                var path = keyValue[1].Trim();
+                // 如果是相对路径，转换为绝对路径
+                if (!Path.IsPathRooted(path))
+                {
+                    path = Path.Combine(Directory.GetCurrentDirectory(), path);
+                }
+                return path;
             }
-    }
-
-    private static string GetToolDirectory()
-    {
-        // 对于单文件发布，Environment.ProcessPath 返回可执行文件的完整路径
-        // 获取其所在目录，而不是临时解压目录
-        if (!string.IsNullOrEmpty(Environment.ProcessPath))
-        {
-            var exePath = Environment.ProcessPath;
-            var directory = Path.GetDirectoryName(exePath);
-            if (!string.IsNullOrEmpty(directory)) return directory;
         }
-
-        // 回退方案：使用 AppContext.BaseDirectory
-        return AppContext.BaseDirectory;
-    }
-
-    private static void PrintHelp()
-    {
-        Console.WriteLine("海康威视设备拍照工具");
-        Console.WriteLine();
-        Console.WriteLine("用法:");
-        Console.WriteLine("  MaterialClientToolkit [选项]");
-        Console.WriteLine();
-        Console.WriteLine("选项:");
-        Console.WriteLine("  -ip, --ip <IP地址>          设备IP地址 (默认: 192.168.3.245)");
-        Console.WriteLine("  -u, --username, -user <用户名>  登录用户名 (默认: admin)");
-        Console.WriteLine("  -p, --password <密码>       登录密码 (默认: fdkj112233)");
-        Console.WriteLine("  -port, --port <端口>        设备端口 (默认: 8000)");
-        Console.WriteLine("  -c, --channel, -ch <通道号>  通道号 (默认: 1)");
-        Console.WriteLine("  -h, --help                  显示帮助信息");
-        Console.WriteLine();
-        Console.WriteLine("示例:");
-        Console.WriteLine("  MaterialClientToolkit -ip 192.168.1.100 -u admin -p password123 -c 1");
-        Console.WriteLine("  MaterialClientToolkit --ip 192.168.1.100 --channel 2");
+        return null;
     }
 }
