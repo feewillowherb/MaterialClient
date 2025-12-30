@@ -2,8 +2,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Volo.Abp;
 using SQLitePCL;
+using Volo.Abp;
 
 namespace MaterialClientToolkit;
 
@@ -11,8 +11,9 @@ internal class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        // 初始化SQLCipher
-        //SQLitePCLRaw.Batteries.Init();
+        // 初始化SQLCipher（必须在任何数据库操作之前调用）
+        // bundle_e_sqlcipher 会自动设置 SQLCipher 提供程序
+        Batteries.Init();
 
         IAbpApplicationWithInternalServiceProvider? abpApplication = null;
 
@@ -45,7 +46,7 @@ internal class Program
             // 4. 提示用户输入源数据库密码
             Console.Write("请输入encrypted_material.db的密码: ");
             var password = Console.ReadLine();
-
+            
             if (string.IsNullOrWhiteSpace(password))
             {
                 Console.WriteLine("错误: 密码不能为空");
