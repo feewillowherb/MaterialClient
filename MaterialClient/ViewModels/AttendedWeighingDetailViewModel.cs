@@ -126,7 +126,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             {
                 if (material != null)
                 {
-                    SelectMaterialCommand.Execute(material);
+                    // 使用 Post 延迟执行，确保在下一个消息循环执行，避免在属性变化通知中间执行
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        SelectMaterialCommand.Execute(material);
+                    });
                 }
             });
 

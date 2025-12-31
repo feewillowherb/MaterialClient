@@ -106,7 +106,7 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
 
     private void InitializeFiltering()
     {
-        // 当搜索文本变化时，重新查询数据（500ms 防抖）
+        // 当搜索文本变化时，重新查询数据（300ms 防抖）
         this.WhenAnyValue(x => x.SearchText)
             .Throttle(TimeSpan.FromMilliseconds(300))
             .Subscribe(_1 =>
