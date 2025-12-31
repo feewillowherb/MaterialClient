@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:views="using:MaterialClient.Views"
              x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingDetailView"
              x:DataType="vm:AttendedWeighingDetailViewModel"
              x:Name="DetailViewRoot">
@@ -145,16 +146,18 @@
         <!--第三行-->
         <Border Grid.Row="2" BorderThickness="1" BorderBrush="#E5E7EB"
                 Background="White" CornerRadius="4" Margin="0,0,0,10">
-            <DataGrid ItemsSource="{Binding MaterialItems}"
-                      AutoGenerateColumns="False"
-                      CanUserReorderColumns="False"
-                      CanUserResizeColumns="False"
-                      CanUserSortColumns="False"
-                      GridLinesVisibility="All"
-                      HeadersVisibility="Column"
-                      RowHeight="32"
-                      BorderThickness="0"
-                      Background="White">
+            <Grid>
+                <DataGrid ItemsSource="{Binding MaterialItems}"
+                          AutoGenerateColumns="False"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="False"
+                          CanUserSortColumns="False"
+                          GridLinesVisibility="All"
+                          HeadersVisibility="Column"
+                          RowHeight="32"
+                          BorderThickness="0"
+                          Background="White"
+                          x:Name="MaterialItemsDataGrid">
 
                 <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
                 <DataGrid.Columns>
@@ -162,30 +165,19 @@
                     <DataGridTemplateColumn Header="材料名称" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding SelectedMaterial.Name}"
-                                           HorizontalAlignment="Left"
-                                           VerticalAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#333333"
-                                           TextTrimming="CharacterEllipsis"
-                                           Padding="4,0" />
+                                <Border Background="Transparent"
+                                        Padding="4,0"
+                                        Cursor="Hand"
+                                        PointerPressed="OnMaterialNameCellPointerPressed">
+                                    <TextBlock Text="{Binding SelectedMaterial.Name}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#333333"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
-                        <DataGridTemplateColumn.CellEditingTemplate>
-                            <DataTemplate>
-                                <ComboBox ItemsSource="{Binding  #DetailViewRoot.((vm:AttendedWeighingDetailViewModel)DataContext).Materials}"
-                                          SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
-                                          DisplayMemberBinding="{Binding Name}"
-                                          HorizontalAlignment="Stretch"
-                                          VerticalAlignment="Stretch"
-                                          HorizontalContentAlignment="Left"
-                                          VerticalContentAlignment="Center"
-                                          BorderThickness="0"
-                                          Background="Transparent"
-                                          Padding="4,2"
-                                          FontSize="12" />
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
 
                     <!-- 单位 (2字) -->
@@ -344,7 +336,18 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
-            </DataGrid>
+                </DataGrid>
+                
+                <!-- 材料选择弹窗 -->
+                <Popup Name="MaterialSelectionPopup"
+                       Placement="Bottom"
+                       IsLightDismissEnabled="True"
+                       HorizontalOffset="0"
+                       VerticalOffset="2"
+                       IsOpen="{Binding IsMaterialPopupOpen}">
+                    <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" />
+                </Popup>
+            </Grid>
         </Border>
 
         <!--第四行：按钮栏-->

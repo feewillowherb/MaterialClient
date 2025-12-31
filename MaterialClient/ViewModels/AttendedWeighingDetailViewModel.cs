@@ -106,6 +106,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     [Reactive] private ObservableCollection<MaterialItemRow> _materialItems = new();
 
+    [Reactive] private bool _isMaterialPopupOpen;
+
+    [Reactive] private MaterialItemRow? _currentMaterialRow;
+
     #endregion
 
     #region 初始化
@@ -523,6 +527,27 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     private void Close()
     {
         CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [ReactiveCommand]
+    private Task OpenMaterialSelectionAsync(MaterialItemRow? row)
+    {
+        if (row == null) return Task.CompletedTask;
+
+        CurrentMaterialRow = row;
+        IsMaterialPopupOpen = true;
+        return Task.CompletedTask;
+    }
+
+    [ReactiveCommand]
+    private Task SelectMaterialAsync(Material? material)
+    {
+        if (material == null || CurrentMaterialRow == null) return Task.CompletedTask;
+
+        CurrentMaterialRow.SelectedMaterial = material;
+        IsMaterialPopupOpen = false;
+        CurrentMaterialRow = null;
+        return Task.CompletedTask;
     }
 
     #endregion
