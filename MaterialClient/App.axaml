@@ -24,7 +24,7 @@
                 <converters:EqualityToColorConverter x:Key="EqualityToColorConverter" />
                 <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter" />
                 <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
-                <converters:BoolToBrushConverter x:Key="CarNullOrEmptyImageConverter" />
+                <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
                 <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
                 <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
                 
