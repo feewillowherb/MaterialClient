@@ -66,7 +66,6 @@ public class CsvMapperService : ITransientDependency
     public WeighingRecord MapToWeighingRecord(MaterialOrderCsv csv)
     {
         var weighingRecord = new WeighingRecord(
-            csv.OrderId,
             csv.OrderTotalWeight ?? 0m)
         {
             PlateNumber = csv.TruckNo,
@@ -126,13 +125,15 @@ public class CsvMapperService : ITransientDependency
     /// <summary>
     /// Material_Attaches → AttachmentFile 映射
     /// </summary>
-    public AttachmentFile MapToAttachmentFile(MaterialAttachesCsv csv)
+    /// <param name="csv">CSV数据</param>
+    /// <param name="isForWaybill">是否为Waybill的附件，false表示WeighingRecord的附件</param>
+    public AttachmentFile MapToAttachmentFile(MaterialAttachesCsv csv, bool isForWaybill)
     {
         var attachmentFile = new AttachmentFile(
             csv.FileId,
             csv.FileName,
             csv.BucketKey ?? string.Empty, // BucketKey映射到LocalPath（待确认）
-            MapBizTypeToAttachType(csv.BizType))
+            MapBizTypeToAttachType(csv.BizType, isForWaybill))
         {
             OssFullPath = csv.BucketKey, // BucketKey也映射到OssFullPath（待确认）
             LastSyncTime = MapDateTime(csv.LastSyncTime),
@@ -152,31 +153,25 @@ public class CsvMapperService : ITransientDependency
 
     /// <summary>
     /// BizType → AttachType 映射
-    /// 注意：此映射规则需要根据实际业务需求调整
     /// </summary>
-    public AttachType MapBizTypeToAttachType(int bizType)
+    /// <param name="bizType">业务类型</param>
+    /// <param name="isForWaybill">是否为Waybill的附件，false表示WeighingRecord的附件</param>
+    public AttachType MapBizTypeToAttachType(int bizType, bool isForWaybill)
     {
-        // 根据CSV数据分析，BizType=1可能表示Waybill相关的附件
-        // 这里需要根据实际业务规则调整映射逻辑
-        // 暂时使用默认值，具体映射规则待确认
+        // 如果是WeighingRecord的附件，直接返回UnmatchedEntryPhoto
+        if (!isForWaybill)
+        {
+            return AttachType.UnmatchedEntryPhoto;
+        }
+
+        // 如果是Waybill的附件，根据BizType进行映射
         return bizType switch
         {
-            0 => AttachType.UnmatchedEntryPhoto,
             1 => AttachType.EntryPhoto, // 假设1表示进场照片
             2 => AttachType.ExitPhoto, // 假设2表示出场照片
             3 => AttachType.TicketPhoto, // 假设3表示票据照片
             _ => AttachType.UnmatchedEntryPhoto
         };
-    }
-
-    /// <summary>
-    /// 判断BizType是否对应Waybill（BizType=1可能表示Waybill）
-    /// </summary>
-    public bool IsBizTypeForWaybill(int bizType)
-    {
-        // 根据CSV数据分析，BizType=1可能表示Waybill
-        // 此映射规则需要根据实际业务需求调整
-        return bizType == 1;
     }
 
     /// <summary>
