@@ -1,6 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:semi="https://irihi.tech/semi"
+             xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
+             xmlns:u="https://irihi.tech/ursa"
              x:Class="MaterialClient.Views.MaterialsSelectionPopup"
              x:DataType="vm:MaterialsSelectionPopupViewModel"
              Width="600" Height="400">
@@ -97,8 +100,7 @@
                     </DataGrid.Styles>
                     
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="名称"
-                                           Width="*"
+                        <DataGridTextColumn Width="*"
                                            IsReadOnly="True"
                                            CanUserSort="False"
                                            Binding="{Binding Name}">
@@ -107,8 +109,7 @@
                             </DataGridTextColumn.Header>
                         </DataGridTextColumn>
                         
-                        <DataGridTextColumn Header="规格型号"
-                                           Width="120"
+                        <DataGridTextColumn Width="120"
                                            IsReadOnly="True"
                                            CanUserSort="False"
                                            Binding="{Binding Specifications}">
@@ -117,8 +118,7 @@
                             </DataGridTextColumn.Header>
                         </DataGridTextColumn>
                         
-                        <DataGridTextColumn Header="单位"
-                                           Width="100"
+                        <DataGridTextColumn Width="100"
                                            IsReadOnly="True"
                                            CanUserSort="False"
                                            Binding="{Binding UnitName}">
@@ -131,72 +131,35 @@
             </Border>
             
             <!-- 分页控件区域 -->
-            <StackPanel Grid.Row="2"
-                       Orientation="Horizontal"
-                       Height="50"
-                       VerticalAlignment="Center">
-                <!-- 首页按钮 -->
-                <Button Content="首页"
-                        Height="25"
-                        FontSize="11"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Foreground="#DD1C71EC"
-                        Padding="10,4"
-                        Margin="2,0,0,0"
-                        Classes="transparent-button"
-                        Command="{Binding FirstPageCommand}" />
+            <Grid Grid.Row="2"
+                  Height="50"
+                  VerticalAlignment="Center"
+                  Margin="10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 
-                <!-- 上页按钮 -->
-                <Button Content="上页"
-                        Height="25"
-                        FontSize="11"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Foreground="#DD1C71EC"
-                        Padding="10,4"
-                        Margin="2,0,0,0"
-                        Classes="transparent-button"
-                        Command="{Binding PreviousPageCommand}" />
+                <!-- 分页信息 -->
+                <StackPanel Grid.Column="0"
+                           Orientation="Horizontal"
+                           VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentPageInfo}"
+                               FontSize="14"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding TotalCountInfo}"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                </StackPanel>
                 
-                <!-- 下页按钮 -->
-                <Button Content="下页"
-                        Height="25"
-                        FontSize="11"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Foreground="#DD1C71EC"
-                        Padding="10,4"
-                        Margin="2,0,0,0"
-                        Classes="transparent-button"
-                        Command="{Binding NextPageCommand}" />
-                
-                <!-- 末页按钮 -->
-                <Button Content="末页"
-                        Height="25"
-                        FontSize="11"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Foreground="#DD1C71EC"
-                        Padding="10,4"
-                        Margin="2,0,0,0"
-                        Classes="transparent-button"
-                        Command="{Binding LastPageCommand}" />
-                
-                <!-- 当前页信息 -->
-                <Label Content="{Binding CurrentPageInfo}"
-                       Width="80"
-                       Height="25"
-                       FontSize="16"
-                       VerticalAlignment="Center" />
-                
-                <!-- 总记录数信息 -->
-                <Label Content="{Binding TotalCountInfo}"
-                       Width="100"
-                       Height="25"
-                       FontSize="16"
-                       VerticalAlignment="Center" />
-            </StackPanel>
+                <!-- Ursa 分页组件 -->
+                <u:Pagination Grid.Column="1"
+                              CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
+                              TotalCount="{Binding TotalCount}"
+                              PageSize="{Binding PageSize}"
+                              Command="{Binding PageChangeCommand}" />
+            </Grid>
         </Grid>
     </Border>
 </UserControl>

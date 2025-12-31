@@ -339,14 +339,14 @@
                 </DataGrid>
                 
                 <!-- 材料选择弹窗 -->
-                <Popup Name="MaterialSelectionPopup"
-                       Placement="Bottom"
-                       IsLightDismissEnabled="True"
-                       HorizontalOffset="0"
-                       VerticalOffset="2"
-                       IsOpen="{Binding IsMaterialPopupOpen}">
-                    <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" />
-                </Popup>
+                <!-- <Popup Name="MaterialSelectionPopup" -->
+                <!--        Placement="Bottom" -->
+                <!--        IsLightDismissEnabled="True" -->
+                <!--        HorizontalOffset="0" -->
+                <!--        VerticalOffset="2" -->
+                <!--        IsOpen="{Binding IsMaterialPopupOpen}"> -->
+                <!--     <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" /> -->
+                <!-- </Popup> -->
             </Grid>
         </Border>
 

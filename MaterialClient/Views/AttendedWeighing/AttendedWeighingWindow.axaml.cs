@@ -20,7 +20,6 @@ public partial class AttendedWeighingWindow : Window
     private readonly IServiceProvider? _serviceProvider;
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
-    private AttendedWeighingDetailView? _warmupDetailView;
 
     public AttendedWeighingWindow(): this(null)
     {
@@ -76,8 +75,7 @@ public partial class AttendedWeighingWindow : Window
             try
             {
                 // 创建一个临时的 DetailView 实例来预热控件模板
-                _warmupDetailView = new AttendedWeighingDetailView();
-                // 不需要设置 DataContext，只是为了触发控件和样式的初始化
+                //TODO
             }
             catch (Exception ex)
             {

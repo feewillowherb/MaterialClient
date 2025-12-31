@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
@@ -15,7 +16,7 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 ///     手动匹配窗口 ViewModel
 /// </summary>
-public partial class ManualMatchWindowViewModel : ViewModelBase
+public partial class ManualMatchWindowViewModel : ViewModelBase, ITransientDependency
 {
     private readonly IRepository<Provider, int>? _providerRepository;
     private readonly IServiceProvider _serviceProvider;
@@ -249,7 +250,8 @@ public partial class ManualMatchWindowViewModel : ViewModelBase
                 foreach (var file in attachmentFiles)
                     if (!string.IsNullOrEmpty(file.LocalPath))
                     {
-                        if (file.AttachType == AttachType.EntryPhoto || file.AttachType == AttachType.UnmatchedEntryPhoto)
+                        if (file.AttachType == AttachType.EntryPhoto ||
+                            file.AttachType == AttachType.UnmatchedEntryPhoto)
                             EntryPhotos.Add(file.LocalPath);
                         else if (file.AttachType == AttachType.TicketPhoto) TicketPhoto = file.LocalPath;
                     }

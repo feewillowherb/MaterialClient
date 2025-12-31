@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
@@ -18,7 +19,7 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 ///     手动匹配编辑窗口 ViewModel
 /// </summary>
-public partial class ManualMatchEditWindowViewModel : ViewModelBase
+public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientDependency
 {
     private readonly IRepository<Material, int>? _materialRepository;
     private readonly IRepository<MaterialUnit, int>? _materialUnitRepository;

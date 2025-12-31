@@ -5,13 +5,14 @@ using MaterialClient.Common.Services.Authentication;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
 ///     登录窗口 ViewModel
 /// </summary>
-public partial class LoginWindowViewModel : ReactiveViewModelBase
+public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDependency
 {
     private readonly IAuthenticationService _authenticationService;
 

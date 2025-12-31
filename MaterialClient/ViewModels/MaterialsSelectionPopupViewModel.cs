@@ -1,25 +1,28 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
 ///     材料选择弹窗 ViewModel
 /// </summary>
-public partial class MaterialsSelectionPopupViewModel : ViewModelBase
+public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransientDependency
 {
     private const int DefaultPageSize = 10;
 
-    [Reactive] private ObservableCollection<Material> _allMaterials = new();
-
-    private ObservableCollection<Material> _filteredMaterials = new();
+    private readonly IServiceProvider? _serviceProvider;
+    private readonly IRepository<Material, int>? _materialRepository;
 
     private ObservableCollection<Material> _pagedMaterials = new();
 
@@ -35,22 +38,25 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
 
     private int _totalPages;
 
-    public MaterialsSelectionPopupViewModel(ObservableCollection<Material> materials)
+    public MaterialsSelectionPopupViewModel(IServiceProvider? serviceProvider)
+        : base(serviceProvider?.GetService<ILogger<MaterialsSelectionPopupViewModel>>())
     {
-        AllMaterials = materials;
+        _serviceProvider = serviceProvider;
+        if (_serviceProvider != null)
+        {
+            _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
+        }
+
         InitializeFiltering();
+
+        // 初始加载数据
+        _ = LoadDataAsync();
     }
 
+    // 保留向后兼容的构造函数
     public MaterialsSelectionPopupViewModel()
+        : this(null)
     {
-        AllMaterials = new ObservableCollection<Material>();
-        InitializeFiltering();
-    }
-
-    public ObservableCollection<Material> FilteredMaterials
-    {
-        get => _filteredMaterials;
-        private set => this.RaiseAndSetIfChanged(ref _filteredMaterials, value);
     }
 
     public ObservableCollection<Material> PagedMaterials
@@ -62,7 +68,15 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
     public int CurrentPage
     {
         get => _currentPage;
-        private set => this.RaiseAndSetIfChanged(ref _currentPage, value);
+        set
+        {
+            if (_currentPage != value)
+            {
+                _currentPage = value;
+                this.RaisePropertyChanged();
+                _ = LoadDataAsync();
+            }
+        }
     }
 
     public int PageSize
@@ -71,7 +85,8 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _pageSize, value);
-            UpdatePagination();
+            CurrentPage = 1; // 重置到第一页
+            _ = LoadDataAsync();
         }
     }
 
@@ -93,66 +108,106 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
 
     private void InitializeFiltering()
     {
-        // 当搜索文本或所有材料列表变化时，重新过滤
-        this.WhenAnyValue(x => x.SearchText, x => x.AllMaterials)
+        // 当搜索文本变化时，重新查询数据
+        this.WhenAnyValue(x => x.SearchText)
             .Throttle(TimeSpan.FromMilliseconds(300))
-            .Subscribe(_ => ApplyFilter());
-
-        // 当过滤后的材料列表变化时，更新分页
-        this.WhenAnyValue(x => x.FilteredMaterials)
-            .Subscribe(_ => UpdatePagination());
+            .Subscribe(_1 =>
+            {
+                CurrentPage = 1;
+                _ = LoadDataAsync();
+            });
     }
 
-    private void ApplyFilter()
+    private async Task LoadDataAsync()
     {
-        if (string.IsNullOrWhiteSpace(SearchText))
-        {
-            FilteredMaterials = new ObservableCollection<Material>(AllMaterials);
-        }
-        else
-        {
-            var searchLower = SearchText.ToLowerInvariant();
-            var filtered = AllMaterials.Where(m =>
-                (m.Name?.ToLowerInvariant().Contains(searchLower) ?? false) ||
-                (m.Specifications?.ToLowerInvariant().Contains(searchLower) ?? false) ||
-                (m.Size?.ToLowerInvariant().Contains(searchLower) ?? false) ||
-                (m.Code?.ToLowerInvariant().Contains(searchLower) ?? false)
-            ).ToList();
+        if (_materialRepository == null) return;
 
-            FilteredMaterials = new ObservableCollection<Material>(filtered);
-        }
+        try
+        {
+            // 构建查询条件
+            var queryable = await _materialRepository.GetQueryableAsync();
 
-        CurrentPage = 1; // 重置到第一页
+            // 应用搜索过滤
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var searchText = SearchText.Trim();
+                queryable = queryable.Where(m =>
+                    (m.Name != null && m.Name.Contains(searchText)) ||
+                    (m.Specifications != null && m.Specifications.Contains(searchText)) ||
+                    (m.Size != null && m.Size.Contains(searchText)) ||
+                    (m.Code != null && m.Code.Contains(searchText))
+                );
+            }
+
+            // 只查询未删除的记录
+            queryable = queryable.Where(m => !m.IsDeleted);
+
+            // 获取总数
+            TotalCount = await queryable.CountAsync();
+
+            // 计算总页数
+            TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
+
+            // 确保当前页在有效范围内
+            if (_currentPage > TotalPages && TotalPages > 0)
+            {
+                _currentPage = TotalPages;
+                this.RaisePropertyChanged(nameof(CurrentPage));
+            }
+
+            if (_currentPage < 1)
+            {
+                _currentPage = 1;
+                this.RaisePropertyChanged(nameof(CurrentPage));
+            }
+
+            // 分页查询
+            var skipCount = (_currentPage - 1) * PageSize;
+            var materials = await queryable
+                .OrderBy(m => m.Name)
+                .Skip(skipCount)
+                .Take(PageSize)
+                .ToListAsync();
+
+            // 更新显示的数据
+            PagedMaterials.Clear();
+            foreach (var material in materials)
+            {
+                PagedMaterials.Add(material);
+            }
+
+            this.RaisePropertyChanged(nameof(CurrentPageInfo));
+            this.RaisePropertyChanged(nameof(TotalCountInfo));
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "加载材料列表失败");
+            PagedMaterials.Clear();
+            TotalCount = 0;
+            TotalPages = 1;
+        }
     }
 
-    private void UpdatePagination()
+    /// <summary>
+    ///     分页变化命令（用于 Ursa.Pagination 组件）
+    ///     由于 CurrentPage 是双向绑定，页码变化会自动更新，此命令主要用于触发数据刷新
+    /// </summary>
+    [ReactiveCommand]
+    private Task PageChangeAsync()
     {
-        TotalCount = FilteredMaterials.Count;
-        TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
-
-        // 确保当前页在有效范围内
-        if (CurrentPage > TotalPages && TotalPages > 0) CurrentPage = TotalPages;
-        if (CurrentPage < 1) CurrentPage = 1;
-
-        // 计算分页数据
-        var startIndex = (CurrentPage - 1) * PageSize;
-        var endIndex = Math.Min(startIndex + PageSize, TotalCount);
-        var paged = FilteredMaterials.Skip(startIndex).Take(PageSize).ToList();
-
-        PagedMaterials = new ObservableCollection<Material>(paged);
-
-        this.RaisePropertyChanged(nameof(CurrentPageInfo));
-        this.RaisePropertyChanged(nameof(TotalCountInfo));
+        // CurrentPage 已经通过双向绑定自动更新，重新加载数据
+        return LoadDataAsync();
     }
 
+    // 保留原有命令以保持向后兼容（如果其他地方有引用）
     [ReactiveCommand]
     private Task FirstPageAsync()
     {
         if (CurrentPage > 1)
         {
             CurrentPage = 1;
-            UpdatePagination();
         }
+
         return Task.CompletedTask;
     }
 
@@ -162,8 +217,8 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
         if (CurrentPage > 1)
         {
             CurrentPage--;
-            UpdatePagination();
         }
+
         return Task.CompletedTask;
     }
 
@@ -173,8 +228,8 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
         if (CurrentPage < TotalPages)
         {
             CurrentPage++;
-            UpdatePagination();
         }
+
         return Task.CompletedTask;
     }
 
@@ -184,17 +239,16 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
         if (CurrentPage < TotalPages)
         {
             CurrentPage = TotalPages;
-            UpdatePagination();
         }
+
         return Task.CompletedTask;
     }
 
     /// <summary>
-    ///     更新材料列表
+    ///     刷新材料列表（用于外部调用）
     /// </summary>
-    public void UpdateMaterials(ObservableCollection<Material> materials)
+    public Task RefreshAsync()
     {
-        AllMaterials = materials;
+        return LoadDataAsync();
     }
 }
-
