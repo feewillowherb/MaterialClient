@@ -92,6 +92,7 @@ public class CsvMigrationService: ITransientDependency
             // 批量插入WeighingRecord
             if (weighingRecords.Any())
             {
+                _dbContext.WeighingRecords.AddRange(weighingRecords);
                 var recordsToInsert = weighingRecords.Select(x => x.Record).ToList();
                 _dbContext.WeighingRecords.AddRange(recordsToInsert);
                 await _dbContext.SaveChangesAsync();
