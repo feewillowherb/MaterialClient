@@ -40,8 +40,8 @@
                 <!-- 第一行：重量信息 -->
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
-                    <TextBlock Text="毛重：" VerticalAlignment="Center"
-                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock Text="毛　   重：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
                     <TextBlock VerticalAlignment="Center" FontSize="12">
                         <Run Foreground="#427FF9" FontWeight="Bold"
                              Text="{Binding AllWeight, StringFormat='{}{0:F2}'}" />
@@ -51,8 +51,8 @@
 
                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
-                    <TextBlock Text="皮重：" VerticalAlignment="Center"
-                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock Text="皮　   重：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
                     <TextBlock VerticalAlignment="Center" FontSize="12">
                         <Run Foreground="#427FF9" FontWeight="Bold"
                              Text="{Binding TruckWeight, StringFormat='{}{0:F2}'}" />
@@ -62,8 +62,8 @@
 
                 <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
-                    <TextBlock Text="净重：" VerticalAlignment="Center"
-                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock Text="净　    重：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
                     <TextBlock VerticalAlignment="Center" FontSize="12">
                         <Run Foreground="#F5A000" FontWeight="Bold"
                              Text="{Binding GoodsWeight, StringFormat='{}{0:F2}'}" />
@@ -74,24 +74,24 @@
                 <!-- 第二行：时间和操作员信息 -->
                 <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
-                    <TextBlock Text="进场：" VerticalAlignment="Center"
-                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock Text="进场时间：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
                     <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}"
                                VerticalAlignment="Center" FontSize="12" Foreground="#333" />
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
-                    <TextBlock Text="出场：" VerticalAlignment="Center"
-                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock Text="出场时间：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
                     <TextBlock Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}"
                                VerticalAlignment="Center" FontSize="12" Foreground="#333" />
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,5">
-                    <TextBlock Text="操作员：" VerticalAlignment="Center"
-                               FontSize="12" Foreground="#666" Width="50" />
+                    <TextBlock Text="收货员工：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
                     <TextBlock Text="{Binding Operator}" VerticalAlignment="Center"
                                FontSize="12" Foreground="#333" />
                 </StackPanel>
