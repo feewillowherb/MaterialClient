@@ -22,10 +22,14 @@ public partial class AttendedWeighingWindow : Window
     private bool _isMouseOverPopup;
     private AttendedWeighingDetailView? _warmupDetailView;
 
-    public AttendedWeighingWindow(AttendedWeighingViewModel viewModel, IServiceProvider? serviceProvider = null)
+    public AttendedWeighingWindow()
+    {
+    }
+
+    public AttendedWeighingWindow(IServiceProvider serviceProvider)
     {
         InitializeComponent();
-        DataContext = viewModel;
+        DataContext = serviceProvider.GetService<AttendedWeighingDetailView>();
         _serviceProvider = serviceProvider;
 
         // Set PlacementTarget for Popup
@@ -164,13 +168,14 @@ public partial class AttendedWeighingWindow : Window
         // ABP 框架会在应用退出时自动停止所有 BackgroundWorker
 
         if (DataContext is IDisposable disposable) disposable.Dispose();
-        
+
         var lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
         if (lifetime != null)
         {
             // 只有当不是 MainWindow 时才手动触发退出
             lifetime.Shutdown();
         }
+
         // 如果是 MainWindow，Avalonia 会自动触发 desktop.Exit，不需要手动处理
         base.OnClosed(e);
     }
