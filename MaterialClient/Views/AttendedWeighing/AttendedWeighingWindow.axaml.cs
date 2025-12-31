@@ -12,16 +12,17 @@ using MaterialClient.Backgrounds;
 using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views.AttendedWeighing;
 
-public partial class AttendedWeighingWindow : Window
+public partial class AttendedWeighingWindow : Window, ITransientDependency
 {
     private readonly IServiceProvider? _serviceProvider;
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
 
-    public AttendedWeighingWindow(): this(null)
+    public AttendedWeighingWindow() : this(null)
     {
         // InitializeComponent() 已在 this(null) 调用的有参构造函数中执行，无需重复调用
     }

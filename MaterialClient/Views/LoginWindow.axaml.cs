@@ -5,10 +5,11 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
 using ReactiveUI;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views;
 
-public partial class LoginWindow : Window
+public partial class LoginWindow : Window, ITransientDependency
 {
     private IDisposable? _loginSuccessSubscription;
 

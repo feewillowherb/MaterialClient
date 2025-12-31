@@ -1,10 +1,11 @@
 using System;
 using Avalonia.Controls;
 using MaterialClient.ViewModels;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow : Window, ITransientDependency
 {
     public SettingsWindow(SettingsWindowViewModel viewModel)
     {

@@ -2,10 +2,11 @@ using System;
 using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, ITransientDependency
 {
     private readonly IServiceProvider _serviceProvider;
 

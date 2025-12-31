@@ -2,10 +2,11 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using MaterialClient.ViewModels;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, ISingletonDependency
 {
     public MainWindow(MainWindowViewModel viewModel)
     {
