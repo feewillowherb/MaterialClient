@@ -168,7 +168,7 @@
                                 <Border Background="Transparent"
                                         Padding="4,0"
                                         Cursor="Hand"
-                                        PointerPressed="OnMaterialNameCellPointerPressed">
+                                        >
                                     <TextBlock Text="{Binding SelectedMaterial.Name}"
                                                HorizontalAlignment="Left"
                                                VerticalAlignment="Center"
