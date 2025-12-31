@@ -150,7 +150,7 @@ public class MinimalWebHostService : IAsyncDisposable
         }));
 
         // 车牌识别 - 设备回调接口（海康威视）
-        app.MapPost("/api/hardware/plate-number", async (HikVisionPlateCallback? callback) =>
+        app.MapPost("/api/CarLicense/CallDeviceMessage", async (HikVisionPlateCallback? callback) =>
         {
             try
             {
