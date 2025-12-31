@@ -83,10 +83,10 @@ public class MaterialService : DomainService, IMaterialService
         {
             var search = searchText.Trim();
             queryable = queryable.Where(m =>
-                (m.Name != null && m.Name.Contains(search)) ||
-                (m.Specifications != null && m.Specifications.Contains(search)) ||
-                (m.Size != null && m.Size.Contains(search)) ||
-                (m.Code != null && m.Code.Contains(search))
+                (m.Name != null && m.Name.Contains(search)) //||
+                // (m.Specifications != null && m.Specifications.Contains(search)) ||
+                // (m.Size != null && m.Size.Contains(search)) ||
+                // (m.Code != null && m.Code.Contains(search))
             );
         }
 

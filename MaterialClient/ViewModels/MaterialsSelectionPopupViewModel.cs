@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,7 +106,7 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
 
     private void InitializeFiltering()
     {
-        // 当搜索文本变化时，重新查询数据
+        // 当搜索文本变化时，重新查询数据（500ms 防抖）
         this.WhenAnyValue(x => x.SearchText)
             .Throttle(TimeSpan.FromMilliseconds(300))
             .Subscribe(_1 =>
@@ -147,12 +148,18 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
                 this.RaisePropertyChanged(nameof(CurrentPage));
             }
 
-            // 更新显示的数据
-            PagedMaterials.Clear();
-            foreach (var material in result.Items)
+            // 在 UI 线程上更新显示的数据
+            await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                PagedMaterials.Add(material);
-            }
+                PagedMaterials.Clear();
+                foreach (var material in result.Items)
+                {
+                    PagedMaterials.Add(material);
+                }
+                
+                // 手动触发属性变更通知，确保 UI 更新
+                this.RaisePropertyChanged(nameof(PagedMaterials));
+            });
 
             this.RaisePropertyChanged(nameof(CurrentPageInfo));
             this.RaisePropertyChanged(nameof(TotalCountInfo));
@@ -160,7 +167,12 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
         catch (Exception ex)
         {
             Logger?.LogError(ex, "加载材料列表失败");
-            PagedMaterials.Clear();
+            // 在 UI 线程上清空数据
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                PagedMaterials.Clear();
+                this.RaisePropertyChanged(nameof(PagedMaterials));
+            });
             TotalCount = 0;
             TotalPages = 1;
         }

@@ -121,7 +121,7 @@
                         <DataGridTextColumn Width="100"
                                            IsReadOnly="True"
                                            CanUserSort="False"
-                                           Binding="{Binding UnitName}">
+                                           Binding="{Binding BasicUnit}">
                             <DataGridTextColumn.Header>
                                 <TextBlock FontSize="18" Text="单位" />
                             </DataGridTextColumn.Header>

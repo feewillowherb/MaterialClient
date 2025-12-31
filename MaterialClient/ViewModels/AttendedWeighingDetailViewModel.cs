@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -118,8 +119,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         // 创建材料选择弹窗 ViewModel
         MaterialsSelectionPopupViewModel = _serviceProvider.GetRequiredService<MaterialsSelectionPopupViewModel>();
 
-        // 订阅材料选择事件
+        // 订阅材料选择事件（使用 Where 过滤 null，确保只有选择时才触发）
         MaterialsSelectionPopupViewModel.WhenAnyValue(x => x.SelectedMaterial)
+            .Where(material => material != null)
             .Subscribe(material =>
             {
                 if (material != null)
@@ -128,12 +130,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 }
             });
 
-        // 当弹窗打开时刷新数据
+        // 当弹窗打开时刷新数据并清空选择
         this.WhenAnyValue(x => x.IsMaterialPopupOpen)
             .Subscribe(isOpen =>
             {
                 if (isOpen && MaterialsSelectionPopupViewModel != null)
                 {
+                    // 清空之前的选择，确保每次打开弹窗时都是干净的状态
+                    MaterialsSelectionPopupViewModel.SelectedMaterial = null;
                     _ = MaterialsSelectionPopupViewModel.RefreshAsync();
                 }
             });
@@ -576,6 +580,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         CurrentMaterialRow.SelectedMaterial = material;
         IsMaterialPopupOpen = false;
         CurrentMaterialRow = null;
+        
+        // 清空弹窗的 SelectedMaterial，以便下次选择时能再次触发事件
+        if (MaterialsSelectionPopupViewModel != null)
+        {
+            MaterialsSelectionPopupViewModel.SelectedMaterial = null;
+        }
+        
         return Task.CompletedTask;
     }
 
