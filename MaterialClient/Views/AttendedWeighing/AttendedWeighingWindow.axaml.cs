@@ -26,10 +26,10 @@ public partial class AttendedWeighingWindow : Window
     {
     }
 
-    public AttendedWeighingWindow(IServiceProvider serviceProvider)
+    public AttendedWeighingWindow(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        DataContext = serviceProvider.GetService<AttendedWeighingDetailView>();
+        DataContext = serviceProvider?.GetService<AttendedWeighingDetailView>();
         _serviceProvider = serviceProvider;
 
         // Set PlacementTarget for Popup
