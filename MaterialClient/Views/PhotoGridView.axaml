@@ -4,11 +4,7 @@
              xmlns:converters="using:MaterialClient.Converters"
              x:Class="MaterialClient.Views.PhotoGridView"
              x:DataType="vm:PhotoGridViewModel">
-
-    <UserControl.Resources>
-        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
-        <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
-    </UserControl.Resources>
+    
 
     <Grid RowDefinitions="Auto,*">
         <!-- Camera Tabs -->

@@ -22,14 +22,16 @@ public partial class AttendedWeighingWindow : Window
     private bool _isMouseOverPopup;
     private AttendedWeighingDetailView? _warmupDetailView;
 
-    public AttendedWeighingWindow()
+    public AttendedWeighingWindow(): this(null)
     {
+        InitializeComponent();
     }
 
     public AttendedWeighingWindow(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        DataContext = serviceProvider?.GetService<AttendedWeighingDetailView>();
+        if (Design.IsDesignMode) return;
+        DataContext = serviceProvider?.GetService<AttendedWeighingViewModel>();
         _serviceProvider = serviceProvider;
 
         // Set PlacementTarget for Popup

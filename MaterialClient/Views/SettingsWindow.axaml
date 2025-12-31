@@ -8,11 +8,7 @@
         Width="800" Height="700"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/fd-ico.ico">
-
-    <Window.Resources>
-        <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
-        <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
-    </Window.Resources>
+    
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
 

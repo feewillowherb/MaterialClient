@@ -4,10 +4,7 @@
              xmlns:converters="using:MaterialClient.Converters"
              x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingMainView"
              x:DataType="vm:AttendedWeighingViewModel">
-
-    <UserControl.Resources>
-        <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
-    </UserControl.Resources>
+    
 
     <Border Padding="10"
             Background="#F8F9FA"
