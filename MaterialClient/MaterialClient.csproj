@@ -72,5 +72,11 @@
         <Compile Update="Views\AttendedWeighing\WeighingRecordListView.axaml.cs">
             <DependentUpon>WeighingRecordListView.axaml</DependentUpon>
         </Compile>
+        <Compile Update="Views\GoodsSelectionPopup.axaml.cs">
+          <DependentUpon>GoodsSelectionPopup.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Views\MaterialsSelectionPopup.axaml.cs">
+          <DependentUpon>MaterialsSelectionPopup.axaml</DependentUpon>
+        </Compile>
     </ItemGroup>
 </Project>
