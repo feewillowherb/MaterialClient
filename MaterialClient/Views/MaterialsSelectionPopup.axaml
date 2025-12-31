@@ -7,13 +7,14 @@
             BorderBrush="#E5E7EB"
             BorderThickness="1"
             CornerRadius="4">
-        <Grid RowDefinitions="Auto,*,Auto">
+        <Grid RowDefinitions="50,*,50">
             
             <!-- 搜索框区域 -->
             <Border Grid.Row="0"
                     Background="White"
                     BorderBrush="#000000"
-                    BorderThickness="0,0,0,1">
+                    BorderThickness="0,0,0,1"
+                    Height="50">
                 <TextBox Width="598"
                          Height="35"
                          FontSize="18"
@@ -39,104 +40,168 @@
                           BorderThickness="0"
                           Background="White"
                           GridLinesVisibility="Horizontal"
-                          HeadersVisibility="Column">
+                          HeadersVisibility="Column"
+                          RowHeight="30">
                     
-                    <!-- 使用全局样式，这里只做预览 -->
+                    <!-- DataGrid 局部样式，覆盖全局样式 -->
+                    <DataGrid.Styles>
+                        <!-- 列头样式 -->
+                        <Style Selector="DataGridColumnHeader">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="#000000" />
+                            <Setter Property="FontSize" Value="14" />
+                            <Setter Property="Height" Value="35" />
+                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                            <Setter Property="BorderThickness" Value="0" />
+                        </Style>
+                        
+                        <!-- 行样式 -->
+                        <Style Selector="DataGridRow">
+                            <Setter Property="Background" Value="White" />
+                        </Style>
+                        <Style Selector="DataGridRow:pointerover">
+                            <Setter Property="Background" Value="#D8E5FF" />
+                            <Setter Property="Foreground" Value="Black" />
+                        </Style>
+                        
+                        <!-- 单元格样式 -->
+                        <Style Selector="DataGridCell">
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="BorderBrush" Value="#6498FE" />
+                            <Setter Property="Foreground" Value="Black" />
+                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                        </Style>
+                        <Style Selector="DataGridCell:pointerover">
+                            <Setter Property="Background" Value="#D8E5FF" />
+                            <Setter Property="Foreground" Value="Black" />
+                        </Style>
+                        <Style Selector="DataGridRow:selected DataGridCell">
+                            <Setter Property="Background" Value="#6498FE" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Style>
+                    </DataGrid.Styles>
+                    
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="名称"
                                            Width="*"
                                            IsReadOnly="True"
-                                           CanUserSort="False">
+                                           CanUserSort="False"
+                                           FontSize="25">
                             <DataGridTextColumn.Header>
                                 <TextBlock FontSize="18" Text="名称" />
                             </DataGridTextColumn.Header>
+                            <DataGridTextColumn.ElementStyle>
+                                <Style Selector="TextBlock">
+                                    <Setter Property="FontSize" Value="25" />
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                         
                         <DataGridTextColumn Header="规格型号"
                                            Width="120"
                                            IsReadOnly="True"
-                                           CanUserSort="False">
+                                           CanUserSort="False"
+                                           FontSize="25">
                             <DataGridTextColumn.Header>
                                 <TextBlock FontSize="18" Text="规格型号" />
                             </DataGridTextColumn.Header>
+                            <DataGridTextColumn.ElementStyle>
+                                <Style Selector="TextBlock">
+                                    <Setter Property="FontSize" Value="25" />
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                         
                         <DataGridTextColumn Header="单位"
                                            Width="100"
                                            IsReadOnly="True"
-                                           CanUserSort="False">
+                                           CanUserSort="False"
+                                           FontSize="25">
                             <DataGridTextColumn.Header>
                                 <TextBlock FontSize="18" Text="单位" />
                             </DataGridTextColumn.Header>
+                            <DataGridTextColumn.ElementStyle>
+                                <Style Selector="TextBlock">
+                                    <Setter Property="FontSize" Value="25" />
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
             
             <!-- 分页控件区域 -->
-            <Border Grid.Row="2"
-                    Background="#F8F9FA"
-                    BorderBrush="#E5E7EB"
-                    BorderThickness="0,1,0,0"
-                    Padding="12,8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <!-- 首页按钮 -->
-                    <Button Content="首页"
-                            Height="25"
-                            FontSize="11"
-                            BorderThickness="0"
-                            Background="Transparent"
-                            Foreground="#1C71EC"
-                            Padding="10,4"
-                            Classes="transparent-button" />
-                    
-                    <!-- 上页按钮 -->
-                    <Button Content="上页"
-                            Height="25"
-                            FontSize="11"
-                            BorderThickness="0"
-                            Background="Transparent"
-                            Foreground="#1C71EC"
-                            Padding="10,4"
-                            Classes="transparent-button" />
-                    
-                    <!-- 下页按钮 -->
-                    <Button Content="下页"
-                            Height="25"
-                            FontSize="11"
-                            BorderThickness="0"
-                            Background="Transparent"
-                            Foreground="#1C71EC"
-                            Padding="10,4"
-                            Classes="transparent-button" />
-                    
-                    <!-- 末页按钮 -->
-                    <Button Content="末页"
-                            Height="25"
-                            FontSize="11"
-                            BorderThickness="0"
-                            Background="Transparent"
-                            Foreground="#1C71EC"
-                            Padding="10,4"
-                            Classes="transparent-button" />
-                    
-                    <!-- 当前页信息 -->
-                    <TextBlock Text="当前页:1"
-                               Width="80"
-                               Height="25"
-                               FontSize="16"
-                               VerticalAlignment="Center"
-                               Foreground="#333" />
-                    
-                    <!-- 总记录数信息 -->
-                    <TextBlock Text="共0条"
-                               Width="100"
-                               Height="25"
-                               FontSize="16"
-                               VerticalAlignment="Center"
-                               Foreground="#333" />
-                </StackPanel>
-            </Border>
+            <StackPanel Grid.Row="2"
+                       Orientation="Horizontal"
+                       Height="50"
+                       VerticalAlignment="Center">
+                <!-- 首页按钮 -->
+                <Button Content="首页"
+                        Height="25"
+                        FontSize="11"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Foreground="#DD1C71EC"
+                        Padding="10,4"
+                        Margin="2,0,0,0"
+                        Classes="transparent-button" />
+                
+                <!-- 上页按钮 -->
+                <Button Content="上页"
+                        Height="25"
+                        FontSize="11"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Foreground="#DD1C71EC"
+                        Padding="10,4"
+                        Margin="2,0,0,0"
+                        Classes="transparent-button" />
+                
+                <!-- 下页按钮 -->
+                <Button Content="下页"
+                        Height="25"
+                        FontSize="11"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Foreground="#DD1C71EC"
+                        Padding="10,4"
+                        Margin="2,0,0,0"
+                        Classes="transparent-button" />
+                
+                <!-- 末页按钮 -->
+                <Button Content="末页"
+                        Height="25"
+                        FontSize="11"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Foreground="#DD1C71EC"
+                        Padding="10,4"
+                        Margin="2,0,0,0"
+                        Classes="transparent-button" />
+                
+                <!-- 当前页信息 -->
+                <Label Content="当前页:1"
+                       Width="80"
+                       Height="25"
+                       FontSize="16"
+                       VerticalAlignment="Center" />
+                
+                <!-- 总记录数信息 -->
+                <Label Content="共11条记录"
+                       Width="100"
+                       Height="25"
+                       FontSize="16"
+                       VerticalAlignment="Center" />
+            </StackPanel>
         </Grid>
     </Border>
 </UserControl>
