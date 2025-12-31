@@ -358,7 +358,9 @@
                        HorizontalOffset="0"
                        VerticalOffset="2"
                        IsOpen="{Binding IsMaterialPopupOpen, Mode=TwoWay}">
-                    <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" />
+                    <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" 
+                        DataContext="{Binding MaterialsSelectionPopupViewModel}"
+                        />
                 </Popup>
             </Grid>
         </Border>

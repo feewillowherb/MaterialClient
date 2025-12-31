@@ -4,13 +4,12 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Entities;
-using Microsoft.EntityFrameworkCore;
+using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
@@ -21,8 +20,7 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
 {
     private const int DefaultPageSize = 10;
 
-    private readonly IServiceProvider? _serviceProvider;
-    private readonly IRepository<Material, int>? _materialRepository;
+    private readonly IMaterialService? _materialService;
 
     private ObservableCollection<Material> _pagedMaterials = new();
 
@@ -41,10 +39,9 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
     public MaterialsSelectionPopupViewModel(IServiceProvider? serviceProvider)
         : base(serviceProvider?.GetService<ILogger<MaterialsSelectionPopupViewModel>>())
     {
-        _serviceProvider = serviceProvider;
-        if (_serviceProvider != null)
+        if (serviceProvider != null)
         {
-            _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
+            _materialService = serviceProvider.GetRequiredService<IMaterialService>();
         }
 
         InitializeFiltering();
@@ -120,30 +117,19 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
 
     private async Task LoadDataAsync()
     {
-        if (_materialRepository == null) return;
+        if (_materialService == null) return;
 
         try
         {
-            // 构建查询条件
-            var queryable = await _materialRepository.GetQueryableAsync();
+            // 使用 MaterialService 进行分页查询
+            var result = await _materialService.GetPagedMaterialsAsync(
+                searchText: string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim(),
+                pageIndex: CurrentPage,
+                pageSize: PageSize
+            );
 
-            // 应用搜索过滤
-            if (!string.IsNullOrWhiteSpace(SearchText))
-            {
-                var searchText = SearchText.Trim();
-                queryable = queryable.Where(m =>
-                    (m.Name != null && m.Name.Contains(searchText)) ||
-                    (m.Specifications != null && m.Specifications.Contains(searchText)) ||
-                    (m.Size != null && m.Size.Contains(searchText)) ||
-                    (m.Code != null && m.Code.Contains(searchText))
-                );
-            }
-
-            // 只查询未删除的记录
-            queryable = queryable.Where(m => !m.IsDeleted);
-
-            // 获取总数
-            TotalCount = await queryable.CountAsync();
+            // 更新总数
+            TotalCount = (int)result.TotalCount;
 
             // 计算总页数
             TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
@@ -161,17 +147,9 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
                 this.RaisePropertyChanged(nameof(CurrentPage));
             }
 
-            // 分页查询
-            var skipCount = (_currentPage - 1) * PageSize;
-            var materials = await queryable
-                .OrderBy(m => m.Name)
-                .Skip(skipCount)
-                .Take(PageSize)
-                .ToListAsync();
-
             // 更新显示的数据
             PagedMaterials.Clear();
-            foreach (var material in materials)
+            foreach (var material in result.Items)
             {
                 PagedMaterials.Add(material);
             }

@@ -20,7 +20,18 @@ public partial class AttendedWeighingDetailView : UserControl
     {
         InitializeComponent();
         DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModel>();
-        
+        // if (DataContext is AttendedWeighingDetailViewModel viewModel)
+        // {
+        //     viewModel.WhenAnyValue(x => x.MaterialsSelectionPopupViewModel)
+        //         .Subscribe(popupViewModel =>
+        //         {
+        //             if (popupViewModel != null)
+        //             {
+        //                 MaterialsSelectionPopupControl.DataContext = popupViewModel;
+        //             }
+        //         });
+        // }
+
     }
 
 }

@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
@@ -21,9 +20,7 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientDependency
 {
-    private readonly IRepository<Material, int>? _materialRepository;
-    private readonly IRepository<MaterialUnit, int>? _materialUnitRepository;
-    private readonly IRepository<Provider, int>? _providerRepository;
+    private readonly IMaterialService? _materialService;
     private readonly IServiceProvider _serviceProvider;
 
     public ManualMatchEditWindowViewModel(
@@ -38,9 +35,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
         DeliveryType = deliveryType;
         _serviceProvider = serviceProvider;
 
-        _providerRepository = serviceProvider.GetService<IRepository<Provider, int>>();
-        _materialRepository = serviceProvider.GetService<IRepository<Material, int>>();
-        _materialUnitRepository = serviceProvider.GetService<IRepository<MaterialUnit, int>>();
+        _materialService = serviceProvider.GetService<IMaterialService>();
 
         InitializeData();
 
@@ -246,13 +241,13 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
 
     private async Task LoadProvidersAsync()
     {
-        if (_providerRepository == null) return;
+        if (_materialService == null) return;
 
         try
         {
-            var providers = await _providerRepository.GetListAsync();
+            var providers = await _materialService.GetAllProvidersAsync();
             Providers.Clear();
-            foreach (var provider in providers.OrderBy(p => p.ProviderName))
+            foreach (var provider in providers)
                 Providers.Add(new ProviderDto
                 {
                     Id = provider.Id,
@@ -270,13 +265,13 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
 
     private async Task LoadMaterialsAsync()
     {
-        if (_materialRepository == null) return;
+        if (_materialService == null) return;
 
         try
         {
-            var materials = await _materialRepository.GetListAsync();
+            var materials = await _materialService.GetAllMaterialsAsync();
             Materials.Clear();
-            foreach (var material in materials.OrderBy(m => m.Name)) Materials.Add(material);
+            foreach (var material in materials) Materials.Add(material);
         }
         catch (Exception ex)
         {
@@ -286,14 +281,13 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
 
     private async Task LoadMaterialUnitsAsync(int materialId)
     {
-        if (_materialUnitRepository == null) return;
+        if (_materialService == null) return;
 
         try
         {
-            var units = await _materialUnitRepository.GetListAsync(u => u.MaterialId == materialId
-            );
+            var units = await _materialService.GetMaterialUnitsByMaterialIdAsync(materialId);
             MaterialUnits.Clear();
-            foreach (var unit in units.OrderBy(u => u.UnitName))
+            foreach (var unit in units)
                 MaterialUnits.Add(new MaterialUnitDto
                 {
                     Id = unit.Id,
