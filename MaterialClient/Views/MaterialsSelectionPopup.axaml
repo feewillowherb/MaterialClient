@@ -6,7 +6,7 @@
              xmlns:u="https://irihi.tech/ursa"
              x:Class="MaterialClient.Views.MaterialsSelectionPopup"
              x:DataType="vm:MaterialsSelectionPopupViewModel"
-             Width="600" Height="400">
+             Width="600" Height="300">
     
     <Border Background="White"
             BorderBrush="#E5E7EB"
@@ -20,9 +20,9 @@
                     BorderBrush="#000000"
                     BorderThickness="0,0,0,1"
                     Height="50">
-                <TextBox Width="598"
+                <TextBox Width="600"
                          Height="35"
-                         FontSize="18"
+                         FontSize="10"
                          Watermark="输入关键字查找"
                          BorderThickness="0"
                          HorizontalAlignment="Center"
@@ -35,14 +35,14 @@
                     BorderBrush="#E5E7EB"
                     BorderThickness="0,0,0,1"
                     Background="White">
-                <DataGrid Width="599"
-                          Height="300"
+                <DataGrid Width="600"
+                          Height="200"
                           AutoGenerateColumns="False"
                           CanUserResizeColumns="False"
                           CanUserSortColumns="False"
                           IsReadOnly="True"
                           SelectionMode="Single"
-                          HorizontalAlignment="Left"
+                          HorizontalAlignment="Center"
                           BorderThickness="0"
                           Background="White"
                           GridLinesVisibility="Horizontal"
@@ -51,81 +51,52 @@
                           ItemsSource="{Binding PagedMaterials}"
                           SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}">
                     
-                    <!-- DataGrid 局部样式，覆盖全局样式 -->
-                    <DataGrid.Styles>
-                        <!-- 列头样式 -->
-                        <Style Selector="DataGridColumnHeader">
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="#000000" />
-                            <Setter Property="FontSize" Value="14" />
-                            <Setter Property="Height" Value="35" />
-                            <Setter Property="HorizontalContentAlignment" Value="Center" />
-                            <Setter Property="VerticalContentAlignment" Value="Center" />
-                            <Setter Property="HorizontalAlignment" Value="Center" />
-                            <Setter Property="BorderThickness" Value="0" />
-                        </Style>
-                        
-                        <!-- 行样式 -->
-                        <Style Selector="DataGridRow">
-                            <Setter Property="Background" Value="White" />
-                        </Style>
-                        <Style Selector="DataGridRow:pointerover">
-                            <Setter Property="Background" Value="#D8E5FF" />
-                            <Setter Property="Foreground" Value="Black" />
-                        </Style>
-                        
-                        <!-- 单元格样式 -->
-                        <Style Selector="DataGridCell">
-                            <Setter Property="BorderThickness" Value="0" />
-                            <Setter Property="BorderBrush" Value="#6498FE" />
-                            <Setter Property="Foreground" Value="Black" />
-                            <Setter Property="HorizontalContentAlignment" Value="Center" />
-                            <Setter Property="VerticalContentAlignment" Value="Center" />
-                        </Style>
-                        <Style Selector="DataGridCell:pointerover">
-                            <Setter Property="Background" Value="#D8E5FF" />
-                            <Setter Property="Foreground" Value="Black" />
-                        </Style>
-                        <Style Selector="DataGridRow:selected DataGridCell">
-                            <Setter Property="Background" Value="#6498FE" />
-                            <Setter Property="Foreground" Value="White" />
-                        </Style>
-                        
-                        <!-- 单元格内 TextBlock 样式 -->
-                        <Style Selector="DataGridCell TextBlock">
-                            <Setter Property="FontSize" Value="25" />
-                            <Setter Property="HorizontalAlignment" Value="Center" />
-                            <Setter Property="VerticalAlignment" Value="Center" />
-                        </Style>
-                    </DataGrid.Styles>
                     
                     <DataGrid.Columns>
-                        <DataGridTextColumn Width="*"
-                                           IsReadOnly="True"
-                                           CanUserSort="False"
-                                           Binding="{Binding Name}">
-                            <DataGridTextColumn.Header>
-                                <TextBlock FontSize="18" Text="名称" />
-                            </DataGridTextColumn.Header>
-                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Width="*">
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock FontSize="10" Text="名称" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         
-                        <DataGridTextColumn Width="120"
-                                           IsReadOnly="True"
-                                           CanUserSort="False"
-                                           Binding="{Binding Specifications}">
-                            <DataGridTextColumn.Header>
-                                <TextBlock FontSize="18" Text="规格型号" />
-                            </DataGridTextColumn.Header>
-                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Width="120">
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock FontSize="10" Text="规格型号" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Specifications}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         
-                        <DataGridTextColumn Width="100"
-                                           IsReadOnly="True"
-                                           CanUserSort="False"
-                                           Binding="{Binding BasicUnit}">
-                            <DataGridTextColumn.Header>
-                                <TextBlock FontSize="18" Text="单位" />
-                            </DataGridTextColumn.Header>
-                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Width="100">
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock FontSize="10" Text="单位" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding BasicUnit}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
