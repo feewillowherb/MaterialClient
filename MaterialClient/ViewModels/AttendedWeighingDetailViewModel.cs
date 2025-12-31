@@ -50,6 +50,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
         _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
 
+        // 初始化材料选择弹窗 ViewModel
+        InitializeMaterialsSelectionPopup();
 
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -105,9 +107,37 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     [Reactive] private MaterialItemRow? _currentMaterialRow;
 
+    [Reactive] private MaterialsSelectionPopupViewModel? _materialsSelectionPopupViewModel;
+
     #endregion
 
     #region 初始化
+
+    private void InitializeMaterialsSelectionPopup()
+    {
+        // 创建材料选择弹窗 ViewModel
+        MaterialsSelectionPopupViewModel = _serviceProvider.GetRequiredService<MaterialsSelectionPopupViewModel>();
+
+        // 订阅材料选择事件
+        MaterialsSelectionPopupViewModel.WhenAnyValue(x => x.SelectedMaterial)
+            .Subscribe(material =>
+            {
+                if (material != null)
+                {
+                    SelectMaterialCommand.Execute(material);
+                }
+            });
+
+        // 当弹窗打开时刷新数据
+        this.WhenAnyValue(x => x.IsMaterialPopupOpen)
+            .Subscribe(isOpen =>
+            {
+                if (isOpen && MaterialsSelectionPopupViewModel != null)
+                {
+                    _ = MaterialsSelectionPopupViewModel.RefreshAsync();
+                }
+            });
+    }
 
     public void InitializeData(WeighingListItemDto listItem)
     {

@@ -165,17 +165,29 @@
                     <DataGridTemplateColumn Header="材料名称" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border Background="Transparent"
+                                <Button Background="Transparent"
+                                        BorderThickness="0"
                                         Padding="4,0"
                                         Cursor="Hand"
-                                        >
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Command="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).OpenMaterialSelectionCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Styles>
+                                        <Style Selector="Button:pointerover">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="Button:pressed">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                    </Button.Styles>
                                     <TextBlock Text="{Binding SelectedMaterial.Name}"
                                                HorizontalAlignment="Left"
                                                VerticalAlignment="Center"
                                                FontSize="12"
                                                Foreground="#333333"
                                                TextTrimming="CharacterEllipsis" />
-                                </Border>
+                                </Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -339,14 +351,15 @@
                 </DataGrid>
                 
                 <!-- 材料选择弹窗 -->
-                <!-- <Popup Name="MaterialSelectionPopup" -->
-                <!--        Placement="Bottom" -->
-                <!--        IsLightDismissEnabled="True" -->
-                <!--        HorizontalOffset="0" -->
-                <!--        VerticalOffset="2" -->
-                <!--        IsOpen="{Binding IsMaterialPopupOpen}"> -->
-                <!--     <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" /> -->
-                <!-- </Popup> -->
+                <Popup Name="MaterialSelectionPopup"
+                       PlacementTarget="{Binding #DetailViewRoot}"
+                       Placement="Bottom"
+                       IsLightDismissEnabled="True"
+                       HorizontalOffset="0"
+                       VerticalOffset="2"
+                       IsOpen="{Binding IsMaterialPopupOpen, Mode=TwoWay}">
+                    <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" />
+                </Popup>
             </Grid>
         </Border>
 

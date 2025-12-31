@@ -10,7 +10,6 @@ namespace MaterialClient.Views.AttendedWeighing;
 
 public partial class AttendedWeighingDetailView : UserControl
 {
-    private readonly IServiceProvider? _serviceProvider;
 
     public AttendedWeighingDetailView()
         : this(null)
@@ -20,7 +19,8 @@ public partial class AttendedWeighingDetailView : UserControl
     public AttendedWeighingDetailView(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        _serviceProvider = serviceProvider;
         DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModel>();
+        
     }
+
 }

@@ -24,7 +24,6 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
 
     public AttendedWeighingWindow() : this(null)
     {
-        // InitializeComponent() 已在 this(null) 调用的有参构造函数中执行，无需重复调用
     }
 
     public AttendedWeighingWindow(IServiceProvider? serviceProvider)
