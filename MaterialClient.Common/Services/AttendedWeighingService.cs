@@ -34,6 +34,42 @@ public record PlateNumberCacheRecord
 }
 
 /// <summary>
+///     重量稳定性信息
+/// </summary>
+internal record WeightStabilityInfo
+{
+    /// <summary>
+    ///     当前重量（窗口内最新值）
+    /// </summary>
+    public decimal Weight { get; init; }
+
+    /// <summary>
+    ///     是否稳定
+    /// </summary>
+    public bool IsStable { get; init; }
+
+    /// <summary>
+    ///     稳定值（稳定时为平均值，否则为null）
+    /// </summary>
+    public decimal? StableWeight { get; init; }
+
+    /// <summary>
+    ///     最小值
+    /// </summary>
+    public decimal Min { get; init; }
+
+    /// <summary>
+    ///     最大值
+    /// </summary>
+    public decimal Max { get; init; }
+
+    /// <summary>
+    ///     范围
+    /// </summary>
+    public decimal Range { get; init; }
+}
+
+/// <summary>
 ///     有人值守称重服务接口
 /// </summary>
 public interface IAttendedWeighingService : IAsyncDisposable
@@ -162,8 +198,16 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _statusSubject.OnNext(AttendedWeighingStatus.OffScale);
         _plateNumberCache.Clear();
 
-        // Create weight stability stream (shared, refcounted)
-        _weightStabilityStream = _truckScaleWeightService.WeightUpdates
+        // 1. 重量流（更频繁，用于状态转换）
+        var weightStream = _truckScaleWeightService.WeightUpdates
+            .Buffer(TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs)) // 200ms
+            .Where(buffer => buffer.Count > 0)
+            .Select(buffer => buffer.Last())
+            .DistinctUntilChanged() // 只在重量变化时发出
+            .StartWith(0m);
+
+        // 2. 稳定性流（较慢，用于稳定性检查）
+        var stabilityStream = _truckScaleWeightService.WeightUpdates
             .Buffer(TimeSpan.FromMilliseconds(_stabilityWindowMs),
                 TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs))
             .Select(buffer =>
@@ -174,31 +218,79 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var max = buffer.Max();
                     var range = max - min;
                     var isStable = range <= _weightStabilityThreshold * 2;
+                    var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
 
                     _logger?.LogDebug(
-                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3})");
+                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3})");
 
-                    return isStable;
+                    return new WeightStabilityInfo
+                    {
+                        Weight = 0m, // Not used in stability stream
+                        IsStable = isStable,
+                        StableWeight = stableWeight,
+                        Min = min,
+                        Max = max,
+                        Range = range
+                    };
                 }
-                return false; // No data, consider unstable
+
+                // No data, consider unstable
+                return new WeightStabilityInfo
+                {
+                    Weight = 0m,
+                    IsStable = false,
+                    StableWeight = null,
+                    Min = 0m,
+                    Max = 0m,
+                    Range = 0m
+                };
             })
-            .StartWith(false) // Initial value
-            .DistinctUntilChanged() // Only emit when changed
-            .Replay(1) // Cache latest value
-            .RefCount(); // Auto-manage connection
+            .StartWith(new WeightStabilityInfo
+            {
+                Weight = 0m,
+                IsStable = false,
+                StableWeight = null,
+                Min = 0m,
+                Max = 0m,
+                Range = 0m
+            })
+            .DistinctUntilChanged(info => info.IsStable) // Only emit when stability changes
+            .Replay(1)
+            .RefCount();
 
-        // Create weight stream with stability information
-        var weightStream = _truckScaleWeightService.WeightUpdates
-            .Buffer(TimeSpan.FromMilliseconds(200)) // 收集200ms内的数据
-            .Where(buffer => buffer.Count > 0)
-            .Select(buffer => buffer.Last());
+        // Store stability-only stream for IsWeightStable property
+        _weightStabilityStream = stabilityStream.Select(info => info.IsStable);
 
-        // Combine weight and stability streams
-        _weightSubscription = weightStream
-            .WithLatestFrom(_weightStabilityStream, (weight, isStable) => new { Weight = weight, IsStable = isStable })
+        // 3. 状态转换流（只依赖重量，使用 Scan 管理状态）
+        // 从当前状态开始，而不是从 OffScale 开始，以保持与 _statusSubject 同步
+        var statusStream = weightStream
+            .Scan(_statusSubject.Value, (currentStatus, weight) =>
+            {
+                return currentStatus switch
+                {
+                    AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
+                        => AttendedWeighingStatus.WaitingForStability,
+                    AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
+                        => AttendedWeighingStatus.OffScale,
+                    AttendedWeighingStatus.WeightStabilized when weight < _minWeightThreshold
+                        => AttendedWeighingStatus.OffScale,
+                    _ => currentStatus // No state change
+                };
+            })
+            .DistinctUntilChanged();
+
+        // 4. 合并流：状态转换 + 稳定性检查
+        _weightSubscription = statusStream.CombineLatest(weightStream,
+                stabilityStream,
+                (status, weight, stability) => new
+                {
+                    Status = status,
+                    Weight = weight,
+                    Stability = stability
+                })
             .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(
-                data => OnWeightChanged(data.Weight, data.IsStable),
+                data => OnWeightAndStatusChanged(data.Status, data.Weight, data.Stability),
                 error =>
                 {
                     _logger?.LogError(error, "AttendedWeighingService: Error in weight updates subscription");
@@ -430,102 +522,94 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
 
     /// <summary>
-    ///     重量变化处理
+    ///     重量和状态变化处理（解耦后的处理）
     /// </summary>
-    private void OnWeightChanged(decimal weight, bool isStable)
+    private void OnWeightAndStatusChanged(AttendedWeighingStatus newStatus, decimal weight, WeightStabilityInfo stability)
     {
         var previousStatus = _statusSubject.Value;
-        var newStatus = ProcessWeightChange(previousStatus, weight, isStable);
 
-        // Log status changes and notify observers
+        // 处理状态转换（基于重量）
         if (newStatus != previousStatus)
         {
             _logger?.LogInformation(
                 $"AttendedWeighingService: Status changed {previousStatus} -> {newStatus}, current weight: {weight}t");
 
+            // 处理状态转换的副作用
+            ProcessStatusTransition(previousStatus, newStatus, weight);
+
             // Notify observers of status change
             _statusSubject.OnNext(newStatus);
+        }
+
+        // 处理稳定性触发的操作（基于稳定性检查）
+        // 注意：这里检查的是 _statusSubject.Value 而不是 newStatus，因为状态转换流可能还没有更新
+        var currentStatus = _statusSubject.Value;
+        if (currentStatus == AttendedWeighingStatus.WaitingForStability && stability.IsStable)
+        {
+            // Weight stabilized - use stable weight (average) if available
+            var weightToUse = stability.StableWeight ?? weight;
+            _logger?.LogInformation(
+                $"AttendedWeighingService: Weight stabilized, stable weight: {weightToUse}t");
+
+            // When weight is stabilized, capture photos and create WeighingRecord
+            _ = Task.Run(async () => await OnWeightStabilizedAsync(weightToUse));
+
+            // Update status to WeightStabilized
+            _statusSubject.OnNext(AttendedWeighingStatus.WeightStabilized);
         }
     }
 
     /// <summary>
-    ///     处理重量变化 - 纯函数式状态转换
+    ///     处理状态转换的副作用（解耦后，状态转换已在流中完成）
     /// </summary>
-    private AttendedWeighingStatus ProcessWeightChange(AttendedWeighingStatus currentStatus, decimal currentWeight, bool isStable)
+    private void ProcessStatusTransition(AttendedWeighingStatus previousStatus, AttendedWeighingStatus newStatus, decimal weight)
     {
-        switch (currentStatus)
+        switch (previousStatus, newStatus)
         {
-            case AttendedWeighingStatus.OffScale:
+            case (AttendedWeighingStatus.OffScale, AttendedWeighingStatus.WaitingForStability):
                 // OffScale -> WaitingForStability: weight increases above threshold
-                if (currentWeight > _minWeightThreshold)
-                {
-                    _logger.LogInformation(
-                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}t");
-                    return AttendedWeighingStatus.WaitingForStability;
-                }
+                _logger.LogInformation(
+                    $"AttendedWeighingService: Entered WaitingForStability state, weight: {weight}t");
                 break;
 
-            case AttendedWeighingStatus.WaitingForStability:
-                if (currentWeight < _minWeightThreshold)
+            case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.OffScale):
+                // Unstable weighing flow: directly from WaitingForStability to OffScale
+                _logger?.LogWarning(
+                    $"AttendedWeighingService: Unstable weighing flow, weight returned to {weight}t, triggered capture");
+
+                // Capture all cameras and log (no need to save photos)
+                _ = Task.Run(async () =>
                 {
-                    // Unstable weighing flow: directly from WaitingForStability to OffScale
-                    _logger?.LogWarning(
-                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}t, triggered capture");
+                    var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
+                    if (photos.Count == 0)
+                        _logger?.LogWarning(
+                            "AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
+                    else
+                        _logger?.LogInformation(
+                            $"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
+                });
 
-                    // Capture all cameras and log (no need to save photos)
-                    _ = Task.Run(async () =>
-                    {
-                        var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
-                        if (photos.Count == 0)
-                            _logger?.LogWarning(
-                                "AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
-                        else
-                            _logger?.LogInformation(
-                                $"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
-                    });
-
-                    // Try to rewrite plate number, then clear cache
-                    _ = Task.Run(async () =>
-                    {
-                        await TryReWritePlateNumberAsync();
-                        ClearPlateNumberCache();
-                    });
-
-                    return AttendedWeighingStatus.OffScale;
-                }
-                else if (isStable)
+                // Try to rewrite plate number, then clear cache
+                _ = Task.Run(async () =>
                 {
-                    // Weight stabilized - trigger state transition and actions
-                    _logger?.LogInformation(
-                        $"AttendedWeighingService: Weight stabilized, stable weight: {currentWeight}t");
-
-                    // When weight is stabilized, capture photos and create WeighingRecord
-                    _ = Task.Run(async () => await OnWeightStabilizedAsync(currentWeight));
-
-                    return AttendedWeighingStatus.WeightStabilized;
-                }
+                    await TryReWritePlateNumberAsync();
+                    ClearPlateNumberCache();
+                });
                 break;
 
-            case AttendedWeighingStatus.WeightStabilized:
-                if (currentWeight < _minWeightThreshold)
+            case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
+                // WeightStabilized -> OffScale: normal flow
+                _logger?.LogInformation(
+                    $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {weight}t");
+
+                // Try to rewrite plate number, then clear cache
+                _ = Task.Run(async () =>
                 {
-                    // WeightStabilized -> OffScale: normal flow
-                    _logger?.LogInformation(
-                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}t");
-
-                    // Try to rewrite plate number, then clear cache
-                    _ = Task.Run(async () =>
-                    {
-                        await TryReWritePlateNumberAsync();
-                        ClearPlateNumberCache();
-                    });
-
-                    return AttendedWeighingStatus.OffScale;
-                }
+                    await TryReWritePlateNumberAsync();
+                    ClearPlateNumberCache();
+                });
                 break;
         }
-
-        return currentStatus; // No state change
     }
 
 
