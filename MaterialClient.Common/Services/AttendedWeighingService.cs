@@ -183,6 +183,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // 订阅管理
     private IDisposable? _weightSubscription;
 
+    // 异步操作追踪（用于优雅关闭）
+    private readonly ConcurrentBag<Task> _pendingOperations = new();
+    private readonly object _operationsLock = new();
+
+    // 异步操作流（用于错误处理和监控）
+    private Subject<Func<Task>>? _asyncOperationsStream;
+    private IDisposable? _asyncOperationsSubscription;
+
 
     /// <summary>
     ///     启动监听
@@ -296,6 +304,69 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     _logger?.LogError(error, "Error in weight updates subscription");
                 });
 
+        // 5. 创建异步操作处理流（用于错误处理和监控）
+        var asyncOperationsStream = new Subject<Func<Task>>();
+        
+        _asyncOperationsSubscription = asyncOperationsStream
+            .Select(operation => Observable.FromAsync(async () =>
+            {
+                var task = operation();
+                lock (_operationsLock)
+                {
+                    _pendingOperations.Add(task);
+                }
+                
+                try
+                {
+                    await task;
+                    return (Success: true, Error: (Exception?)null);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in async operation");
+                    return (Success: false, Error: (Exception?)ex);
+                }
+                finally
+                {
+                    lock (_operationsLock)
+                    {
+                        // 从集合中移除已完成的任务
+                        var tasksArray = _pendingOperations.ToArray();
+                        _pendingOperations.Clear();
+                        foreach (var t in tasksArray)
+                        {
+                            if (!t.IsCompleted)
+                            {
+                                _pendingOperations.Add(t);
+                            }
+                        }
+                    }
+                }
+            }))
+            .Merge(maxConcurrent: 5) // 最多5个并发操作，防止过载
+            .Catch((Exception ex) =>
+            {
+                _logger?.LogError(ex, "Critical error in async operations stream");
+                return Observable.Empty<(bool Success, Exception? Error)>();
+            })
+            .Retry(3) // 重试3次
+            .Subscribe(
+                result =>
+                {
+                    if (!result.Success)
+                    {
+                        _logger?.LogWarning("Async operation failed, may need manual intervention");
+                        // 可以在这里添加失败重试队列或通知机制
+                    }
+                },
+                error =>
+                {
+                    _logger?.LogError(error, "Fatal error in async operations stream");
+                });
+
+        // 保存异步操作流引用（用于后续添加操作）
+        _asyncOperationsStream = asyncOperationsStream;
+
         _logger?.LogInformation("Started monitoring truck scale weight changes");
 
         await Task.CompletedTask;
@@ -306,8 +377,55 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     public async Task StopAsync()
     {
+        // 停止接收新的事件
         _weightSubscription?.Dispose();
         _weightSubscription = null;
+        
+        // 停止接收新的异步操作
+        try
+        {
+            _asyncOperationsStream?.OnCompleted();
+        }
+        catch (InvalidOperationException)
+        {
+            // Stream already completed, ignore
+        }
+        _asyncOperationsStream?.Dispose();
+        _asyncOperationsStream = null;
+        _asyncOperationsSubscription?.Dispose();
+        _asyncOperationsSubscription = null;
+        
+        // 等待所有进行中的操作完成（优雅关闭）
+        var pendingTasks = _pendingOperations.ToArray();
+        if (pendingTasks.Length > 0)
+        {
+            _logger?.LogInformation(
+                $"Waiting for {pendingTasks.Length} pending operations to complete...");
+            
+            try
+            {
+                // 设置超时，避免无限等待
+                var timeout = TimeSpan.FromMinutes(5);
+                var allTasksCompleted = Task.WhenAll(pendingTasks);
+                var timeoutTask = Task.Delay(timeout);
+                var completed = await Task.WhenAny(allTasksCompleted, timeoutTask);
+                
+                if (completed == allTasksCompleted)
+                {
+                    _logger?.LogInformation("All pending operations completed");
+                }
+                else
+                {
+                    _logger?.LogWarning(
+                        $"Timeout waiting for operations to complete. {pendingTasks.Length} operations may still be running.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error while waiting for pending operations");
+            }
+        }
+        
         _weightStabilityStream = null; // Will be disposed by RefCount when no subscribers
         _logger?.LogInformation("Stopped monitoring truck scale weight changes");
 
@@ -496,6 +614,50 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
+    ///     将异步操作加入处理队列（使用 Rx 流处理）
+    /// </summary>
+    private void EnqueueAsyncOperation(Func<Task> operation)
+    {
+        if (_asyncOperationsStream == null)
+        {
+            // 如果流未初始化，回退到 Task.Run（向后兼容）
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await operation();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in async operation (fallback mode)");
+                }
+            });
+            return;
+        }
+
+        try
+        {
+            _asyncOperationsStream.OnNext(operation);
+        }
+        catch (InvalidOperationException)
+        {
+            // 流已关闭，使用 Task.Run 作为后备
+            _logger?.LogWarning("Async operations stream is closed, using fallback Task.Run");
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await operation();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in async operation (fallback mode)");
+                }
+            });
+        }
+    }
+
+    /// <summary>
     ///     Load configuration from settings
     /// </summary>
     private async Task LoadConfigurationAsync()
@@ -552,7 +714,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 $"Weight stabilized, stable weight: {weightToUse}t");
 
             // When weight is stabilized, capture photos and create WeighingRecord
-            _ = Task.Run(async () => await OnWeightStabilizedAsync(weightToUse));
+            EnqueueAsyncOperation(async () => await OnWeightStabilizedAsync(weightToUse));
 
             // Update status to WeightStabilized
             _statusSubject.OnNext(AttendedWeighingStatus.WeightStabilized);
@@ -578,7 +740,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     $"Unstable weighing flow, weight returned to {weight}t, triggered capture");
 
                 // Capture all cameras and log (no need to save photos)
-                _ = Task.Run(async () =>
+                EnqueueAsyncOperation(async () =>
                 {
                     var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
                     if (photos.Count == 0)
@@ -590,7 +752,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 });
 
                 // Try to rewrite plate number, then clear cache
-                _ = Task.Run(async () =>
+                EnqueueAsyncOperation(async () =>
                 {
                     await TryReWritePlateNumberAsync();
                     ClearPlateNumberCache();
@@ -603,7 +765,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     $"Normal flow completed, entered OffScale state, weight: {weight}t");
 
                 // Try to rewrite plate number, then clear cache
-                _ = Task.Run(async () =>
+                EnqueueAsyncOperation(async () =>
                 {
                     await TryReWritePlateNumberAsync();
                     ClearPlateNumberCache();
