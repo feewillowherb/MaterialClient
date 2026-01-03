@@ -656,37 +656,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             foreach (var cameraConfig in cameraConfigs)
             {
-                if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
-                    string.IsNullOrWhiteSpace(cameraConfig.Port) ||
-                    string.IsNullOrWhiteSpace(cameraConfig.Channel))
-                    continue;
-
-                if (!int.TryParse(cameraConfig.Port, out var port) ||
-                    !int.TryParse(cameraConfig.Channel, out var channel))
+                var request = BatchCaptureRequest.FromCameraConfig(cameraConfig, basePath, _logger);
+                if (request != null)
                 {
-                    _logger?.LogWarning($"AttendedWeighingService: Invalid camera configuration: {cameraConfig.Name}");
-                    continue;
+                    requests.Add(request);
                 }
-
-                var hikvisionConfig = new HikvisionDeviceConfig
-                {
-                    Ip = cameraConfig.Ip,
-                    Port = port,
-                    Username = cameraConfig.UserName,
-                    Password = cameraConfig.Password,
-                    Channels = new[] { channel }
-                };
-
-                var fileName = AttachmentPathUtils.GenerateMonitoringPhotoFileName(cameraConfig.Name, channel);
-                var savePath = Path.Combine(basePath, fileName);
-
-                requests.Add(new BatchCaptureRequest
-                {
-                    Config = hikvisionConfig,
-                    Channel = channel,
-                    SaveFullPath = savePath,
-                    DeviceKey = $"{cameraConfig.Ip}:{port}"
-                });
             }
 
             if (requests.Count == 0)

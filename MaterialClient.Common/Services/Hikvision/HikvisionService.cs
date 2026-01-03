@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Utils;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hikvision;
@@ -564,6 +566,50 @@ public sealed class BatchCaptureRequest
     public int Channel { get; set; }
     public string SaveFullPath { get; set; } = string.Empty;
     public string DeviceKey { get; set; } = string.Empty; // 用于标识设备，如 "192.168.1.100:8000"
+
+    /// <summary>
+    ///     从 CameraConfig 创建 BatchCaptureRequest
+    /// </summary>
+    /// <param name="cameraConfig">摄像头配置</param>
+    /// <param name="basePath">保存路径的基础目录</param>
+    /// <param name="logger">可选的日志记录器，用于记录警告信息</param>
+    /// <returns>如果配置有效则返回 BatchCaptureRequest，否则返回 null</returns>
+    public static BatchCaptureRequest? FromCameraConfig(CameraConfig cameraConfig, string basePath, ILogger? logger = null)
+    {
+        if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
+            string.IsNullOrWhiteSpace(cameraConfig.Port) ||
+            string.IsNullOrWhiteSpace(cameraConfig.Channel))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(cameraConfig.Port, out var port) ||
+            !int.TryParse(cameraConfig.Channel, out var channel))
+        {
+            logger?.LogWarning($"BatchCaptureRequest: Invalid camera configuration: {cameraConfig.Name}");
+            return null;
+        }
+
+        var hikvisionConfig = new HikvisionDeviceConfig
+        {
+            Ip = cameraConfig.Ip,
+            Port = port,
+            Username = cameraConfig.UserName,
+            Password = cameraConfig.Password,
+            Channels = new[] { channel }
+        };
+
+        var fileName = AttachmentPathUtils.GenerateMonitoringPhotoFileName(cameraConfig.Name, channel);
+        var savePath = Path.Combine(basePath, fileName);
+
+        return new BatchCaptureRequest
+        {
+            Config = hikvisionConfig,
+            Channel = channel,
+            SaveFullPath = savePath,
+            DeviceKey = $"{cameraConfig.Ip}:{port}"
+        };
+    }
 }
 
 public sealed class BatchCaptureResult
