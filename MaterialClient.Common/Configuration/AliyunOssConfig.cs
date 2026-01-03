@@ -29,4 +29,17 @@ public class AliyunOssConfig
     ///     OSS最大文件大小（MB）
     /// </summary>
     public string MaxSize { get; set; } = "100";
+
+    /// <summary>
+    ///     判断配置是否有效
+    ///     需要RegionId、Key、Secret和BucketName都不为空
+    /// </summary>
+    /// <returns>如果配置有效返回true，否则返回false</returns>
+    public bool IsValid()
+    {
+        return !string.IsNullOrWhiteSpace(RegionId) &&
+               !string.IsNullOrWhiteSpace(Key) &&
+               !string.IsNullOrWhiteSpace(Secret) &&
+               !string.IsNullOrWhiteSpace(BucketName);
+    }
 }

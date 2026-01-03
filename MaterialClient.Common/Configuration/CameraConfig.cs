@@ -34,4 +34,19 @@ public class CameraConfig
     ///     Password (e.g., fdkj112233)
     /// </summary>
     public string Password { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     判断配置是否有效
+    ///     需要Ip、Port和Channel都不为空，且Port和Channel可以解析为整数
+    /// </summary>
+    /// <returns>如果配置有效返回true，否则返回false</returns>
+    public bool IsValid()
+    {
+        if (string.IsNullOrWhiteSpace(Ip) ||
+            string.IsNullOrWhiteSpace(Port) ||
+            string.IsNullOrWhiteSpace(Channel))
+            return false;
+
+        return int.TryParse(Port, out _) && int.TryParse(Channel, out _);
+    }
 }

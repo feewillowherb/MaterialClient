@@ -306,9 +306,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         foreach (var cameraConfig in cameraConfigs)
         {
-            if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
-                string.IsNullOrWhiteSpace(cameraConfig.Port) ||
-                string.IsNullOrWhiteSpace(cameraConfig.Channel))
+            if (!cameraConfig.IsValid())
             {
                 continue;
             }
@@ -576,9 +574,7 @@ public sealed class BatchCaptureRequest
     /// <returns>如果配置有效则返回 BatchCaptureRequest，否则返回 null</returns>
     public static BatchCaptureRequest? FromCameraConfig(CameraConfig cameraConfig, string basePath, ILogger? logger = null)
     {
-        if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
-            string.IsNullOrWhiteSpace(cameraConfig.Port) ||
-            string.IsNullOrWhiteSpace(cameraConfig.Channel))
+        if (!cameraConfig.IsValid())
         {
             return null;
         }
