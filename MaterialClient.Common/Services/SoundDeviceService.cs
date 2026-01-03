@@ -37,7 +37,7 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            _logger?.LogWarning("PlayTextAsync: Text is null or empty, skipping playback");
+            _logger?.LogWarning("Text is null or empty, skipping playback");
             return;
         }
 

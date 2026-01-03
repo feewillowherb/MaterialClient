@@ -586,7 +586,7 @@ public sealed class BatchCaptureRequest
         if (!int.TryParse(cameraConfig.Port, out var port) ||
             !int.TryParse(cameraConfig.Channel, out var channel))
         {
-            logger?.LogWarning($"BatchCaptureRequest: Invalid camera configuration: {cameraConfig.Name}");
+            logger?.LogWarning($"Invalid camera configuration: {cameraConfig.Name}");
             return null;
         }
 

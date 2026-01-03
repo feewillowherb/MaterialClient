@@ -293,10 +293,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 data => OnWeightAndStatusChanged(data.Status, data.Weight, data.Stability),
                 error =>
                 {
-                    _logger?.LogError(error, "AttendedWeighingService: Error in weight updates subscription");
+                    _logger?.LogError(error, "Error in weight updates subscription");
                 });
 
-        _logger?.LogInformation("AttendedWeighingService: Started monitoring truck scale weight changes");
+        _logger?.LogInformation("Started monitoring truck scale weight changes");
 
         await Task.CompletedTask;
     }
@@ -309,7 +309,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _weightSubscription?.Dispose();
         _weightSubscription = null;
         _weightStabilityStream = null; // Will be disposed by RefCount when no subscribers
-        _logger?.LogInformation("AttendedWeighingService: Stopped monitoring truck scale weight changes");
+        _logger?.LogInformation("Stopped monitoring truck scale weight changes");
 
         await Task.CompletedTask;
     }
@@ -371,7 +371,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         if (_deliveryTypeSubject.Value != deliveryType)
         {
             _deliveryTypeSubject.OnNext(deliveryType);
-            _logger?.LogInformation($"AttendedWeighingService: DeliveryType changed to {deliveryType}");
+            _logger?.LogInformation($"DeliveryType changed to {deliveryType}");
         }
     }
 
@@ -399,7 +399,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 (key, oldValue) => new PlateNumberCacheRecord
                     { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
             _logger?.LogDebug(
-                $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
+                $"Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
 
             // Notify observers of plate number update
             var mostFrequent = GetMostFrequentPlateNumber();
@@ -511,12 +511,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Loaded configuration - MinWeightThreshold: {_minWeightThreshold}, WeightStabilityThreshold: {_weightStabilityThreshold}, StabilityWindowMs: {_stabilityWindowMs}, StabilityCheckIntervalMs: {_stabilityCheckIntervalMs}");
+                $"Loaded configuration - MinWeightThreshold: {_minWeightThreshold}, WeightStabilityThreshold: {_weightStabilityThreshold}, StabilityWindowMs: {_stabilityWindowMs}, StabilityCheckIntervalMs: {_stabilityCheckIntervalMs}");
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex,
-                "AttendedWeighingService: Failed to load configuration, using default values");
+                "Failed to load configuration, using default values");
         }
     }
 
@@ -532,7 +532,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         if (newStatus != previousStatus)
         {
             _logger?.LogInformation(
-                $"AttendedWeighingService: Status changed {previousStatus} -> {newStatus}, current weight: {weight}t");
+                $"Status changed {previousStatus} -> {newStatus}, current weight: {weight}t");
 
             // 处理状态转换的副作用
             ProcessStatusTransition(previousStatus, newStatus, weight);
@@ -549,7 +549,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // Weight stabilized - use stable weight (average) if available
             var weightToUse = stability.StableWeight ?? weight;
             _logger?.LogInformation(
-                $"AttendedWeighingService: Weight stabilized, stable weight: {weightToUse}t");
+                $"Weight stabilized, stable weight: {weightToUse}t");
 
             // When weight is stabilized, capture photos and create WeighingRecord
             _ = Task.Run(async () => await OnWeightStabilizedAsync(weightToUse));
@@ -569,13 +569,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             case (AttendedWeighingStatus.OffScale, AttendedWeighingStatus.WaitingForStability):
                 // OffScale -> WaitingForStability: weight increases above threshold
                 _logger.LogInformation(
-                    $"AttendedWeighingService: Entered WaitingForStability state, weight: {weight}t");
+                    $"Entered WaitingForStability state, weight: {weight}t");
                 break;
 
             case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.OffScale):
                 // Unstable weighing flow: directly from WaitingForStability to OffScale
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: Unstable weighing flow, weight returned to {weight}t, triggered capture");
+                    $"Unstable weighing flow, weight returned to {weight}t, triggered capture");
 
                 // Capture all cameras and log (no need to save photos)
                 _ = Task.Run(async () =>
@@ -583,10 +583,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
                     if (photos.Count == 0)
                         _logger?.LogWarning(
-                            "AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
+                            "Unstable weighing flow capture completed, but no photos were obtained");
                     else
                         _logger?.LogInformation(
-                            $"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
+                            $"Unstable weighing flow captured {photos.Count} photos");
                 });
 
                 // Try to rewrite plate number, then clear cache
@@ -600,7 +600,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
                 // WeightStabilized -> OffScale: normal flow
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {weight}t");
+                    $"Normal flow completed, entered OffScale state, weight: {weight}t");
 
                 // Try to rewrite plate number, then clear cache
                 _ = Task.Run(async () =>
@@ -628,7 +628,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while processing weight stabilization");
+            _logger?.LogError(ex, "Error occurred while processing weight stabilization");
         }
     }
 
@@ -645,7 +645,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             if (cameraConfigs.Count == 0)
             {
-                _logger?.LogWarning($"AttendedWeighingService: No cameras configured, cannot capture ({reason})");
+                _logger?.LogWarning($"No cameras configured, cannot capture ({reason})");
                 return new List<string>();
             }
 
@@ -666,12 +666,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             if (requests.Count == 0)
             {
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: No valid camera configurations, cannot capture ({reason})");
+                    $"No valid camera configurations, cannot capture ({reason})");
                 return new List<string>();
             }
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Starting capture for {requests.Count} cameras ({reason})");
+                $"Starting capture for {requests.Count} cameras ({reason})");
 
             var results = await _hikvisionService.CaptureJpegFromStreamBatchAsync(requests);
 
@@ -679,12 +679,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var failCount = results.Count - successCount;
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Capture completed, success: {successCount}, failed: {failCount} ({reason})");
+                $"Capture completed, success: {successCount}, failed: {failCount} ({reason})");
 
             // Log detailed failure information
             foreach (var result in results.Where(r => !r.Success))
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
+                    $"Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
 
             // Return list of successfully captured photo paths
             var photoPaths = results.Where(r => r.Success && File.Exists(r.Request.SaveFullPath))
@@ -694,14 +694,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // Log if photo list is empty
             if (photoPaths.Count == 0)
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: Capture completed, but no photos were successfully obtained ({reason})");
+                    $"Capture completed, but no photos were successfully obtained ({reason})");
 
             return photoPaths;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"AttendedWeighingService: Error occurred while capturing all cameras ({reason})");
-            _logger?.LogWarning($"AttendedWeighingService: Capture exception, returning empty photo list ({reason})");
+            _logger?.LogError(ex, $"Error occurred while capturing all cameras ({reason})");
+            _logger?.LogWarning($"Capture exception, returning empty photo list ({reason})");
             return new List<string>();
         }
     }
@@ -724,7 +724,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             await uow.CompleteAsync();
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}, DeliveryType: {_deliveryTypeSubject.Value}");
+                $"Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}, DeliveryType: {_deliveryTypeSubject.Value}");
 
             // 保存最近创建的称重记录ID，用于后续重写车牌号（通过 Subject 传递）
             _lastCreatedWeighingRecordIdSubject.OnNext(weighingRecord.Id);
@@ -739,12 +739,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 await SaveCapturePhotosAsync(weighingRecord.Id, photoPaths);
             else
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
+                    $"Weighing record {weighingRecord.Id} has no associated photos");
             
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while creating weighing record");
+            _logger?.LogError(ex, "Error occurred while creating weighing record");
         }
     }
 
@@ -764,7 +764,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     if (!File.Exists(photoPath))
                     {
-                        _logger?.LogWarning($"AttendedWeighingService: Photo file does not exist: {photoPath}");
+                        _logger?.LogWarning($"Photo file does not exist: {photoPath}");
                         continue;
                     }
 
@@ -778,16 +778,16 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, $"AttendedWeighingService: Failed to save photo: {photoPath}");
+                    _logger?.LogWarning(ex, $"Failed to save photo: {photoPath}");
                 }
 
             await uow.CompleteAsync();
             _logger?.LogInformation(
-                $"AttendedWeighingService: Saved {photoPaths.Count} photos to weighing record {weighingRecordId}");
+                $"Saved {photoPaths.Count} photos to weighing record {weighingRecordId}");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while saving captured photos");
+            _logger?.LogError(ex, "Error occurred while saving captured photos");
         }
     }
 
@@ -811,14 +811,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             if (recordId == null)
             {
-                _logger?.LogDebug("AttendedWeighingService: No recent weighing record to rewrite plate number");
+                _logger?.LogDebug("No recent weighing record to rewrite plate number");
                 return;
             }
 
             var plateNumber = GetMostFrequentPlateNumber();
             if (string.IsNullOrWhiteSpace(plateNumber))
             {
-                _logger?.LogDebug("AttendedWeighingService: No plate number to rewrite");
+                _logger?.LogDebug("No plate number to rewrite");
                 return;
             }
 
@@ -833,7 +833,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 await uow.CompleteAsync();
 
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
+                    $"Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
 
                 await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
 
@@ -842,20 +842,20 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 MessageBus.Current.SendMessage(updateMessage);
 
                 _logger?.LogInformation(
-                    "AttendedWeighingService: Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                    " Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
                     weighingRecord.Id, plateNumber);
             }
             else
             {
                 await uow.CompleteAsync();
                 _logger?.LogDebug(
-                    $"AttendedWeighingService: Plate number unchanged for weighing record {recordId.Value}");
+                    $"Plate number unchanged for weighing record {recordId.Value}");
                 await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while rewriting plate number");
+            _logger?.LogError(ex, "Error occurred while rewriting plate number");
         }
     }
 
@@ -865,7 +865,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private void ClearPlateNumberCache()
     {
         _plateNumberCache.Clear();
-        _logger?.LogDebug("AttendedWeighingService: Cleared plate number cache");
+        _logger?.LogDebug("Cleared plate number cache");
 
         // Notify observers that plate number is cleared
         _plateNumberSubject.OnNext(null);
