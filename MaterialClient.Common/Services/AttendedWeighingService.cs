@@ -565,6 +565,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     // 上磅：OffScale -> WaitingForStability
                     AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
                         => AttendedWeighingStatus.WaitingForStability,
+                    
+                    AttendedWeighingStatus.WaitingForStability when weight > _minWeightThreshold
+                        => AttendedWeighingStatus.WaitingForStability,
                     // 异常下磅1：WaitingForStability -> OffScale (未稳定就下磅)
                     AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
                         => AttendedWeighingStatus.OffScale,
@@ -580,19 +583,28 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             .DistinctUntilChanged();
 
         // 稳定性触发的状态转换（完全在流中处理，避免竞态条件）
+        // 使用 DistinctUntilChanged 确保 recordId 变化能触发状态转换
+        var recordIdStream = _lastCreatedWeighingRecordIdSubject
+            .DistinctUntilChanged(); // 只在 recordId 变化时发出
+        
         return baseStatusStream
             .CombineLatest(
                 weightStream,
                 stabilityStream,
-                _lastCreatedWeighingRecordIdSubject,
+                recordIdStream,
                 (status, weight, stability, recordId) =>
                 {
+                    _logger?.LogInformation(
+                        $"Status stream evaluation: status={status}, weight={weight:F3}t, recordId={recordId}, stability.IsStable={stability.IsStable}");
+                    
                     // 优先处理：如果已经在 WeightStabilized 且已创建记录，应该转换为 WaitingForDeparture
                     // 这个检查应该在所有其他检查之前，确保不会错误地回到 WaitingForStability
                     if (status == AttendedWeighingStatus.WeightStabilized &&
                         weight > _minWeightThreshold &&
                         recordId != null)
                     {
+                        _logger?.LogInformation(
+                            $"Converting WeightStabilized -> WaitingForDeparture: recordId={recordId}, weight={weight:F3}t");
                         return AttendedWeighingStatus.WaitingForDeparture;
                     }
                     
