@@ -148,8 +148,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // Weight stability stream (shared, refcounted) - for internal use and testing
     private IObservable<bool>? _weightStabilityStream;
 
-    // Last created weighing record ID stream
-    private readonly Subject<long> _lastCreatedWeighingRecordIdSubject = new();
+    // Last created weighing record ID stream (also used as flag: null = not weighed, >0 = weighed)
+    private readonly BehaviorSubject<long?> _lastCreatedWeighingRecordIdSubject = new(null);
 
     // 订阅管理
     private IDisposable? _weightSubscription;
@@ -641,7 +641,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 处理稳定性触发的操作（基于稳定性检查）
         // 注意：这里检查的是 _statusSubject.Value 而不是 newStatus，因为状态转换流可能还没有更新
         var currentStatus = _statusSubject.Value;
-        if (currentStatus == AttendedWeighingStatus.WaitingForStability && stability.IsStable)
+        if (currentStatus == AttendedWeighingStatus.WaitingForStability && 
+            stability.IsStable && 
+            _lastCreatedWeighingRecordIdSubject.Value == null) // 检查是否已经称重过（null表示未称重）
         {
             // Weight stabilized - use stable weight (average) if available
             var weightToUse = stability.StableWeight ?? weight;
@@ -678,6 +680,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger?.LogWarning(
                     $"Unstable weighing flow, weight returned to {weight}t, triggered capture");
 
+                // Clear weighing record ID flag (reset for new cycle)
+                _lastCreatedWeighingRecordIdSubject.OnNext(null);
+
                 // Capture all cameras and log (no need to save photos)
                 EnqueueAsyncOperation(async () =>
                 {
@@ -702,6 +707,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // WeightStabilized -> OffScale: normal flow
                 _logger?.LogInformation(
                     $"Normal flow completed, entered OffScale state, weight: {weight}t");
+
+                // Clear weighing record ID flag (reset for new cycle)
+                _lastCreatedWeighingRecordIdSubject.OnNext(null);
 
                 // Try to rewrite plate number, then clear cache
                 EnqueueAsyncOperation(async () =>
@@ -899,15 +907,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     private async Task TryReWritePlateNumberAsync()
     {
-        long? recordId = null;
-        
-        // Get latest record ID from stream (take one and dispose immediately)
-        using (var subscription = _lastCreatedWeighingRecordIdSubject
-            .Take(1)
-            .Subscribe(id => recordId = id))
-        {
-            // Value captured in subscription
-        }
+        // Get latest record ID directly from BehaviorSubject
+        var recordId = _lastCreatedWeighingRecordIdSubject.Value;
 
         try
         {
