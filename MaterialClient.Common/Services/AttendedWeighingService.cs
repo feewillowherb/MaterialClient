@@ -176,9 +176,15 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 重置状态
         _statusSubject.OnNext(AttendedWeighingStatus.OffScale);
         _plateNumberCache.Clear();
+        
+        // 共享源流，避免多次订阅
+        var sharedWeightSource = _truckScaleWeightService.WeightUpdates
+            .Publish()
+            .RefCount();
+        
 
         // 1. 重量流（更频繁，用于状态转换）
-        var weightStream = _truckScaleWeightService.WeightUpdates
+        var weightStream = sharedWeightSource
             .Buffer(TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs)) // 200ms
             .Where(buffer => buffer.Count > 0)
             .Select(buffer => buffer.Last())
@@ -186,7 +192,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             .StartWith(0m);
 
         // 2. 稳定性流（较慢，用于稳定性检查）
-        var stabilityStream = _truckScaleWeightService.WeightUpdates
+        var stabilityStream = sharedWeightSource
             .Buffer(TimeSpan.FromMilliseconds(_stabilityWindowMs),
                 TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs))
             .Select(buffer =>
