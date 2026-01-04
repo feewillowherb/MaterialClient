@@ -556,38 +556,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         IObservable<decimal> weightStream,
         IObservable<WeightStabilityInfo> stabilityStream)
     {
-        // 基础状态转换（基于重量）
-        var baseStatusStream = weightStream
-            .Scan(_statusSubject.Value, (currentStatus, weight) =>
-            {
-                return currentStatus switch
-                {
-                    // 上磅：OffScale -> WaitingForStability
-                    AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
-                        => AttendedWeighingStatus.WaitingForStability,
-                    
-                    AttendedWeighingStatus.WaitingForStability when weight > _minWeightThreshold
-                        => AttendedWeighingStatus.WaitingForStability,
-                    // 异常下磅1：WaitingForStability -> OffScale (未稳定就下磅)
-                    AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
-                        => AttendedWeighingStatus.OffScale,
-                    // 异常下磅2：WeightStabilized -> OffScale (稳定后突然下磅，跳过WaitingForDeparture)
-                    AttendedWeighingStatus.WeightStabilized when weight < _minWeightThreshold
-                        => AttendedWeighingStatus.OffScale,
-                    // 正常下磅：WaitingForDeparture -> OffScale
-                    AttendedWeighingStatus.WaitingForDeparture when weight < _minWeightThreshold
-                        => AttendedWeighingStatus.OffScale,
-                    _ => currentStatus // No state change
-                };
-            })
-            .DistinctUntilChanged();
-
         // 稳定性触发的状态转换（完全在流中处理，避免竞态条件）
+        // 使用 _statusSubject 作为状态源，而不是 baseStatusStream，避免状态不同步问题
         // 使用 DistinctUntilChanged 确保 recordId 变化能触发状态转换
         var recordIdStream = _lastCreatedWeighingRecordIdSubject
             .DistinctUntilChanged(); // 只在 recordId 变化时发出
         
-        return baseStatusStream
+        return _statusSubject
             .CombineLatest(
                 weightStream,
                 stabilityStream,
@@ -597,41 +572,60 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     _logger?.LogInformation(
                         $"Status stream evaluation: status={status}, weight={weight:F3}t, recordId={recordId}, stability.IsStable={stability.IsStable}");
                     
-                    // 优先处理：如果已经在 WeightStabilized 且已创建记录，应该转换为 WaitingForDeparture
-                    // 这个检查应该在所有其他检查之前，确保不会错误地回到 WaitingForStability
-                    if (status == AttendedWeighingStatus.WeightStabilized &&
+                    // 关键修复：如果已创建记录，强制使用正确的状态
+                    if (recordId != null && weight > _minWeightThreshold)
+                    {
+                        // 如果已创建记录，应该保持在 WaitingForDeparture
+                        if (status == AttendedWeighingStatus.WeightStabilized || 
+                            status == AttendedWeighingStatus.WaitingForDeparture ||
+                            status == AttendedWeighingStatus.WaitingForStability) // 防止状态不同步
+                        {
+                            _logger?.LogInformation(
+                                $"Forcing WaitingForDeparture: recordId={recordId}, currentStatus={status}, weight={weight:F3}t");
+                            return AttendedWeighingStatus.WaitingForDeparture;
+                        }
+                    }
+                    
+                    // 基于重量的状态转换（与 baseStatusStream 的逻辑一致）
+                    var newStatus = status switch
+                    {
+                        // 上磅：OffScale -> WaitingForStability
+                        AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
+                            => AttendedWeighingStatus.WaitingForStability,
+                        // 异常下磅1：WaitingForStability -> OffScale (未稳定就下磅)
+                        AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
+                            => AttendedWeighingStatus.OffScale,
+                        // 异常下磅2：WeightStabilized -> OffScale (稳定后突然下磅，跳过WaitingForDeparture)
+                        AttendedWeighingStatus.WeightStabilized when weight < _minWeightThreshold
+                            => AttendedWeighingStatus.OffScale,
+                        // 正常下磅：WaitingForDeparture -> OffScale
+                        AttendedWeighingStatus.WaitingForDeparture when weight < _minWeightThreshold
+                            => AttendedWeighingStatus.OffScale,
+                        _ => status // No state change
+                    };
+                    
+                    // 稳定性触发的状态转换
+                    // 上磅阶段：WaitingForStability -> WeightStabilized
+                    if (newStatus == AttendedWeighingStatus.WaitingForStability &&
+                        stability.IsStable &&
+                        recordId == null) // 检查是否已经称重过（null表示未称重）
+                    {
+                        _logger?.LogInformation(
+                            $"Converting WaitingForStability -> WeightStabilized: weight={weight:F3}t, stability.IsStable={stability.IsStable}");
+                        return AttendedWeighingStatus.WeightStabilized;
+                    }
+                    
+                    // 下磅阶段：WeightStabilized -> WaitingForDeparture
+                    if (newStatus == AttendedWeighingStatus.WeightStabilized &&
                         weight > _minWeightThreshold &&
-                        recordId != null)
+                        recordId != null) // 已经创建了称重记录
                     {
                         _logger?.LogInformation(
                             $"Converting WeightStabilized -> WaitingForDeparture: recordId={recordId}, weight={weight:F3}t");
                         return AttendedWeighingStatus.WaitingForDeparture;
                     }
                     
-                    // 上磅阶段：WaitingForStability -> WeightStabilized
-                    if (status == AttendedWeighingStatus.WaitingForStability &&
-                        stability.IsStable &&
-                        recordId == null) // 检查是否已经称重过（null表示未称重）
-                    {
-                        return AttendedWeighingStatus.WeightStabilized;
-                    }
-                    
-                    // 防止 WeightStabilized 或 WaitingForDeparture 错误地回到 WaitingForStability
-                    // 如果已经在 WeightStabilized 或 WaitingForDeparture，且重量仍大于阈值，不应该回到 WaitingForStability
-                    if ((status == AttendedWeighingStatus.WeightStabilized || 
-                         status == AttendedWeighingStatus.WaitingForDeparture) &&
-                        weight > _minWeightThreshold)
-                    {
-                        // 如果已创建记录，保持在 WaitingForDeparture
-                        if (recordId != null)
-                        {
-                            return AttendedWeighingStatus.WaitingForDeparture;
-                        }
-                        // 如果还没创建记录，保持在 WeightStabilized（不应该发生，但作为保护）
-                        return status;
-                    }
-                    
-                    return status;
+                    return newStatus;
                 })
             .DistinctUntilChanged();
     }
