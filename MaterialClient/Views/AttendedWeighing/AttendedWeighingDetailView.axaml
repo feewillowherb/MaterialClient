@@ -362,11 +362,10 @@
                 
                 <!-- 材料选择弹窗 -->
                 <Popup Name="MaterialSelectionPopup"
-                       PlacementTarget="{Binding #DetailViewRoot}"
-                       Placement="Bottom"
+                       Placement="Pointer"
                        IsLightDismissEnabled="True"
                        HorizontalOffset="0"
-                       VerticalOffset="2"
+                       VerticalOffset="0"
                        IsOpen="{Binding IsMaterialPopupOpen, Mode=TwoWay}">
                     <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl" 
                         DataContext="{Binding MaterialsSelectionPopupViewModel}"
