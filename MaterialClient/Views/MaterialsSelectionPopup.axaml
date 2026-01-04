@@ -8,6 +8,13 @@
              x:DataType="vm:MaterialsSelectionPopupViewModel"
              Width="400" Height="300">
     
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+    </UserControl.Styles>
+    
     <Border Background="White"
             BorderBrush="#E5E7EB"
             BorderThickness="1"
@@ -17,8 +24,8 @@
             <!-- 搜索框区域 -->
             <Border Grid.Row="0"
                     Background="White"
-                    BorderBrush="#000000"
-                    BorderThickness="0,0,0,1"
+                    BorderBrush="#E5E9F2"
+                    BorderThickness="0,0,0,5"
                     Height="50">
                 <TextBox Width="400"
                          Height="35"
@@ -56,7 +63,7 @@
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Width="*">
                             <DataGridTemplateColumn.Header>
-                                <TextBlock FontSize="10" Text="名称" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock FontSize="10" Text="名称" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -71,7 +78,7 @@
                         
                         <DataGridTemplateColumn Width="120">
                             <DataGridTemplateColumn.Header>
-                                <TextBlock FontSize="10" Text="规格型号" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock FontSize="10" Text="规格型号" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -86,7 +93,7 @@
                         
                         <DataGridTemplateColumn Width="100">
                             <DataGridTemplateColumn.Header>
-                                <TextBlock FontSize="10" Text="单位" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock FontSize="10" Text="单位" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
