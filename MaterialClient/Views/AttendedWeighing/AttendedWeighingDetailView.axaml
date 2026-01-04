@@ -100,7 +100,7 @@
         </Border>
 
         <!--第二行-->
-        <Border Grid.Row="1" BorderThickness="1" BorderBrush="#B0EBFF"
+        <Border Grid.Row="1" BorderThickness="0,4,0,0" BorderBrush="#B0EBFF"
                 Background="White" CornerRadius="4" Padding="10" Margin="0,0,0,10">
             <StackPanel Spacing="8">
                 <!-- 车牌号 -->
