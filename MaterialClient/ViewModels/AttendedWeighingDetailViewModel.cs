@@ -497,6 +497,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     {
         try
         {
+            // 验证是否选择了供应商
+            if (SelectedProvider == null)
+            {
+                await ShowMessageBoxAsync("请选择供应商");
+                return;
+            }
+
             var firstRow = MaterialItems.FirstOrDefault();
             var materialId = firstRow?.SelectedMaterial?.Id;
             var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
