@@ -707,6 +707,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             AttendedWeighingStatus.OffScale => "称重已结束",
             AttendedWeighingStatus.WaitingForStability => "等待稳定",
             AttendedWeighingStatus.WeightStabilized => "重量已稳定",
+            AttendedWeighingStatus.WaitingForDeparture => "等待下磅",
             _ => "未知状态"
         };
     }

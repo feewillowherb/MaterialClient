@@ -562,11 +562,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             {
                 return currentStatus switch
                 {
+                    // 上磅：OffScale -> WaitingForStability
                     AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
                         => AttendedWeighingStatus.WaitingForStability,
+                    // 异常下磅1：WaitingForStability -> OffScale (未稳定就下磅)
                     AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
                         => AttendedWeighingStatus.OffScale,
+                    // 异常下磅2：WeightStabilized -> OffScale (稳定后突然下磅，跳过WaitingForDeparture)
                     AttendedWeighingStatus.WeightStabilized when weight < _minWeightThreshold
+                        => AttendedWeighingStatus.OffScale,
+                    // 正常下磅：WaitingForDeparture -> OffScale
+                    AttendedWeighingStatus.WaitingForDeparture when weight < _minWeightThreshold
                         => AttendedWeighingStatus.OffScale,
                     _ => currentStatus // No state change
                 };
@@ -576,17 +582,39 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 稳定性触发的状态转换（完全在流中处理，避免竞态条件）
         return baseStatusStream
             .CombineLatest(
+                weightStream,
                 stabilityStream,
                 _lastCreatedWeighingRecordIdSubject,
-                (status, stability, recordId) =>
+                (status, weight, stability, recordId) =>
                 {
-                    // 在流中处理稳定性触发的状态转换
+                    // 上磅阶段：WaitingForStability -> WeightStabilized
                     if (status == AttendedWeighingStatus.WaitingForStability &&
                         stability.IsStable &&
                         recordId == null) // 检查是否已经称重过（null表示未称重）
                     {
                         return AttendedWeighingStatus.WeightStabilized;
                     }
+                    
+                    // 下磅阶段：WeightStabilized -> WaitingForDeparture
+                    // 当重量稳定后，如果已创建称重记录且重量仍然大于阈值，进入等待下磅状态
+                    if (status == AttendedWeighingStatus.WeightStabilized &&
+                        weight > _minWeightThreshold &&
+                        recordId != null) // 已经创建了称重记录
+                    {
+                        return AttendedWeighingStatus.WaitingForDeparture;
+                    }
+                    
+                    // 防止 WeightStabilized 或 WaitingForDeparture 错误地回到 WaitingForStability
+                    // 如果已经在 WeightStabilized 或 WaitingForDeparture，不应该回到 WaitingForStability
+                    if ((status == AttendedWeighingStatus.WeightStabilized || 
+                         status == AttendedWeighingStatus.WaitingForDeparture) &&
+                        !stability.IsStable &&
+                        weight > _minWeightThreshold)
+                    {
+                        // 保持当前状态，不回到 WaitingForStability
+                        return status;
+                    }
+                    
                     return status;
                 })
             .DistinctUntilChanged();
@@ -718,15 +746,15 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         switch (previousStatus, newStatus)
         {
             case (AttendedWeighingStatus.OffScale, AttendedWeighingStatus.WaitingForStability):
-                // OffScale -> WaitingForStability: weight increases above threshold
+                // 上磅：进入等待稳定状态
                 _logger.LogInformation(
-                    $"Entered WaitingForStability state, weight: {weight}t");
+                    $"Entered WaitingForStability state (ascending), weight: {weight}t");
                 break;
 
             case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.OffScale):
-                // Unstable weighing flow: directly from WaitingForStability to OffScale
+                // 异常流程：未稳定就下磅
                 _logger?.LogWarning(
-                    $"Unstable weighing flow, weight returned to {weight}t, triggered capture");
+                    $"Unstable weighing flow (abnormal departure), weight returned to {weight}t, triggered capture");
                 
                 // Capture all cameras and log (no need to save photos)
                 EnqueueAsyncOperation(async () =>
@@ -744,11 +772,23 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 ResetWeighingCycle();
                 break;
 
-            case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
-                // WeightStabilized -> OffScale: normal flow
+            case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.WaitingForDeparture):
+                // 正常流程：称重完成，进入等待下磅状态
                 _logger?.LogInformation(
-                    $"Normal flow completed, entered OffScale state, weight: {weight}t");
-                // Try to rewrite plate number, then clear cache
+                    $"Entered WaitingForDeparture state (descending), weight: {weight}t");
+                break;
+
+            case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
+                // 异常流程：稳定后突然下磅（跳过WaitingForDeparture）
+                _logger?.LogWarning(
+                    $"Abnormal departure from WeightStabilized, weight returned to {weight}t");
+                ResetWeighingCycle();
+                break;
+
+            case (AttendedWeighingStatus.WaitingForDeparture, AttendedWeighingStatus.OffScale):
+                // 正常流程：正常下磅完成
+                _logger?.LogInformation(
+                    $"Normal flow completed (normal departure), entered OffScale state, weight: {weight}t");
                 ResetWeighingCycle();
                 break;
         }
