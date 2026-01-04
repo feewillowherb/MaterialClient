@@ -21,7 +21,7 @@
         <!-- Top Blue Header Bar -->
         <Border Grid.Row="0"
                 Background="#4169E1"
-                Padding="16,12,0,12"
+                Padding="16,6,0,6"
                 PointerPressed="TitleBar_OnPointerPressed"
                 Cursor="Arrow">
             <Grid ColumnDefinitions="Auto,*,Auto">
@@ -35,7 +35,8 @@
                             Orientation="Horizontal"
                             Spacing="32"
                             HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Center"
+                            Margin="-500,0,0,0">
                     <Button Content="数据管理"
                             Classes="transparent-button"
                             Foreground="White"
