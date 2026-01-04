@@ -32,6 +32,9 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         if (Design.IsDesignMode) return;
         DataContext = serviceProvider?.GetService<AttendedWeighingViewModel>();
         _serviceProvider = serviceProvider;
+        
+        
+        
 
         // Set PlacementTarget for Popup
         if (CameraStatusPopup != null && CameraStatusPanel != null)
@@ -45,6 +48,14 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
 
     private async void AttendedWeighingWindow_Opened(object? sender, EventArgs e)
     {
+        // 确保 DataContext 已设置后再初始化
+        if (DataContext is AttendedWeighingViewModel viewModel)
+        {
+            // 延迟初始化，确保窗口和绑定都已建立
+            await Task.Delay(100); // 给 UI 绑定一些时间
+            await viewModel.InitializeOnFirstLoadAsync();
+        }
+        
         // 创建 WindowNotificationManager（窗口打开后才能获取 TopLevel）
         if (NotificationManager == null)
         {
@@ -83,6 +94,8 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
                 logger?.LogWarning(ex, "预热 DetailView 失败，不影响正常使用");
             }
         }, DispatcherPriority.Background);
+        
+        
     }
 
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)

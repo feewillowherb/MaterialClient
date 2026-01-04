@@ -156,7 +156,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         StartCameraStatusCheckTimer();
         StartUsbCameraStatusCheckTimer();
         _ = StartAllDevicesAsync();
-        
+
         // Initialize state from service
         if (_attendedWeighingService != null)
         {
@@ -164,7 +164,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             MostFrequentPlateNumber = _attendedWeighingService.GetMostFrequentPlateNumber();
             IsReceiving = _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving;
         }
-        
+
         // Start MessageBus subscriptions
         StartStatusChangedMessageBusSubscription();
         StartPlateNumberChangedMessageBusSubscription();
@@ -202,7 +202,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     页面首次加载时的初始化逻辑
     /// </summary>
-    private async Task InitializeOnFirstLoadAsync()
+    public async Task InitializeOnFirstLoadAsync()
     {
         await RefreshAsync();
         BackToMain();
