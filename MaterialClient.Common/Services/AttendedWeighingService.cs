@@ -679,10 +679,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // Unstable weighing flow: directly from WaitingForStability to OffScale
                 _logger?.LogWarning(
                     $"Unstable weighing flow, weight returned to {weight}t, triggered capture");
-
-                // Clear weighing record ID flag (reset for new cycle)
-                _lastCreatedWeighingRecordIdSubject.OnNext(null);
-
+                
                 // Capture all cameras and log (no need to save photos)
                 EnqueueAsyncOperation(async () =>
                 {
@@ -700,6 +697,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     await TryReWritePlateNumberAsync();
                     ClearPlateNumberCache();
+                    // Clear weighing record ID flag (reset for new cycle)
+                    _lastCreatedWeighingRecordIdSubject.OnNext(null);
                 });
                 break;
 
@@ -707,15 +706,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // WeightStabilized -> OffScale: normal flow
                 _logger?.LogInformation(
                     $"Normal flow completed, entered OffScale state, weight: {weight}t");
-
-                // Clear weighing record ID flag (reset for new cycle)
-                _lastCreatedWeighingRecordIdSubject.OnNext(null);
-
                 // Try to rewrite plate number, then clear cache
                 EnqueueAsyncOperation(async () =>
                 {
                     await TryReWritePlateNumberAsync();
                     ClearPlateNumberCache();
+                    // Clear weighing record ID flag (reset for new cycle)
+                    _lastCreatedWeighingRecordIdSubject.OnNext(null);
                 });
                 break;
         }
