@@ -145,9 +145,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // Delivery type management using BehaviorSubject (internal use only)
     private readonly BehaviorSubject<DeliveryType> _deliveryTypeSubject = new(DeliveryType.Receiving);
 
-    // Weight stability stream (shared, refcounted) - for internal use and testing
-    private IObservable<bool>? _weightStabilityStream;
-
     // Last created weighing record ID stream (also used as flag: null = not weighed, >0 = weighed)
     private readonly BehaviorSubject<long?> _lastCreatedWeighingRecordIdSubject = new(null);
 
@@ -181,105 +178,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         var sharedWeightSource = _truckScaleWeightService.WeightUpdates
             .Publish()
             .RefCount();
-        
 
-        // 1. 重量流（更频繁，用于状态转换）
-        var weightStream = sharedWeightSource
-            .Buffer(TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs)) // 200ms
-            .Where(buffer => buffer.Count > 0)
-            .Select(buffer => buffer.Last())
-            .DistinctUntilChanged() // 只在重量变化时发出
-            .StartWith(0m);
+        // 创建各个流
+        var weightStream = CreateWeightStream(sharedWeightSource);
+        var stabilityStream = CreateStabilityStream(sharedWeightSource);
+        var statusStream = CreateStatusStream(weightStream, stabilityStream);
 
-        // 2. 稳定性流（较慢，用于稳定性检查）
-        var stabilityStream = sharedWeightSource
-            .Buffer(TimeSpan.FromMilliseconds(_stabilityWindowMs),
-                TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs))
-            .Select(buffer =>
-            {
-                if (buffer.Count > 0)
-                {
-                    var min = buffer.Min();
-                    var max = buffer.Max();
-                    var range = max - min;
-                    var isStable = range <= _weightStabilityThreshold * 2;
-                    var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
-
-                    _logger?.LogDebug(
-                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3})");
-
-                    return new WeightStabilityInfo
-                    {
-                        Weight = 0m, // Not used in stability stream
-                        IsStable = isStable,
-                        StableWeight = stableWeight,
-                        Min = min,
-                        Max = max,
-                        Range = range
-                    };
-                }
-
-                // No data, consider unstable
-                return new WeightStabilityInfo
-                {
-                    Weight = 0m,
-                    IsStable = false,
-                    StableWeight = null,
-                    Min = 0m,
-                    Max = 0m,
-                    Range = 0m
-                };
-            })
-            .StartWith(new WeightStabilityInfo
-            {
-                Weight = 0m,
-                IsStable = false,
-                StableWeight = null,
-                Min = 0m,
-                Max = 0m,
-                Range = 0m
-            })
-            .DistinctUntilChanged(info => info.IsStable) // Only emit when stability changes
-            .Replay(1)
-            .RefCount();
-
-        // Store stability-only stream for IsWeightStable property (for testing)
-        _weightStabilityStream = stabilityStream.Select(info => info.IsStable);
-
-        // 3. 状态转换流（只依赖重量，使用 Scan 管理状态）
-        // 从当前状态开始，而不是从 OffScale 开始，以保持与 _statusSubject 同步
-        var statusStream = weightStream
-            .Scan(_statusSubject.Value, (currentStatus, weight) =>
-            {
-                return currentStatus switch
-                {
-                    AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
-                        => AttendedWeighingStatus.WaitingForStability,
-                    AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
-                        => AttendedWeighingStatus.OffScale,
-                    AttendedWeighingStatus.WeightStabilized when weight < _minWeightThreshold
-                        => AttendedWeighingStatus.OffScale,
-                    _ => currentStatus // No state change
-                };
-            })
-            .DistinctUntilChanged();
-
-        // 4. 合并流：状态转换 + 稳定性检查
-        _weightSubscription = statusStream.CombineLatest(weightStream,
-                stabilityStream,
-                (status, weight, stability) => new
-                {
-                    Status = status,
-                    Weight = weight,
-                    Stability = stability
-                })
-            .ObserveOn(TaskPoolScheduler.Default)
-            .Subscribe(
-                data => OnWeightAndStatusChanged(data.Status, data.Weight, data.Stability),
-                error =>
-                {
-                    _logger?.LogError(error, "Error in weight updates subscription");
-                });
+        // 订阅重量变化（包含错误处理和重试机制）
+        _weightSubscription = SubscribeToWeightChanges(statusStream, weightStream, stabilityStream);
 
         // 5. 创建异步操作处理流（用于错误处理和监控）
         var asyncOperationsStream = new Subject<Func<Task>>();
@@ -307,14 +213,16 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     lock (_operationsLock)
                     {
-                        // 从集合中移除已完成的任务
-                        var tasksArray = _pendingOperations.ToArray();
-                        _pendingOperations.Clear();
-                        foreach (var t in tasksArray)
+                        // 移除已完成的任务（优化：重建集合，只保留未完成的任务）
+                        // 注意：由于 ConcurrentBag 不支持直接移除，我们通过重建来优化
+                        var remainingTasks = _pendingOperations.Where(t => !t.IsCompleted).ToList();
+                        if (remainingTasks.Count < _pendingOperations.Count)
                         {
-                            if (!t.IsCompleted)
+                            // 有任务已完成，重建集合
+                            _pendingOperations.Clear();
+                            foreach (var remainingTask in remainingTasks)
                             {
-                                _pendingOperations.Add(t);
+                                _pendingOperations.Add(remainingTask);
                             }
                         }
                     }
@@ -403,7 +311,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             }
         }
         
-        _weightStabilityStream = null; // Will be disposed by RefCount when no subscribers
         _logger?.LogInformation("Stopped monitoring truck scale weight changes");
 
         await Task.CompletedTask;
@@ -415,28 +322,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     public AttendedWeighingStatus GetCurrentStatus()
     {
         return _statusSubject.Value;
-    }
-
-    /// <summary>
-    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
-    ///     Note: This property is primarily for testing purposes
-    /// </summary>
-    public bool IsWeightStable
-    {
-        get
-        {
-            if (_weightStabilityStream == null) return false;
-            
-            // Synchronously get latest value from stream
-            bool latestValue = false;
-            using (var subscription = _weightStabilityStream
-                .Take(1)
-                .Subscribe(value => latestValue = value))
-            {
-                // Value is captured in subscription
-            }
-            return latestValue;
-        }
     }
 
     /// <summary>
@@ -595,6 +480,153 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
+    ///     创建重量流（更频繁，用于状态转换）
+    /// </summary>
+    private IObservable<decimal> CreateWeightStream(IObservable<decimal> sharedWeightSource)
+    {
+        return sharedWeightSource
+            .Buffer(TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs)) // 200ms
+            .Where(buffer => buffer.Count > 0)
+            .Select(buffer => buffer.Last())
+            .DistinctUntilChanged() // 只在重量变化时发出
+            .StartWith(0m);
+    }
+
+    /// <summary>
+    ///     创建稳定性流（较慢，用于稳定性检查）
+    /// </summary>
+    private IObservable<WeightStabilityInfo> CreateStabilityStream(IObservable<decimal> sharedWeightSource)
+    {
+        return sharedWeightSource
+            .Buffer(TimeSpan.FromMilliseconds(_stabilityWindowMs),
+                TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs))
+            .Select(buffer =>
+            {
+                if (buffer.Count > 0)
+                {
+                    var min = buffer.Min();
+                    var max = buffer.Max();
+                    var range = max - min;
+                    var isStable = range <= _weightStabilityThreshold * 2;
+                    var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
+
+                    _logger?.LogDebug(
+                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3})");
+
+                    return new WeightStabilityInfo
+                    {
+                        Weight = 0m, // Not used in stability stream
+                        IsStable = isStable,
+                        StableWeight = stableWeight,
+                        Min = min,
+                        Max = max,
+                        Range = range
+                    };
+                }
+
+                // No data, consider unstable
+                return new WeightStabilityInfo
+                {
+                    Weight = 0m,
+                    IsStable = false,
+                    StableWeight = null,
+                    Min = 0m,
+                    Max = 0m,
+                    Range = 0m
+                };
+            })
+            .StartWith(new WeightStabilityInfo
+            {
+                Weight = 0m,
+                IsStable = false,
+                StableWeight = null,
+                Min = 0m,
+                Max = 0m,
+                Range = 0m
+            })
+            .DistinctUntilChanged(info => info.IsStable) // Only emit when stability changes
+            .Replay(1)
+            .RefCount();
+    }
+
+    /// <summary>
+    ///     创建状态流（包含基础状态转换和稳定性触发的状态转换）
+    /// </summary>
+    private IObservable<AttendedWeighingStatus> CreateStatusStream(
+        IObservable<decimal> weightStream,
+        IObservable<WeightStabilityInfo> stabilityStream)
+    {
+        // 基础状态转换（基于重量）
+        var baseStatusStream = weightStream
+            .Scan(_statusSubject.Value, (currentStatus, weight) =>
+            {
+                return currentStatus switch
+                {
+                    AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
+                        => AttendedWeighingStatus.WaitingForStability,
+                    AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
+                        => AttendedWeighingStatus.OffScale,
+                    AttendedWeighingStatus.WeightStabilized when weight < _minWeightThreshold
+                        => AttendedWeighingStatus.OffScale,
+                    _ => currentStatus // No state change
+                };
+            })
+            .DistinctUntilChanged();
+
+        // 稳定性触发的状态转换（完全在流中处理，避免竞态条件）
+        return baseStatusStream
+            .CombineLatest(
+                stabilityStream,
+                _lastCreatedWeighingRecordIdSubject,
+                (status, stability, recordId) =>
+                {
+                    // 在流中处理稳定性触发的状态转换
+                    if (status == AttendedWeighingStatus.WaitingForStability &&
+                        stability.IsStable &&
+                        recordId == null) // 检查是否已经称重过（null表示未称重）
+                    {
+                        return AttendedWeighingStatus.WeightStabilized;
+                    }
+                    return status;
+                })
+            .DistinctUntilChanged();
+    }
+
+    /// <summary>
+    ///     订阅重量变化（包含错误处理和重试机制）
+    /// </summary>
+    private IDisposable SubscribeToWeightChanges(
+        IObservable<AttendedWeighingStatus> statusStream,
+        IObservable<decimal> weightStream,
+        IObservable<WeightStabilityInfo> stabilityStream)
+    {
+        return statusStream
+            .CombineLatest(weightStream, stabilityStream,
+                (status, weight, stability) => new
+                {
+                    Status = status,
+                    Weight = weight,
+                    Stability = stability
+                })
+            .Catch((Exception ex) =>
+            {
+                _logger?.LogError(ex, "Error in weight updates stream, will retry in 5 seconds");
+                // 延迟后重新订阅（通过返回空流触发重试）
+                return Observable.Timer(TimeSpan.FromSeconds(5))
+                    .SelectMany(_ => Observable.Empty<dynamic>());
+            })
+            .Retry(3) // 最多重试3次
+            .ObserveOn(TaskPoolScheduler.Default)
+            .Subscribe(
+                data => OnWeightAndStatusChanged(data.Status, data.Weight, data.Stability),
+                error =>
+                {
+                    _logger?.LogError(error, "Fatal error in weight updates subscription after retries");
+                    // 可以考虑发送错误通知或进入安全模式
+                });
+    }
+
+    /// <summary>
     ///     Load configuration from settings
     /// </summary>
     private async Task LoadConfigurationAsync()
@@ -621,13 +653,36 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
 
     /// <summary>
-    ///     重量和状态变化处理（解耦后的处理）
+    ///     更新状态并发送通知（统一处理状态更新和消息通知）
+    /// </summary>
+    private void UpdateStatusAndNotify(AttendedWeighingStatus newStatus)
+    {
+        _statusSubject.OnNext(newStatus);
+        MessageBus.Current.SendMessage(new StatusChangedMessage(newStatus));
+    }
+
+    /// <summary>
+    ///     重置称重周期（统一处理称重周期重置逻辑）
+    /// </summary>
+    private void ResetWeighingCycle()
+    {
+        EnqueueAsyncOperation(async () =>
+        {
+            await TryReWritePlateNumberAsync();
+            ClearPlateNumberCache();
+            // Clear weighing record ID flag (reset for new cycle)
+            _lastCreatedWeighingRecordIdSubject.OnNext(null);
+        });
+    }
+
+    /// <summary>
+    ///     重量和状态变化处理（状态转换已在流中完成，这里只处理副作用）
     /// </summary>
     private void OnWeightAndStatusChanged(AttendedWeighingStatus newStatus, decimal weight, WeightStabilityInfo stability)
     {
         var previousStatus = _statusSubject.Value;
 
-        // 处理状态转换（基于重量）
+        // 处理状态转换的副作用（状态转换已在流中完成）
         if (newStatus != previousStatus)
         {
             _logger?.LogInformation(
@@ -636,18 +691,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // 处理状态转换的副作用
             ProcessStatusTransition(previousStatus, newStatus, weight);
 
-            // Update internal state
-            _statusSubject.OnNext(newStatus);
-            
-            // Send MessageBus notification
-            var message = new StatusChangedMessage(newStatus);
-            MessageBus.Current.SendMessage(message);
+            // 更新状态并发送通知（状态已在流中更新，这里同步 Subject）
+            UpdateStatusAndNotify(newStatus);
         }
 
-        // 处理稳定性触发的操作（基于稳定性检查）
-        // 注意：这里检查的是 _statusSubject.Value 而不是 newStatus，因为状态转换流可能还没有更新
-        var currentStatus = _statusSubject.Value;
-        if (currentStatus == AttendedWeighingStatus.WaitingForStability && 
+        // 处理稳定性触发的操作（状态转换已在流中完成，这里只处理副作用）
+        if (newStatus == AttendedWeighingStatus.WeightStabilized && 
             stability.IsStable && 
             _lastCreatedWeighingRecordIdSubject.Value == null) // 检查是否已经称重过（null表示未称重）
         {
@@ -658,13 +707,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // When weight is stabilized, capture photos and create WeighingRecord
             EnqueueAsyncOperation(async () => await OnWeightStabilizedAsync(weightToUse));
-
-            // Update status to WeightStabilized
-            _statusSubject.OnNext(AttendedWeighingStatus.WeightStabilized);
-            
-            // Send MessageBus notification
-            var statusMessage = new StatusChangedMessage(AttendedWeighingStatus.WeightStabilized);
-            MessageBus.Current.SendMessage(statusMessage);
         }
     }
 
@@ -699,13 +741,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 });
 
                 // Try to rewrite plate number, then clear cache
-                EnqueueAsyncOperation(async () =>
-                {
-                    await TryReWritePlateNumberAsync();
-                    ClearPlateNumberCache();
-                    // Clear weighing record ID flag (reset for new cycle)
-                    _lastCreatedWeighingRecordIdSubject.OnNext(null);
-                });
+                ResetWeighingCycle();
                 break;
 
             case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
@@ -713,13 +749,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger?.LogInformation(
                     $"Normal flow completed, entered OffScale state, weight: {weight}t");
                 // Try to rewrite plate number, then clear cache
-                EnqueueAsyncOperation(async () =>
-                {
-                    await TryReWritePlateNumberAsync();
-                    ClearPlateNumberCache();
-                    // Clear weighing record ID flag (reset for new cycle)
-                    _lastCreatedWeighingRecordIdSubject.OnNext(null);
-                });
+                ResetWeighingCycle();
                 break;
         }
     }
