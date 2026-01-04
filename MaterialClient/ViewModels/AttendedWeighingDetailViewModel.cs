@@ -121,10 +121,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         // 直接创建材料选择弹窗 ViewModel 实例，而不是通过 IOC 容器获取
         // 这样可以确保使用的是同一个实例，避免数据传递问题
         MaterialsSelectionPopupViewModel = new MaterialsSelectionPopupViewModel(_serviceProvider);
-
-        Logger?.LogDebug("初始化材料选择弹窗 ViewModel，实例 HashCode: {HashCode}", 
-            MaterialsSelectionPopupViewModel.GetHashCode());
-
+        
         // 订阅材料选择事件（使用 Where 过滤 null，确保只有选择时才触发）
         // 保存订阅以防止被垃圾回收
         _materialSelectionSubscription = MaterialsSelectionPopupViewModel.WhenAnyValue(x => x.SelectedMaterial)
@@ -133,18 +130,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             {
                 if (material != null)
                 {
-                    Logger?.LogInformation("材料选择弹窗：用户选择了材料 {MaterialName} (Id: {MaterialId})", 
-                        material.Name, material.Id);
-                    
                     // 使用 Post 延迟执行，确保在下一个消息循环执行，避免在属性变化通知中间执行
                     Dispatcher.UIThread.Post(() =>
                     {
                         try
                         {
-                            Logger?.LogDebug("准备执行材料选择命令，CurrentMaterialRow: {HasRow}", 
-                                CurrentMaterialRow != null);
                             SelectMaterialCommand.Execute(material);
-                            Logger?.LogInformation("材料选择命令已执行");
                         }
                         catch (Exception ex)
                         {
@@ -160,8 +151,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             {
                 if (isOpen && MaterialsSelectionPopupViewModel != null)
                 {
-                    Logger?.LogDebug("材料选择弹窗已打开，清空之前的选择并刷新数据");
-                    Logger?.LogDebug("弹窗 ViewModel HashCode: {HashCode}", MaterialsSelectionPopupViewModel.GetHashCode());
                     // 清空之前的选择，确保每次打开弹窗时都是干净的状态
                     MaterialsSelectionPopupViewModel.SelectedMaterial = null;
                     _ = MaterialsSelectionPopupViewModel.RefreshAsync();
@@ -753,6 +742,12 @@ public partial class MaterialItemRow : ReactiveObject
                 SelectedMaterialUnit = null;
                 MaterialUnits.Clear();
                 foreach (var unit in units) MaterialUnits.Add(unit);
+                
+                // 如果单位列表不为空且当前没有选中的单位，自动选择第一个
+                if (MaterialUnits.Count > 0 && SelectedMaterialUnit == null)
+                {
+                    SelectedMaterialUnit = MaterialUnits[0];
+                }
             }
             catch (Exception)
             {
