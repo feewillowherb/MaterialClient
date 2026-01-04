@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="MaterialClient.App"
              xmlns:local="using:MaterialClient"
+             xmlns:converters="using:MaterialClient.Converters"
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              RequestedThemeVariant="Light">
@@ -19,6 +20,15 @@
         <!-- 全局颜色资源 -->
         <Style>
             <Style.Resources>
+                <!-- Converters -->
+                <converters:EqualityToColorConverter x:Key="EqualityToColorConverter" />
+                <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter" />
+                <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+                <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
+                <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
+                <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
+                
+                <!-- Color Brushes -->
                 <SolidColorBrush x:Key="PrimaryBlue">#4169E1</SolidColorBrush>
                 <SolidColorBrush x:Key="LightBlue">#4C82FC</SolidColorBrush>
                 <SolidColorBrush x:Key="SecondaryGray">#E5E7EB</SolidColorBrush>

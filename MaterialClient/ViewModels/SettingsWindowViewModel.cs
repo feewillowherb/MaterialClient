@@ -12,13 +12,14 @@ using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
 ///     Settings window ViewModel
 /// </summary>
-public partial class SettingsWindowViewModel : ViewModelBase
+public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependency
 {
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;

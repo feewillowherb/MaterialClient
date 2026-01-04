@@ -50,12 +50,12 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
 
-            if (workerContext.CancellationToken.IsCancellationRequested) return;
-            await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-
-            if (workerContext.CancellationToken.IsCancellationRequested) return;
-            await WithUow(UploadWaybillAttachmentsAsync, workerContext.ServiceProvider,
-                workerContext.CancellationToken);
+            // if (workerContext.CancellationToken.IsCancellationRequested) return;
+            // await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+            //
+            // if (workerContext.CancellationToken.IsCancellationRequested) return;
+            // await WithUow(UploadWaybillAttachmentsAsync, workerContext.ServiceProvider,
+            //     workerContext.CancellationToken);
         }
         catch (OperationCanceledException)
         {

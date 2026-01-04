@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -23,6 +24,7 @@ using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
@@ -30,31 +32,27 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 ///     称重记录详情窗口 ViewModel
 /// </summary>
-public partial class AttendedWeighingDetailViewModel : ViewModelBase
+public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransientDependency
 {
-    private readonly WeighingListItemDto _listItem;
+    private WeighingListItemDto _listItem;
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
-    private readonly AttendedWeighingViewModel? _parentViewModel;
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IServiceProvider _serviceProvider;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
 
     public AttendedWeighingDetailViewModel(
-        WeighingListItemDto listItem,
-        IServiceProvider serviceProvider,
-        AttendedWeighingViewModel? parentViewModel = null)
+        IServiceProvider serviceProvider)
         : base(serviceProvider.GetService<ILogger<AttendedWeighingDetailViewModel>>())
     {
-        _listItem = listItem;
         _serviceProvider = serviceProvider;
-        _parentViewModel = parentViewModel;
         _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
         _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
         _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
         _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
 
-        InitializeData();
+        // 初始化材料选择弹窗 ViewModel
+        InitializeMaterialsSelectionPopup();
 
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -106,12 +104,52 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
 
     [Reactive] private ObservableCollection<MaterialItemRow> _materialItems = new();
 
+    [Reactive] private bool _isMaterialPopupOpen;
+
+    [Reactive] private MaterialItemRow? _currentMaterialRow;
+
+    [Reactive] private MaterialsSelectionPopupViewModel? _materialsSelectionPopupViewModel;
+
     #endregion
 
     #region 初始化
 
-    private void InitializeData()
+    private void InitializeMaterialsSelectionPopup()
     {
+        // 创建材料选择弹窗 ViewModel
+        MaterialsSelectionPopupViewModel = _serviceProvider.GetRequiredService<MaterialsSelectionPopupViewModel>();
+
+        // 订阅材料选择事件（使用 Where 过滤 null，确保只有选择时才触发）
+        MaterialsSelectionPopupViewModel.WhenAnyValue(x => x.SelectedMaterial)
+            .Where(material => material != null)
+            .Subscribe(material =>
+            {
+                if (material != null)
+                {
+                    // 使用 Post 延迟执行，确保在下一个消息循环执行，避免在属性变化通知中间执行
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        SelectMaterialCommand.Execute(material);
+                    });
+                }
+            });
+
+        // 当弹窗打开时刷新数据并清空选择
+        this.WhenAnyValue(x => x.IsMaterialPopupOpen)
+            .Subscribe(isOpen =>
+            {
+                if (isOpen && MaterialsSelectionPopupViewModel != null)
+                {
+                    // 清空之前的选择，确保每次打开弹窗时都是干净的状态
+                    MaterialsSelectionPopupViewModel.SelectedMaterial = null;
+                    _ = MaterialsSelectionPopupViewModel.RefreshAsync();
+                }
+            });
+    }
+
+    public void InitializeData(WeighingListItemDto listItem)
+    {
+        _listItem = listItem;
         WeighingRecordId = _listItem.Id;
         AllWeight = _listItem.Weight ?? 0;
         TruckWeight = _listItem.TruckWeight ?? 0;
@@ -215,7 +253,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             // 如果加载失败，保持当前状态
         }
     }
-    
+
 
     private async Task LoadProvidersAsync()
     {
@@ -260,8 +298,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         var result = new ObservableCollection<MaterialUnitDto>();
         try
         {
-            var units = await _materialUnitRepository.GetListAsync(
-                u => u.MaterialId == materialId
+            var units = await _materialUnitRepository.GetListAsync(u => u.MaterialId == materialId
             );
             foreach (var unit in units.OrderBy(u => u.UnitName))
                 result.Add(new MaterialUnitDto
@@ -298,8 +335,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 await ShowMessageBoxAsync("车牌号不符合规范请修改");
                 return;
             }
-            
-            
+
+
             var firstRow = MaterialItems.FirstOrDefault();
             var materialId = firstRow?.SelectedMaterial?.Id;
             var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
@@ -319,10 +356,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 Remark
             ));
 
+            var parentViewModel = _serviceProvider.GetRequiredService<AttendedWeighingViewModel>();
+
             // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
-            if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
+            if (parentViewModel != null && !string.IsNullOrEmpty(parentViewModel.CapturedBillPhotoPath))
             {
-                var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
+                var billPhotoPath = parentViewModel.CapturedBillPhotoPath;
 
                 // 检查文件是否存在
                 if (File.Exists(billPhotoPath))
@@ -331,7 +370,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
 
                     // 清空临时文件路径
-                    _parentViewModel.ClearCapturedBillPhotoPath();
+                    parentViewModel.ClearCapturedBillPhotoPath();
                 }
             }
 
@@ -394,14 +433,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
         await Dispatcher.UIThread.InvokeAsync(async () =>
         {
             var parentWin = GetParentWindow();
-            
+
             // 使用 MessageBoxManager.GetMessageBoxStandard
             var messageBox = MessageBoxManager.GetMessageBoxStandard(
                 "提示",
                 message,
                 ButtonEnum.Ok,
                 Icon.None);
-            
+
             if (parentWin != null)
             {
                 await messageBox.ShowWindowDialogAsync(parentWin);
@@ -410,7 +449,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
             {
                 await messageBox.ShowAsync();
             }
-            
+
             // 原来的 NotificationManager 方式（已注释）
             // if (parentWin is AttendedWeighingWindow attendedWindow
             //     && attendedWindow.NotificationManager != null)
@@ -465,10 +504,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                 Remark
             ));
 
+            var parentViewModel = _serviceProvider.GetRequiredService<AttendedWeighingViewModel>();
+            
             // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
-            if (_parentViewModel != null && !string.IsNullOrEmpty(_parentViewModel.CapturedBillPhotoPath))
+            if (parentViewModel != null && !string.IsNullOrEmpty(parentViewModel.CapturedBillPhotoPath))
             {
-                var billPhotoPath = _parentViewModel.CapturedBillPhotoPath;
+                var billPhotoPath = parentViewModel.CapturedBillPhotoPath;
 
                 // 检查文件是否存在
                 if (File.Exists(billPhotoPath))
@@ -477,7 +518,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
                     await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
 
                     // 清空临时文件路径
-                    _parentViewModel.ClearCapturedBillPhotoPath();
+                    parentViewModel.ClearCapturedBillPhotoPath();
                 }
             }
 
@@ -523,6 +564,34 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase
     private void Close()
     {
         CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [ReactiveCommand]
+    private Task OpenMaterialSelectionAsync(MaterialItemRow? row)
+    {
+        if (row == null) return Task.CompletedTask;
+
+        CurrentMaterialRow = row;
+        IsMaterialPopupOpen = true;
+        return Task.CompletedTask;
+    }
+
+    [ReactiveCommand]
+    private Task SelectMaterialAsync(Material? material)
+    {
+        if (material == null || CurrentMaterialRow == null) return Task.CompletedTask;
+
+        CurrentMaterialRow.SelectedMaterial = material;
+        IsMaterialPopupOpen = false;
+        CurrentMaterialRow = null;
+        
+        // 清空弹窗的 SelectedMaterial，以便下次选择时能再次触发事件
+        if (MaterialsSelectionPopupViewModel != null)
+        {
+            MaterialsSelectionPopupViewModel.SelectedMaterial = null;
+        }
+        
+        return Task.CompletedTask;
     }
 
     #endregion

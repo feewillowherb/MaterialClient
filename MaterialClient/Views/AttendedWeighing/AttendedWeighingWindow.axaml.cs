@@ -12,20 +12,25 @@ using MaterialClient.Backgrounds;
 using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views.AttendedWeighing;
 
-public partial class AttendedWeighingWindow : Window
+public partial class AttendedWeighingWindow : Window, ITransientDependency
 {
     private readonly IServiceProvider? _serviceProvider;
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
-    private AttendedWeighingDetailView? _warmupDetailView;
 
-    public AttendedWeighingWindow(AttendedWeighingViewModel viewModel, IServiceProvider? serviceProvider = null)
+    public AttendedWeighingWindow() : this(null)
+    {
+    }
+
+    public AttendedWeighingWindow(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        DataContext = viewModel;
+        if (Design.IsDesignMode) return;
+        DataContext = serviceProvider?.GetService<AttendedWeighingViewModel>();
         _serviceProvider = serviceProvider;
 
         // Set PlacementTarget for Popup
@@ -70,8 +75,7 @@ public partial class AttendedWeighingWindow : Window
             try
             {
                 // 创建一个临时的 DetailView 实例来预热控件模板
-                _warmupDetailView = new AttendedWeighingDetailView();
-                // 不需要设置 DataContext，只是为了触发控件和样式的初始化
+                //TODO
             }
             catch (Exception ex)
             {
@@ -164,13 +168,14 @@ public partial class AttendedWeighingWindow : Window
         // ABP 框架会在应用退出时自动停止所有 BackgroundWorker
 
         if (DataContext is IDisposable disposable) disposable.Dispose();
-        
+
         var lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
         if (lifetime != null)
         {
             // 只有当不是 MainWindow 时才手动触发退出
             lifetime.Shutdown();
         }
+
         // 如果是 MainWindow，Avalonia 会自动触发 desktop.Exit，不需要手动处理
         base.OnClosed(e);
     }

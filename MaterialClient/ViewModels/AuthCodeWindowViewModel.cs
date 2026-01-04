@@ -3,13 +3,14 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
 ///     授权码输入窗口 ViewModel
 /// </summary>
-public partial class AuthCodeWindowViewModel : ReactiveViewModelBase
+public partial class AuthCodeWindowViewModel : ReactiveViewModelBase, ITransientDependency
 {
     private readonly ILicenseService _licenseService;
 

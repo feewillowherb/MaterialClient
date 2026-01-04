@@ -34,39 +34,50 @@ public record PlateNumberCacheRecord
 }
 
 /// <summary>
+///     重量稳定性信息
+/// </summary>
+internal record WeightStabilityInfo
+{
+    /// <summary>
+    ///     当前重量（窗口内最新值）
+    /// </summary>
+    public decimal Weight { get; init; }
+
+    /// <summary>
+    ///     是否稳定
+    /// </summary>
+    public bool IsStable { get; init; }
+
+    /// <summary>
+    ///     稳定值（稳定时为平均值，否则为null）
+    /// </summary>
+    public decimal? StableWeight { get; init; }
+
+    /// <summary>
+    ///     最小值
+    /// </summary>
+    public decimal Min { get; init; }
+
+    /// <summary>
+    ///     最大值
+    /// </summary>
+    public decimal Max { get; init; }
+
+    /// <summary>
+    ///     范围
+    /// </summary>
+    public decimal Range { get; init; }
+}
+
+/// <summary>
 ///     有人值守称重服务接口
 /// </summary>
 public interface IAttendedWeighingService : IAsyncDisposable
 {
     /// <summary>
-    ///     Observable stream of status changes
-    /// </summary>
-    IObservable<AttendedWeighingStatus> StatusChanges { get; }
-
-    /// <summary>
-    ///     Observable stream of most frequent plate number changes
-    /// </summary>
-    IObservable<string?> MostFrequentPlateNumberChanges { get; }
-
-    /// <summary>
-    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
-    /// </summary>
-    bool IsWeightStable { get; }
-
-    /// <summary>
-    ///     Observable stream of new weighing record creation events
-    /// </summary>
-    IObservable<WeighingRecord> WeighingRecordCreated { get; }
-
-    /// <summary>
     ///     获取当前收发料类型
     /// </summary>
     DeliveryType CurrentDeliveryType { get; }
-
-    /// <summary>
-    ///     Observable stream of delivery type changes
-    /// </summary>
-    IObservable<DeliveryType> DeliveryTypeChanges { get; }
 
     /// <summary>
     ///     启动监听
@@ -114,8 +125,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
 
-    // Rx Subject for delivery type changes
-    private readonly Subject<DeliveryType> _deliveryTypeSubject = new();
     private readonly IHikvisionService _hikvisionService;
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<AttendedWeighingService> _logger;
@@ -123,36 +132,32 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // 车牌识别缓存
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
 
-    // Rx Subject for plate number updates
-    private readonly Subject<string?> _plateNumberSubject = new();
     private readonly ISettingsService _settingsService;
-    private readonly Lock _statusLock = new();
 
-    // Rx Subject for status updates
-    private readonly Subject<AttendedWeighingStatus> _statusSubject = new();
+    // Rx Subject for status updates - using BehaviorSubject to maintain current state (internal use only)
+    private readonly BehaviorSubject<AttendedWeighingStatus> _statusSubject = new(AttendedWeighingStatus.OffScale);
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
 
-    // Rx Subject for weighing record creation events
-    private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
 
-    // 当前收发料类型（默认为收料）
-    private DeliveryType _currentDeliveryType = DeliveryType.Receiving;
+    // Delivery type management using BehaviorSubject (internal use only)
+    private readonly BehaviorSubject<DeliveryType> _deliveryTypeSubject = new(DeliveryType.Receiving);
 
-    // Status management
-    private AttendedWeighingStatus _currentStatus = AttendedWeighingStatus.OffScale;
-    private bool _isWeightStable;
-
-    // 最近创建的称重记录ID，用于重写车牌号
-    private long? _lastCreatedWeighingRecordId;
-    private IDisposable? _stabilitySubscription;
-
-    private decimal? _stableWeight; // 进入稳定状态时的重量值
+    // Last created weighing record ID stream (also used as flag: null = not weighed, >0 = weighed)
+    private readonly BehaviorSubject<long?> _lastCreatedWeighingRecordIdSubject = new(null);
 
     // 订阅管理
     private IDisposable? _weightSubscription;
+
+    // 异步操作追踪（用于优雅关闭）
+    private readonly ConcurrentBag<Task> _pendingOperations = new();
+    private readonly object _operationsLock = new();
+
+    // 异步操作流（用于错误处理和监控）
+    private Subject<Func<Task>>? _asyncOperationsStream;
+    private IDisposable? _asyncOperationsSubscription;
 
 
     /// <summary>
@@ -163,28 +168,91 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // Load configuration from settings
         await LoadConfigurationAsync();
 
-        lock (_statusLock)
-        {
-            if (_weightSubscription != null) return; // 已经启动
+        if (_weightSubscription != null) return; // 已经启动
 
-            // 重置状态
-            _currentStatus = AttendedWeighingStatus.OffScale;
-            _stableWeight = null;
+        // 重置状态
+        _statusSubject.OnNext(AttendedWeighingStatus.OffScale);
+        _plateNumberCache.Clear();
+        
+        // 共享源流，避免多次订阅
+        var sharedWeightSource = _truckScaleWeightService.WeightUpdates
+            .Publish()
+            .RefCount();
 
-            _plateNumberCache.Clear();
-            _weightSubscription = _truckScaleWeightService.WeightUpdates
-                .Buffer(TimeSpan.FromMilliseconds(200)) // 收集200ms内的数据
-                .ObserveOn(TaskPoolScheduler.Default)
-                .Subscribe(buffer =>
+        // 创建各个流
+        var weightStream = CreateWeightStream(sharedWeightSource);
+        var stabilityStream = CreateStabilityStream(sharedWeightSource);
+        var statusStream = CreateStatusStream(weightStream, stabilityStream);
+
+        // 订阅重量变化（包含错误处理和重试机制）
+        _weightSubscription = SubscribeToWeightChanges(statusStream, weightStream, stabilityStream);
+
+        // 5. 创建异步操作处理流（用于错误处理和监控）
+        var asyncOperationsStream = new Subject<Func<Task>>();
+        
+        _asyncOperationsSubscription = asyncOperationsStream
+            .Select(operation => Observable.FromAsync(async () =>
+            {
+                var task = operation();
+                lock (_operationsLock)
                 {
-                    if (buffer.Count > 0) OnWeightChanged(buffer.Last()); // 只处理最新的
+                    _pendingOperations.Add(task);
+                }
+                
+                try
+                {
+                    await task;
+                    return (Success: true, Error: (Exception?)null);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in async operation");
+                    return (Success: false, Error: (Exception?)ex);
+                }
+                finally
+                {
+                    lock (_operationsLock)
+                    {
+                        // 移除已完成的任务（优化：重建集合，只保留未完成的任务）
+                        // 注意：由于 ConcurrentBag 不支持直接移除，我们通过重建来优化
+                        var remainingTasks = _pendingOperations.Where(t => !t.IsCompleted).ToList();
+                        if (remainingTasks.Count < _pendingOperations.Count)
+                        {
+                            // 有任务已完成，重建集合
+                            _pendingOperations.Clear();
+                            foreach (var remainingTask in remainingTasks)
+                            {
+                                _pendingOperations.Add(remainingTask);
+                            }
+                        }
+                    }
+                }
+            }))
+            .Merge(maxConcurrent: 5) // 最多5个并发操作，防止过载
+            .Catch((Exception ex) =>
+            {
+                _logger?.LogError(ex, "Critical error in async operations stream");
+                return Observable.Empty<(bool Success, Exception? Error)>();
+            })
+            .Retry(3) // 重试3次
+            .Subscribe(
+                result =>
+                {
+                    if (!result.Success)
+                    {
+                        _logger?.LogWarning("Async operation failed, may need manual intervention");
+                        // 可以在这里添加失败重试队列或通知机制
+                    }
+                },
+                error =>
+                {
+                    _logger?.LogError(error, "Fatal error in async operations stream");
                 });
 
-            // Initialize weight stability monitoring
-            InitializeWeightStabilityMonitoring();
+        // 保存异步操作流引用（用于后续添加操作）
+        _asyncOperationsStream = asyncOperationsStream;
 
-            _logger?.LogInformation("AttendedWeighingService: Started monitoring truck scale weight changes");
-        }
+        _logger?.LogInformation("Started monitoring truck scale weight changes");
 
         await Task.CompletedTask;
     }
@@ -194,15 +262,56 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     public async Task StopAsync()
     {
-        lock (_statusLock)
+        // 停止接收新的事件
+        _weightSubscription?.Dispose();
+        _weightSubscription = null;
+        
+        // 停止接收新的异步操作
+        try
         {
-            _weightSubscription?.Dispose();
-            _weightSubscription = null;
-            _stabilitySubscription?.Dispose();
-            _stabilitySubscription = null;
-            _isWeightStable = false;
-            _logger?.LogInformation("AttendedWeighingService: Stopped monitoring truck scale weight changes");
+            _asyncOperationsStream?.OnCompleted();
         }
+        catch (InvalidOperationException)
+        {
+            // Stream already completed, ignore
+        }
+        _asyncOperationsStream?.Dispose();
+        _asyncOperationsStream = null;
+        _asyncOperationsSubscription?.Dispose();
+        _asyncOperationsSubscription = null;
+        
+        // 等待所有进行中的操作完成（优雅关闭）
+        var pendingTasks = _pendingOperations.ToArray();
+        if (pendingTasks.Length > 0)
+        {
+            _logger?.LogInformation(
+                $"Waiting for {pendingTasks.Length} pending operations to complete...");
+            
+            try
+            {
+                // 设置超时，避免无限等待
+                var timeout = TimeSpan.FromMinutes(5);
+                var allTasksCompleted = Task.WhenAll(pendingTasks);
+                var timeoutTask = Task.Delay(timeout);
+                var completed = await Task.WhenAny(allTasksCompleted, timeoutTask);
+                
+                if (completed == allTasksCompleted)
+                {
+                    _logger?.LogInformation("All pending operations completed");
+                }
+                else
+                {
+                    _logger?.LogWarning(
+                        $"Timeout waiting for operations to complete. {pendingTasks.Length} operations may still be running.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error while waiting for pending operations");
+            }
+        }
+        
+        _logger?.LogInformation("Stopped monitoring truck scale weight changes");
 
         await Task.CompletedTask;
     }
@@ -212,75 +321,29 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     public AttendedWeighingStatus GetCurrentStatus()
     {
-        lock (_statusLock)
-        {
-            return _currentStatus;
-        }
+        return _statusSubject.Value;
     }
-
-    /// <summary>
-    ///     Observable stream of status changes
-    /// </summary>
-    public IObservable<AttendedWeighingStatus> StatusChanges => _statusSubject;
-
-    /// <summary>
-    ///     Observable stream of most frequent plate number changes
-    /// </summary>
-    public IObservable<string?> MostFrequentPlateNumberChanges => _plateNumberSubject;
-
-    /// <summary>
-    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
-    /// </summary>
-    public bool IsWeightStable
-    {
-        get
-        {
-            lock (_statusLock)
-            {
-                return _isWeightStable;
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Observable stream of new weighing record creation events
-    /// </summary>
-    public IObservable<WeighingRecord> WeighingRecordCreated => _weighingRecordCreatedSubject;
 
     /// <summary>
     ///     获取当前收发料类型
     /// </summary>
-    public DeliveryType CurrentDeliveryType
-    {
-        get
-        {
-            lock (_statusLock)
-            {
-                return _currentDeliveryType;
-            }
-        }
-    }
+    public DeliveryType CurrentDeliveryType => _deliveryTypeSubject.Value;
 
     /// <summary>
     ///     设置收发料类型
     /// </summary>
     public void SetDeliveryType(DeliveryType deliveryType)
     {
-        lock (_statusLock)
+        if (_deliveryTypeSubject.Value != deliveryType)
         {
-            if (_currentDeliveryType != deliveryType)
-            {
-                _currentDeliveryType = deliveryType;
-                _deliveryTypeSubject.OnNext(deliveryType);
-                _logger?.LogInformation($"AttendedWeighingService: DeliveryType changed to {deliveryType}");
-            }
+            _deliveryTypeSubject.OnNext(deliveryType);
+            _logger?.LogInformation($"DeliveryType changed to {deliveryType}");
+            
+            // Send MessageBus notification
+            var message = new DeliveryTypeChangedMessage(deliveryType);
+            MessageBus.Current.SendMessage(message);
         }
     }
-
-    /// <summary>
-    ///     Observable stream of delivery type changes
-    /// </summary>
-    public IObservable<DeliveryType> DeliveryTypeChanges => _deliveryTypeSubject;
 
     /// <summary>
     ///     接收车牌识别结果
@@ -289,24 +352,24 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
-        lock (_statusLock)
+        var currentStatus = _statusSubject.Value;
+        
+        // Cache plate number recognition results only during WaitingForStability and WeightStabilized states
+        if (currentStatus == AttendedWeighingStatus.WaitingForStability ||
+            currentStatus == AttendedWeighingStatus.WeightStabilized)
         {
-            // Cache plate number recognition results only during WaitingForStability and WeightStabilized states
-            if (_currentStatus == AttendedWeighingStatus.WaitingForStability ||
-                _currentStatus == AttendedWeighingStatus.WeightStabilized)
-            {
-                _plateNumberCache.AddOrUpdate(
-                    plateNumber,
-                    new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow },
-                    (key, oldValue) => new PlateNumberCacheRecord
-                        { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
-                _logger?.LogDebug(
-                    $"AttendedWeighingService: Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
+            _plateNumberCache.AddOrUpdate(
+                plateNumber,
+                new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow },
+                (key, oldValue) => new PlateNumberCacheRecord
+                    { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
+            _logger?.LogDebug(
+                $"Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
 
-                // Notify observers of plate number update
-                var mostFrequent = GetMostFrequentPlateNumber();
-                _plateNumberSubject.OnNext(mostFrequent);
-            }
+            // Notify observers of plate number update via MessageBus
+            var mostFrequent = GetMostFrequentPlateNumber();
+            var message = new PlateNumberChangedMessage(mostFrequent);
+            MessageBus.Current.SendMessage(message);
         }
     }
 
@@ -315,16 +378,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     public string? GetMostFrequentPlateNumber()
     {
-        lock (_statusLock)
-        {
-            if (_plateNumberCache.IsEmpty) return null;
+        if (_plateNumberCache.IsEmpty) return null;
 
-            var mostFrequent = _plateNumberCache
-                .OrderByDescending(kvp => kvp.Value.Count)
-                .FirstOrDefault();
+        var mostFrequent = _plateNumberCache
+            .OrderByDescending(kvp => kvp.Value.Count)
+            .FirstOrDefault();
 
-            return mostFrequent.Key;
-        }
+        return mostFrequent.Key;
     }
 
     /// <summary>
@@ -333,13 +393,275 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
-        _stabilitySubscription?.Dispose();
-        _statusSubject?.OnCompleted();
-        _statusSubject?.Dispose();
-        _plateNumberSubject?.OnCompleted();
-        _plateNumberSubject?.Dispose();
-        _weighingRecordCreatedSubject?.OnCompleted();
-        _weighingRecordCreatedSubject?.Dispose();
+        
+        // Safely complete and dispose internal subjects (used for state management)
+        try
+        {
+            _statusSubject?.OnCompleted();
+        }
+        catch (InvalidOperationException)
+        {
+            // Subject already in error or completed state, ignore
+        }
+        finally
+        {
+            _statusSubject?.Dispose();
+        }
+
+        try
+        {
+            _deliveryTypeSubject?.OnCompleted();
+        }
+        catch (InvalidOperationException)
+        {
+            // Subject already in error or completed state, ignore
+        }
+        finally
+        {
+            _deliveryTypeSubject?.Dispose();
+        }
+
+        try
+        {
+            _lastCreatedWeighingRecordIdSubject?.OnCompleted();
+        }
+        catch (InvalidOperationException)
+        {
+            // Subject already in error or completed state, ignore
+        }
+        finally
+        {
+            _lastCreatedWeighingRecordIdSubject?.Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     将异步操作加入处理队列（使用 Rx 流处理）
+    /// </summary>
+    private void EnqueueAsyncOperation(Func<Task> operation)
+    {
+        if (_asyncOperationsStream == null)
+        {
+            // 如果流未初始化，回退到 Task.Run（向后兼容）
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await operation();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in async operation (fallback mode)");
+                }
+            });
+            return;
+        }
+
+        try
+        {
+            _asyncOperationsStream.OnNext(operation);
+        }
+        catch (InvalidOperationException)
+        {
+            // 流已关闭，使用 Task.Run 作为后备
+            _logger?.LogWarning("Async operations stream is closed, using fallback Task.Run");
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await operation();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in async operation (fallback mode)");
+                }
+            });
+        }
+    }
+
+    /// <summary>
+    ///     创建重量流（更频繁，用于状态转换）
+    /// </summary>
+    private IObservable<decimal> CreateWeightStream(IObservable<decimal> sharedWeightSource)
+    {
+        return sharedWeightSource
+            .Buffer(TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs)) // 200ms
+            .Where(buffer => buffer.Count > 0)
+            .Select(buffer => buffer.Last())
+            .DistinctUntilChanged() // 只在重量变化时发出
+            .StartWith(0m);
+    }
+
+    /// <summary>
+    ///     创建稳定性流（较慢，用于稳定性检查）
+    /// </summary>
+    private IObservable<WeightStabilityInfo> CreateStabilityStream(IObservable<decimal> sharedWeightSource)
+    {
+        return sharedWeightSource
+            .Buffer(TimeSpan.FromMilliseconds(_stabilityWindowMs),
+                TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs))
+            .Select(buffer =>
+            {
+                if (buffer.Count > 0)
+                {
+                    var min = buffer.Min();
+                    var max = buffer.Max();
+                    var range = max - min;
+                    var isStable = range <= _weightStabilityThreshold * 2;
+                    var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
+
+                    _logger?.LogDebug(
+                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3})");
+
+                    return new WeightStabilityInfo
+                    {
+                        Weight = 0m, // Not used in stability stream
+                        IsStable = isStable,
+                        StableWeight = stableWeight,
+                        Min = min,
+                        Max = max,
+                        Range = range
+                    };
+                }
+
+                // No data, consider unstable
+                return new WeightStabilityInfo
+                {
+                    Weight = 0m,
+                    IsStable = false,
+                    StableWeight = null,
+                    Min = 0m,
+                    Max = 0m,
+                    Range = 0m
+                };
+            })
+            .StartWith(new WeightStabilityInfo
+            {
+                Weight = 0m,
+                IsStable = false,
+                StableWeight = null,
+                Min = 0m,
+                Max = 0m,
+                Range = 0m
+            })
+            .DistinctUntilChanged(info => info.IsStable) // Only emit when stability changes
+            .Replay(1)
+            .RefCount();
+    }
+
+    /// <summary>
+    ///     创建状态流（包含基础状态转换和稳定性触发的状态转换）
+    /// </summary>
+    private IObservable<AttendedWeighingStatus> CreateStatusStream(
+        IObservable<decimal> weightStream,
+        IObservable<WeightStabilityInfo> stabilityStream)
+    {
+        // 稳定性触发的状态转换（完全在流中处理，避免竞态条件）
+        // 使用 _statusSubject 作为状态源，而不是 baseStatusStream，避免状态不同步问题
+        // 使用 DistinctUntilChanged 确保 recordId 变化能触发状态转换
+        var recordIdStream = _lastCreatedWeighingRecordIdSubject
+            .DistinctUntilChanged(); // 只在 recordId 变化时发出
+        
+        return _statusSubject
+            .CombineLatest(
+                weightStream,
+                stabilityStream,
+                recordIdStream,
+                (status, weight, stability, recordId) =>
+                {
+                    _logger?.LogInformation(
+                        $"Status stream evaluation: status={status}, weight={weight:F3}t, recordId={recordId}, stability.IsStable={stability.IsStable}");
+                    
+                    // 关键修复：如果已创建记录，强制使用正确的状态
+                    if (recordId != null && weight > _minWeightThreshold)
+                    {
+                        // 如果已创建记录，应该保持在 WaitingForDeparture
+                        if (status == AttendedWeighingStatus.WeightStabilized || 
+                            status == AttendedWeighingStatus.WaitingForDeparture ||
+                            status == AttendedWeighingStatus.WaitingForStability) // 防止状态不同步
+                        {
+                            _logger?.LogInformation(
+                                $"Forcing WaitingForDeparture: recordId={recordId}, currentStatus={status}, weight={weight:F3}t");
+                            return AttendedWeighingStatus.WaitingForDeparture;
+                        }
+                    }
+                    
+                    // 基于重量的状态转换（与 baseStatusStream 的逻辑一致）
+                    var newStatus = status switch
+                    {
+                        // 上磅：OffScale -> WaitingForStability
+                        AttendedWeighingStatus.OffScale when weight > _minWeightThreshold
+                            => AttendedWeighingStatus.WaitingForStability,
+                        // 异常下磅1：WaitingForStability -> OffScale (未稳定就下磅)
+                        AttendedWeighingStatus.WaitingForStability when weight < _minWeightThreshold
+                            => AttendedWeighingStatus.OffScale,
+                        // 异常下磅2：WeightStabilized -> OffScale (稳定后突然下磅，跳过WaitingForDeparture)
+                        AttendedWeighingStatus.WeightStabilized when weight < _minWeightThreshold
+                            => AttendedWeighingStatus.OffScale,
+                        // 正常下磅：WaitingForDeparture -> OffScale
+                        AttendedWeighingStatus.WaitingForDeparture when weight < _minWeightThreshold
+                            => AttendedWeighingStatus.OffScale,
+                        _ => status // No state change
+                    };
+                    
+                    // 稳定性触发的状态转换
+                    // 上磅阶段：WaitingForStability -> WeightStabilized
+                    if (newStatus == AttendedWeighingStatus.WaitingForStability &&
+                        stability.IsStable &&
+                        recordId == null) // 检查是否已经称重过（null表示未称重）
+                    {
+                        _logger?.LogInformation(
+                            $"Converting WaitingForStability -> WeightStabilized: weight={weight:F3}t, stability.IsStable={stability.IsStable}");
+                        return AttendedWeighingStatus.WeightStabilized;
+                    }
+                    
+                    // 下磅阶段：WeightStabilized -> WaitingForDeparture
+                    if (newStatus == AttendedWeighingStatus.WeightStabilized &&
+                        weight > _minWeightThreshold &&
+                        recordId != null) // 已经创建了称重记录
+                    {
+                        _logger?.LogInformation(
+                            $"Converting WeightStabilized -> WaitingForDeparture: recordId={recordId}, weight={weight:F3}t");
+                        return AttendedWeighingStatus.WaitingForDeparture;
+                    }
+                    
+                    return newStatus;
+                })
+            .DistinctUntilChanged();
+    }
+
+    /// <summary>
+    ///     订阅重量变化（包含错误处理和重试机制）
+    /// </summary>
+    private IDisposable SubscribeToWeightChanges(
+        IObservable<AttendedWeighingStatus> statusStream,
+        IObservable<decimal> weightStream,
+        IObservable<WeightStabilityInfo> stabilityStream)
+    {
+        return statusStream
+            .CombineLatest(weightStream, stabilityStream,
+                (status, weight, stability) => new
+                {
+                    Status = status,
+                    Weight = weight,
+                    Stability = stability
+                })
+            .Catch((Exception ex) =>
+            {
+                _logger?.LogError(ex, "Error in weight updates stream, will retry in 5 seconds");
+                // 延迟后重新订阅（通过返回空流触发重试）
+                return Observable.Timer(TimeSpan.FromSeconds(5))
+                    .SelectMany(_ => Observable.Empty<dynamic>());
+            })
+            .Retry(3) // 最多重试3次
+            .ObserveOn(TaskPoolScheduler.Default)
+            .Subscribe(
+                data => OnWeightAndStatusChanged(data.Status, data.Weight, data.Stability),
+                error =>
+                {
+                    _logger?.LogError(error, "Fatal error in weight updates subscription after retries");
+                    // 可以考虑发送错误通知或进入安全模式
+                });
     }
 
     /// <summary>
@@ -358,185 +680,130 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Loaded configuration - MinWeightThreshold: {_minWeightThreshold}, WeightStabilityThreshold: {_weightStabilityThreshold}, StabilityWindowMs: {_stabilityWindowMs}, StabilityCheckIntervalMs: {_stabilityCheckIntervalMs}");
+                $"Loaded configuration - MinWeightThreshold: {_minWeightThreshold}, WeightStabilityThreshold: {_weightStabilityThreshold}, StabilityWindowMs: {_stabilityWindowMs}, StabilityCheckIntervalMs: {_stabilityCheckIntervalMs}");
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex,
-                "AttendedWeighingService: Failed to load configuration, using default values");
+                "Failed to load configuration, using default values");
+        }
+    }
+
+
+    /// <summary>
+    ///     更新状态并发送通知（统一处理状态更新和消息通知）
+    /// </summary>
+    private void UpdateStatusAndNotify(AttendedWeighingStatus newStatus)
+    {
+        _statusSubject.OnNext(newStatus);
+        MessageBus.Current.SendMessage(new StatusChangedMessage(newStatus));
+    }
+
+    /// <summary>
+    ///     重置称重周期（统一处理称重周期重置逻辑）
+    /// </summary>
+    private void ResetWeighingCycle()
+    {
+        EnqueueAsyncOperation(async () =>
+        {
+            await TryReWritePlateNumberAsync();
+            ClearPlateNumberCache();
+            // Clear weighing record ID flag (reset for new cycle)
+            _lastCreatedWeighingRecordIdSubject.OnNext(null);
+        });
+    }
+
+    /// <summary>
+    ///     重量和状态变化处理（状态转换已在流中完成，这里只处理副作用）
+    /// </summary>
+    private void OnWeightAndStatusChanged(AttendedWeighingStatus newStatus, decimal weight, WeightStabilityInfo stability)
+    {
+        var previousStatus = _statusSubject.Value;
+
+        // 处理状态转换的副作用（状态转换已在流中完成）
+        if (newStatus != previousStatus)
+        {
+            _logger?.LogInformation(
+                $"Status changed {previousStatus} -> {newStatus}, current weight: {weight}t");
+
+            // 处理状态转换的副作用
+            ProcessStatusTransition(previousStatus, newStatus, weight);
+
+            // 更新状态并发送通知（状态已在流中更新，这里同步 Subject）
+            UpdateStatusAndNotify(newStatus);
+        }
+
+        // 处理稳定性触发的操作（状态转换已在流中完成，这里只处理副作用）
+        if (newStatus == AttendedWeighingStatus.WeightStabilized && 
+            stability.IsStable && 
+            _lastCreatedWeighingRecordIdSubject.Value == null) // 检查是否已经称重过（null表示未称重）
+        {
+            // Weight stabilized - use stable weight (average) if available
+            var weightToUse = stability.StableWeight ?? weight;
+            _logger?.LogInformation(
+                $"Weight stabilized, stable weight: {weightToUse}t");
+
+            // When weight is stabilized, capture photos and create WeighingRecord
+            EnqueueAsyncOperation(async () => await OnWeightStabilizedAsync(weightToUse));
         }
     }
 
     /// <summary>
-    ///     Initialize weight stability monitoring using Rx
-    ///     Monitors weight changes within configured window, considers stable if variation is within threshold
+    ///     处理状态转换的副作用（解耦后，状态转换已在流中完成）
     /// </summary>
-    private void InitializeWeightStabilityMonitoring()
+    private void ProcessStatusTransition(AttendedWeighingStatus previousStatus, AttendedWeighingStatus newStatus, decimal weight)
     {
-        _stabilitySubscription?.Dispose();
-
-        _stabilitySubscription = _truckScaleWeightService.WeightUpdates
-            .Buffer(TimeSpan.FromMilliseconds(_stabilityWindowMs),
-                TimeSpan.FromMilliseconds(_stabilityCheckIntervalMs))
-            .ObserveOn(TaskPoolScheduler.Default)
-            .Subscribe(buffer =>
-            {
-                if (buffer.Count > 0)
-                {
-                    var min = buffer.Min();
-                    var max = buffer.Max();
-                    var range = max - min;
-
-                    // Consider stable if range is within threshold * 2
-                    var isStable = range <= _weightStabilityThreshold * 2;
-
-                    lock (_statusLock)
-                    {
-                        _isWeightStable = isStable;
-                    }
-
-                    _logger?.LogDebug(
-                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3})");
-                }
-                else
-                {
-                    // No data in buffer, consider unstable
-                    lock (_statusLock)
-                    {
-                        _isWeightStable = false;
-                    }
-                }
-            });
-    }
-
-    /// <summary>
-    ///     重量变化处理
-    /// </summary>
-    private void OnWeightChanged(decimal weight)
-    {
-        lock (_statusLock)
+        switch (previousStatus, newStatus)
         {
-            var previousStatus = _currentStatus;
-            ProcessWeightChange(weight);
+            case (AttendedWeighingStatus.OffScale, AttendedWeighingStatus.WaitingForStability):
+                // 上磅：进入等待稳定状态
+                _logger.LogInformation(
+                    $"Entered WaitingForStability state (ascending), weight: {weight}t");
+                break;
 
-            // Log status changes and notify observers
-            if (_currentStatus != previousStatus)
-            {
+            case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.OffScale):
+                // 异常流程：未稳定就下磅
+                _logger?.LogWarning(
+                    $"Unstable weighing flow (abnormal departure), weight returned to {weight}t, triggered capture");
+                
+                // Capture all cameras and log (no need to save photos)
+                EnqueueAsyncOperation(async () =>
+                {
+                    var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
+                    if (photos.Count == 0)
+                        _logger?.LogWarning(
+                            "Unstable weighing flow capture completed, but no photos were obtained");
+                    else
+                        _logger?.LogInformation(
+                            $"Unstable weighing flow captured {photos.Count} photos");
+                });
+
+                // Try to rewrite plate number, then clear cache
+                ResetWeighingCycle();
+                break;
+
+            case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.WaitingForDeparture):
+                // 正常流程：称重完成，进入等待下磅状态
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Status changed {previousStatus} -> {_currentStatus}, current weight: {weight}t");
-
-                // Notify observers of status change
-                _statusSubject.OnNext(_currentStatus);
-            }
-        }
-    }
-
-    /// <summary>
-    ///     处理重量变化
-    /// </summary>
-    private void ProcessWeightChange(decimal currentWeight)
-    {
-        switch (_currentStatus)
-        {
-            case AttendedWeighingStatus.OffScale:
-                // OffScale -> WaitingForStability: weight increases above threshold
-                if (currentWeight > _minWeightThreshold)
-                {
-                    _currentStatus = AttendedWeighingStatus.WaitingForStability;
-                    _stableWeight = null;
-
-                    _logger.LogInformation(
-                        $"AttendedWeighingService: Entered WaitingForStability state, weight: {currentWeight}t");
-                }
-
+                    $"Entered WaitingForDeparture state (descending), weight: {weight}t");
                 break;
 
-            case AttendedWeighingStatus.WaitingForStability:
-                if (currentWeight < _minWeightThreshold)
-                {
-                    // Unstable weighing flow: directly from WaitingForStability to OffScale
-                    _currentStatus = AttendedWeighingStatus.OffScale;
-                    _stableWeight = null;
-
-                    // Capture all cameras and log (no need to save photos)
-                    _ = Task.Run(async () =>
-                    {
-                        var photos = await CaptureAllCamerasAsync("UnstableWeighingFlow");
-                        if (photos.Count == 0)
-                            _logger?.LogWarning(
-                                "AttendedWeighingService: Unstable weighing flow capture completed, but no photos were obtained");
-                        else
-                            _logger?.LogInformation(
-                                $"AttendedWeighingService: Unstable weighing flow captured {photos.Count} photos");
-                    });
-
-                    // Try to rewrite plate number, then clear cache
-                    _ = Task.Run(async () =>
-                    {
-                        await TryReWritePlateNumberAsync();
-                        ClearPlateNumberCache();
-                    });
-
-                    _logger?.LogWarning(
-                        $"AttendedWeighingService: Unstable weighing flow, weight returned to {currentWeight}t, triggered capture");
-                }
-                else
-                {
-                    // Check if weight is stable
-                    CheckWeightStability(currentWeight);
-                }
-
+            case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
+                // 异常流程：稳定后突然下磅（跳过WaitingForDeparture）
+                _logger?.LogWarning(
+                    $"Abnormal departure from WeightStabilized, weight returned to {weight}t");
+                ResetWeighingCycle();
                 break;
 
-            case AttendedWeighingStatus.WeightStabilized:
-                if (currentWeight < _minWeightThreshold)
-                {
-                    // WeightStabilized -> OffScale: normal flow
-                    _currentStatus = AttendedWeighingStatus.OffScale;
-
-                    // Try to rewrite plate number, then clear cache
-                    _ = Task.Run(async () =>
-                    {
-                        await TryReWritePlateNumberAsync();
-                        ClearPlateNumberCache();
-                    });
-
-                    _logger?.LogInformation(
-                        $"AttendedWeighingService: Normal flow completed, entered OffScale state, weight: {currentWeight}t");
-                }
-
-                break;
-        }
-    }
-
-    /// <summary>
-    ///     检查重量稳定性
-    /// </summary>
-    private void CheckWeightStability(decimal currentWeight)
-    {
-        if (IsWeightStable)
-        {
-            // 进入稳定状态
-            if (_stableWeight == null)
-            {
-                _stableWeight = currentWeight;
-
-                // State transition: WaitingForStability -> WeightStabilized
-                _currentStatus = AttendedWeighingStatus.WeightStabilized;
-
+            case (AttendedWeighingStatus.WaitingForDeparture, AttendedWeighingStatus.OffScale):
+                // 正常流程：正常下磅完成
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Weight stabilized, stable weight: {_stableWeight}t");
-
-                // When weight is stabilized, capture photos and create WeighingRecord
-                _ = Task.Run(async () => await OnWeightStabilizedAsync(currentWeight));
-            }
-        }
-        else
-        {
-            // 不稳定，重置稳定状态
-            _stableWeight = null;
+                    $"Normal flow completed (normal departure), entered OffScale state, weight: {weight}t");
+                ResetWeighingCycle();
+                break;
         }
     }
+
 
     /// <summary>
     ///     重量已稳定时的处理
@@ -553,7 +820,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while processing weight stabilization");
+            _logger?.LogError(ex, "Error occurred while processing weight stabilization");
         }
     }
 
@@ -570,7 +837,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             if (cameraConfigs.Count == 0)
             {
-                _logger?.LogWarning($"AttendedWeighingService: No cameras configured, cannot capture ({reason})");
+                _logger?.LogWarning($"No cameras configured, cannot capture ({reason})");
                 return new List<string>();
             }
 
@@ -581,48 +848,22 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             foreach (var cameraConfig in cameraConfigs)
             {
-                if (string.IsNullOrWhiteSpace(cameraConfig.Ip) ||
-                    string.IsNullOrWhiteSpace(cameraConfig.Port) ||
-                    string.IsNullOrWhiteSpace(cameraConfig.Channel))
-                    continue;
-
-                if (!int.TryParse(cameraConfig.Port, out var port) ||
-                    !int.TryParse(cameraConfig.Channel, out var channel))
+                var request = BatchCaptureRequest.FromCameraConfig(cameraConfig, basePath, _logger);
+                if (request != null)
                 {
-                    _logger?.LogWarning($"AttendedWeighingService: Invalid camera configuration: {cameraConfig.Name}");
-                    continue;
+                    requests.Add(request);
                 }
-
-                var hikvisionConfig = new HikvisionDeviceConfig
-                {
-                    Ip = cameraConfig.Ip,
-                    Port = port,
-                    Username = cameraConfig.UserName,
-                    Password = cameraConfig.Password,
-                    Channels = new[] { channel }
-                };
-
-                var fileName = AttachmentPathUtils.GenerateMonitoringPhotoFileName(cameraConfig.Name, channel);
-                var savePath = Path.Combine(basePath, fileName);
-
-                requests.Add(new BatchCaptureRequest
-                {
-                    Config = hikvisionConfig,
-                    Channel = channel,
-                    SaveFullPath = savePath,
-                    DeviceKey = $"{cameraConfig.Ip}:{port}"
-                });
             }
 
             if (requests.Count == 0)
             {
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: No valid camera configurations, cannot capture ({reason})");
+                    $"No valid camera configurations, cannot capture ({reason})");
                 return new List<string>();
             }
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Starting capture for {requests.Count} cameras ({reason})");
+                $"Starting capture for {requests.Count} cameras ({reason})");
 
             var results = await _hikvisionService.CaptureJpegFromStreamBatchAsync(requests);
 
@@ -630,12 +871,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var failCount = results.Count - successCount;
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Capture completed, success: {successCount}, failed: {failCount} ({reason})");
+                $"Capture completed, success: {successCount}, failed: {failCount} ({reason})");
 
             // Log detailed failure information
             foreach (var result in results.Where(r => !r.Success))
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
+                    $"Capture failed - Device: {result.Request.DeviceKey}, Channel: {result.Request.Channel}, Error: {result.ErrorMessage}");
 
             // Return list of successfully captured photo paths
             var photoPaths = results.Where(r => r.Success && File.Exists(r.Request.SaveFullPath))
@@ -645,14 +886,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // Log if photo list is empty
             if (photoPaths.Count == 0)
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: Capture completed, but no photos were successfully obtained ({reason})");
+                    $"Capture completed, but no photos were successfully obtained ({reason})");
 
             return photoPaths;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"AttendedWeighingService: Error occurred while capturing all cameras ({reason})");
-            _logger?.LogWarning($"AttendedWeighingService: Capture exception, returning empty photo list ({reason})");
+            _logger?.LogError(ex, $"Error occurred while capturing all cameras ({reason})");
+            _logger?.LogWarning($"Capture exception, returning empty photo list ({reason})");
             return new List<string>();
         }
     }
@@ -670,21 +911,19 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // Create weighing record with current delivery type
             var weighingRecord = new WeighingRecord(weight, plateNumber);
-            weighingRecord.DeliveryType = _currentDeliveryType;
+            weighingRecord.DeliveryType = _deliveryTypeSubject.Value;
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 
             _logger?.LogInformation(
-                $"AttendedWeighingService: Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}, DeliveryType: {_currentDeliveryType}");
+                $"Created weighing record successfully, ID: {weighingRecord.Id}, Weight: {weight}t, PlateNumber: {plateNumber ?? "None"}, DeliveryType: {_deliveryTypeSubject.Value}");
 
-            // 保存最近创建的称重记录ID，用于后续重写车牌号
-            lock (_statusLock)
-            {
-                _lastCreatedWeighingRecordId = weighingRecord.Id;
-            }
+            // 保存最近创建的称重记录ID，用于后续重写车牌号（通过 Subject 传递）
+            _lastCreatedWeighingRecordIdSubject.OnNext(weighingRecord.Id);
 
-            // Notify observers that a new weighing record was created
-            _weighingRecordCreatedSubject.OnNext(weighingRecord);
+            // Notify observers that a new weighing record was created via MessageBus
+            var message = new WeighingRecordCreatedMessage(weighingRecord.Id);
+            MessageBus.Current.SendMessage(message);
 
             // Publish TryMatchEvent for automatic matching
 
@@ -693,12 +932,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 await SaveCapturePhotosAsync(weighingRecord.Id, photoPaths);
             else
                 _logger?.LogWarning(
-                    $"AttendedWeighingService: Weighing record {weighingRecord.Id} has no associated photos");
+                    $"Weighing record {weighingRecord.Id} has no associated photos");
             
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while creating weighing record");
+            _logger?.LogError(ex, "Error occurred while creating weighing record");
         }
     }
 
@@ -718,7 +957,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     if (!File.Exists(photoPath))
                     {
-                        _logger?.LogWarning($"AttendedWeighingService: Photo file does not exist: {photoPath}");
+                        _logger?.LogWarning($"Photo file does not exist: {photoPath}");
                         continue;
                     }
 
@@ -732,16 +971,16 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, $"AttendedWeighingService: Failed to save photo: {photoPath}");
+                    _logger?.LogWarning(ex, $"Failed to save photo: {photoPath}");
                 }
 
             await uow.CompleteAsync();
             _logger?.LogInformation(
-                $"AttendedWeighingService: Saved {photoPaths.Count} photos to weighing record {weighingRecordId}");
+                $"Saved {photoPaths.Count} photos to weighing record {weighingRecordId}");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while saving captured photos");
+            _logger?.LogError(ex, "Error occurred while saving captured photos");
         }
     }
 
@@ -751,25 +990,21 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     private async Task TryReWritePlateNumberAsync()
     {
-        long? recordId;
-        lock (_statusLock)
-        {
-            recordId = _lastCreatedWeighingRecordId;
-            _lastCreatedWeighingRecordId = null; // 立即清空，防止重复操作
-        }
+        // Get latest record ID directly from BehaviorSubject
+        var recordId = _lastCreatedWeighingRecordIdSubject.Value;
 
         try
         {
             if (recordId == null)
             {
-                _logger?.LogDebug("AttendedWeighingService: No recent weighing record to rewrite plate number");
+                _logger?.LogDebug("No recent weighing record to rewrite plate number");
                 return;
             }
 
             var plateNumber = GetMostFrequentPlateNumber();
             if (string.IsNullOrWhiteSpace(plateNumber))
             {
-                _logger?.LogDebug("AttendedWeighingService: No plate number to rewrite");
+                _logger?.LogDebug("No plate number to rewrite");
                 return;
             }
 
@@ -784,7 +1019,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 await uow.CompleteAsync();
 
                 _logger?.LogInformation(
-                    $"AttendedWeighingService: Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
+                    $"Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
 
                 await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
 
@@ -793,20 +1028,20 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 MessageBus.Current.SendMessage(updateMessage);
 
                 _logger?.LogInformation(
-                    "AttendedWeighingService: Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                    " Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
                     weighingRecord.Id, plateNumber);
             }
             else
             {
                 await uow.CompleteAsync();
                 _logger?.LogDebug(
-                    $"AttendedWeighingService: Plate number unchanged for weighing record {recordId.Value}");
+                    $"Plate number unchanged for weighing record {recordId.Value}");
                 await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "AttendedWeighingService: Error occurred while rewriting plate number");
+            _logger?.LogError(ex, "Error occurred while rewriting plate number");
         }
     }
 
@@ -816,9 +1051,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private void ClearPlateNumberCache()
     {
         _plateNumberCache.Clear();
-        _logger?.LogDebug("AttendedWeighingService: Cleared plate number cache");
+        _logger?.LogDebug("Cleared plate number cache");
 
-        // Notify observers that plate number is cleared
-        _plateNumberSubject.OnNext(null);
+        // Notify observers that plate number is cleared via MessageBus
+        var message = new PlateNumberChangedMessage(null);
+        MessageBus.Current.SendMessage(message);
     }
 }

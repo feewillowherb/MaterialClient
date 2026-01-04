@@ -283,7 +283,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             if (attachments.Count == 0)
             {
-                _logger?.LogInformation("SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 没有附件", waybillId);
+                _logger?.LogInformation("运单 {WaybillId} 没有附件", waybillId);
                 return;
             }
 
@@ -305,7 +305,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             if (validAttachments.Count == 0)
             {
-                _logger?.LogInformation("SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 没有需要上传的附件", waybillId);
+                _logger?.LogInformation("运单 {WaybillId} 没有需要上传的附件", waybillId);
                 return;
             }
 
@@ -326,12 +326,12 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             }
 
             _logger?.LogInformation(
-                "SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 附件同步完成，成功: {SuccessCount}/{TotalCount}",
+                " 运单 {WaybillId} 附件同步完成，成功: {SuccessCount}/{TotalCount}",
                 waybillId, uploadResults.Count, validAttachments.Count);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "SyncWaybillAttachmentsToOssAsync: 运单 {WaybillId} 附件同步失败", waybillId);
+            _logger?.LogError(ex, "运单 {WaybillId} 附件同步失败", waybillId);
             // 不抛出异常，避免影响主流程
         }
     }
@@ -380,11 +380,11 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             if (validAttachments.Count == 0)
             {
-                _logger?.LogInformation("SyncPendingAttachmentsToOssAsync: 没有需要上传的附件");
+                _logger?.LogInformation("没有需要上传的附件");
                 return;
             }
 
-            _logger?.LogInformation("SyncPendingAttachmentsToOssAsync: 找到 {Count} 个需要上传的附件", validAttachments.Count);
+            _logger?.LogInformation("找到 {Count} 个需要上传的附件", validAttachments.Count);
 
             // 按运单ID分组，便于统计
             var groupedByWaybill = validAttachments.GroupBy(x => x.WaybillId).ToList();
@@ -401,7 +401,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             var proId = licenseInfo?.ProjectId.ToString();
 
             if (string.IsNullOrWhiteSpace(proId))
-                _logger?.LogWarning("SyncPendingAttachmentsToOssAsync: 未找到许可证信息，跳过附件信息上传到服务器");
+                _logger?.LogWarning("未找到许可证信息，跳过附件信息上传到服务器");
 
             foreach (var kvp in uploadResults)
             {
@@ -427,7 +427,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                         catch (Exception ex)
                         {
                             _logger?.LogError(ex,
-                                "SyncPendingAttachmentsToOssAsync: 上传附件信息到服务器失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
+                                " 上传附件信息到服务器失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
                                 attachment.Id, attachmentWithWaybill.WaybillId);
                             // 不抛出异常，继续处理下一个附件
                         }
@@ -435,12 +435,12 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             }
 
             _logger?.LogInformation(
-                "SyncPendingAttachmentsToOssAsync: 批量同步完成，成功: {SuccessCount}/{TotalCount}, 涉及运单数: {WaybillCount}",
+                " 批量同步完成，成功: {SuccessCount}/{TotalCount}, 涉及运单数: {WaybillCount}",
                 successCount, validAttachments.Count, groupedByWaybill.Count);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "SyncPendingAttachmentsToOssAsync: 批量同步失败");
+            _logger?.LogError(ex, "批量同步失败");
             // 不抛出异常，避免影响主流程
         }
     }
@@ -461,7 +461,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             var bucketKey = ExtractBucketKeyFromOssUrl(ossFullPath);
             if (string.IsNullOrWhiteSpace(bucketKey))
             {
-                _logger?.LogWarning("UploadAttachmentInfoToServerAsync: 无法从OSS路径提取BucketKey: {OssFullPath}",
+                _logger?.LogWarning("无法从OSS路径提取BucketKey: {OssFullPath}",
                     ossFullPath);
                 return;
             }
@@ -498,17 +498,17 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             if (result?.Success == true)
                 _logger?.LogInformation(
-                    "UploadAttachmentInfoToServerAsync: 附件信息上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
+                    " 附件信息上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
                     attachment.Id, waybillId);
             else
                 _logger?.LogWarning(
-                    "UploadAttachmentInfoToServerAsync: 附件信息上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, Error={Error}",
+                    " 附件信息上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, Error={Error}",
                     attachment.Id, waybillId, result?.Msg ?? "未知错误");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex,
-                "UploadAttachmentInfoToServerAsync: 上传附件信息到服务器异常: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
+                " 上传附件信息到服务器异常: AttachmentId={AttachmentId}, WaybillId={WaybillId}",
                 attachment.Id, waybillId);
             throw;
         }
@@ -539,7 +539,7 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "ExtractBucketKeyFromOssUrl: 解析OSS URL失败: {OssFullPath}", ossFullPath);
+            _logger?.LogError(ex, "解析OSS URL失败: {OssFullPath}", ossFullPath);
             return null;
         }
     }

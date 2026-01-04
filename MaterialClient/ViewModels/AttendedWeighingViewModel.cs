@@ -22,10 +22,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
-public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
+public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITransientDependency
 {
     private readonly IAttendedWeighingService? _attendedWeighingService;
     private readonly CompositeDisposable _disposables = new();
@@ -155,10 +156,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         StartCameraStatusCheckTimer();
         StartUsbCameraStatusCheckTimer();
         _ = StartAllDevicesAsync();
-        StartPlateNumberObservable();
-        StartStatusObservable();
-        StartWeighingRecordCreatedObservable();
-        StartDeliveryTypeObservable();
+        
+        // Initialize state from service
+        if (_attendedWeighingService != null)
+        {
+            _currentWeighingStatus = _attendedWeighingService.GetCurrentStatus();
+            MostFrequentPlateNumber = _attendedWeighingService.GetMostFrequentPlateNumber();
+            IsReceiving = _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving;
+        }
+        
+        // Start MessageBus subscriptions
+        StartStatusChangedMessageBusSubscription();
+        StartPlateNumberChangedMessageBusSubscription();
+        StartWeighingRecordCreatedMessageBusSubscription();
+        StartDeliveryTypeChangedMessageBusSubscription();
         StartMatchSucceededMessageBusSubscription();
         StartSaveCompletedMessageBusSubscription();
         StartUpdatePlateNumberMessageBusSubscription();
@@ -490,55 +501,55 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
         _disposables.Add(timeTimer);
     }
 
-    private void StartPlateNumberObservable()
+    /// <summary>
+    ///     订阅状态变化消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartStatusChangedMessageBusSubscription()
     {
-        if (_attendedWeighingService == null) return;
-
-        _attendedWeighingService.MostFrequentPlateNumberChanges
+        MessageBus.Current.Listen<StatusChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(plateNumber => { MostFrequentPlateNumber = plateNumber; })
-            .DisposeWith(_disposables);
-    }
-
-    private void StartStatusObservable()
-    {
-        if (_attendedWeighingService == null) return;
-
-        _attendedWeighingService.StatusChanges
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(status =>
+            .Subscribe(message =>
             {
-                _currentWeighingStatus = status;
+                _currentWeighingStatus = message.Status;
                 this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
             })
             .DisposeWith(_disposables);
     }
 
-    private void StartWeighingRecordCreatedObservable()
+    /// <summary>
+    ///     订阅车牌号变化消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartPlateNumberChangedMessageBusSubscription()
     {
-        if (_attendedWeighingService == null) return;
-
-        _attendedWeighingService.WeighingRecordCreated
+        MessageBus.Current.Listen<PlateNumberChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async weighingRecord =>
+            .Subscribe(message => { MostFrequentPlateNumber = message.PlateNumber; })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    ///     订阅称重记录创建消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartWeighingRecordCreatedMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<WeighingRecordCreatedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
             {
-                Logger?.LogInformation("接收到新称重记录创建事件, ID: {WeighingRecordId}", weighingRecord.Id);
+                Logger?.LogInformation("接收到新称重记录创建事件, ID: {WeighingRecordId}", message.WeighingRecordId);
                 await RefreshAsync();
             })
             .DisposeWith(_disposables);
     }
 
-    private void StartDeliveryTypeObservable()
+    /// <summary>
+    ///     订阅收发料类型变化消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartDeliveryTypeChangedMessageBusSubscription()
     {
-        if (_attendedWeighingService == null) return;
-
-        // 初始化 IsReceiving 为服务的当前值
-        IsReceiving = _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving;
-
-        // 订阅 DeliveryType 变化
-        _attendedWeighingService.DeliveryTypeChanges
+        MessageBus.Current.Listen<DeliveryTypeChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(deliveryType => { IsReceiving = deliveryType == DeliveryType.Receiving; })
+            .Subscribe(message => { IsReceiving = message.DeliveryType == DeliveryType.Receiving; })
             .DisposeWith(_disposables);
     }
 
@@ -571,13 +582,14 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                         // 直接设置 SelectedListItem，确保使用刷新后的对象引用
                         // 这样 EqualityToColorConverter 才能正确比较对象引用
                         SelectedListItem = matchedItem;
-                        
+
                         // 根据项类型执行相应的选择逻辑
-                        if (matchedItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                        if (matchedItem is
+                            { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
                             SelectCompletedWaybill(matchedItem);
                         else
                             _ = OpenDetail(matchedItem);
-                            
+
                         Logger?.LogInformation(
                             "AttendedWeighingViewModel: Selected matched Waybill {WaybillId}",
                             message.WaybillId);
@@ -628,13 +640,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
                         // 直接设置 SelectedListItem，确保使用刷新后的对象引用
                         // 这样 EqualityToColorConverter 才能正确比较对象引用
                         SelectedListItem = savedItem;
-                        
+
                         // 根据项类型执行相应的选择逻辑
                         if (savedItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
                             SelectCompletedWaybill(savedItem);
                         else
                             _ = OpenDetail(savedItem);
-                            
+
                         Logger?.LogInformation(
                             "AttendedWeighingViewModel: Selected saved item {ItemId} of type {ItemType}",
                             message.ItemId, message.ItemType);
@@ -695,6 +707,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
             AttendedWeighingStatus.OffScale => "称重已结束",
             AttendedWeighingStatus.WaitingForStability => "等待稳定",
             AttendedWeighingStatus.WeightStabilized => "重量已稳定",
+            AttendedWeighingStatus.WaitingForDeparture => "等待下磅",
             _ => "未知状态"
         };
     }
@@ -739,7 +752,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
     #region Properties
 
     [Reactive] private ObservableCollection<WeighingListItemDto> _listItems = new();
-    
+
     [Reactive] private WeighingListItemDto? _selectedListItem;
 
     [Reactive] private ObservableCollection<string> _vehiclePhotos = new();
@@ -1008,11 +1021,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable
 
         try
         {
-            DetailViewModel = new AttendedWeighingDetailViewModel(
-                item,
-                _serviceProvider,
-                this
-            );
+            DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
+            DetailViewModel.InitializeData(item);
 
             DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
             DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;

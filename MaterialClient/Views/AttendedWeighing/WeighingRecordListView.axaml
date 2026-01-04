@@ -7,10 +7,6 @@
              x:Class="MaterialClient.Views.AttendedWeighing.WeighingRecordListView"
              x:DataType="vm:AttendedWeighingViewModel">
 
-    <UserControl.Resources>
-        <converters:EqualityToColorConverter x:Key="EqualityToColorConverter" />
-    </UserControl.Resources>
-
     <!-- Left Column: Record List -->
     <Border Background="#F8F9FA"
             BorderBrush="#E5E7EB"

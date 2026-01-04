@@ -1,8 +1,9 @@
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
-public partial class ImageViewerViewModel : ViewModelBase
+public partial class ImageViewerViewModel : ViewModelBase,ITransientDependency
 {
     [Reactive] private string? _imagePath;
 

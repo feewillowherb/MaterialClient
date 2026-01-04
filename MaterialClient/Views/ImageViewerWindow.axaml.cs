@@ -2,10 +2,11 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using MaterialClient.ViewModels;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views;
 
-public partial class ImageViewerWindow : Window
+public partial class ImageViewerWindow : Window, ITransientDependency
 {
     private readonly IDisposable? _closeSubscription;
 

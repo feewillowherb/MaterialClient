@@ -18,5 +18,10 @@ public enum AttendedWeighingStatus
     /// <summary>
     ///     Weight stabilized
     /// </summary>
-    WeightStabilized = 2
+    WeightStabilized = 2,
+
+    /// <summary>
+    ///     Waiting for departure after weighing completed
+    /// </summary>
+    WaitingForDeparture = 3
 }

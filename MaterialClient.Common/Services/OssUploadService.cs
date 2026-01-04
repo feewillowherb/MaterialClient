@@ -55,7 +55,7 @@ public class OssUploadService : IOssUploadService, ITransientDependency
         {
             if (!File.Exists(localPath))
             {
-                _logger?.LogWarning("OssUploadService: 本地文件不存在: {LocalPath}", localPath);
+                _logger?.LogWarning("本地文件不存在: {LocalPath}", localPath);
                 return null;
             }
 
@@ -65,12 +65,12 @@ public class OssUploadService : IOssUploadService, ITransientDependency
 
             // 构建OSS完整URL
             var ossUrl = $"https://{bucketName}.{_config.RegionId}/{ossObjectKey}";
-            _logger?.LogInformation("OssUploadService: 文件上传成功: {LocalPath} -> {OssUrl}", localPath, ossUrl);
+            _logger?.LogInformation("文件上传成功: {LocalPath} -> {OssUrl}", localPath, ossUrl);
             return ossUrl;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "OssUploadService: 文件上传失败: {LocalPath}, OSS Key: {OssObjectKey}", localPath,
+            _logger?.LogError(ex, "文件上传失败: {LocalPath}, OSS Key: {OssObjectKey}", localPath,
                 ossObjectKey);
             return null;
         }
@@ -92,7 +92,7 @@ public class OssUploadService : IOssUploadService, ITransientDependency
                 if (string.IsNullOrWhiteSpace(item.Attachment.LocalPath) || !File.Exists(item.Attachment.LocalPath))
                 {
                     _logger?.LogWarning(
-                        "OssUploadService: 跳过不存在的文件: AttachmentId={AttachmentId}, LocalPath={LocalPath}",
+                        " 跳过不存在的文件: AttachmentId={AttachmentId}, LocalPath={LocalPath}",
                         item.Attachment.Id, item.Attachment.LocalPath);
                     continue;
                 }
@@ -111,13 +111,13 @@ public class OssUploadService : IOssUploadService, ITransientDependency
                 result[item.Attachment.Id] = ossUrl;
 
                 _logger?.LogInformation(
-                    "OssUploadService: 附件上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}, OssUrl={OssUrl}",
+                    " 附件上传成功: AttachmentId={AttachmentId}, WaybillId={WaybillId}, OssUrl={OssUrl}",
                     item.Attachment.Id, item.WaybillId, ossUrl);
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex,
-                    "OssUploadService: 附件上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, LocalPath={LocalPath}",
+                    " 附件上传失败: AttachmentId={AttachmentId}, WaybillId={WaybillId}, LocalPath={LocalPath}",
                     item.Attachment.Id, item.WaybillId, item.Attachment.LocalPath);
                 // 继续处理下一个文件，不中断批量上传
             }

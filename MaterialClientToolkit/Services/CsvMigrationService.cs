@@ -60,7 +60,7 @@ public class CsvMigrationService: ITransientDependency
 
             // 1. 迁移Material_Order到Waybill和WeighingRecord
             var waybills = new List<Waybill>();
-            var weighingRecords = new List<WeighingRecord>();
+            var weighingRecords = new List<(long OrderId, WeighingRecord Record)>();
             var waybillIdMap = new Dictionary<long, long>(); // CSV OrderId -> 数据库WaybillId
             var weighingRecordIdMap = new Dictionary<long, long>(); // CSV OrderId -> 数据库WeighingRecordId
 
@@ -75,8 +75,7 @@ public class CsvMigrationService: ITransientDependency
                 else
                 {
                     var weighingRecord = _csvMapperService.MapToWeighingRecord(order);
-                    weighingRecords.Add(weighingRecord);
-                    weighingRecordIdMap[order.OrderId] = weighingRecord.Id;
+                    weighingRecords.Add((order.OrderId, weighingRecord));
                 }
             }
 
@@ -93,9 +92,16 @@ public class CsvMigrationService: ITransientDependency
             // 批量插入WeighingRecord
             if (weighingRecords.Any())
             {
-                _dbContext.WeighingRecords.AddRange(weighingRecords);
+                var recordsToInsert = weighingRecords.Select(x => x.Record).ToList();
+                _dbContext.WeighingRecords.AddRange(recordsToInsert);
                 await _dbContext.SaveChangesAsync();
-                _logger?.LogInformation($"已插入 {weighingRecords.Count} 条WeighingRecord记录");
+                _logger?.LogInformation($"已插入 {recordsToInsert.Count} 条WeighingRecord记录");
+                
+                // 更新weighingRecordIdMap，使用实际生成的ID
+                foreach (var (orderId, record) in weighingRecords)
+                {
+                    weighingRecordIdMap[orderId] = record.Id;
+                }
             }
 
             // 2. 迁移Material_OrderGoods到WaybillMaterial
@@ -150,7 +156,9 @@ public class CsvMigrationService: ITransientDependency
             // 3.1 先创建所有AttachmentFile对象
             foreach (var attach in attaches)
             {
-                var attachmentFile = _csvMapperService.MapToAttachmentFile(attach);
+                // 判断附件是属于Waybill还是WeighingRecord
+                bool isForWaybill = waybillIdMap.ContainsKey(attach.BizId);
+                var attachmentFile = _csvMapperService.MapToAttachmentFile(attach, isForWaybill);
                 attachmentFiles.Add(attachmentFile);
                 attachmentFileCsvIdMap[attach.FileId] = attachmentFile;
             }
@@ -177,52 +185,42 @@ public class CsvMigrationService: ITransientDependency
                     continue;
                 }
 
-                // 判断是Waybill还是WeighingRecord的附件
-                if (_csvMapperService.IsBizTypeForWaybill(attach.BizType))
+                // 判断是Waybill还是WeighingRecord的附件（通过检查BizId在映射表中的存在）
+                // 先检查是否为Waybill
+                if (waybillIdMap.TryGetValue(attach.BizId, out var waybillId))
                 {
-                    // 查找对应的Waybill
-                    if (waybillIdMap.TryGetValue(attach.BizId, out var waybillId))
+                    var key = (waybillId, attachmentFile.Id);
+                    // 检查是否已存在，避免重复
+                    if (!waybillAttachmentKeys.Contains(key))
                     {
-                        var key = (waybillId, attachmentFile.Id);
-                        // 检查是否已存在，避免重复
-                        if (!waybillAttachmentKeys.Contains(key))
-                        {
-                            var waybillAttachment = new WaybillAttachment(waybillId, attachmentFile.Id);
-                            waybillAttachments.Add(waybillAttachment);
-                            waybillAttachmentKeys.Add(key);
-                        }
-                        else
-                        {
-                            _logger?.LogWarning($"WaybillAttachment已存在: WaybillId={waybillId}, AttachmentFileId={attachmentFile.Id}，跳过重复创建");
-                        }
+                        var waybillAttachment = new WaybillAttachment(waybillId, attachmentFile.Id);
+                        waybillAttachments.Add(waybillAttachment);
+                        waybillAttachmentKeys.Add(key);
                     }
                     else
                     {
-                        _logger?.LogWarning($"BizId {attach.BizId} 对应的Waybill不存在，跳过WaybillAttachment创建");
+                        _logger?.LogWarning($"WaybillAttachment已存在: WaybillId={waybillId}, AttachmentFileId={attachmentFile.Id}，跳过重复创建");
+                    }
+                }
+                // 再检查是否为WeighingRecord
+                else if (weighingRecordIdMap.TryGetValue(attach.BizId, out var weighingRecordId))
+                {
+                    var key = (weighingRecordId, attachmentFile.Id);
+                    // 检查是否已存在，避免重复
+                    if (!weighingRecordAttachmentKeys.Contains(key))
+                    {
+                        var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
+                        weighingRecordAttachments.Add(weighingRecordAttachment);
+                        weighingRecordAttachmentKeys.Add(key);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning($"WeighingRecordAttachment已存在: WeighingRecordId={weighingRecordId}, AttachmentFileId={attachmentFile.Id}，跳过重复创建");
                     }
                 }
                 else
                 {
-                    // 查找对应的WeighingRecord（BizId应该对应OrderId）
-                    if (weighingRecordIdMap.TryGetValue(attach.BizId, out var weighingRecordId))
-                    {
-                        var key = (weighingRecordId, attachmentFile.Id);
-                        // 检查是否已存在，避免重复
-                        if (!weighingRecordAttachmentKeys.Contains(key))
-                        {
-                            var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
-                            weighingRecordAttachments.Add(weighingRecordAttachment);
-                            weighingRecordAttachmentKeys.Add(key);
-                        }
-                        else
-                        {
-                            _logger?.LogWarning($"WeighingRecordAttachment已存在: WeighingRecordId={weighingRecordId}, AttachmentFileId={attachmentFile.Id}，跳过重复创建");
-                        }
-                    }
-                    else
-                    {
-                        _logger?.LogWarning($"BizId {attach.BizId} 对应的WeighingRecord不存在，跳过WeighingRecordAttachment创建");
-                    }
+                    _logger?.LogWarning($"BizId {attach.BizId} 既不在Waybill映射表中，也不在WeighingRecord映射表中，跳过关联关系创建");
                 }
             }
 

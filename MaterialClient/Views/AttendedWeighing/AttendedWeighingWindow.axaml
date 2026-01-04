@@ -14,10 +14,6 @@
         Background="White"
         Icon="/Assets/fd-ico.ico">
 
-    <Window.Resources>
-        <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter" />
-    </Window.Resources>
-
     <!-- Window.Styles 已移至 App.axaml 全局样式 -->
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">

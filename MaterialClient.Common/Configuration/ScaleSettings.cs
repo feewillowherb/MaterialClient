@@ -26,4 +26,16 @@ public class ScaleSettings
     ///     Scale unit (default: Ton)
     /// </summary>
     public ScaleUnit ScaleUnit { get; set; } = ScaleUnit.Kg;
+
+    /// <summary>
+    ///     判断配置是否有效
+    ///     需要SerialPort、BaudRate和CommunicationMethod都不为空
+    /// </summary>
+    /// <returns>如果配置有效返回true，否则返回false</returns>
+    public bool IsValid()
+    {
+        return !string.IsNullOrWhiteSpace(SerialPort) &&
+               !string.IsNullOrWhiteSpace(BaudRate) &&
+               !string.IsNullOrWhiteSpace(CommunicationMethod);
+    }
 }

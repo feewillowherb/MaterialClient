@@ -326,7 +326,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         if (string.IsNullOrWhiteSpace(record.PlateNumber))
         {
-            _logger?.LogWarning("GetCandidateRecordsAsync: Record {RecordId} has no plate number", record.Id);
+            _logger?.LogWarning("Record {RecordId} has no plate number", record.Id);
             return new List<WeighingRecord>();
         }
 
@@ -341,7 +341,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (unmatchedRecords.Count == 0)
         {
             _logger?.LogInformation(
-                "GetCandidateRecordsAsync: No unmatched records found for plate '{PlateNumber}'",
+                " No unmatched records found for plate '{PlateNumber}'",
                 record.PlateNumber);
             return new List<WeighingRecord>();
         }
@@ -483,14 +483,14 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var record = await _weighingRecordRepository.FindAsync(weighingRecordId);
         if (record == null)
         {
-            _logger?.LogWarning("AutoMatchAsync: Record {RecordId} not found", weighingRecordId);
+            _logger?.LogWarning("Record {RecordId} not found", weighingRecordId);
             return false;
         }
 
         // 已经匹配过的记录不再处理
         if (record.MatchedId != null)
         {
-            _logger?.LogInformation("AutoMatchAsync: Record {RecordId} is already matched", weighingRecordId);
+            _logger?.LogInformation("Record {RecordId} is already matched", weighingRecordId);
             return false;
         }
 
@@ -498,7 +498,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (!record.IsValidChinesePlateNumber())
         {
             _logger?.LogInformation(
-                "AutoMatchAsync: Record {RecordId} has invalid plate number '{PlateNumber}', skipping matching",
+                " Record {RecordId} has invalid plate number '{PlateNumber}', skipping matching",
                 record.Id, record.PlateNumber);
             return false;
         }
@@ -583,7 +583,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var licenseInfo = await _licenseInfoRepository.FirstOrDefaultAsync(cancellationToken);
         if (licenseInfo == null)
         {
-            _logger?.LogWarning("PushWaybillAsync: 未找到许可证信息，跳过运单推送");
+            _logger?.LogWarning("未找到许可证信息，跳过运单推送");
             return;
         }
 
@@ -762,7 +762,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (candidates.Count == 0)
         {
             _logger?.LogInformation(
-                "AutoMatchAsync: No candidate records found for record {RecordId} with DeliveryType {DeliveryType}",
+                " No candidate records found for record {RecordId} with DeliveryType {DeliveryType}",
                 record.Id, deliveryType);
             return false;
         }
@@ -779,7 +779,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
         {
             _logger?.LogWarning(
-                "AutoMatchAsync: TryMatch failed for record {RecordId} with candidate {CandidateId}",
+                " TryMatch failed for record {RecordId} with candidate {CandidateId}",
                 record.Id, matchedRecord.Id);
             return false;
         }
@@ -787,7 +787,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         _ = await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
 
         _logger?.LogInformation(
-            "AutoMatchAsync: Successfully matched record {RecordId} with {MatchedId}, DeliveryType: {DeliveryType}",
+            " Successfully matched record {RecordId} with {MatchedId}, DeliveryType: {DeliveryType}",
             record.Id, matchedRecord.Id, deliveryType);
         return true;
     }
@@ -920,11 +920,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         if (unsyncedWaybills.Count == 0)
         {
-            _logger?.LogInformation("PushNewWaybillsAsync: 没有需要同步的新运单");
+            _logger?.LogInformation("没有需要同步的新运单");
             return;
         }
 
-        _logger?.LogInformation("PushNewWaybillsAsync: 开始推送 {Count} 个未同步的运单", unsyncedWaybills.Count);
+        _logger?.LogInformation("开始推送 {Count} 个未同步的运单", unsyncedWaybills.Count);
 
         var successCount = 0;
         var failCount = 0;
@@ -950,7 +950,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         }
 
         _logger?.LogInformation(
-            "PushNewWaybillsAsync: 推送完成，成功: {SuccessCount}, 失败: {FailCount}",
+            " 推送完成，成功: {SuccessCount}, 失败: {FailCount}",
             successCount, failCount);
     }
 
@@ -967,11 +967,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         if (unUpdatedWaybills.Count == 0)
         {
-            _logger?.LogInformation("PushUpdatedWaybillsAsync: 没有需要更新的运单");
+            _logger?.LogInformation("没有需要更新的运单");
             return;
         }
 
-        _logger?.LogInformation("PushUpdatedWaybillsAsync: 开始推送 {Count} 个待更新的运单", unUpdatedWaybills.Count);
+        _logger?.LogInformation("开始推送 {Count} 个待更新的运单", unUpdatedWaybills.Count);
 
         var successCount = 0;
         var failCount = 0;
@@ -997,7 +997,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         }
 
         _logger?.LogInformation(
-            "PushUpdatedWaybillsAsync: 更新完成，成功: {SuccessCount}, 失败: {FailCount}",
+            " 更新完成，成功: {SuccessCount}, 失败: {FailCount}",
             successCount, failCount);
     }
 }

@@ -21,4 +21,15 @@ public class LicensePlateRecognitionConfig
     ///     Recognition direction (In or Out)
     /// </summary>
     public LicensePlateDirection Direction { get; set; } = LicensePlateDirection.In;
+
+    /// <summary>
+    ///     判断配置是否有效
+    ///     需要Name和Ip都不为空
+    /// </summary>
+    /// <returns>如果配置有效返回true，否则返回false</returns>
+    public bool IsValid()
+    {
+        return !string.IsNullOrWhiteSpace(Name) &&
+               !string.IsNullOrWhiteSpace(Ip);
+    }
 }

@@ -37,7 +37,7 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            _logger?.LogWarning("PlayTextAsync: Text is null or empty, skipping playback");
+            _logger?.LogWarning("Text is null or empty, skipping playback");
             return;
         }
 
@@ -52,9 +52,7 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(soundDeviceSettings.LocalIP) ||
-                string.IsNullOrWhiteSpace(soundDeviceSettings.SoundIP) ||
-                string.IsNullOrWhiteSpace(soundDeviceSettings.SoundSN))
+            if (!soundDeviceSettings.IsValid())
             {
                 _logger?.LogWarning(
                     "Sound device settings are incomplete: LocalIP={LocalIP}, SoundIP={SoundIP}, SoundSN={SoundSN}",

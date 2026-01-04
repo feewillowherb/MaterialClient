@@ -22,6 +22,8 @@ public class MinimalWebHostService : IAsyncDisposable
     private readonly IServiceProvider _sharedServiceProvider;
     private bool _isRunning;
     private WebApplication? _webApplication;
+    
+    private static string ApiPath ="/api/CarLicense/CallDeviceMessage";
 
     /// <summary>
     ///     构造函数，注入共享的服务提供者
@@ -83,7 +85,7 @@ public class MinimalWebHostService : IAsyncDisposable
 
             var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
             logger?.LogInformation("启动 Web 服务于 {Urls}", urls);
-            logger?.LogInformation("API 端点: {Urls}/api/hardware/plate-number", urls);
+            logger?.LogInformation("API 端点: {Urls}{ApiPath}", urls,ApiPath);
 
             // Start the web application
             await _webApplication.RunAsync();
@@ -144,13 +146,13 @@ public class MinimalWebHostService : IAsyncDisposable
             service = "MaterialClient API",
             version = "1.0",
             endpoints = new[]
-            {
-                "/api/hardware/plate-number"
+            {  
+                ApiPath
             }
         }));
 
         // 车牌识别 - 设备回调接口（海康威视）
-        app.MapPost("/api/hardware/plate-number", async (HikVisionPlateCallback? callback) =>
+        app.MapPost(ApiPath, async (HikVisionPlateCallback? callback) =>
         {
             try
             {

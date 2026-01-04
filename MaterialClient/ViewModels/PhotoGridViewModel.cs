@@ -8,13 +8,14 @@ using MaterialClient.Views;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
 /// <summary>
 ///     照片网格视图的 ViewModel，负责显示进场照片和出场照片
 /// </summary>
-public partial class PhotoGridViewModel : ViewModelBase
+public partial class PhotoGridViewModel : ViewModelBase, ITransientDependency
 {
     private readonly IServiceProvider _serviceProvider;
 
