@@ -1,7 +1,7 @@
-using System;
 using Avalonia.Controls;
+using Avalonia.Input;
+using MaterialClient.Common.Entities;
 using MaterialClient.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views;
@@ -13,9 +13,14 @@ public partial class MaterialsSelectionPopup : UserControl, ITransientDependency
         InitializeComponent();
     }
 
-    public MaterialsSelectionPopup(IServiceProvider? serviceProvider)
+    private void OnMaterialDoubleTapped(object? sender, TappedEventArgs e)
     {
-        InitializeComponent();
-        DataContext = serviceProvider?.GetRequiredService<MaterialsSelectionPopupViewModel>();
+        if (sender is DataGrid dataGrid && 
+            dataGrid.SelectedItem is Material selectedMaterial &&
+            DataContext is MaterialsSelectionPopupViewModel viewModel)
+        {
+            // 调用 ViewModel 的命令，遵循 MVVM 模式
+            viewModel.SelectMaterialCommand.Execute(selectedMaterial);
+        }
     }
 }
