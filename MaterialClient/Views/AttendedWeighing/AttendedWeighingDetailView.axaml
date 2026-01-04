@@ -236,12 +236,14 @@
                     <DataGridTemplateColumn Header="换算率" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding RateDisplay}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           TextAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#999999" />
+                                <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <TextBlock Text="{Binding RateDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#000000" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -278,12 +280,14 @@
                     <DataGridTemplateColumn Header="运单重量" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding WaybillWeightDisplay}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           TextAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#999999" />
+                                <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <TextBlock Text="{Binding WaybillWeightDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#000000" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -292,12 +296,14 @@
                     <DataGridTemplateColumn Header="实际数量" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding ActualQuantityDisplay}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           TextAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#999999" />
+                                <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <TextBlock Text="{Binding ActualQuantityDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#000000" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -306,12 +312,14 @@
                     <DataGridTemplateColumn Header="实际重量" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding ActualWeightDisplay}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           TextAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#999999" />
+                                <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <TextBlock Text="{Binding ActualWeightDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#000000" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -320,12 +328,14 @@
                     <DataGridTemplateColumn Header="正负差" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding DifferenceDisplay}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           TextAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#999999" />
+                                <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <TextBlock Text="{Binding DifferenceDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#000000" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -334,12 +344,14 @@
                     <DataGridTemplateColumn Header="偏差率" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding DeviationRateDisplay}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           TextAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#999999" />
+                                <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <TextBlock Text="{Binding DeviationRateDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#000000" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -348,12 +360,14 @@
                     <DataGridTemplateColumn Header="偏差结果" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding DeviationResult}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           TextAlignment="Center"
-                                           FontSize="12"
-                                           Foreground="#999999" />
+                                <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <TextBlock Text="{Binding DeviationResult}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#000000" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
