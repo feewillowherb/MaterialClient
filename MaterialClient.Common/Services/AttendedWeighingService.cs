@@ -587,6 +587,15 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _lastCreatedWeighingRecordIdSubject,
                 (status, weight, stability, recordId) =>
                 {
+                    // 优先处理：如果已经在 WeightStabilized 且已创建记录，应该转换为 WaitingForDeparture
+                    // 这个检查应该在所有其他检查之前，确保不会错误地回到 WaitingForStability
+                    if (status == AttendedWeighingStatus.WeightStabilized &&
+                        weight > _minWeightThreshold &&
+                        recordId != null)
+                    {
+                        return AttendedWeighingStatus.WaitingForDeparture;
+                    }
+                    
                     // 上磅阶段：WaitingForStability -> WeightStabilized
                     if (status == AttendedWeighingStatus.WaitingForStability &&
                         stability.IsStable &&
@@ -595,23 +604,18 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                         return AttendedWeighingStatus.WeightStabilized;
                     }
                     
-                    // 下磅阶段：WeightStabilized -> WaitingForDeparture
-                    // 当重量稳定后，如果已创建称重记录且重量仍然大于阈值，进入等待下磅状态
-                    if (status == AttendedWeighingStatus.WeightStabilized &&
-                        weight > _minWeightThreshold &&
-                        recordId != null) // 已经创建了称重记录
-                    {
-                        return AttendedWeighingStatus.WaitingForDeparture;
-                    }
-                    
                     // 防止 WeightStabilized 或 WaitingForDeparture 错误地回到 WaitingForStability
-                    // 如果已经在 WeightStabilized 或 WaitingForDeparture，不应该回到 WaitingForStability
+                    // 如果已经在 WeightStabilized 或 WaitingForDeparture，且重量仍大于阈值，不应该回到 WaitingForStability
                     if ((status == AttendedWeighingStatus.WeightStabilized || 
                          status == AttendedWeighingStatus.WaitingForDeparture) &&
-                        !stability.IsStable &&
                         weight > _minWeightThreshold)
                     {
-                        // 保持当前状态，不回到 WaitingForStability
+                        // 如果已创建记录，保持在 WaitingForDeparture
+                        if (recordId != null)
+                        {
+                            return AttendedWeighingStatus.WaitingForDeparture;
+                        }
+                        // 如果还没创建记录，保持在 WeightStabilized（不应该发生，但作为保护）
                         return status;
                     }
                     
