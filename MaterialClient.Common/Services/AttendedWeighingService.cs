@@ -145,6 +145,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // Delivery type management using BehaviorSubject (internal use only)
     private readonly BehaviorSubject<DeliveryType> _deliveryTypeSubject = new(DeliveryType.Receiving);
 
+    // Weight stability stream (shared, refcounted) - for internal use and testing
+    private IObservable<bool>? _weightStabilityStream;
+
     // Last created weighing record ID stream
     private readonly Subject<long> _lastCreatedWeighingRecordIdSubject = new();
 
@@ -234,6 +237,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             .Replay(1)
             .RefCount();
 
+        // Store stability-only stream for IsWeightStable property (for testing)
+        _weightStabilityStream = stabilityStream.Select(info => info.IsStable);
 
         // 3. 状态转换流（只依赖重量，使用 Scan 管理状态）
         // 从当前状态开始，而不是从 OffScale 开始，以保持与 _statusSubject 同步
@@ -392,6 +397,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             }
         }
         
+        _weightStabilityStream = null; // Will be disposed by RefCount when no subscribers
         _logger?.LogInformation("Stopped monitoring truck scale weight changes");
 
         await Task.CompletedTask;
@@ -403,6 +409,28 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     public AttendedWeighingStatus GetCurrentStatus()
     {
         return _statusSubject.Value;
+    }
+
+    /// <summary>
+    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
+    ///     Note: This property is primarily for testing purposes
+    /// </summary>
+    public bool IsWeightStable
+    {
+        get
+        {
+            if (_weightStabilityStream == null) return false;
+            
+            // Synchronously get latest value from stream
+            bool latestValue = false;
+            using (var subscription = _weightStabilityStream
+                .Take(1)
+                .Subscribe(value => latestValue = value))
+            {
+                // Value is captured in subscription
+            }
+            return latestValue;
+        }
     }
 
     /// <summary>

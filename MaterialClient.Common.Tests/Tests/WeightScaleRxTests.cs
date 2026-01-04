@@ -12,7 +12,7 @@ using Volo.Abp.Uow;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace MaterialClient.Common.Tests;
+namespace MaterialClient.Common.Tests.Tests;
 
 /// <summary>
 /// 重量稳定性测试
