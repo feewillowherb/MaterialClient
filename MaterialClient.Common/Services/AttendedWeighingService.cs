@@ -75,34 +75,9 @@ internal record WeightStabilityInfo
 public interface IAttendedWeighingService : IAsyncDisposable
 {
     /// <summary>
-    ///     Observable stream of status changes
-    /// </summary>
-    IObservable<AttendedWeighingStatus> StatusChanges { get; }
-
-    /// <summary>
-    ///     Observable stream of most frequent plate number changes
-    /// </summary>
-    IObservable<string?> MostFrequentPlateNumberChanges { get; }
-
-    /// <summary>
-    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
-    /// </summary>
-    bool IsWeightStable { get; }
-
-    /// <summary>
-    ///     Observable stream of new weighing record creation events
-    /// </summary>
-    IObservable<WeighingRecord> WeighingRecordCreated { get; }
-
-    /// <summary>
     ///     获取当前收发料类型
     /// </summary>
     DeliveryType CurrentDeliveryType { get; }
-
-    /// <summary>
-    ///     Observable stream of delivery type changes
-    /// </summary>
-    IObservable<DeliveryType> DeliveryTypeChanges { get; }
 
     /// <summary>
     ///     启动监听
@@ -157,25 +132,18 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // 车牌识别缓存
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
 
-    // Rx Subject for plate number updates
-    private readonly Subject<string?> _plateNumberSubject = new();
     private readonly ISettingsService _settingsService;
 
-    // Rx Subject for status updates - using BehaviorSubject to maintain current state
+    // Rx Subject for status updates - using BehaviorSubject to maintain current state (internal use only)
     private readonly BehaviorSubject<AttendedWeighingStatus> _statusSubject = new(AttendedWeighingStatus.OffScale);
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
 
-    // Rx Subject for weighing record creation events
-    private readonly Subject<WeighingRecord> _weighingRecordCreatedSubject = new();
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
 
-    // Delivery type management using BehaviorSubject
+    // Delivery type management using BehaviorSubject (internal use only)
     private readonly BehaviorSubject<DeliveryType> _deliveryTypeSubject = new(DeliveryType.Receiving);
-
-    // Weight stability stream (shared, refcounted)
-    private IObservable<bool>? _weightStabilityStream;
 
     // Last created weighing record ID stream
     private readonly Subject<long> _lastCreatedWeighingRecordIdSubject = new();
@@ -266,8 +234,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             .Replay(1)
             .RefCount();
 
-        // Store stability-only stream for IsWeightStable property
-        _weightStabilityStream = stabilityStream.Select(info => info.IsStable);
 
         // 3. 状态转换流（只依赖重量，使用 Scan 管理状态）
         // 从当前状态开始，而不是从 OffScale 开始，以保持与 _statusSubject 同步
@@ -426,7 +392,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             }
         }
         
-        _weightStabilityStream = null; // Will be disposed by RefCount when no subscribers
         _logger?.LogInformation("Stopped monitoring truck scale weight changes");
 
         await Task.CompletedTask;
@@ -439,42 +404,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         return _statusSubject.Value;
     }
-
-    /// <summary>
-    ///     Observable stream of status changes
-    /// </summary>
-    public IObservable<AttendedWeighingStatus> StatusChanges => _statusSubject;
-
-    /// <summary>
-    ///     Observable stream of most frequent plate number changes
-    /// </summary>
-    public IObservable<string?> MostFrequentPlateNumberChanges => _plateNumberSubject;
-
-    /// <summary>
-    ///     Check if weight is stable (changes less than ±0.1m within 3 seconds)
-    /// </summary>
-    public bool IsWeightStable
-    {
-        get
-        {
-            if (_weightStabilityStream == null) return false;
-            
-            // Synchronously get latest value from stream
-            bool latestValue = false;
-            using (var subscription = _weightStabilityStream
-                .Take(1)
-                .Subscribe(value => latestValue = value))
-            {
-                // Value is captured in subscription
-            }
-            return latestValue;
-        }
-    }
-
-    /// <summary>
-    ///     Observable stream of new weighing record creation events
-    /// </summary>
-    public IObservable<WeighingRecord> WeighingRecordCreated => _weighingRecordCreatedSubject;
 
     /// <summary>
     ///     获取当前收发料类型
@@ -490,13 +419,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             _deliveryTypeSubject.OnNext(deliveryType);
             _logger?.LogInformation($"DeliveryType changed to {deliveryType}");
+            
+            // Send MessageBus notification
+            var message = new DeliveryTypeChangedMessage(deliveryType);
+            MessageBus.Current.SendMessage(message);
         }
     }
-
-    /// <summary>
-    ///     Observable stream of delivery type changes
-    /// </summary>
-    public IObservable<DeliveryType> DeliveryTypeChanges => _deliveryTypeSubject;
 
     /// <summary>
     ///     接收车牌识别结果
@@ -519,9 +447,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             _logger?.LogDebug(
                 $"Cached plate number recognition result: {plateNumber} (count: {_plateNumberCache[plateNumber].Count})");
 
-            // Notify observers of plate number update
+            // Notify observers of plate number update via MessageBus
             var mostFrequent = GetMostFrequentPlateNumber();
-            _plateNumberSubject.OnNext(mostFrequent);
+            var message = new PlateNumberChangedMessage(mostFrequent);
+            MessageBus.Current.SendMessage(message);
         }
     }
 
@@ -546,7 +475,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         await StopAsync();
         
-        // Safely complete and dispose subjects
+        // Safely complete and dispose internal subjects (used for state management)
         try
         {
             _statusSubject?.OnCompleted();
@@ -558,32 +487,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         finally
         {
             _statusSubject?.Dispose();
-        }
-
-        try
-        {
-            _plateNumberSubject?.OnCompleted();
-        }
-        catch (InvalidOperationException)
-        {
-            // Subject already in error or completed state, ignore
-        }
-        finally
-        {
-            _plateNumberSubject?.Dispose();
-        }
-
-        try
-        {
-            _weighingRecordCreatedSubject?.OnCompleted();
-        }
-        catch (InvalidOperationException)
-        {
-            // Subject already in error or completed state, ignore
-        }
-        finally
-        {
-            _weighingRecordCreatedSubject?.Dispose();
         }
 
         try
@@ -699,8 +602,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // 处理状态转换的副作用
             ProcessStatusTransition(previousStatus, newStatus, weight);
 
-            // Notify observers of status change
+            // Update internal state
             _statusSubject.OnNext(newStatus);
+            
+            // Send MessageBus notification
+            var message = new StatusChangedMessage(newStatus);
+            MessageBus.Current.SendMessage(message);
         }
 
         // 处理稳定性触发的操作（基于稳定性检查）
@@ -718,6 +625,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // Update status to WeightStabilized
             _statusSubject.OnNext(AttendedWeighingStatus.WeightStabilized);
+            
+            // Send MessageBus notification
+            var statusMessage = new StatusChangedMessage(AttendedWeighingStatus.WeightStabilized);
+            MessageBus.Current.SendMessage(statusMessage);
         }
     }
 
@@ -891,8 +802,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // 保存最近创建的称重记录ID，用于后续重写车牌号（通过 Subject 传递）
             _lastCreatedWeighingRecordIdSubject.OnNext(weighingRecord.Id);
 
-            // Notify observers that a new weighing record was created
-            _weighingRecordCreatedSubject.OnNext(weighingRecord);
+            // Notify observers that a new weighing record was created via MessageBus
+            var message = new WeighingRecordCreatedMessage(weighingRecord.Id);
+            MessageBus.Current.SendMessage(message);
 
             // Publish TryMatchEvent for automatic matching
 
@@ -1029,7 +941,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _plateNumberCache.Clear();
         _logger?.LogDebug("Cleared plate number cache");
 
-        // Notify observers that plate number is cleared
-        _plateNumberSubject.OnNext(null);
+        // Notify observers that plate number is cleared via MessageBus
+        var message = new PlateNumberChangedMessage(null);
+        MessageBus.Current.SendMessage(message);
     }
 }

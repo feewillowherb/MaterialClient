@@ -5,22 +5,16 @@ namespace MaterialClient.Common.Events;
 /// <summary>
 ///     保存完成消息（用于 ReactiveUI MessageBus）
 /// </summary>
-public class SaveCompletedMessage
+public class SaveCompletedMessage(long itemId, WeighingListItemType itemType)
 {
-    public SaveCompletedMessage(long itemId, WeighingListItemType itemType)
-    {
-        ItemId = itemId;
-        ItemType = itemType;
-    }
-
     /// <summary>
     ///     保存的项ID
     /// </summary>
-    public long ItemId { get; }
+    public long ItemId { get; } = itemId;
 
     /// <summary>
     ///     项类型（WeighingRecord 或 Waybill）
     /// </summary>
-    public WeighingListItemType ItemType { get; }
+    public WeighingListItemType ItemType { get; } = itemType;
 }
 

@@ -156,10 +156,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         StartCameraStatusCheckTimer();
         StartUsbCameraStatusCheckTimer();
         _ = StartAllDevicesAsync();
-        StartPlateNumberObservable();
-        StartStatusObservable();
-        StartWeighingRecordCreatedObservable();
-        StartDeliveryTypeObservable();
+        
+        // Initialize state from service
+        if (_attendedWeighingService != null)
+        {
+            _currentWeighingStatus = _attendedWeighingService.GetCurrentStatus();
+            MostFrequentPlateNumber = _attendedWeighingService.GetMostFrequentPlateNumber();
+            IsReceiving = _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving;
+        }
+        
+        // Start MessageBus subscriptions
+        StartStatusChangedMessageBusSubscription();
+        StartPlateNumberChangedMessageBusSubscription();
+        StartWeighingRecordCreatedMessageBusSubscription();
+        StartDeliveryTypeChangedMessageBusSubscription();
         StartMatchSucceededMessageBusSubscription();
         StartSaveCompletedMessageBusSubscription();
         StartUpdatePlateNumberMessageBusSubscription();
@@ -491,55 +501,55 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _disposables.Add(timeTimer);
     }
 
-    private void StartPlateNumberObservable()
+    /// <summary>
+    ///     订阅状态变化消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartStatusChangedMessageBusSubscription()
     {
-        if (_attendedWeighingService == null) return;
-
-        _attendedWeighingService.MostFrequentPlateNumberChanges
+        MessageBus.Current.Listen<StatusChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(plateNumber => { MostFrequentPlateNumber = plateNumber; })
-            .DisposeWith(_disposables);
-    }
-
-    private void StartStatusObservable()
-    {
-        if (_attendedWeighingService == null) return;
-
-        _attendedWeighingService.StatusChanges
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(status =>
+            .Subscribe(message =>
             {
-                _currentWeighingStatus = status;
+                _currentWeighingStatus = message.Status;
                 this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
             })
             .DisposeWith(_disposables);
     }
 
-    private void StartWeighingRecordCreatedObservable()
+    /// <summary>
+    ///     订阅车牌号变化消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartPlateNumberChangedMessageBusSubscription()
     {
-        if (_attendedWeighingService == null) return;
-
-        _attendedWeighingService.WeighingRecordCreated
+        MessageBus.Current.Listen<PlateNumberChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async weighingRecord =>
+            .Subscribe(message => { MostFrequentPlateNumber = message.PlateNumber; })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    ///     订阅称重记录创建消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartWeighingRecordCreatedMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<WeighingRecordCreatedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
             {
-                Logger?.LogInformation("接收到新称重记录创建事件, ID: {WeighingRecordId}", weighingRecord.Id);
+                Logger?.LogInformation("接收到新称重记录创建事件, ID: {WeighingRecordId}", message.WeighingRecordId);
                 await RefreshAsync();
             })
             .DisposeWith(_disposables);
     }
 
-    private void StartDeliveryTypeObservable()
+    /// <summary>
+    ///     订阅收发料类型变化消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartDeliveryTypeChangedMessageBusSubscription()
     {
-        if (_attendedWeighingService == null) return;
-
-        // 初始化 IsReceiving 为服务的当前值
-        IsReceiving = _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving;
-
-        // 订阅 DeliveryType 变化
-        _attendedWeighingService.DeliveryTypeChanges
+        MessageBus.Current.Listen<DeliveryTypeChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(deliveryType => { IsReceiving = deliveryType == DeliveryType.Receiving; })
+            .Subscribe(message => { IsReceiving = message.DeliveryType == DeliveryType.Receiving; })
             .DisposeWith(_disposables);
     }
 

@@ -109,7 +109,7 @@
   - **SQLite 配置**：
     - 使用 `AddAbpDbContext<TDbContext>(options => options.UseSqlite(...))` 进行配置；
     - 数据库文件路径应在应用配置中可配置，默认使用相对路径或用户数据目录；
-    - 支持数据库加密（如 SQLCipher），连接字符串中应包含密码配置。
+    - 支持数据库加密（如 SQLCipher）。
   - **集成测试**：
     - `DbContext` 与仓储均需支持 ABP 风格的集成测试（含内存替身/SQLite 模式、事务隔离与测试基类约定）。
     - 测试项目统一命名为 `MaterialClient.Common.Tests`，合并所有测试类型（Domain、EntityFrameworkCore、TestBase）。
