@@ -110,17 +110,21 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     [Reactive] private MaterialsSelectionPopupViewModel? _materialsSelectionPopupViewModel;
 
+    private IDisposable? _materialSelectionSubscription;
+
     #endregion
 
     #region 初始化
 
     private void InitializeMaterialsSelectionPopup()
     {
-        // 创建材料选择弹窗 ViewModel
-        MaterialsSelectionPopupViewModel = _serviceProvider.GetRequiredService<MaterialsSelectionPopupViewModel>();
-
+        // 直接创建材料选择弹窗 ViewModel 实例，而不是通过 IOC 容器获取
+        // 这样可以确保使用的是同一个实例，避免数据传递问题
+        MaterialsSelectionPopupViewModel = new MaterialsSelectionPopupViewModel(_serviceProvider);
+        
         // 订阅材料选择事件（使用 Where 过滤 null，确保只有选择时才触发）
-        MaterialsSelectionPopupViewModel.WhenAnyValue(x => x.SelectedMaterial)
+        // 保存订阅以防止被垃圾回收
+        _materialSelectionSubscription = MaterialsSelectionPopupViewModel.WhenAnyValue(x => x.SelectedMaterial)
             .Where(material => material != null)
             .Subscribe(material =>
             {
@@ -129,7 +133,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     // 使用 Post 延迟执行，确保在下一个消息循环执行，避免在属性变化通知中间执行
                     Dispatcher.UIThread.Post(() =>
                     {
-                        SelectMaterialCommand.Execute(material);
+                        try
+                        {
+                            SelectMaterialCommand.Execute(material);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger?.LogError(ex, "执行材料选择命令时发生错误");
+                        }
                     });
                 }
             });
@@ -486,6 +497,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     {
         try
         {
+            // 验证是否选择了供应商
+            if (SelectedProvider == null)
+            {
+                await ShowMessageBoxAsync("请选择供应商");
+                return;
+            }
+
             var firstRow = MaterialItems.FirstOrDefault();
             var materialId = firstRow?.SelectedMaterial?.Id;
             var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
@@ -731,6 +749,12 @@ public partial class MaterialItemRow : ReactiveObject
                 SelectedMaterialUnit = null;
                 MaterialUnits.Clear();
                 foreach (var unit in units) MaterialUnits.Add(unit);
+                
+                // 如果单位列表不为空且当前没有选中的单位，自动选择第一个
+                if (MaterialUnits.Count > 0 && SelectedMaterialUnit == null)
+                {
+                    SelectedMaterialUnit = MaterialUnits[0];
+                }
             }
             catch (Exception)
             {

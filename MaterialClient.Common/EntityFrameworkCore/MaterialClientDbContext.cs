@@ -256,9 +256,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         if (userSession != null)
         {
             // 使用真实姓名，如果没有则使用用户名
-            currentUserName = !string.IsNullOrWhiteSpace(userSession.TrueName)
-                ? userSession.TrueName
-                : userSession.Username;
+            currentUserName = !string.IsNullOrWhiteSpace(userSession.Username)
+                ? userSession.Username
+                : userSession.TrueName;
 
             // 将 long 类型的业务用户ID转换为 int
             var businessUserId = userSession.UserId;

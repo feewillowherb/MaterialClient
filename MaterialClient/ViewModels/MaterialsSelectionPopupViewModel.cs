@@ -17,7 +17,7 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 ///     材料选择弹窗 ViewModel
 /// </summary>
-public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransientDependency
+public partial class MaterialsSelectionPopupViewModel : ViewModelBase
 {
     private const int DefaultPageSize = 10;
 
@@ -240,5 +240,18 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase, ITransien
     public Task RefreshAsync()
     {
         return LoadDataAsync();
+    }
+
+    /// <summary>
+    ///     选择材料命令（双击时触发）
+    /// </summary>
+    [ReactiveCommand]
+    private Task SelectMaterialAsync(Material? material)
+    {
+        if (material != null)
+        {
+            SelectedMaterial = material;
+        }
+        return Task.CompletedTask;
     }
 }

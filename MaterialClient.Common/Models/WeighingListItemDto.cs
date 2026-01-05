@@ -161,6 +161,7 @@ public class WeighingListItemDto
             Weight = record.TotalWeight,
             OrderNo = null,
             WaybillQuantity = firstMaterial?.WaybillQuantity,
+            Operator = record.Creator,
             Materials = materials.Select(m =>
             {
                 var dto = new WeighingListItemMaterialDto
@@ -222,6 +223,7 @@ public class WeighingListItemDto
             WaybillQuantity = waybill.OrderPlanOnPcs,
             OrderType = waybill.OrderType,
             Remark = waybill.Remark,
+            Operator = waybill.Creator,
             // 预计算偏差信息
             OffsetInfo = $"{waybill.OffsetRate:F2}% {waybill.OffsetResult.GetDescription()}"
         };
