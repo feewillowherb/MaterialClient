@@ -17,39 +17,37 @@
     
     <Border Background="White"
             BorderBrush="#E5E7EB"
-            BorderThickness="1"
-            CornerRadius="4">
+            BorderThickness="3"
+            CornerRadius="4"
+            Padding="0">
         <Grid RowDefinitions="50,*,50">
             
             <!-- 搜索框区域 -->
             <Border Grid.Row="0"
                     Background="White"
                     BorderBrush="#E5E9F2"
-                    BorderThickness="0,0,0,5"
                     Height="50">
-                <TextBox Width="400"
-                         Height="35"
+                <TextBox Height="35"
                          FontSize="10"
                          Watermark="输入关键字查找"
-                         BorderThickness="0"
-                         HorizontalAlignment="Left"
+                         HorizontalAlignment="Stretch"
                          VerticalAlignment="Center"
+                         Margin="1,0,1,10"
                          Text="{Binding SearchText, Mode=TwoWay}" />
             </Border>
             
             <!-- DataGrid 区域 -->
             <Border Grid.Row="1"
                     BorderBrush="#E5E7EB"
-                    BorderThickness="0,0,0,1"
-                    Background="White">
-                <DataGrid Width="400"
-                          Height="200"
+                    BorderThickness="0"
+                    Background="Transparent">
+                <DataGrid Height="200"
                           AutoGenerateColumns="False"
                           CanUserResizeColumns="False"
                           CanUserSortColumns="False"
                           IsReadOnly="True"
                           SelectionMode="Single"
-                          HorizontalAlignment="Center"
+                          HorizontalAlignment="Stretch"
                           BorderThickness="0"
                           Background="White"
                           GridLinesVisibility="Horizontal"
