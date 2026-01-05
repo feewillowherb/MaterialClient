@@ -350,7 +350,7 @@
                 BorderBrush="#E5E7EB"
                 BorderThickness="0,1,0,0"
                 Padding="16,8">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*">
                 <!-- Scale Status Indicator -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <!-- Online Indicator -->
@@ -477,13 +477,6 @@
                                FontWeight="SemiBold"
                                IsVisible="{Binding !IsUsbCameraOnline}" />
                 </StackPanel>
-
-                <!-- Right side info (can be extended later) -->
-                <TextBlock Grid.Column="4"
-                           Text="{Binding CurrentTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"
-                           FontSize="12"
-                           Foreground="#999"
-                           VerticalAlignment="Center" />
             </Grid>
         </Border>
 
