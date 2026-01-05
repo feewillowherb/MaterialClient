@@ -21,16 +21,16 @@ public class MaterialOrderGoodsCsv
     public int? UnitId { get; set; }
 
     [ImporterHeader(Name = "GoodsPlanOnWeight")]
-    public decimal GoodsPlanOnWeight { get; set; }
+    public decimal? GoodsPlanOnWeight { get; set; }
 
     [ImporterHeader(Name = "GoodsPlanOnPcs")]
-    public decimal GoodsPlanOnPcs { get; set; }
+    public decimal? GoodsPlanOnPcs { get; set; }
 
     [ImporterHeader(Name = "GoodsPcs")]
-    public decimal GoodsPcs { get; set; }
+    public decimal? GoodsPcs { get; set; }
 
     [ImporterHeader(Name = "GoodsWeight")]
-    public decimal GoodsWeight { get; set; }
+    public decimal? GoodsWeight { get; set; }
 
     [ImporterHeader(Name = "GoodsTakeWeight")]
     public decimal? GoodsTakeWeight { get; set; }
@@ -66,12 +66,12 @@ public class MaterialOrderGoodsCsv
     public int OffsetResult { get; set; }
 
     [ImporterHeader(Name = "OffsetWeight")]
-    public decimal OffsetWeight { get; set; }
+    public decimal? OffsetWeight { get; set; }
 
     [ImporterHeader(Name = "OffsetCount")]
-    public decimal OffsetCount { get; set; }
+    public decimal? OffsetCount { get; set; }
 
     [ImporterHeader(Name = "OffsetRate")]
-    public decimal OffsetRate { get; set; }
+    public decimal? OffsetRate { get; set; }
 }
 
