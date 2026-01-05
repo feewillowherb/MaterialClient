@@ -51,15 +51,15 @@
     </ItemGroup>
 
     <ItemGroup>
-            <!-- 将 appsettings.json 作为嵌入式资源 -->
-    <EmbeddedResource Include="appsettings.json">
-        <LogicalName>appsettings.json</LogicalName>
-    </EmbeddedResource>
+    <!-- 将 appsettings.json 作为嵌入式资源 -->
+    <None Include="appsettings.json" Condition="Exists('appsettings.json')">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     
-    <!-- 将 appsettings.secret.json 作为嵌入式资源（如果存在） -->
-    <EmbeddedResource Include="appsettings.secret.json" Condition="Exists('appsettings.secret.json')">
-        <LogicalName>appsettings.secret.json</LogicalName>
-    </EmbeddedResource>
+    <!-- 将 appsettings.secret.json 复制到输出目录（用于运行时读取） -->
+    <None Include="appsettings.secret.json" Condition="Exists('appsettings.secret.json')">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     </ItemGroup>
 
     <ItemGroup>
