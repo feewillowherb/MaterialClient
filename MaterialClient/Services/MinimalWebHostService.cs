@@ -79,8 +79,24 @@ public class MinimalWebHostService : IAsyncDisposable
             // 配置 API 端点
             ConfigureEndpoints(_webApplication);
 
-            // Configure URLs from appsettings
-            var urls = builder.Configuration["Urls"] ?? "http://localhost:9960";
+            // Configure URLs from SystemSettings
+            var settingsService = _sharedServiceProvider.GetRequiredService<ISettingsService>();
+            var settings = await settingsService.GetSettingsAsync();
+            var urls = settings.SystemSettings.Urls;
+            if (string.IsNullOrWhiteSpace(urls))
+            {
+                urls = "http://localhost:9960";
+            }
+            else
+            {
+                // 如果没有协议前缀，自动添加 http://
+                urls = urls.Trim();
+                if (!urls.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+                    !urls.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    urls = "http://" + urls;
+                }
+            }
             _webApplication.Urls.Add(urls);
 
             var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
