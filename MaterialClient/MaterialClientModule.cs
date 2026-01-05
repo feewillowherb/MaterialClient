@@ -36,21 +36,31 @@ public class MaterialClientModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
-        // Add User Secrets to configuration before other services are configured
-        // This ensures User Secrets override appsettings.json values
-        #if DEBUG
+        // Load additional configuration files
         var existingConfig = context.Services.GetConfiguration();
         if (existingConfig != null)
         {
+            var appDirectory = AppContext.BaseDirectory;
             var configBuilder = new ConfigurationBuilder();
+            
             // Add existing configuration (includes appsettings.json loaded by ABP)
             configBuilder.AddConfiguration(existingConfig);
-            // Add User Secrets as the last source (highest priority, overrides appsettings.json)
+            
+            // Add appsettings.product.json if it exists (optional, will override appsettings.json values)
+            var productConfigPath = Path.Combine(appDirectory, "appsettings.secret.json");
+            if (File.Exists(productConfigPath))
+            {
+                configBuilder.AddJsonFile(productConfigPath, optional: true, reloadOnChange: true);
+            }
+            
+            #if DEBUG
+            // Add User Secrets as the last source (highest priority, overrides all config files)
             configBuilder.AddUserSecrets<MaterialClientModule>();
+            #endif
+            
             var enhancedConfig = configBuilder.Build();
             context.Services.ReplaceConfiguration(enhancedConfig);
         }
-        #endif
     }
 
     public override void ConfigureServices(ServiceConfigurationContext context)

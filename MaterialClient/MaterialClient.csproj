@@ -51,9 +51,15 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="appsettings.json">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
+            <!-- 将 appsettings.json 作为嵌入式资源 -->
+    <EmbeddedResource Include="appsettings.json">
+        <LogicalName>appsettings.json</LogicalName>
+    </EmbeddedResource>
+    
+    <!-- 将 appsettings.secret.json 作为嵌入式资源（如果存在） -->
+    <EmbeddedResource Include="appsettings.secret.json" Condition="Exists('appsettings.secret.json')">
+        <LogicalName>appsettings.secret.json</LogicalName>
+    </EmbeddedResource>
     </ItemGroup>
 
     <ItemGroup>
