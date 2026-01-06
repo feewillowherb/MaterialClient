@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -357,12 +358,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
+        // 发送 Action 到状态流，状态流会在副作用中处理车牌缓存更新和通知
         _actionSubject.OnNext(new PlateNumberRecognizedAction(plateNumber));
         
-        // Notify observers of plate number update via MessageBus
-        var mostFrequent = GetMostFrequentPlateNumber();
-        var message = new PlateNumberChangedMessage(mostFrequent);
-        MessageBus.Current.SendMessage(message);
+        // 注意：车牌缓存更新和通知由副作用 ProcessPlateNumberCacheChange 统一处理
+        // 这样可以确保通知使用的是最新的状态值
     }
 
     /// <summary>
@@ -566,11 +566,29 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 (Previous: initialState, Current: initialState),
                 (acc, action) => (Previous: acc.Current, Current: WeighingServiceStateReducer.ReduceState(acc.Current, action)))
             .StartWith((Previous: initialState, Current: initialState))
-            .DistinctUntilChanged(pair => (pair.Current.Status, pair.Current.Weight, pair.Current.Stability.IsStable, pair.Current.LastCreatedWeighingRecordId)); // 只在关键状态变化时发出
+            .DistinctUntilChanged(pair => 
+            {
+                // 比较关键状态字段，包括车牌缓存的变化
+                var cacheKey = GetPlateNumberCacheKey(pair.Current.PlateNumberCache);
+                return (
+                    pair.Current.Status, 
+                    pair.Current.Weight, 
+                    pair.Current.Stability.IsStable, 
+                    pair.Current.LastCreatedWeighingRecordId,
+                    cacheKey // 添加车牌缓存的关键信息，确保车牌缓存变化时能触发状态更新
+                );
+            });
 
         // 处理副作用（状态变化时的操作）
         return stateWithPrevious
-            .Do(pair => ProcessStateTransition(pair.Previous, pair.Current))
+            .Do(pair => 
+            {
+                // 处理状态转换的副作用
+                ProcessStateTransition(pair.Previous, pair.Current);
+                
+                // 处理车牌缓存变化的副作用（实时持久化）
+                ProcessPlateNumberCacheChange(pair.Previous, pair.Current);
+            })
             .Select(pair => pair.Current);
     }
 
@@ -648,6 +666,65 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // 发送状态变化通知
         MessageBus.Current.SendMessage(new StatusChangedMessage(currentState.Status));
+    }
+
+    /// <summary>
+    ///     获取车牌缓存的关键信息用于比较（用于 DistinctUntilChanged）
+    /// </summary>
+    private string GetPlateNumberCacheKey(ConcurrentDictionary<string, PlateNumberCacheRecord> cache)
+    {
+        if (cache.IsEmpty) return string.Empty;
+        
+        // 使用最频繁的车牌号和总识别次数作为缓存的关键标识
+        var mostFrequent = cache
+            .OrderByDescending(kvp => kvp.Value.Count)
+            .FirstOrDefault();
+        
+        if (mostFrequent.Key == null) return string.Empty;
+        
+        // 返回最频繁车牌号 + 识别次数 + 总识别次数，用于检测缓存变化
+        var totalCount = cache.Values.Sum(v => v.Count);
+        return $"{mostFrequent.Key}:{mostFrequent.Value.Count}:{totalCount}";
+    }
+
+    /// <summary>
+    ///     处理车牌缓存变化的副作用（实时持久化车牌缓存）
+    /// </summary>
+    private void ProcessPlateNumberCacheChange(
+        WeighingServiceState previousState,
+        WeighingServiceState currentState)
+    {
+        // 检查车牌缓存是否变化
+        var previousKey = GetPlateNumberCacheKey(previousState.PlateNumberCache);
+        var currentKey = GetPlateNumberCacheKey(currentState.PlateNumberCache);
+        
+        if (previousKey != currentKey)
+        {
+            // 车牌缓存发生变化，立即更新状态 Subject（确保实时持久化）
+            _stateSubject.OnNext(currentState);
+            
+            // 获取最频繁的车牌号并发送通知
+            var mostFrequent = GetMostFrequentPlateNumberFromCache(currentState.PlateNumberCache);
+            var message = new PlateNumberChangedMessage(mostFrequent);
+            MessageBus.Current.SendMessage(message);
+            
+            _logger?.LogDebug(
+                $"Plate number cache updated, most frequent: {mostFrequent ?? "None"}, cache key: {currentKey}");
+        }
+    }
+
+    /// <summary>
+    ///     从缓存中获取最频繁的车牌号（辅助方法）
+    /// </summary>
+    private string? GetMostFrequentPlateNumberFromCache(ConcurrentDictionary<string, PlateNumberCacheRecord> cache)
+    {
+        if (cache.IsEmpty) return null;
+
+        var mostFrequent = cache
+            .OrderByDescending(kvp => kvp.Value.Count)
+            .FirstOrDefault();
+
+        return mostFrequent.Key;
     }
 
     /// <summary>
