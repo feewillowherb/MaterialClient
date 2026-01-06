@@ -7,6 +7,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
@@ -358,8 +359,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
+        // 过滤掉"挂"字（仅处理简体"挂"）
+        var filteredPlateNumber = PlateNumberValidator.FilterHangingCharacter(plateNumber);
+        
+        // 如果过滤后为空，则不处理
+        if (string.IsNullOrWhiteSpace(filteredPlateNumber)) return;
+
         // 发送 Action 到状态流，状态流会在副作用中处理车牌缓存更新和通知
-        _actionSubject.OnNext(new PlateNumberRecognizedAction(plateNumber));
+        _actionSubject.OnNext(new PlateNumberRecognizedAction(filteredPlateNumber));
         
         // 注意：车牌缓存更新和通知由副作用 ProcessPlateNumberCacheChange 统一处理
         // 这样可以确保通知使用的是最新的状态值

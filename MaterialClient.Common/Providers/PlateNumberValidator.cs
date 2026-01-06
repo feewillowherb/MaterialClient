@@ -119,4 +119,17 @@ public static class PlateNumberValidator
 
         return plateNumber.Trim().ToUpper();
     }
+
+    /// <summary>
+    ///     过滤车牌号中的"挂"字（仅处理简体"挂"，不处理繁体）
+    /// </summary>
+    /// <param name="plateNumber">车牌号</param>
+    /// <returns>过滤后的车牌号</returns>
+    public static string? FilterHangingCharacter(string? plateNumber)
+    {
+        if (string.IsNullOrWhiteSpace(plateNumber)) return plateNumber;
+
+        // 只过滤简体"挂"字
+        return plateNumber.Replace("挂", string.Empty);
+    }
 }
