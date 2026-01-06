@@ -86,6 +86,19 @@ internal static class WeighingServiceStateReducer
             newStatus = AttendedWeighingStatus.WaitingForDeparture;
         }
 
+        // 关键修复：当下磅（转换到 OffScale）时，立即清空 LastCreatedWeighingRecordId
+        // 这样确保下磅后立即重置，不依赖异步的 ResetWeighingCycleAction
+        if (newStatus == AttendedWeighingStatus.OffScale && 
+            state.Status != AttendedWeighingStatus.OffScale)
+        {
+            // 状态从非 OffScale 转换到 OffScale（下磅），清空记录ID
+            return newState with 
+            { 
+                Status = newStatus,
+                LastCreatedWeighingRecordId = null
+            };
+        }
+
         return newState with { Status = newStatus };
     }
 
