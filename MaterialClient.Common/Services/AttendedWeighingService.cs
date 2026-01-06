@@ -495,20 +495,38 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             {
                 if (buffer.Count > 0)
                 {
-                    var min = buffer.Min();
-                    var max = buffer.Max();
+                    // 关键修复：只统计大于MinWeightThreshold的数据点（有效称重数据）
+                    var validDataPoints = buffer.Where(w => w > config.MinWeightThreshold).ToList();
+                    
+                    if (validDataPoints.Count == 0)
+                    {
+                        // 没有有效数据点，判定为不稳定
+                        return new WeightStabilityInfo
+                        {
+                            Weight = 0m,
+                            IsStable = false,
+                            StableWeight = null,
+                            Min = buffer.Min(),
+                            Max = buffer.Max(),
+                            Range = buffer.Max() - buffer.Min()
+                        };
+                    }
+                    
+                    // 只在有效数据点上计算稳定性
+                    var min = validDataPoints.Min();
+                    var max = validDataPoints.Max();
                     var range = max - min;
                     
                     // 关键修复：需要同时满足两个条件才判定为稳定
                     // 1. range 满足阈值要求
-                    // 2. 窗口内有足够的数据点（防止上磅瞬间就判定为稳定）
+                    // 2. 窗口内有足够的大于MinWeightThreshold的数据点（防止上磅瞬间就判定为稳定）
                     var rangeStable = range <= config.WeightStabilityThreshold * 2;
-                    var hasEnoughDataPoints = buffer.Count >= minDataPointsRequired;
+                    var hasEnoughDataPoints = validDataPoints.Count >= minDataPointsRequired;
                     var isStable = rangeStable && hasEnoughDataPoints;
                     var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
 
                     _logger?.LogDebug(
-                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3}, dataPoints: {buffer.Count}/{minDataPointsRequired}, rangeStable: {rangeStable}, hasEnoughData: {hasEnoughDataPoints})");
+                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3}, validDataPoints: {validDataPoints.Count}/{minDataPointsRequired} (total: {buffer.Count}), rangeStable: {rangeStable}, hasEnoughData: {hasEnoughDataPoints})");
 
                     return new WeightStabilityInfo
                     {
