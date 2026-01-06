@@ -117,9 +117,9 @@ internal static class WeighingServiceStateReducer
         WeighingServiceState state,
         PlateNumberRecognizedAction action)
     {
-        // 只在特定状态下缓存车牌号
-        if (state.Status != AttendedWeighingStatus.WaitingForStability &&
-            state.Status != AttendedWeighingStatus.WeightStabilized)
+        // 只在车辆上磅期间缓存车牌号（OffScale 状态下不缓存）
+        // 允许在 WaitingForStability、WeightStabilized、WaitingForDeparture 状态下接收车牌
+        if (state.Status == AttendedWeighingStatus.OffScale)
         {
             return state;
         }
