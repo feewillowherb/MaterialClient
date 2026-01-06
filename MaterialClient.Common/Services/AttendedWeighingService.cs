@@ -486,7 +486,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         // 计算最小数据点数量要求：至少需要覆盖窗口时间的 50% 以上
         // 例如：窗口 3000ms，检查间隔 200ms，期望至少 7-8 个数据点
-        var minDataPointsRequired = Math.Max(5, (int)(config.StabilityWindowMs / config.StabilityCheckIntervalMs * 0.5));
+        var minDataPointsRequired = Math.Max(8, (int)(config.StabilityWindowMs / config.StabilityCheckIntervalMs * 0.5));
         
         return sharedWeightSource
             .Buffer(TimeSpan.FromMilliseconds(config.StabilityWindowMs),
@@ -524,6 +524,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var hasEnoughDataPoints = validDataPoints.Count >= minDataPointsRequired;
                     var isStable = rangeStable && hasEnoughDataPoints;
                     var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
+                    
 
                     _logger?.LogDebug(
                         $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3}, validDataPoints: {validDataPoints.Count}/{minDataPointsRequired} (total: {buffer.Count}), rangeStable: {rangeStable}, hasEnoughData: {hasEnoughDataPoints})");
