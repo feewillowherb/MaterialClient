@@ -163,7 +163,7 @@
                 <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
                 <DataGrid.Columns>
                     <!-- 材料名称 (4字) -->
-                    <DataGridTemplateColumn Header="材料名称" Width="70">
+                    <DataGridTemplateColumn Header="材料名称" Width="72">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Button Background="Transparent"
@@ -197,7 +197,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 单位 (2字) -->
-                    <DataGridTemplateColumn Header="单位" Width="60">
+                    <DataGridTemplateColumn Header="单位" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}"
@@ -227,7 +227,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 换算率 (3字) -->
-                    <DataGridTemplateColumn Header="换算率" Width="55">
+                    <DataGridTemplateColumn Header="换算率" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -243,7 +243,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 运单数量 (4字) -->
-                    <DataGridTemplateColumn Header="运单数量" Width="70">
+                    <DataGridTemplateColumn Header="运单数量" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding WaybillQuantityDisplay}"
@@ -271,7 +271,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 运单重量 (4字) -->
-                    <DataGridTemplateColumn Header="运单重量" Width="70">
+                    <DataGridTemplateColumn Header="运单重量" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -287,7 +287,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 实际数量 (4字) -->
-                    <DataGridTemplateColumn Header="实际数量" Width="70">
+                    <DataGridTemplateColumn Header="实际数量" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -303,7 +303,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 实际重量 (4字) -->
-                    <DataGridTemplateColumn Header="实际重量" Width="70">
+                    <DataGridTemplateColumn Header="实际重量" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -319,7 +319,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 正负差 (3字) -->
-                    <DataGridTemplateColumn Header="正负差" Width="55">
+                    <DataGridTemplateColumn Header="正负差" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -335,7 +335,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 偏差率 (3字) -->
-                    <DataGridTemplateColumn Header="偏差率" Width="55">
+                    <DataGridTemplateColumn Header="偏差率" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -351,7 +351,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 偏差结果 (4字) -->
-                    <DataGridTemplateColumn Header="偏差结果" Width="70">
+                    <DataGridTemplateColumn Header="偏差结果" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
