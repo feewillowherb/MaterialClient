@@ -756,7 +756,7 @@ public class AttendedWeighingServiceTests : IDisposable
         startTime = DateTime.Now;
         for (int i = 0; i < 5; i++) // 5次 * 200ms = 1秒
         {
-            weightSubject.OnNext(0.5m);
+            weightSubject.OnNext(0.51m);
             await Task.Delay(200);
         }
         var phase2Duration = (DateTime.Now - startTime).TotalSeconds;
