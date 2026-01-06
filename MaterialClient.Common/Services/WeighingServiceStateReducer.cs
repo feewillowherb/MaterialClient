@@ -95,7 +95,8 @@ internal static class WeighingServiceStateReducer
             return newState with 
             { 
                 Status = newStatus,
-                LastCreatedWeighingRecordId = null
+                LastCreatedWeighingRecordId = null,
+                PlateNumberCache = new ConcurrentDictionary<string, PlateNumberCacheRecord>()
             };
         }
 
