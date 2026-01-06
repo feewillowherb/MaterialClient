@@ -379,28 +379,44 @@
                         <CheckBox Content="开机自动启动"
                                   IsChecked="{Binding EnableAutoStart}" />
 
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                            <TextBlock Text="拍照码流类型:"
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="12"
+                              ColumnSpacing="12">
+                            <TextBlock Text="服务地址:"
+                                       Grid.Row="0"
                                        Grid.Column="0"
                                        VerticalAlignment="Center"
                                        Foreground="Black"
                                        MinWidth="120" />
-                            <ComboBox ItemsSource="{Binding StreamTypeOptions}"
-                                      SelectedItem="{Binding CaptureStreamType}"
-                                      Grid.Column="1"
-                                      HorizontalAlignment="Stretch">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding ., Converter={StaticResource StreamTypeConverter}}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <Button Content="测试拍照"
-                                    Grid.Column="2"
-                                    Command="{Binding TestCaptureCommand}"
-                                    Classes="primary-button"
-                                    Padding="12,6"
-                                    CornerRadius="4" />
+                            <TextBox Text="{Binding Urls}"
+                                     Grid.Row="0"
+                                     Grid.Column="1"
+                                     Watermark="localhost:9960 或 http://192.168.1.100:9960" />
+
+                            <TextBlock Text="拍照码流类型:"
+                                       Grid.Row="1"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="120" />
+                            <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto">
+                                <ComboBox ItemsSource="{Binding StreamTypeOptions}"
+                                          SelectedItem="{Binding CaptureStreamType}"
+                                          Grid.Column="0"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding ., Converter={StaticResource StreamTypeConverter}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Content="测试拍照"
+                                        Grid.Column="1"
+                                        Command="{Binding TestCaptureCommand}"
+                                        Classes="primary-button"
+                                        Margin="8,0,0,0"
+                                        Padding="12,6"
+                                        CornerRadius="4" />
+                            </Grid>
                         </Grid>
                     </StackPanel>
                 </Border>

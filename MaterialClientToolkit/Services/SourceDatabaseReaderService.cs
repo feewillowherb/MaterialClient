@@ -137,10 +137,10 @@ public class SourceDatabaseReaderService
                 OrderId = reader.GetInt64(1),
                 GoodsId = reader.GetInt32(2),
                 UnitId = reader.IsDBNull(3) ? null : reader.GetInt32(3),
-                GoodsPlanOnWeight = reader.GetDecimal(4),
-                GoodsPlanOnPcs = reader.GetDecimal(5),
-                GoodsPcs = reader.GetDecimal(6),
-                GoodsWeight = reader.GetDecimal(7),
+                GoodsPlanOnWeight = reader.IsDBNull(4) ? null : reader.GetDecimal(4),
+                GoodsPlanOnPcs = reader.IsDBNull(5) ? null : reader.GetDecimal(5),
+                GoodsPcs = reader.IsDBNull(6) ? null : reader.GetDecimal(6),
+                GoodsWeight = reader.IsDBNull(7) ? null : reader.GetDecimal(7),
                 GoodsTakeWeight = reader.IsDBNull(8) ? null : reader.GetDecimal(8),
                 DeleteStatus = reader.GetInt32(9),
                 LastEditUserId = reader.IsDBNull(10) ? null : reader.GetInt32(10),
@@ -152,9 +152,9 @@ public class SourceDatabaseReaderService
                 UpdateDate = reader.IsDBNull(16) ? null : reader.GetString(16),
                 AddDate = reader.IsDBNull(17) ? null : reader.GetString(17),
                 OffsetResult = reader.IsDBNull(18) ? 0 : reader.GetInt32(18),
-                OffsetWeight = reader.GetDecimal(19),
-                OffsetCount = reader.GetDecimal(20),
-                OffsetRate = reader.GetDecimal(21)
+                OffsetWeight = reader.IsDBNull(19) ? null : reader.GetDecimal(19),
+                OffsetCount = reader.IsDBNull(20) ? null : reader.GetDecimal(20),
+                OffsetRate = reader.IsDBNull(21) ? null : reader.GetDecimal(21)
             };
             orderGoods.Add(orderGood);
         }

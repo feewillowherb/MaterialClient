@@ -60,6 +60,8 @@ PublishProfiles/
 # ---- User secrets / local settings ----
 secrets.json
 appsettings.*.Development.json
+appsettings.secret.json
+appsettings.product.json
 
 # ---- Avalonia / Skia / Assets ----
 *.axaml.cs.map

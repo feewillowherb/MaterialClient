@@ -13,8 +13,8 @@
                 BorderThickness="1,1,1,0">
             <UniformGrid Rows="1" Columns="2">
                 <Button Content="进场照片"
-                        Padding="32,12"
-                        FontSize="14"
+                        Padding="20,8"
+                        FontSize="12"
                         BorderThickness="0"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center"
@@ -22,8 +22,8 @@
                         Foreground="{Binding IsEntryPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='White|#666666'}"
                         Background="{Binding IsEntryPhotoTabSelected, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='#4169E1|White'}" />
                 <Button Content="出场照片"
-                        Padding="32,12"
-                        FontSize="14"
+                        Padding="20,8"
+                        FontSize="12"
                         BorderThickness="0"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center"
@@ -38,14 +38,14 @@
                 Classes="card-border"
                 BorderThickness="1,0,1,1"
                 CornerRadius="0,0,8,8"
-                Padding="16"
-                Height="280">
+                Padding="12"
+                Height="220">
             <Grid>
                 <!-- 进场照片 Grid -->
                 <Grid RowDefinitions="*,*"
                       ColumnDefinitions="*,*"
-                      RowSpacing="8"
-                      ColumnSpacing="8"
+                      RowSpacing="6"
+                      ColumnSpacing="6"
                       IsVisible="{Binding IsEntryPhotoTabSelected}">
                     <Button Background="Transparent"
                             BorderThickness="0"
@@ -99,8 +99,8 @@
                 <!-- 出场照片 Grid -->
                 <Grid RowDefinitions="*,*"
                       ColumnDefinitions="*,*"
-                      RowSpacing="8"
-                      ColumnSpacing="8"
+                      RowSpacing="6"
+                      ColumnSpacing="6"
                       IsVisible="{Binding IsExitPhotoTabSelected}">
                     <Button Background="Transparent"
                             BorderThickness="0"

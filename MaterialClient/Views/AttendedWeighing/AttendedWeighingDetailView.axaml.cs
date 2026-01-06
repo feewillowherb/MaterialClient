@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
 
 namespace MaterialClient.Views.AttendedWeighing;
 

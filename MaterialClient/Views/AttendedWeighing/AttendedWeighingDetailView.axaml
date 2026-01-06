@@ -21,7 +21,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" MinHeight="300" />
+            <RowDefinition Height="*" MinHeight="180" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <!--第一行-->
@@ -146,7 +146,7 @@
 
         <!--第三行-->
         <Border Grid.Row="2" BorderThickness="1" BorderBrush="#E5E7EB"
-                Background="White" CornerRadius="4" Margin="0,0,0,10">
+                Background="White" CornerRadius="4" Margin="0,0,0,0">
             <Grid>
                 <DataGrid ItemsSource="{Binding MaterialItems}"
                           AutoGenerateColumns="False"
@@ -163,7 +163,7 @@
                 <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
                 <DataGrid.Columns>
                     <!-- 材料名称 (4字) -->
-                    <DataGridTemplateColumn Header="材料名称" Width="80">
+                    <DataGridTemplateColumn Header="材料名称" Width="72">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Button Background="Transparent"
@@ -178,26 +178,17 @@
                                         Command="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).OpenMaterialSelectionCommand}"
                                         CommandParameter="{Binding}">
                                     <Button.Styles>
-                                        <Style Selector="Button">
-                                            <Setter Property="FontWeight" Value="Normal" />
-                                        </Style>
                                         <Style Selector="Button:pointerover">
                                             <Setter Property="Background" Value="Transparent" />
-                                            <Setter Property="FontWeight" Value="Normal" />
                                         </Style>
                                         <Style Selector="Button:pressed">
                                             <Setter Property="Background" Value="Transparent" />
-                                            <Setter Property="FontWeight" Value="Normal" />
-                                        </Style>
-                                        <Style Selector="Button:selected">
-                                            <Setter Property="FontWeight" Value="Normal" />
                                         </Style>
                                     </Button.Styles>
                                     <TextBlock Text="{Binding SelectedMaterial.Name}"
                                                HorizontalAlignment="Left"
                                                VerticalAlignment="Center"
                                                FontSize="12"
-                                               FontWeight="Normal"
                                                Foreground="#333333"
                                                TextTrimming="CharacterEllipsis" />
                                 </Button>
@@ -206,7 +197,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- 单位 (2字) -->
-                    <DataGridTemplateColumn Header="单位" Width="72">
+                    <DataGridTemplateColumn Header="单位" Width="62">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}"

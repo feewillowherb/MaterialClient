@@ -8,7 +8,7 @@
         x:DataType="vm:AttendedWeighingViewModel"
         x:Name="AttendedWeighingWindowRoot"
         Title="有人值守"
-        Width="1440" Height="900"
+        Width="1366" Height="768"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="None"
         Background="White"
@@ -36,7 +36,7 @@
                             Spacing="32"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            Margin="-500,0,0,0">
+                            Margin="-450,0,0,0">
                     <Button Content="数据管理"
                             Classes="transparent-button"
                             Foreground="White"
@@ -226,7 +226,7 @@
                                        FontWeight="Bold"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center"
-                                       Margin="90,0,90,0" />
+                                       Margin="70,0,70,0" />
 
                             <!-- Separator and Unit -->
                             <StackPanel Grid.Column="3"
@@ -256,12 +256,12 @@
                            FontWeight="Bold"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"
-                           Margin="-180,0,0,0" />
+                           Margin="-150,0,0,0" />
             </Grid>
         </Grid>
 
         <!-- Main Content Area (White Background, Three Columns) -->
-        <Grid Grid.Row="2" Background="White" ColumnDefinitions="300,*,380" Margin="0">
+        <Grid Grid.Row="2" Background="White" ColumnDefinitions="280,*,360" Margin="0">
 
             <!-- Left Column: Record List -->
             <views:WeighingRecordListView Grid.Column="0" DataContext="{Binding}" />
@@ -292,17 +292,18 @@
                                Text="单据扫描"
                                FontSize="14"
                                FontWeight="SemiBold"
-                               Margin="0,24,0,12" />
+                               Margin="0,12,0,8" />
 
                     <Border Grid.Row="3"
                             Classes="card-border"
                             Height="240"
-                            Padding="16">
+                            Padding="12">
                         <Grid RowDefinitions="*,Auto">
                             <Border Background="#F0F0F0"
                                     CornerRadius="4"
                                     BorderBrush="#D1D5DB"
-                                    BorderThickness="1">
+                                    BorderThickness="1"
+                                    Margin="0,0,0,0">
                                 <Grid>
                                     <!-- USB 摄像头预览 -->
                                     <Image Source="{Binding UsbCameraPreview}"
@@ -331,9 +332,14 @@
                                     Content="{Binding BillPhotoButtonText}"
                                     Classes="success-button"
                                     CornerRadius="6"
-                                    Padding="48,8"
+                                    Width="80"
+                                    Height="28"
+                                    FontSize="12"
+                                    Padding="0"
                                     HorizontalAlignment="Center"
-                                    Margin="0,12,0,0"
+                                    VerticalContentAlignment="Center"
+                                    HorizontalContentAlignment="Center"
+                                    Margin="0,5,0,0"
                                     Command="{Binding TakeBillPhotoCommand}"
                                     IsVisible="{Binding IsShowingDetailView}"
                                     IsEnabled="{Binding IsUsbCameraOnline}" />

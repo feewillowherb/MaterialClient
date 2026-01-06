@@ -36,6 +36,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     // System settings
     [Reactive] private bool _enableAutoStart;
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
+    [Reactive] private string _urls = "http://localhost:9960";
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -129,7 +130,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 new SystemSettings
                 {
                     EnableAutoStart = EnableAutoStart,
-                    CaptureStreamType = CaptureStreamType
+                    CaptureStreamType = CaptureStreamType,
+                    Urls = Urls
                 },
                 CameraConfigs.Select(c => new CameraConfig
                 {
@@ -279,6 +281,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Load system settings
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
+            Urls = settings.SystemSettings.Urls;
 
             // Load weighing configuration
             MinWeightThreshold = settings.WeighingConfiguration.MinWeightThreshold;

@@ -14,4 +14,9 @@ public class SystemSettings
     ///     Capture stream type (Substream or Mainstream)
     /// </summary>
     public StreamType CaptureStreamType { get; set; } = StreamType.Substream;
+
+    /// <summary>
+    ///     Web service URLs
+    /// </summary>
+    public string Urls { get; set; } = "http://localhost:9960";
 }

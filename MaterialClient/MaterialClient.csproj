@@ -51,9 +51,15 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="appsettings.json">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
+    <!-- 将 appsettings.json 作为嵌入式资源 -->
+    <None Include="appsettings.json" Condition="Exists('appsettings.json')">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    
+    <!-- 将 appsettings.secret.json 复制到输出目录（用于运行时读取） -->
+    <None Include="appsettings.secret.json" Condition="Exists('appsettings.secret.json')">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     </ItemGroup>
 
     <ItemGroup>
