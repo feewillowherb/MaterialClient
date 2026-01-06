@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -24,6 +27,7 @@ public class MinimalWebHostService : IAsyncDisposable
     private WebApplication? _webApplication;
     
     private static string ApiPath ="/api/CarLicense/CallDeviceMessage";
+    private static string HuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
 
     /// <summary>
     ///     构造函数，注入共享的服务提供者
@@ -163,7 +167,8 @@ public class MinimalWebHostService : IAsyncDisposable
             version = "1.0",
             endpoints = new[]
             {  
-                ApiPath
+                ApiPath,
+                HuaXiaZhiXingApiPath
             }
         }));
 
@@ -211,8 +216,108 @@ public class MinimalWebHostService : IAsyncDisposable
                 });
             }
         });
+
+        // 车牌识别 - 设备回调接口（华夏智信）
+        app.MapPost(HuaXiaZhiXingApiPath, async (HttpContext context) =>
+        {
+            var logger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
+            var result = new ResultInfoHuaXiaZhiXing();
+
+            try
+            {
+                IFormCollection? form = null;
+
+                // 优先使用标准表单集合
+                if (context.Request.HasFormContentType && context.Request.Form != null && context.Request.Form.Count > 0)
+                {
+                    form = context.Request.Form;
+                }
+                else
+                {
+                    // 回退：读取原始请求体并解析
+                    context.Request.EnableBuffering();
+                    context.Request.Body.Position = 0;
+                    using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
+                    var raw = await reader.ReadToEndAsync();
+                    context.Request.Body.Position = 0;
+
+                    if (!string.IsNullOrWhiteSpace(raw))
+                    {
+                        // 解析查询字符串格式的原始数据
+                        var queryParams = QueryHelpers.ParseQuery(raw);
+                        var formDictionary = new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>();
+                        foreach (var kvp in queryParams)
+                        {
+                            formDictionary[kvp.Key] = kvp.Value;
+                        }
+                        form = new FormCollection(formDictionary);
+                    }
+                }
+
+                if (form == null || form.Count == 0)
+                {
+                    result.error_num = -1;
+                    result.error_str = "无效的请求";
+                    logger.LogWarning("接收到无效的华夏智信请求（无表单数据）");
+                    return Results.Json(result);
+                }
+
+                var type = form["type"].ToString() ?? string.Empty;
+                
+                if (type.Equals("online", StringComparison.OrdinalIgnoreCase))
+                {
+                    var plateNum = form["plate_num"].ToString();
+                    if (!string.IsNullOrWhiteSpace(plateNum))
+                    {
+                        var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
+                        weighingService.OnPlateNumberRecognized(plateNum);
+                        
+                        logger.LogInformation($"华夏智信抓拍车牌号：{plateNum}");
+                        
+                        // 可选：访问其他字段
+                        // var plateColor = form["plate_color"].ToString();
+                        // var pictureBase64 = form["picture"].ToString();
+                        // var closeupBase64 = form["closeup_pic"].ToString();
+                    }
+                }
+                else if (type.Equals("heartbeat", StringComparison.OrdinalIgnoreCase))
+                {
+                    var camIp = form["cam_ip"].ToString();
+                    if (!string.IsNullOrEmpty(camIp))
+                    {
+                        logger.LogDebug($"华夏智信设备心跳：{camIp}");
+                        // 注意：原代码中的 Params 和 onlineTime 更新逻辑需要根据实际需求实现
+                        // 这里仅记录日志，如果需要设备状态管理，可以添加相应的服务
+                    }
+                }
+
+                result.error_num = 0;
+                result.error_str = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                result.error_num = -1;
+                result.error_str = string.Empty;
+                logger.LogError(ex, "处理华夏智信设备回调失败");
+            }
+
+            return Results.Json(result);
+        });
     }
 
+
+    #region 华夏智信响应数据模型
+
+    /// <summary>
+    ///     华夏智信设备回调响应结果
+    /// </summary>
+    private class ResultInfoHuaXiaZhiXing
+    {
+        public int error_num { get; set; }
+        public string error_str { get; set; } = string.Empty;
+    }
+
+    #endregion
 
     #region 海康威视车牌识别数据模型
 
