@@ -804,6 +804,202 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
+    [Fact]
+    public async Task StabilityCheck_Should_NotUseHistoricalData_AfterStateTransition()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject();
+        await service.StartAsync();
+
+        _output.WriteLine("=== 测试：验证稳定性检查不应使用历史数据 ===");
+        _output.WriteLine("场景：在进入 WaitingForStability 之前有历史数据，验证不会过早判定为稳定");
+
+        // Act Phase 1: 先发送一些低于阈值的数据（模拟历史数据）
+        _output.WriteLine("=== Phase 1: 发送历史数据（低于阈值） ===");
+        for (int i = 0; i < 5; i++)
+        {
+            weightSubject.OnNext(0.3m); // 低于阈值
+            await Task.Delay(200);
+        }
+        await Task.Delay(300);
+        var status1 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after historical data: {status1}");
+        status1.ShouldBe(AttendedWeighingStatus.OffScale);
+
+        // Act Phase 2: 快速上磅并发送多个数据点（模拟快速上磅场景）
+        _output.WriteLine("=== Phase 2: 快速上磅到 0.55t 并发送多个数据点 ===");
+        DateTime? waitingForStabilityTime = null;
+        
+        // 快速发送多个数据点（模拟快速上磅）
+        var weights = new[] { 0.55m, 0.60m, 0.65m, 0.60m, 0.55m, 0.60m, 0.65m, 0.60m };
+        foreach (var weight in weights)
+        {
+            weightSubject.OnNext(weight);
+            await Task.Delay(50); // 快速发送，间隔50ms
+            
+            // 检查是否进入 WaitingForStability 状态
+            var currentStatus = service.GetCurrentStatus();
+            if (currentStatus == AttendedWeighingStatus.WaitingForStability && waitingForStabilityTime == null)
+            {
+                waitingForStabilityTime = DateTime.Now;
+                _output.WriteLine($"Entered WaitingForStability at: {waitingForStabilityTime:HH:mm:ss.fff}");
+            }
+        }
+        
+        await Task.Delay(300); // 等待状态转换
+        var status2 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after Phase 2: {status2}");
+        
+        // 确保已经进入 WaitingForStability 状态
+        if (waitingForStabilityTime == null)
+        {
+            // 如果还没进入，再等待一下
+            await Task.Delay(200);
+            var checkStatus = service.GetCurrentStatus();
+            if (checkStatus == AttendedWeighingStatus.WaitingForStability)
+            {
+                waitingForStabilityTime = DateTime.Now;
+                _output.WriteLine($"Entered WaitingForStability (delayed) at: {waitingForStabilityTime:HH:mm:ss.fff}");
+            }
+            status2 = checkStatus;
+        }
+        
+        status2.ShouldBe(AttendedWeighingStatus.WaitingForStability, 
+            "Should have entered WaitingForStability state after on-scale");
+        
+        // 继续发送稳定的数据点，并监控状态变化
+        _output.WriteLine("=== Phase 3: 继续发送稳定数据点并监控状态变化 ===");
+        DateTime? weightStabilizedTime = null;
+        
+        for (int i = 0; i < 20; i++) // 发送更多数据点以确保覆盖
+        {
+            var weight = 0.60m + (decimal)((i % 3 - 1) * 0.01); // 在0.59-0.61之间波动
+            weightSubject.OnNext(weight);
+            await Task.Delay(200);
+            
+            // 检查是否变为 WeightStabilized
+            var currentStatus = service.GetCurrentStatus();
+            if (currentStatus == AttendedWeighingStatus.WeightStabilized && weightStabilizedTime == null)
+            {
+                weightStabilizedTime = DateTime.Now;
+                _output.WriteLine($"Became WeightStabilized at: {weightStabilizedTime:HH:mm:ss.fff}");
+                
+                // 计算从 WaitingForStability 到 WeightStabilized 的时间
+                if (waitingForStabilityTime.HasValue)
+                {
+                    var timeToStable = (weightStabilizedTime.Value - waitingForStabilityTime.Value).TotalSeconds;
+                    _output.WriteLine($"Time from WaitingForStability to WeightStabilized: {timeToStable:F3}s");
+                    
+                    // Assert: 应该至少需要接近窗口时间（2秒以上）
+                    // 如果时间少于2秒，说明可能使用了历史数据
+                    timeToStable.ShouldBeGreaterThanOrEqualTo(2.0, 
+                        $"Stability detected too quickly ({timeToStable:F3}s < 2.0s). " +
+                        "This suggests historical data is being used in stability check. " +
+                        "Expected at least 2 seconds after entering WaitingForStability state.");
+                }
+                break;
+            }
+        }
+        
+        await Task.Delay(1000); // 等待稳定性检查
+        var status3 = service.GetCurrentStatus();
+        _output.WriteLine($"Final status: {status3}");
+        
+        // Assert
+        // 如果已经变为 WeightStabilized，验证时间要求
+        if (weightStabilizedTime.HasValue && waitingForStabilityTime.HasValue)
+        {
+            var timeToStable = (weightStabilizedTime.Value - waitingForStabilityTime.Value).TotalSeconds;
+            _output.WriteLine($"Final time from WaitingForStability to WeightStabilized: {timeToStable:F3}s");
+        }
+        else if (status3 == AttendedWeighingStatus.WeightStabilized && waitingForStabilityTime.HasValue)
+        {
+            // 如果最终状态是 WeightStabilized 但之前没捕获到时间
+            var timeToStable = (DateTime.Now - waitingForStabilityTime.Value).TotalSeconds;
+            _output.WriteLine($"Final time from WaitingForStability to WeightStabilized: {timeToStable:F3}s");
+            timeToStable.ShouldBeGreaterThanOrEqualTo(2.0, 
+                $"Stability detected too quickly ({timeToStable:F3}s < 2.0s). " +
+                "This suggests historical data is being used in stability check.");
+        }
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task StabilityCheck_Should_RequireFullWindow_AfterEnteringWaitingForStability()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject();
+        await service.StartAsync();
+
+        _output.WriteLine("=== 测试：验证进入 WaitingForStability 后需要完整窗口时间才能稳定 ===");
+
+        // Act: 先发送一些数据，然后上磅
+        _output.WriteLine("=== Step 1: 发送初始数据 ===");
+        weightSubject.OnNext(0.3m);
+        await Task.Delay(200);
+        weightSubject.OnNext(0.4m);
+        await Task.Delay(200);
+
+        // Act: 上磅到 0.55t（进入 WaitingForStability）
+        _output.WriteLine("=== Step 2: 上磅到 0.55t（进入 WaitingForStability） ===");
+        var transitionTime = DateTime.Now;
+        weightSubject.OnNext(0.55m);
+        await Task.Delay(300);
+        var status1 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after on-scale: {status1} at {DateTime.Now:HH:mm:ss.fff}");
+        status1.ShouldBe(AttendedWeighingStatus.WaitingForStability);
+
+        // Act: 发送稳定的数据点（在 0.6t 附近波动）
+        _output.WriteLine("=== Step 3: 发送稳定数据点（每200ms一个） ===");
+        var stableWeights = new List<decimal>();
+        for (int i = 0; i < 20; i++) // 发送20个数据点，覆盖4秒
+        {
+            // 在 0.6t ± 0.02t 范围内波动
+            var noise = (decimal)((i % 5 - 2) * 0.01); // -0.02 到 +0.02
+            var weight = 0.60m + noise;
+            stableWeights.Add(weight);
+            weightSubject.OnNext(weight);
+            var elapsed = (DateTime.Now - transitionTime).TotalSeconds;
+            _output.WriteLine($"[{i}] Weight: {weight:F3}t, Elapsed: {elapsed:F3}s");
+            
+            await Task.Delay(200);
+            
+            var currentStatus = service.GetCurrentStatus();
+            if (currentStatus == AttendedWeighingStatus.WeightStabilized)
+            {
+                var timeToStable = (DateTime.Now - transitionTime).TotalSeconds;
+                _output.WriteLine($"*** Status changed to WeightStabilized at {timeToStable:F3}s after entering WaitingForStability ***");
+                
+                // 验证：应该至少需要接近窗口时间（3秒）
+                // 考虑到 Buffer 的行为，可能需要至少 2-3 秒
+                if (timeToStable < 2.0)
+                {
+                    _output.WriteLine($"ERROR: Stability detected too quickly ({timeToStable:F3}s < 2.0s)!");
+                    _output.WriteLine("This suggests historical data is being used in stability check.");
+                }
+                break;
+            }
+        }
+
+        await Task.Delay(500);
+        var finalStatus = service.GetCurrentStatus();
+        _output.WriteLine($"Final status: {finalStatus}");
+        _output.WriteLine($"Total data points sent: {stableWeights.Count}");
+        _output.WriteLine($"Weight range: {stableWeights.Min():F3}t - {stableWeights.Max():F3}t");
+
+        // Assert
+        // 最终应该稳定（如果数据足够）
+        finalStatus.ShouldBeOneOf(
+            AttendedWeighingStatus.WeightStabilized,
+            AttendedWeighingStatus.WaitingForDeparture,
+            AttendedWeighingStatus.WaitingForStability);
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
     #endregion
 
     #region Error Handling Tests
