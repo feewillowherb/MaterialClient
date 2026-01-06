@@ -484,6 +484,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     private IObservable<WeightStabilityInfo> CreateStabilityStream(IObservable<decimal> sharedWeightSource, WeighingConfiguration config)
     {
+        // 计算最小数据点数量要求：至少需要覆盖窗口时间的 50% 以上
+        // 例如：窗口 3000ms，检查间隔 200ms，期望至少 7-8 个数据点
+        var minDataPointsRequired = Math.Max(5, (int)(config.StabilityWindowMs / config.StabilityCheckIntervalMs * 0.5));
+        
         return sharedWeightSource
             .Buffer(TimeSpan.FromMilliseconds(config.StabilityWindowMs),
                 TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
@@ -494,11 +498,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var min = buffer.Min();
                     var max = buffer.Max();
                     var range = max - min;
-                    var isStable = range <= config.WeightStabilityThreshold * 2;
+                    
+                    // 关键修复：需要同时满足两个条件才判定为稳定
+                    // 1. range 满足阈值要求
+                    // 2. 窗口内有足够的数据点（防止上磅瞬间就判定为稳定）
+                    var rangeStable = range <= config.WeightStabilityThreshold * 2;
+                    var hasEnoughDataPoints = buffer.Count >= minDataPointsRequired;
+                    var isStable = rangeStable && hasEnoughDataPoints;
                     var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
 
                     _logger?.LogDebug(
-                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3})");
+                        $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3}, dataPoints: {buffer.Count}/{minDataPointsRequired}, rangeStable: {rangeStable}, hasEnoughData: {hasEnoughDataPoints})");
 
                     return new WeightStabilityInfo
                     {
