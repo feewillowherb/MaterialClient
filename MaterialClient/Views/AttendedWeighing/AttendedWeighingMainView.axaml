@@ -217,11 +217,11 @@
             </Border>
 
             <!-- Photos Section -->
-            <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="16">
+            <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="12">
                 <!-- Entry Photos -->
                 <Border Background="#F8F9FA"
                         CornerRadius="8"
-                        Padding="16">
+                        Padding="12">
                     <Grid RowDefinitions="Auto,*">
                         <TextBlock Text="上一车进场照片"
                                    FontSize="14"
@@ -230,8 +230,8 @@
                         <Grid Grid.Row="1"
                               RowDefinitions="*,*"
                               ColumnDefinitions="*,*"
-                              RowSpacing="8"
-                              ColumnSpacing="8">
+                              RowSpacing="6"
+                              ColumnSpacing="6">
                             <Button Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"
@@ -287,7 +287,7 @@
                 <Border Grid.Column="1"
                         Background="#F8F9FA"
                         CornerRadius="8"
-                        Padding="16">
+                        Padding="12">
                     <Grid RowDefinitions="Auto,*">
                         <TextBlock Text="上一车退场照片"
                                    FontSize="14"
@@ -296,8 +296,8 @@
                         <Grid Grid.Row="1"
                               RowDefinitions="*,*"
                               ColumnDefinitions="*,*"
-                              RowSpacing="8"
-                              ColumnSpacing="8">
+                              RowSpacing="6"
+                              ColumnSpacing="6">
                             <Button Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"
