@@ -469,6 +469,33 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         });
     }
 
+    /// <summary>
+    /// 异步显示消息框，不阻塞命令执行，用于验证失败时解除按钮锁定状态
+    /// </summary>
+    private void ShowMessageBoxAsyncWithoutBlocking(string message)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            var parentWin = GetParentWindow();
+
+            // 使用 MessageBoxManager.GetMessageBoxStandard
+            var messageBox = MessageBoxManager.GetMessageBoxStandard(
+                "提示",
+                message,
+                ButtonEnum.Ok,
+                Icon.None);
+
+            if (parentWin != null)
+            {
+                await messageBox.ShowWindowDialogAsync(parentWin);
+            }
+            else
+            {
+                await messageBox.ShowAsync();
+            }
+        }, DispatcherPriority.Normal);
+    }
+
     private Window? GetParentWindow()
     {
         if (Application.Current?.ApplicationLifetime is
@@ -500,7 +527,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             // 验证是否选择了供应商
             if (SelectedProvider == null)
             {
-                await ShowMessageBoxAsync("请选择供应商");
+                ShowMessageBoxAsyncWithoutBlocking("请选择供应商");
                 return;
             }
 
@@ -509,6 +536,25 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
             var providerId = SelectedProvider?.Id;
             var waybillQuantity = firstRow?.WaybillQuantity;
+
+            // 验证 materialId、materialUnitId、waybillQuantity 都不能为空
+            if (!materialId.HasValue)
+            {
+                ShowMessageBoxAsyncWithoutBlocking("请选择物料");
+                return;
+            }
+
+            if (!materialUnitId.HasValue)
+            {
+                ShowMessageBoxAsyncWithoutBlocking("请选择物料单位");
+                return;
+            }
+
+            if (!waybillQuantity.HasValue)
+            {
+                ShowMessageBoxAsyncWithoutBlocking("请输入运单数量");
+                return;
+            }
             var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
             await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
                 _listItem.Id,
