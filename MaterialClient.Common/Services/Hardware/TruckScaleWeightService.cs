@@ -2,6 +2,7 @@ using System.IO.Ports;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
+using System.Text.RegularExpressions;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Extensions;
@@ -374,6 +375,13 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             // I/O operation outside of lock (non-blocking for other threads)
             var receivedData = port.ReadTo(_endChar);
 
+            // Validate data format before processing
+            if (!IsValidWeightFormat(receivedData))
+            {
+                _logger?.LogWarning($"Invalid weight data format, discarding: {receivedData}");
+                return;
+            }
+
             // Reverse the string as per reference implementation (outside of lock)
             var reversed = string.Empty;
             for (var i = receivedData.Length - 1; i >= 0; i--) reversed += receivedData[i];
@@ -472,6 +480,23 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         }
 
         return null;
+    }
+
+    /// <summary>
+    ///     Validate weight data format
+    ///     Format: +/- + 8 digits + 1 letter (A-F, case insensitive)
+    ///     Example: +001570018, +00154001B, -00000001A
+    /// </summary>
+    /// <param name="data">Data string to validate</param>
+    /// <returns>True if format is valid, false otherwise</returns>
+    private bool IsValidWeightFormat(string data)
+    {
+        if (string.IsNullOrEmpty(data))
+            return false;
+
+        // Format: +/- + 8 digits + 1 letter (A-F, case insensitive)
+        // Regex pattern: ^[+-]\d{8}[A-Fa-f]$
+        return Regex.IsMatch(data, @"^[+-]\d{8}[A-Fa-f]$");
     }
 
     /// <summary>
