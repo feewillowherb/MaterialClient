@@ -476,7 +476,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             .Buffer(TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
             .Where(buffer => buffer.Count > 0)
             .Select(buffer => buffer.Last())
-            .DistinctUntilChanged() // 只在重量变化时发出
             .StartWith(0m);
     }
 

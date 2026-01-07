@@ -10,6 +10,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
@@ -24,6 +25,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
+    private readonly ILogger<SettingsWindowViewModel> _logger;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -96,11 +98,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public SettingsWindowViewModel(
         ISettingsService settingsService,
         ITruckScaleWeightService truckScaleWeightService,
-        IHikvisionService hikvisionService)
+        IHikvisionService hikvisionService,
+        ILogger<SettingsWindowViewModel> logger)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
+        _logger = logger;
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
@@ -235,11 +239,31 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         try
         {
+            _logger.LogInformation("开始测试拍照...");
             // Call test capture service method - it will handle all cameras and send notification
-            await _hikvisionService.TestCaptureAsync();
+            var results = await _hikvisionService.TestCaptureAsync();
+            var successCount = results.Count(r => r.Success);
+            var failCount = results.Count - successCount;
+            _logger.LogInformation("测试拍照完成，成功: {SuccessCount}, 失败: {FailCount}", successCount, failCount);
+            
+            // Log detailed results
+            foreach (var result in results)
+            {
+                if (result.Success)
+                {
+                    _logger.LogInformation("拍照成功 - 设备: {DeviceKey}, 通道: {Channel}, 文件: {FilePath}, 大小: {FileSize} bytes",
+                        result.Request.DeviceKey, result.Request.Channel, result.Request.SaveFullPath, result.FileSize);
+                }
+                else
+                {
+                    _logger.LogWarning("拍照失败 - 设备: {DeviceKey}, 通道: {Channel}, 错误: {ErrorMessage}",
+                        result.Request.DeviceKey, result.Request.Channel, result.ErrorMessage);
+                }
+            }
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "测试拍照时发生异常");
             // Show error message - in a real app you'd use a dialog service
             // Error: ex.Message
         }

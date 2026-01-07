@@ -175,39 +175,36 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             try
             {
-                // 在后台线程中执行拍照操作（因为 CaptureJpegFromStream 是同步的阻塞操作）
-                await Task.Run(() =>
-                {
-                    var playM4Error = 0;
-                    result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
-                        out playM4Error);
-                    result.PlayM4Error = playM4Error;
+                // 直接调用同步方法（已在异步上下文中，不需要 Task.Run）
+                var playM4Error = 0;
+                result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
+                    out playM4Error);
+                result.PlayM4Error = playM4Error;
 
-                    if (!result.Success)
+                if (!result.Success)
+                {
+                    result.HcNetSdkError = GetLastErrorCode();
+                    result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
+                }
+                else
+                {
+                    // 验证文件
+                    if (File.Exists(request.SaveFullPath))
                     {
-                        result.HcNetSdkError = GetLastErrorCode();
-                        result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
+                        var fileInfo = new FileInfo(request.SaveFullPath);
+                        result.FileSize = fileInfo.Length;
+                        if (fileInfo.Length == 0)
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "文件大小为0";
+                        }
                     }
                     else
                     {
-                        // 验证文件
-                        if (File.Exists(request.SaveFullPath))
-                        {
-                            var fileInfo = new FileInfo(request.SaveFullPath);
-                            result.FileSize = fileInfo.Length;
-                            if (fileInfo.Length == 0)
-                            {
-                                result.Success = false;
-                                result.ErrorMessage = "文件大小为0";
-                            }
-                        }
-                        else
-                        {
-                            result.Success = false;
-                            result.ErrorMessage = "文件未创建";
-                        }
+                        result.Success = false;
+                        result.ErrorMessage = "文件未创建";
                     }
-                });
+                }
             }
             catch (Exception ex)
             {
@@ -241,37 +238,34 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             try
             {
-                // 在后台线程中执行拍照操作（因为 CaptureJpeg 是同步的阻塞操作）
-                await Task.Run(() =>
-                {
-                    uint lastError = 0;
-                    result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError);
-                    result.HcNetSdkError = lastError;
+                // 直接调用同步方法（已在异步上下文中，不需要 Task.Run）
+                uint lastError = 0;
+                result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError);
+                result.HcNetSdkError = lastError;
 
-                    if (!result.Success)
+                if (!result.Success)
+                {
+                    result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}";
+                }
+                else
+                {
+                    // 验证文件
+                    if (File.Exists(request.SaveFullPath))
                     {
-                        result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}";
+                        var fileInfo = new FileInfo(request.SaveFullPath);
+                        result.FileSize = fileInfo.Length;
+                        if (fileInfo.Length == 0)
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "文件大小为0";
+                        }
                     }
                     else
                     {
-                        // 验证文件
-                        if (File.Exists(request.SaveFullPath))
-                        {
-                            var fileInfo = new FileInfo(request.SaveFullPath);
-                            result.FileSize = fileInfo.Length;
-                            if (fileInfo.Length == 0)
-                            {
-                                result.Success = false;
-                                result.ErrorMessage = "文件大小为0";
-                            }
-                        }
-                        else
-                        {
-                            result.Success = false;
-                            result.ErrorMessage = "文件未创建";
-                        }
+                        result.Success = false;
+                        result.ErrorMessage = "文件未创建";
                     }
-                });
+                }
             }
             catch (Exception ex)
             {
