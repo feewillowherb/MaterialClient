@@ -761,22 +761,39 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             _logger?.LogInformation(
                 $"Status changed {previousStatus} -> {newStatus}, current weight: {weight}t");
 
-            // 处理状态转换的副作用
+            // 关键修复：当状态从 WaitingForStability 转为 WeightStabilized 时，立即创建记录
+            // 不依赖 IsStable 状态，因为状态转换已经发生，说明之前已经满足稳定条件
+            if (previousStatus == AttendedWeighingStatus.WaitingForStability && 
+                newStatus == AttendedWeighingStatus.WeightStabilized &&
+                _lastCreatedWeighingRecordIdSubject.Value == null)
+            {
+                // 使用稳定重量（如果可用），否则使用当前重量
+                var weightToUse = stability.StableWeight ?? weight;
+                _logger?.LogInformation(
+                    $"Weight stabilized (status transition), creating record with weight: {weightToUse:F3}t");
+                
+                // 立即创建称重记录
+                EnqueueAsyncOperation(async () => await OnWeightStabilizedAsync(weightToUse));
+            }
+
+            // 处理状态转换的其他副作用
             ProcessStatusTransition(previousStatus, newStatus, weight);
 
             // 更新状态并发送通知（状态已在流中更新，这里同步 Subject）
             UpdateStatusAndNotify(newStatus);
         }
 
-        // 处理稳定性触发的操作（状态转换已在流中完成，这里只处理副作用）
+        // 备用检查：如果状态已经是 WeightStabilized 但记录还未创建（防止状态转换时遗漏）
+        // 这主要处理状态已经是 WeightStabilized 但之前没有创建记录的情况
+        // 关键：必须同时检查 IsStable，确保只有在稳定时才创建记录
         if (newStatus == AttendedWeighingStatus.WeightStabilized && 
-            stability.IsStable && 
+            stability.IsStable &&  // 必须稳定才创建记录
             _lastCreatedWeighingRecordIdSubject.Value == null) // 检查是否已经称重过（null表示未称重）
         {
             // Weight stabilized - use stable weight (average) if available
             var weightToUse = stability.StableWeight ?? weight;
             _logger?.LogInformation(
-                $"Weight stabilized, stable weight: {weightToUse}t");
+                $"Weight stabilized (backup check), stable weight: {weightToUse}t");
 
             // When weight is stabilized, capture photos and create WeighingRecord
             EnqueueAsyncOperation(async () => await OnWeightStabilizedAsync(weightToUse));
@@ -859,6 +876,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
                 // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
                 EnqueueAsyncOperation(async () => await TriggerCaptureOnWaitingForStabilityAsync());
+                break;
+
+            case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.WeightStabilized):
+                // 正常流程：重量已稳定
+                // 注意：记录创建已在 OnWeightAndStatusChanged 中处理，这里只记录日志
+                _logger?.LogInformation(
+                    $"Entered WeightStabilized state (weight stabilized), weight: {weight:F3}t");
                 break;
 
             case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.OffScale):

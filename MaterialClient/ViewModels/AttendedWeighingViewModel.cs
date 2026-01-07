@@ -148,7 +148,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
         _truckScaleWeightService.WeightUpdates
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(weight => { CurrentWeight = weight; })
+            .Subscribe(weight => 
+            { 
+                Logger?.LogInformation($"UI weight update: {weight:F3}t");
+                CurrentWeight = weight; 
+            })
             .DisposeWith(_disposables);
 
         StartScaleStatusCheckTimer();
