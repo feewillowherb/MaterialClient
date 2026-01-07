@@ -65,7 +65,6 @@ public interface ITruckScaleWeightService : IAsyncDisposable
 [AutoConstructor]
 public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingletonDependency
 {
-    private const decimal TonDecimal = 100m;
     private readonly ILogger<TruckScaleWeightService>? _logger;
 
     private readonly ReaderWriterLockSlim _rwLock =
@@ -450,17 +449,14 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 // The string contains integer part + decimal part without decimal point
                 if (decimal.TryParse(weightString, out var weightInt))
                 {
-                    // Parse as kg (raw value divided by 100 to get decimal kg)
-                    // Example: "000205" -> 205 / 100 = 2.05 kg
-                    var parsedWeight = weightInt / TonDecimal;
 
                     // Apply sign
-                    if (isNegative) parsedWeight = -parsedWeight;
+                    if (isNegative) weightInt = -weightInt;
 
                     _logger?.LogDebug(
-                        $"Parsed HEX weight: {parsedWeight} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
+                        $"Parsed HEX weight: {weightInt} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
 
-                    return parsedWeight;
+                    return weightInt;
                 }
 
                 _logger?.LogWarning($"Failed to parse weight string: {weightString}");
