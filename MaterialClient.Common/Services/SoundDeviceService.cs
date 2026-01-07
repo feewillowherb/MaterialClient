@@ -64,7 +64,8 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             var volume = soundDeviceSettings.SoundVolume == "0" ? 100 : int.Parse(soundDeviceSettings.SoundVolume);
 
             // Build TTS URI
-            var ttsUri = $"http://{soundDeviceSettings.LocalIP}:10008/tts_xf.single?text={Uri.EscapeDataString(text)}&voice_name=xiaoyan&speed=50&volume={volume}&origin=http://{soundDeviceSettings.LocalIP}:10008";
+            var ttsUri =
+                $"http://{soundDeviceSettings.LocalIP}:10008/tts_xf.single?text={Uri.EscapeDataString(text)}&voice_name=xiaoyan&speed=50&volume={volume}&origin=http://{soundDeviceSettings.LocalIP}:10008";
 
             // Create play API client
             var playBaseUrl = $"http://{soundDeviceSettings.SoundIP}:8888";
@@ -76,12 +77,12 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             // Create play request
             var playRequest = new SoundDevicePlayRequestDto
             {
-                Name = "tts_play",
+                Name = "priority_task_play",
                 SerialNumber = soundDeviceSettings.SoundSN,
-                Type = "play",
+                Type = "req",
                 Params = new SoundDevicePlayParamsDto
                 {
-                    UserId = "system",
+                    UserId = "0",
                     Volume = volume,
                     Urls =
                     [
@@ -92,8 +93,8 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
                             Uri = ttsUri
                         }
                     ],
-                    Level = 1,
-                    Name = "tts_play_task",
+                    Level = 10000,
+                    Name = $"task_{DateTime.Now.ToString("yyyyMMddHHmmss")}",
                     Count = 1,
                     Length = 0,
                     Type = 0,
@@ -102,7 +103,8 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             };
 
             // Play audio
-            _logger?.LogInformation("Playing audio on sound device: {SoundIP}, TTS URI: {TtsUri}", soundDeviceSettings.SoundIP, ttsUri);
+            _logger?.LogInformation("Playing audio on sound device: {SoundIP}, TTS URI: {TtsUri}",
+                soundDeviceSettings.SoundIP, ttsUri);
             var response = await playApi.PlayAudioAsync(playRequest, cancellationToken);
 
             // Parse response to check if successful
@@ -131,4 +133,3 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
         }
     }
 }
-
