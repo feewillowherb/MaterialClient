@@ -227,15 +227,28 @@ public class MinimalWebHostService : IAsyncDisposable
             {
                 IFormCollection? form = null;
 
-                // 优先使用标准表单集合
-                if (context.Request.HasFormContentType && context.Request.Form != null && context.Request.Form.Count > 0)
+                // 启用缓冲，允许多次读取请求体
+                context.Request.EnableBuffering();
+
+                // 优先尝试读取标准表单数据
+                if (context.Request.HasFormContentType)
                 {
-                    form = context.Request.Form;
+                    try
+                    {
+                        // 使用 ReadFormAsync 而不是直接访问 Form 属性
+                        form = await context.Request.ReadFormAsync();
+                    }
+                    catch (BadHttpRequestException ex)
+                    {
+                        // 请求体不完整或格式错误，记录日志并尝试从原始请求体读取
+                        logger.LogWarning(ex, "无法读取标准表单数据，尝试从原始请求体解析");
+                        form = null;
+                    }
                 }
-                else
+
+                // 如果标准表单读取失败，尝试从原始请求体解析
+                if (form == null || form.Count == 0)
                 {
-                    // 回退：读取原始请求体并解析
-                    context.Request.EnableBuffering();
                     context.Request.Body.Position = 0;
                     using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
                     var raw = await reader.ReadToEndAsync();
@@ -293,6 +306,13 @@ public class MinimalWebHostService : IAsyncDisposable
 
                 result.error_num = 0;
                 result.error_str = string.Empty;
+            }
+            catch (BadHttpRequestException ex)
+            {
+                // 专门处理请求体相关的异常
+                result.error_num = -1;
+                result.error_str = "请求格式错误";
+                logger.LogWarning(ex, "华夏智信设备回调请求格式错误");
             }
             catch (Exception ex)
             {
