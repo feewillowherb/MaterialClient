@@ -160,8 +160,8 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         }
 
         // Mainstream capture (existing implementation)
-        // 使用并发处理多个设备
-        var tasks = requests.Select(async request =>
+        // 同步处理多个设备
+        var results = requests.Select(request =>
         {
             var result = new BatchCaptureResult
             {
@@ -175,7 +175,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             try
             {
-                // 直接调用同步方法（已在异步上下文中，不需要 Task.Run）
+                // 同步调用拍照方法
                 var playM4Error = 0;
                 result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
                     out playM4Error);
@@ -213,18 +213,17 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             }
 
             return result;
-        });
+        }).ToList();
 
-        var results = await Task.WhenAll(tasks);
-        return results.ToList();
+        return results;
     }
 
-    private async Task<List<BatchCaptureResult>> CaptureJpegBatchInternalAsync(List<BatchCaptureRequest> requests)
+    private Task<List<BatchCaptureResult>> CaptureJpegBatchInternalAsync(List<BatchCaptureRequest> requests)
     {
-        if (requests == null || requests.Count == 0) return new List<BatchCaptureResult>();
+        if (requests == null || requests.Count == 0) return Task.FromResult(new List<BatchCaptureResult>());
 
-        // 使用并发处理多个设备（子码流直接拍照）
-        var tasks = requests.Select(async request =>
+        // 同步处理多个设备（子码流直接拍照）
+        var results = requests.Select(request =>
         {
             var result = new BatchCaptureResult
             {
@@ -238,7 +237,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             try
             {
-                // 直接调用同步方法（已在异步上下文中，不需要 Task.Run）
+                // 同步调用拍照方法
                 uint lastError = 0;
                 result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError);
                 result.HcNetSdkError = lastError;
@@ -274,10 +273,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             }
 
             return result;
-        });
+        }).ToList();
 
-        var results = await Task.WhenAll(tasks);
-        return results.ToList();
+        return Task.FromResult(results);
     }
 
     public async Task<List<BatchCaptureResult>> TestCaptureAsync()
