@@ -759,6 +759,32 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
+    ///     获取状态对应的语音播报文案
+    /// </summary>
+    private string GetStatusAudioText(AttendedWeighingStatus previousStatus, AttendedWeighingStatus currentStatus)
+    {
+        // 特殊处理：WaitingForDeparture进入OffScale时
+        if (previousStatus == AttendedWeighingStatus.WaitingForDeparture &&
+            currentStatus == AttendedWeighingStatus.OffScale)
+        {
+            return "车辆已下磅，称重已完成";
+        }
+        
+        if (previousStatus == AttendedWeighingStatus.OffScale &&
+            currentStatus == AttendedWeighingStatus.WaitingForStability)
+        {
+            return "车辆已上磅，正在称重";
+        }
+
+        // 根据当前状态返回对应文案
+        return currentStatus switch
+        {
+            AttendedWeighingStatus.WeightStabilized => "称重已结束",
+            _ => string.Empty
+        };
+    }
+
+    /// <summary>
     ///     处理状态转换的副作用（纯副作用，不修改状态）
     /// </summary>
     private void ProcessStateTransition(
@@ -778,7 +804,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             {
                 try
                 {
-                    var statusDescription = currentState.Status.GetDescription();
+                    var statusDescription = GetStatusAudioText(previousState.Status, currentState.Status);
+                    if (string.IsNullOrEmpty(statusDescription))
+                    {
+                        return;
+                    }
+                    
                     await _soundDeviceService.PlayTextV2Async(statusDescription);
                     _logger?.LogDebug($"Played status change audio: {statusDescription}");
                 }
