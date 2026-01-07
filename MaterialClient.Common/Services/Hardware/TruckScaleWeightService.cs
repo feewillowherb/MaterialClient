@@ -327,6 +327,17 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 receivedCount += bytesRead;
             }
 
+            // Validate data format: must start with 0x02 (STX)
+            if (readBuffer[0] != 0x02)
+            {
+                var bufferHex = BitConverter.ToString(readBuffer).Replace("-", " ");
+                _logger?.LogWarning($"Invalid HEX weight data format (not starting with 0x02), discarding: {bufferHex}");
+                // Discard buffer
+                using var _ = _rwLock.ReadLock();
+                _serialPort?.DiscardInBuffer();
+                return;
+            }
+
             // Check frame format: 0x02 at start, 0x03 at end
             if (readBuffer[0] == 0x02 && readBuffer[_byteCount - 1] == 0x03)
             {
