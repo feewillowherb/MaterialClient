@@ -209,24 +209,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     _logger?.LogError(ex, "Error in async operation");
                     return (Success: false, Error: (Exception?)ex);
                 }
-                finally
-                {
-                    lock (_operationsLock)
-                    {
-                        // 移除已完成的任务（优化：重建集合，只保留未完成的任务）
-                        // 注意：由于 ConcurrentBag 不支持直接移除，我们通过重建来优化
-                        var remainingTasks = _pendingOperations.Where(t => !t.IsCompleted).ToList();
-                        if (remainingTasks.Count < _pendingOperations.Count)
-                        {
-                            // 有任务已完成，重建集合
-                            _pendingOperations.Clear();
-                            foreach (var remainingTask in remainingTasks)
-                            {
-                                _pendingOperations.Add(remainingTask);
-                            }
-                        }
-                    }
-                }
+                // 注意：任务完成后不立即从 _pendingOperations 移除
+                // 原因：ConcurrentBag 不支持直接移除，频繁重建集合性能差
+                // 清理逻辑：在 StopAsync 中统一清理，或通过定期清理机制
+                // 这样可以避免竞态条件，提高性能
             }))
             .Merge(maxConcurrent: 5) // 最多5个并发操作，防止过载
             .Catch((Exception ex) =>
@@ -289,7 +275,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _asyncOperationsSubscription = null;
 
         // 等待所有进行中的操作完成（优雅关闭）
-        var pendingTasks = _pendingOperations.ToArray();
+        // 只等待未完成的任务，避免等待已完成的任务导致性能问题
+        var pendingTasks = _pendingOperations.Where(t => !t.IsCompleted).ToArray();
         if (pendingTasks.Length > 0)
         {
             _logger?.LogInformation(
@@ -316,6 +303,18 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error while waiting for pending operations");
+            }
+        }
+        
+        // 清理已完成的任务，释放内存
+        // 注意：由于 ConcurrentBag 不支持直接移除，我们通过重建来清理
+        lock (_operationsLock)
+        {
+            var remainingTasks = _pendingOperations.Where(t => !t.IsCompleted).ToList();
+            _pendingOperations.Clear();
+            foreach (var remainingTask in remainingTasks)
+            {
+                _pendingOperations.Add(remainingTask);
             }
         }
 
@@ -580,23 +579,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 将外部事件转换为 Action
         var weightActions = weightStream.Select(w => (StateAction)new WeightUpdatedAction(w));
         var stabilityActions = stabilityStream.Select(s => (StateAction)new StabilityUpdatedAction(s));
-        var deliveryTypeActions = _stateSubject
-            .Skip(1) // 跳过初始值
-            .Select(state => state.DeliveryType)
-            .DistinctUntilChanged()
-            .Select(dt => (StateAction)new SetDeliveryTypeAction(dt));
-        var recordIdActions = _stateSubject
-            .Skip(1) // 跳过初始值
-            .Select(state => state.LastCreatedWeighingRecordId)
-            .DistinctUntilChanged()
-            .Select(id => (StateAction)new WeighingRecordCreatedAction(id));
 
+        // 注意：SetDeliveryTypeAction 和 WeighingRecordCreatedAction 已经通过 _actionSubject 发送
+        // 不需要从 _stateSubject 创建流，避免循环引用导致内存泄漏
         // 合并所有 Action 流（包括外部 Action）
         var actions = Observable.Merge(
             weightActions,
             stabilityActions,
-            deliveryTypeActions,
-            recordIdActions,
             _actionSubject.AsObservable()
         );
 
