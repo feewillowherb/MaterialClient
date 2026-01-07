@@ -91,10 +91,11 @@ internal static class WeighingServiceStateReducer
         if (newStatus == AttendedWeighingStatus.OffScale && 
             state.Status != AttendedWeighingStatus.OffScale)
         {
-            // 状态从非 OffScale 转换到 OffScale（下磅），清空记录ID
+            // 状态从非 OffScale 转换到 OffScale（下磅），清空记录ID和重量
             return newState with 
             { 
                 Status = newStatus,
+                Weight = 0m, // 关键修复：重置重量为0，避免残留重量导致立即重新上磅
                 LastCreatedWeighingRecordId = null,
                 PlateNumberCache = new ConcurrentDictionary<string, PlateNumberCacheRecord>(),
                 Stability = new WeightStabilityInfo

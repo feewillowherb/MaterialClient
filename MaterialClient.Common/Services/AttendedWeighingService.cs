@@ -174,7 +174,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // 共享源流，避免多次订阅，只保留最近5秒的数据（背压保护）
         var sharedWeightSource = _truckScaleWeightService.WeightUpdates
-            .Replay(TimeSpan.FromSeconds(5), TaskPoolScheduler.Default)
+            .Publish()
             .RefCount();
 
         // 创建各个流
