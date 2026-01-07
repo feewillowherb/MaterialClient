@@ -89,7 +89,7 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
                         new SoundDevicePlayUrlDto
                         {
                             Name = "tts_audio",
-                            Udp = false,
+                            Udp = true,
                             Uri = ttsUri
                         }
                     ],

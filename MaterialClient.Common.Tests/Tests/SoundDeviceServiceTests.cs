@@ -35,7 +35,7 @@ public class SoundDeviceServiceTests : IDisposable
         var soundDeviceSettings = new SoundDeviceSettings
         {
             Enabled = true,
-            LocalIP = "localhost",
+            LocalIP = "192.168.4.56",
             SoundIP = "localhost",
             SoundSN = "test_sn_001",
             SoundVolume = "80"
