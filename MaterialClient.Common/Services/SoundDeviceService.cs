@@ -4,6 +4,7 @@ using MaterialClient.Common.Configuration;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Refit;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Volo.Abp.DependencyInjection;
 
@@ -20,6 +21,13 @@ public interface ISoundDeviceService
     /// <param name="text">Text to convert to speech and play</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task PlayTextAsync(string text, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Play text as speech on sound device (V2 - using HttpClient directly without IHttpClientFactory and Refit)
+    /// </summary>
+    /// <param name="text">Text to convert to speech and play</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task PlayTextV2Async(string text, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -88,7 +96,7 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
                     [
                         new SoundDevicePlayUrlDto
                         {
-                            Name = "tts_audio",
+                            Name = "speakText",
                             Udp = true,
                             Uri = ttsUri
                         }
@@ -162,6 +170,178 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             {
                 _logger?.LogError("Audio playback ultimately failed after {MaxRetries} attempts. Text: {Text}, Last Response: {Response}",
                     maxRetries, text, lastResponse);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error playing text on sound device: {Text}", text);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task PlayTextV2Async(string text, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            _logger?.LogWarning("Text is null or empty, skipping playback");
+            return;
+        }
+
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var soundDeviceSettings = settings.SoundDeviceSettings;
+
+            if (!soundDeviceSettings.Enabled)
+            {
+                _logger?.LogInformation("Sound device is disabled, skipping playback");
+                return;
+            }
+
+            if (!soundDeviceSettings.IsValid())
+            {
+                _logger?.LogWarning(
+                    "Sound device settings are incomplete: LocalIP={LocalIP}, SoundIP={SoundIP}, SoundSN={SoundSN}",
+                    soundDeviceSettings.LocalIP, soundDeviceSettings.SoundIP, soundDeviceSettings.SoundSN);
+                return;
+            }
+
+            // Parse volume (0 means 100)
+            var volume = soundDeviceSettings.SoundVolume == "0" ? 100 : int.Parse(soundDeviceSettings.SoundVolume);
+
+            // Build TTS URI (note: legacy code adds "。" at the end)
+            var ttsUri =
+                $"http://{soundDeviceSettings.LocalIP}:10008/tts_xf.single?text={Uri.EscapeDataString(text)}。&voice_name=xiaoyan&speed=50&volume={volume}&origin=http://{soundDeviceSettings.LocalIP}:10008";
+
+            // Create play request
+            var playRequest = new SoundDevicePlayRequestDto
+            {
+                Name = "priority_task_play",
+                SerialNumber = soundDeviceSettings.SoundSN,
+                Type = "req",
+                Params = new SoundDevicePlayParamsDto
+                {
+                    UserId = "0",
+                    Volume = volume,
+                    Urls =
+                    [
+                        new SoundDevicePlayUrlDto
+                        {
+                            Name = "speakText",
+                            Udp = true,
+                            Uri = ttsUri
+                        }
+                    ],
+                    Level = 10000,
+                    Name = $"task_{DateTime.Now.ToString("yyyyMMddHHmmss")}",
+                    Count = 1,
+                    Length = 0,
+                    Type = 0,
+                    TaskId = Guid.NewGuid().ToString()
+                }
+            };
+
+            // Play audio with retry mechanism (8 attempts)
+            const int maxRetries = 8;
+            bool success = false;
+            string? lastResponse = null;
+
+            // Create HttpClient directly (not using IHttpClientFactory)
+            var playBaseUrl = $"http://{soundDeviceSettings.SoundIP}:8888";
+            var httpClient = new HttpClient
+            {
+                BaseAddress = new Uri(playBaseUrl),
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.2; .NET CLR 1.1.4322; .NET CLR 2.0.50727; InfoPath.1) Web-Sniffer/1.0.24");
+            
+            try
+            {
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    _logger?.LogInformation("Playing audio on sound device (attempt {Attempt}/{MaxRetries}): {SoundIP}, TTS URI: {TtsUri}",
+                        attempt, maxRetries, soundDeviceSettings.SoundIP, ttsUri);
+
+                    // Use HttpClient.PostAsJsonAsync instead of Refit
+                    var response = await httpClient.PostAsJsonAsync("", playRequest, cancellationToken);
+                    var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    lastResponse = responseContent;
+
+                    // Check HTTP status
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger?.LogWarning("Audio playback HTTP request failed with status {StatusCode} (attempt {Attempt}/{MaxRetries}). Response: {Response}",
+                            response.StatusCode, attempt, maxRetries, responseContent);
+                        if (attempt < maxRetries)
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Parse response to check if successful
+                    if (!string.IsNullOrEmpty(responseContent))
+                    {
+                        try
+                        {
+                            // Try to parse as success response
+                            var successResult = JsonSerializer.Deserialize<SoundDevicePlaySuccessResponseDto>(responseContent);
+                            if (successResult != null && successResult.Code == 0 && successResult.Type == "resp")
+                            {
+                                // Success: {"code":0,"type":"resp","msg":"","name":"priority_task_play"}
+                                _logger?.LogInformation("Audio playback started successfully (attempt {Attempt}). Response: {Response}",
+                                    attempt, responseContent);
+                                success = true;
+                                break;
+                            }
+
+                            // Try to parse as error response
+                            var errorResult = JsonSerializer.Deserialize<SoundDevicePlayErrorResponseDto>(responseContent);
+                            if (errorResult != null && errorResult.Result == -1)
+                            {
+                                // Failure: { "result": -1, "msg": "没有body信息" }
+                                _logger?.LogWarning("Audio playback failed with result {Result} (attempt {Attempt}/{MaxRetries}). Response: {Response}",
+                                    errorResult.Result, attempt, maxRetries, responseContent);
+                            }
+                            else
+                            {
+                                // Unknown response format
+                                _logger?.LogWarning("Unknown response format (attempt {Attempt}/{MaxRetries}). Response: {Response}",
+                                    attempt, maxRetries, responseContent);
+                            }
+                        }
+                        catch (JsonException jsonEx)
+                        {
+                            _logger?.LogWarning(jsonEx, "Failed to parse play response (attempt {Attempt}/{MaxRetries}): {Response}",
+                                attempt, maxRetries, responseContent);
+                        }
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Audio playback response is empty (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger?.LogWarning("Audio playback request canceled (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error playing audio on sound device (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                }
+            }
+
+                if (!success)
+                {
+                    _logger?.LogError("Audio playback ultimately failed after {MaxRetries} attempts. Text: {Text}, Last Response: {Response}",
+                        maxRetries, text, lastResponse);
+                }
+            }
+            finally
+            {
+                httpClient.Dispose();
             }
         }
         catch (Exception ex)
