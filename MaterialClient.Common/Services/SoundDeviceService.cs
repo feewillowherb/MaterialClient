@@ -102,28 +102,66 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
                 }
             };
 
-            // Play audio
-            _logger?.LogInformation("Playing audio on sound device: {SoundIP}, TTS URI: {TtsUri}",
-                soundDeviceSettings.SoundIP, ttsUri);
-            var response = await playApi.PlayAudioAsync(playRequest, cancellationToken);
+            // Play audio with retry mechanism (8 attempts)
+            const int maxRetries = 8;
+            bool success = false;
+            string? lastResponse = null;
 
-            // Parse response to check if successful
-            try
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                var responseDoc = JsonDocument.Parse(response);
-                if (responseDoc.RootElement.TryGetProperty("code", out var codeElement) &&
-                    codeElement.GetInt32() == 0)
+                try
                 {
-                    _logger?.LogInformation("Audio playback started successfully");
+                    _logger?.LogInformation("Playing audio on sound device (attempt {Attempt}/{MaxRetries}): {SoundIP}, TTS URI: {TtsUri}",
+                        attempt, maxRetries, soundDeviceSettings.SoundIP, ttsUri);
+
+                    var response = await playApi.PlayAudioAsync(playRequest, cancellationToken);
+                    lastResponse = response;
+
+                    // Parse response to check if successful
+                    try
+                    {
+                        var responseDoc = JsonDocument.Parse(response);
+                        if (responseDoc.RootElement.TryGetProperty("code", out var codeElement))
+                        {
+                            var code = codeElement.GetInt32();
+                            if (code == 0)
+                            {
+                                _logger?.LogInformation("Audio playback started successfully (attempt {Attempt})", attempt);
+                                success = true;
+                                break;
+                            }
+                            
+                            // code != 0, retry if not the last attempt
+                            _logger?.LogWarning("Audio playback failed with code {Code} (attempt {Attempt}/{MaxRetries}). Response: {Response}",
+                                code, attempt, maxRetries, response);
+                        }
+                        else
+                        {
+                            // No 'code' property, retry if not the last attempt
+                            _logger?.LogWarning("Response does not contain 'code' property (attempt {Attempt}/{MaxRetries}). Response: {Response}",
+                                attempt, maxRetries, response);
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        _logger?.LogError(jsonEx, "Failed to parse play response (attempt {Attempt}/{MaxRetries}): {Response}",
+                            attempt, maxRetries, response);
+                    }
                 }
-                else
+                catch (TaskCanceledException)
                 {
-                    _logger?.LogWarning("Audio playback may have failed. Response: {Response}", response);
+                    _logger?.LogWarning("Audio playback request canceled (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error playing audio on sound device (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
                 }
             }
-            catch (Exception ex)
+
+            if (!success)
             {
-                _logger?.LogError(ex, "Failed to parse play response: {Response}", response);
+                _logger?.LogError("Audio playback ultimately failed after {MaxRetries} attempts. Text: {Text}, Last Response: {Response}",
+                    maxRetries, text, lastResponse);
             }
         }
         catch (Exception ex)
