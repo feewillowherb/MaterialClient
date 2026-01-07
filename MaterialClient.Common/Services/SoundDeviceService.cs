@@ -259,14 +259,27 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             try
             {
                 for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
+                {
                 try
                 {
                     _logger?.LogInformation("Playing audio on sound device (attempt {Attempt}/{MaxRetries}): {SoundIP}, TTS URI: {TtsUri}",
                         attempt, maxRetries, soundDeviceSettings.SoundIP, ttsUri);
 
-                    // Use HttpClient.PostAsJsonAsync instead of Refit
-                    var response = await httpClient.PostAsJsonAsync("", playRequest, cancellationToken);
+                    // Manually serialize JSON to ensure correct property names (matching RestSharp format)
+                    // Use default options to respect JsonPropertyName attributes
+                    var jsonOptions = new JsonSerializerOptions
+                    {
+                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
+                        WriteIndented = false
+                    };
+                    var jsonContent = JsonSerializer.Serialize(playRequest, jsonOptions);
+                    
+                    // Log the JSON content for debugging
+                    _logger?.LogInformation("Sending JSON request (attempt {Attempt}): {JsonContent}", attempt, jsonContent);
+                    
+                    // Use StringContent with application/json content type
+                    var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+                    var response = await httpClient.PostAsync("", content, cancellationToken);
                     var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
                     lastResponse = responseContent;
 
