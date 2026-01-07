@@ -66,7 +66,7 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             // Build TTS URI
             var ttsUri =
                 $"http://{soundDeviceSettings.LocalIP}:10008/tts_xf.single?text={Uri.EscapeDataString(text)}&voice_name=xiaoyan&speed=50&volume={volume}&origin=http://{soundDeviceSettings.LocalIP}:10008";
-
+    
             // Create play API client
             var playBaseUrl = $"http://{soundDeviceSettings.SoundIP}:8888";
             var playHttpClient = _httpClientFactory.CreateClient();
