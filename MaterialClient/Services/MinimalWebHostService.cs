@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using BadHttpRequestException = Microsoft.AspNetCore.Http.BadHttpRequestException;
 
 namespace MaterialClient.Services;
 
