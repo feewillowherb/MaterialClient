@@ -881,8 +881,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         }
 
         // 处理稳定性触发的操作
+        // 关键修复：不依赖 IsStable，只检查状态和是否已创建记录
+        // 一旦进入 WeightStabilized 状态，说明已经稳定，应该创建称重记录
         if (currentState.Status == AttendedWeighingStatus.WeightStabilized &&
-            currentState.Stability.IsStable &&
             currentState.LastCreatedWeighingRecordId == null) // 检查是否已经称重过（null表示未称重）
         {
             // Weight stabilized - use stable weight (average) if available
