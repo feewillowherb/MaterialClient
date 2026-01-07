@@ -379,7 +379,7 @@
                         <CheckBox Content="开机自动启动"
                                   IsChecked="{Binding EnableAutoStart}" />
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="12"
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12"
                               ColumnSpacing="12">
                             <TextBlock Text="服务地址:"
                                        Grid.Row="0"
@@ -417,6 +417,24 @@
                                         Padding="12,6"
                                         CornerRadius="4" />
                             </Grid>
+
+                            <TextBlock Text="拍照摄像头类型:"
+                                       Grid.Row="2"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="120" />
+                            <ComboBox ItemsSource="{Binding SnapshotCameraTypeOptions}"
+                                      SelectedItem="{Binding SnapshotCameraType}"
+                                      Grid.Row="2"
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ., Converter={StaticResource SnapshotCameraTypeConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                         </Grid>
                     </StackPanel>
                 </Border>

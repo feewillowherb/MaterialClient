@@ -27,7 +27,6 @@ public interface ILPRAllInOneService
     /// <returns>如果需要触发返回 true，否则返回 false</returns>
     bool CheckAndClearTriggerFlag(string deviceIp);
 }
-11
 /// <summary>
 ///     LPRAllInOne 设备服务实现
 ///     基于 comet 轮询机制：设备会轮询 GET /api/CarLicense/CallDeviceStatus

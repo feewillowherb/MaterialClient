@@ -75,7 +75,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public ObservableCollection<SnapshotCameraType> SnapshotCameraTypeOptions { get; } = new()
     {
         SnapshotCameraType.Hikvision,
-        SnapshotCameraType.LPRAllInOne
+        SnapshotCameraType.LprAllInOne
     };
 
     // Weighing configuration

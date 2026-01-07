@@ -972,7 +972,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var settings = await _settingsService.GetSettingsAsync();
             
             // 如果类型为 Hikvision，不做任何动作
-            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LPRAllInOne)
+            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
             {
                 return;
             }
@@ -1034,7 +1034,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var settings = await _settingsService.GetSettingsAsync();
             
             // 如果类型为 Hikvision，不做任何动作
-            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LPRAllInOne)
+            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
             {
                 return;
             }
@@ -1096,7 +1096,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var settings = await _settingsService.GetSettingsAsync();
             
             // 如果类型为 Hikvision，不做任何动作
-            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LPRAllInOne)
+            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
             {
                 return;
             }

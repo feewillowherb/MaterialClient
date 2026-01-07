@@ -17,7 +17,7 @@ public class SnapshotCameraTypeConverter : IValueConverter
             return cameraType switch
             {
                 SnapshotCameraType.Hikvision => "海康威视",
-                SnapshotCameraType.LPRAllInOne => "车牌识别一体机",
+                SnapshotCameraType.LprAllInOne => "车牌识别一体机",
                 _ => value.ToString()
             };
         }
