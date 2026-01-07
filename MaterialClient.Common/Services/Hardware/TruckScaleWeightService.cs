@@ -154,7 +154,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     ReadBufferSize = 2097152,
                     Encoding = Encoding.GetEncoding("UTF-8"),
                     Handshake = Handshake.None,
-                    RtsEnable = true
+                    RtsEnable = true,
+                    ReadTimeout = 1000 // Set timeout to prevent infinite blocking (1 second)
                 };
 
                 // Subscribe to data received event
@@ -318,28 +319,133 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             }
 
             // I/O operation outside of lock (non-blocking for other threads)
-            var receivedCount = 0;
-            var readBuffer = new byte[_byteCount];
+            // Optimized search for valid frame start (0x02) using batch reading
+            // This reduces I/O operations and minimizes delay
+            byte[] readBuffer = new byte[_byteCount];
+            int frameStartIndex = -1;
+            int searchBufferSize = _byteCount * 3; // Read larger buffer to search for frame start
 
-            while (receivedCount < _byteCount)
+            try
             {
-                var bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
-                receivedCount += bytesRead;
+                // First, try to read available bytes to search for frame start
+                int availableBytes = port.BytesToRead;
+                if (availableBytes == 0)
+                {
+                    // No data available, read first byte with timeout
+                    byte firstByte = (byte)port.ReadByte();
+                    if (firstByte == 0x02)
+                    {
+                        readBuffer[0] = firstByte;
+                        // Read remaining bytes
+                        int receivedCount = 1;
+                        while (receivedCount < _byteCount)
+                        {
+                            int bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
+                            receivedCount += bytesRead;
+                        }
+                    }
+                    else
+                    {
+                        // Invalid first byte, discard and return
+                        _logger?.LogWarning($"Invalid first byte 0x{firstByte:X2}, discarding");
+                        using var _ = _rwLock.ReadLock();
+                        _serialPort?.DiscardInBuffer();
+                        return;
+                    }
+                }
+                else
+                {
+                    // Read available bytes in batch to search for frame start
+                    int bytesToRead = Math.Min(availableBytes, searchBufferSize);
+                    byte[] searchBuffer = new byte[bytesToRead];
+                    int bytesRead = port.Read(searchBuffer, 0, bytesToRead);
+                    
+                    // Ensure we read some data
+                    if (bytesRead == 0)
+                    {
+                        _logger?.LogWarning("No data read from serial port");
+                        using var _ = _rwLock.ReadLock();
+                        _serialPort?.DiscardInBuffer();
+                        return;
+                    }
+                    
+                    // Search for 0x02 in the buffer
+                    for (int i = 0; i < bytesRead; i++)
+                    {
+                        if (searchBuffer[i] == 0x02)
+                        {
+                            frameStartIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (frameStartIndex == -1)
+                    {
+                        // No valid frame start found, discard and return
+                        _logger?.LogWarning($"No valid frame start (0x02) found in {bytesRead} bytes, discarding");
+                        using var _ = _rwLock.ReadLock();
+                        _serialPort?.DiscardInBuffer();
+                        return;
+                    }
+                    
+                    // Copy from frame start position
+                    int remainingInSearchBuffer = bytesRead - frameStartIndex;
+                    int bytesToCopy = Math.Min(remainingInSearchBuffer, _byteCount);
+                    Array.Copy(searchBuffer, frameStartIndex, readBuffer, 0, bytesToCopy);
+                    
+                    // If we don't have enough bytes, read the rest with retry
+                    if (bytesToCopy < _byteCount)
+                    {
+                        int receivedCount = bytesToCopy;
+                        
+                        // Keep reading until we have all bytes
+                        // SerialPort.Read will wait for data or timeout based on ReadTimeout setting
+                        while (receivedCount < _byteCount)
+                        {
+                            int remainingBytes = _byteCount - receivedCount;
+                            int additionalBytesRead = port.Read(readBuffer, receivedCount, remainingBytes);
+                            receivedCount += additionalBytesRead;
+                            
+                            // If no data was read, the Read method should have thrown TimeoutException
+                            // But if we get here, it means Read returned 0, which shouldn't happen with ReadTimeout set
+                            // This is a safety check
+                            if (additionalBytesRead == 0)
+                            {
+                                break;
+                            }
+                        }
+                        
+                        // Verify we got all bytes
+                        if (receivedCount < _byteCount)
+                        {
+                            _logger?.LogWarning($"Incomplete data read, expected {_byteCount} bytes, got {receivedCount}");
+                            using var _ = _rwLock.ReadLock();
+                            _serialPort?.DiscardInBuffer();
+                            return;
+                        }
+                    }
+                }
             }
-
-            // Validate data format: must start with 0x02 (STX)
-            if (readBuffer[0] != 0x02)
+            catch (TimeoutException)
             {
-                var bufferHex = BitConverter.ToString(readBuffer).Replace("-", " ");
-                _logger?.LogWarning($"Invalid HEX weight data format (not starting with 0x02), discarding: {bufferHex}");
-                // Discard buffer
+                // Timeout reading bytes, discard and return
+                _logger?.LogWarning("Timeout reading data from truck scale");
                 using var _ = _rwLock.ReadLock();
                 _serialPort?.DiscardInBuffer();
                 return;
             }
 
+            // Verify readBuffer is properly initialized (should always be 0x02 at start)
+            if (readBuffer[0] != 0x02)
+            {
+                _logger?.LogWarning($"Invalid frame start in readBuffer: 0x{readBuffer[0]:X2}, discarding");
+                using var _ = _rwLock.ReadLock();
+                _serialPort?.DiscardInBuffer();
+                return;
+            }
+            
             // Check frame format: 0x02 at start, 0x03 at end
-            if (readBuffer[0] == 0x02 && readBuffer[_byteCount - 1] == 0x03)
+            if (readBuffer[_byteCount - 1] == 0x03)
             {
                 // Parse data outside of lock
                 var parsedWeight = ParseHexWeight(readBuffer);
