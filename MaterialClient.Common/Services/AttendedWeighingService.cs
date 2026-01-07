@@ -779,7 +779,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 try
                 {
                     var statusDescription = currentState.Status.GetDescription();
-                    await _soundDeviceService.PlayTextAsync(statusDescription);
+                    await _soundDeviceService.PlayTextV2Async(statusDescription);
                     _logger?.LogDebug($"Played status change audio: {statusDescription}");
                 }
                 catch (Exception ex)
