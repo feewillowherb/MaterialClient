@@ -169,16 +169,16 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         var config = await GetConfigurationAsync();
         initialState = initialState with { Config = config };
         _stateSubject.OnNext(initialState);
-        
-        // 共享源流，避免多次订阅
+
+        // 共享源流，避免多次订阅，只保留最近5秒的数据（背压保护）
         var sharedWeightSource = _truckScaleWeightService.WeightUpdates
-            .Publish()
+            .Replay(TimeSpan.FromSeconds(5), TaskPoolScheduler.Default)
             .RefCount();
 
         // 创建各个流
         var weightStream = CreateWeightStream(sharedWeightSource, config);
         var stabilityStream = CreateStabilityStream(sharedWeightSource, config);
-        
+
         // 创建状态流（使用 RxState 模式）
         var stateStream = CreateStateStream(weightStream, stabilityStream, initialState);
 
@@ -187,7 +187,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // 5. 创建异步操作处理流（用于错误处理和监控）
         var asyncOperationsStream = new Subject<Func<Task>>();
-        
+
         _asyncOperationsSubscription = asyncOperationsStream
             .Select(operation => Observable.FromAsync(async () =>
             {
@@ -196,7 +196,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     _pendingOperations.Add(task);
                 }
-                
+
                 try
                 {
                     await task;
@@ -242,10 +242,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                         // 可以在这里添加失败重试队列或通知机制
                     }
                 },
-                error =>
-                {
-                    _logger?.LogError(error, "Fatal error in async operations stream");
-                });
+                error => { _logger?.LogError(error, "Fatal error in async operations stream"); });
 
         // 保存异步操作流引用（用于后续添加操作）
         _asyncOperationsStream = asyncOperationsStream;
@@ -263,7 +260,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 停止接收新的事件
         _stateSubscription?.Dispose();
         _stateSubscription = null;
-        
+
         // 停止接收新的 Action
         try
         {
@@ -273,7 +270,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             // Stream already completed, ignore
         }
-        
+
         // 停止接收新的异步操作
         try
         {
@@ -283,18 +280,19 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             // Stream already completed, ignore
         }
+
         _asyncOperationsStream?.Dispose();
         _asyncOperationsStream = null;
         _asyncOperationsSubscription?.Dispose();
         _asyncOperationsSubscription = null;
-        
+
         // 等待所有进行中的操作完成（优雅关闭）
         var pendingTasks = _pendingOperations.ToArray();
         if (pendingTasks.Length > 0)
         {
             _logger?.LogInformation(
                 $"Waiting for {pendingTasks.Length} pending operations to complete...");
-            
+
             try
             {
                 // 设置超时，避免无限等待
@@ -302,7 +300,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 var allTasksCompleted = Task.WhenAll(pendingTasks);
                 var timeoutTask = Task.Delay(timeout);
                 var completed = await Task.WhenAny(allTasksCompleted, timeoutTask);
-                
+
                 if (completed == allTasksCompleted)
                 {
                     _logger?.LogInformation("All pending operations completed");
@@ -318,7 +316,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger?.LogError(ex, "Error while waiting for pending operations");
             }
         }
-        
+
         _logger?.LogInformation("Stopped monitoring truck scale weight changes");
 
         await Task.CompletedTask;
@@ -347,7 +345,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             _actionSubject.OnNext(new SetDeliveryTypeAction(deliveryType));
             _logger?.LogInformation($"DeliveryType changed to {deliveryType}");
-            
+
             // Send MessageBus notification
             var message = new DeliveryTypeChangedMessage(deliveryType);
             MessageBus.Current.SendMessage(message);
@@ -363,13 +361,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // 过滤掉"挂"字（仅处理简体"挂"）
         var filteredPlateNumber = PlateNumberValidator.FilterHangingCharacter(plateNumber);
-        
+
         // 如果过滤后为空，则不处理
         if (string.IsNullOrWhiteSpace(filteredPlateNumber)) return;
 
         // 发送 Action 到状态流，状态流会在副作用中处理车牌缓存更新和通知
         _actionSubject.OnNext(new PlateNumberRecognizedAction(filteredPlateNumber));
-        
+
         // 注意：车牌缓存更新和通知由副作用 ProcessPlateNumberCacheChange 统一处理
         // 这样可以确保通知使用的是最新的状态值
     }
@@ -395,7 +393,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
-        
+
         // Safely complete and dispose internal subjects (used for state management)
         try
         {
@@ -471,7 +469,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// <summary>
     ///     创建重量流（更频繁，用于状态转换）
     /// </summary>
-    private IObservable<decimal> CreateWeightStream(IObservable<decimal> sharedWeightSource, WeighingConfiguration config)
+    private IObservable<decimal> CreateWeightStream(IObservable<decimal> sharedWeightSource,
+        WeighingConfiguration config)
     {
         return sharedWeightSource
             .Buffer(TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
@@ -484,12 +483,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// <summary>
     ///     创建稳定性流（较慢，用于稳定性检查）
     /// </summary>
-    private IObservable<WeightStabilityInfo> CreateStabilityStream(IObservable<decimal> sharedWeightSource, WeighingConfiguration config)
+    private IObservable<WeightStabilityInfo> CreateStabilityStream(IObservable<decimal> sharedWeightSource,
+        WeighingConfiguration config)
     {
         // 计算最小数据点数量要求：至少需要覆盖窗口时间的 50% 以上
         // 例如：窗口 3000ms，检查间隔 200ms，期望至少 7-8 个数据点
-        var minDataPointsRequired = Math.Max(8, (int)(config.StabilityWindowMs / config.StabilityCheckIntervalMs * 0.5));
-        
+        var minDataPointsRequired =
+            Math.Max(8, (int)(config.StabilityWindowMs / config.StabilityCheckIntervalMs * 0.5));
+
         return sharedWeightSource
             .Buffer(TimeSpan.FromMilliseconds(config.StabilityWindowMs),
                 TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
@@ -499,7 +500,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     // 关键修复：只统计大于MinWeightThreshold的数据点（有效称重数据）
                     var validDataPoints = buffer.Where(w => w > config.MinWeightThreshold).ToList();
-                    
+
                     if (validDataPoints.Count == 0)
                     {
                         // 没有有效数据点，判定为不稳定
@@ -508,17 +509,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                             Weight = 0m,
                             IsStable = false,
                             StableWeight = null,
-                            Min = buffer.Min(),
-                            Max = buffer.Max(),
-                            Range = buffer.Max() - buffer.Min()
+                            Min = 0,
+                            Max = 0,
+                            Range = 0
                         };
                     }
-                    
+
                     // 只在有效数据点上计算稳定性
                     var min = validDataPoints.Min();
                     var max = validDataPoints.Max();
                     var range = max - min;
-                    
+
                     // 关键修复：需要同时满足两个条件才判定为稳定
                     // 1. range 满足阈值要求
                     // 2. 窗口内有足够的大于MinWeightThreshold的数据点（防止上磅瞬间就判定为稳定）
@@ -526,7 +527,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var hasEnoughDataPoints = validDataPoints.Count >= minDataPointsRequired;
                     var isStable = rangeStable && hasEnoughDataPoints;
                     var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
-                    
+
 
                     _logger?.LogDebug(
                         $"Weight stability: {isStable} (range: {range:F3} kg, min: {min:F3}, max: {max:F3}, stableWeight: {stableWeight:F3}, validDataPoints: {validDataPoints.Count}/{minDataPointsRequired} (total: {buffer.Count}), rangeStable: {rangeStable}, hasEnoughData: {hasEnoughDataPoints})");
@@ -602,16 +603,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         var stateWithPrevious = actions
             .Scan(
                 (Previous: initialState, Current: initialState),
-                (acc, action) => (Previous: acc.Current, Current: WeighingServiceStateReducer.ReduceState(acc.Current, action)))
+                (acc, action) => (Previous: acc.Current,
+                    Current: WeighingServiceStateReducer.ReduceState(acc.Current, action)))
             .StartWith((Previous: initialState, Current: initialState))
-            .DistinctUntilChanged(pair => 
+            .DistinctUntilChanged(pair =>
             {
                 // 比较关键状态字段，包括车牌缓存的变化
                 var cacheKey = GetPlateNumberCacheKey(pair.Current.PlateNumberCache);
                 return (
-                    pair.Current.Status, 
-                    pair.Current.Weight, 
-                    pair.Current.Stability.IsStable, 
+                    pair.Current.Status,
+                    pair.Current.Weight,
+                    pair.Current.Stability.IsStable,
                     pair.Current.LastCreatedWeighingRecordId,
                     pair.Current.DeliveryType, // 添加 DeliveryType 到比较逻辑中，确保 DeliveryType 变化时能触发状态更新
                     cacheKey // 添加车牌缓存的关键信息，确保车牌缓存变化时能触发状态更新
@@ -620,11 +622,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // 处理副作用（状态变化时的操作）
         return stateWithPrevious
-            .Do(pair => 
+            .Do(pair =>
             {
                 // 处理状态转换的副作用
                 ProcessStateTransition(pair.Previous, pair.Current);
-                
+
                 // 处理车牌缓存变化的副作用（实时持久化）
                 ProcessPlateNumberCacheChange(pair.Previous, pair.Current);
             })
@@ -713,14 +715,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private string GetPlateNumberCacheKey(ConcurrentDictionary<string, PlateNumberCacheRecord> cache)
     {
         if (cache.IsEmpty) return string.Empty;
-        
+
         // 使用最频繁的车牌号和总识别次数作为缓存的关键标识
         var mostFrequent = cache
             .OrderByDescending(kvp => kvp.Value.Count)
             .FirstOrDefault();
-        
+
         if (mostFrequent.Key == null) return string.Empty;
-        
+
         // 返回最频繁车牌号 + 识别次数 + 总识别次数，用于检测缓存变化
         var totalCount = cache.Values.Sum(v => v.Count);
         return $"{mostFrequent.Key}:{mostFrequent.Value.Count}:{totalCount}";
@@ -736,17 +738,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 检查车牌缓存是否变化
         var previousKey = GetPlateNumberCacheKey(previousState.PlateNumberCache);
         var currentKey = GetPlateNumberCacheKey(currentState.PlateNumberCache);
-        
+
         if (previousKey != currentKey)
         {
             // 车牌缓存发生变化，立即更新状态 Subject（确保实时持久化）
             _stateSubject.OnNext(currentState);
-            
+
             // 获取最频繁的车牌号并发送通知
             var mostFrequent = GetMostFrequentPlateNumberFromCache(currentState.PlateNumberCache);
             var message = new PlateNumberChangedMessage(mostFrequent);
             MessageBus.Current.SendMessage(message);
-            
+
             _logger?.LogDebug(
                 $"Plate number cache updated, most frequent: {mostFrequent ?? "None"}, cache key: {currentKey}");
         }
@@ -786,7 +788,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // 上磅：进入等待稳定状态
                 _logger.LogInformation(
                     $"Entered WaitingForStability state (ascending), weight: {currentState.Weight:F3}t");
-                
+
                 // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
                 EnqueueAsyncOperation(async () => await TriggerCaptureOnWaitingForStabilityAsync());
                 break;
@@ -795,7 +797,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // 异常流程：未稳定就下磅
                 _logger?.LogWarning(
                     $"Unstable weighing flow (abnormal departure), weight returned to {currentState.Weight:F3}t, triggered capture");
-                
+
                 // Capture all cameras and log (no need to save photos)
                 EnqueueAsyncOperation(async () =>
                 {
@@ -822,7 +824,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // 异常流程：稳定后突然下磅（跳过WaitingForDeparture）
                 _logger?.LogWarning(
                     $"Abnormal departure from WeightStabilized, weight returned to {currentState.Weight:F3}t");
-                
+
                 // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
                 EnqueueAsyncOperation(async () => await TriggerCaptureOnOffScaleAsync());
                 EnqueueAsyncOperation(async () => await ResetWeighingCycleAsync());
@@ -832,7 +834,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // 正常流程：正常下磅完成
                 _logger?.LogInformation(
                     $"Normal flow completed (normal departure), entered OffScale state, weight: {currentState.Weight:F3}t");
-                
+
                 // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
                 EnqueueAsyncOperation(async () => await TriggerCaptureOnOffScaleAsync());
                 EnqueueAsyncOperation(async () => await ResetWeighingCycleAsync());
@@ -970,7 +972,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
-            
+
             // 如果类型为 Hikvision，不做任何动作
             if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
             {
@@ -980,7 +982,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // 如果服务未注入，记录警告并返回
             if (_lprAllInOneService == null)
             {
-                _logger?.LogWarning("ILPRAllInOneService is not available, cannot trigger capture on WaitingForStability");
+                _logger?.LogWarning(
+                    "ILPRAllInOneService is not available, cannot trigger capture on WaitingForStability");
                 return;
             }
 
@@ -991,7 +994,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 return;
             }
 
-            _logger?.LogInformation("Triggering LPRAllInOne capture on WaitingForStability for {Count} devices", lprConfigs.Count);
+            _logger?.LogInformation("Triggering LPRAllInOne capture on WaitingForStability for {Count} devices",
+                lprConfigs.Count);
 
             var tasks = lprConfigs
                 .Where(config => config.IsValid())
@@ -1000,14 +1004,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
                     if (success)
                     {
-                        _logger?.LogInformation("Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability", 
+                        _logger?.LogInformation(
+                            "Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability",
                             config.Name, config.Ip);
                     }
                     else
                     {
-                        _logger?.LogWarning("Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability", 
+                        _logger?.LogWarning(
+                            "Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability",
                             config.Name, config.Ip);
                     }
+
                     return success;
                 });
 
@@ -1015,7 +1022,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var successCount = results.Count(r => r);
             var failCount = results.Length - successCount;
 
-            _logger?.LogInformation("LPRAllInOne capture on WaitingForStability completed: {SuccessCount} succeeded, {FailCount} failed", 
+            _logger?.LogInformation(
+                "LPRAllInOne capture on WaitingForStability completed: {SuccessCount} succeeded, {FailCount} failed",
                 successCount, failCount);
         }
         catch (Exception ex)
@@ -1032,7 +1040,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
-            
+
             // 如果类型为 Hikvision，不做任何动作
             if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
             {
@@ -1053,7 +1061,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 return;
             }
 
-            _logger?.LogInformation("Triggering LPRAllInOne capture on WeightStabilized for {Count} devices", lprConfigs.Count);
+            _logger?.LogInformation("Triggering LPRAllInOne capture on WeightStabilized for {Count} devices",
+                lprConfigs.Count);
 
             var tasks = lprConfigs
                 .Where(config => config.IsValid())
@@ -1062,14 +1071,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
                     if (success)
                     {
-                        _logger?.LogInformation("Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized", 
+                        _logger?.LogInformation(
+                            "Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized",
                             config.Name, config.Ip);
                     }
                     else
                     {
-                        _logger?.LogWarning("Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized", 
+                        _logger?.LogWarning(
+                            "Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized",
                             config.Name, config.Ip);
                     }
+
                     return success;
                 });
 
@@ -1077,7 +1089,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var successCount = results.Count(r => r);
             var failCount = results.Length - successCount;
 
-            _logger?.LogInformation("LPRAllInOne capture on WeightStabilized completed: {SuccessCount} succeeded, {FailCount} failed", 
+            _logger?.LogInformation(
+                "LPRAllInOne capture on WeightStabilized completed: {SuccessCount} succeeded, {FailCount} failed",
                 successCount, failCount);
         }
         catch (Exception ex)
@@ -1094,7 +1107,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
-            
+
             // 如果类型为 Hikvision，不做任何动作
             if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
             {
@@ -1124,14 +1137,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
                     if (success)
                     {
-                        _logger?.LogInformation("Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on OffScale", 
+                        _logger?.LogInformation(
+                            "Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on OffScale",
                             config.Name, config.Ip);
                     }
                     else
                     {
-                        _logger?.LogWarning("Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on OffScale", 
+                        _logger?.LogWarning(
+                            "Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on OffScale",
                             config.Name, config.Ip);
                     }
+
                     return success;
                 });
 
@@ -1139,7 +1155,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var successCount = results.Count(r => r);
             var failCount = results.Length - successCount;
 
-            _logger?.LogInformation("LPRAllInOne capture on OffScale completed: {SuccessCount} succeeded, {FailCount} failed", 
+            _logger?.LogInformation(
+                "LPRAllInOne capture on OffScale completed: {SuccessCount} succeeded, {FailCount} failed",
                 successCount, failCount);
         }
         catch (Exception ex)
@@ -1184,7 +1201,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             else
                 _logger?.LogWarning(
                     $"Weighing record {weighingRecord.Id} has no associated photos");
-            
         }
         catch (Exception ex)
         {
