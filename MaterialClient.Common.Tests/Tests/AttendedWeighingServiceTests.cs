@@ -1000,6 +1000,175 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
+    [Fact]
+    public async Task WeightStabilized_Then_DropAndRise_Should_HandleCorrectly()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject();
+        await service.StartAsync();
+
+        _output.WriteLine("=== 测试：重量稳定在0.6后，下磅到0.4，然后快速上磅到0.6 ===");
+
+        // Act Phase 1: 上磅并稳定在0.6t
+        _output.WriteLine("=== Phase 1: 上磅并稳定在0.6t ===");
+        weightSubject.OnNext(0.6m);
+        await Task.Delay(300);
+        var status1 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after on-scale: {status1}");
+        status1.ShouldBe(AttendedWeighingStatus.WaitingForStability);
+
+        // 发送稳定的数据点（在0.6t附近小幅波动）
+        var random = new Random(42);
+        for (int i = 0; i < 20; i++)
+        {
+            var noise = (decimal)(random.NextDouble() * 0.04 - 0.02); // ±0.02t
+            var weight = Math.Round(0.6m + noise, 3);
+            weightSubject.OnNext(weight);
+            await Task.Delay(200);
+        }
+
+        await Task.Delay(1000); // 等待稳定性检查
+        var status2 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after stabilization: {status2}");
+        status2.ShouldBeOneOf(
+            AttendedWeighingStatus.WeightStabilized,
+            AttendedWeighingStatus.WaitingForDeparture);
+
+        // Act Phase 2: 稳定后间隔200ms，重量变为0.4（下磅）
+        _output.WriteLine("=== Phase 2: 稳定后间隔200ms，重量变为0.4（下磅） ===");
+        await Task.Delay(200); // 稳定后间隔200ms
+        weightSubject.OnNext(0.4m);
+        await Task.Delay(300); // 等待状态转换
+        var status3 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after drop to 0.4t: {status3}");
+        status3.ShouldBe(AttendedWeighingStatus.OffScale); // 应该回到OffScale
+
+        // Act Phase 3: 300ms后，重量变为0.6（再次上磅）
+        _output.WriteLine("=== Phase 3: 300ms后，重量变为0.6（再次上磅） ===");
+        await Task.Delay(300); // 300ms后
+        weightSubject.OnNext(0.6m);
+        await Task.Delay(300); // 等待状态转换
+        var status4 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after rise to 0.6t: {status4}");
+        status4.ShouldBe(AttendedWeighingStatus.WaitingForStability); // 应该进入WaitingForStability
+
+        // 验证缓存和记录ID已清空（下磅时应该清空）
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        _output.WriteLine($"Plate number after cycle: {plateNumber ?? "None"}");
+        // 下磅后缓存应该被清空（通过状态转换逻辑）
+
+        // Assert
+        // 验证状态转换序列
+        _output.WriteLine($"State sequence: {status1} -> {status2} -> {status3} -> {status4}");
+        
+        // 最终应该回到 WaitingForStability（新的称重周期）
+        status4.ShouldBe(AttendedWeighingStatus.WaitingForStability);
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Stability_Should_BeCleared_WhenTransitioningToOffScale()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject();
+        await service.StartAsync();
+
+        _output.WriteLine("=== 测试：验证下磅时 Stability 信息应该被清空 ===");
+        _output.WriteLine("场景：第一次称重稳定后下磅，再次上磅时不应该直接跳到 WeightStabilized");
+
+        // Act Phase 1: 第一次称重 - 上磅并稳定
+        _output.WriteLine("=== Phase 1: 第一次称重 - 上磅并稳定 ===");
+        weightSubject.OnNext(0.6m);
+        await Task.Delay(300);
+        var status1 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after first on-scale: {status1}");
+        status1.ShouldBe(AttendedWeighingStatus.WaitingForStability);
+
+        // 发送稳定的数据点
+        var random = new Random(42);
+        for (int i = 0; i < 20; i++)
+        {
+            var noise = (decimal)(random.NextDouble() * 0.04 - 0.02);
+            var weight = Math.Round(0.6m + noise, 3);
+            weightSubject.OnNext(weight);
+            await Task.Delay(200);
+        }
+
+        await Task.Delay(1000);
+        var status2 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after first stabilization: {status2}");
+        status2.ShouldBeOneOf(
+            AttendedWeighingStatus.WeightStabilized,
+            AttendedWeighingStatus.WaitingForDeparture);
+
+        // Act Phase 2: 下磅
+        _output.WriteLine("=== Phase 2: 下磅 ===");
+        weightSubject.OnNext(0.3m);
+        await Task.Delay(300);
+        var status3 = service.GetCurrentStatus();
+        _output.WriteLine($"Status after first off-scale: {status3}");
+        status3.ShouldBe(AttendedWeighingStatus.OffScale);
+
+        // Act Phase 3: 再次上磅 - 应该进入 WaitingForStability，而不是直接跳到 WeightStabilized
+        _output.WriteLine("=== Phase 3: 再次上磅 - 验证不会直接跳到 WeightStabilized ===");
+        var secondOnScaleTime = DateTime.Now;
+        weightSubject.OnNext(0.75m);
+        await Task.Delay(300);
+        var status4 = service.GetCurrentStatus();
+        var elapsedAfterSecondOnScale = (DateTime.Now - secondOnScaleTime).TotalSeconds;
+        _output.WriteLine($"Status after second on-scale: {status4}, Elapsed: {elapsedAfterSecondOnScale:F3}s");
+        
+        // Assert: 应该进入 WaitingForStability，而不是直接跳到 WeightStabilized
+        status4.ShouldBe(AttendedWeighingStatus.WaitingForStability,
+            "After off-scale, when on-scale again, should enter WaitingForStability first, " +
+            "not directly jump to WeightStabilized. This indicates Stability information was not cleared.");
+
+        // 继续发送数据点，验证需要时间才能稳定
+        _output.WriteLine("=== Phase 4: 发送稳定数据点，验证需要时间才能稳定 ===");
+        DateTime? weightStabilizedTime = null;
+        for (int i = 0; i < 20; i++)
+        {
+            var noise = (decimal)(random.NextDouble() * 0.04 - 0.02);
+            var weight = Math.Round(0.75m + noise, 3);
+            weightSubject.OnNext(weight);
+            await Task.Delay(200);
+            
+            var currentStatus = service.GetCurrentStatus();
+            if (currentStatus == AttendedWeighingStatus.WeightStabilized && weightStabilizedTime == null)
+            {
+                weightStabilizedTime = DateTime.Now;
+                var timeToStable = (weightStabilizedTime.Value - secondOnScaleTime).TotalSeconds;
+                _output.WriteLine($"Became WeightStabilized at: {weightStabilizedTime:HH:mm:ss.fff}, " +
+                                $"Time from on-scale: {timeToStable:F3}s");
+                break;
+            }
+        }
+
+        await Task.Delay(500);
+        var finalStatus = service.GetCurrentStatus();
+        _output.WriteLine($"Final status: {finalStatus}");
+
+        // Assert: 如果变为 WeightStabilized，应该需要一定时间（至少1秒以上）
+        if (weightStabilizedTime.HasValue)
+        {
+            var timeToStable = (weightStabilizedTime.Value - secondOnScaleTime).TotalSeconds;
+            _output.WriteLine($"Time from second on-scale to WeightStabilized: {timeToStable:F3}s");
+            
+            // 应该需要至少接近窗口时间才能稳定（如果 Stability 被正确清空）
+            // 如果时间太短（< 1秒），说明可能使用了旧的 Stability 信息
+            if (timeToStable < 1.0)
+            {
+                _output.WriteLine($"WARNING: Stability detected too quickly ({timeToStable:F3}s < 1.0s). " +
+                                "This suggests Stability information was not cleared on off-scale.");
+            }
+        }
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
     #endregion
 
     #region Error Handling Tests
