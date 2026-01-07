@@ -1,3 +1,5 @@
+using MaterialClient.Common.Entities.Enums;
+
 namespace MaterialClient.Common.Configuration;
 
 /// <summary>
@@ -19,4 +21,10 @@ public class SystemSettings
     ///     Web service URLs
     /// </summary>
     public string Urls { get; set; } = "http://localhost:9960";
+
+    /// <summary>
+    ///     Snapshot camera type (Hikvision or LPRAllInOne)
+    ///     Default: Hikvision
+    /// </summary>
+    public SnapshotCameraType SnapshotCameraType { get; set; } = SnapshotCameraType.Hikvision;
 }

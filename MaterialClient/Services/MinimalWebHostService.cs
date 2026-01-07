@@ -30,6 +30,7 @@ public class MinimalWebHostService : IAsyncDisposable
     
     private static string ApiPath ="/api/CarLicense/CallDeviceMessage";
     private static string HuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
+    private static string CallDeviceStatusPath = "/api/CarLicense/CallDeviceStatus";
 
     /// <summary>
     ///     构造函数，注入共享的服务提供者
@@ -170,7 +171,8 @@ public class MinimalWebHostService : IAsyncDisposable
             endpoints = new[]
             {  
                 ApiPath,
-                HuaXiaZhiXingApiPath
+                HuaXiaZhiXingApiPath,
+                CallDeviceStatusPath
             }
         }));
 
@@ -324,6 +326,88 @@ public class MinimalWebHostService : IAsyncDisposable
             }
 
             return Results.Json(result);
+        });
+
+        // LPRAllInOne comet 轮询端点 - 设备状态查询
+        // 设备会轮询此端点（GET 或 POST），如果需要触发抓拍，在响应中返回触发消息
+        // 根据 cap.md，设备会发送设备注册消息（心跳），包含 ipaddr 字段
+        app.MapMethods(CallDeviceStatusPath, new[] { "GET", "POST" }, async (HttpContext context) =>
+        {
+            var statusLogger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
+            
+            try
+            {
+                string? deviceIp = null;
+                
+                // 首先尝试从查询参数中获取设备IP（GET 请求）
+                deviceIp = context.Request.Query["ipaddr"].ToString();
+                
+                // 如果查询参数中没有，尝试从表单数据中获取（POST 请求，comet 轮询通常使用 POST）
+                if (string.IsNullOrWhiteSpace(deviceIp))
+                {
+                    if (context.Request.HasFormContentType)
+                    {
+                        try
+                        {
+                            context.Request.EnableBuffering();
+                            var form = await context.Request.ReadFormAsync();
+                            deviceIp = form["ipaddr"].ToString();
+                        }
+                        catch
+                        {
+                            // 忽略表单读取错误
+                        }
+                    }
+                }
+
+                // 如果仍然没有，尝试从 RemoteIpAddress 获取
+                if (string.IsNullOrWhiteSpace(deviceIp))
+                {
+                    deviceIp = context.Connection.RemoteIpAddress?.ToString();
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceIp))
+                {
+                    statusLogger.LogWarning("Cannot determine device IP from CallDeviceStatus request");
+                    return Results.Ok(new
+                    {
+                        success = true,
+                        msg = ""
+                    });
+                }
+
+                // 检查是否需要触发抓拍
+                var lprService = _sharedServiceProvider.GetService<MaterialClient.Common.Services.LPRAllInOne.ILPRAllInOneService>();
+                if (lprService != null && lprService.CheckAndClearTriggerFlag(deviceIp))
+                {
+                    // 需要触发抓拍，返回触发消息
+                    // 根据 cap.md (700-711)，返回格式：{"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
+                    statusLogger.LogInformation("Returning manual trigger message for device IP: {Ip}", deviceIp);
+                    return Results.Json(new
+                    {
+                        Response_AlarmInfoPlate = new
+                        {
+                            manualTrigger = "ok"
+                        }
+                    });
+                }
+
+                // 不需要触发，返回正常响应
+                return Results.Ok(new
+                {
+                    success = true,
+                    msg = ""
+                });
+            }
+            catch (Exception ex)
+            {
+                statusLogger.LogError(ex, "Error processing CallDeviceStatus request");
+                return Results.Ok(new
+                {
+                    success = true,
+                    msg = ""
+                });
+            }
         });
     }
 

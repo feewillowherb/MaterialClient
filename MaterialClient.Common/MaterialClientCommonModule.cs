@@ -1,4 +1,5 @@
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Services.LPRAllInOne;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -49,6 +50,12 @@ public class MaterialClientCommonModule : AbpModule
         // Configure AliyunOss
         services.Configure<AliyunOssConfig>(
             configuration.GetSection("AliyunOss"));
+
+        // Register HttpClientFactory for LPRAllInOne service
+        services.AddHttpClient();
+
+        // Register LPRAllInOne service
+        services.AddSingleton<ILPRAllInOneService, LPRAllInOneService>();
     }
 
 }

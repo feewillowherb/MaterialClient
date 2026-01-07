@@ -9,6 +9,11 @@ using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hikvision;
 
+/// <summary>
+///     海康威视设备服务接口
+///     注意：此服务专门用于海康威视设备的抓拍功能，与 SystemSettings.SnapshotCameraType 配置无关。
+///     无论 SnapshotCameraType 设置为 Hikvision 还是 LPRAllInOne，此服务都会正常工作。
+/// </summary>
 public interface IHikvisionService
 {
     void AddOrUpdateDevice(HikvisionDeviceConfig config);
@@ -24,6 +29,12 @@ public interface IHikvisionService
     Task<List<BatchCaptureResult>> TestCaptureAsync();
 }
 
+/// <summary>
+///     海康威视设备服务实现
+///     注意：此服务专门用于海康威视设备的抓拍功能，与 SystemSettings.SnapshotCameraType 配置无关。
+///     无论 SnapshotCameraType 设置为 Hikvision 还是 LPRAllInOne，此服务都会正常工作。
+///     调用方应根据 SnapshotCameraType 配置决定是否调用此服务的方法。
+/// </summary>
 public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 {
     private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();

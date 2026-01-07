@@ -10,6 +10,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Services.LPRAllInOne;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -126,6 +127,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<AttendedWeighingService> _logger;
 
+    private readonly ILPRAllInOneService? _lprAllInOneService;
     private readonly ISettingsService _settingsService;
 
     // 统一状态管理（RxState 模式）
@@ -784,6 +786,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // 上磅：进入等待稳定状态
                 _logger.LogInformation(
                     $"Entered WaitingForStability state (ascending), weight: {currentState.Weight:F3}t");
+                
+                // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
+                EnqueueAsyncOperation(async () => await TriggerCaptureOnWaitingForStabilityAsync());
                 break;
 
             case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.OffScale):
@@ -817,6 +822,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // 异常流程：稳定后突然下磅（跳过WaitingForDeparture）
                 _logger?.LogWarning(
                     $"Abnormal departure from WeightStabilized, weight returned to {currentState.Weight:F3}t");
+                
+                // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
+                EnqueueAsyncOperation(async () => await TriggerCaptureOnOffScaleAsync());
                 EnqueueAsyncOperation(async () => await ResetWeighingCycleAsync());
                 break;
 
@@ -824,6 +832,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 // 正常流程：正常下磅完成
                 _logger?.LogInformation(
                     $"Normal flow completed (normal departure), entered OffScale state, weight: {currentState.Weight:F3}t");
+                
+                // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
+                EnqueueAsyncOperation(async () => await TriggerCaptureOnOffScaleAsync());
                 EnqueueAsyncOperation(async () => await ResetWeighingCycleAsync());
                 break;
         }
@@ -862,8 +873,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         try
         {
-            // Capture all cameras
+            // Capture all cameras (Hikvision)
             var photoPaths = await CaptureAllCamerasAsync("WeightStabilized");
+
+            // 触发 LPRAllInOne 抓拍（方法内部会判断 SnapshotCameraType）
+            await TriggerCaptureOnWeightStabilizedAsync();
 
             // 创建WeighingRecord（传入照片路径）
             await CreateWeighingRecordAsync(currentWeight, photoPaths);
@@ -945,6 +959,192 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             _logger?.LogError(ex, $"Error occurred while capturing all cameras ({reason})");
             _logger?.LogWarning($"Capture exception, returning empty photo list ({reason})");
             return new List<string>();
+        }
+    }
+
+    /// <summary>
+    ///     触发 LPRAllInOne 抓拍（进入 WaitingForStability 状态时）
+    /// </summary>
+    private async Task TriggerCaptureOnWaitingForStabilityAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            
+            // 如果类型为 Hikvision，不做任何动作
+            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LPRAllInOne)
+            {
+                return;
+            }
+
+            // 如果服务未注入，记录警告并返回
+            if (_lprAllInOneService == null)
+            {
+                _logger?.LogWarning("ILPRAllInOneService is not available, cannot trigger capture on WaitingForStability");
+                return;
+            }
+
+            var lprConfigs = settings.LicensePlateRecognitionConfigs;
+            if (lprConfigs.Count == 0)
+            {
+                _logger?.LogWarning("No LPRAllInOne devices configured, cannot trigger capture on WaitingForStability");
+                return;
+            }
+
+            _logger?.LogInformation("Triggering LPRAllInOne capture on WaitingForStability for {Count} devices", lprConfigs.Count);
+
+            var tasks = lprConfigs
+                .Where(config => config.IsValid())
+                .Select(async config =>
+                {
+                    var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
+                    if (success)
+                    {
+                        _logger?.LogInformation("Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability", 
+                            config.Name, config.Ip);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability", 
+                            config.Name, config.Ip);
+                    }
+                    return success;
+                });
+
+            var results = await Task.WhenAll(tasks);
+            var successCount = results.Count(r => r);
+            var failCount = results.Length - successCount;
+
+            _logger?.LogInformation("LPRAllInOne capture on WaitingForStability completed: {SuccessCount} succeeded, {FailCount} failed", 
+                successCount, failCount);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error occurred while triggering LPRAllInOne capture on WaitingForStability");
+        }
+    }
+
+    /// <summary>
+    ///     触发 LPRAllInOne 抓拍（进入 WeightStabilized 状态时）
+    /// </summary>
+    private async Task TriggerCaptureOnWeightStabilizedAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            
+            // 如果类型为 Hikvision，不做任何动作
+            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LPRAllInOne)
+            {
+                return;
+            }
+
+            // 如果服务未注入，记录警告并返回
+            if (_lprAllInOneService == null)
+            {
+                _logger?.LogWarning("ILPRAllInOneService is not available, cannot trigger capture on WeightStabilized");
+                return;
+            }
+
+            var lprConfigs = settings.LicensePlateRecognitionConfigs;
+            if (lprConfigs.Count == 0)
+            {
+                _logger?.LogWarning("No LPRAllInOne devices configured, cannot trigger capture on WeightStabilized");
+                return;
+            }
+
+            _logger?.LogInformation("Triggering LPRAllInOne capture on WeightStabilized for {Count} devices", lprConfigs.Count);
+
+            var tasks = lprConfigs
+                .Where(config => config.IsValid())
+                .Select(async config =>
+                {
+                    var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
+                    if (success)
+                    {
+                        _logger?.LogInformation("Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized", 
+                            config.Name, config.Ip);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized", 
+                            config.Name, config.Ip);
+                    }
+                    return success;
+                });
+
+            var results = await Task.WhenAll(tasks);
+            var successCount = results.Count(r => r);
+            var failCount = results.Length - successCount;
+
+            _logger?.LogInformation("LPRAllInOne capture on WeightStabilized completed: {SuccessCount} succeeded, {FailCount} failed", 
+                successCount, failCount);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error occurred while triggering LPRAllInOne capture on WeightStabilized");
+        }
+    }
+
+    /// <summary>
+    ///     触发 LPRAllInOne 抓拍（进入 OffScale 状态时）
+    /// </summary>
+    private async Task TriggerCaptureOnOffScaleAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            
+            // 如果类型为 Hikvision，不做任何动作
+            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LPRAllInOne)
+            {
+                return;
+            }
+
+            // 如果服务未注入，记录警告并返回
+            if (_lprAllInOneService == null)
+            {
+                _logger?.LogWarning("ILPRAllInOneService is not available, cannot trigger capture on OffScale");
+                return;
+            }
+
+            var lprConfigs = settings.LicensePlateRecognitionConfigs;
+            if (lprConfigs.Count == 0)
+            {
+                _logger?.LogWarning("No LPRAllInOne devices configured, cannot trigger capture on OffScale");
+                return;
+            }
+
+            _logger?.LogInformation("Triggering LPRAllInOne capture on OffScale for {Count} devices", lprConfigs.Count);
+
+            var tasks = lprConfigs
+                .Where(config => config.IsValid())
+                .Select(async config =>
+                {
+                    var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
+                    if (success)
+                    {
+                        _logger?.LogInformation("Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on OffScale", 
+                            config.Name, config.Ip);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on OffScale", 
+                            config.Name, config.Ip);
+                    }
+                    return success;
+                });
+
+            var results = await Task.WhenAll(tasks);
+            var successCount = results.Count(r => r);
+            var failCount = results.Length - successCount;
+
+            _logger?.LogInformation("LPRAllInOne capture on OffScale completed: {SuccessCount} succeeded, {FailCount} failed", 
+                successCount, failCount);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error occurred while triggering LPRAllInOne capture on OffScale");
         }
     }
 
