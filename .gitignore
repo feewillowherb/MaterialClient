@@ -86,3 +86,6 @@ ScaffoldingReadMe.txt
 
 # ---- HTTP scratch files ----
 *.http
+
+# ---- Installer output ----
+Installer/

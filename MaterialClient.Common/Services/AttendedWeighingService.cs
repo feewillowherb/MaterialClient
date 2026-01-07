@@ -611,6 +611,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     pair.Current.Weight, 
                     pair.Current.Stability.IsStable, 
                     pair.Current.LastCreatedWeighingRecordId,
+                    pair.Current.DeliveryType, // 添加 DeliveryType 到比较逻辑中，确保 DeliveryType 变化时能触发状态更新
                     cacheKey // 添加车牌缓存的关键信息，确保车牌缓存变化时能触发状态更新
                 );
             });

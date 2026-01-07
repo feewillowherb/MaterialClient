@@ -95,7 +95,17 @@ internal static class WeighingServiceStateReducer
             return newState with 
             { 
                 Status = newStatus,
-                LastCreatedWeighingRecordId = null
+                LastCreatedWeighingRecordId = null,
+                PlateNumberCache = new ConcurrentDictionary<string, PlateNumberCacheRecord>(),
+                Stability = new WeightStabilityInfo
+                {
+                    Weight = 0m,
+                    IsStable = false,
+                    StableWeight = null,
+                    Min = 0m,
+                    Max = 0m,
+                    Range = 0m
+                }
             };
         }
 
@@ -155,7 +165,16 @@ internal static class WeighingServiceStateReducer
         return state with
         {
             LastCreatedWeighingRecordId = null,
-            PlateNumberCache = new ConcurrentDictionary<string, PlateNumberCacheRecord>()
+            PlateNumberCache = new ConcurrentDictionary<string, PlateNumberCacheRecord>(),
+            Stability = new WeightStabilityInfo
+            {
+                Weight = 0m,
+                IsStable = false,
+                StableWeight = null,
+                Min = 0m,
+                Max = 0m,
+                Range = 0m
+            }
         };
     }
 }
