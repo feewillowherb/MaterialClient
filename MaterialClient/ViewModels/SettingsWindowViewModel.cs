@@ -37,6 +37,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableAutoStart;
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
     [Reactive] private string _urls = "http://localhost:9960";
+    [Reactive] private SnapshotCameraType _snapshotCameraType = SnapshotCameraType.Hikvision;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -66,6 +67,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         StreamType.Substream,
         StreamType.Mainstream
+    };
+
+    /// <summary>
+    ///     Snapshot camera type options for ComboBox
+    /// </summary>
+    public ObservableCollection<SnapshotCameraType> SnapshotCameraTypeOptions { get; } = new()
+    {
+        SnapshotCameraType.Hikvision,
+        SnapshotCameraType.LPRAllInOne
     };
 
     // Weighing configuration
@@ -131,7 +141,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 {
                     EnableAutoStart = EnableAutoStart,
                     CaptureStreamType = CaptureStreamType,
-                    Urls = Urls
+                    Urls = Urls,
+                    SnapshotCameraType = SnapshotCameraType
                 },
                 CameraConfigs.Select(c => new CameraConfig
                 {
@@ -282,6 +293,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
             Urls = settings.SystemSettings.Urls;
+            SnapshotCameraType = settings.SystemSettings.SnapshotCameraType;
 
             // Load weighing configuration
             MinWeightThreshold = settings.WeighingConfiguration.MinWeightThreshold;

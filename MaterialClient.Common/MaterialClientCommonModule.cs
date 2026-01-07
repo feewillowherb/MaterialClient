@@ -50,12 +50,7 @@ public class MaterialClientCommonModule : AbpModule
         // Configure AliyunOss
         services.Configure<AliyunOssConfig>(
             configuration.GetSection("AliyunOss"));
-
-        // Register HttpClientFactory for LPRAllInOne service
-        services.AddHttpClient();
-
-        // Register LPRAllInOne service
-        services.AddSingleton<ILPRAllInOneService, LPRAllInOneService>();
+        
     }
 
 }

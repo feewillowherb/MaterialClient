@@ -8,5 +8,5 @@ public enum SnapshotCameraType
     Hikvision = 0,
     
     [Description("车牌识别一体机")]
-    LPRAllInOne = 1
+    LprAllInOne = 1
 }
