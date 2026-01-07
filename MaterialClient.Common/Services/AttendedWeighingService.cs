@@ -7,6 +7,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
@@ -129,6 +130,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
     private readonly ILPRAllInOneService? _lprAllInOneService;
     private readonly ISettingsService _settingsService;
+    private readonly ISoundDeviceService? _soundDeviceService;
 
     // 统一状态管理（RxState 模式）
     private readonly BehaviorSubject<WeighingServiceState> _stateSubject = new(WeighingServiceState.Initial);
@@ -779,6 +781,24 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         _logger?.LogInformation(
             $"Status changed {previousState.Status} -> {currentState.Status}, weight: {currentState.Weight:F3}t");
+
+        // 播放状态变化语音提示
+        EnqueueAsyncOperation(async () =>
+        {
+            if (_soundDeviceService != null)
+            {
+                try
+                {
+                    var statusDescription = currentState.Status.GetDescription();
+                    await _soundDeviceService.PlayTextAsync(statusDescription);
+                    _logger?.LogDebug($"Played status change audio: {statusDescription}");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to play status change audio");
+                }
+            }
+        });
 
         // 处理状态转换的副作用
         switch (previousState.Status, currentState.Status)

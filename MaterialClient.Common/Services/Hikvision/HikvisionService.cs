@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using MaterialClient.Common.Configuration;
@@ -80,9 +81,24 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 wPicQuality = (ushort)Math.Clamp(quality, 0, 100),
                 wPicSize = 0xFF // use device default
             };
-            var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
-            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
-            return ok;
+
+            // 分配 10MB 缓存区
+            const int bufferSize = 10 * 1024 * 1024; // 10MB
+            var buffer = new byte[bufferSize];
+            uint returnedSize = 0;
+
+            // 调用新 API
+            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture_NEW(
+                userId, channel, ref para, buffer, (uint)bufferSize, out returnedSize);
+
+            if (ok && returnedSize > 0)
+            {
+                // 将缓存区数据写入文件
+                File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
+                return true;
+            }
+
+            return false;
         }
         finally
         {
@@ -114,11 +130,29 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 wPicQuality = (ushort)Math.Clamp(quality, 1, 100),
                 wPicSize = 0xFF
             };
-            var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
-            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
-            if (!ok) lastError = NET_DVR.NET_DVR_GetLastError();
 
-            return ok;
+            // 分配 10MB 缓存区
+            const int bufferSize = 10 * 1024 * 1024; // 10MB
+            var buffer = new byte[bufferSize];
+            uint returnedSize = 0;
+
+            // 调用新 API
+            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture_NEW(
+                userId, channel, ref para, buffer, (uint)bufferSize, out returnedSize);
+
+            if (ok && returnedSize > 0)
+            {
+                // 将缓存区数据写入文件
+                File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
+                return true;
+            }
+
+            if (!ok)
+            {
+                lastError = NET_DVR.NET_DVR_GetLastError();
+            }
+
+            return false;
         }
         finally
         {
@@ -648,6 +682,15 @@ internal static class NET_DVR
     [DllImport("HCNetSDK.dll")]
     internal static extern bool NET_DVR_CaptureJPEGPicture(int lUserID, int lChannel, ref NET_DVR_JPEGPARA lpJpegPara,
         byte[] sPicFileName);
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern bool NET_DVR_CaptureJPEGPicture_NEW(
+        int lUserID,
+        int lChannel,
+        ref NET_DVR_JPEGPARA lpJpegPara,
+        byte[] pJpegPicBuffer,      // 输出缓存区
+        uint dwPicSize,              // 缓存区大小
+        out uint lpSizeReturned);    // 返回的实际数据大小
 
     [DllImport("HCNetSDK.dll")]
     internal static extern uint NET_DVR_GetLastError();
