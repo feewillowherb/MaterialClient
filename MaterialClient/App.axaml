@@ -26,6 +26,7 @@
                 <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
                 <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
                 <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
+                <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
                 <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
                 <converters:SnapshotCameraTypeConverter x:Key="SnapshotCameraTypeConverter" />
                 

@@ -52,6 +52,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     // Scale settings
     [Reactive] private string _scaleSerialPort = "COM3";
     [Reactive] private ScaleUnit _scaleUnit = ScaleUnit.Ton;
+    [Reactive] private ScaleType _scaleType = ScaleType.Default;
 
     /// <summary>
     ///     Scale unit options for ComboBox
@@ -60,6 +61,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         ScaleUnit.Kg,
         ScaleUnit.Ton
+    };
+
+    /// <summary>
+    ///     Scale type options for ComboBox
+    /// </summary>
+    public ObservableCollection<ScaleType> ScaleTypeOptions { get; } = new()
+    {
+        ScaleType.Default,
+        ScaleType.DingSong
     };
 
     /// <summary>
@@ -135,7 +145,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     SerialPort = ScaleSerialPort,
                     BaudRate = ScaleBaudRate,
                     CommunicationMethod = ScaleCommunicationMethod,
-                    ScaleUnit = ScaleUnit
+                    ScaleUnit = ScaleUnit,
+                    ScaleType = ScaleType
                 },
                 new DocumentScannerConfig
                 {
@@ -305,6 +316,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             ScaleBaudRate = settings.ScaleSettings.BaudRate;
             ScaleCommunicationMethod = settings.ScaleSettings.CommunicationMethod;
             ScaleUnit = settings.ScaleSettings.ScaleUnit;
+            ScaleType = settings.ScaleSettings.ScaleType;
 
             // Ensure the loaded serial port is in the available list
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))

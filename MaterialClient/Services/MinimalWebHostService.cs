@@ -231,6 +231,8 @@ public class MinimalWebHostService : IAsyncDisposable
             try
             {
                 Dictionary<string, string>? form = null;
+                string? rawRequestBody = null; // 保存原始请求体用于日志
+                string contentType = context.Request.ContentType ?? "unknown";
 
                 // 优先尝试读取标准表单数据（不检查Content-Type，直接尝试读取，与旧代码保持一致）
                 // 注意：在 Minimal API 中，需要先调用 EnableBuffering 和 ReadFormAsync 才能访问 Form
@@ -278,13 +280,13 @@ public class MinimalWebHostService : IAsyncDisposable
                     // 如果表单为空，尝试从原始请求体读取（与旧代码逻辑一致）
                     context.Request.Body.Position = 0;
                     using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
-                    var raw = await reader.ReadToEndAsync();
+                    rawRequestBody = await reader.ReadToEndAsync();
                     context.Request.Body.Position = 0;
 
-                    if (!string.IsNullOrWhiteSpace(raw))
+                    if (!string.IsNullOrWhiteSpace(rawRequestBody))
                     {
                         // 使用 QueryHelpers.ParseQuery 解析（自动URL解码，与 HttpUtility.ParseQueryString 行为一致）
-                        var queryParams = QueryHelpers.ParseQuery(raw);
+                        var queryParams = QueryHelpers.ParseQuery(rawRequestBody);
                         form = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                         foreach (var kvp in queryParams)
                         {
@@ -305,7 +307,13 @@ public class MinimalWebHostService : IAsyncDisposable
                 {
                     result.error_num = -1;
                     result.error_str = "无效的请求";
-                    logger.LogWarning("接收到无效的华夏智信请求（无表单数据）");
+                    // 打印原始请求信息用于调试
+                    var headers = string.Join(", ", context.Request.Headers.Select(h => $"{h.Key}={string.Join(";", h.Value.ToArray())}"));
+                    logger.LogWarning(
+                        "接收到无效的华夏智信请求（无表单数据）。Content-Type: {ContentType}, RawBody: {RawBody}, Headers: {Headers}",
+                        contentType,
+                        rawRequestBody ?? "empty",
+                        headers);
                     return Results.Json(result);
                 }
 
@@ -346,7 +354,31 @@ public class MinimalWebHostService : IAsyncDisposable
             {
                 result.error_num = -1;
                 result.error_str = string.Empty;
-                logger.LogError(ex, "处理华夏智信设备回调失败");
+                
+                // 尝试读取原始请求信息用于错误日志
+                string? rawBody = null;
+                string contentType = context.Request.ContentType ?? "unknown";
+                try
+                {
+                    if (context.Request.Body.CanSeek)
+                    {
+                        context.Request.Body.Position = 0;
+                        using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
+                        rawBody = await reader.ReadToEndAsync();
+                        context.Request.Body.Position = 0;
+                    }
+                }
+                catch
+                {
+                    // 忽略读取错误
+                }
+                
+                var headers = string.Join(", ", context.Request.Headers.Select(h => $"{h.Key}={string.Join(";", h.Value.ToArray())}"));
+                logger.LogError(ex,
+                    "处理华夏智信设备回调失败。Content-Type: {ContentType}, RawBody: {RawBody}, Headers: {Headers}",
+                    contentType,
+                    rawBody ?? "unable to read",
+                    headers);
             }
 
             return Results.Json(result);
