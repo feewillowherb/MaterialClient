@@ -316,7 +316,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger?.LogError(ex, "Error while waiting for pending operations");
             }
         }
-        
+
         // 清理已完成的任务，释放内存
         // 注意：由于 ConcurrentBag 不支持直接移除，我们通过重建来清理
         lock (_operationsLock)
@@ -371,7 +371,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
         // 过滤掉"挂"字（仅处理简体"挂"）
-        var filteredPlateNumber = PlateNumberValidator.FilterHangingCharacter(plateNumber);
+        var filteredPlateNumber = PlateNumberValidator.FilterHangingCharacter(plateNumber, _logger);
 
         // 如果过滤后为空，则不处理
         if (string.IsNullOrWhiteSpace(filteredPlateNumber)) return;
@@ -615,7 +615,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 使用 DistinctUntilChanged 确保 recordId 变化能触发状态转换
         var recordIdStream = _lastCreatedWeighingRecordIdSubject
             .DistinctUntilChanged(); // 只在 recordId 变化时发出
-        
+
         return _statusSubject
             .CombineLatest(
                 weightStream,
@@ -625,12 +625,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 {
                     _logger?.LogInformation(
                         $"Status stream evaluation: status={status}, weight={weight:F3}t, recordId={recordId}, stability.IsStable={stability.IsStable}");
-                    
+
                     // 关键修复：如果已创建记录，强制使用正确的状态
                     if (recordId != null && weight > _minWeightThreshold)
                     {
                         // 如果已创建记录，应该保持在 WaitingForDeparture
-                        if (status == AttendedWeighingStatus.WeightStabilized || 
+                        if (status == AttendedWeighingStatus.WeightStabilized ||
                             status == AttendedWeighingStatus.WaitingForDeparture ||
                             status == AttendedWeighingStatus.WaitingForStability) // 防止状态不同步
                         {
@@ -639,7 +639,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                             return AttendedWeighingStatus.WaitingForDeparture;
                         }
                     }
-                    
+
                     // 基于重量的状态转换（与 baseStatusStream 的逻辑一致）
                     var newStatus = status switch
                     {
@@ -657,7 +657,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                             => AttendedWeighingStatus.OffScale,
                         _ => status // No state change
                     };
-                    
+
                     // 稳定性触发的状态转换
                     // 上磅阶段：WaitingForStability -> WeightStabilized
                     if (newStatus == AttendedWeighingStatus.WaitingForStability &&
@@ -668,7 +668,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                             $"Converting WaitingForStability -> WeightStabilized: weight={weight:F3}t, stability.IsStable={stability.IsStable}");
                         return AttendedWeighingStatus.WeightStabilized;
                     }
-                    
+
                     // 下磅阶段：WeightStabilized -> WaitingForDeparture
                     if (newStatus == AttendedWeighingStatus.WeightStabilized &&
                         weight > _minWeightThreshold &&
@@ -678,7 +678,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                             $"Converting WeightStabilized -> WaitingForDeparture: recordId={recordId}, weight={weight:F3}t");
                         return AttendedWeighingStatus.WaitingForDeparture;
                     }
-                    
+
                     return newStatus;
                 })
             .DistinctUntilChanged();
@@ -687,7 +687,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// <summary>
     ///     订阅状态变化（包含错误处理和重试机制）
     /// </summary>
-    private IDisposable SubscribeToStatusChanges(IObservable<(AttendedWeighingStatus Status, decimal Weight, WeightStabilityInfo Stability)> combinedStream)
+    private IDisposable SubscribeToStatusChanges(
+        IObservable<(AttendedWeighingStatus Status, decimal Weight, WeightStabilityInfo Stability)> combinedStream)
     {
         return combinedStream
             .Catch((Exception ex) =>
@@ -695,7 +696,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger?.LogError(ex, "Error in status stream, will retry in 5 seconds");
                 // 延迟后重新订阅（通过返回空流触发重试）
                 return Observable.Timer(TimeSpan.FromSeconds(5))
-                    .SelectMany(_ => Observable.Empty<(AttendedWeighingStatus Status, decimal Weight, WeightStabilityInfo Stability)>());
+                    .SelectMany(_ =>
+                        Observable
+                            .Empty<(AttendedWeighingStatus Status, decimal Weight, WeightStabilityInfo Stability)>());
             })
             .Retry(3) // 最多重试3次
             .ObserveOn(TaskPoolScheduler.Default)
@@ -751,7 +754,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// <summary>
     ///     状态变化处理（状态转换已在流中完成，这里只处理副作用）
     /// </summary>
-    private void OnWeightAndStatusChanged(AttendedWeighingStatus newStatus, decimal weight, WeightStabilityInfo stability)
+    private void OnWeightAndStatusChanged(AttendedWeighingStatus newStatus, decimal weight,
+        WeightStabilityInfo stability)
     {
         var previousStatus = _statusSubject.Value;
 
@@ -763,7 +767,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
             // 关键修复：当状态从 WaitingForStability 转为 WeightStabilized 时，立即创建记录
             // 不依赖 IsStable 状态，因为状态转换已经发生，说明之前已经满足稳定条件
-            if (previousStatus == AttendedWeighingStatus.WaitingForStability && 
+            if (previousStatus == AttendedWeighingStatus.WaitingForStability &&
                 newStatus == AttendedWeighingStatus.WeightStabilized &&
                 _lastCreatedWeighingRecordIdSubject.Value == null)
             {
@@ -771,7 +775,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 var weightToUse = stability.StableWeight ?? weight;
                 _logger?.LogInformation(
                     $"Weight stabilized (status transition), creating record with weight: {weightToUse:F3}t");
-                
+
                 // 立即创建称重记录
                 EnqueueAsyncOperation(async () => await OnWeightStabilizedAsync(weightToUse));
             }
@@ -786,8 +790,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 备用检查：如果状态已经是 WeightStabilized 但记录还未创建（防止状态转换时遗漏）
         // 这主要处理状态已经是 WeightStabilized 但之前没有创建记录的情况
         // 关键：必须同时检查 IsStable，确保只有在稳定时才创建记录
-        if (newStatus == AttendedWeighingStatus.WeightStabilized && 
-            stability.IsStable &&  // 必须稳定才创建记录
+        if (newStatus == AttendedWeighingStatus.WeightStabilized &&
+            stability.IsStable && // 必须稳定才创建记录
             _lastCreatedWeighingRecordIdSubject.Value == null) // 检查是否已经称重过（null表示未称重）
         {
             // Weight stabilized - use stable weight (average) if available
@@ -820,7 +824,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             return "车辆已下磅，称重已完成";
         }
-        
+
         if (previousStatus == AttendedWeighingStatus.OffScale &&
             currentStatus == AttendedWeighingStatus.WaitingForStability)
         {
@@ -855,7 +859,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     {
                         return;
                     }
-                    
+
                     await _soundDeviceService.PlayTextV2Async(statusDescription);
                     _logger?.LogDebug($"Played status change audio: {statusDescription}");
                 }
