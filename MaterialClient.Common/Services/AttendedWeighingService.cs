@@ -623,9 +623,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 recordIdStream,
                 (status, weight, stability, recordId) =>
                 {
-                    _logger?.LogInformation(
-                        $"Status stream evaluation: status={status}, weight={weight:F3}t, recordId={recordId}, stability.IsStable={stability.IsStable}");
-
                     // 关键修复：如果已创建记录，强制使用正确的状态
                     if (recordId != null && weight > _minWeightThreshold)
                     {
