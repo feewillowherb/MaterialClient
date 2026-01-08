@@ -331,9 +331,27 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 int availableBytes = port.BytesToRead;
                 if (availableBytes == 0)
                 {
-                    // No data available, return immediately to avoid blocking
-                    // DataReceived event should only fire when data is available
-                    return;
+                    // No data available, read first byte with timeout
+                    byte firstByte = (byte)port.ReadByte();
+                    if (firstByte == 0x02)
+                    {
+                        readBuffer[0] = firstByte;
+                        // Read remaining bytes
+                        int receivedCount = 1;
+                        while (receivedCount < _byteCount)
+                        {
+                            int bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
+                            receivedCount += bytesRead;
+                        }
+                    }
+                    else
+                    {
+                        // Invalid first byte, discard and return
+                        _logger?.LogWarning($"Invalid first byte 0x{firstByte:X2}, discarding");
+                        using var _ = _rwLock.ReadLock();
+                        _serialPort?.DiscardInBuffer();
+                        return;
+                    }
                 }
                 else
                 {
@@ -375,51 +393,26 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     int bytesToCopy = Math.Min(remainingInSearchBuffer, _byteCount);
                     Array.Copy(searchBuffer, frameStartIndex, readBuffer, 0, bytesToCopy);
                     
-                    // If we don't have enough bytes, read the rest with timeout protection
+                    // If we don't have enough bytes, read the rest with retry
                     if (bytesToCopy < _byteCount)
                     {
                         int receivedCount = bytesToCopy;
-                        int maxRetries = 3; // Limit retries to avoid infinite loops
-                        int retryCount = 0;
                         
-                        // Keep reading until we have all bytes or timeout/retry limit
+                        // Keep reading until we have all bytes
                         // SerialPort.Read will wait for data or timeout based on ReadTimeout setting
-                        while (receivedCount < _byteCount && retryCount < maxRetries)
+                        while (receivedCount < _byteCount)
                         {
-                            // Check if more data is available before attempting read
-                            int availableNow = port.BytesToRead;
-                            if (availableNow == 0)
-                            {
-                                retryCount++;
-                                if (retryCount < maxRetries)
-                                {
-                                    // Wait a bit for more data (non-blocking check)
-                                    Thread.Sleep(10);
-                                    continue;
-                                }
-                                // No more data available after retries, break to avoid blocking Read()
-                                break;
-                            }
-                            
                             int remainingBytes = _byteCount - receivedCount;
-                            // Only read what's available to avoid blocking
-                            int bytesToReadNow = Math.Min(remainingBytes, availableNow);
-                            int additionalBytesRead = port.Read(readBuffer, receivedCount, bytesToReadNow);
+                            int additionalBytesRead = port.Read(readBuffer, receivedCount, remainingBytes);
                             receivedCount += additionalBytesRead;
                             
-                            // If no data was read, increment retry count
+                            // If no data was read, the Read method should have thrown TimeoutException
+                            // But if we get here, it means Read returned 0, which shouldn't happen with ReadTimeout set
+                            // This is a safety check
                             if (additionalBytesRead == 0)
                             {
-                                retryCount++;
-                                if (retryCount < maxRetries)
-                                {
-                                    Thread.Sleep(10);
-                                }
-                                continue;
+                                break;
                             }
-                            
-                            // Reset retry count on successful read
-                            retryCount = 0;
                         }
                         
                         // Verify we got all bytes
@@ -454,24 +447,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             // Check frame format: 0x02 at start, 0x03 at end
             if (readBuffer[_byteCount - 1] == 0x03)
             {
-                // Get scale type to determine parsing method
-                ScaleType? scaleType;
-                using (_rwLock.ReadLock())
-                {
-                    scaleType = _currentSettings?.ScaleType;
-                }
-
-                // Parse data outside of lock based on scale type
-                decimal? parsedWeight = null;
-                if (scaleType == ScaleType.DingSong)
-                {
-                    parsedWeight = ParseHexWeightDingSong(readBuffer);
-                }
-                else
-                {
-                    // Default scale type
-                    parsedWeight = ParseHexWeight(readBuffer);
-                }
+                // Parse data outside of lock
+                var parsedWeight = ParseHexWeight(readBuffer);
 
                 // Only use write lock to update state (hold time < 50ns)
                 if (parsedWeight.HasValue)
@@ -504,20 +481,6 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     {
         try
         {
-            // Get scale type to check if String format is supported
-            ScaleType? scaleType;
-            using (_rwLock.ReadLock())
-            {
-                scaleType = _currentSettings?.ScaleType;
-            }
-
-            // DingSong scale type does not support String format
-            if (scaleType == ScaleType.DingSong)
-            {
-                _logger?.LogWarning("DingSong scale type does not support String format, not implemented");
-                return;
-            }
-
             // Use read lock to get serial port reference (allows concurrent access)
             SerialPort? port;
             using (_rwLock.ReadLock())
@@ -631,97 +594,6 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Error parsing HEX weight data");
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    ///     Parse weight from HEX data for DingSong scale type
-    ///     Format: 0x02 [sign] [8 weight bytes as ASCII] [end marker] 0x03
-    ///     Example: 02 2B 30 30 30 30 30 30 30 31 42 03
-    ///     STX '+' "00000001" 'B' ETX = 0.01 (assuming 2 decimal places)
-    /// </summary>
-    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
-    private decimal? ParseHexWeightDingSong(byte[] buffer)
-    {
-        try
-        {
-            if (buffer.Length < 12) return null;
-
-            // Check frame format: 0x02 at start, 0x03 at end
-            if (buffer[0] != 0x02 || buffer[buffer.Length - 1] != 0x03)
-            {
-                _logger?.LogWarning($"Invalid frame format: STX={buffer[0]:X2}, ETX={buffer[buffer.Length - 1]:X2}");
-                return null;
-            }
-
-            // Parse sign byte (byte 1): 0x2B = '+', 0x2D = '-'
-            var isNegative = buffer[1] == 0x2D;
-
-            // Extract ASCII weight digits (bytes 2-9, 8 digits total)
-            // Format: 8 digits (6 integer + 2 decimal)
-            // Example: "00000001" -> 0.01
-            var weightString = string.Empty;
-            var startIndex = 2; // Skip STX and sign
-            var endIndex = 10; // Before end marker and ETX
-
-            // Read 8 ASCII digits
-            for (var i = startIndex; i < endIndex; i++)
-            {
-                var b = buffer[i];
-                var c = (char)b;
-
-                // Only include digits
-                if (char.IsDigit(c))
-                {
-                    weightString += c;
-                }
-                else
-                {
-                    _logger?.LogWarning($"Non-digit character found at position {i}: 0x{b:X2}");
-                    return null;
-                }
-            }
-
-            // Verify we got exactly 8 digits
-            if (weightString.Length != 8)
-            {
-                _logger?.LogWarning($"Expected 8 digits, got {weightString.Length}: {weightString}");
-                return null;
-            }
-
-            // End marker (byte 10) is a checksum/status byte, can be any hex character (0x30-0x46)
-            // We don't validate it, just ensure it's within valid hex range
-            var endMarker = buffer[10];
-            if (endMarker < 0x30 || endMarker > 0x46)
-            {
-                _logger?.LogWarning($"Invalid end marker: 0x{endMarker:X2}, expected hex character (0x30-0x46)");
-                return null;
-            }
-
-            // Parse the weight string
-            // Format: "00000001" -> 0.01 (6 integer + 2 decimal places)
-            // Convert to decimal by inserting decimal point
-            if (decimal.TryParse(weightString, out var weightInt))
-            {
-                // Apply decimal point: divide by 100 (2 decimal places)
-                var weight = weightInt / 100m;
-
-                // Apply sign
-                if (isNegative) weight = -weight;
-
-                _logger?.LogDebug(
-                    $"Parsed DingSong HEX weight: {weight} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
-
-                return weight;
-            }
-
-            _logger?.LogWarning($"Failed to parse weight string: {weightString}");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Error parsing DingSong HEX weight data");
         }
 
         return null;
