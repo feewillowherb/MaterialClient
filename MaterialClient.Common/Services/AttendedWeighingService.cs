@@ -824,6 +824,13 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             return "车辆已下磅，称重已完成";
         }
+        
+        if (previousStatus == AttendedWeighingStatus.WaitingForStability &&
+            currentStatus == AttendedWeighingStatus.OffScale)
+        {
+            return "车辆已下磅";
+        }
+
 
         if (previousStatus == AttendedWeighingStatus.OffScale &&
             currentStatus == AttendedWeighingStatus.WaitingForStability)
