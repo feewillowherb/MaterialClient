@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -229,30 +230,52 @@ public class MinimalWebHostService : IAsyncDisposable
 
             try
             {
-                IFormCollection? form = null;
+                Dictionary<string, string>? form = null;
 
-                // 启用缓冲，允许多次读取请求体
+                // 优先尝试读取标准表单数据（不检查Content-Type，直接尝试读取，与旧代码保持一致）
+                // 注意：在 Minimal API 中，需要先调用 EnableBuffering 和 ReadFormAsync 才能访问 Form
                 context.Request.EnableBuffering();
-
-                // 优先尝试读取标准表单数据
-                if (context.Request.HasFormContentType)
+                
+                IFormCollection? ctxForm = null;
+                try
                 {
-                    try
+                    // 尝试读取表单（即使Content-Type不是标准的表单类型也尝试）
+                    if (context.Request.HasFormContentType)
                     {
-                        // 使用 ReadFormAsync 而不是直接访问 Form 属性
-                        form = await context.Request.ReadFormAsync();
+                        ctxForm = await context.Request.ReadFormAsync();
                     }
-                    catch (BadHttpRequestException ex)
+                    else
                     {
-                        // 请求体不完整或格式错误，记录日志并尝试从原始请求体读取
-                        logger.LogWarning(ex, "无法读取标准表单数据，尝试从原始请求体解析");
-                        form = null;
+                        // 即使Content-Type不是表单类型，也尝试读取（与旧代码行为一致）
+                        // 某些设备可能发送错误的Content-Type
+                        try
+                        {
+                            ctxForm = await context.Request.ReadFormAsync();
+                        }
+                        catch
+                        {
+                            // 忽略读取失败，继续尝试从原始请求体读取
+                        }
                     }
                 }
-
-                // 如果标准表单读取失败，尝试从原始请求体解析
-                if (form == null || form.Count == 0)
+                catch
                 {
+                    // 忽略读取失败，继续尝试从原始请求体读取
+                }
+
+                if (ctxForm != null && ctxForm.Count > 0)
+                {
+                    // 将 IFormCollection 转换为 Dictionary（值已自动URL解码）
+                    form = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kvp in ctxForm)
+                    {
+                        // IFormCollection 的值已经是解码后的
+                        form[kvp.Key] = kvp.Value.ToString();
+                    }
+                }
+                else
+                {
+                    // 如果表单为空，尝试从原始请求体读取（与旧代码逻辑一致）
                     context.Request.Body.Position = 0;
                     using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
                     var raw = await reader.ReadToEndAsync();
@@ -260,14 +283,21 @@ public class MinimalWebHostService : IAsyncDisposable
 
                     if (!string.IsNullOrWhiteSpace(raw))
                     {
-                        // 解析查询字符串格式的原始数据
+                        // 使用 QueryHelpers.ParseQuery 解析（自动URL解码，与 HttpUtility.ParseQueryString 行为一致）
                         var queryParams = QueryHelpers.ParseQuery(raw);
-                        var formDictionary = new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>();
+                        form = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                         foreach (var kvp in queryParams)
                         {
-                            formDictionary[kvp.Key] = kvp.Value;
+                            // QueryHelpers.ParseQuery 返回的值已经是URL解码后的
+                            // 但需要处理多个值的情况（取第一个）
+                            var value = kvp.Value.Count > 0 ? kvp.Value[0] : string.Empty;
+                            // 如果值仍然是URL编码的，进行解码（双重保险）
+                            if (!string.IsNullOrEmpty(value) && value.Contains('%'))
+                            {
+                                value = WebUtility.UrlDecode(value) ?? string.Empty;
+                            }
+                            form[kvp.Key] = value ?? string.Empty;
                         }
-                        form = new FormCollection(formDictionary);
                     }
                 }
 
@@ -279,11 +309,12 @@ public class MinimalWebHostService : IAsyncDisposable
                     return Results.Json(result);
                 }
 
-                var type = form["type"].ToString() ?? string.Empty;
+                var type = form.GetValueOrDefault("type") ?? string.Empty;
+                logger.LogInformation($"form: type={type}, keys={string.Join(",", form.Keys)}");
                 
                 if (type.Equals("online", StringComparison.OrdinalIgnoreCase))
                 {
-                    var plateNum = form["plate_num"].ToString();
+                    var plateNum = form.GetValueOrDefault("plate_num"); // 已经自动解码（京A12345）
                     if (!string.IsNullOrWhiteSpace(plateNum))
                     {
                         var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
@@ -292,14 +323,14 @@ public class MinimalWebHostService : IAsyncDisposable
                         logger.LogInformation($"华夏智信抓拍车牌号：{plateNum}");
                         
                         // 可选：访问其他字段
-                        // var plateColor = form["plate_color"].ToString();
-                        // var pictureBase64 = form["picture"].ToString();
-                        // var closeupBase64 = form["closeup_pic"].ToString();
+                        // var plateColor = form.GetValueOrDefault("plate_color");
+                        // var pictureBase64 = form.GetValueOrDefault("picture");
+                        // var closeupBase64 = form.GetValueOrDefault("closeup_pic");
                     }
                 }
                 else if (type.Equals("heartbeat", StringComparison.OrdinalIgnoreCase))
                 {
-                    var camIp = form["cam_ip"].ToString();
+                    var camIp = form.GetValueOrDefault("cam_ip");
                     if (!string.IsNullOrEmpty(camIp))
                     {
                         logger.LogDebug($"华夏智信设备心跳：{camIp}");
@@ -310,13 +341,6 @@ public class MinimalWebHostService : IAsyncDisposable
 
                 result.error_num = 0;
                 result.error_str = string.Empty;
-            }
-            catch (BadHttpRequestException ex)
-            {
-                // 专门处理请求体相关的异常
-                result.error_num = -1;
-                result.error_str = "请求格式错误";
-                logger.LogWarning(ex, "华夏智信设备回调请求格式错误");
             }
             catch (Exception ex)
             {
