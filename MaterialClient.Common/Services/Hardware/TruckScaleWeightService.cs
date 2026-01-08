@@ -155,7 +155,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     Encoding = Encoding.GetEncoding("UTF-8"),
                     Handshake = Handshake.None,
                     RtsEnable = true,
-                    ReadTimeout = 1000 // Set timeout to prevent infinite blocking (1 second)
+                    ReadTimeout = 200 // Set timeout to prevent infinite blocking (100ms for faster response)
                 };
 
                 // Subscribe to data received event
