@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Channels;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Utils;
@@ -36,14 +37,42 @@ public interface IHikvisionService
 ///     无论 SnapshotCameraType 设置为 Hikvision 还是 LPRAllInOne，此服务都会正常工作。
 ///     调用方应根据 SnapshotCameraType 配置决定是否调用此服务的方法。
 /// </summary>
-public sealed class HikvisionService : IHikvisionService, ISingletonDependency
+public sealed class HikvisionService : IHikvisionService, ISingletonDependency, IDisposable
 {
     private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
     private readonly ISettingsService? _settingsService;
+    private readonly Channel<CaptureTask> _captureQueue;
+    private readonly Task _queueProcessor;
+    private readonly CancellationTokenSource _cancellationTokenSource;
+    private bool _disposed;
+
+    /// <summary>
+    ///     内部任务类，用于队列中的拍照任务
+    /// </summary>
+    private sealed class CaptureTask
+    {
+        public HikvisionDeviceConfig Config { get; set; } = null!;
+        public int Channel { get; set; }
+        public string SaveFullPath { get; set; } = string.Empty;
+        public TaskCompletionSource<bool> CompletionSource { get; set; } = null!;
+        public TaskCompletionSource<int> ErrorSource { get; set; } = null!;
+    }
 
     public HikvisionService(ISettingsService? settingsService = null)
     {
         _settingsService = settingsService;
+        _cancellationTokenSource = new CancellationTokenSource();
+        
+        // 创建无界队列，确保所有任务都能入队
+        var options = new UnboundedChannelOptions
+        {
+            SingleReader = true, // 单线程处理，确保串行执行
+            SingleWriter = false // 允许多个写入者
+        };
+        _captureQueue = Channel.CreateUnbounded<CaptureTask>(options);
+        
+        // 启动队列处理器
+        _queueProcessor = Task.Run(ProcessCaptureQueueAsync, _cancellationTokenSource.Token);
     }
 
     public void AddOrUpdateDevice(HikvisionDeviceConfig config)
@@ -174,6 +203,46 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         return CaptureJpegFromStream(config, channel, saveFullPath, out _);
     }
 
+    /// <summary>
+    ///     队列处理器，串行执行所有拍照任务
+    /// </summary>
+    private async Task ProcessCaptureQueueAsync()
+    {
+        var reader = _captureQueue.Reader;
+        var cancellationToken = _cancellationTokenSource.Token;
+
+        try
+        {
+            await foreach (var task in reader.ReadAllAsync(cancellationToken))
+            {
+                try
+                {
+                    // 执行实际的拍照操作（同步方法）
+                    var playM4Error = 0;
+                    var success = CaptureJpegFromStreamInternal(
+                        task.Config, 
+                        task.Channel, 
+                        task.SaveFullPath, 
+                        out playM4Error);
+
+                    // 设置结果
+                    task.CompletionSource.TrySetResult(success);
+                    task.ErrorSource.TrySetResult(playM4Error);
+                }
+                catch (Exception ex)
+                {
+                    // 处理异常
+                    task.CompletionSource.TrySetException(ex);
+                    task.ErrorSource.TrySetException(ex);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 正常关闭，忽略取消异常
+        }
+    }
+
     public async Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests)
     {
         if (requests == null || requests.Count == 0) return new List<BatchCaptureResult>();
@@ -193,9 +262,11 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             return await CaptureJpegBatchInternalAsync(requests);
         }
 
-        // Mainstream capture (existing implementation)
-        // 同步处理多个设备
-        var results = requests.Select(request =>
+        // Mainstream capture - 通过队列串行执行所有任务
+        var results = new List<BatchCaptureResult>();
+
+        // 串行处理所有请求，确保通过队列执行
+        foreach (var request in requests)
         {
             var result = new BatchCaptureResult
             {
@@ -209,10 +280,13 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             try
             {
-                // 同步调用拍照方法
-                var playM4Error = 0;
-                result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
-                    out playM4Error);
+                // 通过队列异步执行拍照方法（队列会确保串行执行）
+                var (success, playM4Error) = await CaptureJpegFromStreamAsync(
+                    request.Config, 
+                    request.Channel, 
+                    request.SaveFullPath);
+                
+                result.Success = success;
                 result.PlayM4Error = playM4Error;
 
                 if (!result.Success)
@@ -246,8 +320,8 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 result.ErrorMessage = ex.Message;
             }
 
-            return result;
-        }).ToList();
+            results.Add(result);
+        }
 
         return results;
     }
@@ -392,6 +466,72 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     }
 
     public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
+        out int playM4Error)
+    {
+        // 通过队列异步执行，但保持同步接口
+        var task = CaptureJpegFromStreamAsync(config, channel, saveFullPath);
+        
+        try
+        {
+            // 同步等待任务完成（阻塞调用线程）
+            var result = task.GetAwaiter().GetResult();
+            playM4Error = result.error;
+            return result.success;
+        }
+        catch (Exception)
+        {
+            playM4Error = 0;
+            return false;
+        }
+    }
+
+    /// <summary>
+    ///     异步版本的 CaptureJpegFromStream，通过队列执行
+    /// </summary>
+    private async Task<(bool success, int error)> CaptureJpegFromStreamAsync(
+        HikvisionDeviceConfig config, 
+        int channel, 
+        string saveFullPath)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        if (string.IsNullOrWhiteSpace(saveFullPath))
+            throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+
+        // 检查是否已释放
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(HikvisionService));
+
+        // 创建任务
+        var completionSource = new TaskCompletionSource<bool>();
+        var errorSource = new TaskCompletionSource<int>();
+        
+        var captureTask = new CaptureTask
+        {
+            Config = config,
+            Channel = channel,
+            SaveFullPath = saveFullPath,
+            CompletionSource = completionSource,
+            ErrorSource = errorSource
+        };
+
+        // 将任务加入队列
+        if (!_captureQueue.Writer.TryWrite(captureTask))
+        {
+            // 队列已关闭
+            throw new InvalidOperationException("Capture queue is closed");
+        }
+
+        // 等待任务完成
+        var success = await completionSource.Task;
+        var error = await errorSource.Task;
+
+        return (success, error);
+    }
+
+    /// <summary>
+    ///     内部实现方法，实际执行拍照操作（从队列处理器调用）
+    /// </summary>
+    private bool CaptureJpegFromStreamInternal(HikvisionDeviceConfig config, int channel, string saveFullPath,
         out int playM4Error)
     {
         playM4Error = 0;
@@ -582,6 +722,37 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         var bytes = Encoding.ASCII.GetBytes(text ?? string.Empty);
         Array.Resize(ref bytes, fixedLen);
         return bytes;
+    }
+
+    /// <summary>
+    ///     释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _disposed = true;
+
+        // 停止接受新任务
+        _captureQueue.Writer.Complete();
+
+        // 取消队列处理器
+        _cancellationTokenSource.Cancel();
+
+        try
+        {
+            // 等待队列处理器完成（最多等待5秒）
+            if (!_queueProcessor.Wait(TimeSpan.FromSeconds(5)))
+            {
+                // 如果超时，记录警告但不阻塞
+            }
+        }
+        catch (AggregateException)
+        {
+            // 忽略取消异常
+        }
+
+        _cancellationTokenSource.Dispose();
     }
 }
 
