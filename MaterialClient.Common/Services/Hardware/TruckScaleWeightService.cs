@@ -284,7 +284,21 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 switch (_receType)
                 {
                     case ReceType.Hex:
-                        ReceiveHex(); // Internal lock management
+                        // Get scale type to determine which ReceiveHex method to use
+                        ScaleType? scaleType;
+                        using (_rwLock.ReadLock())
+                        {
+                            scaleType = _currentSettings?.ScaleType;
+                        }
+
+                        if (scaleType == ScaleType.DingSong)
+                        {
+                            ReceiveHexDingSong(); // Internal lock management
+                        }
+                        else
+                        {
+                            ReceiveHexDefault(); // Internal lock management
+                        }
                         break;
                     case ReceType.String:
                         ReceiveString(); // Internal lock management
@@ -304,9 +318,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     }
 
     /// <summary>
-    ///     Receive HEX format data
+    ///     Receive HEX format data for Default scale type
     /// </summary>
-    private void ReceiveHex()
+    private void ReceiveHexDefault()
     {
         try
         {
@@ -475,6 +489,61 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     }
 
     /// <summary>
+    ///     Receive HEX format data for DingSong scale type
+    /// </summary>
+    private void ReceiveHexDingSong()
+    {
+        try
+        {
+            // Use read lock to get serial port reference (allows concurrent access)
+            SerialPort? port;
+            using (_rwLock.ReadLock())
+            {
+                port = _serialPort;
+                if (port == null) return;
+            }
+
+            // I/O operation outside of lock (non-blocking for other threads)
+            var receivedCount = 0;
+            var readBuffer = new byte[_byteCount];
+
+            while (receivedCount < _byteCount)
+            {
+                var bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
+                receivedCount += bytesRead;
+            }
+
+            // Check frame format: 0x02 at start, 0x03 at end
+            if (readBuffer[0] == 0x02 && readBuffer[_byteCount - 1] == 0x03)
+            {
+                // Parse data outside of lock
+                var parsedWeight = ParseHexWeightDingSong(readBuffer);
+
+                // Only use write lock to update state (hold time < 50ns)
+                if (parsedWeight.HasValue)
+                {
+                    // Convert weight based on scale unit
+                    var convertedWeight = ConvertWeight(parsedWeight.Value);
+                    
+                    using var _ = _rwLock.WriteLock();
+                    _currentWeight = convertedWeight;
+                    _weightSubject.OnNext(convertedWeight);
+                }
+            }
+            else
+            {
+                // Discard buffer also needs read lock
+                using var _ = _rwLock.ReadLock();
+                _serialPort?.DiscardInBuffer();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error receiving HEX data from truck scale");
+        }
+    }
+
+    /// <summary>
     ///     Receive String format data
     /// </summary>
     private void ReceiveString()
@@ -594,6 +663,97 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Error parsing HEX weight data");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    ///     Parse weight from HEX data for DingSong scale type
+    ///     Format: 0x02 [sign] [8 weight bytes as ASCII] [end marker] 0x03
+    ///     Example: 02 2B 30 30 30 30 30 30 30 31 42 03
+    ///     STX '+' "00000001" 'B' ETX = 0.01 (assuming 2 decimal places)
+    /// </summary>
+    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
+    private decimal? ParseHexWeightDingSong(byte[] buffer)
+    {
+        try
+        {
+            if (buffer.Length < 12) return null;
+
+            // Check frame format: 0x02 at start, 0x03 at end
+            if (buffer[0] != 0x02 || buffer[buffer.Length - 1] != 0x03)
+            {
+                _logger?.LogWarning($"Invalid frame format: STX={buffer[0]:X2}, ETX={buffer[buffer.Length - 1]:X2}");
+                return null;
+            }
+
+            // Parse sign byte (byte 1): 0x2B = '+', 0x2D = '-'
+            var isNegative = buffer[1] == 0x2D;
+
+            // Extract ASCII weight digits (bytes 2-9, 8 digits total)
+            // Format: 8 digits (6 integer + 2 decimal)
+            // Example: "00000001" -> 0.01
+            var weightString = string.Empty;
+            var startIndex = 2; // Skip STX and sign
+            var endIndex = 10; // Before end marker and ETX
+
+            // Read 8 ASCII digits
+            for (var i = startIndex; i < endIndex; i++)
+            {
+                var b = buffer[i];
+                var c = (char)b;
+
+                // Only include digits
+                if (char.IsDigit(c))
+                {
+                    weightString += c;
+                }
+                else
+                {
+                    _logger?.LogWarning($"Non-digit character found at position {i}: 0x{b:X2}");
+                    return null;
+                }
+            }
+
+            // Verify we got exactly 8 digits
+            if (weightString.Length != 8)
+            {
+                _logger?.LogWarning($"Expected 8 digits, got {weightString.Length}: {weightString}");
+                return null;
+            }
+
+            // End marker (byte 10) is a checksum/status byte, can be any hex character (0x30-0x46)
+            // We don't validate it, just ensure it's within valid hex range
+            var endMarker = buffer[10];
+            if (endMarker < 0x30 || endMarker > 0x46)
+            {
+                _logger?.LogWarning($"Invalid end marker: 0x{endMarker:X2}, expected hex character (0x30-0x46)");
+                return null;
+            }
+
+            // Parse the weight string
+            // Format: "00000001" -> 0.01 (6 integer + 2 decimal places)
+            // Convert to decimal by inserting decimal point
+            if (decimal.TryParse(weightString, out var weightInt))
+            {
+                // Apply decimal point: divide by 100 (2 decimal places)
+                var weight = weightInt / 100m;
+
+                // Apply sign
+                if (isNegative) weight = -weight;
+
+                _logger?.LogDebug(
+                    $"Parsed DingSong HEX weight: {weight} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
+
+                return weight;
+            }
+
+            _logger?.LogWarning($"Failed to parse weight string: {weightString}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error parsing DingSong HEX weight data");
         }
 
         return null;
