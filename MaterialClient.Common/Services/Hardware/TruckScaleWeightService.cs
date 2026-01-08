@@ -331,27 +331,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 int availableBytes = port.BytesToRead;
                 if (availableBytes == 0)
                 {
-                    // No data available, read first byte with timeout
-                    byte firstByte = (byte)port.ReadByte();
-                    if (firstByte == 0x02)
-                    {
-                        readBuffer[0] = firstByte;
-                        // Read remaining bytes
-                        int receivedCount = 1;
-                        while (receivedCount < _byteCount)
-                        {
-                            int bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
-                            receivedCount += bytesRead;
-                        }
-                    }
-                    else
-                    {
-                        // Invalid first byte, discard and return
-                        _logger?.LogWarning($"Invalid first byte 0x{firstByte:X2}, discarding");
-                        using var _ = _rwLock.ReadLock();
-                        _serialPort?.DiscardInBuffer();
-                        return;
-                    }
+                    // No data available, return immediately to avoid blocking
+                    // DataReceived event should only fire when data is available
+                    return;
                 }
                 else
                 {
@@ -393,26 +375,51 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     int bytesToCopy = Math.Min(remainingInSearchBuffer, _byteCount);
                     Array.Copy(searchBuffer, frameStartIndex, readBuffer, 0, bytesToCopy);
                     
-                    // If we don't have enough bytes, read the rest with retry
+                    // If we don't have enough bytes, read the rest with timeout protection
                     if (bytesToCopy < _byteCount)
                     {
                         int receivedCount = bytesToCopy;
+                        int maxRetries = 3; // Limit retries to avoid infinite loops
+                        int retryCount = 0;
                         
-                        // Keep reading until we have all bytes
+                        // Keep reading until we have all bytes or timeout/retry limit
                         // SerialPort.Read will wait for data or timeout based on ReadTimeout setting
-                        while (receivedCount < _byteCount)
+                        while (receivedCount < _byteCount && retryCount < maxRetries)
                         {
-                            int remainingBytes = _byteCount - receivedCount;
-                            int additionalBytesRead = port.Read(readBuffer, receivedCount, remainingBytes);
-                            receivedCount += additionalBytesRead;
-                            
-                            // If no data was read, the Read method should have thrown TimeoutException
-                            // But if we get here, it means Read returned 0, which shouldn't happen with ReadTimeout set
-                            // This is a safety check
-                            if (additionalBytesRead == 0)
+                            // Check if more data is available before attempting read
+                            int availableNow = port.BytesToRead;
+                            if (availableNow == 0)
                             {
+                                retryCount++;
+                                if (retryCount < maxRetries)
+                                {
+                                    // Wait a bit for more data (non-blocking check)
+                                    Thread.Sleep(10);
+                                    continue;
+                                }
+                                // No more data available after retries, break to avoid blocking Read()
                                 break;
                             }
+                            
+                            int remainingBytes = _byteCount - receivedCount;
+                            // Only read what's available to avoid blocking
+                            int bytesToReadNow = Math.Min(remainingBytes, availableNow);
+                            int additionalBytesRead = port.Read(readBuffer, receivedCount, bytesToReadNow);
+                            receivedCount += additionalBytesRead;
+                            
+                            // If no data was read, increment retry count
+                            if (additionalBytesRead == 0)
+                            {
+                                retryCount++;
+                                if (retryCount < maxRetries)
+                                {
+                                    Thread.Sleep(10);
+                                }
+                                continue;
+                            }
+                            
+                            // Reset retry count on successful read
+                            retryCount = 0;
                         }
                         
                         // Verify we got all bytes
@@ -684,10 +691,12 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 return null;
             }
 
-            // Check end marker (byte 10): should be 'B' (0x42)
-            if (buffer[10] != 0x42)
+            // End marker (byte 10) is a checksum/status byte, can be any hex character (0x30-0x46)
+            // We don't validate it, just ensure it's within valid hex range
+            var endMarker = buffer[10];
+            if (endMarker < 0x30 || endMarker > 0x46)
             {
-                _logger?.LogWarning($"Invalid end marker: 0x{buffer[10]:X2}, expected 0x42 ('B')");
+                _logger?.LogWarning($"Invalid end marker: 0x{endMarker:X2}, expected hex character (0x30-0x46)");
                 return null;
             }
 

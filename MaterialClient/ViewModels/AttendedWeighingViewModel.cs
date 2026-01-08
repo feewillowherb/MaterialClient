@@ -150,6 +150,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(weight => 
             { 
+                Logger.LogInformation($"UI Weight Update: {weight}");
                 CurrentWeight = weight; 
             })
             .DisposeWith(_disposables);
