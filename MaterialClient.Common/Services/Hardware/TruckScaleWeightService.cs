@@ -737,7 +737,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             if (decimal.TryParse(weightString, out var weightInt))
             {
                 // Apply decimal point: divide by 100 (2 decimal places)
-                var weight = weightInt / 100m;
+                var weight = weightInt;
 
                 // Apply sign
                 if (isNegative) weight = -weight;

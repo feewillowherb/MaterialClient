@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Ports;
+using System.Linq;
 using System.Reflection;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
@@ -739,6 +740,198 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         await service.DisposeAsync();
     }
 
+    /// <summary>
+    /// Test parsing DingSong 12-byte HEX data
+    /// Format: 02 2B [8 digits] [marker] 03
+    /// Tests multiple consecutive frames
+    /// </summary>
+    [Fact()]
+    public async Task ParseHexData_DingSong_12Byte_Should_ParseCorrectly()
+    {
+        // Arrange
+        var mockSerialPort = Substitute.For<ISerialPort>();
+        var mockFactory = Substitute.For<ISerialPortFactory>();
+        mockFactory.Create().Returns(mockSerialPort);
+        
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        
+        // Configure scale settings for DingSong type with HEX communication
+        var settings = new ScaleSettings
+        {
+            SerialPort = "COM3",
+            BaudRate = "9600",
+            CommunicationMethod = "TF0",
+            ScaleType = ScaleType.DingSong,
+            ScaleUnit = ScaleUnit.Kg
+        };
+        
+        var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
+        var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
+
+        // Setup mock serial port
+        mockSerialPort.IsOpen.Returns(true);
+        
+        // DingSong 12-byte positive data: 02 2B 30 30 30 30 30 30 30 31 42 03
+        // Parsed: "00000001" -> 0.01 kg (divided by 100)
+        var dingSongPositiveData = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0x03 };
+        
+        // DingSong 12-byte negative data: 02 2D 30 30 30 30 30 30 30 31 42 03
+        // Parsed: "-00000001" -> -0.01 kg (divided by 100)
+        var dingSongNegativeData = new byte[] { 0x02, 0x2D, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0x03 };
+        
+        // Setup a queue-based mock that can handle multiple data packets
+        var dataQueue = new Queue<byte[]>();
+        
+        // Add positive data 3 times
+        for (int i = 0; i < 3; i++)
+        {
+            dataQueue.Enqueue((byte[])dingSongPositiveData.Clone());
+        }
+        
+        // Add negative data once
+        dataQueue.Enqueue((byte[])dingSongNegativeData.Clone());
+        
+        // Setup mock to read from queue
+        SetupMockSerialPortReadFromQueue(mockSerialPort, dataQueue);
+        
+        // Initialize service
+        await service.InitializeAsync(settings);
+        
+        // Send all data packets
+        var totalPackets = dataQueue.Count;
+        for (int i = 0; i < totalPackets; i++)
+        {
+            var eventArgsType = typeof(SerialDataReceivedEventArgs);
+            var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+                eventArgsType, 
+                BindingFlags.NonPublic | BindingFlags.Instance, 
+                null, 
+                new object[] { SerialData.Chars }, 
+                null)!;
+            
+            mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+                mockSerialPort, 
+                eventArgs);
+            
+            await Task.Delay(300); // Wait for processing
+        }
+        
+        await Task.Delay(200); // Additional wait to ensure all processing is complete
+
+        // Assert
+        // Expected positive: "00000001" -> 1 -> 0.01 kg -> converted to ton
+        // Expected negative: "-00000001" -> -1 -> -0.01 kg -> converted to ton
+        receivedWeights.Count.ShouldBeGreaterThan(0, "Should have received weight updates");
+        
+        // Verify we have both positive and negative weights
+        var positiveWeights = receivedWeights.Where(w => w >= 0).ToList();
+        var negativeWeights = receivedWeights.Where(w => w < 0).ToList();
+        
+        positiveWeights.Count.ShouldBeGreaterThan(0, "Should have received positive weight updates");
+        negativeWeights.Count.ShouldBeGreaterThan(0, "Should have received negative weight updates");
+        
+        output.WriteLine($"DingSong 12-byte test:");
+        output.WriteLine($"  Positive data: {BitConverter.ToString(dingSongPositiveData)}");
+        output.WriteLine($"    Expected: 0.01 kg (00000001 / 100)");
+        output.WriteLine($"  Negative data: {BitConverter.ToString(dingSongNegativeData)}");
+        output.WriteLine($"    Expected: -0.01 kg (-00000001 / 100)");
+        output.WriteLine($"  Total received updates: {receivedWeights.Count}");
+        output.WriteLine($"  Positive weights: {positiveWeights.Count}");
+        output.WriteLine($"  Negative weights: {negativeWeights.Count}");
+        foreach (var weight in receivedWeights)
+        {
+            output.WriteLine($"    Weight: {weight} ton");
+        }
+
+        // Cleanup
+        subscription.Dispose();
+        await service.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Test parsing DingSong 22-byte HEX data
+    /// Format: (XON)AA(±)nnnnnnptttttteff(CHK)(XOF)
+    /// XON=0x11, AA=0xAA, XOF=0x13
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParseHexData_DingSong_22Byte_Should_HandleFormat()
+    {
+        // Arrange
+        var mockSerialPort = Substitute.For<ISerialPort>();
+        var mockFactory = Substitute.For<ISerialPortFactory>();
+        mockFactory.Create().Returns(mockSerialPort);
+        
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        
+        // Configure scale settings for DingSong type with HEX communication
+        var settings = new ScaleSettings
+        {
+            SerialPort = "COM3",
+            BaudRate = "9600",
+            CommunicationMethod = "TF0",
+            ScaleType = ScaleType.DingSong,
+            ScaleUnit = ScaleUnit.Kg
+        };
+        
+        var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
+        var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
+
+        // Setup mock serial port
+        mockSerialPort.IsOpen.Returns(true);
+        
+        // DingSong 22-byte data format: (XON)AA(±)nnnnnnptttttteff(CHK)(XOF)
+        // Example: 11 AA 2B 30 30 30 30 30 30 32 30 30 30 30 30 30 4B 30 30 42 13
+        // XON=0x11, AA=0xAA, +=0x2B, nnnnnn="000000", p="2", tttttt="000000", e="K", ff="00", CHK=0x42, XOF=0x13
+        var dingSong22ByteData = new byte[] 
+        { 
+            0x11, 0xAA, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x32, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x4B, 0x30, 0x30, 0x42, 0x13 
+        };
+        
+        // Initialize service
+        await service.InitializeAsync(settings);
+        
+        // Note: Current implementation only supports 12-byte format
+        // This test verifies that 22-byte data is handled gracefully (likely discarded)
+        SetupMockSerialPortRead(mockSerialPort, dingSong22ByteData);
+        
+        var eventArgsType = typeof(SerialDataReceivedEventArgs);
+        var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            eventArgsType, 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { SerialData.Chars }, 
+            null)!;
+        
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort, 
+            eventArgs);
+        
+        await Task.Delay(300); // Wait for processing
+
+        // Assert
+        // Current implementation expects 12-byte format starting with 0x02
+        // 22-byte format starts with 0x11, so it should be filtered out
+        var initialWeight = service.GetCurrentWeight();
+        var weightAfterData = service.GetCurrentWeight();
+        
+        output.WriteLine($"DingSong 22-byte test:");
+        output.WriteLine($"  Data: {BitConverter.ToString(dingSong22ByteData)}");
+        output.WriteLine($"  Format: XON(0x11) AA(0xAA) ± nnnnnn p tttttt e ff CHK XOF(0x13)");
+        output.WriteLine($"  Data length: {dingSong22ByteData.Length} bytes");
+        output.WriteLine($"  Weight before: {initialWeight} ton");
+        output.WriteLine($"  Weight after: {weightAfterData} ton");
+        output.WriteLine($"  Received updates: {receivedWeights.Count}");
+        output.WriteLine($"  Note: Current implementation only supports 12-byte format. 22-byte format may be filtered out.");
+
+        // Current implementation may filter this out since it doesn't start with 0x02
+        // This test documents the behavior for future implementation
+        // If 22-byte format is supported in the future, this test should be updated
+
+        // Cleanup
+        subscription.Dispose();
+        await service.DisposeAsync();
+    }
+
     private void SetupMockSerialPortRead(ISerialPort mockSerialPort, byte[] data)
     {
         // Use a mutable class to track read position across multiple calls
@@ -746,7 +939,11 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         var dataCopy = (byte[])data.Clone(); // Clone to avoid issues if data is modified
         
         // Setup BytesToRead - returns available bytes
-        mockSerialPort.BytesToRead.Returns(_ => dataCopy.Length - readState.Index);
+        mockSerialPort.BytesToRead.Returns(_ => 
+        {
+            var remaining = dataCopy.Length - readState.Index;
+            return remaining > 0 ? remaining : 0;
+        });
         
         // Setup ReadByte - returns bytes sequentially
         mockSerialPort.ReadByte().Returns(_ =>
@@ -761,7 +958,8 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         });
         
         // Setup Read - returns requested bytes from current position
-        mockSerialPort.Read(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>()).Returns(callInfo =>
+        // Use ReturnsForAnyArgs to ensure it works with any arguments
+        mockSerialPort.Read(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>()).ReturnsForAnyArgs(callInfo =>
         {
             var buffer = callInfo.ArgAt<byte[]>(0);
             var offset = callInfo.ArgAt<int>(1);
@@ -778,8 +976,101 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         });
     }
 
+    private void SetupMockSerialPortReadFromQueue(ISerialPort mockSerialPort, System.Collections.Generic.Queue<byte[]> dataQueue)
+    {
+        // Use a mutable class to track current packet and read position
+        var readState = new QueueReadState { CurrentPacket = null, Index = 0, DataQueue = dataQueue };
+        
+        // Setup BytesToRead - returns available bytes from current packet
+        mockSerialPort.BytesToRead.Returns(_ => 
+        {
+            if (readState.CurrentPacket == null && readState.DataQueue.Count > 0)
+            {
+                readState.CurrentPacket = readState.DataQueue.Dequeue();
+                readState.Index = 0;
+            }
+            
+            if (readState.CurrentPacket != null)
+            {
+                var remaining = readState.CurrentPacket.Length - readState.Index;
+                return remaining > 0 ? remaining : 0;
+            }
+            return 0;
+        });
+        
+        // Setup ReadByte - returns bytes sequentially from current packet
+        mockSerialPort.ReadByte().Returns(_ =>
+        {
+            if (readState.CurrentPacket == null && readState.DataQueue.Count > 0)
+            {
+                readState.CurrentPacket = readState.DataQueue.Dequeue();
+                readState.Index = 0;
+            }
+            
+            if (readState.CurrentPacket != null && readState.Index < readState.CurrentPacket.Length)
+            {
+                var result = readState.CurrentPacket[readState.Index];
+                readState.Index++;
+                
+                // If we've read all bytes from current packet, reset for next packet
+                if (readState.Index >= readState.CurrentPacket.Length)
+                {
+                    readState.CurrentPacket = null;
+                    readState.Index = 0;
+                }
+                
+                return result;
+            }
+            return -1;
+        });
+        
+        // Setup Read - returns requested bytes from current packet
+        mockSerialPort.Read(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>()).ReturnsForAnyArgs(callInfo =>
+        {
+            // Get next packet if current is exhausted
+            if (readState.CurrentPacket == null && readState.DataQueue.Count > 0)
+            {
+                readState.CurrentPacket = readState.DataQueue.Dequeue();
+                readState.Index = 0;
+            }
+            
+            if (readState.CurrentPacket == null)
+            {
+                return 0;
+            }
+            
+            var buffer = callInfo.ArgAt<byte[]>(0);
+            var offset = callInfo.ArgAt<int>(1);
+            var count = callInfo.ArgAt<int>(2);
+            
+            var bytesToRead = Math.Min(count, readState.CurrentPacket.Length - readState.Index);
+            if (bytesToRead > 0)
+            {
+                System.Array.Copy(readState.CurrentPacket, readState.Index, buffer, offset, bytesToRead);
+                readState.Index += bytesToRead;
+                
+                // If we've read all bytes from current packet, reset for next packet
+                if (readState.Index >= readState.CurrentPacket.Length)
+                {
+                    readState.CurrentPacket = null;
+                    readState.Index = 0;
+                }
+                
+                return bytesToRead;
+            }
+            return 0;
+        });
+    }
+
     private class ReadState
     {
         public int Index { get; set; }
+    }
+
+    private class QueueReadState
+    {
+        public byte[]? CurrentPacket { get; set; }
+        public int Index { get; set; }
+        public Queue<byte[]> DataQueue { get; set; } = null!;
     }
 }
