@@ -534,7 +534,15 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
             
             // Data: 02 2B 30 30 30 30 34 30 30 31 46 03
             // Parsed: "000040" (6 digits before 'F') -> 40 -> 0.40 kg
-            new { Data = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x34, 0x30, 0x30, 0x31, 0x46, 0x03 }, ExpectedRaw = 40m }
+            new { Data = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x34, 0x30, 0x30, 0x31, 0x46, 0x03 }, ExpectedRaw = 40m },
+            
+            // Data: 02 2B 31 30 30 30 30 30 30 31 45 03
+            // Parsed: "100000" (6 digits before 'E') -> 100000 -> 100000 kg = 100t
+            new { Data = new byte[] { 0x02, 0x2B, 0x31, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x45, 0x03 }, ExpectedRaw = 100000m },
+            
+            // Data: 02 2B 31 30 31 30 30 30 30 31 45 03
+            // Parsed: "101000" (6 digits before 'E') -> 101000 -> 101000 kg = 101t
+            new { Data = new byte[] { 0x02, 0x2B, 0x31, 0x30, 0x31, 0x30, 0x30, 0x30, 0x30, 0x31, 0x45, 0x03 }, ExpectedRaw = 101000m }
         };
 
         var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
@@ -771,47 +779,39 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         // Setup mock serial port
         mockSerialPort.IsOpen.Returns(true);
         
-        // DingSong 12-byte positive data: 02 2B 30 30 30 30 30 30 30 31 42 03
-        // Parsed: "00000001" -> 1 kg (no division by 100)
-        var dingSongPositiveData = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0x03 };
+        // DingSong 12-byte positive data: 02 2B 30 30 31 30 30 30 30 30 42 03
+        // Parsed: "00100000" -> 100000 kg = 100t (no division by 100)
+        var dingSongPositiveData = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x31, 0x30, 0x30, 0x30, 0x30, 0x30, 0x42, 0x03 };
         
-        // DingSong 12-byte negative data: 02 2D 30 30 30 30 30 30 30 31 42 03
-        // Parsed: "-00000001" -> -1 kg (no division by 100)
-        var dingSongNegativeData = new byte[] { 0x02, 0x2D, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0x03 };
+        // DingSong 12-byte negative data: 02 2D 30 30 31 30 30 30 30 30 42 03
+        // Parsed: "-00100000" -> -100000 kg = -100t (no division by 100)
+        var dingSongNegativeData = new byte[] { 0x02, 0x2D, 0x30, 0x30, 0x31, 0x30, 0x30, 0x30, 0x30, 0x30, 0x42, 0x03 };
         
         // Initialize service
         await service.InitializeAsync(settings);
         
-        // Send positive data 3 times (as per user's example)
-        for (int i = 0; i < 3; i++)
-        {
-            // Setup mock for this specific data packet BEFORE triggering event
-            SetupMockSerialPortRead(mockSerialPort, dingSongPositiveData);
-            
-            var eventArgsType = typeof(SerialDataReceivedEventArgs);
-            var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
-                eventArgsType, 
-                BindingFlags.NonPublic | BindingFlags.Instance, 
-                null, 
-                new object[] { SerialData.Chars }, 
-                null)!;
-            
-            mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
-                mockSerialPort, 
-                eventArgs);
-            
-            // Wait for processing to complete before sending next packet
-            await Task.Delay(500); // Increased delay to ensure processing completes
-        }
+        // Send positive data (100t)
+        SetupMockSerialPortRead(mockSerialPort, dingSongPositiveData);
         
-        // Send negative data to test negative parsing
-        // Important: Setup mock BEFORE triggering event, and wait for previous events to complete
-        await Task.Delay(200); // Additional wait to ensure all positive data is processed
+        var eventArgsType = typeof(SerialDataReceivedEventArgs);
+        var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            eventArgsType, 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { SerialData.Chars }, 
+            null)!;
+        
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort, 
+            eventArgs);
+        
+        await Task.Delay(300); // Wait for processing
+        
+        // Send negative data to test negative parsing (-100t)
         SetupMockSerialPortRead(mockSerialPort, dingSongNegativeData);
         
-        var negativeEventArgsType = typeof(SerialDataReceivedEventArgs);
         var negativeEventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
-            negativeEventArgsType, 
+            eventArgsType, 
             BindingFlags.NonPublic | BindingFlags.Instance, 
             null, 
             new object[] { SerialData.Chars }, 
@@ -821,11 +821,11 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
             mockSerialPort, 
             negativeEventArgs);
         
-        await Task.Delay(500); // Wait longer for processing to ensure negative data is processed
+        await Task.Delay(300); // Wait for processing
 
         // Assert
-        // Expected positive: "00000001" -> 1 -> 0.01 kg -> converted to ton
-        // Expected negative: "-00000001" -> -1 -> -0.01 kg -> converted to ton
+        // Expected positive: "00100000" -> 100000 kg -> converted to 100t
+        // Expected negative: "-00100000" -> -100000 kg -> converted to -100t
         receivedWeights.Count.ShouldBeGreaterThan(0, "Should have received weight updates");
         
         // Verify we have both positive and negative weights
@@ -837,9 +837,9 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         
         output.WriteLine($"DingSong 12-byte test:");
         output.WriteLine($"  Positive data: {BitConverter.ToString(dingSongPositiveData)}");
-        output.WriteLine($"    Expected: 0.01 kg (00000001 / 100)");
+        output.WriteLine($"    Parsed: \"00100000\" -> 100000 kg = 100t (no division by 100)");
         output.WriteLine($"  Negative data: {BitConverter.ToString(dingSongNegativeData)}");
-        output.WriteLine($"    Expected: -0.01 kg (-00000001 / 100)");
+        output.WriteLine($"    Parsed: \"-00100000\" -> -100000 kg = -100t (no division by 100)");
         output.WriteLine($"  Total received updates: {receivedWeights.Count}");
         output.WriteLine($"  Positive weights: {positiveWeights.Count}");
         output.WriteLine($"  Negative weights: {negativeWeights.Count}");
@@ -936,7 +936,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// Test DingSong noise resistance - various invalid data formats should be filtered out
     /// Tests that the service correctly handles noise data without crashing or accepting invalid weights
     /// </summary>
-    [Fact(Timeout = 5000000)]
+    [Fact(Timeout = 5000)]
     public async Task ParseHexData_DingSong_NoiseResistance_Should_FilterInvalidData()
     {
         // Arrange
