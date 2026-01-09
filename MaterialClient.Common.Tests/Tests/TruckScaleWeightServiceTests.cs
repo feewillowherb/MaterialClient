@@ -17,14 +17,15 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
 {
     private readonly ISettingsService _mockSettingsService = Substitute.For<ISettingsService>();
     private readonly ILogger<TruckScaleWeightService> _mockLogger = Substitute.For<ILogger<TruckScaleWeightService>>();
-    private readonly ISerialPortFactory _mockSerialPortFactory = Substitute.For<ISerialPortFactory>();
+    private readonly ISerialPortFactory _mockSerialPortFactory = CreateMockSerialPortFactory();
 
-    public TruckScaleWeightServiceTests(ITestOutputHelper output) : this(output)
+    private static ISerialPortFactory CreateMockSerialPortFactory()
     {
-        // Configure mock factory to return a mock serial port
+        var mockFactory = Substitute.For<ISerialPortFactory>();
         var mockSerialPort = Substitute.For<ISerialPort>();
         mockSerialPort.IsOpen.Returns(false);
-        _mockSerialPortFactory.Create().Returns(mockSerialPort);
+        mockFactory.Create().Returns(mockSerialPort);
+        return mockFactory;
     }
 
     /// <summary>
@@ -133,7 +134,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
                     try
                     {
                         var sw = Stopwatch.StartNew();
-                        var weight = service.GetCurrentWeight();
+                        service.GetCurrentWeight();
                         sw.Stop();
 
                         // If read took more than 1ms, it was likely blocked by a write
@@ -211,7 +212,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         for (int i = 0; i < iterations; i++)
         {
             var sw = Stopwatch.StartNew();
-            _ = service.GetCurrentWeight();
+            service.GetCurrentWeight();
             sw.Stop();
             latencies[i] = sw.Elapsed.Ticks;
         }
@@ -427,7 +428,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
             {
                 try
                 {
-                    _ = service.GetCurrentWeight();
+                    service.GetCurrentWeight();
                     _ = service.IsOnline;
                     Interlocked.Increment(ref readCount);
                 }
