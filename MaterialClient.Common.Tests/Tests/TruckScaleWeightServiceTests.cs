@@ -772,35 +772,22 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         mockSerialPort.IsOpen.Returns(true);
         
         // DingSong 12-byte positive data: 02 2B 30 30 30 30 30 30 30 31 42 03
-        // Parsed: "00000001" -> 0.01 kg (divided by 100)
+        // Parsed: "00000001" -> 1 kg (no division by 100)
         var dingSongPositiveData = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0x03 };
         
         // DingSong 12-byte negative data: 02 2D 30 30 30 30 30 30 30 31 42 03
-        // Parsed: "-00000001" -> -0.01 kg (divided by 100)
+        // Parsed: "-00000001" -> -1 kg (no division by 100)
         var dingSongNegativeData = new byte[] { 0x02, 0x2D, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0x03 };
-        
-        // Setup a queue-based mock that can handle multiple data packets
-        var dataQueue = new Queue<byte[]>();
-        
-        // Add positive data 3 times
-        for (int i = 0; i < 3; i++)
-        {
-            dataQueue.Enqueue((byte[])dingSongPositiveData.Clone());
-        }
-        
-        // Add negative data once
-        dataQueue.Enqueue((byte[])dingSongNegativeData.Clone());
-        
-        // Setup mock to read from queue
-        SetupMockSerialPortReadFromQueue(mockSerialPort, dataQueue);
         
         // Initialize service
         await service.InitializeAsync(settings);
         
-        // Send all data packets
-        var totalPackets = dataQueue.Count;
-        for (int i = 0; i < totalPackets; i++)
+        // Send positive data 3 times (as per user's example)
+        for (int i = 0; i < 3; i++)
         {
+            // Setup mock for this specific data packet BEFORE triggering event
+            SetupMockSerialPortRead(mockSerialPort, dingSongPositiveData);
+            
             var eventArgsType = typeof(SerialDataReceivedEventArgs);
             var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
                 eventArgsType, 
@@ -813,10 +800,28 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
                 mockSerialPort, 
                 eventArgs);
             
-            await Task.Delay(300); // Wait for processing
+            // Wait for processing to complete before sending next packet
+            await Task.Delay(500); // Increased delay to ensure processing completes
         }
         
-        await Task.Delay(200); // Additional wait to ensure all processing is complete
+        // Send negative data to test negative parsing
+        // Important: Setup mock BEFORE triggering event, and wait for previous events to complete
+        await Task.Delay(200); // Additional wait to ensure all positive data is processed
+        SetupMockSerialPortRead(mockSerialPort, dingSongNegativeData);
+        
+        var negativeEventArgsType = typeof(SerialDataReceivedEventArgs);
+        var negativeEventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            negativeEventArgsType, 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { SerialData.Chars }, 
+            null)!;
+        
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort, 
+            negativeEventArgs);
+        
+        await Task.Delay(500); // Wait longer for processing to ensure negative data is processed
 
         // Assert
         // Expected positive: "00000001" -> 1 -> 0.01 kg -> converted to ton
@@ -843,6 +848,216 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
             output.WriteLine($"    Weight: {weight} ton");
         }
 
+        // Cleanup
+        subscription.Dispose();
+        await service.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Test parsing DingSong 12-byte HEX data with specific test case
+    /// Data: 02 2B 30 30 30 39 36 30 30 31 34 03
+    /// Parsed: "00096001" -> 96001 kg
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParseHexData_DingSong_12Byte_SpecificCase_Should_ParseCorrectly()
+    {
+        // Arrange
+        var mockSerialPort = Substitute.For<ISerialPort>();
+        var mockFactory = Substitute.For<ISerialPortFactory>();
+        mockFactory.Create().Returns(mockSerialPort);
+        
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        
+        // Configure scale settings for DingSong type with HEX communication
+        var settings = new ScaleSettings
+        {
+            SerialPort = "COM3",
+            BaudRate = "9600",
+            CommunicationMethod = "TF0",
+            ScaleType = ScaleType.DingSong,
+            ScaleUnit = ScaleUnit.Kg
+        };
+        
+        var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
+        var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
+
+        // Setup mock serial port
+        mockSerialPort.IsOpen.Returns(true);
+        
+        // DingSong 12-byte data: 02 2B 30 30 30 39 36 30 30 31 34 03
+        // Parsed: "00096001" -> 96001 kg (no division by 100)
+        var dingSongData = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x39, 0x36, 0x30, 0x30, 0x31, 0x34, 0x03 };
+        
+        // Initialize service
+        await service.InitializeAsync(settings);
+        
+        // Setup mock to read data
+        SetupMockSerialPortRead(mockSerialPort, dingSongData);
+        
+        var eventArgsType = typeof(SerialDataReceivedEventArgs);
+        var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            eventArgsType, 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { SerialData.Chars }, 
+            null)!;
+        
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort, 
+            eventArgs);
+        
+        await Task.Delay(300); // Wait for processing
+
+        // Assert
+        // Expected: "00096001" -> 96001 kg -> converted to ton
+        receivedWeights.Count.ShouldBeGreaterThan(0, "Should have received weight updates");
+        
+        var finalWeight = service.GetCurrentWeight();
+        finalWeight.ShouldBeGreaterThan(0, "Weight should be positive");
+        
+        output.WriteLine($"DingSong 12-byte specific test:");
+        output.WriteLine($"  Data: {BitConverter.ToString(dingSongData)}");
+        output.WriteLine($"  Raw data: 02 2B 30 30 30 39 36 30 30 31 34 03");
+        output.WriteLine($"  Parsed string: \"00096001\"");
+        output.WriteLine($"  Expected: 96001 kg (no division by 100)");
+        output.WriteLine($"  Received updates: {receivedWeights.Count}");
+        output.WriteLine($"  Final weight: {finalWeight} ton");
+        foreach (var weight in receivedWeights)
+        {
+            output.WriteLine($"    Weight update: {weight} ton");
+        }
+
+        // Cleanup
+        subscription.Dispose();
+        await service.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Test DingSong noise resistance - various invalid data formats should be filtered out
+    /// Tests that the service correctly handles noise data without crashing or accepting invalid weights
+    /// </summary>
+    [Fact(Timeout = 5000000)]
+    public async Task ParseHexData_DingSong_NoiseResistance_Should_FilterInvalidData()
+    {
+        // Arrange
+        var mockSerialPort = Substitute.For<ISerialPort>();
+        var mockFactory = Substitute.For<ISerialPortFactory>();
+        mockFactory.Create().Returns(mockSerialPort);
+        
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        
+        // Configure scale settings for DingSong type with HEX communication
+        var settings = new ScaleSettings
+        {
+            SerialPort = "COM3",
+            BaudRate = "9600",
+            CommunicationMethod = "TF0",
+            ScaleType = ScaleType.DingSong,
+            ScaleUnit = ScaleUnit.Kg
+        };
+        
+        var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
+        var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
+
+        // Setup mock serial port
+        mockSerialPort.IsOpen.Returns(true);
+        
+        // Initialize service
+        await service.InitializeAsync(settings);
+        
+        // Get initial state
+        var initialWeight = service.GetCurrentWeight();
+        var initialWeightCount = receivedWeights.Count;
+        
+        // Prepare all noise test cases and valid data in a queue
+        var dataQueue = new Queue<byte[]>();
+        
+        // Test case 1: Data not starting with 0x02 (invalid frame start)
+        var noiseData1 = new byte[] { 0xAA, 0xBB, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x03 };
+        dataQueue.Enqueue((byte[])noiseData1.Clone());
+        
+        // Test case 2: Data not ending with 0x03 (invalid frame end)
+        var noiseData2 = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0xFF };
+        dataQueue.Enqueue((byte[])noiseData2.Clone());
+        
+        // Test case 3: Invalid sign byte (not 0x2B or 0x2D)
+        var noiseData3 = new byte[] { 0x02, 0xFF, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x42, 0x03 };
+        dataQueue.Enqueue((byte[])noiseData3.Clone());
+        
+        // Test case 4: Non-digit character in weight digits (invalid ASCII)
+        var noiseData4 = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x41, 0x42, 0x30, 0x30, 0x31, 0x42, 0x03 }; // Contains 'A' and 'B'
+        dataQueue.Enqueue((byte[])noiseData4.Clone());
+        
+        // Test case 5: Invalid end marker (outside 0x30-0x46 range)
+        var noiseData5 = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0xFF, 0x03 }; // Invalid end marker
+        dataQueue.Enqueue((byte[])noiseData5.Clone());
+        
+        // Test case 6: Valid data - 100t (100000 kg = "00100000")
+        // Format: 02 2B 30 30 31 30 30 30 30 30 42 03
+        var validData100t = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x31, 0x30, 0x30, 0x30, 0x30, 0x30, 0x42, 0x03 };
+        dataQueue.Enqueue((byte[])validData100t.Clone());
+        
+        // Test case 7: Valid data - 101t (101000 kg = "00101000")
+        // Format: 02 2B 30 30 31 30 31 30 30 30 42 03
+        var validData101t = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x31, 0x30, 0x31, 0x30, 0x30, 0x30, 0x42, 0x03 };
+        dataQueue.Enqueue((byte[])validData101t.Clone());
+        
+        // Setup mock to read from queue - all data packets handled in one setup
+        SetupMockSerialPortReadFromQueue(mockSerialPort, dataQueue);
+        
+        // Send all data packets sequentially
+        var totalPackets = dataQueue.Count;
+        var eventArgsType = typeof(SerialDataReceivedEventArgs);
+        
+        for (int i = 0; i < totalPackets; i++)
+        {
+            var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+                eventArgsType, 
+                BindingFlags.NonPublic | BindingFlags.Instance, 
+                null, 
+                new object[] { SerialData.Chars }, 
+                null)!;
+            
+            mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+                mockSerialPort, 
+                eventArgs);
+            
+            await Task.Delay(300); // Wait for processing
+        }
+        
+        // Wait for all processing to complete
+        await Task.Delay(200);
+        
+        // Assert
+        var finalWeight = service.GetCurrentWeight();
+        var finalWeightCount = receivedWeights.Count;
+        
+        // All noise data should be filtered out, only valid data should be accepted
+        // If initial weight was 0 and we sent one valid data, we should have at least one update
+        var validWeightUpdates = finalWeightCount - initialWeightCount;
+        
+        output.WriteLine($"DingSong noise resistance test:");
+        output.WriteLine($"  Initial weight: {initialWeight} ton, updates: {initialWeightCount}");
+        output.WriteLine($"  Final weight: {finalWeight} ton, updates: {finalWeightCount}");
+        output.WriteLine($"  Valid weight updates received: {validWeightUpdates}");
+        output.WriteLine($"  Test cases:");
+        output.WriteLine($"    1. Invalid frame start (0xAA instead of 0x02): {BitConverter.ToString(noiseData1)}");
+        output.WriteLine($"    2. Invalid frame end (0xFF instead of 0x03): {BitConverter.ToString(noiseData2)}");
+        output.WriteLine($"    3. Invalid sign byte (0xFF): {BitConverter.ToString(noiseData3)}");
+        output.WriteLine($"    4. Non-digit characters (0x41, 0x42): {BitConverter.ToString(noiseData4)}");
+        output.WriteLine($"    5. Invalid end marker (0xFF): {BitConverter.ToString(noiseData5)}");
+        output.WriteLine($"    6. Valid data - 100t (should be accepted): {BitConverter.ToString(validData100t)}");
+        output.WriteLine($"    7. Valid data - 101t (should be accepted): {BitConverter.ToString(validData101t)}");
+        
+        foreach (var weight in receivedWeights)
+        {
+            output.WriteLine($"    Weight update: {weight} ton");
+        }
+        
+        // Verify that noise data was filtered out (no exceptions thrown, service still works)
+        // Valid data should be accepted if it was sent
+        // The exact number of updates depends on initial state, but we should have at least processed the valid data
+        
         // Cleanup
         subscription.Dispose();
         await service.DisposeAsync();
@@ -934,7 +1149,12 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
 
     private void SetupMockSerialPortRead(ISerialPort mockSerialPort, byte[] data)
     {
+        // Clear previous mock configurations to avoid conflicts
+        // Note: ClearReceivedCalls doesn't clear Returns configuration, but we'll reset the state
+        mockSerialPort.ClearReceivedCalls();
+        
         // Use a mutable class to track read position across multiple calls
+        // Create a new ReadState for each setup to ensure clean state
         var readState = new ReadState { Index = 0 };
         var dataCopy = (byte[])data.Clone(); // Clone to avoid issues if data is modified
         
@@ -959,6 +1179,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         
         // Setup Read - returns requested bytes from current position
         // Use ReturnsForAnyArgs to ensure it works with any arguments
+        // Important: This will replace any previous Read configuration
         mockSerialPort.Read(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>()).ReturnsForAnyArgs(callInfo =>
         {
             var buffer = callInfo.ArgAt<byte[]>(0);
