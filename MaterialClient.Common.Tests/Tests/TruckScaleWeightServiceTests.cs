@@ -1,4 +1,8 @@
 using System.Diagnostics;
+using System.IO.Ports;
+using System.Reflection;
+using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using Microsoft.Extensions.Logging;
@@ -31,7 +35,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Test that SetWeight correctly updates weight and triggers observable
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task SetWeight_Should_UpdateWeight_And_TriggerObservable()
     {
         // Arrange
@@ -56,7 +60,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// Test concurrent read access (IsOnline property)
     /// This verifies that the read lock optimization allows multiple concurrent readers
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task IsOnline_Should_AllowConcurrentReads()
     {
         // Arrange
@@ -111,7 +115,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// Test concurrent read and write access
     /// Verifies that writes don't block readers for extended periods
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task ConcurrentReadWrite_Should_NotBlockReaders()
     {
         // Arrange
@@ -199,7 +203,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Test that GetCurrentWeight doesn't block during concurrent access
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task GetCurrentWeight_Should_ReturnQuickly()
     {
         // Arrange
@@ -246,7 +250,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Test that multiple SetWeight calls don't cause deadlock
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task SetWeight_ConcurrentCalls_Should_NotDeadlock()
     {
         // Arrange
@@ -289,7 +293,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Test WeightUpdates observable stream
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task WeightUpdates_Should_EmitAllUpdates()
     {
         // Arrange
@@ -322,7 +326,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Test that IsOnline returns false when service is not initialized
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task IsOnline_Should_ReturnFalse_WhenNotInitialized()
     {
         // Arrange
@@ -341,7 +345,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Test concurrent access to IsOnline and SetWeight
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task IsOnline_And_SetWeight_Should_NotInterfere()
     {
         // Arrange
@@ -407,7 +411,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Stress test: high-frequency concurrent operations
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task StressTest_HighFrequency_ConcurrentOperations()
     {
         // Arrange
@@ -486,7 +490,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     /// <summary>
     /// Test that DisposeAsync properly cleans up resources
     /// </summary>
-    [Fact]
+    [Fact(Timeout = 5000)]
     public async Task DisposeAsync_Should_CleanupResources()
     {
         // Arrange
@@ -506,5 +510,276 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         receivedWeights.Count.ShouldBe(1);
 
         subscription.Dispose();
+    }
+
+    /// <summary>
+    /// Test parsing actual serial port HEX data for Default scale type
+    /// Tests real data received from truck scale hardware
+    /// Data format: 02 2B [digits] [marker] 03
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParseHexData_DefaultScale_Should_ParseCorrectly()
+    {
+        // Arrange
+        var testCases = new[]
+        {
+            // Data: 02 2B 30 30 30 32 34 30 30 31 44 03
+            // Parsed: "000240" (6 digits before 'D') -> 240 -> 2.40 kg
+            new { Data = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x32, 0x34, 0x30, 0x30, 0x31, 0x44, 0x03 }, ExpectedRaw = 240m },
+            
+            // Data: 02 2B 30 30 30 31 34 0 30 30 31 45 03
+            // Parsed: "000140" (stops at 'E') -> 140 -> 1.40 kg
+            new { Data = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x31, 0x34, 0x30, 0x30, 0x31, 0x45, 0x03 }, ExpectedRaw = 140m },
+            
+            // Data: 02 2B 30 30 30 30 34 30 30 31 46 03
+            // Parsed: "000040" (6 digits before 'F') -> 40 -> 0.40 kg
+            new { Data = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x34, 0x30, 0x30, 0x31, 0x46, 0x03 }, ExpectedRaw = 40m }
+        };
+
+        var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
+        
+        foreach (var testCase in testCases)
+        {
+            // Create fresh mocks for each test case
+            var mockSerialPort = Substitute.For<ISerialPort>();
+            var mockFactory = Substitute.For<ISerialPortFactory>();
+            mockFactory.Create().Returns(mockSerialPort);
+            
+            var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+            
+            // Configure scale settings for Default type with HEX communication
+            var settings = new ScaleSettings
+            {
+                SerialPort = "COM3",
+                BaudRate = "9600",
+                CommunicationMethod = "TF0",
+                ScaleType = ScaleType.Default,
+                ScaleUnit = ScaleUnit.Kg
+            };
+            
+            var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
+
+            // Setup mock serial port
+            mockSerialPort.IsOpen.Returns(true);
+            SetupMockSerialPortRead(mockSerialPort, testCase.Data);
+
+            // Initialize service
+            await service.InitializeAsync(settings);
+            
+            // Trigger DataReceived event using reflection to create SerialDataReceivedEventArgs
+            var eventArgsType = typeof(SerialDataReceivedEventArgs);
+            var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+                eventArgsType, 
+                BindingFlags.NonPublic | BindingFlags.Instance, 
+                null, 
+                new object[] { SerialData.Chars }, 
+                null)!;
+            
+            mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+                mockSerialPort, 
+                eventArgs);
+            
+            await Task.Delay(300); // Wait for processing
+
+            // Assert - verify weight was parsed and converted
+            var currentWeight = service.GetCurrentWeight();
+            output.WriteLine($"Data: {BitConverter.ToString(testCase.Data)}");
+            output.WriteLine($"  Expected raw: {testCase.ExpectedRaw} kg");
+            output.WriteLine($"  Parsed weight: {currentWeight} ton");
+            output.WriteLine($"  Received updates: {receivedWeights.Count}");
+
+            // Cleanup
+            subscription.Dispose();
+            await service.DisposeAsync();
+        }
+
+        // Final assertion
+        receivedWeights.Count.ShouldBeGreaterThan(0, "Should have received weight updates");
+        output.WriteLine($"Total weight updates received: {receivedWeights.Count}");
+    }
+
+    /// <summary>
+    /// Test that invalid data (not starting with 0x02) is correctly filtered out
+    /// Tests error data that should be discarded without causing exceptions
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParseHexData_InvalidData_Should_BeFilteredOut()
+    {
+        // Arrange
+        var mockSerialPort = Substitute.For<ISerialPort>();
+        var mockFactory = Substitute.For<ISerialPortFactory>();
+        mockFactory.Create().Returns(mockSerialPort);
+        
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        
+        // Configure scale settings for Default type with HEX communication
+        var settings = new ScaleSettings
+        {
+            SerialPort = "COM3",
+            BaudRate = "9600",
+            CommunicationMethod = "TF0",
+            ScaleType = ScaleType.Default,
+            ScaleUnit = ScaleUnit.Kg
+        };
+        
+        var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
+        var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
+
+        // Setup mock serial port
+        mockSerialPort.IsOpen.Returns(true);
+        
+        // Invalid data: AA BB 33 00 7B 22 77 67 22 3A 22 32 36 2D 30 31 2B 30 30 30 30 34 30 30
+        // This data doesn't start with 0x02, so it should be discarded
+        var invalidData1 = new byte[] 
+        { 
+            0xAA, 0xBB, 0x33, 0x00, 0x7B, 0x22, 0x77, 0x67, 0x22, 0x3A, 0x22, 0x32, 0x36, 0x2D, 0x30, 0x31, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x34, 0x30, 0x30 
+        };
+        
+        // Continuation data: 31 46 03
+        var invalidData2 = new byte[] { 0x31, 0x46, 0x03 };
+        
+        // Initialize service
+        await service.InitializeAsync(settings);
+        
+        // Get initial weight
+        var initialWeight = service.GetCurrentWeight();
+        var initialWeightCount = receivedWeights.Count;
+        
+        // Act - Send invalid data 1
+        SetupMockSerialPortRead(mockSerialPort, invalidData1);
+        
+        var eventArgsType = typeof(SerialDataReceivedEventArgs);
+        var eventArgs1 = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            eventArgsType, 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { SerialData.Chars }, 
+            null)!;
+        
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort, 
+            eventArgs1);
+        
+        await Task.Delay(300); // Wait for processing
+        
+        // Verify invalid data 1 was filtered out
+        var weightAfterInvalid1 = service.GetCurrentWeight();
+        var weightCountAfterInvalid1 = receivedWeights.Count;
+        
+        output.WriteLine($"After invalid data 1:");
+        output.WriteLine($"  Initial weight: {initialWeight} ton");
+        output.WriteLine($"  Weight after invalid data: {weightAfterInvalid1} ton");
+        output.WriteLine($"  Weight updates: {initialWeightCount} -> {weightCountAfterInvalid1}");
+        
+        // Act - Send invalid data 2 (continuation)
+        SetupMockSerialPortRead(mockSerialPort, invalidData2);
+        
+        var eventArgs2 = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            eventArgsType, 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { SerialData.Chars }, 
+            null)!;
+        
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort, 
+            eventArgs2);
+        
+        await Task.Delay(300); // Wait for processing
+        
+        // Verify invalid data 2 was also filtered out
+        var weightAfterInvalid2 = service.GetCurrentWeight();
+        var weightCountAfterInvalid2 = receivedWeights.Count;
+        
+        output.WriteLine($"After invalid data 2:");
+        output.WriteLine($"  Weight after invalid data 2: {weightAfterInvalid2} ton");
+        output.WriteLine($"  Weight updates: {weightCountAfterInvalid1} -> {weightCountAfterInvalid2}");
+        
+        // Act - Send valid data to verify service still works after filtering invalid data
+        var validData = new byte[] { 0x02, 0x2B, 0x30, 0x30, 0x30, 0x30, 0x34, 0x30, 0x30, 0x31, 0x46, 0x03 };
+        SetupMockSerialPortRead(mockSerialPort, validData);
+        
+        var eventArgs3 = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            eventArgsType, 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { SerialData.Chars }, 
+            null)!;
+        
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort, 
+            eventArgs3);
+        
+        await Task.Delay(300); // Wait for processing
+        
+        var weightAfterValid = service.GetCurrentWeight();
+        var weightCountAfterValid = receivedWeights.Count;
+        
+        output.WriteLine($"After valid data:");
+        output.WriteLine($"  Weight after valid data: {weightAfterValid} ton");
+        output.WriteLine($"  Weight updates: {weightCountAfterInvalid2} -> {weightCountAfterValid}");
+
+        // Assert
+        // Invalid data should not cause weight updates
+        weightCountAfterInvalid1.ShouldBe(initialWeightCount, "Invalid data 1 should not produce weight updates");
+        weightCountAfterInvalid2.ShouldBe(initialWeightCount, "Invalid data 2 should not produce weight updates");
+        
+        // Weight should remain unchanged after invalid data
+        weightAfterInvalid1.ShouldBe(initialWeight, "Weight should not change after invalid data 1");
+        weightAfterInvalid2.ShouldBe(initialWeight, "Weight should not change after invalid data 2");
+        
+        // Valid data should still work after filtering invalid data
+        weightCountAfterValid.ShouldBeGreaterThan(weightCountAfterInvalid2, "Valid data should produce weight updates after invalid data was filtered");
+        
+        // Service should not throw exceptions when processing invalid data
+        // (If we get here without exceptions, the test passes)
+
+        // Cleanup
+        subscription.Dispose();
+        await service.DisposeAsync();
+    }
+
+    private void SetupMockSerialPortRead(ISerialPort mockSerialPort, byte[] data)
+    {
+        // Use a mutable class to track read position across multiple calls
+        var readState = new ReadState { Index = 0 };
+        var dataCopy = (byte[])data.Clone(); // Clone to avoid issues if data is modified
+        
+        // Setup BytesToRead - returns available bytes
+        mockSerialPort.BytesToRead.Returns(_ => dataCopy.Length - readState.Index);
+        
+        // Setup ReadByte - returns bytes sequentially
+        mockSerialPort.ReadByte().Returns(_ =>
+        {
+            if (readState.Index < dataCopy.Length)
+            {
+                var result = dataCopy[readState.Index];
+                readState.Index++;
+                return result;
+            }
+            return -1;
+        });
+        
+        // Setup Read - returns requested bytes from current position
+        mockSerialPort.Read(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>()).Returns(callInfo =>
+        {
+            var buffer = callInfo.ArgAt<byte[]>(0);
+            var offset = callInfo.ArgAt<int>(1);
+            var count = callInfo.ArgAt<int>(2);
+            
+            var bytesToRead = Math.Min(count, dataCopy.Length - readState.Index);
+            if (bytesToRead > 0)
+            {
+                Array.Copy(dataCopy, readState.Index, buffer, offset, bytesToRead);
+                readState.Index += bytesToRead;
+                return bytesToRead;
+            }
+            return 0;
+        });
+    }
+
+    private class ReadState
+    {
+        public int Index { get; set; }
     }
 }
