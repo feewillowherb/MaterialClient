@@ -72,6 +72,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         new(LockRecursionPolicy.NoRecursion);
 
     private readonly ISettingsService _settingsService;
+    private readonly ISerialPortFactory _serialPortFactory;
 
     // Rx Subject for weight updates
     private readonly Subject<decimal> _weightSubject = new();
@@ -85,7 +86,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
     private ReceType _receType = ReceType.String;
 
-    private SerialPort? _serialPort;
+    private ISerialPort? _serialPort;
 
     /// <summary>
     ///     Observable stream of weight updates from truck scale
@@ -143,20 +144,18 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 }
 
                 // Create and configure serial port
-                _serialPort = new SerialPort
-                {
-                    PortName = settings.SerialPort,
-                    BaudRate = int.Parse(settings.BaudRate),
-                    DataBits = 8,
-                    StopBits = StopBits.One,
-                    Parity = Parity.None,
-                    WriteBufferSize = 1048576,
-                    ReadBufferSize = 2097152,
-                    Encoding = Encoding.GetEncoding("UTF-8"),
-                    Handshake = Handshake.None,
-                    RtsEnable = true,
-                    ReadTimeout = 200 // Set timeout to prevent infinite blocking (100ms for faster response)
-                };
+                _serialPort = _serialPortFactory.Create();
+                _serialPort.PortName = settings.SerialPort;
+                _serialPort.BaudRate = int.Parse(settings.BaudRate);
+                _serialPort.DataBits = 8;
+                _serialPort.StopBits = StopBits.One;
+                _serialPort.Parity = Parity.None;
+                _serialPort.WriteBufferSize = 1048576;
+                _serialPort.ReadBufferSize = 2097152;
+                _serialPort.Encoding = Encoding.GetEncoding("UTF-8");
+                _serialPort.Handshake = Handshake.None;
+                _serialPort.RtsEnable = true;
+                _serialPort.ReadTimeout = 200; // Set timeout to prevent infinite blocking (100ms for faster response)
 
                 // Subscribe to data received event
                 _serialPort.DataReceived += SerialPort_DataReceived;
@@ -325,7 +324,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         try
         {
             // Use read lock to get serial port reference (allows concurrent access)
-            SerialPort? port;
+            ISerialPort? port;
             using (_rwLock.ReadLock())
             {
                 port = _serialPort;
@@ -496,7 +495,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         try
         {
             // Use read lock to get serial port reference (allows concurrent access)
-            SerialPort? port;
+            ISerialPort? port;
             using (_rwLock.ReadLock())
             {
                 port = _serialPort;
@@ -551,7 +550,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         try
         {
             // Use read lock to get serial port reference (allows concurrent access)
-            SerialPort? port;
+            ISerialPort? port;
             using (_rwLock.ReadLock())
             {
                 port = _serialPort;
