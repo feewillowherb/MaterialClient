@@ -125,4 +125,26 @@ public static class MaterialMath
         // 1 吨 = 1,000,000 克 = 100,000 个十克
         return Math.Round(weightInTenGram / 100000m, 2, MidpointRounding.AwayFromZero);
     }
+
+    /// <summary>
+    ///     将重量从百克(100g)转换为吨(t)，保留两位小数
+    /// </summary>
+    /// <param name="weightInHundredGram">重量（百克单位）</param>
+    /// <returns>重量（吨），保留两位小数</returns>
+    public static decimal HundredGramToTon(decimal weightInHundredGram)
+    {
+        // 1 吨 = 1,000,000 克 = 10,000 个百克
+        return Math.Round(weightInHundredGram / 10000m, 2, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    ///     将重量从克(1g)转换为吨(t)，保留两位小数
+    /// </summary>
+    /// <param name="weightInGram">重量（克）</param>
+    /// <returns>重量（吨），保留两位小数</returns>
+    public static decimal GramToTon(decimal weightInGram)
+    {
+        // 1 吨 = 1,000,000 克
+        return Math.Round(weightInGram / 1000000m, 2, MidpointRounding.AwayFromZero);
+    }
 }

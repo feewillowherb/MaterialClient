@@ -61,7 +61,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         ScaleUnit.Kg,
         ScaleUnit.Ton,
-        ScaleUnit.TenGram
+        ScaleUnit.TenGram,
+        ScaleUnit.HundredGram,
+        ScaleUnit.Gram
     };
 
     /// <summary>

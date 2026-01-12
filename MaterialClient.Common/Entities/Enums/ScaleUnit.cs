@@ -18,6 +18,16 @@ public enum ScaleUnit
     /// <summary>
     ///     Ten Gram (10g)
     /// </summary>
-    TenGram = 2
+    TenGram = 2,
+
+    /// <summary>
+    ///     Hundred Gram (100g)
+    /// </summary>
+    HundredGram = 3,
+
+    /// <summary>
+    ///     Gram (1g)
+    /// </summary>
+    Gram = 4
 }
 

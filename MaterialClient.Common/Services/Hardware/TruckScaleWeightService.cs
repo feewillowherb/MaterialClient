@@ -813,6 +813,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     ///     If ScaleUnit is Kg, convert from kg to ton using MaterialMath.ConvertKgToTon
     ///     If ScaleUnit is Ton, no conversion needed (device already returns ton)
     ///     If ScaleUnit is TenGram, convert from ten-gram to ton (value / 100000)
+    ///     If ScaleUnit is HundredGram, convert from hundred-gram to ton (value / 10000)
+    ///     If ScaleUnit is Gram, convert from gram to ton (value / 1000000)
     /// </summary>
     /// <param name="weightFromDevice">Weight from device (unit depends on ScaleUnit setting)</param>
     /// <returns>Weight in ton (t) for software use</returns>
@@ -840,7 +842,19 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         // If ScaleUnit is TenGram, device returns weight in ten-gram units, convert to ton
         if (settings.ScaleUnit == ScaleUnit.TenGram)
         {
-            return Math.Round(weightFromDevice / 100000m, 2, MidpointRounding.AwayFromZero);
+            return MaterialMath.TenGramToTon(weightFromDevice);
+        }
+
+        // If ScaleUnit is HundredGram, device returns weight in hundred-gram units, convert to ton
+        if (settings.ScaleUnit == ScaleUnit.HundredGram)
+        {
+            return MaterialMath.HundredGramToTon(weightFromDevice);
+        }
+
+        // If ScaleUnit is Gram, device returns weight in gram units, convert to ton
+        if (settings.ScaleUnit == ScaleUnit.Gram)
+        {
+            return MaterialMath.GramToTon(weightFromDevice);
         }
 
         // If ScaleUnit is Ton, device already returns ton, no conversion needed
