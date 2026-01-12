@@ -1070,29 +1070,28 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        BackToMain();
-        await SelectLatestCompletedItemAsync();
+        //BackToMain();
+        await SelectUnmatchedNextItemAsync();
     }
 
     private async void OnDetailMatchCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
         //BackToMain();
-        //await SelectLatestCompletedItemAsync();
+        await SelectUnmatchedNextItemAsync();
     }
 
     private async void OnDetailCompleteCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        BackToMain();
-        await SelectLatestCompletedItemAsync();
+        await SelectUnmatchedNextItemAsync();
     }
 
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        BackToMain();
-        await SelectLatestCompletedItemAsync();
+        //BackToMain();
+        await SelectUnmatchedNextItemAsync();
     }
 
     /// <summary>
@@ -1110,6 +1109,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             {
                 // 如果当前页有完成数据，直接选择
                 SelectedListItem = firstCompleted;
+
+                // 根据项类型执行相应的选择逻辑，确保显示正确的视图
+                if (firstCompleted is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                    SelectCompletedWaybill(firstCompleted);
+                else
+                    _ = OpenDetail(firstCompleted);
             }
             else
             {
@@ -1121,8 +1126,90 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 await RefreshAsync();
 
                 // 刷新后选择第一条（应该就是已完成的第一个）
-                if (ListItems.Count > 0) SelectedListItem = ListItems.FirstOrDefault();
+                if (ListItems.Count > 0)
+                {
+                    var selectedItem = ListItems.FirstOrDefault();
+                    if (selectedItem != null)
+                    {
+                        SelectedListItem = selectedItem;
+
+                        // 根据项类型执行相应的选择逻辑
+                        if (selectedItem is
+                            { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                            SelectCompletedWaybill(selectedItem);
+                        else
+                            _ = OpenDetail(selectedItem);
+                    }
+                }
             }
+        }
+        catch
+        {
+            // 如果出错，忽略错误，不影响主流程
+        }
+    }
+
+    /// <summary>
+    ///     选择下一条未匹配的项目，如果未匹配数据为空则选择已完成的第一个数据
+    /// </summary>
+    private async Task SelectUnmatchedNextItemAsync()
+    {
+        try
+        {
+            // 获取当前页中所有未匹配的数据
+            var unmatchedItems = ListItems
+                .Where(item => item.OrderType != OrderTypeEnum.Completed)
+                .ToList();
+
+            if (unmatchedItems.Count > 0)
+            {
+                // 如果当前页有未匹配的数据，选择下一条
+                WeighingListItemDto? nextItem = null;
+
+                if (SelectedListItem != null)
+                {
+                    // 如果当前有选中的项，找到当前选中项的下一条未匹配项
+                    var currentIndex = unmatchedItems.FindIndex(item => item.Id == SelectedListItem.Id);
+                    if (currentIndex >= 0 && currentIndex < unmatchedItems.Count - 1)
+                    {
+                        // 找到当前项的下一条
+                        nextItem = unmatchedItems[currentIndex + 1];
+                    }
+                    else if (currentIndex < 0)
+                    {
+                        // 当前选中的项不在未匹配列表中，选择第一条未匹配项
+                        nextItem = unmatchedItems.FirstOrDefault();
+                    }
+                    // 如果 currentIndex 是最后一项，nextItem 保持为 null，将进入 SelectLatestCompletedItemAsync
+                }
+                else
+                {
+                    // 如果没有选中的项，选择第一条未匹配项
+                    nextItem = unmatchedItems.FirstOrDefault();
+                }
+
+                if (nextItem != null)
+                {
+                                   
+                    SelectedListItem = nextItem;
+                    // 如果 DetailView 正在显示，需要更新 DetailViewModel
+                    if (!IsShowingMainView && DetailViewModel != null)
+                    {
+                        // 如果 DetailViewModel 已存在，更新其数据
+                        DetailViewModel.InitializeData(nextItem);
+                    }
+                    else if (nextItem is not { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                    {
+                        // 如果不是已完成的 Waybill，打开详情视图
+                        _ = OpenDetail(nextItem);
+                    }
+
+                    return;
+                }
+            }
+
+            // 如果当前页没有未匹配的数据，或者所有未匹配数据都已处理完，则选择已完成的第一个数据
+            await SelectLatestCompletedItemAsync();
         }
         catch
         {
