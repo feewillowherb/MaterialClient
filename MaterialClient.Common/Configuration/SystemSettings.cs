@@ -27,4 +27,9 @@ public class SystemSettings
     ///     Default: Hikvision
     /// </summary>
     public SnapshotCameraType SnapshotCameraType { get; set; } = SnapshotCameraType.Hikvision;
+
+    /// <summary>
+    ///     最小字符差异数（0-2），用于车牌号推荐匹配
+    /// </summary>
+    public int MinDiffCharCount { get; set; } = 0;
 }

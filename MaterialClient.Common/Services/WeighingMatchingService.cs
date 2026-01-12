@@ -4,6 +4,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
+using MaterialClient.Common.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -104,6 +105,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly ISettingsService _settingsService;
+    private readonly RecommandPlateNumberService _recommandPlateNumberService;
 
     /// <summary>
     ///     Load configuration from settings
@@ -525,6 +527,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         waybill.OrderTypeCompleted();
         await _waybillRepository.UpdateAsync(waybill);
+
+        // 将车牌号添加到推荐服务缓存
+        if (!string.IsNullOrWhiteSpace(waybill.PlateNumber))
+        {
+            _recommandPlateNumberService.AddPlateNumberToCache(waybill.PlateNumber);
+        }
     }
 
     /// <inheritdoc />

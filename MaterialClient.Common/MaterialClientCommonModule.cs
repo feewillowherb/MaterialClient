@@ -1,4 +1,5 @@
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.LPRAllInOne;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
@@ -50,7 +51,9 @@ public class MaterialClientCommonModule : AbpModule
         // Configure AliyunOss
         services.Configure<AliyunOssConfig>(
             configuration.GetSection("AliyunOss"));
-        
+
+        // Register RecommandPlateNumberService as singleton
+        services.AddSingleton<RecommandPlateNumberService>();
     }
 
 }

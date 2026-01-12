@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MaterialClient.Backgrounds;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
+using MaterialClient.Common.Providers;
 using MaterialClient.EFCore;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
@@ -195,6 +196,20 @@ public class MaterialClientModule : AbpModule
 
         // 注册并启动后台工作器
         await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
+
+        // 初始化车牌号推荐服务缓存
+        try
+        {
+            var recommandPlateNumberService =
+                context.ServiceProvider.GetRequiredService<RecommandPlateNumberService>();
+            await recommandPlateNumberService.InitializeCacheAsync();
+        }
+        catch (Exception ex)
+        {
+            // 记录错误但不阻止应用启动
+            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
+            logger?.LogError(ex, "初始化车牌号推荐服务缓存失败");
+        }
     }
 
     public override async Task OnApplicationShutdownAsync(ApplicationShutdownContext context)

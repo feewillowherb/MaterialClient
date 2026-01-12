@@ -131,6 +131,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private readonly ILPRAllInOneService? _lprAllInOneService;
     private readonly ISettingsService _settingsService;
     private readonly ISoundDeviceService? _soundDeviceService;
+    private readonly RecommandPlateNumberService _recommandPlateNumberService;
 
     // Rx Subject for status updates - using BehaviorSubject to maintain current state (internal use only)
     private readonly BehaviorSubject<AttendedWeighingStatus> _statusSubject = new(AttendedWeighingStatus.OffScale);
@@ -376,6 +377,21 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 如果过滤后为空，则不处理
         if (string.IsNullOrWhiteSpace(filteredPlateNumber)) return;
 
+        // 获取推荐的车牌号
+        var recommendedPlateNumber = _recommandPlateNumberService.GetRecommandPlateNumber(filteredPlateNumber);
+
+        // 如果推荐的车牌号与原始不同，记录日志
+        if (recommendedPlateNumber != filteredPlateNumber)
+        {
+            _logger?.LogInformation(
+                "车牌号推荐匹配: 原始={OriginalPlate}, 推荐={RecommendedPlate}",
+                filteredPlateNumber,
+                recommendedPlateNumber);
+        }
+
+        // 使用推荐的车牌号继续后续处理
+        var finalPlateNumber = recommendedPlateNumber;
+
         // 只在车辆上磅期间缓存车牌号（OffScale 状态下不缓存）
         var currentStatus = _statusSubject.Value;
         if (currentStatus == AttendedWeighingStatus.OffScale)
@@ -383,9 +399,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             return;
         }
 
-        // 更新车牌缓存
+        // 更新车牌缓存（使用推荐的车牌号）
         _plateNumberCache.AddOrUpdate(
-            filteredPlateNumber,
+            finalPlateNumber,
             new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow },
             (key, oldValue) => new PlateNumberCacheRecord
                 { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
