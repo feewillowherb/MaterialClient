@@ -183,6 +183,7 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
             // Load created waybills
             var waybills = await WaybillRepository.GetListAsync();
             _createdWaybills = waybills.ToList();
+            _waybillsCreatedCount = _createdWaybills.Count;
 
             // Reload test records to get updated RecordType
             var allRecords = await WeighingRecordRepository.GetListAsync();

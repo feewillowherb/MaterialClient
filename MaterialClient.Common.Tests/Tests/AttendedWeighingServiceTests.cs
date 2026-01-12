@@ -6,6 +6,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using BatchCaptureRequest = MaterialClient.Common.Services.Hikvision.BatchCaptureRequest;
@@ -1328,6 +1329,10 @@ public class AttendedWeighingServiceTests : IDisposable
         var weighingRecordRepo = mockRepo ?? Substitute.For<IRepository<WeighingRecord, long>>();
         var attachmentRepo = Substitute.For<IRepository<WeighingRecordAttachment, int>>();
         var fileRepo = Substitute.For<IRepository<AttachmentFile, int>>();
+        var recommendPlateService = new RecommendPlateNumberService(
+            Substitute.For<IRepository<Waybill, long>>(),
+            Substitute.For<ILogger<RecommendPlateNumberService>>(),
+            settingsService);
 
         var uowManager = mockUowManager ?? Substitute.For<IUnitOfWorkManager>();
         if (mockUowManager == null)
@@ -1348,6 +1353,7 @@ public class AttendedWeighingServiceTests : IDisposable
             null, // ILPRAllInOneService? (可选)
             settingsService,
             null, // ISoundDeviceService? (可选)
+            recommendPlateService,
             truckScaleWeightService,
             uowManager,
             attachmentRepo,
