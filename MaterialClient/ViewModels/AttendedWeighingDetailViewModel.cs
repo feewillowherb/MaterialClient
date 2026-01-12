@@ -233,6 +233,85 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 LoadMaterialsAsync()
             );
 
+            // 检查是否需要获取推荐数据
+            // 检查第一个物料是否有 MaterialId 和 MaterialUnitId，以及是否有 ProviderId
+            var firstMaterialDto = _listItem.Materials.Count > 0 ? _listItem.Materials[0] : null;
+            var hasMaterialId = firstMaterialDto?.MaterialId.HasValue ?? _listItem.MaterialId.HasValue;
+            var hasMaterialUnitId = firstMaterialDto?.MaterialUnitId.HasValue ?? _listItem.MaterialUnitId.HasValue;
+            var hasProviderId = _listItem.ProviderId.HasValue;
+            
+            var needsRecommendation = (!hasMaterialId || !hasMaterialUnitId || !hasProviderId) && 
+                                     !string.IsNullOrWhiteSpace(PlateNumber);
+
+            WaybillRecommendationDto? recommendation = null;
+            if (needsRecommendation)
+            {
+                try
+                {
+                    var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+                    recommendation = await weighingMatchingService.GetRecommendationByPlateNumberAsync(PlateNumber);
+                    
+                    if (recommendation != null)
+                    {
+                        Logger?.LogInformation(
+                            "获取到推荐数据: MaterialId={MaterialId}, ProviderId={ProviderId}, MaterialUnitId={MaterialUnitId}",
+                            recommendation.MaterialId, recommendation.ProviderId, recommendation.MaterialUnitId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "获取推荐数据失败");
+                }
+            }
+
+            // 应用推荐数据填充缺失的字段
+            if (recommendation != null)
+            {
+                // 填充 ProviderId
+                if (!hasProviderId && recommendation.ProviderId.HasValue)
+                {
+                    SelectedProviderId = recommendation.ProviderId.Value;
+                    _listItem.ProviderId = recommendation.ProviderId.Value;
+                }
+
+                // 填充 MaterialId 和 MaterialUnitId（仅当第一行没有数据时）
+                if (MaterialItems.Count > 0)
+                {
+                    // 如果第一行没有 MaterialId，使用推荐数据
+                    if (!hasMaterialId && recommendation.MaterialId.HasValue)
+                    {
+                        // 更新 _listItem 的 Materials（用于后续处理）
+                        if (_listItem.Materials.Count == 0)
+                        {
+                            _listItem.Materials.Add(new WeighingListItemMaterialDto
+                            {
+                                MaterialId = recommendation.MaterialId,
+                                MaterialUnitId = recommendation.MaterialUnitId,
+                                WaybillQuantity = recommendation.WaybillQuantity ?? _listItem.WaybillQuantity
+                            });
+                        }
+                        else
+                        {
+                            var materialDto = _listItem.Materials[0];
+                            if (!materialDto.MaterialId.HasValue)
+                                materialDto.MaterialId = recommendation.MaterialId;
+                            if (!materialDto.MaterialUnitId.HasValue && recommendation.MaterialUnitId.HasValue)
+                                materialDto.MaterialUnitId = recommendation.MaterialUnitId;
+                            if (!materialDto.WaybillQuantity.HasValue && recommendation.WaybillQuantity.HasValue)
+                                materialDto.WaybillQuantity = recommendation.WaybillQuantity;
+                        }
+                    }
+                    // 如果只有 MaterialUnitId 缺失，也填充
+                    else if (hasMaterialId && !hasMaterialUnitId && recommendation.MaterialUnitId.HasValue)
+                    {
+                        if (_listItem.Materials.Count > 0)
+                        {
+                            _listItem.Materials[0].MaterialUnitId = recommendation.MaterialUnitId;
+                        }
+                    }
+                }
+            }
+
             if (SelectedProviderId.HasValue)
                 SelectedProvider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
 
@@ -254,6 +333,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                             row.InitializeSelection(selectedMaterial, units, materialDto.MaterialUnitId);
                         else
                             row.InitializeSelection(selectedMaterial, units, null);
+                        
+                        // 如果推荐数据中有 WaybillQuantity，更新第一行
+                        if (i == 0 && recommendation != null && recommendation.WaybillQuantity.HasValue && 
+                            !row.WaybillQuantity.HasValue)
+                        {
+                            row.WaybillQuantity = recommendation.WaybillQuantity;
+                        }
                     }
                 }
             }

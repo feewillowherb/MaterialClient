@@ -80,6 +80,13 @@ public interface IWeighingMatchingService
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     Task PushWaybillAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     根据车牌号获取推荐数据（从最新完成的运单中获取）
+    /// </summary>
+    /// <param name="plateNumber">车牌号</param>
+    /// <returns>推荐数据，如果未找到则返回 null</returns>
+    Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber);
 }
 
 /// <summary>
@@ -1008,6 +1015,54 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             " 更新完成，成功: {SuccessCount}, 失败: {FailCount}",
             successCount, failCount);
     }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber)
+    {
+        if (string.IsNullOrWhiteSpace(plateNumber))
+        {
+            _logger?.LogWarning("GetRecommendationByPlateNumberAsync: Plate number is null or empty");
+            return null;
+        }
+
+        try
+        {
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var latestWaybill = await waybillQuery
+                .AsNoTracking()
+                .Where(w => w.OrderType == OrderTypeEnum.Completed)
+                .Where(w => w.PlateNumber == plateNumber)
+                .OrderByDescending(w => w.JoinTime ?? w.AddDate)
+                .FirstOrDefaultAsync();
+
+            if (latestWaybill == null)
+            {
+                _logger?.LogInformation(
+                    "GetRecommendationByPlateNumberAsync: No completed waybill found for plate number '{PlateNumber}'",
+                    plateNumber);
+                return null;
+            }
+
+            _logger?.LogInformation(
+                "GetRecommendationByPlateNumberAsync: Found recommendation for plate number '{PlateNumber}', WaybillId: {WaybillId}",
+                plateNumber, latestWaybill.Id);
+
+            return new WaybillRecommendationDto(
+                latestWaybill.MaterialId,
+                latestWaybill.ProviderId,
+                latestWaybill.MaterialUnitId,
+                latestWaybill.OrderPlanOnPcs
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex,
+                "GetRecommendationByPlateNumberAsync: Error occurred while getting recommendation for plate number '{PlateNumber}'",
+                plateNumber);
+            return null;
+        }
+    }
 }
 
 public record UpdateWaybillInput(
@@ -1040,4 +1095,14 @@ public record UpdateListItemInput(
     decimal? WaybillQuantity,
     DeliveryType? DeliveryType,
     string? Remark
+);
+
+/// <summary>
+///     运单推荐数据 DTO
+/// </summary>
+public record WaybillRecommendationDto(
+    int? MaterialId,
+    int? ProviderId,
+    int? MaterialUnitId,
+    decimal? WaybillQuantity
 );
