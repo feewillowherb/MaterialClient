@@ -806,7 +806,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     [Reactive] private int _currentPage = 1;
 
-    [Reactive] private int _pageSize = 10;
+    [Reactive] private int _pageSize = 6;
 
     [Reactive] private int _totalCount;
 
