@@ -297,8 +297,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                                 materialDto.MaterialId = recommendation.MaterialId;
                             if (!materialDto.MaterialUnitId.HasValue && recommendation.MaterialUnitId.HasValue)
                                 materialDto.MaterialUnitId = recommendation.MaterialUnitId;
-                            if (!materialDto.WaybillQuantity.HasValue && recommendation.WaybillQuantity.HasValue)
-                                materialDto.WaybillQuantity = recommendation.WaybillQuantity;
+                            // not fill WaybillQuantity here anymore
+                            // if (!materialDto.WaybillQuantity.HasValue && recommendation.WaybillQuantity.HasValue)
+                            //     materialDto.WaybillQuantity = recommendation.WaybillQuantity;
                         }
                     }
                     // 如果只有 MaterialUnitId 缺失，也填充
@@ -334,12 +335,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                         else
                             row.InitializeSelection(selectedMaterial, units, null);
                         
+                        // not fill WaybillQuantity here anymore
                         // 如果推荐数据中有 WaybillQuantity，更新第一行
-                        if (i == 0 && recommendation != null && recommendation.WaybillQuantity.HasValue && 
-                            !row.WaybillQuantity.HasValue)
-                        {
-                            row.WaybillQuantity = recommendation.WaybillQuantity;
-                        }
+                        // if (i == 0 && recommendation != null && recommendation.WaybillQuantity.HasValue && 
+                        //     !row.WaybillQuantity.HasValue)
+                        // {
+                        //     row.WaybillQuantity = recommendation.WaybillQuantity;
+                        // }
                     }
                 }
             }
