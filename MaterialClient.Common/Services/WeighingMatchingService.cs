@@ -43,7 +43,8 @@ public interface IWeighingMatchingService
     /// <param name="matchedRecord">匹配的称重记录</param>
     /// <param name="deliveryType">收发料类型</param>
     /// <returns>创建的运单</returns>
-    Task<Waybill> ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
+    Task<Waybill> ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
+        DeliveryType deliveryType);
 
     /// <summary>
     ///     获取称重列表项（分页）
@@ -1048,9 +1049,21 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 "GetRecommendationByPlateNumberAsync: Found recommendation for plate number '{PlateNumber}', WaybillId: {WaybillId}",
                 plateNumber, latestWaybill.Id);
 
+
+            var validProviderId = latestWaybill.ProviderId;
+
+            if (validProviderId == null)
+            {
+                validProviderId =
+                    (await waybillQuery
+                        .FirstOrDefaultAsync(x => x.PlateNumber == plateNumber && x.ProviderId != null))
+                    ?.ProviderId;
+            }
+
+
             return new WaybillRecommendationDto(
                 latestWaybill.MaterialId,
-                latestWaybill.ProviderId,
+                validProviderId,
                 latestWaybill.MaterialUnitId,
                 latestWaybill.OrderPlanOnPcs
             );
