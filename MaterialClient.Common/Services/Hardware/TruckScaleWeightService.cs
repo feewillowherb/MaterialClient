@@ -76,7 +76,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
     // Rx Subject for weight updates
     private readonly Subject<decimal> _weightSubject = new();
-    private int _byteCount = 10;
+    private int _byteCount = 12;
 
     private ScaleSettings? _currentSettings;
     private decimal _currentWeight;
@@ -812,6 +812,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     ///     Software always uses ton (t) as the weight unit
     ///     If ScaleUnit is Kg, convert from kg to ton using MaterialMath.ConvertKgToTon
     ///     If ScaleUnit is Ton, no conversion needed (device already returns ton)
+    ///     If ScaleUnit is TenGram, convert from ten-gram to ton (value / 100000)
     /// </summary>
     /// <param name="weightFromDevice">Weight from device (unit depends on ScaleUnit setting)</param>
     /// <returns>Weight in ton (t) for software use</returns>
@@ -834,6 +835,12 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         if (settings.ScaleUnit == ScaleUnit.Kg)
         {
             return MaterialMath.ConvertKgToTon(weightFromDevice);
+        }
+
+        // If ScaleUnit is TenGram, device returns weight in ten-gram units, convert to ton
+        if (settings.ScaleUnit == ScaleUnit.TenGram)
+        {
+            return Math.Round(weightFromDevice / 100000m, 2, MidpointRounding.AwayFromZero);
         }
 
         // If ScaleUnit is Ton, device already returns ton, no conversion needed

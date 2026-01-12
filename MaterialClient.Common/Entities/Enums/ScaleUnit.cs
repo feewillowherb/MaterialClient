@@ -13,6 +13,11 @@ public enum ScaleUnit
     /// <summary>
     ///     Ton (t)
     /// </summary>
-    Ton = 1
+    Ton = 1,
+
+    /// <summary>
+    ///     Ten Gram (10g)
+    /// </summary>
+    TenGram = 2
 }
 

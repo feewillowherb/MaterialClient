@@ -60,7 +60,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public ObservableCollection<ScaleUnit> ScaleUnitOptions { get; } = new()
     {
         ScaleUnit.Kg,
-        ScaleUnit.Ton
+        ScaleUnit.Ton,
+        ScaleUnit.TenGram
     };
 
     /// <summary>

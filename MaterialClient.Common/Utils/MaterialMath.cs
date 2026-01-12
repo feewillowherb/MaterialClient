@@ -114,4 +114,15 @@ public static class MaterialMath
     {
         return Math.Round(weightInKg / 1000m, 2, MidpointRounding.AwayFromZero);
     }
+
+    /// <summary>
+    ///     将重量从十克(10g)转换为吨(t)，保留两位小数
+    /// </summary>
+    /// <param name="weightInTenGram">重量（十克单位）</param>
+    /// <returns>重量（吨），保留两位小数</returns>
+    public static decimal TenGramToTon(decimal weightInTenGram)
+    {
+        // 1 吨 = 1,000,000 克 = 100,000 个十克
+        return Math.Round(weightInTenGram / 100000m, 2, MidpointRounding.AwayFromZero);
+    }
 }

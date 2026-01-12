@@ -18,6 +18,7 @@ public class ScaleUnitConverter : IValueConverter
             {
                 ScaleUnit.Kg => "kg",
                 ScaleUnit.Ton => "t",
+                ScaleUnit.TenGram => "10g",
                 _ => value.ToString()
             };
         }
