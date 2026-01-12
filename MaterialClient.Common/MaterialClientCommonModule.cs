@@ -52,8 +52,8 @@ public class MaterialClientCommonModule : AbpModule
         services.Configure<AliyunOssConfig>(
             configuration.GetSection("AliyunOss"));
 
-        // Register RecommandPlateNumberService as singleton
-        services.AddSingleton<RecommandPlateNumberService>();
+        // Register RecommendPlateNumberService as singleton
+        services.AddSingleton<RecommendPlateNumberService>();
     }
 
 }

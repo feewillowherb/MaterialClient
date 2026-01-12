@@ -105,7 +105,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly ISettingsService _settingsService;
-    private readonly RecommandPlateNumberService _recommandPlateNumberService;
+    private readonly RecommendPlateNumberService _recommendPlateNumberService;
 
     /// <summary>
     ///     Load configuration from settings
@@ -531,7 +531,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         // 将车牌号添加到推荐服务缓存
         if (!string.IsNullOrWhiteSpace(waybill.PlateNumber))
         {
-            _recommandPlateNumberService.AddPlateNumberToCache(waybill.PlateNumber);
+            _recommendPlateNumberService.AddPlateNumberToCache(waybill.PlateNumber);
         }
     }
 

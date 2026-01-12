@@ -131,7 +131,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private readonly ILPRAllInOneService? _lprAllInOneService;
     private readonly ISettingsService _settingsService;
     private readonly ISoundDeviceService? _soundDeviceService;
-    private readonly RecommandPlateNumberService _recommandPlateNumberService;
+    private readonly RecommendPlateNumberService _recommendPlateNumberService;
 
     // Rx Subject for status updates - using BehaviorSubject to maintain current state (internal use only)
     private readonly BehaviorSubject<AttendedWeighingStatus> _statusSubject = new(AttendedWeighingStatus.OffScale);
@@ -378,7 +378,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         if (string.IsNullOrWhiteSpace(filteredPlateNumber)) return;
 
         // 获取推荐的车牌号
-        var recommendedPlateNumber = _recommandPlateNumberService.GetRecommandPlateNumber(filteredPlateNumber);
+        var recommendedPlateNumber = _recommendPlateNumberService.GetRecommendPlateNumber(filteredPlateNumber);
 
         // 如果推荐的车牌号与原始不同，记录日志
         if (recommendedPlateNumber != filteredPlateNumber)

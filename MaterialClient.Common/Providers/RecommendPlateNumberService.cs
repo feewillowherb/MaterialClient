@@ -12,20 +12,20 @@ using Volo.Abp.Uow;
 namespace MaterialClient.Common.Providers;
 
 /// <summary>
-///     车牌号推荐服务
-///     从数据库中加载最新200条车牌号到内存缓存，并根据配置的最小字符差异数进行匹配推荐
+///     ���ƺ��Ƽ�����
+///     �����ݿ��м�������200�����ƺŵ��ڴ滺�棬���������õ���С�ַ�����������ƥ���Ƽ�
 /// </summary>
-public class RecommandPlateNumberService : DomainService, ISingletonDependency
+public class RecommendPlateNumberService : DomainService, ISingletonDependency
 {
-    private readonly ILogger<RecommandPlateNumberService> _logger;
+    private readonly ILogger<RecommendPlateNumberService> _logger;
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly ISettingsService _settingsService;
 
     private volatile ConcurrentQueue<string> _plateNumberCache = new();
 
-    public RecommandPlateNumberService(
+    public RecommendPlateNumberService(
         IRepository<Waybill, long> waybillRepository,
-        ILogger<RecommandPlateNumberService> logger,
+        ILogger<RecommendPlateNumberService> logger,
         ISettingsService settingsService)
     {
         _waybillRepository = waybillRepository;
@@ -34,7 +34,7 @@ public class RecommandPlateNumberService : DomainService, ISingletonDependency
     }
 
     /// <summary>
-    ///     初始化缓存，从数据库加载最新200条车牌号
+    ///     ��ʼ�����棬�����ݿ��������200�����ƺ�
     /// </summary>
     [UnitOfWork]
     public async Task InitializeCacheAsync()
@@ -59,41 +59,41 @@ public class RecommandPlateNumberService : DomainService, ISingletonDependency
             _plateNumberCache = newCache;
 
             _logger.LogInformation(
-                "车牌号推荐服务缓存初始化完成，加载了 {Count} 条车牌号",
+                "���ƺ��Ƽ����񻺴��ʼ����ɣ������� {Count} �����ƺ�",
                 plateNumbers.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "初始化车牌号推荐服务缓存失败");
-            // 使用空缓存
+            _logger.LogError(ex, "��ʼ�����ƺ��Ƽ����񻺴�ʧ��");
+            // ʹ�ÿջ���
             _plateNumberCache = new ConcurrentQueue<string>();
         }
     }
 
     /// <summary>
-    ///     根据输入的车牌号，从缓存中推荐最匹配的车牌号
+    ///     ��������ĳ��ƺţ��ӻ������Ƽ���ƥ��ĳ��ƺ�
     /// </summary>
-    /// <param name="plateNumber">输入的车牌号</param>
-    /// <returns>推荐的车牌号，如果未找到匹配则返回原始输入</returns>
-    public string GetRecommandPlateNumber(string plateNumber)
+    /// <param name="plateNumber">����ĳ��ƺ�</param>
+    /// <returns>�Ƽ��ĳ��ƺţ����δ�ҵ�ƥ���򷵻�ԭʼ����</returns>
+    public string GetRecommendPlateNumber(string plateNumber)
     {
         if (string.IsNullOrWhiteSpace(plateNumber))
             return plateNumber;
 
         try
         {
-            // 获取当前缓存的引用（volatile 读取）
+            // ��ȡ��ǰ��������ã�volatile ��ȡ��
             var cache = _plateNumberCache;
 
-            // 获取配置的最小字符差异数
+            // ��ȡ���õ���С�ַ�������
             var settings = _settingsService.GetSettingsAsync().GetAwaiter().GetResult();
             var minDiffCharCount = settings.SystemSettings.MinDiffCharCount;
 
-            // 限制在 0-2 范围内
+            // ������ 0-2 ��Χ��
             if (minDiffCharCount < 0) minDiffCharCount = 0;
             if (minDiffCharCount > 2) minDiffCharCount = 2;
 
-            // 遍历队列查找匹配
+            // �������в���ƥ��
             string? bestMatch = null;
             int bestDiff = int.MaxValue;
 
@@ -111,31 +111,31 @@ public class RecommandPlateNumberService : DomainService, ISingletonDependency
                 }
             }
 
-            // 如果找到匹配，记录日志并返回
+            // ����ҵ�ƥ�䣬��¼��־������
             if (bestMatch != null)
             {
                 _logger.LogInformation(
-                    "车牌号推荐匹配成功: 输入={InputPlate}, 推荐={RecommendedPlate}, 差异数={DiffCount}",
+                    "���ƺ��Ƽ�ƥ��ɹ�: ����={InputPlate}, �Ƽ�={RecommendedPlate}, ������={DiffCount}",
                     plateNumber,
                     bestMatch,
                     bestDiff);
                 return bestMatch;
             }
 
-            // 未找到匹配，返回原始输入
+            // δ�ҵ�ƥ�䣬����ԭʼ����
             return plateNumber;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取推荐车牌号时发生异常: {PlateNumber}", plateNumber);
+            _logger.LogError(ex, "��ȡ�Ƽ����ƺ�ʱ�����쳣: {PlateNumber}", plateNumber);
             return plateNumber;
         }
     }
 
     /// <summary>
-    ///     添加车牌号到缓存（当 Waybill 完成时调用）
+    ///     ���ӳ��ƺŵ����棨�� Waybill ���ʱ���ã�
     /// </summary>
-    /// <param name="plateNumber">要添加的车牌号</param>
+    /// <param name="plateNumber">Ҫ���ӵĳ��ƺ�</param>
     public void AddPlateNumberToCache(string? plateNumber)
     {
         if (string.IsNullOrWhiteSpace(plateNumber))
@@ -145,25 +145,25 @@ public class RecommandPlateNumberService : DomainService, ISingletonDependency
         {
             var cache = _plateNumberCache;
 
-            // 检查缓存大小，如果已满200条则跳过
+            // ��黺���С���������200��������
             if (cache.Count >= 200)
             {
                 _logger.LogDebug(
-                    "车牌号推荐服务缓存已满（200条），跳过添加车牌号: {PlateNumber}",
+                    "���ƺ��Ƽ����񻺴�������200�������������ӳ��ƺ�: {PlateNumber}",
                     plateNumber);
                 return;
             }
 
-            // 检查是否已存在（避免重复）
+            // ����Ƿ��Ѵ��ڣ������ظ���
             if (cache.Contains(plateNumber))
             {
                 _logger.LogDebug(
-                    "车牌号已存在于缓存中，跳过添加: {PlateNumber}",
+                    "���ƺ��Ѵ����ڻ����У���������: {PlateNumber}",
                     plateNumber);
                 return;
             }
 
-            // 创建新缓存并添加新元素
+            // �����»��沢������Ԫ��
             var newCache = new ConcurrentQueue<string>();
             foreach (var existingPlate in cache)
             {
@@ -172,23 +172,23 @@ public class RecommandPlateNumberService : DomainService, ISingletonDependency
 
             newCache.Enqueue(plateNumber);
 
-            // 原子替换引用
+            // ԭ���滻����
             _plateNumberCache = newCache;
 
             _logger.LogInformation(
-                "已将车牌号添加到推荐服务缓存: {PlateNumber}, 当前缓存大小: {Count}",
+                "�ѽ����ƺ����ӵ��Ƽ����񻺴�: {PlateNumber}, ��ǰ�����С: {Count}",
                 plateNumber,
                 newCache.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "添加车牌号到推荐服务缓存时发生异常: {PlateNumber}", plateNumber);
+            _logger.LogError(ex, "���ӳ��ƺŵ��Ƽ����񻺴�ʱ�����쳣: {PlateNumber}", plateNumber);
         }
     }
 
     /// <summary>
-    ///     计算两个字符串的字符差异数
-    ///     比较两个字符串在相同位置上的不同字符数量（长度不同时，差异数 = 长度差 + 位置差异数）
+    ///     ���������ַ������ַ�������
+    ///     �Ƚ������ַ�������ͬλ���ϵĲ�ͬ�ַ����������Ȳ�ͬʱ�������� = ���Ȳ� + λ�ò�������
     /// </summary>
     private int CalculateCharDiff(string str1, string str2)
     {

@@ -200,9 +200,9 @@ public class MaterialClientModule : AbpModule
         // 初始化车牌号推荐服务缓存
         try
         {
-            var recommandPlateNumberService =
-                context.ServiceProvider.GetRequiredService<RecommandPlateNumberService>();
-            await recommandPlateNumberService.InitializeCacheAsync();
+            var recommendPlateNumberService =
+                context.ServiceProvider.GetRequiredService<RecommendPlateNumberService>();
+            await recommendPlateNumberService.InitializeCacheAsync();
         }
         catch (Exception ex)
         {
