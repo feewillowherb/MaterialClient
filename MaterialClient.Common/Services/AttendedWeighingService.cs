@@ -631,7 +631,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                             status == AttendedWeighingStatus.WaitingForDeparture ||
                             status == AttendedWeighingStatus.WaitingForStability) // 防止状态不同步
                         {
-                            _logger?.LogInformation(
+                            _logger.LogDebug(
                                 $"Forcing WaitingForDeparture: recordId={recordId}, currentStatus={status}, weight={weight:F3}t");
                             return AttendedWeighingStatus.WaitingForDeparture;
                         }
