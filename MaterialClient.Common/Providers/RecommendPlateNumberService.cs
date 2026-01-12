@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
-using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -13,60 +13,90 @@ namespace MaterialClient.Common.Providers;
 
 /// <summary>
 ///     车牌号推荐服务
-///     从数据库中加载最新200条车牌号到内存缓存，并根据配置的最小字符差异数进行匹配推荐
+///     使用IMemoryCache管理车牌号缓存，支持LRU淘汰策略，线程安全
 /// </summary>
 public class RecommendPlateNumberService : DomainService, ISingletonDependency
 {
+    private const string CacheKey = "PlateNumbers";
+    private const int MaxCacheSize = 200;
+
     private readonly ILogger<RecommendPlateNumberService> _logger;
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly ISettingsService _settingsService;
+    private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly IMemoryCache _memoryCache;
+    private readonly ReaderWriterLockSlim _lock = new();
 
-    private volatile ConcurrentQueue<string> _plateNumberCache = new();
+    private int _minDiffCharCount = 1; // 缓存的配置值
 
     public RecommendPlateNumberService(
         IRepository<Waybill, long> waybillRepository,
         ILogger<RecommendPlateNumberService> logger,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        IUnitOfWorkManager unitOfWorkManager,
+        IMemoryCache memoryCache)
     {
         _waybillRepository = waybillRepository;
         _logger = logger;
         _settingsService = settingsService;
+        _unitOfWorkManager = unitOfWorkManager;
+        _memoryCache = memoryCache;
     }
 
     /// <summary>
-    ///     初始化缓存，从数据库加载最新200条车牌号
+    ///     初始化缓存，从数据库加载最新200条车牌号，并缓存配置
     /// </summary>
-    [UnitOfWork]
     public async Task InitializeCacheAsync()
     {
-        try
+        using (var uow = _unitOfWorkManager.Begin())
         {
-            var queryable = await _waybillRepository.GetQueryableAsync();
-            var plateNumbers = await queryable
-                .Where(w => !string.IsNullOrWhiteSpace(w.PlateNumber))
-                .OrderByDescending(w => w.AddDate)
-                .Select(w => w.PlateNumber!)
-                .Distinct()
-                .Take(200)
-                .ToListAsync();
-
-            var newCache = new ConcurrentQueue<string>();
-            foreach (var plateNumber in plateNumbers)
+            try
             {
-                newCache.Enqueue(plateNumber);
+                // 加载配置
+                var settings = await _settingsService.GetSettingsAsync();
+                _minDiffCharCount = settings.SystemSettings.MinDiffCharCount;
+                
+                // 限制在 0-2 范围内
+                if (_minDiffCharCount < 0) _minDiffCharCount = 0;
+                if (_minDiffCharCount > 2) _minDiffCharCount = 2;
+
+                // 从数据库加载车牌号
+                var queryable = await _waybillRepository.GetQueryableAsync();
+                var plateNumbers = await queryable
+                    .Where(w => !string.IsNullOrWhiteSpace(w.PlateNumber))
+                    .OrderByDescending(w => w.AddDate)
+                    .Select(w => w.PlateNumber!)
+                    .Distinct()
+                    .Take(MaxCacheSize)
+                    .ToListAsync();
+
+                using (_lock.WriteLock())
+                {
+                    // 设置缓存选项：绝对过期时间1小时，滑动过期时间30分钟
+                    var cacheOptions = new MemoryCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
+                        SlidingExpiration = TimeSpan.FromMinutes(30),
+                        Size = 1 // 缓存项大小
+                    };
+
+                    _memoryCache.Set(CacheKey, plateNumbers, cacheOptions);
+                }
+
+                _logger.LogInformation(
+                    "车牌号推荐服务缓存初始化完成，加载了 {Count} 条车牌号，配置差异数={MinDiffCharCount}",
+                    plateNumbers.Count, _minDiffCharCount);
+                await uow.CompleteAsync();
             }
-
-            _plateNumberCache = newCache;
-
-            _logger.LogInformation(
-                "车牌号推荐服务缓存初始化完成，加载了 {Count} 条车牌号",
-                plateNumbers.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "初始化车牌号推荐服务缓存失败");
-            // 使用空缓存
-            _plateNumberCache = new ConcurrentQueue<string>();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "初始化车牌号推荐服务缓存失败");
+                // 设置空缓存
+                using (_lock.WriteLock())
+                {
+                    _memoryCache.Set(CacheKey, new List<string>());
+                }
+            }
         }
     }
 
@@ -82,29 +112,30 @@ public class RecommendPlateNumberService : DomainService, ISingletonDependency
 
         try
         {
-            // 获取当前缓存的引用（volatile 读取）
-            var cache = _plateNumberCache;
+            List<string>? cachedPlates;
+            using (_lock.ReadLock())
+            {
+                cachedPlates = _memoryCache.Get<List<string>>(CacheKey);
+            }
 
-            // 获取配置的最小字符差异数
-            var settings = _settingsService.GetSettingsAsync().GetAwaiter().GetResult();
-            var minDiffCharCount = settings.SystemSettings.MinDiffCharCount;
+            // 如果缓存为空，返回原始输入
+            if (cachedPlates == null || !cachedPlates.Any())
+            {
+                return plateNumber;
+            }
 
-            // 限制在 0-2 范围内
-            if (minDiffCharCount < 0) minDiffCharCount = 0;
-            if (minDiffCharCount > 2) minDiffCharCount = 2;
-
-            // 遍历队列查找匹配
+            // 遍历缓存查找匹配
             string? bestMatch = null;
             int bestDiff = int.MaxValue;
 
-            foreach (var cachedPlate in cache)
+            foreach (var cachedPlate in cachedPlates)
             {
                 if (string.IsNullOrWhiteSpace(cachedPlate))
                     continue;
 
                 var diff = CalculateCharDiff(plateNumber, cachedPlate);
 
-                if (diff <= minDiffCharCount && diff < bestDiff)
+                if (diff <= _minDiffCharCount && diff < bestDiff)
                 {
                     bestMatch = cachedPlate;
                     bestDiff = diff;
@@ -134,6 +165,7 @@ public class RecommendPlateNumberService : DomainService, ISingletonDependency
 
     /// <summary>
     ///     添加车牌号到缓存（当 Waybill 完成时调用）
+    ///     使用LRU策略，如果缓存已满则移除最老的数据
     /// </summary>
     /// <param name="plateNumber">要添加的车牌号</param>
     public void AddPlateNumberToCache(string? plateNumber)
@@ -143,42 +175,44 @@ public class RecommendPlateNumberService : DomainService, ISingletonDependency
 
         try
         {
-            var cache = _plateNumberCache;
-
-            // 检查缓存大小，如果已满200条则跳过
-            if (cache.Count >= 200)
+            using (_lock.WriteLock())
             {
-                _logger.LogDebug(
-                    "车牌号推荐服务缓存已满（200条），跳过添加车牌号: {PlateNumber}",
-                    plateNumber);
-                return;
+                var cachedPlates = _memoryCache.Get<List<string>>(CacheKey) ?? new List<string>();
+
+                // 检查是否已存在（避免重复）
+                if (cachedPlates.Contains(plateNumber))
+                {
+                    _logger.LogDebug(
+                        "车牌号已存在于缓存中，跳过添加: {PlateNumber}",
+                        plateNumber);
+                    return;
+                }
+
+                // 如果缓存已满，移除最老的（第一个）
+                if (cachedPlates.Count >= MaxCacheSize)
+                {
+                    cachedPlates.RemoveAt(0);
+                    _logger.LogDebug("缓存已满，移除最老的车牌号");
+                }
+
+                // 添加新车牌号到末尾
+                cachedPlates.Add(plateNumber);
+
+                // 更新缓存
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
+                    SlidingExpiration = TimeSpan.FromMinutes(30),
+                    Size = 1
+                };
+
+                _memoryCache.Set(CacheKey, cachedPlates, cacheOptions);
+
+                _logger.LogInformation(
+                    "已将车牌号添加到推荐服务缓存: {PlateNumber}, 当前缓存大小: {Count}",
+                    plateNumber,
+                    cachedPlates.Count);
             }
-
-            // 检查是否已存在（避免重复）
-            if (cache.Contains(plateNumber))
-            {
-                _logger.LogDebug(
-                    "车牌号已存在于缓存中，跳过添加: {PlateNumber}",
-                    plateNumber);
-                return;
-            }
-
-            // 创建新缓存并添加新元素
-            var newCache = new ConcurrentQueue<string>();
-            foreach (var existingPlate in cache)
-            {
-                newCache.Enqueue(existingPlate);
-            }
-
-            newCache.Enqueue(plateNumber);
-
-            // 原子替换引用
-            _plateNumberCache = newCache;
-
-            _logger.LogInformation(
-                "已将车牌号添加到推荐服务缓存: {PlateNumber}, 当前缓存大小: {Count}",
-                plateNumber,
-                newCache.Count);
         }
         catch (Exception ex)
         {

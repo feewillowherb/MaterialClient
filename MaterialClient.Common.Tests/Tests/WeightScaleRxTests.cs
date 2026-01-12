@@ -6,6 +6,7 @@ using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Volo.Abp.Domain.Repositories;
@@ -204,7 +205,9 @@ public class WeightScaleRxTests
         var recommendPlateService = new RecommendPlateNumberService(
             Substitute.For<IRepository<Waybill, long>>(),
             Substitute.For<ILogger<RecommendPlateNumberService>>(),
-            settingsService);
+            settingsService,
+            Substitute.For<IUnitOfWorkManager>(),
+            Substitute.For<IMemoryCache>());
         var attachmentRepo = Substitute.For<IRepository<WeighingRecordAttachment, int>>();
         var fileRepo = Substitute.For<IRepository<AttachmentFile, int>>();
 

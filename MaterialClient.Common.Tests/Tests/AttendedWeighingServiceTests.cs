@@ -9,6 +9,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using Microsoft.Extensions.Caching.Memory;
 using BatchCaptureRequest = MaterialClient.Common.Services.Hikvision.BatchCaptureRequest;
 using BatchCaptureResult = MaterialClient.Common.Services.Hikvision.BatchCaptureResult;
 using Microsoft.Extensions.Logging;
@@ -1332,7 +1333,9 @@ public class AttendedWeighingServiceTests : IDisposable
         var recommendPlateService = new RecommendPlateNumberService(
             Substitute.For<IRepository<Waybill, long>>(),
             Substitute.For<ILogger<RecommendPlateNumberService>>(),
-            settingsService);
+            settingsService,
+            Substitute.For<IUnitOfWorkManager>(),
+            Substitute.For<IMemoryCache>());
 
         var uowManager = mockUowManager ?? Substitute.For<IUnitOfWorkManager>();
         if (mockUowManager == null)
