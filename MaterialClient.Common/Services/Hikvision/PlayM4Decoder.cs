@@ -97,7 +97,8 @@ public sealed class PlayM4Decoder : IDisposable
                 {
                     try
                     {
-                        PlayM4.PlayM4_FreePort(_port);
+                        // Release port back to pool (includes cleanup and SDK FreePort call)
+                        PlayM4PortPool.ReleasePort(_port);
                     }
                     catch
                     {
@@ -185,8 +186,9 @@ public sealed class PlayM4Decoder : IDisposable
 
             if (_port >= 0) return true; // Port already acquired
 
-            // Get an unused channel number from the playback library
-            if (!PlayM4.PlayM4_GetPort(ref _port)) return false;
+            // Acquire port from pool with concurrency control
+            if (!PlayM4PortPool.TryAcquirePort(out _port, 5000))
+                return false;
 
             IsInitialized = _port >= 0;
             return IsInitialized;
