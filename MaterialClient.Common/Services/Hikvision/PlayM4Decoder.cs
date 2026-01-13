@@ -1,70 +1,149 @@
+using System.Buffers;
 using System.Runtime.InteropServices;
 
 namespace MaterialClient.Common.Services.Hikvision;
 
 /// <summary>
-///     PlayM4 解码器，用于手动解码海康威视视频流
+///     PlayM4 decoder for manual decoding of Hikvision video streams.
+///     Implements proper dispose pattern and thread-safe operations.
 /// </summary>
 public sealed class PlayM4Decoder : IDisposable
 {
-    // 流模式定义
-    private const int STREAME_REALTIME = 0; // 实时流
-    private const int STREAME_FILE = 1; // 文件流
+    // Stream mode definitions
+    private const int STREAME_REALTIME = 0; // Real-time stream
+    private const int STREAME_FILE = 1; // File stream
+
+    private static readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
+
     private readonly object _lockObject = new();
+    private readonly ManualResetEventSlim _playingEvent = new(false);
+
     private IntPtr _hPlayWnd = IntPtr.Zero;
-    private int _port = -1; // 播放库端口号
+    private int _port = -1; // Playback library port number
+    private bool _disposed;
 
     /// <summary>
-    ///     是否已初始化
+    ///     Whether the decoder is initialized
     /// </summary>
     public bool IsInitialized { get; private set; }
 
     /// <summary>
-    ///     是否正在播放
+    ///     Whether the decoder is playing
     /// </summary>
     public bool IsPlaying { get; private set; }
 
     /// <summary>
-    ///     播放库端口号
+    ///     Playback library port number
     /// </summary>
     public int Port => _port;
 
     /// <summary>
-    ///     释放资源
+    ///     Dispose resources
     /// </summary>
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    ///     Finalizer
+    /// </summary>
+    ~PlayM4Decoder()
+    {
+        Dispose(false);
+    }
+
+    /// <summary>
+    ///     Dispose implementation with proper pattern
+    /// </summary>
+    /// <param name="disposing">True if called from Dispose(), false if from finalizer</param>
+    private void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
         lock (_lockObject)
         {
-            Stop();
-            CloseStream();
+            if (_disposed) return; // Double-check inside lock
 
-            if (_port >= 0)
+            try
             {
-                PlayM4.PlayM4_FreePort(_port);
-                _port = -1;
-            }
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    _playingEvent?.Dispose();
+                }
 
-            IsInitialized = false;
-            IsPlaying = false;
+                // Dispose unmanaged resources - wrap each in try-catch
+                try
+                {
+                    Stop();
+                }
+                catch
+                {
+                    // Ignore errors during cleanup
+                }
+
+                try
+                {
+                    CloseStreamInternal();
+                }
+                catch
+                {
+                    // Ignore errors during cleanup
+                }
+
+                if (_port >= 0)
+                {
+                    try
+                    {
+                        PlayM4.PlayM4_FreePort(_port);
+                    }
+                    catch
+                    {
+                        // Ignore errors during cleanup
+                    }
+                    finally
+                    {
+                        _port = -1;
+                    }
+                }
+
+                IsInitialized = false;
+                IsPlaying = false;
+            }
+            finally
+            {
+                _disposed = true;
+            }
         }
     }
 
     /// <summary>
-    ///     获取最后一个错误码
+    ///     Throws ObjectDisposedException if the decoder has been disposed
     /// </summary>
-    /// <returns>错误码</returns>
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(PlayM4Decoder));
+    }
+
+    /// <summary>
+    ///     Gets the last error code
+    /// </summary>
+    /// <returns>Error code</returns>
     public int GetLastError()
     {
         return PlayM4.PlayM4_GetLastError(_port);
     }
 
     /// <summary>
-    ///     获取图片质量
+    ///     Gets the picture quality setting
     /// </summary>
-    /// <returns>true 表示高质量，false 表示普通质量</returns>
+    /// <returns>True for high quality, false for normal quality</returns>
     public bool GetPictureQuality()
     {
+        ThrowIfDisposed();
         lock (_lockObject)
         {
             if (_port < 0) return false;
@@ -77,12 +156,13 @@ public sealed class PlayM4Decoder : IDisposable
     }
 
     /// <summary>
-    ///     设置图片质量
+    ///     Sets the picture quality
     /// </summary>
-    /// <param name="highQuality">true 表示高质量，false 表示普通质量</param>
-    /// <returns>是否成功</returns>
+    /// <param name="highQuality">Quality value (0-100)</param>
+    /// <returns>Whether successful</returns>
     public bool SetPictureQuality(long highQuality)
     {
+        ThrowIfDisposed();
         lock (_lockObject)
         {
             if (_port < 0) return false;
@@ -93,18 +173,19 @@ public sealed class PlayM4Decoder : IDisposable
 
 
     /// <summary>
-    ///     初始化播放库并获取端口
+    ///     Initializes the playback library and acquires a port
     /// </summary>
-    /// <returns>是否成功</returns>
+    /// <returns>Whether successful</returns>
     public bool Initialize()
     {
+        ThrowIfDisposed();
         lock (_lockObject)
         {
             if (IsInitialized) return true;
 
-            if (_port >= 0) return true; // 已经获取过端口
+            if (_port >= 0) return true; // Port already acquired
 
-            // 获取播放库未使用的通道号
+            // Get an unused channel number from the playback library
             if (!PlayM4.PlayM4_GetPort(ref _port)) return false;
 
             IsInitialized = _port >= 0;
@@ -113,16 +194,25 @@ public sealed class PlayM4Decoder : IDisposable
     }
 
     /// <summary>
-    ///     打开流并开始播放
+    ///     Opens stream and starts playback
     /// </summary>
-    /// <param name="systemHeader">系统头数据</param>
-    /// <param name="headerSize">系统头大小</param>
-    /// <param name="hPlayWnd">播放窗口句柄，为 IntPtr.Zero 表示不显示</param>
-    /// <returns>是否成功</returns>
+    /// <param name="systemHeader">System header data pointer</param>
+    /// <param name="headerSize">System header size</param>
+    /// <param name="hPlayWnd">Playback window handle, IntPtr.Zero for no display</param>
+    /// <returns>Whether successful</returns>
     public bool OpenStream(IntPtr systemHeader, uint headerSize, IntPtr hPlayWnd = default)
     {
+        ThrowIfDisposed();
         lock (_lockObject)
         {
+            // Parameter validation
+            if (systemHeader == IntPtr.Zero || headerSize == 0)
+                return false;
+
+            // Prevent duplicate opening - return true if already playing
+            if (IsPlaying)
+                return true;
+
             if (!IsInitialized)
                 if (!Initialize())
                     return false;
@@ -131,33 +221,55 @@ public sealed class PlayM4Decoder : IDisposable
 
             _hPlayWnd = hPlayWnd;
 
-            // 设置实时流播放模式
-            if (!PlayM4.PlayM4_SetStreamOpenMode(_port, STREAME_REALTIME)) return false;
+            // Set real-time stream playback mode
+            if (!PlayM4.PlayM4_SetStreamOpenMode(_port, STREAME_REALTIME))
+            {
+                // Log error if needed: SetStreamOpenMode failed
+                return false;
+            }
 
-            // 打开流接口
-            // 参数：端口号、系统头数据、系统头大小、缓冲区大小（1MB）
-            if (!PlayM4.PlayM4_OpenStream(_port, systemHeader, headerSize, 1024 * 1024 * 10)) return false;
+            // Open stream interface
+            // Parameters: port, system header data, header size, buffer size (10MB)
+            if (!PlayM4.PlayM4_OpenStream(_port, systemHeader, headerSize, 1024 * 1024 * 10))
+            {
+                // Log error if needed: OpenStream failed
+                return false;
+            }
 
-            // 开始播放
+            // Start playback
             if (!PlayM4.PlayM4_Play(_port, _hPlayWnd))
             {
+                // Cleanup on failure
                 PlayM4.PlayM4_CloseStream(_port);
                 return false;
             }
 
             IsPlaying = true;
+            _playingEvent.Set(); // Signal that playback has started
             return true;
         }
     }
 
     /// <summary>
-    ///     输入码流数据
+    ///     Waits for the decoder to start playing
     /// </summary>
-    /// <param name="data">数据指针</param>
-    /// <param name="dataSize">数据大小</param>
-    /// <returns>是否成功</returns>
+    /// <param name="timeoutMs">Timeout in milliseconds</param>
+    /// <returns>True if playing started within timeout, false otherwise</returns>
+    public bool WaitForPlaying(int timeoutMs = 5000)
+    {
+        ThrowIfDisposed();
+        return _playingEvent.Wait(timeoutMs);
+    }
+
+    /// <summary>
+    ///     Inputs stream data for decoding
+    /// </summary>
+    /// <param name="data">Data pointer</param>
+    /// <param name="dataSize">Data size</param>
+    /// <returns>Whether successful</returns>
     public bool InputData(IntPtr data, uint dataSize)
     {
+        ThrowIfDisposed();
         lock (_lockObject)
         {
             if (!IsPlaying || _port < 0 || dataSize == 0) return false;
@@ -167,7 +279,7 @@ public sealed class PlayM4Decoder : IDisposable
     }
 
     /// <summary>
-    ///     停止播放
+    ///     Stops playback
     /// </summary>
     public void Stop()
     {
@@ -177,14 +289,24 @@ public sealed class PlayM4Decoder : IDisposable
             {
                 PlayM4.PlayM4_Stop(_port);
                 IsPlaying = false;
+                _playingEvent.Reset();
             }
         }
     }
 
     /// <summary>
-    ///     关闭流
+    ///     Closes the stream
     /// </summary>
     public void CloseStream()
+    {
+        ThrowIfDisposed();
+        CloseStreamInternal();
+    }
+
+    /// <summary>
+    ///     Internal close stream - doesn't check disposal state
+    /// </summary>
+    private void CloseStreamInternal()
     {
         lock (_lockObject)
         {
@@ -193,156 +315,165 @@ public sealed class PlayM4Decoder : IDisposable
     }
 
     /// <summary>
-    ///     捕获当前帧为 JPEG 图片
+    ///     Captures the current frame as a JPEG image
     /// </summary>
-    /// <param name="savePath">保存路径</param>
-    /// <returns>是否成功</returns>
+    /// <param name="savePath">Path to save the image</param>
+    /// <returns>Whether successful</returns>
     public bool CaptureJpeg(string savePath)
     {
+        ThrowIfDisposed();
         lock (_lockObject)
         {
             if (!IsPlaying || _port < 0) return false;
 
             SetPictureQuality(100);
 
-            // 分配缓冲区用于存储 JPEG 数据（通常 1MB 足够）
+            // Allocate buffer for JPEG data (10MB should be sufficient)
             const int bufferSize = 1024 * 1024 * 10;
             var buffer = Marshal.AllocHGlobal(bufferSize);
+            byte[]? rentedBuffer = null;
+
             try
             {
                 uint jpegSize = 0;
-                // 获取 JPEG 数据
-                if (!PlayM4.PlayM4_GetJPEG(_port, buffer, bufferSize, ref jpegSize)) return false;
+                // Get JPEG data
+                if (!PlayM4.PlayM4_GetJPEG(_port, buffer, bufferSize, ref jpegSize))
+                    return false;
 
-                if (jpegSize == 0 || jpegSize > bufferSize) return false;
+                if (jpegSize == 0 || jpegSize > bufferSize)
+                    return false;
 
-                // 将数据从非托管内存复制到字节数组
-                var jpegData = new byte[jpegSize];
-                Marshal.Copy(buffer, jpegData, 0, (int)jpegSize);
+                // Rent buffer from ArrayPool to avoid LOH allocation
+                rentedBuffer = _bufferPool.Rent((int)jpegSize);
+                Marshal.Copy(buffer, rentedBuffer, 0, (int)jpegSize);
 
-                // 写入文件
-                File.WriteAllBytes(savePath, jpegData);
+                // Write only the actual data size to file
+                File.WriteAllBytes(savePath, rentedBuffer.AsSpan(0, (int)jpegSize).ToArray());
                 return true;
             }
             finally
             {
-                Marshal.FreeHGlobal(buffer);
+                if (buffer != IntPtr.Zero)
+                    Marshal.FreeHGlobal(buffer);
+
+                if (rentedBuffer != null)
+                    _bufferPool.Return(rentedBuffer);
             }
         }
     }
 }
 
 /// <summary>
-///     PlayM4 播放库 P/Invoke 声明
+///     PlayM4 playback library P/Invoke declarations
 /// </summary>
 internal static class PlayM4
 {
     private const string DllName = "PlayCtrl.dll";
 
     /// <summary>
-    ///     获取播放库未使用的通道号
+    ///     Gets an unused channel number from the playback library
     /// </summary>
-    /// <param name="nPort">输出参数，返回端口号</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Output parameter, returns port number</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_GetPort(ref int nPort);
 
     /// <summary>
-    ///     设置流打开模式
+    ///     Sets the stream open mode
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <param name="nMode">模式：0-实时流，1-文件流</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <param name="nMode">Mode: 0-real-time stream, 1-file stream</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_SetStreamOpenMode(int nPort, int nMode);
 
     /// <summary>
-    ///     打开流
+    ///     Opens a stream
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <param name="pFileHeadBuf">系统头数据指针</param>
-    /// <param name="nSize">系统头大小</param>
-    /// <param name="nBufPoolSize">缓冲区大小</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <param name="pFileHeadBuf">System header data pointer</param>
+    /// <param name="nSize">System header size</param>
+    /// <param name="nBufPoolSize">Buffer size</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_OpenStream(int nPort, IntPtr pFileHeadBuf, uint nSize, uint nBufPoolSize);
 
     /// <summary>
-    ///     开始播放
+    ///     Starts playback
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <param name="hWnd">播放窗口句柄</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <param name="hWnd">Playback window handle</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_Play(int nPort, IntPtr hWnd);
 
     /// <summary>
-    ///     输入数据
+    ///     Inputs data for decoding
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <param name="pBuf">数据指针</param>
-    /// <param name="nSize">数据大小</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <param name="pBuf">Data pointer</param>
+    /// <param name="nSize">Data size</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_InputData(int nPort, IntPtr pBuf, uint nSize);
 
     /// <summary>
-    ///     停止播放
+    ///     Stops playback
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_Stop(int nPort);
 
     /// <summary>
-    ///     关闭流
+    ///     Closes a stream
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_CloseStream(int nPort);
 
     /// <summary>
-    ///     释放端口
+    ///     Frees a port
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_FreePort(int nPort);
 
     /// <summary>
-    ///     获取当前帧的 JPEG 图片
+    ///     Gets the current frame as a JPEG image
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <param name="pJpeg">JPEG 数据缓冲区</param>
-    /// <param name="nBufSize">缓冲区大小</param>
-    /// <param name="pJpegSize">输出参数，返回实际 JPEG 数据大小</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <param name="pJpeg">JPEG data buffer</param>
+    /// <param name="nBufSize">Buffer size</param>
+    /// <param name="pJpegSize">Output parameter, returns actual JPEG data size</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_GetJPEG(int nPort, IntPtr pJpeg, uint nBufSize, ref uint pJpegSize);
 
     /// <summary>
-    ///     获取最后一个错误码
+    ///     Gets the last error code
     /// </summary>
-    /// <returns>错误码</returns>
+    /// <returns>Error code</returns>
     [DllImport(DllName)]
     internal static extern int PlayM4_GetLastError(int nPort);
 
     /// <summary>
-    ///     获取图片质量
+    ///     Gets the picture quality setting
     /// </summary>
-    /// <param name="nPort">端口号</param>
-    /// <param name="bHighQuality">输出参数，true 表示高质量，false 表示普通质量</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nPort">Port number</param>
+    /// <param name="bHighQuality">Output parameter, true for high quality, false for normal</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_GetPictureQuality(int nPort, ref bool bHighQuality);
 
 
     /// <summary>
-    ///     设置全局 JPEG 质量（适用于所有端口）
+    ///     Sets the global JPEG quality (applies to all ports)
     /// </summary>
-    /// <param name="nQuality">质量值，通常范围 0-100，值越大质量越高</param>
-    /// <returns>是否成功</returns>
+    /// <param name="nQuality">Quality value, typically 0-100, higher is better quality</param>
+    /// <returns>Whether successful</returns>
     [DllImport(DllName)]
     internal static extern bool PlayM4_SetJpegQuality(long nQuality);
 }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -406,171 +407,273 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         if (!EnsureLogin(config, out var userId))
         {
             _logger?.LogWarning(
-                "海康威视流式抓拍失败（登录失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}",
+                "Stream capture failed (login failed): IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}",
                 config.Ip, config.Port, channel, saveFullPath);
             return false;
         }
 
+        // Performance tracking
+        var sw = Stopwatch.StartNew();
+        
         var lRealHandle = -1;
-        // 当 hPlayWnd 为 NULL 时，需要设置回调函数来处理码流数据
-        // 参考文档：hPlayWnd 为 NULL 时仅取流不解码，需要手动解码（使用播放库 PlayM4）
-        // 使用 PlayM4Decoder 进行手动解码
-        var hPlayWnd = IntPtr.Zero; // NULL - 仅取流不解码，需要手动解码
+        // When hPlayWnd is NULL, callback function is needed to process stream data
+        // Reference: hPlayWnd as NULL means only fetch stream without decoding, manual decoding required (using PlayM4)
+        var hPlayWnd = IntPtr.Zero; // NULL - fetch stream only, manual decoding required
 
-        // 创建 PlayM4 解码器实例
+        // Create PlayM4 decoder instance
         PlayM4Decoder? decoder = null;
         var streamLock = new object();
+        
+        // Local state flag captured by closure - prevents race condition
+        var disposed = false;
 
-        // 回调函数用于接收码流数据（当 hPlayWnd 为 NULL 时）
-        // 数据类型：NET_DVR_SYSHEAD(系统头), NET_DVR_STREAMDATA(码流数据) 等
-        // 使用 PlayM4Decoder 进行手动解码
+        _logger?.LogDebug("Starting stream capture: IP={Ip}, Channel={Channel}", config.Ip, channel);
+
+        // Callback function for receiving stream data (when hPlayWnd is NULL)
+        // Data types: NET_DVR_SYSHEAD (system header), NET_DVR_STREAMDATA (stream data), etc.
+        // Use PlayM4Decoder for manual decoding
         NET_DVR.REALDATACALLBACK realDataCallback = (handle, dataType, buffer, bufSize, user) =>
         {
-            lock (streamLock)
+            // CRITICAL: Wrap entire callback in try-catch to prevent process crash
+            // Unmanaged SDK cannot handle managed exceptions
+            try
             {
-                switch (dataType)
+                // Quick exit if disposed - check before acquiring lock
+                if (disposed) return;
+
+                lock (streamLock)
                 {
-                    case NET_DVR.NET_DVR_SYSHEAD: // 系统头数据
-                        if (bufSize > 0 && decoder != null && !decoder.IsInitialized)
-                        {
-                            // 使用系统头数据初始化播放库
-                            // 获取桌面窗口句柄用于播放（即使不显示，也需要有效句柄）
-                            var hWnd = NET_DVR.GetDesktopWindow();
-                            if (!decoder.OpenStream(buffer, bufSize, hWnd))
+                    // Double-check after acquiring lock
+                    if (disposed || decoder == null) return;
+
+                    // Validate buffer parameters
+                    if (buffer == IntPtr.Zero || bufSize == 0) return;
+
+                    switch (dataType)
+                    {
+                        case NET_DVR.NET_DVR_SYSHEAD: // System header data
+                            if (!decoder.IsInitialized)
                             {
-                                // 初始化失败，记录错误
-                                // 可以根据需要记录日志或抛出异常
+                                _logger?.LogDebug("Received system header: Size={Size}", bufSize);
+                                // Use system header data to initialize playback library
+                                // Get desktop window handle for playback (even if not displaying, valid handle needed)
+                                var hWnd = NET_DVR.GetDesktopWindow();
+                                if (!decoder.OpenStream(buffer, bufSize, hWnd))
+                                {
+                                    _logger?.LogError("Decoder initialization failed: Port={Port}, Error={Error}",
+                                        decoder.Port, decoder.GetLastError());
+                                }
                             }
-                        }
+                            break;
 
-                        break;
-
-                    case NET_DVR.NET_DVR_STREAMDATA: // 码流数据
-                        if (bufSize > 0 && decoder != null && decoder.IsPlaying)
-                            // 将码流数据输入到播放库进行解码
-                            decoder.InputData(buffer, bufSize);
-
-                        break;
-
-                    case NET_DVR.NET_DVR_AUDIOSTREAMDATA: // 音频数据
-                        if (bufSize > 0)
-                            // 音频数据处理（如果需要）
-                            // PlayM4 也可以处理音频数据
-                            if (decoder != null && decoder.IsPlaying)
+                        case NET_DVR.NET_DVR_STREAMDATA: // Stream data
+                            if (decoder.IsPlaying)
+                            {
+                                // Input stream data to playback library for decoding
                                 decoder.InputData(buffer, bufSize);
+                            }
+                            break;
 
-                        break;
+                        case NET_DVR.NET_DVR_AUDIOSTREAMDATA: // Audio data
+                            // Audio data processing (if needed)
+                            // PlayM4 can also process audio data
+                            if (decoder.IsPlaying)
+                            {
+                                decoder.InputData(buffer, bufSize);
+                            }
+                            break;
 
-                    case NET_DVR.NET_DVR_PRIVATE_DATA: // 私有数据（包括智能信息）
-                        if (bufSize > 0)
-                        {
-                            // 收到私有数据，可能包含智能分析信息
-                            // 可以根据需要处理这些数据
-                        }
+                        case NET_DVR.NET_DVR_PRIVATE_DATA: // Private data (including smart info)
+                            // Received private data, may contain smart analysis information
+                            // Process as needed
+                            break;
 
-                        break;
-
-                    default:
-                        // 其他类型的数据，也尝试输入到播放库
-                        if (bufSize > 0 && decoder != null && decoder.IsPlaying) decoder.InputData(buffer, bufSize);
-
-                        break;
+                        default:
+                            // Other types of data, also try to input to playback library
+                            if (decoder.IsPlaying)
+                            {
+                                decoder.InputData(buffer, bufSize);
+                            }
+                            break;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // MUST catch all exceptions to prevent crash from unmanaged callback
+                _logger?.LogError(ex, "Callback exception: DataType={DataType}, BufSize={BufSize}", dataType, bufSize);
             }
         };
 
         try
         {
-            // 创建 PlayM4 解码器实例
+            // Create PlayM4 decoder instance
             decoder = new PlayM4Decoder();
+            _logger?.LogDebug("Decoder created: Port={Port}", decoder.Port);
 
-            // 启动实时预览
-            // hPlayWnd 为 NULL 时仅取流不解码，需要手动解码；设为有效值则 SDK 自动解码
+            // Start real-time preview
+            // hPlayWnd as NULL means only fetch stream without decoding; valid value means SDK auto-decodes
             var previewInfo = new NET_DVR.NET_DVR_PREVIEWINFO
             {
                 lChannel = channel,
-                dwStreamType = 0, // 主码流
-                dwLinkMode = 0, // TCP模式
-                hPlayWnd = hPlayWnd, // NULL - 仅取流不解码，需要手动解码
-                bBlocked = true, // 阻塞取流
-                bPassbackRecord = false, // 不启用录像回传
-                byPreviewMode = 0, // 正常预览
+                dwStreamType = 0, // Main stream
+                dwLinkMode = 0, // TCP mode
+                hPlayWnd = hPlayWnd, // NULL - fetch stream only, manual decoding required
+                bBlocked = true, // Blocking stream fetch
+                bPassbackRecord = false, // Don't enable recording passback
+                byPreviewMode = 0, // Normal preview
                 byStreamID = new byte[32],
-                byProtoType = 0, // 私有协议
+                byProtoType = 0, // Private protocol
                 byRes1 = 0,
-                byVideoCodingType = 0, // 通用编码数据
-                dwDisplayBufNum = 1, // 播放缓冲区最大缓冲帧数
-                byNPQMode = 0, // 直连模式
+                byVideoCodingType = 0, // General encoding data
+                dwDisplayBufNum = 1, // Max buffer frames for playback buffer
+                byNPQMode = 0, // Direct connection mode
                 byRes = new byte[215]
             };
 
-            // 当 hPlayWnd 为 NULL 时，必须设置回调函数来处理码流数据
-            // 回调函数签名：void CALLBACK fRealDataCallBack(LONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
+            // When hPlayWnd is NULL, callback function must be set to process stream data
             lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, realDataCallback, IntPtr.Zero);
             if (lRealHandle < 0)
             {
                 var errorCode = NET_DVR.NET_DVR_GetLastError();
                 _logger?.LogWarning(
-                    "海康威视流式抓拍失败（启动实时预览失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, ErrorCode={ErrorCode}",
-                    config.Ip, config.Port, channel, saveFullPath, errorCode);
+                    "Stream capture failed (preview start failed): IP={Ip}, Port={Port}, Channel={Channel}, ErrorCode={ErrorCode}, ErrorDesc={ErrorDesc}",
+                    config.Ip, config.Port, channel, errorCode, GetErrorDescription(errorCode));
                 return false;
             }
 
-            // 等待解码器初始化和第一帧数据
-            // 等待系统头数据被处理，解码器初始化完成
-            var waitCount = 0;
-            while (!decoder.IsPlaying && waitCount < 50) // 最多等待5秒
-            {
-                Thread.Sleep(100);
-                waitCount++;
-            }
+            _logger?.LogDebug("Preview started: Handle={Handle}", lRealHandle);
 
-            if (!decoder.IsPlaying)
+            // Wait for decoder initialization using event-based waiting instead of polling
+            // This is more efficient and reliable than Thread.Sleep polling
+            if (!decoder.WaitForPlaying(5000))
             {
-                // 解码器初始化失败
-                if (decoder != null && decoder.Port >= 0) playM4Error = decoder.GetLastError();
+                // Decoder initialization failed
+                playM4Error = decoder.GetLastError();
 
                 _logger?.LogWarning(
-                    "海康威视流式抓拍失败（解码器初始化失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, PlayM4Error={PlayM4Error}",
-                    config.Ip, config.Port, channel, saveFullPath, playM4Error);
+                    "Stream capture failed (decoder init timeout): IP={Ip}, Port={Port}, Channel={Channel}, PlayM4Error={PlayM4Error}",
+                    config.Ip, config.Port, channel, playM4Error);
                 return false;
             }
 
-            // 等待一帧数据解码完成
+            // Wait for one frame to be decoded
             Thread.Sleep(500);
 
-            // 使用 PlayM4_GetJPEG 捕获当前帧为 JPEG 图片
+            // Use PlayM4_GetJPEG to capture current frame as JPEG image
             var ok = decoder.CaptureJpeg(saveFullPath);
-
-            if (!ok && decoder != null && decoder.Port >= 0) playM4Error = decoder.GetLastError();
 
             if (!ok)
             {
+                playM4Error = decoder.GetLastError();
                 _logger?.LogWarning(
-                    "海康威视流式抓拍失败（JPEG捕获失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, PlayM4Error={PlayM4Error}",
-                    config.Ip, config.Port, channel, saveFullPath, playM4Error);
+                    "Stream capture failed (JPEG capture failed): IP={Ip}, Port={Port}, Channel={Channel}, PlayM4Error={PlayM4Error}",
+                    config.Ip, config.Port, channel, playM4Error);
+            }
+            else
+            {
+                sw.Stop();
+                var fileSize = File.Exists(saveFullPath) ? new FileInfo(saveFullPath).Length : 0;
+                _logger?.LogInformation(
+                    "Stream capture successful: IP={Ip}, Channel={Channel}, FileSize={Size}, Duration={Ms}ms",
+                    config.Ip, channel, fileSize, sw.ElapsedMilliseconds);
             }
 
             return ok;
         }
         finally
         {
-            // 释放解码器资源
-            if (decoder != null)
-            {
-                // 如果之前没有获取错误码，现在尝试获取
-                if (playM4Error == 0 && decoder.Port >= 0) playM4Error = decoder.GetLastError();
+            // CRITICAL: Fix race condition by following correct order:
+            // 1. Set disposed flag first - prevents new callback executions
+            disposed = true;
 
-                decoder.Dispose();
+            // 2. Stop preview stream - stops SDK from calling more callbacks
+            if (lRealHandle >= 0)
+            {
+                NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
+                // Wait for any in-flight callbacks to complete
+                Thread.Sleep(200);
             }
 
-            if (lRealHandle >= 0) NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
+            // 3. Finally release decoder within lock - ensures no callback is using it
+            lock (streamLock)
+            {
+                if (decoder != null)
+                {
+                    // Get error code if not retrieved earlier
+                    if (playM4Error == 0 && decoder.Port >= 0)
+                        playM4Error = decoder.GetLastError();
+
+                    decoder.Dispose();
+                }
+            }
+
+            _logger?.LogDebug("Resources cleaned: Handle={Handle}", lRealHandle);
         }
     }
 
     private static string BuildDeviceKey(HikvisionDeviceConfig config)
     {
         return $"{config.Ip}:{config.Port}:{config.Username}";
+    }
+
+    /// <summary>
+    ///     Gets a human-readable description for HCNetSDK error codes.
+    /// </summary>
+    /// <param name="errorCode">The HCNetSDK error code</param>
+    /// <returns>A description of the error</returns>
+    private static string GetErrorDescription(uint errorCode)
+    {
+        return errorCode switch
+        {
+            0 => "No error",
+            1 => "Username or password error",
+            2 => "No permission",
+            3 => "SDK not initialized",
+            4 => "Channel number error",
+            5 => "Max client connections to device exceeded",
+            6 => "Version mismatch",
+            7 => "Failed to connect to device",
+            8 => "Send failed",
+            9 => "Receive failed",
+            10 => "Timeout",
+            11 => "Data transfer failed",
+            12 => "Port incorrect",
+            13 => "Password error",
+            14 => "Get DVR work state failed",
+            15 => "Get DVR system info failed",
+            16 => "DVR does not support this function",
+            17 => "DVR is offline",
+            18 => "User is locked",
+            19 => "Failed to allocate resources",
+            20 => "DVR is being operated",
+            21 => "DVR resource is being used",
+            22 => "No more connections from the DVR are allowed",
+            23 => "DVR command execution failed",
+            24 => "DVR preview failed",
+            25 => "DVR parameter format error",
+            26 => "DVR invalid file or file error",
+            27 => "Start preview failed",
+            28 => "Open file failed",
+            29 => "Read file failed",
+            30 => "Write file failed",
+            31 => "Close file failed",
+            32 => "Create file failed",
+            33 => "Delete file failed",
+            34 => "Seek file failed",
+            35 => "Get file size failed",
+            36 => "Open stream failed",
+            37 => "Close stream failed",
+            38 => "Get stream failed",
+            39 => "Start record failed",
+            40 => "Stop record failed",
+            41 => "Start capture failed",
+            42 => "Stop capture failed",
+            43 => "No picture",
+            44 => "Capture timeout",
+            45 => "Get stream timeout",
+            _ => $"Unknown error ({errorCode})"
+        };
     }
 
     private static void EnsureInitialized()
