@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
@@ -200,6 +201,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             // Restart truck scale service with new settings
             await _truckScaleWeightService.RestartAsync();
+
+            // Notify that settings have been saved
+            MessageBus.Current.SendMessage(new SettingsSavedMessage());
 
             // Close window after saving
             CloseRequested?.Invoke(this, EventArgs.Empty);

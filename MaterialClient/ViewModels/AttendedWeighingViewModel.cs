@@ -156,7 +156,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .DisposeWith(_disposables);
 
         StartScaleStatusCheckTimer();
-        StartCameraStatusCheckTimer();
+        _ = CheckCameraStatusOnceAsync();
         StartUsbCameraStatusCheckTimer();
         _ = StartAllDevicesAsync();
 
@@ -176,6 +176,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         StartMatchSucceededMessageBusSubscription();
         StartSaveCompletedMessageBusSubscription();
         StartUpdatePlateNumberMessageBusSubscription();
+        StartSettingsSavedMessageBusSubscription();
 
         // 监听 USB 摄像头在线状态变化、ShouldShowPreview变化和IsShowingMainView变化，自动启动/停止预览
         this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview, x => x.IsShowingMainView)
@@ -248,24 +249,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _disposables.Add(statusTimer);
     }
 
-    private void StartCameraStatusCheckTimer()
+    private async Task CheckCameraStatusOnceAsync()
     {
-        var cameraStatusTimer = new Timer(_ =>
+        try
         {
-            Task.Run(async () =>
-            {
-                try
-                {
-                    await CheckCameraOnlineStatusAsync();
-                }
-                catch
-                {
-                    Dispatcher.UIThread.Post(() => { IsCameraOnline = false; });
-                }
-            });
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
-
-        _disposables.Add(cameraStatusTimer);
+            await CheckCameraOnlineStatusAsync();
+        }
+        catch
+        {
+            Dispatcher.UIThread.Post(() => { IsCameraOnline = false; });
+        }
     }
 
     private void StartUsbCameraStatusCheckTimer()
@@ -698,6 +691,30 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     Logger?.LogError(ex,
                         "AttendedWeighingViewModel: Error while handling UpdatePlateNumberMessage for WeighingRecordId {RecordId}",
                         message.WeighingRecordId);
+                }
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    ///     订阅设置已保存消息（通过 ReactiveUI MessageBus）
+    /// </summary>
+    private void StartSettingsSavedMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<SettingsSavedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async _ =>
+            {
+                Logger?.LogInformation("AttendedWeighingViewModel: Received SettingsSavedMessage, checking camera status");
+
+                try
+                {
+                    await CheckCameraStatusOnceAsync();
+                    Logger?.LogInformation("AttendedWeighingViewModel: Camera status check completed after settings save");
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "AttendedWeighingViewModel: Error while checking camera status after settings save");
                 }
             })
             .DisposeWith(_disposables);
