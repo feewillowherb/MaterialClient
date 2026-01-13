@@ -130,13 +130,14 @@ public static class PlateNumberValidator
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return plateNumber;
 
-        // 检查是否包含简体"挂"字
-        if (plateNumber.Contains("挂"))
+        // 过滤简体"挂"字（main branch behavior: remove instead of reject）
+        var filtered = plateNumber.Replace("挂", string.Empty);
+        
+        if (filtered != plateNumber)
         {
-            logger?.LogWarning("车牌号包含'挂'字，拒绝接收: {PlateNumber}", plateNumber);
-            return null;
+            logger?.LogInformation("车牌号包含'挂'字，已过滤: {Original} -> {Filtered}", plateNumber, filtered);
         }
-
-        return plateNumber;
+        
+        return string.IsNullOrWhiteSpace(filtered) ? null : filtered;
     }
 }

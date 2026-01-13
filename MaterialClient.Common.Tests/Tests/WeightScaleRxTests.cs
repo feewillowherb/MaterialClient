@@ -2,11 +2,9 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
-using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Volo.Abp.Domain.Repositories;
@@ -202,12 +200,6 @@ public class WeightScaleRxTests
 
         var hikvisionService = Substitute.For<IHikvisionService>();
         var weighingRecordRepo = Substitute.For<IRepository<WeighingRecord, long>>();
-        var recommendPlateService = new RecommendPlateNumberService(
-            Substitute.For<IRepository<Waybill, long>>(),
-            Substitute.For<ILogger<RecommendPlateNumberService>>(),
-            settingsService,
-            Substitute.For<IUnitOfWorkManager>(),
-            Substitute.For<IMemoryCache>());
         var attachmentRepo = Substitute.For<IRepository<WeighingRecordAttachment, int>>();
         var fileRepo = Substitute.For<IRepository<AttachmentFile, int>>();
 
@@ -221,16 +213,13 @@ public class WeightScaleRxTests
 
         var eventBus = Substitute.For<Volo.Abp.EventBus.Local.ILocalEventBus>();
 
-        // 创建服务实例
+        // 创建服务实例 (main branch RxState version with 9 parameters)
         return new AttendedWeighingService(
             fileRepo,
             hikvisionService,
             eventBus,
             logger,
-            null, // ILPRAllInOneService? (可选)
             settingsService,
-            null, // ISoundDeviceService? (可选)
-            recommendPlateService,
             truckScaleWeightService,
             uowManager,
             attachmentRepo,
