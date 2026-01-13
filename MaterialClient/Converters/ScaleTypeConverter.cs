@@ -2,27 +2,20 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Extensions;
 
 namespace MaterialClient.Converters;
 
 /// <summary>
-///     Scale unit converter for displaying enum values as text
+///     Scale type converter for displaying enum values as text
 /// </summary>
-public class ScaleUnitConverter : IValueConverter
+public class ScaleTypeConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is ScaleUnit unit)
+        if (value is ScaleType scaleType)
         {
-            return unit switch
-            {
-                ScaleUnit.Kg => "kg",
-                ScaleUnit.Ton => "t",
-                ScaleUnit.TenGram => "10g",
-                ScaleUnit.HundredGram => "100g",
-                ScaleUnit.Gram => "g",
-                _ => value.ToString()
-            };
+            return scaleType.GetDescription();
         }
 
         return value?.ToString();

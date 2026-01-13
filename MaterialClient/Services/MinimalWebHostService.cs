@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +31,7 @@ public class MinimalWebHostService : IAsyncDisposable
     
     private static string ApiPath ="/api/CarLicense/CallDeviceMessage";
     private static string HuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
+    private static string CallDeviceStatusPath = "/api/CarLicense/CallDeviceStatus";
 
     /// <summary>
     ///     构造函数，注入共享的服务提供者
@@ -170,7 +172,8 @@ public class MinimalWebHostService : IAsyncDisposable
             endpoints = new[]
             {  
                 ApiPath,
-                HuaXiaZhiXingApiPath
+                HuaXiaZhiXingApiPath,
+                CallDeviceStatusPath
             }
         }));
 
@@ -219,53 +222,99 @@ public class MinimalWebHostService : IAsyncDisposable
             }
         });
 
-        // 车牌识别 - 设备回调接口（华夏智信）
-        app.MapPost(HuaXiaZhiXingApiPath, async (HttpContext context) =>
+        // 车牌识别 - 设备回调接口（华夏智信）- 支持 GET 和 POST
+        app.MapMethods(HuaXiaZhiXingApiPath, new[] { "GET", "POST" }, async (HttpContext context) =>
         {
             var logger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
             var result = new ResultInfoHuaXiaZhiXing();
 
             try
             {
-                IFormCollection? form = null;
+                FormNameValueCollection? form = null;
 
-                // 启用缓冲，允许多次读取请求体
-                context.Request.EnableBuffering();
-
-                // 优先尝试读取标准表单数据
-                if (context.Request.HasFormContentType)
+                // 首先尝试从查询字符串获取参数（GET 请求或 POST 请求的查询参数）
+                if (context.Request.Query.Count > 0)
                 {
-                    try
+                    var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kvp in context.Request.Query)
                     {
-                        // 使用 ReadFormAsync 而不是直接访问 Form 属性
-                        form = await context.Request.ReadFormAsync();
+                        var value = kvp.Value.Count > 0 ? kvp.Value[0] ?? string.Empty : string.Empty;
+                        dict[kvp.Key] = value;
                     }
-                    catch (BadHttpRequestException ex)
-                    {
-                        // 请求体不完整或格式错误，记录日志并尝试从原始请求体读取
-                        logger.LogWarning(ex, "无法读取标准表单数据，尝试从原始请求体解析");
-                        form = null;
-                    }
+                    form = new FormNameValueCollection(dict);
                 }
 
-                // 如果标准表单读取失败，尝试从原始请求体解析
-                if (form == null || form.Count == 0)
+                // 如果是 POST 请求，尝试从请求体读取（完全还原旧代码逻辑）
+                // 对于 GET 请求，如果查询字符串已有参数，跳过请求体读取
+                if ((form == null || form.Count == 0) && context.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                 {
-                    context.Request.Body.Position = 0;
-                    using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
-                    var raw = await reader.ReadToEndAsync();
-                    context.Request.Body.Position = 0;
-
-                    if (!string.IsNullOrWhiteSpace(raw))
+                    // Prefer standard form collection if populated（完全还原旧代码逻辑）
+                    try
                     {
-                        // 解析查询字符串格式的原始数据
-                        var queryParams = QueryHelpers.ParseQuery(raw);
-                        var formDictionary = new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>();
-                        foreach (var kvp in queryParams)
+                        context.Request.EnableBuffering();
+                        IFormCollection? ctxForm = null;
+                        try
                         {
-                            formDictionary[kvp.Key] = kvp.Value;
+                            ctxForm = await context.Request.ReadFormAsync();
                         }
-                        form = new FormCollection(formDictionary);
+                        catch (BadHttpRequestException)
+                        {
+                            // 请求体不完整，忽略并继续尝试从原始请求体读取
+                        }
+                        catch
+                        {
+                            // 忽略其他读取失败，继续尝试从原始请求体读取
+                        }
+
+                        if (ctxForm != null && ctxForm.Count > 0)
+                        {
+                            // 将 IFormCollection 转换为 Dictionary，然后包装为 FormNameValueCollection
+                            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var kvp in ctxForm)
+                            {
+                                dict[kvp.Key] = kvp.Value.ToString();
+                            }
+                            form = new FormNameValueCollection(dict);
+                        }
+                        else
+                        {
+                            // Fallback: read raw body and parse（完全还原旧代码逻辑）
+                            try
+                            {
+                                if (context.Request.Body.CanSeek)
+                                {
+                                    context.Request.Body.Position = 0;
+                                    using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
+                                    var raw = await reader.ReadToEndAsync();
+                                    context.Request.Body.Position = 0;
+
+                                    if (!string.IsNullOrWhiteSpace(raw))
+                                    {
+                                        // 使用 QueryHelpers.ParseQuery 解析（自动URL解码，与 HttpUtility.ParseQueryString 行为一致）
+                                        var queryParams = QueryHelpers.ParseQuery(raw);
+                                        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                        foreach (var kvp in queryParams)
+                                        {
+                                            var value = kvp.Value.Count > 0 ? kvp.Value[0] ?? string.Empty : string.Empty;
+                                            dict[kvp.Key] = value;
+                                        }
+                                        form = new FormNameValueCollection(dict);
+                                    }
+                                }
+                            }
+                            catch (BadHttpRequestException)
+                            {
+                                // 请求体不完整，忽略错误，继续处理
+                            }
+                            catch
+                            {
+                                // 忽略其他读取错误，继续处理
+                            }
+                        }
+                    }
+                    catch (BadHttpRequestException)
+                    {
+                        // 请求体不完整，忽略错误，继续处理（可能查询字符串有参数）
                     }
                 }
 
@@ -273,15 +322,15 @@ public class MinimalWebHostService : IAsyncDisposable
                 {
                     result.error_num = -1;
                     result.error_str = "无效的请求";
-                    logger.LogWarning("接收到无效的华夏智信请求（无表单数据）");
                     return Results.Json(result);
                 }
 
-                var type = form["type"].ToString() ?? string.Empty;
+                var type = form["type"] ?? string.Empty;
+                logger.LogInformation($"form:{form}");
                 
                 if (type.Equals("online", StringComparison.OrdinalIgnoreCase))
                 {
-                    var plateNum = form["plate_num"].ToString();
+                    var plateNum = form["plate_num"]; // Already decoded (京A12345)
                     if (!string.IsNullOrWhiteSpace(plateNum))
                     {
                         var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
@@ -289,18 +338,18 @@ public class MinimalWebHostService : IAsyncDisposable
                         
                         logger.LogInformation($"华夏智信抓拍车牌号：{plateNum}");
                         
-                        // 可选：访问其他字段
-                        // var plateColor = form["plate_color"].ToString();
-                        // var pictureBase64 = form["picture"].ToString();
-                        // var closeupBase64 = form["closeup_pic"].ToString();
+                        // Optional: access other fields if needed
+                        // var plateColor = form["plate_color"];
+                        // var pictureBase64 = form["picture"];
+                        // var closeupBase64 = form["closeup_pic"];
                     }
                 }
                 else if (type.Equals("heartbeat", StringComparison.OrdinalIgnoreCase))
                 {
-                    var camIp = form["cam_ip"].ToString();
+                    var camIp = form["cam_ip"];
                     if (!string.IsNullOrEmpty(camIp))
                     {
-                        logger.LogDebug($"华夏智信设备心跳：{camIp}");
+                        logger.LogInformation($"华夏智信设备心跳：{camIp}");
                         // 注意：原代码中的 Params 和 onlineTime 更新逻辑需要根据实际需求实现
                         // 这里仅记录日志，如果需要设备状态管理，可以添加相应的服务
                     }
@@ -308,13 +357,6 @@ public class MinimalWebHostService : IAsyncDisposable
 
                 result.error_num = 0;
                 result.error_str = string.Empty;
-            }
-            catch (BadHttpRequestException ex)
-            {
-                // 专门处理请求体相关的异常
-                result.error_num = -1;
-                result.error_str = "请求格式错误";
-                logger.LogWarning(ex, "华夏智信设备回调请求格式错误");
             }
             catch (Exception ex)
             {
@@ -324,6 +366,89 @@ public class MinimalWebHostService : IAsyncDisposable
             }
 
             return Results.Json(result);
+        });
+        
+
+        // LPRAllInOne comet 轮询端点 - 设备状态查询
+        // 设备会轮询此端点（GET 或 POST），如果需要触发抓拍，在响应中返回触发消息
+        // 根据 cap.md，设备会发送设备注册消息（心跳），包含 ipaddr 字段
+        app.MapMethods(CallDeviceStatusPath, new[] { "GET", "POST" }, async (HttpContext context) =>
+        {
+            var statusLogger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
+            
+            try
+            {
+                string? deviceIp = null;
+                
+                // 首先尝试从查询参数中获取设备IP（GET 请求）
+                deviceIp = context.Request.Query["ipaddr"].ToString();
+                
+                // 如果查询参数中没有，尝试从表单数据中获取（POST 请求，comet 轮询通常使用 POST）
+                if (string.IsNullOrWhiteSpace(deviceIp))
+                {
+                    if (context.Request.HasFormContentType)
+                    {
+                        try
+                        {
+                            context.Request.EnableBuffering();
+                            var form = await context.Request.ReadFormAsync();
+                            deviceIp = form["ipaddr"].ToString();
+                        }
+                        catch
+                        {
+                            // 忽略表单读取错误
+                        }
+                    }
+                }
+
+                // 如果仍然没有，尝试从 RemoteIpAddress 获取
+                if (string.IsNullOrWhiteSpace(deviceIp))
+                {
+                    deviceIp = context.Connection.RemoteIpAddress?.ToString();
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceIp))
+                {
+                    statusLogger.LogWarning("Cannot determine device IP from CallDeviceStatus request");
+                    return Results.Ok(new
+                    {
+                        success = true,
+                        msg = ""
+                    });
+                }
+
+                // 检查是否需要触发抓拍
+                var lprService = _sharedServiceProvider.GetService<MaterialClient.Common.Services.LPRAllInOne.ILPRAllInOneService>();
+                if (lprService != null && lprService.CheckAndClearTriggerFlag(deviceIp))
+                {
+                    // 需要触发抓拍，返回触发消息
+                    // 根据 cap.md (700-711)，返回格式：{"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
+                    statusLogger.LogInformation("Returning manual trigger message for device IP: {Ip}", deviceIp);
+                    return Results.Json(new
+                    {
+                        Response_AlarmInfoPlate = new
+                        {
+                            manualTrigger = "ok"
+                        }
+                    });
+                }
+
+                // 不需要触发，返回正常响应
+                return Results.Ok(new
+                {
+                    success = true,
+                    msg = ""
+                });
+            }
+            catch (Exception ex)
+            {
+                statusLogger.LogError(ex, "Error processing CallDeviceStatus request");
+                return Results.Ok(new
+                {
+                    success = true,
+                    msg = ""
+                });
+            }
         });
     }
 
@@ -337,6 +462,35 @@ public class MinimalWebHostService : IAsyncDisposable
     {
         public int error_num { get; set; }
         public string error_str { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    ///     模拟 NameValueCollection 行为的简单包装类（完全还原旧代码逻辑）
+    /// </summary>
+    private class FormNameValueCollection
+    {
+        private readonly Dictionary<string, string> _dict;
+
+        public FormNameValueCollection(Dictionary<string, string> dict)
+        {
+            _dict = dict ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        public int Count => _dict.Count;
+
+        public string? this[string key]
+        {
+            get
+            {
+                _dict.TryGetValue(key, out var value);
+                return value;
+            }
+        }
+
+        public override string ToString()
+        {
+            return string.Join(", ", _dict.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        }
     }
 
     #endregion

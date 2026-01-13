@@ -10,6 +10,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
@@ -24,6 +25,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
+    private readonly ILogger<SettingsWindowViewModel> _logger;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -37,6 +39,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableAutoStart;
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
     [Reactive] private string _urls = "http://localhost:9960";
+    [Reactive] private SnapshotCameraType _snapshotCameraType = SnapshotCameraType.Hikvision;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -49,6 +52,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     // Scale settings
     [Reactive] private string _scaleSerialPort = "COM3";
     [Reactive] private ScaleUnit _scaleUnit = ScaleUnit.Ton;
+    [Reactive] private ScaleType _scaleType = ScaleType.Default;
 
     /// <summary>
     ///     Scale unit options for ComboBox
@@ -56,7 +60,19 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public ObservableCollection<ScaleUnit> ScaleUnitOptions { get; } = new()
     {
         ScaleUnit.Kg,
-        ScaleUnit.Ton
+        ScaleUnit.Ton,
+        ScaleUnit.TenGram,
+        ScaleUnit.HundredGram,
+        ScaleUnit.Gram
+    };
+
+    /// <summary>
+    ///     Scale type options for ComboBox
+    /// </summary>
+    public ObservableCollection<ScaleType> ScaleTypeOptions { get; } = new()
+    {
+        ScaleType.Default,
+        ScaleType.DingSong
     };
 
     /// <summary>
@@ -66,6 +82,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         StreamType.Substream,
         StreamType.Mainstream
+    };
+
+    /// <summary>
+    ///     Snapshot camera type options for ComboBox
+    /// </summary>
+    public ObservableCollection<SnapshotCameraType> SnapshotCameraTypeOptions { get; } = new()
+    {
+        SnapshotCameraType.Hikvision,
+        SnapshotCameraType.LprAllInOne
     };
 
     // Weighing configuration
@@ -86,11 +111,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public SettingsWindowViewModel(
         ISettingsService settingsService,
         ITruckScaleWeightService truckScaleWeightService,
-        IHikvisionService hikvisionService)
+        IHikvisionService hikvisionService,
+        ILogger<SettingsWindowViewModel> logger)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
+        _logger = logger;
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
@@ -121,7 +148,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     SerialPort = ScaleSerialPort,
                     BaudRate = ScaleBaudRate,
                     CommunicationMethod = ScaleCommunicationMethod,
-                    ScaleUnit = ScaleUnit
+                    ScaleUnit = ScaleUnit,
+                    ScaleType = ScaleType
                 },
                 new DocumentScannerConfig
                 {
@@ -131,7 +159,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 {
                     EnableAutoStart = EnableAutoStart,
                     CaptureStreamType = CaptureStreamType,
-                    Urls = Urls
+                    Urls = Urls,
+                    SnapshotCameraType = SnapshotCameraType
                 },
                 CameraConfigs.Select(c => new CameraConfig
                 {
@@ -224,11 +253,31 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         try
         {
+            _logger.LogInformation("开始测试拍照...");
             // Call test capture service method - it will handle all cameras and send notification
-            await _hikvisionService.TestCaptureAsync();
+            var results = await _hikvisionService.TestCaptureAsync();
+            var successCount = results.Count(r => r.Success);
+            var failCount = results.Count - successCount;
+            _logger.LogInformation("测试拍照完成，成功: {SuccessCount}, 失败: {FailCount}", successCount, failCount);
+            
+            // Log detailed results
+            foreach (var result in results)
+            {
+                if (result.Success)
+                {
+                    _logger.LogInformation("拍照成功 - 设备: {DeviceKey}, 通道: {Channel}, 文件: {FilePath}, 大小: {FileSize} bytes",
+                        result.Request.DeviceKey, result.Request.Channel, result.Request.SaveFullPath, result.FileSize);
+                }
+                else
+                {
+                    _logger.LogWarning("拍照失败 - 设备: {DeviceKey}, 通道: {Channel}, 错误: {ErrorMessage}",
+                        result.Request.DeviceKey, result.Request.Channel, result.ErrorMessage);
+                }
+            }
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "测试拍照时发生异常");
             // Show error message - in a real app you'd use a dialog service
             // Error: ex.Message
         }
@@ -270,6 +319,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             ScaleBaudRate = settings.ScaleSettings.BaudRate;
             ScaleCommunicationMethod = settings.ScaleSettings.CommunicationMethod;
             ScaleUnit = settings.ScaleSettings.ScaleUnit;
+            ScaleType = settings.ScaleSettings.ScaleType;
 
             // Ensure the loaded serial port is in the available list
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
@@ -282,6 +332,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
             Urls = settings.SystemSettings.Urls;
+            SnapshotCameraType = settings.SystemSettings.SnapshotCameraType;
 
             // Load weighing configuration
             MinWeightThreshold = settings.WeighingConfiguration.MinWeightThreshold;

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using MaterialClient.Common.Configuration;
@@ -9,6 +10,11 @@ using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hikvision;
 
+/// <summary>
+///     海康威视设备服务接口
+///     注意：此服务专门用于海康威视设备的抓拍功能，与 SystemSettings.SnapshotCameraType 配置无关。
+///     无论 SnapshotCameraType 设置为 Hikvision 还是 LPRAllInOne，此服务都会正常工作。
+/// </summary>
 public interface IHikvisionService
 {
     void AddOrUpdateDevice(HikvisionDeviceConfig config);
@@ -24,14 +30,22 @@ public interface IHikvisionService
     Task<List<BatchCaptureResult>> TestCaptureAsync();
 }
 
+/// <summary>
+///     海康威视设备服务实现
+///     注意：此服务专门用于海康威视设备的抓拍功能，与 SystemSettings.SnapshotCameraType 配置无关。
+///     无论 SnapshotCameraType 设置为 Hikvision 还是 LPRAllInOne，此服务都会正常工作。
+///     调用方应根据 SnapshotCameraType 配置决定是否调用此服务的方法。
+/// </summary>
 public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 {
     private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
     private readonly ISettingsService? _settingsService;
+    private readonly ILogger<HikvisionService>? _logger;
 
-    public HikvisionService(ISettingsService? settingsService = null)
+    public HikvisionService(ISettingsService? settingsService = null, ILogger<HikvisionService>? logger = null)
     {
         _settingsService = settingsService;
+        _logger = logger;
     }
 
     public void AddOrUpdateDevice(HikvisionDeviceConfig config)
@@ -45,10 +59,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     {
         ArgumentNullException.ThrowIfNull(config);
         EnsureInitialized();
-        var login = TryLogin(config, out var userId);
-        if (login) NET_DVR.NET_DVR_Logout(userId);
-
-        return login;
+        return EnsureLogin(config, out _);
     }
 
     public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90)
@@ -60,23 +71,41 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
 
-        if (!TryLogin(config, out var userId)) return false;
+        if (!EnsureLogin(config, out var userId))
+        {
+            _logger?.LogWarning(
+                "海康威视抓拍失败（登录失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}",
+                config.Ip, config.Port, channel, saveFullPath);
+            return false;
+        }
 
-        try
+        var para = new NET_DVR.NET_DVR_JPEGPARA
         {
-            var para = new NET_DVR.NET_DVR_JPEGPARA
-            {
-                wPicQuality = (ushort)Math.Clamp(quality, 0, 100),
-                wPicSize = 0xFF // use device default
-            };
-            var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
-            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
-            return ok;
-        }
-        finally
+            wPicQuality = (ushort)Math.Clamp(quality, 0, 100),
+            wPicSize = 0xFF // use device default
+        };
+
+        // 分配 10MB 缓存区
+        const int bufferSize = 10 * 1024 * 1024; // 10MB
+        var buffer = new byte[bufferSize];
+        uint returnedSize = 0;
+
+        // 调用新 API
+        var ok = NET_DVR.NET_DVR_CaptureJPEGPicture_NEW(
+            userId, channel, ref para, buffer, (uint)bufferSize, out returnedSize);
+
+        if (ok && returnedSize > 0)
         {
-            NET_DVR.NET_DVR_Logout(userId);
+            // 将缓存区数据写入文件
+            File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
+            return true;
         }
+
+        var errorCode = NET_DVR.NET_DVR_GetLastError();
+        _logger?.LogWarning(
+            "海康威视抓拍失败: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, ErrorCode={ErrorCode}, ReturnedSize={ReturnedSize}",
+            config.Ip, config.Port, channel, saveFullPath, errorCode, returnedSize);
+        return false;
     }
 
     public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError,
@@ -90,29 +119,46 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
 
-        if (!TryLogin(config, out var userId))
+        if (!EnsureLogin(config, out var userId))
         {
             lastError = NET_DVR.NET_DVR_GetLastError();
+            _logger?.LogWarning(
+                "海康威视抓拍失败（登录失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, ErrorCode={ErrorCode}",
+                config.Ip, config.Port, channel, saveFullPath, lastError);
             return false;
         }
 
-        try
+        var para = new NET_DVR.NET_DVR_JPEGPARA
         {
-            var para = new NET_DVR.NET_DVR_JPEGPARA
-            {
-                wPicQuality = (ushort)Math.Clamp(quality, 1, 100),
-                wPicSize = 0xFF
-            };
-            var pathBytes = Encoding.ASCII.GetBytes(saveFullPath + "\0");
-            var ok = NET_DVR.NET_DVR_CaptureJPEGPicture(userId, channel, ref para, pathBytes);
-            if (!ok) lastError = NET_DVR.NET_DVR_GetLastError();
+            wPicQuality = (ushort)Math.Clamp(quality, 1, 100),
+            wPicSize = 0xFF
+        };
 
-            return ok;
-        }
-        finally
+        // 分配 10MB 缓存区
+        const int bufferSize = 10 * 1024 * 1024; // 10MB
+        var buffer = new byte[bufferSize];
+        uint returnedSize = 0;
+
+        // 调用新 API
+        var ok = NET_DVR.NET_DVR_CaptureJPEGPicture_NEW(
+            userId, channel, ref para, buffer, (uint)bufferSize, out returnedSize);
+
+        if (ok && returnedSize > 0)
         {
-            NET_DVR.NET_DVR_Logout(userId);
+            // 将缓存区数据写入文件
+            File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
+            return true;
         }
+
+        if (!ok)
+        {
+            lastError = NET_DVR.NET_DVR_GetLastError();
+        }
+
+        _logger?.LogWarning(
+            "海康威视抓拍失败: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, ErrorCode={ErrorCode}, ReturnedSize={ReturnedSize}",
+            config.Ip, config.Port, channel, saveFullPath, lastError, returnedSize);
+        return false;
     }
 
     // Placeholder for real-time stream obtaining. In many apps this returns a handle or starts a callback.
@@ -149,8 +195,8 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         }
 
         // Mainstream capture (existing implementation)
-        // 使用并发处理多个设备
-        var tasks = requests.Select(async request =>
+        // 同步处理多个设备
+        var results = requests.Select(request =>
         {
             var result = new BatchCaptureResult
             {
@@ -164,39 +210,36 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             try
             {
-                // 在后台线程中执行拍照操作（因为 CaptureJpegFromStream 是同步的阻塞操作）
-                await Task.Run(() =>
-                {
-                    var playM4Error = 0;
-                    result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
-                        out playM4Error);
-                    result.PlayM4Error = playM4Error;
+                // 同步调用拍照方法
+                var playM4Error = 0;
+                result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
+                    out playM4Error);
+                result.PlayM4Error = playM4Error;
 
-                    if (!result.Success)
+                if (!result.Success)
+                {
+                    result.HcNetSdkError = GetLastErrorCode();
+                    result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
+                }
+                else
+                {
+                    // 验证文件
+                    if (File.Exists(request.SaveFullPath))
                     {
-                        result.HcNetSdkError = GetLastErrorCode();
-                        result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
+                        var fileInfo = new FileInfo(request.SaveFullPath);
+                        result.FileSize = fileInfo.Length;
+                        if (fileInfo.Length == 0)
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "文件大小为0";
+                        }
                     }
                     else
                     {
-                        // 验证文件
-                        if (File.Exists(request.SaveFullPath))
-                        {
-                            var fileInfo = new FileInfo(request.SaveFullPath);
-                            result.FileSize = fileInfo.Length;
-                            if (fileInfo.Length == 0)
-                            {
-                                result.Success = false;
-                                result.ErrorMessage = "文件大小为0";
-                            }
-                        }
-                        else
-                        {
-                            result.Success = false;
-                            result.ErrorMessage = "文件未创建";
-                        }
+                        result.Success = false;
+                        result.ErrorMessage = "文件未创建";
                     }
-                });
+                }
             }
             catch (Exception ex)
             {
@@ -205,18 +248,17 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             }
 
             return result;
-        });
+        }).ToList();
 
-        var results = await Task.WhenAll(tasks);
-        return results.ToList();
+        return results;
     }
 
-    private async Task<List<BatchCaptureResult>> CaptureJpegBatchInternalAsync(List<BatchCaptureRequest> requests)
+    private Task<List<BatchCaptureResult>> CaptureJpegBatchInternalAsync(List<BatchCaptureRequest> requests)
     {
-        if (requests == null || requests.Count == 0) return new List<BatchCaptureResult>();
+        if (requests == null || requests.Count == 0) return Task.FromResult(new List<BatchCaptureResult>());
 
-        // 使用并发处理多个设备（子码流直接拍照）
-        var tasks = requests.Select(async request =>
+        // 同步处理多个设备（子码流直接拍照）
+        var results = requests.Select(request =>
         {
             var result = new BatchCaptureResult
             {
@@ -230,37 +272,34 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             try
             {
-                // 在后台线程中执行拍照操作（因为 CaptureJpeg 是同步的阻塞操作）
-                await Task.Run(() =>
-                {
-                    uint lastError = 0;
-                    result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError);
-                    result.HcNetSdkError = lastError;
+                // 同步调用拍照方法
+                uint lastError = 0;
+                result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError);
+                result.HcNetSdkError = lastError;
 
-                    if (!result.Success)
+                if (!result.Success)
+                {
+                    result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}";
+                }
+                else
+                {
+                    // 验证文件
+                    if (File.Exists(request.SaveFullPath))
                     {
-                        result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}";
+                        var fileInfo = new FileInfo(request.SaveFullPath);
+                        result.FileSize = fileInfo.Length;
+                        if (fileInfo.Length == 0)
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "文件大小为0";
+                        }
                     }
                     else
                     {
-                        // 验证文件
-                        if (File.Exists(request.SaveFullPath))
-                        {
-                            var fileInfo = new FileInfo(request.SaveFullPath);
-                            result.FileSize = fileInfo.Length;
-                            if (fileInfo.Length == 0)
-                            {
-                                result.Success = false;
-                                result.ErrorMessage = "文件大小为0";
-                            }
-                        }
-                        else
-                        {
-                            result.Success = false;
-                            result.ErrorMessage = "文件未创建";
-                        }
+                        result.Success = false;
+                        result.ErrorMessage = "文件未创建";
                     }
-                });
+                }
             }
             catch (Exception ex)
             {
@@ -269,10 +308,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             }
 
             return result;
-        });
+        }).ToList();
 
-        var results = await Task.WhenAll(tasks);
-        return results.ToList();
+        return Task.FromResult(results);
     }
 
     public async Task<List<BatchCaptureResult>> TestCaptureAsync()
@@ -365,7 +403,13 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
 
-        if (!TryLogin(config, out var userId)) return false;
+        if (!EnsureLogin(config, out var userId))
+        {
+            _logger?.LogWarning(
+                "海康威视流式抓拍失败（登录失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}",
+                config.Ip, config.Port, channel, saveFullPath);
+            return false;
+        }
 
         var lRealHandle = -1;
         // 当 hPlayWnd 为 NULL 时，需要设置回调函数来处理码流数据
@@ -463,7 +507,14 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             // 当 hPlayWnd 为 NULL 时，必须设置回调函数来处理码流数据
             // 回调函数签名：void CALLBACK fRealDataCallBack(LONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
             lRealHandle = NET_DVR.NET_DVR_RealPlay_V40(userId, ref previewInfo, realDataCallback, IntPtr.Zero);
-            if (lRealHandle < 0) return false;
+            if (lRealHandle < 0)
+            {
+                var errorCode = NET_DVR.NET_DVR_GetLastError();
+                _logger?.LogWarning(
+                    "海康威视流式抓拍失败（启动实时预览失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, ErrorCode={ErrorCode}",
+                    config.Ip, config.Port, channel, saveFullPath, errorCode);
+                return false;
+            }
 
             // 等待解码器初始化和第一帧数据
             // 等待系统头数据被处理，解码器初始化完成
@@ -479,6 +530,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 // 解码器初始化失败
                 if (decoder != null && decoder.Port >= 0) playM4Error = decoder.GetLastError();
 
+                _logger?.LogWarning(
+                    "海康威视流式抓拍失败（解码器初始化失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, PlayM4Error={PlayM4Error}",
+                    config.Ip, config.Port, channel, saveFullPath, playM4Error);
                 return false;
             }
 
@@ -489,6 +543,13 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             var ok = decoder.CaptureJpeg(saveFullPath);
 
             if (!ok && decoder != null && decoder.Port >= 0) playM4Error = decoder.GetLastError();
+
+            if (!ok)
+            {
+                _logger?.LogWarning(
+                    "海康威视流式抓拍失败（JPEG捕获失败）: IP={Ip}, Port={Port}, Channel={Channel}, SavePath={SavePath}, PlayM4Error={PlayM4Error}",
+                    config.Ip, config.Port, channel, saveFullPath, playM4Error);
+            }
 
             return ok;
         }
@@ -504,8 +565,6 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             }
 
             if (lRealHandle >= 0) NET_DVR.NET_DVR_StopRealPlay(lRealHandle);
-
-            NET_DVR.NET_DVR_Logout(userId);
         }
     }
 
@@ -525,7 +584,19 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         }
     }
 
-    private static bool TryLogin(HikvisionDeviceConfig config, out int userId)
+    private bool EnsureLogin(HikvisionDeviceConfig config, out int userId)
+    {
+        var key = BuildDeviceKey(config);
+
+        userId = deviceKeyToUserId.AddOrUpdate(
+            key,
+            _ => Login(config),
+            (_, existingUserId) => existingUserId >= 0 ? existingUserId : Login(config));
+
+        return userId >= 0;
+    }
+
+    private int Login(HikvisionDeviceConfig config)
     {
         var devInfo = new NET_DVR.NET_DVR_DEVICEINFO_V40();
         var loginInfo = new NET_DVR.NET_DVR_USER_LOGIN_INFO
@@ -536,8 +607,17 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             wPort = (ushort)config.Port,
             bUseAsynLogin = 0
         };
-        userId = NET_DVR.NET_DVR_Login_V40(ref loginInfo, ref devInfo);
-        return userId >= 0;
+        var userId = NET_DVR.NET_DVR_Login_V40(ref loginInfo, ref devInfo);
+        
+        if (userId < 0)
+        {
+            var errorCode = NET_DVR.NET_DVR_GetLastError();
+            _logger?.LogWarning(
+                "海康威视设备登录失败: IP={Ip}, Port={Port}, Username={Username}, ErrorCode={ErrorCode}",
+                config.Ip, config.Port, config.Username, errorCode);
+        }
+        
+        return userId >= 0 ? userId : -1;
     }
 
     private static byte[] ToFixedBytes(string text, int fixedLen)
@@ -645,6 +725,15 @@ internal static class NET_DVR
     [DllImport("HCNetSDK.dll")]
     internal static extern bool NET_DVR_CaptureJPEGPicture(int lUserID, int lChannel, ref NET_DVR_JPEGPARA lpJpegPara,
         byte[] sPicFileName);
+
+    [DllImport("HCNetSDK.dll")]
+    internal static extern bool NET_DVR_CaptureJPEGPicture_NEW(
+        int lUserID,
+        int lChannel,
+        ref NET_DVR_JPEGPARA lpJpegPara,
+        byte[] pJpegPicBuffer,      // 输出缓存区
+        uint dwPicSize,              // 缓存区大小
+        out uint lpSizeReturned);    // 返回的实际数据大小
 
     [DllImport("HCNetSDK.dll")]
     internal static extern uint NET_DVR_GetLastError();

@@ -28,6 +28,11 @@ public class ScaleSettings
     public ScaleUnit ScaleUnit { get; set; } = ScaleUnit.Kg;
 
     /// <summary>
+    ///     Scale type (default: Default)
+    /// </summary>
+    public ScaleType ScaleType { get; set; } = ScaleType.Default;
+
+    /// <summary>
     ///     判断配置是否有效
     ///     需要SerialPort、BaudRate和CommunicationMethod都不为空
     /// </summary>

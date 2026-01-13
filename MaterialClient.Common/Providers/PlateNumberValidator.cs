@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace MaterialClient.Common.Providers;
 
@@ -125,11 +126,18 @@ public static class PlateNumberValidator
     /// </summary>
     /// <param name="plateNumber">车牌号</param>
     /// <returns>过滤后的车牌号</returns>
-    public static string? FilterHangingCharacter(string? plateNumber)
+    public static string? FilterHangingCharacter(string? plateNumber, ILogger? logger = null)
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return plateNumber;
 
-        // 只过滤简体"挂"字
-        return plateNumber.Replace("挂", string.Empty);
+        // 过滤简体"挂"字（main branch behavior: remove instead of reject）
+        var filtered = plateNumber.Replace("挂", string.Empty);
+        
+        if (filtered != plateNumber)
+        {
+            logger?.LogInformation("车牌号包含'挂'字，已过滤: {Original} -> {Filtered}", plateNumber, filtered);
+        }
+        
+        return string.IsNullOrWhiteSpace(filtered) ? null : filtered;
     }
 }

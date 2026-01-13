@@ -26,7 +26,9 @@
                 <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
                 <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
                 <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
+                <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
                 <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
+                <converters:SnapshotCameraTypeConverter x:Key="SnapshotCameraTypeConverter" />
                 
                 <!-- Color Brushes -->
                 <SolidColorBrush x:Key="PrimaryBlue">#4169E1</SolidColorBrush>

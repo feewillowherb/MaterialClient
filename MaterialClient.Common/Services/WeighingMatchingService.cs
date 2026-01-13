@@ -4,6 +4,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
+using MaterialClient.Common.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -42,7 +43,8 @@ public interface IWeighingMatchingService
     /// <param name="matchedRecord">匹配的称重记录</param>
     /// <param name="deliveryType">收发料类型</param>
     /// <returns>创建的运单</returns>
-    Task<Waybill> ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord, DeliveryType deliveryType);
+    Task<Waybill> ManualMatchAsync(WeighingRecord currentRecord, WeighingRecord matchedRecord,
+        DeliveryType deliveryType);
 
     /// <summary>
     ///     获取称重列表项（分页）
@@ -79,6 +81,13 @@ public interface IWeighingMatchingService
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     Task PushWaybillAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     根据车牌号获取推荐数据（从最新完成的运单中获取）
+    /// </summary>
+    /// <param name="plateNumber">车牌号</param>
+    /// <returns>推荐数据，如果未找到则返回 null</returns>
+    Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber);
 }
 
 /// <summary>
@@ -104,6 +113,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly ISettingsService _settingsService;
+    private readonly RecommendPlateNumberService _recommendPlateNumberService;
 
     /// <summary>
     ///     Load configuration from settings
@@ -525,6 +535,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         waybill.OrderTypeCompleted();
         await _waybillRepository.UpdateAsync(waybill);
+
+        // 将车牌号添加到推荐服务缓存
+        if (!string.IsNullOrWhiteSpace(waybill.PlateNumber))
+        {
+            _recommendPlateNumberService.AddPlateNumberToCache(waybill.PlateNumber);
+        }
     }
 
     /// <inheritdoc />
@@ -1000,6 +1016,66 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             " 更新完成，成功: {SuccessCount}, 失败: {FailCount}",
             successCount, failCount);
     }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber)
+    {
+        if (string.IsNullOrWhiteSpace(plateNumber))
+        {
+            _logger?.LogWarning("GetRecommendationByPlateNumberAsync: Plate number is null or empty");
+            return null;
+        }
+
+        try
+        {
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var latestWaybill = await waybillQuery
+                .AsNoTracking()
+                .Where(w => w.OrderType == OrderTypeEnum.Completed)
+                .Where(w => w.PlateNumber == plateNumber)
+                .OrderByDescending(w => w.JoinTime ?? w.AddDate)
+                .FirstOrDefaultAsync();
+
+            if (latestWaybill == null)
+            {
+                _logger?.LogInformation(
+                    "GetRecommendationByPlateNumberAsync: No completed waybill found for plate number '{PlateNumber}'",
+                    plateNumber);
+                return null;
+            }
+
+            _logger?.LogInformation(
+                "GetRecommendationByPlateNumberAsync: Found recommendation for plate number '{PlateNumber}', WaybillId: {WaybillId}",
+                plateNumber, latestWaybill.Id);
+
+
+            var validProviderId = latestWaybill.ProviderId;
+
+            if (validProviderId == null)
+            {
+                validProviderId =
+                    (await waybillQuery
+                        .FirstOrDefaultAsync(x => x.PlateNumber == plateNumber && x.ProviderId != null))
+                    ?.ProviderId;
+            }
+
+
+            return new WaybillRecommendationDto(
+                latestWaybill.MaterialId,
+                validProviderId,
+                latestWaybill.MaterialUnitId,
+                latestWaybill.OrderPlanOnPcs
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex,
+                "GetRecommendationByPlateNumberAsync: Error occurred while getting recommendation for plate number '{PlateNumber}'",
+                plateNumber);
+            return null;
+        }
+    }
 }
 
 public record UpdateWaybillInput(
@@ -1032,4 +1108,14 @@ public record UpdateListItemInput(
     decimal? WaybillQuantity,
     DeliveryType? DeliveryType,
     string? Remark
+);
+
+/// <summary>
+///     运单推荐数据 DTO
+/// </summary>
+public record WaybillRecommendationDto(
+    int? MaterialId,
+    int? ProviderId,
+    int? MaterialUnitId,
+    decimal? WaybillQuantity
 );

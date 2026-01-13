@@ -1,4 +1,4 @@
-﻿using System.Reactive.Linq;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
@@ -213,7 +213,7 @@ public class WeightScaleRxTests
 
         var eventBus = Substitute.For<Volo.Abp.EventBus.Local.ILocalEventBus>();
 
-        // 创建服务实例
+        // 创建服务实例 (main branch RxState version with 9 parameters)
         return new AttendedWeighingService(
             fileRepo,
             hikvisionService,

@@ -6,21 +6,18 @@ using MaterialClient.Common.Entities.Enums;
 namespace MaterialClient.Converters;
 
 /// <summary>
-///     Scale unit converter for displaying enum values as text
+///     Snapshot camera type converter for displaying enum values as text
 /// </summary>
-public class ScaleUnitConverter : IValueConverter
+public class SnapshotCameraTypeConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is ScaleUnit unit)
+        if (value is SnapshotCameraType cameraType)
         {
-            return unit switch
+            return cameraType switch
             {
-                ScaleUnit.Kg => "kg",
-                ScaleUnit.Ton => "t",
-                ScaleUnit.TenGram => "10g",
-                ScaleUnit.HundredGram => "100g",
-                ScaleUnit.Gram => "g",
+                SnapshotCameraType.Hikvision => "海康威视",
+                SnapshotCameraType.LprAllInOne => "车牌识别一体机",
                 _ => value.ToString()
             };
         }
