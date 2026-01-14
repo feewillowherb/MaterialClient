@@ -1,13 +1,16 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
@@ -82,7 +85,26 @@ public class MinimalWebHostService : IAsyncDisposable
             // Add ABP with HttpHost module
             builder.Services.AddSingleton(_sharedServiceProvider);
 
+            // Add response compression
+            builder.Services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+                options.Providers.Add<GzipCompressionProvider>();
+                options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+                {
+                    "application/json"
+                });
+            });
+
+            builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+            {
+                options.Level = CompressionLevel.Fastest;
+            });
+
             _webApplication = builder.Build();
+
+            // Use response compression middleware
+            _webApplication.UseResponseCompression();
 
             // 配置 API 端点
             ConfigureEndpoints(_webApplication);
@@ -322,7 +344,8 @@ public class MinimalWebHostService : IAsyncDisposable
                 {
                     result.error_num = -1;
                     result.error_str = "无效的请求";
-                    return Results.Json(result);
+                    await WriteCompressedJsonResponse(context, result, logger);
+                    return;
                 }
 
                 var type = form["type"] ?? string.Empty;
@@ -365,7 +388,7 @@ public class MinimalWebHostService : IAsyncDisposable
                 logger.LogError(ex, "处理华夏智信设备回调失败");
             }
 
-            return Results.Json(result);
+            await WriteCompressedJsonResponse(context, result, logger);
         });
         
 
@@ -452,6 +475,29 @@ public class MinimalWebHostService : IAsyncDisposable
         });
     }
 
+    /// <summary>
+    ///     写入压缩的 JSON 响应，确保 Content-Type 包含 charset=utf-8
+    /// </summary>
+    private static async Task WriteCompressedJsonResponse(HttpContext context, ResultInfoHuaXiaZhiXing result, ILogger logger)
+    {
+        // 设置响应状态码
+        context.Response.StatusCode = 200;
+
+        // 设置 Content-Type 头，包含 charset=utf-8
+        context.Response.ContentType = "application/json;charset=utf-8";
+
+        // 序列化 JSON（使用默认选项，保持属性名不变）
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null, // 保持原始属性名（error_num, error_str）
+            WriteIndented = false // 不格式化，保持紧凑格式
+        };
+        
+        var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(result, jsonOptions);
+
+        // 写入响应体（压缩中间件会自动处理压缩和 Content-Length）
+        await context.Response.Body.WriteAsync(jsonBytes.AsMemory(0, jsonBytes.Length));
+    }
 
     #region 华夏智信响应数据模型
 
