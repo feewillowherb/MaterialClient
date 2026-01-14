@@ -37,12 +37,20 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     private readonly ILogger<DeviceManagerService>? _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly ISettingsService _settingsService;
+    private bool _isStarted = false; // 启动状态标志
 
     /// <summary>
     ///     Start all devices
     /// </summary>
     public async Task StartAsync()
     {
+        // 如果已经启动，直接返回
+        if (_isStarted)
+        {
+            _logger?.LogDebug("设备已经启动，跳过重复启动");
+            return;
+        }
+
         try
         {
             // Start truck scale service
@@ -56,6 +64,8 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
 
             // Start Hikvision camera services
             await StartHikvisionCamerasAsync(settings);
+
+            _isStarted = true; // 标记为已启动
 
             // TODO: Start other devices
             // - Start document scanner service
@@ -84,6 +94,8 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             // Note: HikvisionService uses login/logout per operation, so no explicit cleanup needed
             _logger?.LogInformation("Hikvision camera services closed");
 
+            _isStarted = false; // 重置启动状态
+
             // TODO: Close other devices
             // - Close document scanner service
             // - Close license plate recognition services
@@ -104,21 +116,15 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     {
         try
         {
-            // Restart truck scale service
-            var truckScaleService = GetTruckScaleWeightService();
-            var restarted = await truckScaleService.RestartAsync();
-            if (restarted)
-                _logger?.LogInformation("Truck scale service restarted successfully");
-            else
-                _logger?.LogWarning("Failed to restart truck scale service");
+            // 先关闭设备
+            if (_isStarted)
+            {
+                await CloseAsync();
+            }
 
-            // Restart Hikvision camera services
-            var settings = await _settingsService.GetSettingsAsync();
-            await StartHikvisionCamerasAsync(settings);
-
-            // TODO: Restart other devices
-            // - Restart document scanner service
-            // - Restart license plate recognition services
+            // 重置状态并重新启动
+            _isStarted = false;
+            await StartAsync();
         }
         catch (Exception ex)
         {

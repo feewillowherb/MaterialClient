@@ -112,6 +112,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     private IDisposable? _materialSelectionSubscription;
 
+    /// <summary>
+    ///     临时保存的拍照文件路径（从父 ViewModel 传递）
+    /// </summary>
+    private string? _capturedBillPhotoPath;
+
     #endregion
 
     #region 初始化
@@ -158,7 +163,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             });
     }
 
-    public void InitializeData(WeighingListItemDto listItem)
+    public void InitializeData(WeighingListItemDto listItem, string? capturedBillPhotoPath = null)
     {
         _listItem = listItem;
         WeighingRecordId = _listItem.Id;
@@ -171,6 +176,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
+        
+        // 保存临时拍照文件路径
+        _capturedBillPhotoPath = capturedBillPhotoPath;
+        
         // 根据 ItemType 判断是否显示匹配按钮：Waybill 类型不显示，WeighingRecord 类型在 LoadWeighingRecordDetailsAsync 中根据 MatchedId 判断
         IsMatchButtonVisible = _listItem.ItemType != WeighingListItemType.Waybill;
         // 仅当为 Waybill 且 OrderType == FirstWeight（即未完成）时显示"完成本次收货"按钮
@@ -455,12 +464,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 Remark
             ));
 
-            var parentViewModel = _serviceProvider.GetRequiredService<AttendedWeighingViewModel>();
-
             // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
-            if (parentViewModel != null && !string.IsNullOrEmpty(parentViewModel.CapturedBillPhotoPath))
+            if (!string.IsNullOrEmpty(_capturedBillPhotoPath))
             {
-                var billPhotoPath = parentViewModel.CapturedBillPhotoPath;
+                var billPhotoPath = _capturedBillPhotoPath;
 
                 // 检查文件是否存在
                 if (File.Exists(billPhotoPath))
@@ -469,7 +476,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
 
                     // 清空临时文件路径
-                    parentViewModel.ClearCapturedBillPhotoPath();
+                    _capturedBillPhotoPath = null;
                 }
             }
 
@@ -656,12 +663,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 Remark
             ));
 
-            var parentViewModel = _serviceProvider.GetRequiredService<AttendedWeighingViewModel>();
-            
             // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
-            if (parentViewModel != null && !string.IsNullOrEmpty(parentViewModel.CapturedBillPhotoPath))
+            if (!string.IsNullOrEmpty(_capturedBillPhotoPath))
             {
-                var billPhotoPath = parentViewModel.CapturedBillPhotoPath;
+                var billPhotoPath = _capturedBillPhotoPath;
 
                 // 检查文件是否存在
                 if (File.Exists(billPhotoPath))
@@ -670,7 +675,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     await attachmentService.CreateOrReplaceBillPhotoAsync(_listItem, billPhotoPath);
 
                     // 清空临时文件路径
-                    parentViewModel.ClearCapturedBillPhotoPath();
+                    _capturedBillPhotoPath = null;
                 }
             }
 

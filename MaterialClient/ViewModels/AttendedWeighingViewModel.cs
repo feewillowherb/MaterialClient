@@ -1042,7 +1042,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         try
         {
             DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
-            DetailViewModel.InitializeData(item);
+            DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
             DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
             DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
@@ -1213,7 +1213,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     if (!IsShowingMainView && DetailViewModel != null)
                     {
                         // 如果 DetailViewModel 已存在，更新其数据
-                        DetailViewModel.InitializeData(nextItem);
+                        DetailViewModel.InitializeData(nextItem, CapturedBillPhotoPath);
                     }
                     else if (nextItem is not { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
                     {
