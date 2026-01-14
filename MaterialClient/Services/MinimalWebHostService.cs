@@ -92,26 +92,28 @@ public class MinimalWebHostService : IAsyncDisposable
                 options.ShutdownTimeout = TimeSpan.Zero; // 立即关闭，不等待正在处理的请求
             });
 
-            // Add response compression
-            builder.Services.AddResponseCompression(options =>
-            {
-                options.EnableForHttps = true;
-                options.Providers.Add<GzipCompressionProvider>();
-                options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
-                {
-                    "application/json"
-                });
-            });
-
-            builder.Services.Configure<GzipCompressionProviderOptions>(options =>
-            {
-                options.Level = CompressionLevel.Fastest;
-            });
+            // 移除响应压缩中间件
+            // 原因：华夏智信相机不支持 gzip 压缩和分块传输，要求响应包含 Content-Length 头
+            // 压缩中间件会自动移除 Content-Length 并使用 Transfer-Encoding: chunked
+            // builder.Services.AddResponseCompression(options =>
+            // {
+            //     options.EnableForHttps = true;
+            //     options.Providers.Add<GzipCompressionProvider>();
+            //     options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+            //     {
+            //         "application/json"
+            //     });
+            // });
+            //
+            // builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+            // {
+            //     options.Level = CompressionLevel.Fastest;
+            // });
 
             _webApplication = builder.Build();
 
-            // Use response compression middleware
-            _webApplication.UseResponseCompression();
+            // 不使用响应压缩中间件（华夏智信相机不支持）
+            // _webApplication.UseResponseCompression();
 
             // 配置 API 端点
             ConfigureEndpoints(_webApplication);
@@ -519,27 +521,40 @@ public class MinimalWebHostService : IAsyncDisposable
     }
 
     /// <summary>
-    ///     写入压缩的 JSON 响应，确保 Content-Type 包含 charset=utf-8
+    ///     写入符合相机要求的 JSON 响应
+    ///     要求：1. 包含 Content-Length 头（冒号前后无空格）
+    ///           2. 不使用压缩（Transfer-Encoding: chunked 和 Content-Encoding: gzip）
+    ///           3. JSON 格式为紧凑模式（不带换行）
+    ///           4. Content-Type 包含 charset=utf-8
     /// </summary>
     private static async Task WriteCompressedJsonResponse(HttpContext context, ResultInfoHuaXiaZhiXing result, ILogger logger)
     {
-        // 设置响应状态码
-        context.Response.StatusCode = 200;
-
-        // 设置 Content-Type 头，包含 charset=utf-8
-        context.Response.ContentType = "application/json;charset=utf-8";
-
-        // 序列化 JSON（使用默认选项，保持属性名不变）
+        // 序列化 JSON（使用默认选项，保持属性名不变，紧凑格式）
         var jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = null, // 保持原始属性名（error_num, error_str）
-            WriteIndented = false // 不格式化，保持紧凑格式
+            WriteIndented = false, // 不格式化，保持紧凑格式
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping // 避免中文被转义
         };
         
         var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(result, jsonOptions);
 
-        // 写入响应体（压缩中间件会自动处理压缩和 Content-Length）
+        // 必须在写入任何响应内容之前设置所有响应头
+        // 设置响应状态码
+        context.Response.StatusCode = 200;
+        
+        // 设置 Content-Type 头，包含 charset=utf-8（冒号前后无空格）
+        context.Response.ContentType = "application/json;charset=utf-8";
+        
+        // 手动设置 Content-Length 头（冒号前后无空格）
+        // 格式：Content-Length:30
+        context.Response.ContentLength = jsonBytes.Length;
+        
+        // 直接写入响应体（因为已移除压缩中间件，Content-Length 会被保留）
         await context.Response.Body.WriteAsync(jsonBytes.AsMemory(0, jsonBytes.Length));
+        await context.Response.Body.FlushAsync();
+        
+        logger?.LogDebug($"HuaXiaZhiXing 响应: {System.Text.Encoding.UTF8.GetString(jsonBytes)}, Content-Length: {jsonBytes.Length}");
     }
 
     #region 华夏智信响应数据模型

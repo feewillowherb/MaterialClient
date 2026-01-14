@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -88,20 +89,59 @@ public class App : Application
 
     private void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
-        // Stop Web Host and ABP application synchronously
-        Task.Run(async () =>
-        {
-            // Dispose Web Host service (will stop it if running)
-            if (_webHostService != null && _webHostService.IsRunning == true) await _webHostService.DisposeAsync();
+        var logger = _abpApplication?.ServiceProvider.GetService<ILogger<App>>();
+        logger?.LogInformation("应用程序退出事件触发，开始清理资源...");
 
-            // Shutdown ABP application
-            if (_abpApplication != null)
+        try
+        {
+            // 使用超时机制避免死锁，最多等待 3 秒
+            var shutdownTask = Task.Run(async () =>
             {
-                await _abpApplication.ShutdownAsync();
-                _abpApplication.Dispose();
-                _abpApplication = null;
+                // Stop Web Host service first
+                if (_webHostService != null && _webHostService.IsRunning)
+                {
+                    logger?.LogInformation("正在停止 Web Host 服务...");
+                    try
+                    {
+                        await _webHostService.DisposeAsync();
+                        logger?.LogInformation("Web Host 服务已停止");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "停止 Web Host 服务时出错");
+                    }
+                }
+
+                // Shutdown ABP application
+                if (_abpApplication != null)
+                {
+                    logger?.LogInformation("正在关闭 ABP 应用程序...");
+                    try
+                    {
+                        await _abpApplication.ShutdownAsync();
+                        _abpApplication.Dispose();
+                        _abpApplication = null;
+                        logger?.LogInformation("ABP 应用程序已关闭");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "关闭 ABP 应用程序时出错");
+                    }
+                }
+
+                logger?.LogInformation("资源清理完成");
+            });
+
+            // 使用超时机制，避免无限等待
+            if (!shutdownTask.Wait(TimeSpan.FromSeconds(3)))
+            {
+                logger?.LogWarning("资源清理超时，强制退出");
             }
-        }).Wait();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "应用程序退出时发生错误，强制退出");
+        }
     }
 
     private void DisableAvaloniaDataAnnotationValidation()
