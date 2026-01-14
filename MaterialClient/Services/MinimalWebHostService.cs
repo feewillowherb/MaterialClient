@@ -1,21 +1,17 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO.Compression;
 using System.Linq;
 using System.Net;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using BadHttpRequestException = Microsoft.AspNetCore.Http.BadHttpRequestException;
 
@@ -86,34 +82,7 @@ public class MinimalWebHostService : IAsyncDisposable
             // Add ABP with HttpHost module
             builder.Services.AddSingleton(_sharedServiceProvider);
 
-            // Configure immediate shutdown - 立即停止接受新请求，丢弃正在处理的请求
-            builder.Host.ConfigureHostOptions(options =>
-            {
-                options.ShutdownTimeout = TimeSpan.Zero; // 立即关闭，不等待正在处理的请求
-            });
-
-            // 移除响应压缩中间件
-            // 原因：华夏智信相机不支持 gzip 压缩和分块传输，要求响应包含 Content-Length 头
-            // 压缩中间件会自动移除 Content-Length 并使用 Transfer-Encoding: chunked
-            // builder.Services.AddResponseCompression(options =>
-            // {
-            //     options.EnableForHttps = true;
-            //     options.Providers.Add<GzipCompressionProvider>();
-            //     options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
-            //     {
-            //         "application/json"
-            //     });
-            // });
-            //
-            // builder.Services.Configure<GzipCompressionProviderOptions>(options =>
-            // {
-            //     options.Level = CompressionLevel.Fastest;
-            // });
-
             _webApplication = builder.Build();
-
-            // 不使用响应压缩中间件（华夏智信相机不支持）
-            // _webApplication.UseResponseCompression();
 
             // 配置 API 端点
             ConfigureEndpoints(_webApplication);
@@ -160,59 +129,23 @@ public class MinimalWebHostService : IAsyncDisposable
 
     /// <summary>
     ///     停止 Web Host
-    ///     立即停止接受新请求，丢弃所有正在处理的请求
     /// </summary>
     public async Task StopAsync()
     {
         if (_webApplication != null)
         {
             var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
-            logger?.LogInformation("正在立即停止 Web Host，丢弃所有正在处理的请求...");
+            logger?.LogInformation("正在停止 Web Host...");
 
             try
             {
-                // 获取 IHostApplicationLifetime 来立即触发停止
-                var lifetime = _webApplication.Services.GetService<IHostApplicationLifetime>();
-                
-                // 立即停止接受新请求
-                lifetime?.StopApplication();
-
-                // 立即停止 Web 应用程序，不等待正在处理的请求
-                // 使用超时机制确保不会阻塞
-                var stopTask = _webApplication.StopAsync();
-                var timeoutTask = Task.Delay(TimeSpan.FromMilliseconds(500)); // 最多等待 500ms
-                
-                var completedTask = await Task.WhenAny(stopTask, timeoutTask);
-                
-                if (completedTask == timeoutTask)
-                {
-                    logger?.LogWarning("Web Host 停止超时，强制释放资源");
-                }
-                else
-                {
-                    await stopTask;
-                }
-
-                // 立即释放资源
+                await _webApplication.StopAsync();
                 await _webApplication.DisposeAsync();
                 _webApplication = null;
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "停止 Web Host 时出错，强制释放资源");
-                // 即使出错也强制释放资源
-                try
-                {
-                    if (_webApplication != null)
-                    {
-                        await _webApplication.DisposeAsync();
-                        _webApplication = null;
-                    }
-                }
-                catch (Exception disposeEx)
-                {
-                    logger?.LogError(disposeEx, "强制释放 Web Application 时出错");
-                }
+                logger?.LogError(ex, "停止 Web Host 时出错");
             }
             finally
             {
@@ -389,8 +322,7 @@ public class MinimalWebHostService : IAsyncDisposable
                 {
                     result.error_num = -1;
                     result.error_str = "无效的请求";
-                    await WriteCompressedJsonResponse(context, result, logger);
-                    return;
+                    return Results.Json(result);
                 }
 
                 var type = form["type"] ?? string.Empty;
@@ -433,7 +365,7 @@ public class MinimalWebHostService : IAsyncDisposable
                 logger.LogError(ex, "处理华夏智信设备回调失败");
             }
 
-            await WriteCompressedJsonResponse(context, result, logger);
+            return Results.Json(result);
         });
         
 
@@ -520,42 +452,6 @@ public class MinimalWebHostService : IAsyncDisposable
         });
     }
 
-    /// <summary>
-    ///     写入符合相机要求的 JSON 响应
-    ///     要求：1. 包含 Content-Length 头（冒号前后无空格）
-    ///           2. 不使用压缩（Transfer-Encoding: chunked 和 Content-Encoding: gzip）
-    ///           3. JSON 格式为紧凑模式（不带换行）
-    ///           4. Content-Type 包含 charset=utf-8
-    /// </summary>
-    private static async Task WriteCompressedJsonResponse(HttpContext context, ResultInfoHuaXiaZhiXing result, ILogger logger)
-    {
-        // 序列化 JSON（使用默认选项，保持属性名不变，紧凑格式）
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = null, // 保持原始属性名（error_num, error_str）
-            WriteIndented = false, // 不格式化，保持紧凑格式
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping // 避免中文被转义
-        };
-        
-        var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(result, jsonOptions);
-
-        // 必须在写入任何响应内容之前设置所有响应头
-        // 设置响应状态码
-        context.Response.StatusCode = 200;
-        
-        // 设置 Content-Type 头，包含 charset=utf-8（冒号前后无空格）
-        context.Response.ContentType = "application/json;charset=utf-8";
-        
-        // 手动设置 Content-Length 头（冒号前后无空格）
-        // 格式：Content-Length:30
-        context.Response.ContentLength = jsonBytes.Length;
-        
-        // 直接写入响应体（因为已移除压缩中间件，Content-Length 会被保留）
-        await context.Response.Body.WriteAsync(jsonBytes.AsMemory(0, jsonBytes.Length));
-        await context.Response.Body.FlushAsync();
-        
-        logger?.LogDebug($"HuaXiaZhiXing 响应: {System.Text.Encoding.UTF8.GetString(jsonBytes)}, Content-Length: {jsonBytes.Length}");
-    }
 
     #region 华夏智信响应数据模型
 
