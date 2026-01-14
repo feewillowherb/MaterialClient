@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using BadHttpRequestException = Microsoft.AspNetCore.Http.BadHttpRequestException;
 
@@ -85,6 +86,12 @@ public class MinimalWebHostService : IAsyncDisposable
             // Add ABP with HttpHost module
             builder.Services.AddSingleton(_sharedServiceProvider);
 
+            // Configure immediate shutdown - 立即停止接受新请求，丢弃正在处理的请求
+            builder.Host.ConfigureHostOptions(options =>
+            {
+                options.ShutdownTimeout = TimeSpan.Zero; // 立即关闭，不等待正在处理的请求
+            });
+
             // Add response compression
             builder.Services.AddResponseCompression(options =>
             {
@@ -151,23 +158,59 @@ public class MinimalWebHostService : IAsyncDisposable
 
     /// <summary>
     ///     停止 Web Host
+    ///     立即停止接受新请求，丢弃所有正在处理的请求
     /// </summary>
     public async Task StopAsync()
     {
         if (_webApplication != null)
         {
             var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
-            logger?.LogInformation("正在停止 Web Host...");
+            logger?.LogInformation("正在立即停止 Web Host，丢弃所有正在处理的请求...");
 
             try
             {
-                await _webApplication.StopAsync();
+                // 获取 IHostApplicationLifetime 来立即触发停止
+                var lifetime = _webApplication.Services.GetService<IHostApplicationLifetime>();
+                
+                // 立即停止接受新请求
+                lifetime?.StopApplication();
+
+                // 立即停止 Web 应用程序，不等待正在处理的请求
+                // 使用超时机制确保不会阻塞
+                var stopTask = _webApplication.StopAsync();
+                var timeoutTask = Task.Delay(TimeSpan.FromMilliseconds(500)); // 最多等待 500ms
+                
+                var completedTask = await Task.WhenAny(stopTask, timeoutTask);
+                
+                if (completedTask == timeoutTask)
+                {
+                    logger?.LogWarning("Web Host 停止超时，强制释放资源");
+                }
+                else
+                {
+                    await stopTask;
+                }
+
+                // 立即释放资源
                 await _webApplication.DisposeAsync();
                 _webApplication = null;
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "停止 Web Host 时出错");
+                logger?.LogError(ex, "停止 Web Host 时出错，强制释放资源");
+                // 即使出错也强制释放资源
+                try
+                {
+                    if (_webApplication != null)
+                    {
+                        await _webApplication.DisposeAsync();
+                        _webApplication = null;
+                    }
+                }
+                catch (Exception disposeEx)
+                {
+                    logger?.LogError(disposeEx, "强制释放 Web Application 时出错");
+                }
             }
             finally
             {
