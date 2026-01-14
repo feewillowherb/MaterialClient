@@ -473,6 +473,10 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     _currentWeight = convertedWeight;
                     _weightSubject.OnNext(convertedWeight);
                 }
+                
+                // Clear buffer after successful parsing to prevent stale data accumulation
+                using var clearLock = _rwLock.ReadLock();
+                _serialPort?.DiscardInBuffer();
             }
             else
             {
@@ -528,6 +532,10 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     _currentWeight = convertedWeight;
                     _weightSubject.OnNext(convertedWeight);
                 }
+                
+                // Clear buffer after successful parsing to prevent stale data accumulation
+                using var clearLock = _rwLock.ReadLock();
+                _serialPort?.DiscardInBuffer();
             }
             else
             {
@@ -584,6 +592,10 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 _currentWeight = convertedWeight;
                 _weightSubject.OnNext(convertedWeight);
             }
+            
+            // Clear buffer after successful parsing to prevent stale data accumulation
+            using var clearLock = _rwLock.ReadLock();
+            _serialPort?.DiscardInBuffer();
         }
         catch (Exception ex)
         {

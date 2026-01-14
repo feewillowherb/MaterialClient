@@ -321,8 +321,8 @@ public class MinimalWebHostService : IAsyncDisposable
 
                 if (form == null || form.Count == 0)
                 {
-                    result.error_num = -1;
-                    result.error_str = "无效的请求";
+                    result.error_num = 0;
+                    result.error_str = string.Empty;
                     await WriteCompressedJsonResponse(context, result, logger);
                     return;
                 }
