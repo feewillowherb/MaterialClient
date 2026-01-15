@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -320,9 +321,10 @@ public class MinimalWebHostService : IAsyncDisposable
 
                 if (form == null || form.Count == 0)
                 {
-                    result.error_num = -1;
-                    result.error_str = "无效的请求";
-                    return Results.Json(result);
+                    result.error_num = 0;
+                    result.error_str = string.Empty;
+                    await WriteCompressedJsonResponse(context, result, logger);
+                    return;
                 }
 
                 var type = form["type"] ?? string.Empty;
@@ -365,7 +367,8 @@ public class MinimalWebHostService : IAsyncDisposable
                 logger.LogError(ex, "处理华夏智信设备回调失败");
             }
 
-            return Results.Json(result);
+             await WriteCompressedJsonResponse(context, result, logger);
+             return;
         });
         
 
@@ -491,6 +494,37 @@ public class MinimalWebHostService : IAsyncDisposable
         {
             return string.Join(", ", _dict.Select(kvp => $"{kvp.Key}={kvp.Value}"));
         }
+    }
+    
+    
+    private static async Task WriteCompressedJsonResponse(HttpContext context, ResultInfoHuaXiaZhiXing result, ILogger logger)
+    {
+        // 序列化 JSON（使用默认选项，保持属性名不变，紧凑格式）
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null, // 保持原始属性名（error_num, error_str）
+            WriteIndented = false, // 不格式化，保持紧凑格式
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping // 避免中文被转义
+        };
+        
+        var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(result, jsonOptions);
+
+        // 必须在写入任何响应内容之前设置所有响应头
+        // 设置响应状态码
+        context.Response.StatusCode = 200;
+        
+        // 设置 Content-Type 头，包含 charset=utf-8（冒号前后无空格）
+        context.Response.ContentType = "application/json;charset=utf-8";
+        
+        // 手动设置 Content-Length 头（冒号前后无空格）
+        // 格式：Content-Length:30
+        context.Response.ContentLength = jsonBytes.Length;
+        
+        // 直接写入响应体（因为已移除压缩中间件，Content-Length 会被保留）
+        await context.Response.Body.WriteAsync(jsonBytes.AsMemory(0, jsonBytes.Length));
+        await context.Response.Body.FlushAsync();
+        
+        logger?.LogDebug($"HuaXiaZhiXing 响应: {System.Text.Encoding.UTF8.GetString(jsonBytes)}, Content-Length: {jsonBytes.Length}");
     }
 
     #endregion

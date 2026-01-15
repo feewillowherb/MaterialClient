@@ -426,13 +426,18 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         
         // Local state flag captured by closure - prevents race condition
         var disposed = false;
+        
+        // CRITICAL: Use GCHandle to prevent delegate from being garbage collected
+        // The unmanaged SDK only stores function pointer, GC doesn't know it's still in use
+        GCHandle? callbackHandle = null;
+        NET_DVR.REALDATACALLBACK? realDataCallback = null;
 
         _logger?.LogDebug("Starting stream capture: IP={Ip}, Channel={Channel}", config.Ip, channel);
 
         // Callback function for receiving stream data (when hPlayWnd is NULL)
         // Data types: NET_DVR_SYSHEAD (system header), NET_DVR_STREAMDATA (stream data), etc.
         // Use PlayM4Decoder for manual decoding
-        NET_DVR.REALDATACALLBACK realDataCallback = (handle, dataType, buffer, bufSize, user) =>
+        realDataCallback = (handle, dataType, buffer, bufSize, user) =>
         {
             // CRITICAL: Wrap entire callback in try-catch to prevent process crash
             // Unmanaged SDK cannot handle managed exceptions
@@ -510,6 +515,10 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             // Create PlayM4 decoder instance
             decoder = new PlayM4Decoder();
             _logger?.LogDebug("Decoder created: Port={Port}", decoder.Port);
+
+            // Pin the callback delegate to prevent GC from collecting it
+            // This is CRITICAL because the unmanaged SDK only stores the function pointer
+            callbackHandle = GCHandle.Alloc(realDataCallback);
 
             // Start real-time preview
             // hPlayWnd as NULL means only fetch stream without decoding; valid value means SDK auto-decodes
@@ -606,6 +615,13 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
                     decoder.Dispose();
                 }
+            }
+
+            // 4. Release the GCHandle to allow delegate to be garbage collected
+            // MUST be done after SDK has stopped calling the callback
+            if (callbackHandle.HasValue && callbackHandle.Value.IsAllocated)
+            {
+                callbackHandle.Value.Free();
             }
 
             _logger?.LogDebug("Resources cleaned: Handle={Handle}", lRealHandle);
