@@ -44,6 +44,7 @@
         <PackageReference Include="Yitter.IdGenerator" Version="1.0.14"/>
         <PackageReference Include="FlashCap" Version="1.11.0"/>
         <PackageReference Include="Aliyun.OSS.SDK.NetCore" Version="2.14.1"/>
+        <PackageReference Include="System.Drawing.Common" Version="10.0.0-preview.1.25080.3"/>
     </ItemGroup>
 
 
