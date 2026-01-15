@@ -13,7 +13,7 @@ namespace MaterialClient.Common.Providers;
 
 /// <summary>
 ///     车牌号推荐服务
-///     使用IMemoryCache管理车牌号缓存，支持LRU淘汰策略，线程安全
+///     使用IMemoryCache管理车牌号缓存，永久性缓存，满时自动清理最后10个，线程安全
 /// </summary>
 public class RecommendPlateNumberService : DomainService, ISingletonDependency
 {
@@ -72,11 +72,10 @@ public class RecommendPlateNumberService : DomainService, ISingletonDependency
 
                 using (_lock.WriteLock())
                 {
-                    // 设置缓存选项：绝对过期时间1小时，滑动过期时间30分钟
+                    // 设置永久性缓存（无过期时间）
                     var cacheOptions = new MemoryCacheEntryOptions
                     {
-                        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
-                        SlidingExpiration = TimeSpan.FromMinutes(30),
+                        Priority = CacheItemPriority.NeverRemove, // 永久缓存
                         Size = 1 // 缓存项大小
                     };
 
@@ -91,10 +90,15 @@ public class RecommendPlateNumberService : DomainService, ISingletonDependency
             catch (Exception ex)
             {
                 _logger.LogError(ex, "初始化车牌号推荐服务缓存失败");
-                // 设置空缓存
+                // 设置空缓存（永久性缓存）
                 using (_lock.WriteLock())
                 {
-                    _memoryCache.Set(CacheKey, new List<string>());
+                    var cacheOptions = new MemoryCacheEntryOptions
+                    {
+                        Priority = CacheItemPriority.NeverRemove, // 永久缓存
+                        Size = 1
+                    };
+                    _memoryCache.Set(CacheKey, new List<string>(), cacheOptions);
                 }
             }
         }
@@ -188,21 +192,21 @@ public class RecommendPlateNumberService : DomainService, ISingletonDependency
                     return;
                 }
 
-                // 如果缓存已满，移除最老的（第一个）
+                // 如果缓存已满，移除最后10个
                 if (cachedPlates.Count >= MaxCacheSize)
                 {
-                    cachedPlates.RemoveAt(0);
-                    _logger.LogDebug("缓存已满，移除最老的车牌号");
+                    var removeCount = Math.Min(10, cachedPlates.Count);
+                    cachedPlates.RemoveRange(cachedPlates.Count - removeCount, removeCount);
+                    _logger.LogDebug("缓存已满，移除了最后 {Count} 个车牌号", removeCount);
                 }
 
                 // 添加新车牌号到末尾
                 cachedPlates.Add(plateNumber);
 
-                // 更新缓存
+                // 更新缓存（永久性缓存）
                 var cacheOptions = new MemoryCacheEntryOptions
                 {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
-                    SlidingExpiration = TimeSpan.FromMinutes(30),
+                    Priority = CacheItemPriority.NeverRemove, // 永久缓存
                     Size = 1
                 };
 
