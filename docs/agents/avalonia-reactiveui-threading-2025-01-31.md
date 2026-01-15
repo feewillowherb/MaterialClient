@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Documentation file. Preserved for historical reference.
+-->
+
 # Agent 会话归档（Avalonia ReactiveUI 跨线程问题修复）
 
 日期：2025-01-31

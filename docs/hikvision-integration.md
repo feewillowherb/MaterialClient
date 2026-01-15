@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: VALID
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Technical documentation. Describes implementation patterns and integration approaches. Currently relevant for understanding system architecture.
+-->
+
 # 海康威视 HCNetSDK 集成指南
 
 本文档说明如何在本项目中集成并使用海康威视 HCNetSDK，包含本地 DLL 布局、工程设置、服务使用方式、以及单元测试验收方法。

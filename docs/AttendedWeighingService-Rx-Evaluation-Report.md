@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Agent-generated analysis report. Documents investigation findings and recommendations. Preserved for historical reference. Verify if recommendations were implemented.
+-->
+
 # AttendedWeighingService Rx 流式编程评估报告
 
 **评估日期**: 2025-01-31  

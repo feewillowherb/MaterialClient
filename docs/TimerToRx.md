@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: VALID
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Technical documentation. Describes implementation patterns and integration approaches. Currently relevant for understanding system architecture.
+-->
+
 # Timer 调整为 ReactiveX 改造总结
 
 ## 日期

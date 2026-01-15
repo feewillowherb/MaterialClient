@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Documentation file. Preserved for historical reference.
+-->
+
 # Agent 会话归档（海康威视 HCNetSDK 接入）
 
 日期：2025-10-30

@@ -1,3 +1,10 @@
+<\!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Technical analysis document. Describes design decisions and technical assessments. Preserved for historical context.
+-->
+
 # TruckScaleWeightService 背压风险评估报告
 
 ## 执行摘要

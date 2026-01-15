@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Documentation file. Preserved for historical reference.
+-->
+
 # AttendedWeighingDetailView 优化对比 - 代码变更详情
 
 ## 日期

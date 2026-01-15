@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Performance evaluation report. Documents testing and analysis results. Preserved for historical context and performance baseline.
+-->
+
 # ReaderWriterLockSlim 性能评估报告
 
 ## 📊 总体评估

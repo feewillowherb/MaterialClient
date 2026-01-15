@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Agent-generated analysis report. Documents investigation findings and recommendations. Preserved for historical reference. Verify if recommendations were implemented.
+-->
+
 # Hikvision OpenStream Crash Analysis and Fix Recommendations Report
 
 **Analysis Date**: 2026-01-13  

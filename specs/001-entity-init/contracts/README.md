@@ -1,3 +1,11 @@
+<!--
+DOCUMENT_STATUS: SUPERSEDED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Legacy specification format. Superseded by OpenSpec workflow adopted 2026-01-15. 
+       Content preserved for historical reference. For current specifications, see openspec/specs/.
+-->
+
 # Contracts
 
 **Note**: 本功能仅涉及实体定义和Repository接口，不涉及API接口定义。

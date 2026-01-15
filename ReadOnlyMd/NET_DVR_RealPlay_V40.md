@@ -1,3 +1,10 @@
+<\!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: API documentation for Hikvision SDK. Preserved for integration reference.
+-->
+
 方式二（由用户自行处理回调得到的码流数据，此处以软解显示为例，代码中带有PlayM4_的函数请参见播放库SDK开发包里面的《播放器SDK编程指南》） 
 #include <stdio.h>
 #include <iostream>

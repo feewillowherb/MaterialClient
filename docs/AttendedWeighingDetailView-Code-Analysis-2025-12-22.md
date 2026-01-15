@@ -1,3 +1,10 @@
+<!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Agent-generated analysis report. Documents investigation findings and recommendations. Preserved for historical reference. Verify if recommendations were implemented.
+-->
+
 # AttendedWeighingDetailView 代码评估与优化分析
 
 ## 日期

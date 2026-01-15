@@ -1,3 +1,11 @@
+<!--
+DOCUMENT_STATUS: SUPERSEDED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Legacy specification format. Superseded by OpenSpec workflow adopted 2026-01-15. 
+       Content preserved for historical reference. For current specifications, see openspec/specs/.
+-->
+
 # Tasks: 物料系统实体初始化
 
 **Input**: Design documents from `/specs/001-entity-init/`

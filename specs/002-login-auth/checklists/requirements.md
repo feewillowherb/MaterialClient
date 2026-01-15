@@ -1,3 +1,11 @@
+<!--
+DOCUMENT_STATUS: SUPERSEDED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Legacy specification format. Superseded by OpenSpec workflow adopted 2026-01-15. 
+       Content preserved for historical reference. For current specifications, see openspec/specs/.
+-->
+
 # Specification Quality Checklist: 登录和授权
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  

@@ -1,3 +1,10 @@
+<\!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Technical analysis document. Describes design decisions and technical assessments. Preserved for historical context.
+-->
+
 # Avalonia ComboBox 绑定问题分析报告
 
 ## 问题概述

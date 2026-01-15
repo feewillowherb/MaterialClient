@@ -1,3 +1,10 @@
+<\!--
+DOCUMENT_STATUS: ARCHIVED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Capacity planning document. Purpose unclear, preserved for historical reference.
+-->
+
 # HTTP通讯协议说(车牌识别一体机)明手册
 
 非常感谢您使用我们公司的产品，我们将竭诚为您提供最好的服务。

@@ -1,3 +1,11 @@
+<!--
+DOCUMENT_STATUS: SUPERSEDED
+LAST_REVIEWED: 2026-01-15
+REVIEWER: Claude (OpenSpec Migration)
+NOTES: Legacy specification format. Superseded by OpenSpec workflow adopted 2026-01-15. 
+       Content preserved for historical reference. For current specifications, see openspec/specs/.
+-->
+
 # Data Model: 物料系统实体
 
 **Date**: 2025-01-30  
