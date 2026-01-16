@@ -125,6 +125,13 @@ public class MaterialClientModule : AbpModule
             var streets = configuration.GetSection("Streets").Get<string[]>();
             options.Streets = streets ?? Array.Empty<string>();
         });
+
+        // Configure SolidWasteTypes
+        services.Configure<SolidWasteTypeConfig>(options =>
+        {
+            var solidWasteTypes = configuration.GetSection("SolidWasteTypes").Get<string[]>();
+            options.SolidWasteTypes = solidWasteTypes ?? Array.Empty<string>();
+        });
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
