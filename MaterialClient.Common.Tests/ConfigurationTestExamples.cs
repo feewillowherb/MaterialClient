@@ -1,6 +1,8 @@
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Shouldly;
 using Volo.Abp.Modularity;
@@ -15,7 +17,7 @@ namespace MaterialClient.Common.Tests;
 
 #region Example 1: Using Default Configuration from TestBase
 
-public class UsingDefaultConfigurationTests : MaterialClientTestBase<MaterialClientTestModule>
+public class UsingDefaultConfigurationTests : MaterialClientTestBase<MaterialClientDomainTestModule>
 {
     [Fact]
     public void Should_Use_Default_In_Memory_Database()
@@ -38,7 +40,7 @@ public class UsingDefaultConfigurationTests : MaterialClientTestBase<MaterialCli
 /// 推荐方式：在测试方法中直接替换 IOptions<T>
 /// 适用于单个测试场景需要特定配置的情况
 /// </summary>
-public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientTestModule>
+public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientDomainTestModule>
 {
     [Fact]
     public void Should_Test_With_Custom_WeighingConfiguration()
@@ -61,7 +63,7 @@ public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientTestMod
             .Replace(ServiceDescriptor.Singleton(typeof(IOptions<WeighingConfiguration>), options));
 
         // 或者直接使用配置对象进行测试
-        var service = new YourServiceUnderTest(options);
+       // var service = new YourServiceUnderTest(options);
         // Act & Assert...
     }
 
@@ -74,7 +76,7 @@ public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientTestMod
             EnableAutoStart = true,
             CaptureStreamType = StreamType.Mainstream,  // 使用主码流
             Urls = "http://test-server:8080",
-            SnapshotCameraType = SnapshotCameraType.LPRAllInOne,
+            SnapshotCameraType = SnapshotCameraType.LprAllInOne,
             MinDiffCharCount = 1
         };
 
@@ -82,7 +84,7 @@ public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientTestMod
 
         // 在测试中使用自定义配置
         var snapshotCameraType = customSettings.SnapshotCameraType;
-        snapshotCameraType.ShouldBe(SnapshotCameraType.LPRAllInOne);
+        snapshotCameraType.ShouldBe(SnapshotCameraType.LprAllInOne);
     }
 
     [Fact]
@@ -159,7 +161,7 @@ public class CustomWeighingConfigTests : MaterialClientTestBase<CustomWeighingCo
 /// <summary>
 /// 在一个测试场景中替换多个配置
 /// </summary>
-public class MultipleConfigReplacementsTests : MaterialClientTestBase<MaterialClientTestModule>
+public class MultipleConfigReplacementsTests : MaterialClientTestBase<MaterialClientDomainTestModule>
 {
     [Fact]
     public void Should_Test_With_Multiple_Custom_Configurations()
@@ -205,7 +207,7 @@ public class MultipleConfigReplacementsTests : MaterialClientTestBase<MaterialCl
 /// <summary>
 /// 配置测试最佳实践示例
 /// </summary>
-public class ConfigurationBestPracticesTests : MaterialClientTestBase<MaterialClientTestModule>
+public class ConfigurationBestPracticesTests : MaterialClientTestBase<MaterialClientDomainTestModule>
 {
     [Fact]
     public void Should_Validate_Configuration_Before_Test()
