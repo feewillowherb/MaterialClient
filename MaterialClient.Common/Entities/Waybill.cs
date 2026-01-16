@@ -1,6 +1,7 @@
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using Volo.Abp.Auditing;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Entities;
 using Yitter.IdGenerator;
 
@@ -9,8 +10,19 @@ namespace MaterialClient.Common.Entities;
 /// <summary>
 ///     运单实体
 /// </summary>
-public class Waybill : Entity<long>, IMaterialClientAuditedObject, IDeletionAuditedObject
+public class Waybill : Entity<long>, IHasExtraProperties, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
+    private ExtraPropertyDictionary _extraProperties = new();
+
+    /// <summary>
+    ///     额外属性字典
+    /// </summary>
+    public ExtraPropertyDictionary ExtraProperties
+    {
+        get => _extraProperties;
+        set => _extraProperties = value;
+    }
+
     /// <summary>
     ///     构造函数（用于EF Core）
     /// </summary>

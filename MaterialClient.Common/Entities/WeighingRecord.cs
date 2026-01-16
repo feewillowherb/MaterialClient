@@ -3,6 +3,7 @@ using System.Text.Json;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
 using Volo.Abp.Auditing;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -11,8 +12,19 @@ namespace MaterialClient.Common.Entities;
 /// <summary>
 ///     称重记录实体
 /// </summary>
-public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDeletionAuditedObject
+public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
+    private ExtraPropertyDictionary _extraProperties = new();
+
+    /// <summary>
+    ///     额外属性字典
+    /// </summary>
+    public ExtraPropertyDictionary ExtraProperties
+    {
+        get => _extraProperties;
+        set => _extraProperties = value;
+    }
+
     /// <summary>
     ///     构造函数（用于EF Core）
     /// </summary>
