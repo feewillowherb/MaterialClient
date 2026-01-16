@@ -100,6 +100,11 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     public string? MaterialsJson { get; set; }
 
     /// <summary>
+    ///     称重模式
+    /// </summary>
+    public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
+
+    /// <summary>
     ///     物料集合（从 JSON 反序列化）
     /// </summary>
     [NotMapped]

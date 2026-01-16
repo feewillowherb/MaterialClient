@@ -1,5 +1,6 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Modeling;
@@ -105,6 +106,10 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.ConfigureByConvention();
 
             entity.Property(e => e.OrderNo).IsRequired();
+            entity.Property(e => e.WeighingMode).HasDefaultValue(WeighingMode.Standard);
+
+            // 为称重模式添加索引以提升查询性能
+            entity.HasIndex(e => e.WeighingMode);
         });
 
         // Configure WeighingRecord relationships
@@ -113,12 +118,16 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.ConfigureByConvention();
 
             entity.Property(e => e.TotalWeight).IsRequired();
+            entity.Property(e => e.WeighingMode).HasDefaultValue(WeighingMode.Standard);
 
             // MaterialsJson stores the list of materials as JSON
             entity.Property(e => e.MaterialsJson);
 
             // Ignore the computed Materials property (it's derived from MaterialsJson)
             entity.Ignore(e => e.Materials);
+
+            // 为称重模式添加索引以提升查询性能
+            entity.HasIndex(e => e.WeighingMode);
         });
 
         // Configure AttachmentFile relationships

@@ -178,6 +178,10 @@ public class Waybill : Entity<long>, IHasExtraProperties, IMaterialClientAudited
     /// </summary>
     public decimal? MaterialUnitRate { get; set; }
 
+    /// <summary>
+    ///     称重模式
+    /// </summary>
+    public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
 
     public void PushCompleted(DateTime now)
     {
