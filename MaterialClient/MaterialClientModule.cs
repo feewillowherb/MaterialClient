@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MaterialClient.Backgrounds;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Providers;
 using MaterialClient.EFCore;
 using MaterialClient.Services;
@@ -117,6 +118,13 @@ public class MaterialClientModule : AbpModule
 
         // Register Web Host service
         services.AddSingleton<MinimalWebHostService>();
+
+        // Configure Streets
+        services.Configure<StreetsConfig>(options =>
+        {
+            var streets = configuration.GetSection("Streets").Get<string[]>();
+            options.Streets = streets ?? Array.Empty<string>();
+        });
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
