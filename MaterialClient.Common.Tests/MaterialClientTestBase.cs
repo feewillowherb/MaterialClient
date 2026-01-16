@@ -19,9 +19,19 @@ public abstract class MaterialClientTestBase<TStartupModule> : AbpIntegratedTest
 
     protected override void BeforeAddApplication(IServiceCollection services)
     {
+        // Use default in-memory configuration
+        // Tests can override configuration values as needed for specific scenarios
+        var inMemorySettings = new Dictionary<string, string>
+        {
+            // Default test configuration
+            ["ConnectionStrings:Default"] = "Data Source=:memory:",
+            ["BasePlatform:BaseUrl"] = "http://localhost:5000",
+            ["BasePlatform:ProductCode"] = "5000",
+            ["Encryption:AesKey"] = "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="
+        };
+
         var builder = new ConfigurationBuilder();
-        builder.AddJsonFile("appsettings.json", false);
-        builder.AddJsonFile("appsettings.secrets.json", true);
+        builder.AddInMemoryCollection(inMemorySettings);
         services.ReplaceConfiguration(builder.Build());
     }
 
