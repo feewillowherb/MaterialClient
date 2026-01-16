@@ -10,16 +10,19 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Avalonia.Threading;
 using MaterialClient.Common.Api.Dtos;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
+using Volo.Abp.Data;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using ReactiveUI;
@@ -40,6 +43,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IServiceProvider _serviceProvider;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IOptions<StreetsConfig> _streetsConfig;
+    private readonly IOptions<SolidWasteTypeConfig> _solidWasteTypeConfig;
+    private readonly ISettingsService _settingsService;
 
     public AttendedWeighingDetailViewModel(
         IServiceProvider serviceProvider)
@@ -50,6 +56,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
         _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
         _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
+        _streetsConfig = _serviceProvider.GetRequiredService<IOptions<StreetsConfig>>();
+        _solidWasteTypeConfig = _serviceProvider.GetRequiredService<IOptions<SolidWasteTypeConfig>>();
+        _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
 
         // 初始化材料选择弹窗 ViewModel
         InitializeMaterialsSelectionPopup();
@@ -65,6 +74,64 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(provider =>
             {
                 if (provider != null) SelectedProviderId = provider.Id;
+            });
+
+        // 订阅 WeighingMode 变化，更新 IsSolidWasteMode
+        this.WhenAnyValue(x => x.WeighingMode)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsSolidWasteMode)));
+
+        // SolidWaste 模式：材料选择时自动选择第一个单位
+        this.WhenAnyValue(x => x.SelectedSolidWasteMaterial)
+            .Where(material => material != null && IsSolidWasteMode)
+            .Subscribe(async material =>
+            {
+                if (material != null)
+                {
+                    try
+                    {
+                        var units = await LoadMaterialUnitsForRowAsync(material.Id);
+                        if (units.Count > 0)
+                        {
+                            // 自动选择第一个单位（按 UnitName 排序后的第一个）
+                            // 注意：LoadMaterialUnitsForRowAsync 已经按 UnitName 排序
+                            // 这里我们需要通过 MaterialUnitRepository 获取并设置
+                            var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
+                            var materialUnits = await materialUnitRepository.GetListAsync(u => u.MaterialId == material.Id);
+                            var firstUnit = materialUnits.OrderBy(u => u.UnitName).FirstOrDefault();
+                            if (firstUnit != null)
+                            {
+                                // 在 SolidWaste 模式下，单位是只读的，不需要设置 SelectedMaterialUnit
+                                // 但我们需要确保 MaterialItems 中的第一行有正确的单位
+                                if (MaterialItems.Count > 0)
+                                {
+                                    var firstRow = MaterialItems[0];
+                                    var unitDtos = await LoadMaterialUnitsForRowAsync(material.Id);
+                                    firstRow.SetMaterialUnits(unitDtos);
+                                    if (unitDtos.Count > 0)
+                                    {
+                                        firstRow.InitializeSelection(material, unitDtos, unitDtos[0].Id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "自动选择材料单位失败");
+                    }
+                }
+            });
+
+        // SolidWaste 模式：运单数量 = 实际重量（GoodsWeight）
+        this.WhenAnyValue(x => x.GoodsWeight, x => x.IsSolidWasteMode)
+            .Where(tuple => tuple.Item2) // 仅在 SolidWaste 模式下
+            .Subscribe(tuple =>
+            {
+                if (IsSolidWasteMode && MaterialItems.Count > 0)
+                {
+                    var firstRow = MaterialItems[0];
+                    firstRow.WaybillQuantity = GoodsWeight;
+                }
             });
     }
 
@@ -116,6 +183,28 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     ///     临时保存的拍照文件路径（从父 ViewModel 传递）
     /// </summary>
     private string? _capturedBillPhotoPath;
+
+    // SolidWaste 模式相关属性
+    [Reactive] private WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
+
+    [Reactive] private string? SolidWasteOrderNumber { get; set; }
+
+    [Reactive] private ObservableCollection<string> Streets { get; set; } = new();
+
+    [Reactive] private string? SelectedStreet { get; set; }
+
+    [Reactive] private ObservableCollection<string> SolidWasteTypes { get; set; } = new();
+
+    [Reactive] private string? SelectedSolidWasteType { get; set; }
+
+    [Reactive] private ObservableCollection<Material> SolidWasteMaterials { get; set; } = new();
+
+    [Reactive] private Material? SelectedSolidWasteMaterial { get; set; }
+
+    /// <summary>
+    ///     是否为固废模式
+    /// </summary>
+    public bool IsSolidWasteMode => WeighingMode == WeighingMode.SolidWaste;
 
     #endregion
 
@@ -176,6 +265,23 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
+        
+        // 初始化 WeighingMode：从 _listItem 读取，如果不存在则从 SystemSettings 获取默认值
+        WeighingMode = _listItem.WeighingMode;
+        if (WeighingMode == WeighingMode.Standard)
+        {
+            // 如果为默认值，尝试从 SystemSettings 获取
+            try
+            {
+                var settings = _settingsService.GetSettingsAsync().GetAwaiter().GetResult();
+                WeighingMode = settings.SystemSettings.DefaultWeighingMode;
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "获取默认称重模式失败，使用 Standard");
+                WeighingMode = WeighingMode.Standard;
+            }
+        }
         
         // 保存临时拍照文件路径
         _capturedBillPhotoPath = capturedBillPhotoPath;
@@ -239,7 +345,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         {
             await Task.WhenAll(
                 LoadProvidersAsync(),
-                LoadMaterialsAsync()
+                LoadMaterialsAsync(),
+                LoadConfigurationDataAsync()
             );
 
             // 检查是否需要获取推荐数据
@@ -325,32 +432,32 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             if (SelectedProviderId.HasValue)
                 SelectedProvider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
 
-            // 根据 _listItem.Materials 初始化每个 MaterialItemRow
-            for (var i = 0; i < MaterialItems.Count && i < _listItem.Materials.Count; i++)
+            // 如果是 SolidWaste 模式，加载 SolidWaste 数据
+            if (IsSolidWasteMode)
             {
-                var materialDto = _listItem.Materials[i];
-                var row = MaterialItems[i];
-
-                if (materialDto.MaterialId.HasValue)
+                await LoadSolidWasteDataAsync();
+            }
+            else
+            {
+                // Standard 模式：根据 _listItem.Materials 初始化每个 MaterialItemRow
+                for (var i = 0; i < MaterialItems.Count && i < _listItem.Materials.Count; i++)
                 {
-                    var selectedMaterial = Materials.FirstOrDefault(m => m.Id == materialDto.MaterialId.Value);
-                    if (selectedMaterial != null)
-                    {
-                        var units = await LoadMaterialUnitsForRowAsync(selectedMaterial.Id);
-                        row.SetMaterialUnits(units);
+                    var materialDto = _listItem.Materials[i];
+                    var row = MaterialItems[i];
 
-                        if (materialDto.MaterialUnitId.HasValue)
-                            row.InitializeSelection(selectedMaterial, units, materialDto.MaterialUnitId);
-                        else
-                            row.InitializeSelection(selectedMaterial, units, null);
-                        
-                        // not fill WaybillQuantity here anymore
-                        // 如果推荐数据中有 WaybillQuantity，更新第一行
-                        // if (i == 0 && recommendation != null && recommendation.WaybillQuantity.HasValue && 
-                        //     !row.WaybillQuantity.HasValue)
-                        // {
-                        //     row.WaybillQuantity = recommendation.WaybillQuantity;
-                        // }
+                    if (materialDto.MaterialId.HasValue)
+                    {
+                        var selectedMaterial = Materials.FirstOrDefault(m => m.Id == materialDto.MaterialId.Value);
+                        if (selectedMaterial != null)
+                        {
+                            var units = await LoadMaterialUnitsForRowAsync(selectedMaterial.Id);
+                            row.SetMaterialUnits(units);
+
+                            if (materialDto.MaterialUnitId.HasValue)
+                                row.InitializeSelection(selectedMaterial, units, materialDto.MaterialUnitId);
+                            else
+                                row.InitializeSelection(selectedMaterial, units, null);
+                        }
                     }
                 }
             }
@@ -359,6 +466,99 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         {
             Logger?.LogError(ex, "加载下拉列表数据失败");
             // 如果加载失败，保持当前状态
+        }
+    }
+
+    private async Task LoadSolidWasteDataAsync()
+    {
+        try
+        {
+            if (_listItem.ItemType == WeighingListItemType.WeighingRecord)
+            {
+                var record = await _weighingRecordRepository.GetAsync(_listItem.Id);
+                
+                // 从 ExtraProperties 读取 SolidWaste 数据
+                SolidWasteOrderNumber = record.GetSolidWasteOrderNumber();
+                SelectedStreet = record.GetStreet();
+                SelectedSolidWasteType = record.GetSolidWasteType();
+                
+                // 读取 MaterialId 和 WaybillQuantity
+                var materialId = record.GetProperty<int?>("SolidWasteInfo.MaterialId");
+                var waybillQuantity = record.GetProperty<decimal?>("SolidWasteInfo.WaybillQuantity");
+                
+                if (materialId.HasValue)
+                {
+                    var material = SolidWasteMaterials.FirstOrDefault(m => m.Id == materialId.Value);
+                    if (material != null)
+                    {
+                        SelectedSolidWasteMaterial = material;
+                        
+                        // 加载单位并自动选择第一个
+                        var units = await LoadMaterialUnitsForRowAsync(material.Id);
+                        if (MaterialItems.Count > 0)
+                        {
+                            var firstRow = MaterialItems[0];
+                            firstRow.SetMaterialUnits(units);
+                            if (units.Count > 0)
+                            {
+                                firstRow.InitializeSelection(material, units, units[0].Id);
+                            }
+                        }
+                    }
+                }
+            }
+            else if (_listItem.ItemType == WeighingListItemType.Waybill)
+            {
+                var waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
+                var waybill = await waybillRepository.GetAsync(_listItem.Id);
+                
+                // 从 ExtraProperties 读取 SolidWaste 数据
+                SolidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
+                SelectedStreet = waybill.GetStreet();
+                SelectedSolidWasteType = waybill.GetSolidWasteType();
+                
+                // 读取 MaterialId 和 WaybillQuantity
+                var materialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
+                var waybillQuantity = waybill.GetProperty<decimal?>("SolidWasteInfo.WaybillQuantity");
+                
+                // 如果 ExtraProperties 中没有，尝试从标准字段读取
+                if (!materialId.HasValue && waybill.MaterialId.HasValue)
+                {
+                    materialId = waybill.MaterialId;
+                }
+                
+                if (materialId.HasValue)
+                {
+                    var material = SolidWasteMaterials.FirstOrDefault(m => m.Id == materialId.Value);
+                    if (material != null)
+                    {
+                        SelectedSolidWasteMaterial = material;
+                        
+                        // 加载单位并自动选择第一个
+                        var units = await LoadMaterialUnitsForRowAsync(material.Id);
+                        if (MaterialItems.Count > 0)
+                        {
+                            var firstRow = MaterialItems[0];
+                            firstRow.SetMaterialUnits(units);
+                            
+                            // 如果 Waybill 有 MaterialUnitId，使用它；否则选择第一个
+                            var unitId = waybill.MaterialUnitId ?? units.FirstOrDefault()?.Id;
+                            if (unitId.HasValue)
+                            {
+                                firstRow.InitializeSelection(material, units, unitId.Value);
+                            }
+                            else if (units.Count > 0)
+                            {
+                                firstRow.InitializeSelection(material, units, units[0].Id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "加载固废模式数据失败");
         }
     }
 
@@ -428,6 +628,37 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         return result;
     }
 
+    private async Task LoadConfigurationDataAsync()
+    {
+        try
+        {
+            // 加载街道配置
+            Streets.Clear();
+            var streets = _streetsConfig.Value.Streets ?? Array.Empty<string>();
+            foreach (var street in streets.OrderBy(s => s))
+                Streets.Add(street);
+
+            // 加载固废类型配置
+            SolidWasteTypes.Clear();
+            var solidWasteTypes = _solidWasteTypeConfig.Value.SolidWasteTypes ?? Array.Empty<string>();
+            foreach (var type in solidWasteTypes.OrderBy(t => t))
+                SolidWasteTypes.Add(type);
+
+            // 加载材料列表到 SolidWasteMaterials（用于固废模式材料选择）
+            SolidWasteMaterials.Clear();
+            var materials = await _materialRepository.GetListAsync();
+            foreach (var material in materials.OrderBy(m => m.Name))
+                SolidWasteMaterials.Add(material);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "加载配置数据失败");
+            // 如果加载失败，保持空列表
+        }
+
+        await Task.CompletedTask;
+    }
+
     #endregion
 
     #region 命令
@@ -444,25 +675,33 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 return;
             }
 
+            if (IsSolidWasteMode)
+            {
+                // SolidWaste 模式：直接更新实体并保存到 ExtraProperties
+                await SaveSolidWasteModeAsync();
+            }
+            else
+            {
+                // Standard 模式：使用现有的 UpdateListItemAsync
+                var firstRow = MaterialItems.FirstOrDefault();
+                var materialId = firstRow?.SelectedMaterial?.Id;
+                var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
+                var providerId = SelectedProvider?.Id;
+                var waybillQuantity = firstRow?.WaybillQuantity;
 
-            var firstRow = MaterialItems.FirstOrDefault();
-            var materialId = firstRow?.SelectedMaterial?.Id;
-            var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
-            var providerId = SelectedProvider?.Id;
-            var waybillQuantity = firstRow?.WaybillQuantity;
-
-            var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
-            await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
-                _listItem.Id,
-                _listItem.ItemType,
-                PlateNumber,
-                providerId,
-                materialId,
-                materialUnitId,
-                waybillQuantity,
-                null,
-                Remark
-            ));
+                var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+                await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
+                    _listItem.Id,
+                    _listItem.ItemType,
+                    PlateNumber,
+                    providerId,
+                    materialId,
+                    materialUnitId,
+                    waybillQuantity,
+                    null,
+                    Remark
+                ));
+            }
 
             // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
             if (!string.IsNullOrEmpty(_capturedBillPhotoPath))
@@ -489,6 +728,93 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         catch (Exception ex)
         {
             Logger?.LogError(ex, "保存失败");
+        }
+    }
+
+    private async Task SaveSolidWasteModeAsync()
+    {
+        // 验证必填字段
+        if (SelectedSolidWasteMaterial == null)
+        {
+            await ShowMessageBoxAsync("请选择材料名称");
+            return;
+        }
+
+        var materialId = SelectedSolidWasteMaterial.Id;
+        var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
+        if (!materialUnitId.HasValue)
+        {
+            await ShowMessageBoxAsync("材料单位未选择");
+            return;
+        }
+
+        if (_listItem.ItemType == WeighingListItemType.WeighingRecord)
+        {
+            var record = await _weighingRecordRepository.GetAsync(_listItem.Id);
+            
+            // 更新基本字段
+            record.PlateNumber = PlateNumber;
+            record.WeighingMode = WeighingMode.SolidWaste;
+            
+            // 更新物料信息（在第一个 Material 中）
+            var materials = record.Materials;
+            var firstMaterial = materials.FirstOrDefault();
+            if (firstMaterial != null)
+            {
+                firstMaterial.MaterialId = materialId;
+                firstMaterial.MaterialUnitId = materialUnitId.Value;
+                firstMaterial.WaybillQuantity = GoodsWeight; // 运单数量 = 实际重量
+                record.Materials = materials;
+            }
+            else
+            {
+                record.AddMaterial(new WeighingRecordMaterial(
+                    0,
+                    materialId,
+                    materialUnitId.Value,
+                    GoodsWeight));
+            }
+            
+            // 保存 SolidWaste 信息到 ExtraProperties
+            record.SetSolidWasteInfo(
+                SelectedSolidWasteType,
+                SelectedStreet,
+                SolidWasteOrderNumber,
+                null); // 使用默认发货单位
+            
+            // 保存 MaterialId 到 ExtraProperties（用于固废模式）
+            record.SetProperty("SolidWasteInfo.MaterialId", materialId);
+            record.SetProperty("SolidWasteInfo.WaybillQuantity", GoodsWeight);
+            
+            await _weighingRecordRepository.UpdateAsync(record);
+        }
+        else if (_listItem.ItemType == WeighingListItemType.Waybill)
+        {
+            var waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
+            var waybill = await waybillRepository.GetAsync(_listItem.Id);
+            
+            // 更新基本字段
+            waybill.PlateNumber = PlateNumber;
+            waybill.Remark = Remark;
+            waybill.WeighingMode = WeighingMode.SolidWaste;
+            
+            // 更新物料信息
+            waybill.MaterialId = materialId;
+            waybill.MaterialUnitId = materialUnitId.Value;
+            waybill.OrderPlanOnPcs = GoodsWeight; // 运单数量 = 实际重量
+            
+            // 保存 SolidWaste 信息到 ExtraProperties
+            waybill.SetSolidWasteInfo(
+                SelectedSolidWasteType,
+                SelectedStreet,
+                SolidWasteOrderNumber,
+                null); // 使用默认发货单位
+            
+            // 保存 MaterialId 到 ExtraProperties（用于固废模式）
+            waybill.SetProperty("SolidWasteInfo.MaterialId", materialId);
+            waybill.SetProperty("SolidWasteInfo.WaybillQuantity", GoodsWeight);
+            
+            await waybillRepository.UpdateAsync(waybill);
         }
     }
 

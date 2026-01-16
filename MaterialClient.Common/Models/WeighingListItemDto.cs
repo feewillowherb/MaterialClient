@@ -128,6 +128,11 @@ public class WeighingListItemDto
     public List<WeighingListItemMaterialDto> Materials { get; set; } = new();
 
     /// <summary>
+    ///     称重模式
+    /// </summary>
+    public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
+
+    /// <summary>
     ///     从 WeighingRecord 创建 DTO
     /// </summary>
     public static WeighingListItemDto FromWeighingRecord(WeighingRecord record)
@@ -162,6 +167,7 @@ public class WeighingListItemDto
             OrderNo = null,
             WaybillQuantity = firstMaterial?.WaybillQuantity,
             Operator = record.Creator,
+            WeighingMode = record.WeighingMode,
             Materials = materials.Select(m =>
             {
                 var dto = new WeighingListItemMaterialDto
@@ -224,6 +230,7 @@ public class WeighingListItemDto
             OrderType = waybill.OrderType,
             Remark = waybill.Remark,
             Operator = waybill.Creator,
+            WeighingMode = waybill.WeighingMode,
             // 预计算偏差信息
             OffsetInfo = $"{waybill.OffsetRate:F2}% {waybill.OffsetResult.GetDescription()}"
         };

@@ -103,7 +103,7 @@
         <Border Grid.Row="1" BorderThickness="0,4,0,0" BorderBrush="#B0EBFF"
                 Background="White" CornerRadius="4" Padding="10" Margin="0,0,0,10">
             <StackPanel Spacing="8">
-                <!-- 车牌号 -->
+                <!-- 车牌号（两种模式都显示） -->
                 <Grid ColumnDefinitions="50,*">
                     <Label Content="车牌号" VerticalAlignment="Center"
                            HorizontalAlignment="Left"
@@ -112,8 +112,10 @@
                              Text="{Binding PlateNumber}"
                              TextAlignment="Left" FontSize="12" Margin="0,5,0,5" />
                 </Grid>
+                
+                <!-- Standard 模式字段 -->
                 <!-- 供应商 -->
-                <Grid ColumnDefinitions="50,*">
+                <Grid ColumnDefinitions="50,*" IsVisible="{Binding !IsSolidWasteMode}">
                     <Label Content="供应商" VerticalAlignment="Center"
                            HorizontalAlignment="Left"
                            FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
@@ -131,7 +133,45 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </Grid>
-                <!-- 备注 -->
+                
+                <!-- SolidWaste 模式字段 -->
+                <!-- 联单编号 -->
+                <Grid ColumnDefinitions="50,*" IsVisible="{Binding IsSolidWasteMode}">
+                    <Label Content="联单编号" VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1" Height="20"
+                             Text="{Binding SolidWasteOrderNumber}"
+                             TextAlignment="Left" FontSize="12" Margin="0,5,0,5" />
+                </Grid>
+                <!-- 所属镇街 -->
+                <Grid ColumnDefinitions="50,*" IsVisible="{Binding IsSolidWasteMode}">
+                    <Label Content="所属镇街" VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1" Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Streets}"
+                              SelectedItem="{Binding SelectedStreet}"
+                              PlaceholderText="--请选择--"
+                              Margin="0,5,0,5" />
+                </Grid>
+                <!-- 类型选择 -->
+                <Grid ColumnDefinitions="50,*" IsVisible="{Binding IsSolidWasteMode}">
+                    <Label Content="类型选择" VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1" Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding SolidWasteTypes}"
+                              SelectedItem="{Binding SelectedSolidWasteType}"
+                              PlaceholderText="--请选择--"
+                              Margin="0,5,0,5" />
+                </Grid>
+                
+                <!-- 备注（两种模式都显示） -->
                 <Grid ColumnDefinitions="50,*">
                     <Label Content="备注" VerticalAlignment="Center"
                            HorizontalAlignment="Left"
@@ -148,6 +188,7 @@
         <Border Grid.Row="2" BorderThickness="1" BorderBrush="#E5E7EB"
                 Background="White" CornerRadius="4" Margin="0,0,0,0">
             <Grid>
+                <!-- Standard 模式：DataGrid -->
                 <DataGrid ItemsSource="{Binding MaterialItems}"
                           AutoGenerateColumns="False"
                           CanUserReorderColumns="False"
@@ -158,7 +199,8 @@
                           RowHeight="32"
                           BorderThickness="0"
                           Background="White"
-                          x:Name="MaterialItemsDataGrid">
+                          x:Name="MaterialItemsDataGrid"
+                          IsVisible="{Binding !IsSolidWasteMode}">
 
                 <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
                 <DataGrid.Columns>
@@ -367,6 +409,62 @@
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
                 </DataGrid>
+                
+                <!-- SolidWaste 模式：Label-Value 表单 -->
+                <StackPanel Spacing="12" Margin="10" IsVisible="{Binding IsSolidWasteMode}">
+                    <!-- 材料名称 -->
+                    <Grid ColumnDefinitions="80,*">
+                        <Label Content="材料名称" VerticalAlignment="Center"
+                               HorizontalAlignment="Left"
+                               FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
+                        <ComboBox Grid.Column="1" Height="24"
+                                  FontSize="12"
+                                  HorizontalAlignment="Stretch"
+                                  ItemsSource="{Binding SolidWasteMaterials}"
+                                  SelectedItem="{Binding SelectedSolidWasteMaterial}"
+                                  PlaceholderText="--请选择--"
+                                  Margin="0,5,0,5">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
+                    <!-- 单位 -->
+                    <Grid ColumnDefinitions="80,*">
+                        <Label Content="单位" VerticalAlignment="Center"
+                               HorizontalAlignment="Left"
+                               FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" Height="24"
+                                   VerticalAlignment="Center"
+                                   FontSize="12" Foreground="#333333"
+                                   Margin="0,5,0,5"
+                                   Text="{Binding MaterialItems[0].SelectedMaterialUnit.DisplayName, FallbackValue='--'}" />
+                    </Grid>
+                    <!-- 运单数量 -->
+                    <Grid ColumnDefinitions="80,*">
+                        <Label Content="运单数量" VerticalAlignment="Center"
+                               HorizontalAlignment="Left"
+                               FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" Height="24"
+                                   VerticalAlignment="Center"
+                                   FontSize="12" Foreground="#333333"
+                                   Margin="0,5,0,5"
+                                   Text="{Binding GoodsWeight, StringFormat='{}{0:F2}'}" />
+                    </Grid>
+                    <!-- 实际重量 -->
+                    <Grid ColumnDefinitions="80,*">
+                        <Label Content="实际重量" VerticalAlignment="Center"
+                               HorizontalAlignment="Left"
+                               FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" Height="24"
+                                   VerticalAlignment="Center"
+                                   FontSize="12" Foreground="#333333"
+                                   Margin="0,5,0,5"
+                                   Text="{Binding GoodsWeight, StringFormat='{}{0:F2}'}" />
+                    </Grid>
+                </StackPanel>
                 
                 <!-- 材料选择弹窗 -->
                 <Popup Name="MaterialSelectionPopup"
