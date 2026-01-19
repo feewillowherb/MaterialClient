@@ -45,6 +45,10 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 ; 主程序文件（单文件发布，包含所有托管依赖、.NET 运行时和原生 DLL）
 Source: "{#SourceDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
+; 配置文件
+Source: "{#SourceDir}\appsettings.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\appsettings.secret.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
+
 
 ; 注意：以下文件/文件夹不需要包含（运行时不需要）：
 ; - *.pdb 文件（调试符号）
