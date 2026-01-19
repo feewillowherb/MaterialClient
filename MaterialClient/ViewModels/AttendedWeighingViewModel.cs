@@ -1463,7 +1463,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             ManifestNumber = solidWasteOrderNo,
             TownStreet = street,
 
-            WeigherSignature = item.Operator ?? waybill.Creator ?? string.Empty,
+            WeigherSignature =  string.Empty,
             DriverSignature = string.Empty,
             SupervisorSignature = string.Empty
         };
