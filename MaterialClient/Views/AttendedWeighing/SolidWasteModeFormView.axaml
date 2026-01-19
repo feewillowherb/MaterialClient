@@ -49,7 +49,7 @@
                             Height="20"
                             FontSize="12"
                             HorizontalAlignment="Stretch"
-                            Content="{Binding SelectedProvider.ProviderName, TargetNullValue='--请选择--'}"
+                            Content="{Binding SelectedProvider.ProviderName}"
                             Click="ProvidersSelectionButton_Click"
                             Margin="0,5,0,5" />
                 </Grid>
@@ -83,7 +83,7 @@
                             Height="20"
                             FontSize="12"
                             HorizontalAlignment="Stretch"
-                            Content="{Binding SelectedStreet, TargetNullValue='--请选择--'}"
+                            Content="{Binding SelectedStreet}"
                             Click="StreetsSelectionButton_Click"
                             Margin="0,5,0,5" />
                 </Grid>
@@ -102,7 +102,6 @@
                               HorizontalAlignment="Stretch"
                               ItemsSource="{Binding SolidWasteTypes}"
                               SelectedItem="{Binding SelectedSolidWasteType}"
-                              PlaceholderText="--请选择--"
                               Margin="0,5,0,5" />
                 </Grid>
 
@@ -119,7 +118,7 @@
                             Height="20"
                             FontSize="12"
                             HorizontalAlignment="Stretch"
-                            Content="{Binding SelectedSolidWasteMaterial.Name, TargetNullValue='--请选择--'}"
+                            Content="{Binding SelectedSolidWasteMaterial.Name}"
                             Click="MaterialsSelectionButton_Click"
                             Margin="0,5,0,5" />
                 </Grid>
