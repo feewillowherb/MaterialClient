@@ -1,0 +1,323 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:views="using:MaterialClient.Views"
+             x:Class="MaterialClient.Views.AttendedWeighing.StandardModeFormView"
+             x:DataType="vm:AttendedWeighingDetailViewModel">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="180" />
+        </Grid.RowDefinitions>
+
+        <!-- 第二行（Standard 模式） -->
+        <Border Grid.Row="0"
+                BorderThickness="0,4,0,0"
+                BorderBrush="#B0EBFF"
+                Background="White"
+                CornerRadius="4"
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel Spacing="8">
+                <!-- 车牌号 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="车牌号"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             Text="{Binding PlateNumber}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 供应商 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="供应商"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1"
+                              Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Providers}"
+                              SelectedItem="{Binding SelectedProvider}"
+                              PlaceholderText="--请选择--"
+                              Margin="0,5,0,5">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ProviderName}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
+                <!-- 备注 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="备注"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="4,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             TextWrapping="Wrap"
+                             Text="{Binding Remark}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- 第三行（Standard 模式：DataGrid） -->
+        <Border Grid.Row="1"
+                BorderThickness="1"
+                BorderBrush="#E5E7EB"
+                Background="White"
+                CornerRadius="4"
+                Margin="0,0,0,0">
+            <Grid>
+                <DataGrid ItemsSource="{Binding MaterialItems}"
+                          AutoGenerateColumns="False"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="False"
+                          CanUserSortColumns="False"
+                          GridLinesVisibility="All"
+                          HeadersVisibility="Column"
+                          RowHeight="32"
+                          BorderThickness="0"
+                          Background="White"
+                          x:Name="MaterialItemsDataGrid">
+
+                    <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
+                    <DataGrid.Columns>
+                        <!-- 材料名称 (4字) -->
+                        <DataGridTemplateColumn Header="材料名称" Width="72">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="4,0"
+                                            Cursor="Hand"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            FontWeight="Normal"
+                                            Name="MaterialSelectionButton"
+                                            Click="MaterialSelectionButton_Click"
+                                            Command="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).OpenMaterialSelectionCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Styles>
+                                            <Style Selector="Button:pointerover">
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                            <Style Selector="Button:pressed">
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </Button.Styles>
+                                        <TextBlock Text="{Binding SelectedMaterial.Name}"
+                                                   HorizontalAlignment="Left"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#333333"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 单位 (2字) -->
+                        <DataGridTemplateColumn Header="单位" Width="62">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#333333"
+                                               TextTrimming="CharacterEllipsis"
+                                               Padding="4,0" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding MaterialUnits}"
+                                              SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding DisplayName}"
+                                              HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Stretch"
+                                              HorizontalContentAlignment="Left"
+                                              VerticalContentAlignment="Center"
+                                              BorderThickness="0"
+                                              Background="Transparent"
+                                              Padding="4,2"
+                                              FontSize="12" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 换算率 (3字) -->
+                        <DataGridTemplateColumn Header="换算率" Width="62">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <TextBlock Text="{Binding RateDisplay}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#000000" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 运单数量 (4字) -->
+                        <DataGridTemplateColumn Header="运单数量" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding WaybillQuantityDisplay}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               FontSize="12"
+                                               Foreground="#333333" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <NumericUpDown Value="{Binding WaybillQuantity, Mode=TwoWay}"
+                                                   FormatString="F2"
+                                                   Increment="0.01"
+                                                   Minimum="0"
+                                                   HorizontalAlignment="Stretch"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   ShowButtonSpinner="False"
+                                                   BorderThickness="0"
+                                                   Background="Transparent" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 运单重量 (4字) -->
+                        <DataGridTemplateColumn Header="运单重量" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <TextBlock Text="{Binding WaybillWeightDisplay}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#000000" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 实际数量 (4字) -->
+                        <DataGridTemplateColumn Header="实际数量" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <TextBlock Text="{Binding ActualQuantityDisplay}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#000000" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 实际重量 (4字) -->
+                        <DataGridTemplateColumn Header="实际重量" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <TextBlock Text="{Binding ActualWeightDisplay}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#000000" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 正负差 (3字) -->
+                        <DataGridTemplateColumn Header="正负差" Width="62">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <TextBlock Text="{Binding DifferenceDisplay}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#000000" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 偏差率 (3字) -->
+                        <DataGridTemplateColumn Header="偏差率" Width="62">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <TextBlock Text="{Binding DeviationRateDisplay}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#000000" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 偏差结果 (4字) -->
+                        <DataGridTemplateColumn Header="偏差结果" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#E5E9F2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <TextBlock Text="{Binding DeviationResult}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="#000000" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 材料选择弹窗 -->
+                <Popup Name="MaterialSelectionPopup"
+                       Placement="Bottom"
+                       IsLightDismissEnabled="True"
+                       HorizontalOffset="0"
+                       VerticalOffset="0"
+                       IsOpen="{Binding IsMaterialPopupOpen, Mode=TwoWay}">
+                    <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl"
+                                                   DataContext="{Binding MaterialsSelectionPopupViewModel}" />
+                </Popup>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,144 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MaterialClient.ViewModels"
+             x:Class="MaterialClient.Views.AttendedWeighing.SolidWasteModeFormView"
+             x:DataType="vm:AttendedWeighingDetailViewModel">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="180" />
+        </Grid.RowDefinitions>
+
+        <!-- 第二行（SolidWaste 模式） -->
+        <Border Grid.Row="0"
+                BorderThickness="0,4,0,0"
+                BorderBrush="#B0EBFF"
+                Background="White"
+                CornerRadius="4"
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel Spacing="8">
+                <!-- 车牌号 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="车牌号"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             Text="{Binding PlateNumber}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 联单编号 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="联单编号"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             Text="{Binding SolidWasteOrderNumber}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 所属镇街 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="所属镇街"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1"
+                              Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Streets}"
+                              SelectedItem="{Binding SelectedStreet}"
+                              PlaceholderText="--请选择--"
+                              Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 类型选择 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="类型选择"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1"
+                              Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding SolidWasteTypes}"
+                              SelectedItem="{Binding SelectedSolidWasteType}"
+                              PlaceholderText="--请选择--"
+                              Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 材料名称 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="材料名称"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1"
+                              Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding SolidWasteMaterials}"
+                              SelectedItem="{Binding SelectedSolidWasteMaterial}"
+                              PlaceholderText="--请选择--"
+                              Margin="0,5,0,5">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
+                <!-- 备注 -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="备注"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="4,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             TextWrapping="Wrap"
+                             Text="{Binding Remark}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- 第三行（SolidWaste 模式：保留空白容器以保持布局一致） -->
+        <Border Grid.Row="1"
+                BorderThickness="1"
+                BorderBrush="#E5E7EB"
+                Background="White"
+                CornerRadius="4"
+                Margin="0,0,0,0">
+            <Grid />
+        </Border>
+    </Grid>
+</UserControl>
+
