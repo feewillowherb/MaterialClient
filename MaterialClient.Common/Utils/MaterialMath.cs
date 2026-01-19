@@ -116,6 +116,16 @@ public static class MaterialMath
     }
 
     /// <summary>
+    ///     将重量从吨(t)转换为千克(kg)，四舍五入到整数千克
+    /// </summary>
+    /// <param name="weightInTon">重量（吨）</param>
+    /// <returns>重量（千克），整数</returns>
+    public static decimal ConvertTonToKg(decimal weightInTon)
+    {
+        return Math.Round(weightInTon * 1000m, 0, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
     ///     将重量从十克(10g)转换为吨(t)，保留两位小数
     /// </summary>
     /// <param name="weightInTenGram">重量（十克单位）</param>

@@ -1432,10 +1432,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             goodsName = idx >= 0 ? materialInfo[(idx + 1)..].Trim() : materialInfo.Trim();
         }
 
-        // Weights are used throughout the app in tons
-        var grossWeight = waybill.OrderTotalWeight ?? 0m;
-        var tareWeight = waybill.OrderTruckWeight ?? 0m;
-        var netWeight = waybill.OrderGoodsWeight ?? 0m;
+        // Weights in Waybill are in tons; ticket requires kg
+        var grossWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderTotalWeight ?? 0m);
+        var tareWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderTruckWeight ?? 0m);
+        var netWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderGoodsWeight ?? 0m);
 
         var entryTime = waybill.JoinTime ?? item.JoinTime;
         var exitTime = waybill.OutTime ?? item.OutTime ?? entryTime;
@@ -1444,7 +1444,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             PrintTime = DateTime.Now,
             SerialNumber = string.IsNullOrWhiteSpace(waybill.OrderNo) ? waybill.Id.ToString() : waybill.OrderNo,
-            MeasurementUnit = "吨",
+            MeasurementUnit = "公斤",
 
             VehicleNumber = item.PlateNumber ?? waybill.PlateNumber ?? string.Empty,
             GoodsName = goodsName,
@@ -1454,9 +1454,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             EntryTime = entryTime,
             ExitTime = exitTime,
 
-            GrossWeight = grossWeight,
-            TareWeight = tareWeight,
-            NetWeight = netWeight,
+            GrossWeight = grossWeightKg,
+            TareWeight = tareWeightKg,
+            NetWeight = netWeightKg,
 
             Type = solidWasteType,
             Remarks = waybill.Remark ?? string.Empty,
