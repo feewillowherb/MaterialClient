@@ -316,16 +316,16 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
             record.WeighingMode = WeighingMode.SolidWaste;
             if (input.PlateNumber != null) record.PlateNumber = input.PlateNumber;
+            if (input.ProviderId.HasValue) record.ProviderId = input.ProviderId;
 
             var materials = record.Materials;
             var firstMaterial = materials.FirstOrDefault();
-            if (input.MaterialId.HasValue || input.MaterialUnitId.HasValue || input.WaybillQuantity.HasValue)
+            if (input.MaterialId.HasValue || input.MaterialUnitId.HasValue)
             {
                 if (firstMaterial != null)
                 {
                     if (input.MaterialId.HasValue) firstMaterial.MaterialId = input.MaterialId;
                     if (input.MaterialUnitId.HasValue) firstMaterial.MaterialUnitId = input.MaterialUnitId;
-                    if (input.WaybillQuantity.HasValue) firstMaterial.WaybillQuantity = input.WaybillQuantity;
                     record.Materials = materials;
                 }
                 else
@@ -334,7 +334,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                         0,
                         input.MaterialId,
                         input.MaterialUnitId,
-                        input.WaybillQuantity));
+                        null));
                 }
             }
 
@@ -342,7 +342,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             if (input.Street != null) record.SetStreet(input.Street);
             if (input.SolidWasteOrderNumber != null) record.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
             if (input.Shipper != null) record.SetShipper(input.Shipper);
-            record.PatchSolidWasteMaterialInfo(input.MaterialId, input.WaybillQuantity);
+            record.PatchSolidWasteMaterialInfo(input.MaterialId, null);
 
             await _weighingRecordRepository.UpdateAsync(record);
             return;
@@ -355,16 +355,18 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             waybill.WeighingMode = WeighingMode.SolidWaste;
             if (input.PlateNumber != null) waybill.PlateNumber = input.PlateNumber;
             if (input.Remark != null) waybill.Remark = input.Remark;
+            if (input.ProviderId.HasValue) waybill.ProviderId = input.ProviderId;
 
             if (input.MaterialId.HasValue) waybill.MaterialId = input.MaterialId;
             if (input.MaterialUnitId.HasValue) waybill.MaterialUnitId = input.MaterialUnitId;
-            if (input.WaybillQuantity.HasValue) waybill.OrderPlanOnPcs = input.WaybillQuantity;
+            // In SolidWasteMode, WaybillQuantity uses OrderGoodsWeight (auto-derived)
+            if (waybill.OrderGoodsWeight.HasValue) waybill.OrderPlanOnPcs = waybill.OrderGoodsWeight;
 
             if (input.SolidWasteType != null) waybill.SetSolidWasteType(input.SolidWasteType);
             if (input.Street != null) waybill.SetStreet(input.Street);
             if (input.SolidWasteOrderNumber != null) waybill.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
             if (input.Shipper != null) waybill.SetShipper(input.Shipper);
-            waybill.PatchSolidWasteMaterialInfo(input.MaterialId, input.WaybillQuantity);
+            waybill.PatchSolidWasteMaterialInfo(input.MaterialId, waybill.OrderGoodsWeight);
 
             waybill.SetPendingSync();
             await _waybillRepository.UpdateAsync(waybill);
@@ -1176,9 +1178,9 @@ public record UpdateSolidWasteModeInput(
     long Id,
     WeighingListItemType ItemType,
     string? PlateNumber,
+    int? ProviderId,
     int? MaterialId,
     int? MaterialUnitId,
-    decimal? WaybillQuantity,
     string? SolidWasteType,
     string? Street,
     string? SolidWasteOrderNumber,

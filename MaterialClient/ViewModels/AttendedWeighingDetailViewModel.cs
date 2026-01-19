@@ -608,6 +608,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 SolidWasteOrderNumber = record.GetSolidWasteOrderNumber();
                 SelectedStreet = record.GetStreet();
                 SelectedSolidWasteType = record.GetSolidWasteType();
+                SelectedProviderId = record.ProviderId;
+                _listItem.ProviderId = record.ProviderId;
                 
                 // 读取 MaterialId 和 WaybillQuantity
                 var materialId = record.GetProperty<int?>("SolidWasteInfo.MaterialId");
@@ -643,6 +645,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 SolidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
                 SelectedStreet = waybill.GetStreet();
                 SelectedSolidWasteType = waybill.GetSolidWasteType();
+                SelectedProviderId = waybill.ProviderId;
+                _listItem.ProviderId = waybill.ProviderId;
                 
                 // 读取 MaterialId 和 WaybillQuantity
                 var materialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
@@ -860,6 +864,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     private async Task SaveSolidWasteModeAsync()
     {
+        var providerId = SelectedProviderId;
         var materialId = SelectedSolidWasteMaterial?.Id;
         var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
 
@@ -870,9 +875,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 _listItem.Id,
                 _listItem.ItemType,
                 PlateNumber,
+                providerId,
                 materialId,
                 materialUnitId,
-                GoodsWeight,
                 SelectedSolidWasteType,
                 SelectedStreet,
                 SolidWasteOrderNumber,
@@ -1113,6 +1118,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     private async Task CompleteSolidWasteModeAsync()
     {
+        var providerId = SelectedProviderId;
         var materialId = SelectedSolidWasteMaterial?.Id;
         var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
 
@@ -1125,9 +1131,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 _listItem.Id,
                 _listItem.ItemType,
                 PlateNumber,
+                providerId,
                 materialId,
                 materialUnitId,
-                GoodsWeight,
                 SelectedSolidWasteType,
                 SelectedStreet,
                 SolidWasteOrderNumber,

@@ -144,7 +144,7 @@
 
         <!-- 第三行（SolidWaste 模式：空白内容区域） -->
         <Border Grid.Row="1"
-                BorderThickness="1"
+                BorderThickness="0"
                 BorderBrush="#E5E7EB"
                 Background="White"
                 CornerRadius="4"
