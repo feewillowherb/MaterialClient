@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -42,6 +43,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IRepository<Provider, int> _providerRepository;
+    private readonly IMaterialService _materialService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IOptions<StreetsConfig> _streetsConfig;
@@ -57,12 +59,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
         _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
         _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
+        _materialService = _serviceProvider.GetRequiredService<IMaterialService>();
         _streetsConfig = _serviceProvider.GetRequiredService<IOptions<StreetsConfig>>();
         _solidWasteTypeConfig = _serviceProvider.GetRequiredService<IOptions<SolidWasteTypeConfig>>();
         _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
 
         // 初始化材料选择弹窗 ViewModel
         InitializeMaterialsSelectionPopup();
+
+        // 初始化 SolidWaste 下拉选择弹窗（镇街/材料/供应商）
+        InitializeSolidWasteSelectionPopups();
 
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -204,6 +210,15 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     [Reactive] private Material? _selectedSolidWasteMaterial;
 
+    // SolidWaste 模式：增强下拉选择弹窗（搜索/分页）
+    [Reactive] private GenericSelectionPopupViewModel<string>? _streetsPopupViewModel;
+    [Reactive] private GenericSelectionPopupViewModel<Material>? _materialsPopupViewModel;
+    [Reactive] private GenericSelectionPopupViewModel<ProviderDto>? _providersPopupViewModel;
+
+    [Reactive] private bool _isStreetsPopupOpen;
+    [Reactive] private bool _isMaterialsPopupOpen;
+    [Reactive] private bool _isProvidersPopupOpen;
+
     /// <summary>
     ///     供应商标签文本（根据当前记录的收发料类型动态显示）
     /// </summary>
@@ -260,6 +275,117 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     // 清空之前的选择，确保每次打开弹窗时都是干净的状态
                     MaterialsSelectionPopupViewModel.SelectedMaterial = null;
                     _ = MaterialsSelectionPopupViewModel.RefreshAsync();
+                }
+            });
+    }
+
+    private void InitializeSolidWasteSelectionPopups()
+    {
+        // 镇街：客户端分页
+        StreetsPopupViewModel = new GenericSelectionPopupViewModel<string>(
+            pagingMode: GenericSelectionPagingMode.ClientSide,
+            displayTextSelector: s => s,
+            logger: Logger,
+            loadAllFunc: () =>
+            {
+                var streets = _streetsConfig.Value.Streets ?? Array.Empty<string>();
+                System.Collections.Generic.IReadOnlyList<string> result = streets
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim())
+                    .Distinct()
+                    .OrderBy(s => s)
+                    .ToList();
+                return Task.FromResult<System.Collections.Generic.IReadOnlyList<string>>(result);
+            });
+
+        _ = StreetsPopupViewModel.InitializeAsync();
+
+        StreetsPopupViewModel.WhenAnyValue(x => x.SelectedItem)
+            .Where(item => item != null)
+            .Subscribe(item =>
+            {
+                if (item == null) return;
+                SelectedStreet = item.Value;
+                IsStreetsPopupOpen = false;
+            });
+
+        this.WhenAnyValue(x => x.IsStreetsPopupOpen)
+            .Subscribe(isOpen =>
+            {
+                if (isOpen && StreetsPopupViewModel != null)
+                {
+                    StreetsPopupViewModel.SearchText = string.Empty;
+                    StreetsPopupViewModel.SelectedItem = null;
+                    StreetsPopupViewModel.CurrentPage = 1;
+                    _ = StreetsPopupViewModel.RefreshAsync();
+                }
+            });
+
+        // 材料：客户端分页（仅显示 Name）
+        MaterialsPopupViewModel = new GenericSelectionPopupViewModel<Material>(
+            pagingMode: GenericSelectionPagingMode.ClientSide,
+            displayTextSelector: m => m.Name ?? string.Empty,
+            logger: Logger,
+            loadAllFunc: async () =>
+            {
+                var materials = await _materialRepository.GetListAsync();
+                return materials
+                    .Where(m => !m.IsDeleted)
+                    .OrderBy(m => m.Name)
+                    .ToList();
+            });
+
+        _ = MaterialsPopupViewModel.InitializeAsync();
+
+        MaterialsPopupViewModel.WhenAnyValue(x => x.SelectedItem)
+            .Where(item => item != null)
+            .Subscribe(item =>
+            {
+                if (item == null) return;
+                SelectedSolidWasteMaterial = item.Value;
+                IsMaterialsPopupOpen = false;
+            });
+
+        this.WhenAnyValue(x => x.IsMaterialsPopupOpen)
+            .Subscribe(isOpen =>
+            {
+                if (isOpen && MaterialsPopupViewModel != null)
+                {
+                    MaterialsPopupViewModel.SearchText = string.Empty;
+                    MaterialsPopupViewModel.SelectedItem = null;
+                    MaterialsPopupViewModel.CurrentPage = 1;
+                    _ = MaterialsPopupViewModel.RefreshAsync();
+                }
+            });
+
+        // 供应商：服务端分页（IMaterialService.GetPagedProvidersAsync）
+        ProvidersPopupViewModel = new GenericSelectionPopupViewModel<ProviderDto>(
+            pagingMode: GenericSelectionPagingMode.ServerSide,
+            displayTextSelector: p => p.ProviderName,
+            logger: Logger,
+            loadPageFunc: (search, pageIndex, pageSize) =>
+                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize));
+
+        _ = ProvidersPopupViewModel.InitializeAsync();
+
+        ProvidersPopupViewModel.WhenAnyValue(x => x.SelectedItem)
+            .Where(item => item != null)
+            .Subscribe(item =>
+            {
+                if (item == null) return;
+                SelectedProvider = item.Value;
+                IsProvidersPopupOpen = false;
+            });
+
+        this.WhenAnyValue(x => x.IsProvidersPopupOpen)
+            .Subscribe(isOpen =>
+            {
+                if (isOpen && ProvidersPopupViewModel != null)
+                {
+                    ProvidersPopupViewModel.SearchText = string.Empty;
+                    ProvidersPopupViewModel.SelectedItem = null;
+                    ProvidersPopupViewModel.CurrentPage = 1;
+                    _ = ProvidersPopupViewModel.RefreshAsync();
                 }
             });
     }

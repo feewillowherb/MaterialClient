@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:views="using:MaterialClient.Views"
              x:Class="MaterialClient.Views.AttendedWeighing.SolidWasteModeFormView"
              x:DataType="vm:AttendedWeighingDetailViewModel">
 
@@ -43,20 +44,14 @@
                            FontSize="12"
                            Foreground="#333333"
                            Margin="0,0,8,0" />
-                    <ComboBox Grid.Column="1"
-                              Height="20"
-                              FontSize="12"
-                              HorizontalAlignment="Stretch"
-                              ItemsSource="{Binding Providers}"
-                              SelectedItem="{Binding SelectedProvider}"
-                              PlaceholderText="--请选择--"
-                              Margin="0,5,0,5">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding ProviderName}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
+                    <Button Grid.Column="1"
+                            Classes="combo-trigger"
+                            Height="20"
+                            FontSize="12"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding SelectedProvider.ProviderName, TargetNullValue='--请选择--'}"
+                            Click="ProvidersSelectionButton_Click"
+                            Margin="0,5,0,5" />
                 </Grid>
 
                 <!-- 联单编号 -->
@@ -83,14 +78,14 @@
                            FontSize="12"
                            Foreground="#333333"
                            Margin="0,0,8,0" />
-                    <ComboBox Grid.Column="1"
-                              Height="20"
-                              FontSize="12"
-                              HorizontalAlignment="Stretch"
-                              ItemsSource="{Binding Streets}"
-                              SelectedItem="{Binding SelectedStreet}"
-                              PlaceholderText="--请选择--"
-                              Margin="0,5,0,5" />
+                    <Button Grid.Column="1"
+                            Classes="combo-trigger"
+                            Height="20"
+                            FontSize="12"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding SelectedStreet, TargetNullValue='--请选择--'}"
+                            Click="StreetsSelectionButton_Click"
+                            Margin="0,5,0,5" />
                 </Grid>
 
                 <!-- 类型选择 -->
@@ -119,20 +114,14 @@
                            FontSize="12"
                            Foreground="#333333"
                            Margin="0,0,8,0" />
-                    <ComboBox Grid.Column="1"
-                              Height="20"
-                              FontSize="12"
-                              HorizontalAlignment="Stretch"
-                              ItemsSource="{Binding SolidWasteMaterials}"
-                              SelectedItem="{Binding SelectedSolidWasteMaterial}"
-                              PlaceholderText="--请选择--"
-                              Margin="0,5,0,5">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
+                    <Button Grid.Column="1"
+                            Classes="combo-trigger"
+                            Height="20"
+                            FontSize="12"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding SelectedSolidWasteMaterial.Name, TargetNullValue='--请选择--'}"
+                            Click="MaterialsSelectionButton_Click"
+                            Margin="0,5,0,5" />
                 </Grid>
 
                 <!-- 备注 -->
@@ -163,6 +152,42 @@
                 Margin="0,0,0,0">
             <Grid />
         </Border>
+
+        <!-- 所属镇街选择弹窗 -->
+        <Popup Name="StreetsSelectionPopup"
+               Grid.RowSpan="2"
+               Placement="Bottom"
+               IsLightDismissEnabled="True"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="{Binding IsStreetsPopupOpen, Mode=TwoWay}">
+            <views:GenericSelectionPopup x:Name="StreetsSelectionPopupControl"
+                                         DataContext="{Binding StreetsPopupViewModel}" />
+        </Popup>
+
+        <!-- 材料名称选择弹窗 -->
+        <Popup Name="MaterialsSelectionPopup"
+               Grid.RowSpan="2"
+               Placement="Bottom"
+               IsLightDismissEnabled="True"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="{Binding IsMaterialsPopupOpen, Mode=TwoWay}">
+            <views:GenericSelectionPopup x:Name="MaterialsSelectionPopupControl"
+                                         DataContext="{Binding MaterialsPopupViewModel}" />
+        </Popup>
+
+        <!-- 供应商选择弹窗 -->
+        <Popup Name="ProvidersSelectionPopup"
+               Grid.RowSpan="2"
+               Placement="Bottom"
+               IsLightDismissEnabled="True"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="{Binding IsProvidersPopupOpen, Mode=TwoWay}">
+            <views:GenericSelectionPopup x:Name="ProvidersSelectionPopupControl"
+                                         DataContext="{Binding ProvidersPopupViewModel}" />
+        </Popup>
     </Grid>
 </UserControl>
 
