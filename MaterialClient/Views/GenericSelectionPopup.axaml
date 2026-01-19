@@ -1,8 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
-             xmlns:semi="https://irihi.tech/semi"
-             xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              xmlns:u="https://irihi.tech/ursa"
              x:Class="MaterialClient.Views.GenericSelectionPopup"
              x:DataType="vm:IGenericSelectionPopupBindings"
@@ -41,44 +39,64 @@
                     BorderBrush="#E5E7EB"
                     BorderThickness="0"
                     Background="Transparent">
-                <DataGrid Height="200"
-                          AutoGenerateColumns="False"
-                          CanUserResizeColumns="False"
-                          CanUserSortColumns="False"
-                          IsReadOnly="True"
-                          SelectionMode="Single"
-                          HorizontalAlignment="Stretch"
-                          BorderThickness="0"
-                          Background="White"
-                          GridLinesVisibility="Horizontal"
-                          HeadersVisibility="Column"
-                          RowHeight="30"
-                          ItemsSource="{Binding PagedItems}"
-                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                          SelectionChanged="OnItemSelectionChanged"
-                          DoubleTapped="OnItemDoubleTapped">
+                <Grid>
+                    <DataGrid Height="200"
+                              AutoGenerateColumns="False"
+                              CanUserResizeColumns="False"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              HorizontalAlignment="Stretch"
+                              BorderThickness="0"
+                              Background="White"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              RowHeight="30"
+                              ItemsSource="{Binding PagedItems}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              SelectionChanged="OnItemSelectionChanged"
+                              DoubleTapped="OnItemDoubleTapped"
+                              IsVisible="{Binding ShowResults}">
 
-                    <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="*">
-                            <DataGridTemplateColumn.Header>
-                                <TextBlock FontSize="10"
-                                           Text="名称"
-                                           Foreground="Black"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" />
-                            </DataGridTemplateColumn.Header>
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate x:DataType="vm:IGenericSelectionItem">
-                                    <TextBlock Text="{Binding DisplayText}"
-                                               FontSize="10"
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="*">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock FontSize="10"
+                                               Text="名称"
+                                               Foreground="Black"
                                                HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
+                                               VerticalAlignment="Center" />
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:IGenericSelectionItem">
+                                        <TextBlock Text="{Binding DisplayText}"
+                                                   FontSize="10"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Empty state + add new -->
+                    <StackPanel IsVisible="{Binding ShowAddNewButton}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="10">
+                        <TextBlock Text="未找到匹配结果"
+                                   FontSize="12"
+                                   Foreground="#666666"
+                                   HorizontalAlignment="Center" />
+                        <Button Classes="primary-button"
+                                Height="36"
+                                FontSize="12"
+                                Padding="12,0"
+                                Content="{Binding AddNewButtonText}"
+                                Command="{Binding AddNewItemCommand}" />
+                    </StackPanel>
+                </Grid>
             </Border>
 
             <!-- 分页控件区域 -->

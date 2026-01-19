@@ -27,6 +27,12 @@ public interface IGenericSelectionPopupBindings : IGenericSelectionPopupViewMode
 
     object? SelectedItem { get; set; }
 
+    bool ShowResults { get; }
+
+    bool ShowAddNewButton { get; }
+
+    string AddNewButtonText { get; }
+
     int CurrentPage { get; set; }
 
     int PageSize { get; set; }
@@ -43,6 +49,8 @@ public interface IGenericSelectionPopupBindings : IGenericSelectionPopupViewMode
 public interface IGenericSelectionPopupViewModel
 {
     ICommand SelectItemCommand { get; }
+
+    ICommand AddNewItemCommand { get; }
 }
 
 public enum GenericSelectionPagingMode
@@ -73,6 +81,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     private readonly Func<T, string> _displayTextSelector;
     private readonly Func<string?, int, int, Task<PagedResultDto<T>>>? _loadPageFunc;
     private readonly Func<Task<IReadOnlyList<T>>>? _loadAllFunc;
+    private readonly Func<string, Task<T?>>? _createNewItemFunc;
 
     private IReadOnlyList<T> _allItems = Array.Empty<T>();
 
@@ -92,6 +101,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         ILogger? logger = null,
         Func<string?, int, int, Task<PagedResultDto<T>>>? loadPageFunc = null,
         Func<Task<IReadOnlyList<T>>>? loadAllFunc = null,
+        Func<string, Task<T?>>? createNewItemFunc = null,
         int pageSize = DefaultPageSize)
         : base(logger)
     {
@@ -99,6 +109,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         _displayTextSelector = displayTextSelector;
         _loadPageFunc = loadPageFunc;
         _loadAllFunc = loadAllFunc;
+        _createNewItemFunc = createNewItemFunc;
 
         _pageSize = pageSize <= 0 ? DefaultPageSize : pageSize;
 
@@ -152,6 +163,19 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     public string TotalCountInfo => $"共{TotalCount}条记录";
 
     public T? SelectedValue => SelectedItem != null ? SelectedItem.Value : default;
+
+    public bool ShowResults => TotalCount > 0;
+
+    public bool ShowAddNewButton => TotalCount == 0 && !string.IsNullOrWhiteSpace(SearchText);
+
+    public string AddNewButtonText
+    {
+        get
+        {
+            var text = SearchText?.Trim();
+            return string.IsNullOrWhiteSpace(text) ? "新增" : $"新增 \"{text}\"";
+        }
+    }
 
     private void InitializeFiltering()
     {
@@ -263,6 +287,9 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         {
             this.RaisePropertyChanged(nameof(CurrentPageInfo));
             this.RaisePropertyChanged(nameof(TotalCountInfo));
+            this.RaisePropertyChanged(nameof(ShowResults));
+            this.RaisePropertyChanged(nameof(ShowAddNewButton));
+            this.RaisePropertyChanged(nameof(AddNewButtonText));
         }
     }
 
@@ -317,6 +344,45 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     }
 
     ICommand IGenericSelectionPopupViewModel.SelectItemCommand => SelectItemCommand;
+
+    [ReactiveCommand]
+    private async Task AddNewItemAsync()
+    {
+        if (_createNewItemFunc == null)
+        {
+            return;
+        }
+
+        var name = SearchText?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        try
+        {
+            var newItem = await _createNewItemFunc(name);
+            if (newItem == null)
+            {
+                return;
+            }
+
+            SelectedItem = new GenericSelectionItem<T>
+            {
+                Value = newItem,
+                DisplayText = _displayTextSelector(newItem) ?? string.Empty
+            };
+
+            // Refresh so the created item can appear in list on next open.
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "新增数据失败");
+        }
+    }
+
+    ICommand IGenericSelectionPopupViewModel.AddNewItemCommand => AddNewItemCommand;
 
     IEnumerable IGenericSelectionPopupBindings.PagedItems => PagedItems;
 

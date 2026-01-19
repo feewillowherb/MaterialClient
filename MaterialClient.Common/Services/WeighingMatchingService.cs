@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
@@ -89,6 +90,12 @@ public interface IWeighingMatchingService
     /// <param name="plateNumber">车牌号</param>
     /// <returns>推荐数据，如果未找到则返回 null</returns>
     Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber);
+
+    /// <summary>
+    ///     根据运单ID获取运单实体
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    Task<Waybill> GetWaybillByIdAsync(long waybillId);
 }
 
 /// <summary>
@@ -137,6 +144,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             _logger?.LogWarning(ex,
                 "WeighingMatchingService: Failed to load configuration, using default values");
         }
+    }
+
+    [UnitOfWork]
+    public async Task<Waybill> GetWaybillByIdAsync(long waybillId)
+    {
+        return await _waybillRepository.GetAsync(waybillId);
     }
 
     [UnitOfWork]
@@ -709,6 +722,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
 
+        // 复制 SolidWaste 信息（手动匹配 + 自动匹配都走此处）
+        CopySolidWasteInfoToWaybill(waybill, joinRecord, outRecord);
+
         // 先插入 Waybill 获取 Id
         await _waybillRepository.InsertAsync(waybill, true);
         joinRecord.MatchAsJoin(outRecord.Id, waybill.Id);
@@ -728,6 +744,50 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
 
         return waybill;
+    }
+
+    /// <summary>
+    ///     将 SolidWaste 信息从 WeighingRecord 传递到新建 Waybill（优先 joinRecord，空值时回退 outRecord）
+    /// </summary>
+    private static void CopySolidWasteInfoToWaybill(Waybill waybill, WeighingRecord joinRecord, WeighingRecord outRecord)
+    {
+        if (joinRecord.WeighingMode != WeighingMode.SolidWaste && outRecord.WeighingMode != WeighingMode.SolidWaste)
+            return;
+
+        // join-first: joinRecord 是 SolidWaste 时优先使用 joinRecord，否则使用 outRecord（如果它是 SolidWaste）
+        var primary = joinRecord.WeighingMode == WeighingMode.SolidWaste ? joinRecord : outRecord;
+        var fallback = ReferenceEquals(primary, joinRecord) ? outRecord : joinRecord;
+
+        waybill.WeighingMode = WeighingMode.SolidWaste;
+
+        var solidWasteType = primary.GetSolidWasteType();
+        var street = primary.GetStreet();
+        var solidWasteOrderNumber = primary.GetSolidWasteOrderNumber();
+
+        // Shipper 的扩展 GetShipper() 会返回默认值，无法判断是否“未设置”，因此这里读取原始 ExtraProperties 值
+        var shipper = primary.GetProperty<string>("SolidWasteInfo.Shipper");
+
+        var solidWasteMaterialId = primary.GetProperty<int?>("SolidWasteInfo.MaterialId");
+
+        if (fallback.WeighingMode == WeighingMode.SolidWaste)
+        {
+            solidWasteType ??= fallback.GetSolidWasteType();
+            street ??= fallback.GetStreet();
+            solidWasteOrderNumber ??= fallback.GetSolidWasteOrderNumber();
+            shipper ??= fallback.GetProperty<string>("SolidWasteInfo.Shipper");
+            solidWasteMaterialId ??= fallback.GetProperty<int?>("SolidWasteInfo.MaterialId");
+        }
+
+        if (solidWasteType != null) waybill.SetSolidWasteType(solidWasteType);
+        if (street != null) waybill.SetStreet(street);
+        if (solidWasteOrderNumber != null) waybill.SetSolidWasteOrderNumber(solidWasteOrderNumber);
+
+        // 即使 shipper 未设置，也写入默认值（SetShipper 内部会回退 DefaultShipper）
+        waybill.SetShipper(shipper);
+
+        // UI 读取 SolidWaste 材料使用 ExtraProperties 的 SolidWasteInfo.MaterialId / WaybillQuantity
+        // WaybillQuantity 在 SolidWaste 模式下约定为 GoodsWeight（自动派生）
+        waybill.PatchSolidWasteMaterialInfo(solidWasteMaterialId, waybill.OrderGoodsWeight);
     }
 
     /// <summary>

@@ -54,6 +54,24 @@
                             Margin="0,5,0,5" />
                 </Grid>
 
+                <!-- 材料名称 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="材料名称"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <Button Grid.Column="1"
+                            Classes="combo-trigger"
+                            Height="20"
+                            FontSize="12"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding SelectedSolidWasteMaterial.Name}"
+                            Click="MaterialsSelectionButton_Click"
+                            Margin="0,5,0,5" />
+                </Grid>
+
                 <!-- 联单编号 -->
                 <Grid ColumnDefinitions="72,*">
                     <Label Content="联单编号"
@@ -103,24 +121,6 @@
                               ItemsSource="{Binding SolidWasteTypes}"
                               SelectedItem="{Binding SelectedSolidWasteType}"
                               Margin="0,5,0,5" />
-                </Grid>
-
-                <!-- 材料名称 -->
-                <Grid ColumnDefinitions="72,*">
-                    <Label Content="材料名称"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Left"
-                           FontSize="12"
-                           Foreground="#333333"
-                           Margin="0,0,8,0" />
-                    <Button Grid.Column="1"
-                            Classes="combo-trigger"
-                            Height="20"
-                            FontSize="12"
-                            HorizontalAlignment="Stretch"
-                            Content="{Binding SelectedSolidWasteMaterial.Name}"
-                            Click="MaterialsSelectionButton_Click"
-                            Margin="0,5,0,5" />
                 </Grid>
 
                 <!-- 备注 -->

@@ -321,19 +321,15 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 }
             });
 
-        // 材料：客户端分页（仅显示 Name）
+        // 材料：服务端分页（支持按搜索新增）
         MaterialsPopupViewModel = new GenericSelectionPopupViewModel<Material>(
-            pagingMode: GenericSelectionPagingMode.ClientSide,
+            pagingMode: GenericSelectionPagingMode.ServerSide,
             displayTextSelector: m => m.Name ?? string.Empty,
             logger: Logger,
-            loadAllFunc: async () =>
-            {
-                var materials = await _materialRepository.GetListAsync();
-                return materials
-                    .Where(m => !m.IsDeleted)
-                    .OrderBy(m => m.Name)
-                    .ToList();
-            });
+            loadPageFunc: (search, pageIndex, pageSize) =>
+                _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize),
+            createNewItemFunc: async name =>
+                (Material?)await _materialService.CreateMaterialAsync(name));
 
         _ = MaterialsPopupViewModel.InitializeAsync();
 
@@ -358,13 +354,26 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 }
             });
 
-        // 供应商：服务端分页（IMaterialService.GetPagedProvidersAsync）
+        // 供应商：服务端分页（支持按搜索新增）
         ProvidersPopupViewModel = new GenericSelectionPopupViewModel<ProviderDto>(
             pagingMode: GenericSelectionPagingMode.ServerSide,
             displayTextSelector: p => p.ProviderName,
             logger: Logger,
             loadPageFunc: (search, pageIndex, pageSize) =>
-                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize));
+                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize),
+            createNewItemFunc: async name =>
+            {
+                var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
+                var created = await _materialService.CreateProviderAsync(name, deliveryType);
+                return (ProviderDto?)new ProviderDto
+                {
+                    Id = created.Id,
+                    ProviderType = created.ProviderType ?? (int)deliveryType,
+                    ProviderName = created.ProviderName,
+                    ContactName = created.ContectName,
+                    ContactPhone = created.ContectPhone
+                };
+            });
 
         _ = ProvidersPopupViewModel.InitializeAsync();
 
