@@ -238,7 +238,11 @@ public class MaterialClientModule : AbpModule
                     var currentMode = settings.SystemSettings.DefaultWeighingMode;
                     if (currentMode != desiredMode)
                     {
-                        settings.SystemSettings.DefaultWeighingMode = desiredMode;
+                        // 获取 SystemSettings 对象，修改后重新 set 回去以触发序列化
+                        var systemSettings = settings.SystemSettings;
+                        systemSettings.DefaultWeighingMode = desiredMode;
+                        settings.SystemSettings = systemSettings;
+                        
                         await settingsService.SaveSettingsAsync(settings);
 
                         logger?.LogInformation(
