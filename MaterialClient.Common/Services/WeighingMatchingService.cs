@@ -21,6 +21,7 @@ public interface IWeighingMatchingService
     Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record);
     Task UpdateWaybillAsync(UpdateWaybillInput input);
     Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input);
+    Task UpdateSolidWasteModeAsync(UpdateSolidWasteModeInput input);
 
     /// <summary>
     ///     更新列表项（根据类型自动判断更新 WeighingRecord 或 Waybill）
@@ -298,6 +299,79 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         }
 
         await _weighingRecordRepository.UpdateAsync(record);
+    }
+
+    [UnitOfWork]
+    public async Task UpdateSolidWasteModeAsync(UpdateSolidWasteModeInput input)
+    {
+        if (input.MaterialId.HasValue && input.MaterialId.Value <= 0)
+            throw new BusinessException("MaterialId must be greater than 0 when provided.");
+
+        if (input.MaterialUnitId.HasValue && input.MaterialUnitId.Value <= 0)
+            throw new BusinessException("MaterialUnitId must be greater than 0 when provided.");
+
+        if (input.ItemType == WeighingListItemType.WeighingRecord)
+        {
+            var record = await _weighingRecordRepository.GetAsync(input.Id);
+
+            record.WeighingMode = WeighingMode.SolidWaste;
+            if (input.PlateNumber != null) record.PlateNumber = input.PlateNumber;
+
+            var materials = record.Materials;
+            var firstMaterial = materials.FirstOrDefault();
+            if (input.MaterialId.HasValue || input.MaterialUnitId.HasValue || input.WaybillQuantity.HasValue)
+            {
+                if (firstMaterial != null)
+                {
+                    if (input.MaterialId.HasValue) firstMaterial.MaterialId = input.MaterialId;
+                    if (input.MaterialUnitId.HasValue) firstMaterial.MaterialUnitId = input.MaterialUnitId;
+                    if (input.WaybillQuantity.HasValue) firstMaterial.WaybillQuantity = input.WaybillQuantity;
+                    record.Materials = materials;
+                }
+                else
+                {
+                    record.AddMaterial(new WeighingRecordMaterial(
+                        0,
+                        input.MaterialId,
+                        input.MaterialUnitId,
+                        input.WaybillQuantity));
+                }
+            }
+
+            if (input.SolidWasteType != null) record.SetSolidWasteType(input.SolidWasteType);
+            if (input.Street != null) record.SetStreet(input.Street);
+            if (input.SolidWasteOrderNumber != null) record.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
+            if (input.Shipper != null) record.SetShipper(input.Shipper);
+            record.PatchSolidWasteMaterialInfo(input.MaterialId, input.WaybillQuantity);
+
+            await _weighingRecordRepository.UpdateAsync(record);
+            return;
+        }
+
+        if (input.ItemType == WeighingListItemType.Waybill)
+        {
+            var waybill = await _waybillRepository.GetAsync(input.Id);
+
+            waybill.WeighingMode = WeighingMode.SolidWaste;
+            if (input.PlateNumber != null) waybill.PlateNumber = input.PlateNumber;
+            if (input.Remark != null) waybill.Remark = input.Remark;
+
+            if (input.MaterialId.HasValue) waybill.MaterialId = input.MaterialId;
+            if (input.MaterialUnitId.HasValue) waybill.MaterialUnitId = input.MaterialUnitId;
+            if (input.WaybillQuantity.HasValue) waybill.OrderPlanOnPcs = input.WaybillQuantity;
+
+            if (input.SolidWasteType != null) waybill.SetSolidWasteType(input.SolidWasteType);
+            if (input.Street != null) waybill.SetStreet(input.Street);
+            if (input.SolidWasteOrderNumber != null) waybill.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
+            if (input.Shipper != null) waybill.SetShipper(input.Shipper);
+            waybill.PatchSolidWasteMaterialInfo(input.MaterialId, input.WaybillQuantity);
+
+            waybill.SetPendingSync();
+            await _waybillRepository.UpdateAsync(waybill);
+            return;
+        }
+
+        throw new BusinessException($"Unsupported item type: {input.ItemType}");
     }
 
     [UnitOfWork]
@@ -1096,6 +1170,20 @@ public record UpdateWeighingRecordInput(
     int? MaterialUnitId,
     decimal? WaybillQuantity,
     DeliveryType? DeliveryType
+);
+
+public record UpdateSolidWasteModeInput(
+    long Id,
+    WeighingListItemType ItemType,
+    string? PlateNumber,
+    int? MaterialId,
+    int? MaterialUnitId,
+    decimal? WaybillQuantity,
+    string? SolidWasteType,
+    string? Street,
+    string? SolidWasteOrderNumber,
+    string? Remark,
+    string? Shipper
 );
 
 public record UpdateListItemInput(

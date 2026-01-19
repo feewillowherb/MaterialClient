@@ -31,6 +31,8 @@ public static class SolidWasteInfoExtensions
     private const string StreetKey = "SolidWasteInfo.Street";
     private const string SolidWasteOrderNumberKey = "SolidWasteInfo.SolidWasteOrderNumber";
     private const string ShipperKey = "SolidWasteInfo.Shipper";
+    private const string MaterialIdKey = "SolidWasteInfo.MaterialId";
+    private const string WaybillQuantityKey = "SolidWasteInfo.WaybillQuantity";
 
     #endregion
 
@@ -136,6 +138,21 @@ public static class SolidWasteInfoExtensions
         record.SetShipper(shipper);
     }
 
+    public static void SetSolidWasteMaterialInfo(this WeighingRecord record, int materialId, decimal? waybillQuantity)
+    {
+        if (record == null) throw new ArgumentNullException(nameof(record));
+        record.SetProperty(MaterialIdKey, materialId);
+        record.SetProperty(WaybillQuantityKey, waybillQuantity);
+    }
+
+    public static void PatchSolidWasteMaterialInfo(this WeighingRecord record, int? materialId, decimal? waybillQuantity)
+    {
+        if (record == null) throw new ArgumentNullException(nameof(record));
+
+        if (materialId.HasValue) record.SetProperty(MaterialIdKey, materialId.Value);
+        if (waybillQuantity.HasValue) record.SetProperty(WaybillQuantityKey, waybillQuantity.Value);
+    }
+
     #endregion
 
     #region Waybill Extensions
@@ -238,6 +255,21 @@ public static class SolidWasteInfoExtensions
         waybill.SetStreet(street);
         waybill.SetSolidWasteOrderNumber(solidWasteOrderNumber);
         waybill.SetShipper(shipper);
+    }
+
+    public static void SetSolidWasteMaterialInfo(this Waybill waybill, int materialId, decimal? waybillQuantity)
+    {
+        if (waybill == null) throw new ArgumentNullException(nameof(waybill));
+        waybill.SetProperty(MaterialIdKey, materialId);
+        waybill.SetProperty(WaybillQuantityKey, waybillQuantity);
+    }
+
+    public static void PatchSolidWasteMaterialInfo(this Waybill waybill, int? materialId, decimal? waybillQuantity)
+    {
+        if (waybill == null) throw new ArgumentNullException(nameof(waybill));
+
+        if (materialId.HasValue) waybill.SetProperty(MaterialIdKey, materialId.Value);
+        if (waybillQuantity.HasValue) waybill.SetProperty(WaybillQuantityKey, waybillQuantity.Value);
     }
 
     #endregion

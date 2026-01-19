@@ -17,6 +17,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
+using Volo.Abp;
 using Volo.Abp.Data;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
@@ -733,88 +734,32 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     private async Task SaveSolidWasteModeAsync()
     {
-        // 验证必填字段
-        if (SelectedSolidWasteMaterial == null)
-        {
-            await ShowMessageBoxAsync("请选择材料名称");
-            return;
-        }
-
-        var materialId = SelectedSolidWasteMaterial.Id;
+        var materialId = SelectedSolidWasteMaterial?.Id;
         var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
-        if (!materialUnitId.HasValue)
-        {
-            await ShowMessageBoxAsync("材料单位未选择");
-            return;
-        }
 
-        if (_listItem.ItemType == WeighingListItemType.WeighingRecord)
+        var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+        try
         {
-            var record = await _weighingRecordRepository.GetAsync(_listItem.Id);
-            
-            // 更新基本字段
-            record.PlateNumber = PlateNumber;
-            record.WeighingMode = WeighingMode.SolidWaste;
-            
-            // 更新物料信息（在第一个 Material 中）
-            var materials = record.Materials;
-            var firstMaterial = materials.FirstOrDefault();
-            if (firstMaterial != null)
-            {
-                firstMaterial.MaterialId = materialId;
-                firstMaterial.MaterialUnitId = materialUnitId.Value;
-                firstMaterial.WaybillQuantity = GoodsWeight; // 运单数量 = 实际重量
-                record.Materials = materials;
-            }
-            else
-            {
-                record.AddMaterial(new WeighingRecordMaterial(
-                    0,
-                    materialId,
-                    materialUnitId.Value,
-                    GoodsWeight));
-            }
-            
-            // 保存 SolidWaste 信息到 ExtraProperties
-            record.SetSolidWasteInfo(
+            await weighingMatchingService.UpdateSolidWasteModeAsync(new UpdateSolidWasteModeInput(
+                _listItem.Id,
+                _listItem.ItemType,
+                PlateNumber,
+                materialId,
+                materialUnitId,
+                GoodsWeight,
                 SelectedSolidWasteType,
                 SelectedStreet,
                 SolidWasteOrderNumber,
-                null); // 使用默认发货单位
-            
-            // 保存 MaterialId 到 ExtraProperties（用于固废模式）
-            record.SetProperty("SolidWasteInfo.MaterialId", materialId);
-            record.SetProperty("SolidWasteInfo.WaybillQuantity", GoodsWeight);
-            
-            await _weighingRecordRepository.UpdateAsync(record);
+                Remark,
+                null));
         }
-        else if (_listItem.ItemType == WeighingListItemType.Waybill)
+        catch (BusinessException ex)
         {
-            var waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
-            var waybill = await waybillRepository.GetAsync(_listItem.Id);
-            
-            // 更新基本字段
-            waybill.PlateNumber = PlateNumber;
-            waybill.Remark = Remark;
-            waybill.WeighingMode = WeighingMode.SolidWaste;
-            
-            // 更新物料信息
-            waybill.MaterialId = materialId;
-            waybill.MaterialUnitId = materialUnitId.Value;
-            waybill.OrderPlanOnPcs = GoodsWeight; // 运单数量 = 实际重量
-            
-            // 保存 SolidWaste 信息到 ExtraProperties
-            waybill.SetSolidWasteInfo(
-                SelectedSolidWasteType,
-                SelectedStreet,
-                SolidWasteOrderNumber,
-                null); // 使用默认发货单位
-            
-            // 保存 MaterialId 到 ExtraProperties（用于固废模式）
-            waybill.SetProperty("SolidWasteInfo.MaterialId", materialId);
-            waybill.SetProperty("SolidWasteInfo.WaybillQuantity", GoodsWeight);
-            
-            await waybillRepository.UpdateAsync(waybill);
+            await ShowMessageBoxAsync(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            await ShowMessageBoxAsync(ex.Message);
         }
     }
 
