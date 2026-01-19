@@ -38,7 +38,7 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransientDependency
 {
-    private WeighingListItemDto _listItem;
+    private WeighingListItemDto _listItem = null!;
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IRepository<Provider, int> _providerRepository;
@@ -47,7 +47,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     private readonly IOptions<StreetsConfig> _streetsConfig;
     private readonly IOptions<SolidWasteTypeConfig> _solidWasteTypeConfig;
     private readonly ISettingsService _settingsService;
-    private readonly IAttendedWeighingService _attendedWeighingService;
 
     public AttendedWeighingDetailViewModel(
         IServiceProvider serviceProvider)
@@ -61,7 +60,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         _streetsConfig = _serviceProvider.GetRequiredService<IOptions<StreetsConfig>>();
         _solidWasteTypeConfig = _serviceProvider.GetRequiredService<IOptions<SolidWasteTypeConfig>>();
         _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
-        _attendedWeighingService = _serviceProvider.GetRequiredService<IAttendedWeighingService>();
 
         // 初始化材料选择弹窗 ViewModel
         InitializeMaterialsSelectionPopup();
@@ -207,14 +205,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [Reactive] private Material? _selectedSolidWasteMaterial;
 
     /// <summary>
-    ///     供应商标签文本（根据收发料类型动态显示）
+    ///     供应商标签文本（根据当前记录的收发料类型动态显示）
     /// </summary>
     public string ProviderLabelText
     {
         get
         {
             // 收料时显示"发货单位"，发料时显示"收货单位"
-            return _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving
+            return _listItem?.DeliveryType == DeliveryType.Receiving
                 ? "发货单位"
                 : "收货单位";
         }
@@ -282,6 +280,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         
         // 初始化 WeighingMode：使用记录的实际模式
         WeighingMode = _listItem.WeighingMode;
+        
+        // 通知 ProviderLabelText 属性变化（因为它依赖于 _listItem.DeliveryType）
+        this.RaisePropertyChanged(nameof(ProviderLabelText));
         
         // 保存临时拍照文件路径
         _capturedBillPhotoPath = capturedBillPhotoPath;
