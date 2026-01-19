@@ -27,8 +27,8 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
 
-namespace MaterialClient;
-
+namespace MaterialClient
+{
 [DependsOn(
     typeof(MaterialClientCommonModule),
     typeof(AbpAutofacModule),
@@ -209,8 +209,18 @@ public class MaterialClientModule : AbpModule
             logger?.LogError(ex, "数据库迁移失败");
         }
 
-        // 注册并启动后台工作器
-        await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
+        // 注册并启动后台工作器（可通过配置禁用）
+        var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
+        var pollingEnabled = configuration.GetValue("BackgroundServices:Polling", true);
+        if (pollingEnabled)
+        {
+            await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
+        }
+        else
+        {
+            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
+            logger?.LogInformation("PollingBackgroundService is disabled by configuration (BackgroundServices:Polling=false).");
+        }
 
         // 初始化车牌号推荐服务缓存
         try
@@ -233,4 +243,5 @@ public class MaterialClientModule : AbpModule
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
     }
+}
 }
