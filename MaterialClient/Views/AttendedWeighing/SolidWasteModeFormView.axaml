@@ -4,23 +4,17 @@
              x:Class="MaterialClient.Views.AttendedWeighing.SolidWasteModeFormView"
              x:DataType="vm:AttendedWeighingDetailViewModel">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" MinHeight="180" />
-        </Grid.RowDefinitions>
-
-        <!-- 第二行（SolidWaste 模式） -->
-        <Border Grid.Row="0"
-                BorderThickness="0,4,0,0"
-                BorderBrush="#B0EBFF"
-                Background="White"
-                CornerRadius="4"
-                Padding="10"
-                Margin="0,0,0,10">
-            <StackPanel Spacing="8">
+    <!-- 第二行（SolidWaste 模式）：包含表单 + 下方空白区域 -->
+    <Border BorderThickness="0,4,0,0"
+            BorderBrush="#B0EBFF"
+            Background="White"
+            CornerRadius="4"
+            Padding="10"
+            Margin="0,0,0,10">
+        <Grid RowDefinitions="Auto,*" Background="White">
+            <StackPanel Grid.Row="0" Spacing="8">
                 <!-- 车牌号 -->
-                <Grid ColumnDefinitions="50,*">
+                <Grid ColumnDefinitions="72,*">
                     <Label Content="车牌号"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
@@ -35,8 +29,32 @@
                              Margin="0,5,0,5" />
                 </Grid>
 
+                <!-- 供应商 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="{Binding ProviderLabelText}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1"
+                              Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Providers}"
+                              SelectedItem="{Binding SelectedProvider}"
+                              PlaceholderText="--请选择--"
+                              Margin="0,5,0,5">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ProviderName}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
                 <!-- 联单编号 -->
-                <Grid ColumnDefinitions="50,*">
+                <Grid ColumnDefinitions="72,*">
                     <Label Content="联单编号"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
@@ -52,7 +70,7 @@
                 </Grid>
 
                 <!-- 所属镇街 -->
-                <Grid ColumnDefinitions="50,*">
+                <Grid ColumnDefinitions="72,*">
                     <Label Content="所属镇街"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
@@ -70,7 +88,7 @@
                 </Grid>
 
                 <!-- 类型选择 -->
-                <Grid ColumnDefinitions="50,*">
+                <Grid ColumnDefinitions="72,*">
                     <Label Content="类型选择"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
@@ -88,7 +106,7 @@
                 </Grid>
 
                 <!-- 材料名称 -->
-                <Grid ColumnDefinitions="50,*">
+                <Grid ColumnDefinitions="72,*">
                     <Label Content="材料名称"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
@@ -112,13 +130,13 @@
                 </Grid>
 
                 <!-- 备注 -->
-                <Grid ColumnDefinitions="50,*">
+                <Grid ColumnDefinitions="72,*">
                     <Label Content="备注"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
                            FontSize="12"
                            Foreground="#333333"
-                           Margin="4,0,8,0" />
+                           Margin="0,0,8,0" />
                     <TextBox Grid.Column="1"
                              Height="20"
                              TextWrapping="Wrap"
@@ -128,17 +146,16 @@
                              Margin="0,5,0,5" />
                 </Grid>
             </StackPanel>
-        </Border>
 
-        <!-- 第三行（SolidWaste 模式：保留空白容器以保持布局一致） -->
-        <Border Grid.Row="1"
-                BorderThickness="1"
-                BorderBrush="#E5E7EB"
-                Background="White"
-                CornerRadius="4"
-                Margin="0,0,0,0">
-            <Grid />
-        </Border>
-    </Grid>
+            <!-- 备注下方空白区域：归入第二行容器内 -->
+            <Border Grid.Row="1"
+                    BorderThickness="0"
+                    Background="White"
+                    Margin="0,8,0,0"
+                    MinHeight="180">
+                <Grid />
+            </Border>
+        </Grid>
+    </Border>
 </UserControl>
 

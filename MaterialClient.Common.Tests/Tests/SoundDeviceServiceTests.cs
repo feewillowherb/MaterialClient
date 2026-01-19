@@ -1,5 +1,6 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
@@ -316,6 +317,12 @@ public class SoundDeviceServiceTests : IDisposable
         {
             // Not used in tests
             return Task.CompletedTask;
+        }
+
+        public async Task<WeighingMode> GetWeighingModeAsync()
+        {
+            var settings = await GetSettingsAsync();
+            return settings.SystemSettings.DefaultWeighingMode;
         }
     }
 }

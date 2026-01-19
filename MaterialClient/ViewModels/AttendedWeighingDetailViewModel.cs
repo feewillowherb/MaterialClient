@@ -47,6 +47,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     private readonly IOptions<StreetsConfig> _streetsConfig;
     private readonly IOptions<SolidWasteTypeConfig> _solidWasteTypeConfig;
     private readonly ISettingsService _settingsService;
+    private readonly IAttendedWeighingService _attendedWeighingService;
 
     public AttendedWeighingDetailViewModel(
         IServiceProvider serviceProvider)
@@ -60,6 +61,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         _streetsConfig = _serviceProvider.GetRequiredService<IOptions<StreetsConfig>>();
         _solidWasteTypeConfig = _serviceProvider.GetRequiredService<IOptions<SolidWasteTypeConfig>>();
         _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
+        _attendedWeighingService = _serviceProvider.GetRequiredService<IAttendedWeighingService>();
 
         // 初始化材料选择弹窗 ViewModel
         InitializeMaterialsSelectionPopup();
@@ -203,6 +205,20 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [Reactive] private ObservableCollection<Material> _solidWasteMaterials = new();
 
     [Reactive] private Material? _selectedSolidWasteMaterial;
+
+    /// <summary>
+    ///     供应商标签文本（根据收发料类型动态显示）
+    /// </summary>
+    public string ProviderLabelText
+    {
+        get
+        {
+            // 收料时显示"发货单位"，发料时显示"收货单位"
+            return _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving
+                ? "发货单位"
+                : "收货单位";
+        }
+    }
 
     #endregion
 
@@ -873,49 +889,23 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     {
         try
         {
-            // 验证是否选择了供应商
-            if (SelectedProvider == null)
+            // 验证车牌号格式
+            if (!PlateNumberValidator.IsValidChinesePlateNumber(PlateNumber))
             {
-                ShowMessageBoxAsyncWithoutBlocking("请选择供应商");
+                ShowMessageBoxAsyncWithoutBlocking("车牌号不符合规范请修改");
                 return;
             }
 
-            var firstRow = MaterialItems.FirstOrDefault();
-            var materialId = firstRow?.SelectedMaterial?.Id;
-            var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
-            var providerId = SelectedProvider?.Id;
-            var waybillQuantity = firstRow?.WaybillQuantity;
-
-            // 验证 materialId、materialUnitId、waybillQuantity 都不能为空
-            if (!materialId.HasValue)
+            if (IsSolidWasteMode)
             {
-                ShowMessageBoxAsyncWithoutBlocking("请选择物料");
-                return;
+                // SolidWaste 模式：保存并完成
+                await CompleteSolidWasteModeAsync();
             }
-
-            if (!materialUnitId.HasValue)
+            else
             {
-                ShowMessageBoxAsyncWithoutBlocking("请选择物料单位");
-                return;
+                // Standard 模式：验证并保存，然后完成
+                await CompleteStandardModeAsync();
             }
-
-            if (!waybillQuantity.HasValue)
-            {
-                ShowMessageBoxAsyncWithoutBlocking("请输入运单数量");
-                return;
-            }
-            var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
-            await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
-                _listItem.Id,
-                _listItem.ItemType,
-                PlateNumber,
-                providerId,
-                materialId,
-                materialUnitId,
-                waybillQuantity,
-                null,
-                Remark
-            ));
 
             // 检查是否有临时保存的BillPhoto文件，如果有则创建附件
             if (!string.IsNullOrEmpty(_capturedBillPhotoPath))
@@ -933,12 +923,102 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 }
             }
 
-            await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
             CompleteCompleted?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "完成本次收货失败");
+        }
+    }
+
+    private async Task CompleteStandardModeAsync()
+    {
+        // 验证是否选择了供应商
+        if (SelectedProvider == null)
+        {
+            ShowMessageBoxAsyncWithoutBlocking("请选择供应商");
+            throw new InvalidOperationException("请选择供应商");
+        }
+
+        var firstRow = MaterialItems.FirstOrDefault();
+        var materialId = firstRow?.SelectedMaterial?.Id;
+        var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
+        var providerId = SelectedProvider?.Id;
+        var waybillQuantity = firstRow?.WaybillQuantity;
+
+        // 验证 materialId、materialUnitId、waybillQuantity 都不能为空
+        if (!materialId.HasValue)
+        {
+            ShowMessageBoxAsyncWithoutBlocking("请选择物料");
+            throw new InvalidOperationException("请选择物料");
+        }
+
+        if (!materialUnitId.HasValue)
+        {
+            ShowMessageBoxAsyncWithoutBlocking("请选择物料单位");
+            throw new InvalidOperationException("请选择物料单位");
+        }
+
+        if (!waybillQuantity.HasValue)
+        {
+            ShowMessageBoxAsyncWithoutBlocking("请输入运单数量");
+            throw new InvalidOperationException("请输入运单数量");
+        }
+
+        var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+        
+        // 先更新数据
+        await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
+            _listItem.Id,
+            _listItem.ItemType,
+            PlateNumber,
+            providerId,
+            materialId,
+            materialUnitId,
+            waybillQuantity,
+            null,
+            Remark
+        ));
+
+        // 然后完成订单
+        await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
+    }
+
+    private async Task CompleteSolidWasteModeAsync()
+    {
+        var materialId = SelectedSolidWasteMaterial?.Id;
+        var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
+
+        var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
+        
+        try
+        {
+            // 先保存固废模式数据
+            await weighingMatchingService.UpdateSolidWasteModeAsync(new UpdateSolidWasteModeInput(
+                _listItem.Id,
+                _listItem.ItemType,
+                PlateNumber,
+                materialId,
+                materialUnitId,
+                GoodsWeight,
+                SelectedSolidWasteType,
+                SelectedStreet,
+                SolidWasteOrderNumber,
+                Remark,
+                null));
+
+            // 然后完成订单
+            await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
+        }
+        catch (BusinessException ex)
+        {
+            ShowMessageBoxAsyncWithoutBlocking(ex.Message);
+            throw;
+        }
+        catch (ArgumentException ex)
+        {
+            ShowMessageBoxAsyncWithoutBlocking(ex.Message);
+            throw;
         }
     }
 
