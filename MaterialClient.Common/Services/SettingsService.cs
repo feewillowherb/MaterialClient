@@ -1,5 +1,6 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
@@ -20,6 +21,11 @@ public interface ISettingsService
     ///     Save settings
     /// </summary>
     Task SaveSettingsAsync(SettingsEntity settings);
+
+    /// <summary>
+    ///     Get default weighing mode from settings
+    /// </summary>
+    Task<WeighingMode> GetWeighingModeAsync();
 }
 
 /// <summary>
@@ -104,5 +110,14 @@ public class SettingsService : DomainService, ISettingsService
         // - Restart camera services with new camera configurations
         // - Restart document scanner service with new USB device
         // - Restart license plate recognition services with new configurations
+    }
+
+    /// <summary>
+    ///     Get default weighing mode from settings
+    /// </summary>
+    public async Task<WeighingMode> GetWeighingModeAsync()
+    {
+        var settings = await GetSettingsAsync();
+        return settings.SystemSettings.DefaultWeighingMode;
     }
 }

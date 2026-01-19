@@ -77,10 +77,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 if (provider != null) SelectedProviderId = provider.Id;
             });
 
-        // 订阅 WeighingMode 变化，更新 IsSolidWasteMode
-        this.WhenAnyValue(x => x.WeighingMode)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsSolidWasteMode)));
-
         // SolidWaste 模式：材料选择时自动选择第一个单位
         this.WhenAnyValue(x => x.SelectedSolidWasteMaterial)
             .Where(material => material != null && IsSolidWasteMode)
@@ -186,21 +182,22 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     private string? _capturedBillPhotoPath;
 
     // SolidWaste 模式相关属性
-    [Reactive] private WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
+    private WeighingMode _weighingMode = WeighingMode.Standard;
+    public WeighingMode WeighingMode => _weighingMode;
 
-    [Reactive] private string? SolidWasteOrderNumber { get; set; }
+    [Reactive] private string? _solidWasteOrderNumber;
 
-    [Reactive] private ObservableCollection<string> Streets { get; set; } = new();
+    [Reactive] private ObservableCollection<string> _streets = new();
 
-    [Reactive] private string? SelectedStreet { get; set; }
+    [Reactive] private string? _selectedStreet;
 
-    [Reactive] private ObservableCollection<string> SolidWasteTypes { get; set; } = new();
+    [Reactive] private ObservableCollection<string> _solidWasteTypes = new();
 
-    [Reactive] private string? SelectedSolidWasteType { get; set; }
+    [Reactive] private string? _selectedSolidWasteType;
 
-    [Reactive] private ObservableCollection<Material> SolidWasteMaterials { get; set; } = new();
+    [Reactive] private ObservableCollection<Material> _solidWasteMaterials = new();
 
-    [Reactive] private Material? SelectedSolidWasteMaterial { get; set; }
+    [Reactive] private Material? _selectedSolidWasteMaterial;
 
     /// <summary>
     ///     是否为固废模式
@@ -267,22 +264,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
         
-        // 初始化 WeighingMode：从 _listItem 读取，如果不存在则从 SystemSettings 获取默认值
-        WeighingMode = _listItem.WeighingMode;
-        if (WeighingMode == WeighingMode.Standard)
-        {
-            // 如果为默认值，尝试从 SystemSettings 获取
-            try
-            {
-                var settings = _settingsService.GetSettingsAsync().GetAwaiter().GetResult();
-                WeighingMode = settings.SystemSettings.DefaultWeighingMode;
-            }
-            catch (Exception ex)
-            {
-                Logger?.LogWarning(ex, "获取默认称重模式失败，使用 Standard");
-                WeighingMode = WeighingMode.Standard;
-            }
-        }
+        // 初始化 WeighingMode：使用记录的实际模式
+        _weighingMode = _listItem.WeighingMode;
         
         // 保存临时拍照文件路径
         _capturedBillPhotoPath = capturedBillPhotoPath;

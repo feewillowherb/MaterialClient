@@ -431,17 +431,6 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                     </Grid>
-                    <!-- 单位 -->
-                    <Grid ColumnDefinitions="80,*">
-                        <Label Content="单位" VerticalAlignment="Center"
-                               HorizontalAlignment="Left"
-                               FontSize="12" Foreground="#333333" Margin="0,0,8,0" />
-                        <TextBlock Grid.Column="1" Height="24"
-                                   VerticalAlignment="Center"
-                                   FontSize="12" Foreground="#333333"
-                                   Margin="0,5,0,5"
-                                   Text="{Binding MaterialItems[0].SelectedMaterialUnit.DisplayName, FallbackValue='--'}" />
-                    </Grid>
                     <!-- 运单数量 -->
                     <Grid ColumnDefinitions="80,*">
                         <Label Content="运单数量" VerticalAlignment="Center"

@@ -138,6 +138,14 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     }
 
     /// <summary>
+    ///     设置称重模式
+    /// </summary>
+    public void SetWeighingMode(WeighingMode weighingMode)
+    {
+        WeighingMode = weighingMode;
+    }
+
+    /// <summary>
     ///     添加物料
     /// </summary>
     public void AddMaterial(WeighingRecordMaterial material)
