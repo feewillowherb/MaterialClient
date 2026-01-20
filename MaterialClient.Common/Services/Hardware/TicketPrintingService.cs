@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Printing;
 using System.Globalization;
 using System.Runtime.Versioning;
@@ -55,6 +56,14 @@ public interface ITicketPrintingService
     /// <param name="imagePath">Path to the image file</param>
     /// <param name="printerName">Optional printer name. If null, uses default or auto-detected printer</param>
     void PrintImage(string imagePath, string? printerName = null);
+
+    /// <summary>
+    /// Render weighing ticket to an image file (PNG) for preview.
+    /// </summary>
+    /// <param name="dto">Ticket data to render</param>
+    /// <param name="outputImagePath">Full path to output image (PNG)</param>
+    /// <returns>Path to the generated image file</returns>
+    string RenderTicketToImage(WeighingTicketDto dto, string outputImagePath);
 }
 
 /// <summary>
@@ -211,6 +220,48 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
         _logger?.LogInformation("PDF file generated from image successfully: {OutputPath}", outputPdfPath);
 
         return outputPdfPath;
+    }
+
+    #endregion
+
+    #region Preview Rendering
+
+    /// <summary>
+    /// Render weighing ticket to an image file (PNG) for preview.
+    /// </summary>
+    public string RenderTicketToImage(WeighingTicketDto dto, string outputImagePath)
+    {
+        // Ensure output directory exists
+        var outputDir = Path.GetDirectoryName(outputImagePath);
+        if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+            Directory.CreateDirectory(outputDir);
+
+        // A4-ish canvas at ~150 DPI (good enough for preview).
+        const int width = 1240;
+        const int height = 1754;
+
+        using var bitmap = new Bitmap(width, height);
+        using var graphics = Graphics.FromImage(bitmap);
+
+        graphics.Clear(Color.White);
+        graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+        graphics.PixelOffsetMode = PixelOffsetMode.Half;
+        graphics.CompositingQuality = CompositingQuality.HighQuality;
+        graphics.SmoothingMode = SmoothingMode.None;
+        graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+        // Reuse existing DrawTicket() by providing a PrintPageEventArgs with margins.
+        var pageBounds = new Rectangle(0, 0, width, height);
+        var marginBounds = new Rectangle(40, 40, width - 80, height - 80);
+        var pageSettings = new PageSettings();
+        var args = new PrintPageEventArgs(graphics, marginBounds, pageBounds, pageSettings);
+
+        DrawTicket(args, dto);
+
+        bitmap.Save(outputImagePath, ImageFormat.Png);
+        _logger?.LogInformation("Ticket preview image generated: {OutputPath}", outputImagePath);
+
+        return outputImagePath;
     }
 
     #endregion

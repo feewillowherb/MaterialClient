@@ -1,7 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
-             xmlns:converters="using:MaterialClient.Converters"
              x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingMainView"
              x:DataType="vm:AttendedWeighingViewModel">
     
@@ -17,10 +16,18 @@
                     Padding="10,0"
                     Height="50">
                 <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="物料信息"
-                               FontSize="14"
-                               Foreground="#222222"
-                               VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="物料信息"
+                                   FontSize="14"
+                                   Foreground="#222222"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding SelectedListItem.JoinTime, StringFormat='{}{0:yyyy-MM-dd}', TargetNullValue=''}"
+                                   FontSize="12"
+                                   Foreground="#666666"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
 
                     <Button Grid.Column="1"
                             Content="打印"

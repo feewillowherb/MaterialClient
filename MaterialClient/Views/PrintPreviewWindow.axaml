@@ -1,0 +1,79 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.ViewModels"
+        x:Class="MaterialClient.Views.PrintPreviewWindow"
+        x:DataType="vm:PrintPreviewViewModel"
+        Title="打印预览"
+        Width="800" Height="900"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/fd-ico.ico"
+        SystemDecorations="None"
+        Background="#1E1E1E">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Title Bar -->
+        <Border Grid.Row="0"
+                x:Name="TitleBarBorder"
+                Background="#2D2D2D"
+                Padding="16,12"
+                BorderBrush="#3D3D3D"
+                BorderThickness="0,0,0,1"
+                PointerPressed="TitleBar_OnPointerPressed"
+                Cursor="Arrow">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="打印预览"
+                           FontSize="16"
+                           Foreground="White"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1"
+                        Content="✕"
+                        FontSize="18"
+                        Foreground="White"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="12,6"
+                        Cursor="Hand"
+                        Command="{Binding CloseCommand}" />
+            </Grid>
+        </Border>
+
+        <!-- Preview -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="#1E1E1E">
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Margin="20">
+                <Image x:Name="PreviewImage"
+                       Source="{Binding PreviewImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                       Stretch="Uniform"
+                       MaxWidth="760"
+                       MaxHeight="760" />
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Actions -->
+        <Border Grid.Row="2"
+                Background="#2D2D2D"
+                BorderBrush="#3D3D3D"
+                BorderThickness="0,1,0,0"
+                Padding="16,12">
+            <Grid ColumnDefinitions="*,Auto,Auto"
+                  ColumnSpacing="10">
+                <TextBlock Text="{Binding StatusText, TargetNullValue=''}"
+                           Foreground="#CCCCCC"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1"
+                        Content="取消"
+                        Padding="18,8"
+                        Command="{Binding CloseCommand}" />
+                <Button Grid.Column="2"
+                        Content="打印"
+                        Padding="18,8"
+                        Command="{Binding PrintCommand}"
+                        IsEnabled="{Binding CanPrint}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

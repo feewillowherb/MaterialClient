@@ -976,21 +976,21 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     }
 
     [ReactiveCommand]
-    private void ShowAllRecords()
+    private async Task ShowAllRecords()
     {
-        SetDisplayMode(0);
+        await SetDisplayModeAsync(0);
     }
 
     [ReactiveCommand]
-    private void ShowUnmatched()
+    private async Task ShowUnmatched()
     {
-        SetDisplayMode(1);
+        await SetDisplayModeAsync(1);
     }
 
     [ReactiveCommand]
-    private void ShowCompleted()
+    private async Task ShowCompleted()
     {
-        SetDisplayMode(2);
+        await SetDisplayModeAsync(2);
     }
 
     [ReactiveCommand]
@@ -1377,7 +1377,32 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         IsShowUnmatched = mode == 1;
         IsShowCompleted = mode == 2;
         CurrentPage = 1;
-        _ = RefreshAsync();
+        _ = SetDisplayModeAsync(mode);
+    }
+
+    private async Task SetDisplayModeAsync(int mode)
+    {
+        IsShowAllRecords = mode == 0;
+        IsShowUnmatched = mode == 1;
+        IsShowCompleted = mode == 2;
+        CurrentPage = 1;
+
+        await RefreshAsync();
+
+        if (ListItems.Count > 0)
+        {
+            var firstItem = ListItems.First();
+            SelectedListItem = firstItem;
+
+            if (firstItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                SelectCompletedWaybill(firstItem);
+            else
+                _ = OpenDetail(firstItem);
+        }
+        else
+        {
+            SelectedListItem = null;
+        }
     }
 
     [ReactiveCommand]
@@ -1392,7 +1417,26 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             var dto = await _weighingMatchingService.CreateWeighingTicketDtoAsync(SelectedListItem, waybill);
 
             var printingService = _serviceProvider.GetRequiredService<ITicketPrintingService>();
-            printingService.PrintToEpsonLq630K(dto);
+            var previewPath = Path.Combine(
+                Path.GetTempPath(),
+                $"ticket_preview_{SelectedListItem.Id}_{DateTime.Now:yyyyMMddHHmmss}.png");
+
+            printingService.RenderTicketToImage(dto, previewPath);
+
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var parentWin = GetParentWindow();
+
+                var previewVm = _serviceProvider.GetRequiredService<PrintPreviewViewModel>();
+                previewVm.SetTicket(dto, previewPath);
+
+                var previewWindow = new PrintPreviewWindow(previewVm);
+
+                if (parentWin != null)
+                    await previewWindow.ShowDialog(parentWin);
+                else
+                    previewWindow.Show();
+            });
 
             Logger?.LogInformation("固废称重单已发送到打印机。WaybillId: {WaybillId}", waybill.Id);
         }
