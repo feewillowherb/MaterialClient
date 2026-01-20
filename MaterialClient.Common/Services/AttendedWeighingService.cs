@@ -11,7 +11,7 @@ using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
-using MaterialClient.Common.Services.LPRAllInOne;
+using MaterialClient.Common.Services.LprAllInOne;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -128,7 +128,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<AttendedWeighingService> _logger;
 
-    private readonly ILPRAllInOneService? _lprAllInOneService;
+    private readonly ILprAllInOneService? _lprAllInOneService;
     private readonly ISettingsService _settingsService;
     private readonly ISoundDeviceService? _soundDeviceService;
     private readonly RecommendPlateNumberService _recommendPlateNumberService;

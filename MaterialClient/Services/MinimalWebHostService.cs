@@ -29,10 +29,10 @@ public class MinimalWebHostService : IAsyncDisposable
     private readonly IServiceProvider _sharedServiceProvider;
     private bool _isRunning;
     private WebApplication? _webApplication;
-    
-    private static string ApiPath ="/api/CarLicense/CallDeviceMessage";
-    private static string HuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
-    private static string CallDeviceStatusPath = "/api/CarLicense/CallDeviceStatus";
+
+    private static string LprAllInOneCallDeviceMessagePath = "/api/CarLicense/CallDeviceMessage";
+    private static string CallDeviceMessageHuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
+    private static string LprAllInOneCallDeviceStatusPath = "/api/CarLicense/CallDeviceStatus";
 
     /// <summary>
     ///     构造函数，注入共享的服务提供者
@@ -100,17 +100,18 @@ public class MinimalWebHostService : IAsyncDisposable
             {
                 // 如果没有协议前缀，自动添加 http://
                 urls = urls.Trim();
-                if (!urls.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+                if (!urls.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
                     !urls.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
                     urls = "http://" + urls;
                 }
             }
+
             _webApplication.Urls.Add(urls);
 
             var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
             logger?.LogInformation("启动 Web 服务于 {Urls}", urls);
-            logger?.LogInformation("API 端点: {Urls}{ApiPath}", urls,ApiPath);
+            logger?.LogInformation("API 端点: {Urls}{ApiPath}", urls, LprAllInOneCallDeviceMessagePath);
 
             // Start the web application
             await _webApplication.RunAsync();
@@ -171,21 +172,21 @@ public class MinimalWebHostService : IAsyncDisposable
             service = "MaterialClient API",
             version = "1.0",
             endpoints = new[]
-            {  
-                ApiPath,
-                HuaXiaZhiXingApiPath,
-                CallDeviceStatusPath
+            {
+                LprAllInOneCallDeviceMessagePath,
+                CallDeviceMessageHuaXiaZhiXingApiPath,
+                LprAllInOneCallDeviceStatusPath
             }
         }));
 
-        // 车牌识别 - 设备回调接口（海康威视）
-        app.MapPost(ApiPath, async (HikVisionPlateCallback? callback) =>
+        // 车牌识别 - 设备回调接口（LprAllInOne）
+        app.MapPost(LprAllInOneCallDeviceMessagePath, async (LprAllInOnePlateCallback? callback) =>
         {
             try
             {
                 var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
 
-                // 解析海康设备数据
+                // 解析LprAllInOne设备数据
                 var license = callback?.AlarmInfoPlate?.Result?.PlateResult?.License;
 
                 if (!string.IsNullOrWhiteSpace(license))
@@ -224,7 +225,7 @@ public class MinimalWebHostService : IAsyncDisposable
         });
 
         // 车牌识别 - 设备回调接口（华夏智信）- 支持 GET 和 POST
-        app.MapMethods(HuaXiaZhiXingApiPath, new[] { "GET", "POST" }, async (HttpContext context) =>
+        app.MapMethods(CallDeviceMessageHuaXiaZhiXingApiPath, new[] { "GET", "POST" }, async (HttpContext context) =>
         {
             var logger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
             var result = new ResultInfoHuaXiaZhiXing();
@@ -242,12 +243,14 @@ public class MinimalWebHostService : IAsyncDisposable
                         var value = kvp.Value.Count > 0 ? kvp.Value[0] ?? string.Empty : string.Empty;
                         dict[kvp.Key] = value;
                     }
+
                     form = new FormNameValueCollection(dict);
                 }
 
                 // 如果是 POST 请求，尝试从请求体读取（完全还原旧代码逻辑）
                 // 对于 GET 请求，如果查询字符串已有参数，跳过请求体读取
-                if ((form == null || form.Count == 0) && context.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
+                if ((form == null || form.Count == 0) &&
+                    context.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                 {
                     // Prefer standard form collection if populated（完全还原旧代码逻辑）
                     try
@@ -275,6 +278,7 @@ public class MinimalWebHostService : IAsyncDisposable
                             {
                                 dict[kvp.Key] = kvp.Value.ToString();
                             }
+
                             form = new FormNameValueCollection(dict);
                         }
                         else
@@ -285,7 +289,8 @@ public class MinimalWebHostService : IAsyncDisposable
                                 if (context.Request.Body.CanSeek)
                                 {
                                     context.Request.Body.Position = 0;
-                                    using var reader = new System.IO.StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
+                                    using var reader = new System.IO.StreamReader(context.Request.Body,
+                                        System.Text.Encoding.UTF8, leaveOpen: true);
                                     var raw = await reader.ReadToEndAsync();
                                     context.Request.Body.Position = 0;
 
@@ -296,9 +301,12 @@ public class MinimalWebHostService : IAsyncDisposable
                                         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                         foreach (var kvp in queryParams)
                                         {
-                                            var value = kvp.Value.Count > 0 ? kvp.Value[0] ?? string.Empty : string.Empty;
+                                            var value = kvp.Value.Count > 0
+                                                ? kvp.Value[0] ?? string.Empty
+                                                : string.Empty;
                                             dict[kvp.Key] = value;
                                         }
+
                                         form = new FormNameValueCollection(dict);
                                     }
                                 }
@@ -329,7 +337,7 @@ public class MinimalWebHostService : IAsyncDisposable
 
                 var type = form["type"] ?? string.Empty;
                 logger.LogInformation($"form:{form}");
-                
+
                 if (type.Equals("online", StringComparison.OrdinalIgnoreCase))
                 {
                     var plateNum = form["plate_num"]; // Already decoded (京A12345)
@@ -337,9 +345,9 @@ public class MinimalWebHostService : IAsyncDisposable
                     {
                         var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
                         weighingService.OnPlateNumberRecognized(plateNum);
-                        
+
                         logger.LogInformation($"华夏智信抓拍车牌号：{plateNum}");
-                        
+
                         // Optional: access other fields if needed
                         // var plateColor = form["plate_color"];
                         // var pictureBase64 = form["picture"];
@@ -367,25 +375,25 @@ public class MinimalWebHostService : IAsyncDisposable
                 logger.LogError(ex, "处理华夏智信设备回调失败");
             }
 
-             await WriteCompressedJsonResponse(context, result, logger);
-             return;
+            await WriteCompressedJsonResponse(context, result, logger);
+            return;
         });
-        
 
-        // LPRAllInOne comet 轮询端点 - 设备状态查询
+
+        // LprAllInOne comet 轮询端点 - 设备状态查询
         // 设备会轮询此端点（GET 或 POST），如果需要触发抓拍，在响应中返回触发消息
         // 根据 cap.md，设备会发送设备注册消息（心跳），包含 ipaddr 字段
-        app.MapMethods(CallDeviceStatusPath, new[] { "GET", "POST" }, async (HttpContext context) =>
+        app.MapMethods(LprAllInOneCallDeviceStatusPath, new[] { "GET", "POST" }, async (HttpContext context) =>
         {
             var statusLogger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
-            
+
             try
             {
                 string? deviceIp = null;
-                
+
                 // 首先尝试从查询参数中获取设备IP（GET 请求）
                 deviceIp = context.Request.Query["ipaddr"].ToString();
-                
+
                 // 如果查询参数中没有，尝试从表单数据中获取（POST 请求，comet 轮询通常使用 POST）
                 if (string.IsNullOrWhiteSpace(deviceIp))
                 {
@@ -421,7 +429,8 @@ public class MinimalWebHostService : IAsyncDisposable
                 }
 
                 // 检查是否需要触发抓拍
-                var lprService = _sharedServiceProvider.GetService<MaterialClient.Common.Services.LPRAllInOne.ILPRAllInOneService>();
+                var lprService = _sharedServiceProvider
+                    .GetService<MaterialClient.Common.Services.LprAllInOne.ILprAllInOneService>();
                 if (lprService != null && lprService.CheckAndClearTriggerFlag(deviceIp))
                 {
                     // 需要触发抓拍，返回触发消息
@@ -495,9 +504,10 @@ public class MinimalWebHostService : IAsyncDisposable
             return string.Join(", ", _dict.Select(kvp => $"{kvp.Key}={kvp.Value}"));
         }
     }
-    
-    
-    private static async Task WriteCompressedJsonResponse(HttpContext context, ResultInfoHuaXiaZhiXing result, ILogger logger)
+
+
+    private static async Task WriteCompressedJsonResponse(HttpContext context, ResultInfoHuaXiaZhiXing result,
+        ILogger logger)
     {
         // 序列化 JSON（使用默认选项，保持属性名不变，紧凑格式）
         var jsonOptions = new JsonSerializerOptions
@@ -506,35 +516,36 @@ public class MinimalWebHostService : IAsyncDisposable
             WriteIndented = false, // 不格式化，保持紧凑格式
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping // 避免中文被转义
         };
-        
+
         var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(result, jsonOptions);
 
         // 必须在写入任何响应内容之前设置所有响应头
         // 设置响应状态码
         context.Response.StatusCode = 200;
-        
+
         // 设置 Content-Type 头，包含 charset=utf-8（冒号前后无空格）
         context.Response.ContentType = "application/json;charset=utf-8";
-        
+
         // 手动设置 Content-Length 头（冒号前后无空格）
         // 格式：Content-Length:30
         context.Response.ContentLength = jsonBytes.Length;
-        
+
         // 直接写入响应体（因为已移除压缩中间件，Content-Length 会被保留）
         await context.Response.Body.WriteAsync(jsonBytes.AsMemory(0, jsonBytes.Length));
         await context.Response.Body.FlushAsync();
-        
-        logger?.LogDebug($"HuaXiaZhiXing 响应: {System.Text.Encoding.UTF8.GetString(jsonBytes)}, Content-Length: {jsonBytes.Length}");
+
+        logger?.LogDebug(
+            $"HuaXiaZhiXing 响应: {System.Text.Encoding.UTF8.GetString(jsonBytes)}, Content-Length: {jsonBytes.Length}");
     }
 
     #endregion
 
-    #region 海康威视车牌识别数据模型
+    #region LprAllInOne车牌识别数据模型
 
     /// <summary>
-    ///     海康威视车牌识别回调数据模型
+    ///     LprAllInOne车牌识别回调数据模型
     /// </summary>
-    private record HikVisionPlateCallback(
+    private record LprAllInOnePlateCallback(
         [property: JsonPropertyName("AlarmInfoPlate")]
         AlarmInfoPlate? AlarmInfoPlate
     );
@@ -564,7 +575,9 @@ public class MinimalWebHostService : IAsyncDisposable
     /// </summary>
     private record PlateResult(
         [property: JsonPropertyName("license")]
-        string? License
+        string? License,
+        [property: JsonPropertyName("colorType")]
+        int? ColorType
     );
 
     #endregion

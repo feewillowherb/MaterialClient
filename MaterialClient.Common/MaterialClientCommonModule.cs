@@ -1,6 +1,6 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Providers;
-using MaterialClient.Common.Services.LPRAllInOne;
+using MaterialClient.Common.Services.LprAllInOne;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
