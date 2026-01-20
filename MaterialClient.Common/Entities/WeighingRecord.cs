@@ -3,6 +3,7 @@ using System.Text.Json;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
 using Volo.Abp.Auditing;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -11,8 +12,19 @@ namespace MaterialClient.Common.Entities;
 /// <summary>
 ///     称重记录实体
 /// </summary>
-public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDeletionAuditedObject
+public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClientAuditedObject, IDeletionAuditedObject
 {
+    private ExtraPropertyDictionary _extraProperties = new();
+
+    /// <summary>
+    ///     额外属性字典
+    /// </summary>
+    public ExtraPropertyDictionary ExtraProperties
+    {
+        get => _extraProperties;
+        set => _extraProperties = value;
+    }
+
     /// <summary>
     ///     构造函数（用于EF Core）
     /// </summary>
@@ -88,6 +100,11 @@ public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDelet
     public string? MaterialsJson { get; set; }
 
     /// <summary>
+    ///     称重模式
+    /// </summary>
+    public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
+
+    /// <summary>
     ///     物料集合（从 JSON 反序列化）
     /// </summary>
     [NotMapped]
@@ -118,6 +135,14 @@ public class WeighingRecord : Entity<long>, IMaterialClientAuditedObject, IDelet
     {
         PlateNumber = plateNumber;
         ProviderId = providerId;
+    }
+
+    /// <summary>
+    ///     设置称重模式
+    /// </summary>
+    public void SetWeighingMode(WeighingMode weighingMode)
+    {
+        WeighingMode = weighingMode;
     }
 
     /// <summary>

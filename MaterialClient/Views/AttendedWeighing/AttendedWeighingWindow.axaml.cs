@@ -8,17 +8,13 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MaterialClient.Backgrounds;
 using MaterialClient.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views.AttendedWeighing;
-
+namespace MaterialClient.Views.AttendedWeighing
+{
 public partial class AttendedWeighingWindow : Window, ITransientDependency
 {
-    private readonly IServiceProvider? _serviceProvider;
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
 
@@ -30,11 +26,7 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
     {
         InitializeComponent();
         if (Design.IsDesignMode) return;
-        DataContext = serviceProvider?.GetService<AttendedWeighingViewModel>();
-        _serviceProvider = serviceProvider;
-        
-        
-        
+        DataContext = serviceProvider?.GetService(typeof(AttendedWeighingViewModel)) as AttendedWeighingViewModel;
 
         // Set PlacementTarget for Popup
         if (CameraStatusPopup != null && CameraStatusPanel != null)
@@ -55,7 +47,7 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
             await Task.Delay(100); // 给 UI 绑定一些时间
             await viewModel.InitializeOnFirstLoadAsync();
         }
-        
+
         // 创建 WindowNotificationManager（窗口打开后才能获取 TopLevel）
         if (NotificationManager == null)
         {
@@ -68,18 +60,6 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
                 };
         }
 
-        if (_serviceProvider != null)
-            try
-            {
-                var pollingService = _serviceProvider.GetService<PollingBackgroundService>();
-                if (pollingService != null) await pollingService.StartAsync(CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                var logger = _serviceProvider?.GetService<ILogger<AttendedWeighingWindow>>();
-                logger?.LogError(ex, "启动轮询后台服务失败");
-            }
-
         // 预热 DetailView：在空闲时创建一次以初始化样式和模板
         Dispatcher.UIThread.Post(() =>
         {
@@ -88,14 +68,11 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
                 // 创建一个临时的 DetailView 实例来预热控件模板
                 //TODO
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                var logger = _serviceProvider?.GetService<ILogger<AttendedWeighingWindow>>();
-                logger?.LogWarning(ex, "预热 DetailView 失败，不影响正常使用");
+                // ignore - prewarm failure should not affect normal usage
             }
         }, DispatcherPriority.Background);
-        
-        
     }
 
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)
@@ -192,4 +169,5 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         // 如果是 MainWindow，Avalonia 会自动触发 desktop.Exit，不需要手动处理
         base.OnClosed(e);
     }
+}
 }

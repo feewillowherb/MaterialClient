@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:views="using:MaterialClient.Views"
+             x:Class="MaterialClient.Views.AttendedWeighing.SolidWasteModeFormView"
+             x:DataType="vm:AttendedWeighingDetailViewModel">
+
+    <Grid Background="White">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="180" />
+        </Grid.RowDefinitions>
+
+        <!-- 第二行（SolidWaste 模式：表单区域） -->
+        <Border Grid.Row="0"
+                BorderThickness="0,4,0,0"
+                BorderBrush="#B0EBFF"
+                Background="White"
+                CornerRadius="4"
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel Spacing="6">
+                <!-- 车牌号 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="车牌号"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             Text="{Binding PlateNumber}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 供应商 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="{Binding ProviderLabelText}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <Button Grid.Column="1"
+                            Classes="combo-trigger"
+                            Height="20"
+                            FontSize="12"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding SelectedProvider.ProviderName}"
+                            Click="ProvidersSelectionButton_Click"
+                            Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 材料名称 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="材料名称"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <Button Grid.Column="1"
+                            Classes="combo-trigger"
+                            Height="20"
+                            FontSize="12"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding SelectedSolidWasteMaterial.Name}"
+                            Click="MaterialsSelectionButton_Click"
+                            Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 联单编号 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="联单编号"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             Text="{Binding SolidWasteOrderNumber}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 所属镇街 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="所属镇街"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <Button Grid.Column="1"
+                            Classes="combo-trigger"
+                            Height="20"
+                            FontSize="12"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding SelectedStreet}"
+                            Click="StreetsSelectionButton_Click"
+                            Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 类型选择 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="类型选择"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1"
+                              Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding SolidWasteTypes}"
+                              SelectedItem="{Binding SelectedSolidWasteType}"
+                              Margin="0,5,0,5" />
+                </Grid>
+
+                <!-- 备注 -->
+                <Grid ColumnDefinitions="72,*">
+                    <Label Content="备注"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Height="20"
+                             TextWrapping="Wrap"
+                             Text="{Binding Remark}"
+                             TextAlignment="Left"
+                             FontSize="12"
+                             Margin="0,5,0,5" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- 第三行（SolidWaste 模式：空白内容区域） -->
+        <Border Grid.Row="1"
+                BorderThickness="0"
+                BorderBrush="#E5E7EB"
+                Background="White"
+                CornerRadius="4"
+                Margin="0,0,0,0">
+            <Grid />
+        </Border>
+
+        <!-- 所属镇街选择弹窗 -->
+        <Popup Name="StreetsSelectionPopup"
+               Grid.RowSpan="2"
+               Placement="Bottom"
+               IsLightDismissEnabled="True"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="{Binding IsStreetsPopupOpen, Mode=TwoWay}">
+            <views:GenericSelectionPopup x:Name="StreetsSelectionPopupControl"
+                                         DataContext="{Binding StreetsPopupViewModel}" />
+        </Popup>
+
+        <!-- 材料名称选择弹窗 -->
+        <Popup Name="MaterialsSelectionPopup"
+               Grid.RowSpan="2"
+               Placement="Bottom"
+               IsLightDismissEnabled="True"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="{Binding IsMaterialsPopupOpen, Mode=TwoWay}">
+            <views:GenericSelectionPopup x:Name="MaterialsSelectionPopupControl"
+                                         DataContext="{Binding MaterialsPopupViewModel}" />
+        </Popup>
+
+        <!-- 供应商选择弹窗 -->
+        <Popup Name="ProvidersSelectionPopup"
+               Grid.RowSpan="2"
+               Placement="Bottom"
+               IsLightDismissEnabled="True"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="{Binding IsProvidersPopupOpen, Mode=TwoWay}">
+            <views:GenericSelectionPopup x:Name="ProvidersSelectionPopupControl"
+                                         DataContext="{Binding ProvidersPopupViewModel}" />
+        </Popup>
+    </Grid>
+</UserControl>
+

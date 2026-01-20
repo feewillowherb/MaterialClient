@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
@@ -21,6 +22,7 @@ public interface IWeighingMatchingService
     Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record);
     Task UpdateWaybillAsync(UpdateWaybillInput input);
     Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input);
+    Task UpdateSolidWasteModeAsync(UpdateSolidWasteModeInput input);
 
     /// <summary>
     ///     更新列表项（根据类型自动判断更新 WeighingRecord 或 Waybill）
@@ -88,6 +90,12 @@ public interface IWeighingMatchingService
     /// <param name="plateNumber">车牌号</param>
     /// <returns>推荐数据，如果未找到则返回 null</returns>
     Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber);
+
+    /// <summary>
+    ///     根据运单ID获取运单实体
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    Task<Waybill> GetWaybillByIdAsync(long waybillId);
 }
 
 /// <summary>
@@ -136,6 +144,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             _logger?.LogWarning(ex,
                 "WeighingMatchingService: Failed to load configuration, using default values");
         }
+    }
+
+    [UnitOfWork]
+    public async Task<Waybill> GetWaybillByIdAsync(long waybillId)
+    {
+        return await _waybillRepository.GetAsync(waybillId);
     }
 
     [UnitOfWork]
@@ -298,6 +312,81 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         }
 
         await _weighingRecordRepository.UpdateAsync(record);
+    }
+
+    [UnitOfWork]
+    public async Task UpdateSolidWasteModeAsync(UpdateSolidWasteModeInput input)
+    {
+        if (input.MaterialId.HasValue && input.MaterialId.Value <= 0)
+            throw new BusinessException("MaterialId must be greater than 0 when provided.");
+
+        if (input.MaterialUnitId.HasValue && input.MaterialUnitId.Value <= 0)
+            throw new BusinessException("MaterialUnitId must be greater than 0 when provided.");
+
+        if (input.ItemType == WeighingListItemType.WeighingRecord)
+        {
+            var record = await _weighingRecordRepository.GetAsync(input.Id);
+
+            record.WeighingMode = WeighingMode.SolidWaste;
+            if (input.PlateNumber != null) record.PlateNumber = input.PlateNumber;
+            if (input.ProviderId.HasValue) record.ProviderId = input.ProviderId;
+
+            var materials = record.Materials;
+            var firstMaterial = materials.FirstOrDefault();
+            if (input.MaterialId.HasValue || input.MaterialUnitId.HasValue)
+            {
+                if (firstMaterial != null)
+                {
+                    if (input.MaterialId.HasValue) firstMaterial.MaterialId = input.MaterialId;
+                    if (input.MaterialUnitId.HasValue) firstMaterial.MaterialUnitId = input.MaterialUnitId;
+                    record.Materials = materials;
+                }
+                else
+                {
+                    record.AddMaterial(new WeighingRecordMaterial(
+                        0,
+                        input.MaterialId,
+                        input.MaterialUnitId,
+                        null));
+                }
+            }
+
+            if (input.SolidWasteType != null) record.SetSolidWasteType(input.SolidWasteType);
+            if (input.Street != null) record.SetStreet(input.Street);
+            if (input.SolidWasteOrderNumber != null) record.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
+            if (input.Shipper != null) record.SetShipper(input.Shipper);
+            record.PatchSolidWasteMaterialInfo(input.MaterialId, null);
+
+            await _weighingRecordRepository.UpdateAsync(record);
+            return;
+        }
+
+        if (input.ItemType == WeighingListItemType.Waybill)
+        {
+            var waybill = await _waybillRepository.GetAsync(input.Id);
+
+            waybill.WeighingMode = WeighingMode.SolidWaste;
+            if (input.PlateNumber != null) waybill.PlateNumber = input.PlateNumber;
+            if (input.Remark != null) waybill.Remark = input.Remark;
+            if (input.ProviderId.HasValue) waybill.ProviderId = input.ProviderId;
+
+            if (input.MaterialId.HasValue) waybill.MaterialId = input.MaterialId;
+            if (input.MaterialUnitId.HasValue) waybill.MaterialUnitId = input.MaterialUnitId;
+            // In SolidWasteMode, WaybillQuantity uses OrderGoodsWeight (auto-derived)
+            if (waybill.OrderGoodsWeight.HasValue) waybill.OrderPlanOnPcs = waybill.OrderGoodsWeight;
+
+            if (input.SolidWasteType != null) waybill.SetSolidWasteType(input.SolidWasteType);
+            if (input.Street != null) waybill.SetStreet(input.Street);
+            if (input.SolidWasteOrderNumber != null) waybill.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
+            if (input.Shipper != null) waybill.SetShipper(input.Shipper);
+            waybill.PatchSolidWasteMaterialInfo(input.MaterialId, waybill.OrderGoodsWeight);
+
+            waybill.SetPendingSync();
+            await _waybillRepository.UpdateAsync(waybill);
+            return;
+        }
+
+        throw new BusinessException($"Unsupported item type: {input.ItemType}");
     }
 
     [UnitOfWork]
@@ -633,6 +722,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
 
+        // 复制 SolidWaste 信息（手动匹配 + 自动匹配都走此处）
+        CopySolidWasteInfoToWaybill(waybill, joinRecord, outRecord);
+
         // 先插入 Waybill 获取 Id
         await _waybillRepository.InsertAsync(waybill, true);
         joinRecord.MatchAsJoin(outRecord.Id, waybill.Id);
@@ -652,6 +744,50 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
 
         return waybill;
+    }
+
+    /// <summary>
+    ///     将 SolidWaste 信息从 WeighingRecord 传递到新建 Waybill（优先 joinRecord，空值时回退 outRecord）
+    /// </summary>
+    private static void CopySolidWasteInfoToWaybill(Waybill waybill, WeighingRecord joinRecord, WeighingRecord outRecord)
+    {
+        if (joinRecord.WeighingMode != WeighingMode.SolidWaste && outRecord.WeighingMode != WeighingMode.SolidWaste)
+            return;
+
+        // join-first: joinRecord 是 SolidWaste 时优先使用 joinRecord，否则使用 outRecord（如果它是 SolidWaste）
+        var primary = joinRecord.WeighingMode == WeighingMode.SolidWaste ? joinRecord : outRecord;
+        var fallback = ReferenceEquals(primary, joinRecord) ? outRecord : joinRecord;
+
+        waybill.WeighingMode = WeighingMode.SolidWaste;
+
+        var solidWasteType = primary.GetSolidWasteType();
+        var street = primary.GetStreet();
+        var solidWasteOrderNumber = primary.GetSolidWasteOrderNumber();
+
+        // Shipper 的扩展 GetShipper() 会返回默认值，无法判断是否“未设置”，因此这里读取原始 ExtraProperties 值
+        var shipper = primary.GetProperty<string>("SolidWasteInfo.Shipper");
+
+        var solidWasteMaterialId = primary.GetProperty<int?>("SolidWasteInfo.MaterialId");
+
+        if (fallback.WeighingMode == WeighingMode.SolidWaste)
+        {
+            solidWasteType ??= fallback.GetSolidWasteType();
+            street ??= fallback.GetStreet();
+            solidWasteOrderNumber ??= fallback.GetSolidWasteOrderNumber();
+            shipper ??= fallback.GetProperty<string>("SolidWasteInfo.Shipper");
+            solidWasteMaterialId ??= fallback.GetProperty<int?>("SolidWasteInfo.MaterialId");
+        }
+
+        if (solidWasteType != null) waybill.SetSolidWasteType(solidWasteType);
+        if (street != null) waybill.SetStreet(street);
+        if (solidWasteOrderNumber != null) waybill.SetSolidWasteOrderNumber(solidWasteOrderNumber);
+
+        // 即使 shipper 未设置，也写入默认值（SetShipper 内部会回退 DefaultShipper）
+        waybill.SetShipper(shipper);
+
+        // UI 读取 SolidWaste 材料使用 ExtraProperties 的 SolidWasteInfo.MaterialId / WaybillQuantity
+        // WaybillQuantity 在 SolidWaste 模式下约定为 GoodsWeight（自动派生）
+        waybill.PatchSolidWasteMaterialInfo(solidWasteMaterialId, waybill.OrderGoodsWeight);
     }
 
     /// <summary>
@@ -1096,6 +1232,20 @@ public record UpdateWeighingRecordInput(
     int? MaterialUnitId,
     decimal? WaybillQuantity,
     DeliveryType? DeliveryType
+);
+
+public record UpdateSolidWasteModeInput(
+    long Id,
+    WeighingListItemType ItemType,
+    string? PlateNumber,
+    int? ProviderId,
+    int? MaterialId,
+    int? MaterialUnitId,
+    string? SolidWasteType,
+    string? Street,
+    string? SolidWasteOrderNumber,
+    string? Remark,
+    string? Shipper
 );
 
 public record UpdateListItemInput(

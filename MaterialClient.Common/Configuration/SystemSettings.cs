@@ -32,4 +32,10 @@ public class SystemSettings
     ///     最小字符差异数（0-2），用于车牌号推荐匹配
     /// </summary>
     public int MinDiffCharCount { get; set; } = 0;
+
+    /// <summary>
+    ///     默认称重模式（Standard 或 SolidWaste）
+    ///     用于系统级别的默认模式设置
+    /// </summary>
+    public WeighingMode DefaultWeighingMode { get; set; } = WeighingMode.Standard;
 }

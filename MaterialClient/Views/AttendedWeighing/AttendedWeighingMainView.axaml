@@ -16,10 +16,21 @@
                     BorderThickness="1"
                     Padding="10,0"
                     Height="50">
-                <TextBlock Text="上一车次物料信息"
-                           FontSize="14"
-                           Foreground="#222222"
-                           VerticalAlignment="Center" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="上一车次物料信息"
+                               FontSize="14"
+                               Foreground="#222222"
+                               VerticalAlignment="Center" />
+
+                    <Button Grid.Column="1"
+                            Content="打印"
+                            Command="{Binding PrintSolidWasteCommand}"
+                            IsVisible="{Binding CanPrintSolidWaste}"
+                            Height="28"
+                            Padding="14,0"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center" />
+                </Grid>
             </Border>
 
             <!-- Info Blocks Grid - Row 1 -->

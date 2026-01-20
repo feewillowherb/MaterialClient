@@ -7,6 +7,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using MaterialClient.Common.Entities;
@@ -20,8 +23,11 @@ using MaterialClient.Common.Utils;
 using MaterialClient.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
@@ -54,6 +60,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .Subscribe(async item =>
             {
                 this.RaisePropertyChanged(nameof(IsCompletedWaybillSelected));
+                this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
 
                 if (item != null)
                 {
@@ -84,6 +91,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     this.RaisePropertyChanged(nameof(HasBillPhoto));
                     this.RaisePropertyChanged(nameof(BillPhotoButtonText));
                     this.RaisePropertyChanged(nameof(ShouldShowPreview));
+                    this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
                 }
             })
             .DisposeWith(_disposables);
@@ -843,6 +851,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     public bool IsCompletedWaybillSelected => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
 
+    public bool CanPrintSolidWaste => SelectedListItem is
+        { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed, WeighingMode: WeighingMode.SolidWaste };
+
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
     public bool IsSending => !IsReceiving;
 
@@ -1367,6 +1378,121 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         IsShowCompleted = mode == 2;
         CurrentPage = 1;
         _ = RefreshAsync();
+    }
+
+    [ReactiveCommand]
+    private async Task PrintSolidWasteAsync()
+    {
+        if (SelectedListItem == null || !CanPrintSolidWaste)
+            return;
+
+        try
+        {
+            var waybill = await _weighingMatchingService.GetWaybillByIdAsync(SelectedListItem.Id);
+            var dto = await CreateWeighingTicketDtoAsync(SelectedListItem, waybill);
+
+            var printingService = _serviceProvider.GetRequiredService<ITicketPrintingService>();
+            printingService.PrintToEpsonLq630K(dto);
+
+            Logger?.LogInformation("固废称重单已发送到打印机。WaybillId: {WaybillId}", waybill.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "打印固废称重单失败。ListItemId: {ListItemId}", SelectedListItem.Id);
+            await ShowMessageBoxAsync($"打印失败：{ex.Message}");
+        }
+    }
+
+    private async Task<WeighingTicketDto> CreateWeighingTicketDtoAsync(WeighingListItemDto item, Waybill waybill)
+    {
+        // SolidWaste extra fields
+        var solidWasteType = waybill.GetSolidWasteType() ?? string.Empty;
+        var street = waybill.GetStreet() ?? string.Empty;
+        var solidWasteOrderNo = waybill.GetSolidWasteOrderNumber() ?? string.Empty;
+        var receivingUnit = waybill.GetShipper();
+
+        // Resolve SolidWaste material name from ExtraProperties (preferred)
+        string goodsName = string.Empty;
+        var solidWasteMaterialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
+        if (solidWasteMaterialId.HasValue)
+        {
+            var materialService = _serviceProvider.GetService<IMaterialService>();
+            if (materialService != null)
+            {
+                var materials = await materialService.GetAllMaterialsAsync();
+                goodsName = materials.FirstOrDefault(m => m.Id == solidWasteMaterialId.Value)?.Name ?? string.Empty;
+            }
+        }
+
+        // Fallback: try to derive from precomputed material info (format: "{Rate}/{Unit} {MaterialName}")
+        if (string.IsNullOrWhiteSpace(goodsName))
+        {
+            var materialInfo = item.MaterialInfo ?? string.Empty;
+            var idx = materialInfo.LastIndexOf(' ');
+            goodsName = idx >= 0 ? materialInfo[(idx + 1)..].Trim() : materialInfo.Trim();
+        }
+
+        // Weights in Waybill are in tons; ticket requires kg
+        var grossWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderTotalWeight ?? 0m);
+        var tareWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderTruckWeight ?? 0m);
+        var netWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderGoodsWeight ?? 0m);
+
+        var entryTime = waybill.JoinTime ?? item.JoinTime;
+        var exitTime = waybill.OutTime ?? item.OutTime ?? entryTime;
+
+        return new WeighingTicketDto
+        {
+            PrintTime = DateTime.Now,
+            SerialNumber = string.IsNullOrWhiteSpace(waybill.OrderNo) ? waybill.Id.ToString() : waybill.OrderNo,
+            MeasurementUnit = "公斤",
+
+            VehicleNumber = item.PlateNumber ?? waybill.PlateNumber ?? string.Empty,
+            GoodsName = goodsName,
+            ShippingUnit = item.ProviderName ?? string.Empty,
+            ReceivingUnit = receivingUnit,
+
+            EntryTime = entryTime,
+            ExitTime = exitTime,
+
+            GrossWeight = grossWeightKg,
+            TareWeight = tareWeightKg,
+            NetWeight = netWeightKg,
+
+            Type = solidWasteType,
+            Remarks = waybill.Remark ?? string.Empty,
+            ManifestNumber = solidWasteOrderNo,
+            TownStreet = street,
+
+            WeigherSignature =  string.Empty,
+            DriverSignature = string.Empty,
+            SupervisorSignature = string.Empty
+        };
+    }
+
+    private async Task ShowMessageBoxAsync(string message)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var parentWin = GetParentWindow();
+
+            var messageBox = MessageBoxManager.GetMessageBoxStandard(
+                "提示",
+                message,
+                ButtonEnum.Ok,
+                Icon.None);
+
+            return parentWin != null
+                ? messageBox.ShowWindowDialogAsync(parentWin)
+                : messageBox.ShowAsync();
+        });
+    }
+
+    private static Window? GetParentWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            return desktop.MainWindow;
+
+        return null;
     }
 
     [ReactiveCommand]

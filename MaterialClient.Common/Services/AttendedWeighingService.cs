@@ -1282,6 +1282,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var currentDeliveryType = _deliveryTypeSubject.Value;
             var weighingRecord = new WeighingRecord(weight, plateNumber);
             weighingRecord.DeliveryType = currentDeliveryType;
+            
+            // Set WeighingMode from settings
+            var weighingMode = await _settingsService.GetWeighingModeAsync();
+            weighingRecord.SetWeighingMode(weighingMode);
+            
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 

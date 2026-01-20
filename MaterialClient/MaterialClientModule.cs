@@ -5,7 +5,10 @@ using System.Threading.Tasks;
 using MaterialClient.Backgrounds;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
+using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
+using MaterialClient.Common.Services;
 using MaterialClient.EFCore;
 using MaterialClient.Services;
 using MaterialClient.ViewModels;
@@ -26,8 +29,8 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
 
-namespace MaterialClient;
-
+namespace MaterialClient
+{
 [DependsOn(
     typeof(MaterialClientCommonModule),
     typeof(AbpAutofacModule),
@@ -117,6 +120,20 @@ public class MaterialClientModule : AbpModule
 
         // Register Web Host service
         services.AddSingleton<MinimalWebHostService>();
+
+        // Configure Streets
+        services.Configure<StreetsConfig>(options =>
+        {
+            var streets = configuration.GetSection("Streets").Get<string[]>();
+            options.Streets = streets ?? Array.Empty<string>();
+        });
+
+        // Configure SolidWasteTypes
+        services.Configure<SolidWasteTypeConfig>(options =>
+        {
+            var solidWasteTypes = configuration.GetSection("SolidWasteTypes").Get<string[]>();
+            options.SolidWasteTypes = solidWasteTypes ?? Array.Empty<string>();
+        });
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
@@ -194,8 +211,65 @@ public class MaterialClientModule : AbpModule
             logger?.LogError(ex, "数据库迁移失败");
         }
 
-        // 注册并启动后台工作器
-        await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
+        // 注册并启动后台工作器（可通过配置禁用）
+        var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
+
+        // TEMP(2026-01-19): Bootstrap SystemSettings.DefaultWeighingMode from appsettings.json into DB.
+        // Purpose: temporary isolation/initialization to ensure the default is persisted per installation.
+        // TODO(2026-01-19): Remove this block after rollout/migration is complete.
+        try
+        {
+            var configuredDefaultWeighingMode = configuration["SystemSettings:DefaultWeighingMode"];
+            if (!string.IsNullOrWhiteSpace(configuredDefaultWeighingMode))
+            {
+                var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
+
+                if (!Enum.TryParse<WeighingMode>(configuredDefaultWeighingMode, true, out var desiredMode))
+                {
+                    logger?.LogWarning(
+                        "Invalid config value for SystemSettings:DefaultWeighingMode: {ConfiguredValue}",
+                        configuredDefaultWeighingMode);
+                }
+                else
+                {
+                    var settingsService = context.ServiceProvider.GetRequiredService<ISettingsService>();
+                    var settings = await settingsService.GetSettingsAsync();
+
+                    var currentMode = settings.SystemSettings.DefaultWeighingMode;
+                    if (currentMode != desiredMode)
+                    {
+                        // 获取 SystemSettings 对象，修改后重新 set 回去以触发序列化
+                        var systemSettings = settings.SystemSettings;
+                        systemSettings.DefaultWeighingMode = desiredMode;
+                        settings.SystemSettings = systemSettings;
+                        
+                        await settingsService.SaveSettingsAsync(settings);
+
+                        logger?.LogInformation(
+                            "Updated SystemSettings.DefaultWeighingMode from {OldMode} to {NewMode} based on appsettings.json.",
+                            currentMode,
+                            desiredMode);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Do not block app startup on temporary initialization logic.
+            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
+            logger?.LogError(ex, "Failed to bootstrap SystemSettings.DefaultWeighingMode from configuration.");
+        }
+
+        var pollingEnabled = configuration.GetValue("BackgroundServices:Polling", true);
+        if (pollingEnabled)
+        {
+            await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
+        }
+        else
+        {
+            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
+            logger?.LogInformation("PollingBackgroundService is disabled by configuration (BackgroundServices:Polling=false).");
+        }
 
         // 初始化车牌号推荐服务缓存
         try
@@ -218,4 +292,5 @@ public class MaterialClientModule : AbpModule
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
     }
+}
 }
