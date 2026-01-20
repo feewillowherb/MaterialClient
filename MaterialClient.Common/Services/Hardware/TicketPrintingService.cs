@@ -236,14 +236,21 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
             Directory.CreateDirectory(outputDir);
 
-        // A4-ish canvas at ~150 DPI (good enough for preview).
-        const int width = 1240;
-        const int height = 1754;
+        // Render a compact "ticket" canvas sized to DrawTicket() output.
+        // DrawTicket() currently draws ~8 rows plus header, typically within ~350-420px height.
+        // We keep a bit of padding to avoid clipping while avoiding A4-like whitespace.
+        const int logicalWidth = 900;
+        const int logicalHeight = 520;
+        const float scale = 2.0f; // higher pixel density for clarity
 
-        using var bitmap = new Bitmap(width, height);
+        var pixelWidth = (int)Math.Ceiling(logicalWidth * scale);
+        var pixelHeight = (int)Math.Ceiling(logicalHeight * scale);
+
+        using var bitmap = new Bitmap(pixelWidth, pixelHeight);
         using var graphics = Graphics.FromImage(bitmap);
 
         graphics.Clear(Color.White);
+        graphics.ScaleTransform(scale, scale);
         graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
         graphics.PixelOffsetMode = PixelOffsetMode.Half;
         graphics.CompositingQuality = CompositingQuality.HighQuality;
@@ -251,8 +258,8 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
         graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
         // Reuse existing DrawTicket() by providing a PrintPageEventArgs with margins.
-        var pageBounds = new Rectangle(0, 0, width, height);
-        var marginBounds = new Rectangle(40, 40, width - 80, height - 80);
+        var pageBounds = new Rectangle(0, 0, logicalWidth, logicalHeight);
+        var marginBounds = new Rectangle(40, 20, logicalWidth - 80, logicalHeight - 40);
         var pageSettings = new PageSettings();
         var args = new PrintPageEventArgs(graphics, marginBounds, pageBounds, pageSettings);
 

@@ -4,7 +4,7 @@
         x:Class="MaterialClient.Views.PrintPreviewWindow"
         x:DataType="vm:PrintPreviewViewModel"
         Title="打印预览"
-        Width="800" Height="900"
+        Width="1200" Height="900"
         WindowStartupLocation="CenterOwner"
         Icon="/Assets/fd-ico.ico"
         SystemDecorations="None"
@@ -48,7 +48,7 @@
                 <Image x:Name="PreviewImage"
                        Source="{Binding PreviewImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
                        Stretch="Uniform"
-                       MaxWidth="760"
+                       MaxWidth="1000"
                        MaxHeight="760" />
             </Grid>
         </ScrollViewer>
