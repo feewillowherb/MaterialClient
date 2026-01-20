@@ -1,5 +1,6 @@
 using Volo.Abp.Auditing;
 using Volo.Abp.Domain.Entities;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Entities;
 
@@ -93,6 +94,11 @@ public class Material : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
     ///     单位换算率
     /// </summary>
     public decimal UnitRate { get; set; } = 1;
+
+    /// <summary>
+    ///     称重模式（用于隔离不同模式的数据）
+    /// </summary>
+    public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
 
     #region Audited Properties
 

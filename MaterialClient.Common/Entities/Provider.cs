@@ -1,5 +1,6 @@
 using Volo.Abp.Auditing;
 using Volo.Abp.Domain.Entities;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Entities;
 
@@ -67,6 +68,11 @@ public class Provider : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
 
 
     public int? CoId { get; set; }
+
+    /// <summary>
+    ///     称重模式（用于隔离不同模式的数据）
+    /// </summary>
+    public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
 
 
     #region Audited Properties
