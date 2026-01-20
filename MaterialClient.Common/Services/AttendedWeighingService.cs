@@ -195,7 +195,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // Load plate color filter config from appsettings.json (initialize once)
         if (!_plateColorFilterInitialized)
         {
-            var filteredColors = _configuration.GetSection("FilteredPlateColors").Get<int[]>();
+            var filteredColors = _configuration.GetSection("FilteredPlateColors").Get<LprAllInOneColorType[]>();
             if (filteredColors == null || filteredColors.Length == 0)
             {
                 _filteredPlateColors = new HashSet<LprAllInOneColorType>();
