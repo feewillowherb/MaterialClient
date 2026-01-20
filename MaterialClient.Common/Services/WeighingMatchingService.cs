@@ -5,6 +5,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
+using MaterialClient.Common.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -96,6 +97,11 @@ public interface IWeighingMatchingService
     /// </summary>
     /// <param name="waybillId">运单ID</param>
     Task<Waybill> GetWaybillByIdAsync(long waybillId);
+
+    /// <summary>
+    ///     创建用于打印的称重计量单 DTO（固废等）
+    /// </summary>
+    Task<WeighingTicketDto> CreateWeighingTicketDtoAsync(WeighingListItemDto item, Waybill waybill);
 }
 
 /// <summary>
@@ -114,6 +120,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
+    private readonly IMaterialService _materialService;
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
     private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
@@ -150,6 +157,85 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     public async Task<Waybill> GetWaybillByIdAsync(long waybillId)
     {
         return await _waybillRepository.GetAsync(waybillId);
+    }
+
+    /// <inheritdoc />
+    public async Task<WeighingTicketDto> CreateWeighingTicketDtoAsync(WeighingListItemDto item, Waybill waybill)
+    {
+        // SolidWaste extra fields
+        var solidWasteType = waybill.GetSolidWasteType() ?? string.Empty;
+        var street = waybill.GetStreet() ?? string.Empty;
+        var solidWasteOrderNo = waybill.GetSolidWasteOrderNumber() ?? string.Empty;
+
+        // Determine units (swap for Sending)
+        var providerName = item.ProviderName ?? string.Empty;
+        var shipper = waybill.GetShipper();
+
+        string shippingUnit;
+        string receivingUnit;
+        if (waybill.DeliveryType == DeliveryType.Sending)
+        {
+            shippingUnit = shipper;
+            receivingUnit = providerName;
+        }
+        else
+        {
+            shippingUnit = providerName;
+            receivingUnit = shipper;
+        }
+
+        // Resolve SolidWaste material name from ExtraProperties (preferred)
+        string goodsName = string.Empty;
+        var solidWasteMaterialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
+        if (solidWasteMaterialId.HasValue)
+        {
+            var materials = await _materialService.GetAllMaterialsAsync();
+            goodsName = materials.FirstOrDefault(m => m.Id == solidWasteMaterialId.Value)?.Name ?? string.Empty;
+        }
+
+        // Fallback: try to derive from precomputed material info (format: "{Rate}/{Unit} {MaterialName}")
+        if (string.IsNullOrWhiteSpace(goodsName))
+        {
+            var materialInfo = item.MaterialInfo ?? string.Empty;
+            var idx = materialInfo.LastIndexOf(' ');
+            goodsName = idx >= 0 ? materialInfo[(idx + 1)..].Trim() : materialInfo.Trim();
+        }
+
+        // Weights in Waybill are in tons; ticket requires kg
+        var grossWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderTotalWeight ?? 0m);
+        var tareWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderTruckWeight ?? 0m);
+        var netWeightKg = MaterialMath.ConvertTonToKg(waybill.OrderGoodsWeight ?? 0m);
+
+        var entryTime = waybill.JoinTime ?? item.JoinTime;
+        var exitTime = waybill.OutTime ?? item.OutTime ?? entryTime;
+
+        return new WeighingTicketDto
+        {
+            PrintTime = DateTime.Now,
+            SerialNumber = string.IsNullOrWhiteSpace(waybill.OrderNo) ? waybill.Id.ToString() : waybill.OrderNo,
+            MeasurementUnit = "公斤",
+
+            VehicleNumber = item.PlateNumber ?? waybill.PlateNumber ?? string.Empty,
+            GoodsName = goodsName,
+            ShippingUnit = shippingUnit,
+            ReceivingUnit = receivingUnit,
+
+            EntryTime = entryTime,
+            ExitTime = exitTime,
+
+            GrossWeight = grossWeightKg,
+            TareWeight = tareWeightKg,
+            NetWeight = netWeightKg,
+
+            Type = solidWasteType,
+            Remarks = waybill.Remark ?? string.Empty,
+            ManifestNumber = solidWasteOrderNo,
+            TownStreet = street,
+
+            WeigherSignature = string.Empty,
+            DriverSignature = string.Empty,
+            SupervisorSignature = string.Empty
+        };
     }
 
     [UnitOfWork]
