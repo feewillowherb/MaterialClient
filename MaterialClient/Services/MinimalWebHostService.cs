@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.LprAllInOne;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -187,11 +188,16 @@ public class MinimalWebHostService : IAsyncDisposable
                 var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
 
                 // 解析LprAllInOne设备数据
-                var license = callback?.AlarmInfoPlate?.Result?.PlateResult?.License;
+                var plateResult = callback?.AlarmInfoPlate?.Result?.PlateResult;
+                var license = plateResult?.License;
 
                 if (!string.IsNullOrWhiteSpace(license))
                 {
-                    weighingService.OnPlateNumberRecognized(license);
+                    var colorType = plateResult?.ColorType.HasValue == true
+                        ? (LprAllInOneColorType?)plateResult.ColorType.Value
+                        : null;
+
+                    weighingService.OnPlateNumberRecognized(license, colorType);
                     logger.LogInformation(
                         $"接收到车牌识别: {license} (设备: {callback?.AlarmInfoPlate?.DeviceName}, IP: {callback?.AlarmInfoPlate?.IpAddr})");
 

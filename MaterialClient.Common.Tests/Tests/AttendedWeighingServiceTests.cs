@@ -10,6 +10,7 @@ using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using BatchCaptureRequest = MaterialClient.Common.Services.Hikvision.BatchCaptureRequest;
 using BatchCaptureResult = MaterialClient.Common.Services.Hikvision.BatchCaptureResult;
 using Microsoft.Extensions.Logging;
@@ -1309,6 +1310,8 @@ public class AttendedWeighingServiceTests : IDisposable
         IUnitOfWorkManager? mockUowManager = null,
         IHikvisionService? mockHikvision = null)
     {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+
         var settingsService = Substitute.For<ISettingsService>();
         var settingsEntity = new SettingsEntity(
             new ScaleSettings(),
@@ -1350,6 +1353,7 @@ public class AttendedWeighingServiceTests : IDisposable
 
         return new AttendedWeighingService(
             fileRepo,
+            configuration,
             hikvisionService,
             eventBus,
             logger,

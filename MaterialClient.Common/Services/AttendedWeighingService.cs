@@ -13,6 +13,7 @@ using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.LprAllInOne;
 using MaterialClient.Common.Utils;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
@@ -102,7 +103,7 @@ public interface IAttendedWeighingService : IAsyncDisposable
     /// <summary>
     ///     接收车牌识别结果
     /// </summary>
-    void OnPlateNumberRecognized(string plateNumber);
+    void OnPlateNumberRecognized(string plateNumber, LprAllInOneColorType? colorType = null);
 
     /// <summary>
     ///     获取当前识别次数最大的车牌号
@@ -124,6 +125,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 {
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
 
+    private readonly IConfiguration _configuration;
     private readonly IHikvisionService _hikvisionService;
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<AttendedWeighingService> _logger;
@@ -157,6 +159,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // Plate number cache (field-level management)
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
 
+    // Plate color filtering config (initialized once at startup)
+    private bool _plateColorFilterInitialized;
+    private HashSet<LprAllInOneColorType> _filteredPlateColors = new();
+
     // 订阅管理
     private IDisposable? _stateSubscription;
 
@@ -185,6 +191,26 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _weightStabilityThreshold = config.WeightStabilityThreshold;
         _stabilityWindowMs = config.StabilityWindowMs;
         _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
+
+        // Load plate color filter config from appsettings.json (initialize once)
+        if (!_plateColorFilterInitialized)
+        {
+            var filteredColors = _configuration.GetSection("FilteredPlateColors").Get<int[]>();
+            if (filteredColors == null || filteredColors.Length == 0)
+            {
+                _filteredPlateColors = new HashSet<LprAllInOneColorType>();
+            }
+            else
+            {
+                _filteredPlateColors = filteredColors
+                    .Select(v => (LprAllInOneColorType)v)
+                    .ToHashSet();
+            }
+
+            _plateColorFilterInitialized = true;
+            _logger?.LogInformation("Loaded FilteredPlateColors from appsettings: {Colors}",
+                _filteredPlateColors.Count == 0 ? "none" : string.Join(", ", _filteredPlateColors));
+        }
 
         // 共享源流，避免多次订阅，只保留最近5秒的数据（背压保护）
         var sharedWeightSource = _truckScaleWeightService.WeightUpdates
@@ -367,9 +393,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// <summary>
     ///     接收车牌识别结果
     /// </summary>
-    public void OnPlateNumberRecognized(string plateNumber)
+    public void OnPlateNumberRecognized(string plateNumber, LprAllInOneColorType? colorType = null)
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
+
+        // Filter by plate color (when provided)
+        if (colorType.HasValue && _filteredPlateColors.Contains(colorType.Value))
+        {
+            _logger?.LogInformation("车牌颜色已过滤: Plate={Plate}, Color={Color}",
+                plateNumber, colorType.Value);
+            return;
+        }
 
         // 过滤掉"挂"字（仅处理简体"挂"）
         var filteredPlateNumber = PlateNumberValidator.FilterHangingCharacter(plateNumber, _logger);
