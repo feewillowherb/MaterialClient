@@ -166,6 +166,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         StartScaleStatusCheckTimer();
         _ = CheckCameraStatusOnceAsync();
         StartUsbCameraStatusCheckTimer();
+        _ = LoadPrinterSettingsAsync();
+        StartPrinterStatusCheckTimer();
         _ = StartAllDevicesAsync();
 
         // Initialize state from service
@@ -185,6 +187,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         StartSaveCompletedMessageBusSubscription();
         StartUpdatePlateNumberMessageBusSubscription();
         StartSettingsSavedMessageBusSubscription();
+
+        this.WhenAnyValue(x => x.PrinterName)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(PrinterTooltip)))
+            .DisposeWith(_disposables);
 
         // 监听 USB 摄像头在线状态变化、ShouldShowPreview变化和IsShowingMainView变化，自动启动/停止预览
         this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview, x => x.IsShowingMainView)
@@ -267,6 +273,77 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             Dispatcher.UIThread.Post(() => { IsCameraOnline = false; });
         }
+    }
+
+    private async Task LoadPrinterSettingsAsync()
+    {
+        try
+        {
+            var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
+            var settings = await settingsService.GetSettingsAsync();
+
+            IsPrinterEnabled = settings.SystemSettings.EnablePrinter;
+            PrinterName = settings.SystemSettings.SelectedPrinterName ?? string.Empty;
+
+            if (IsPrinterEnabled)
+                await CheckPrinterStatusOnceAsync();
+            else
+                Dispatcher.UIThread.Post(() => { IsPrinterOnline = false; });
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Failed to load printer settings");
+            Dispatcher.UIThread.Post(() =>
+            {
+                IsPrinterEnabled = false;
+                IsPrinterOnline = false;
+            });
+        }
+    }
+
+    private async Task CheckPrinterStatusOnceAsync()
+    {
+        try
+        {
+            var printingService = _serviceProvider.GetService<ITicketPrintingService>();
+            if (printingService == null || string.IsNullOrWhiteSpace(PrinterName))
+            {
+                Dispatcher.UIThread.Post(() => { IsPrinterOnline = false; });
+                return;
+            }
+
+            var installedPrinters = await Task.Run(() => printingService.ListInstalledPrinters());
+            var isOnline = installedPrinters.Any(p => string.Equals(p, PrinterName, StringComparison.OrdinalIgnoreCase));
+
+            Dispatcher.UIThread.Post(() => { IsPrinterOnline = isOnline; });
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Failed to check printer status");
+            Dispatcher.UIThread.Post(() => { IsPrinterOnline = false; });
+        }
+    }
+
+    private void StartPrinterStatusCheckTimer()
+    {
+        var printerStatusTimer = new Timer(_ =>
+        {
+            if (!IsPrinterEnabled) return;
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await CheckPrinterStatusOnceAsync();
+                }
+                catch
+                {
+                    Dispatcher.UIThread.Post(() => { IsPrinterOnline = false; });
+                }
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+
+        _disposables.Add(printerStatusTimer);
     }
 
     private void StartUsbCameraStatusCheckTimer()
@@ -718,6 +795,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 try
                 {
                     await CheckCameraStatusOnceAsync();
+                    await LoadPrinterSettingsAsync();
                     Logger?.LogInformation("AttendedWeighingViewModel: Camera status check completed after settings save");
                 }
                 catch (Exception ex)
@@ -815,6 +893,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     [Reactive] private bool _isUsbCameraOnline;
 
+    [Reactive] private bool _isPrinterEnabled;
+
+    [Reactive] private bool _isPrinterOnline;
+
+    [Reactive] private string _printerName = string.Empty;
+
     [Reactive] private Bitmap? _usbCameraPreview;
 
     [Reactive] private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
@@ -871,6 +955,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     ///     是否应该显示预览（当存在BillPhoto且未点击重新拍照时不显示预览）
     /// </summary>
     public bool ShouldShowPreview => !HasBillPhoto || _isRetakingPhoto;
+
+    public string PrinterTooltip => string.IsNullOrWhiteSpace(PrinterName) ? "未选择打印机" : PrinterName;
 
     /// <summary>
     ///     获取临时保存的拍照文件路径（供DetailViewModel使用）

@@ -26,6 +26,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
+    private readonly ITicketPrintingService _ticketPrintingService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
@@ -41,6 +42,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
     [Reactive] private string _urls = "http://localhost:9960";
     [Reactive] private SnapshotCameraType _snapshotCameraType = SnapshotCameraType.Hikvision;
+    [Reactive] private bool _enablePrinter;
+    [Reactive] private string _selectedPrinterName = string.Empty;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -109,19 +112,24 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private string _soundDeviceSoundSN = string.Empty;
     [Reactive] private string _soundDeviceSoundVolume = "0";
 
+    public ObservableCollection<string> AvailablePrinters { get; } = new();
+
     public SettingsWindowViewModel(
         ISettingsService settingsService,
         ITruckScaleWeightService truckScaleWeightService,
         IHikvisionService hikvisionService,
+        ITicketPrintingService ticketPrintingService,
         ILogger<SettingsWindowViewModel> logger)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
+        _ticketPrintingService = ticketPrintingService;
         _logger = logger;
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
+        RefreshAvailablePrinters();
 
         // Load settings
         _ = LoadSettingsAsync();
@@ -143,6 +151,16 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         try
         {
+            // Preserve non-UI SystemSettings fields (e.g. DefaultWeighingMode) to avoid losing state.
+            var existingSettings = await _settingsService.GetSettingsAsync();
+            var systemSettings = existingSettings.SystemSettings;
+            systemSettings.EnableAutoStart = EnableAutoStart;
+            systemSettings.CaptureStreamType = CaptureStreamType;
+            systemSettings.Urls = Urls;
+            systemSettings.SnapshotCameraType = SnapshotCameraType;
+            systemSettings.EnablePrinter = EnablePrinter;
+            systemSettings.SelectedPrinterName = SelectedPrinterName;
+
             var settings = new SettingsEntity(
                 new ScaleSettings
                 {
@@ -156,13 +174,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 {
                     UsbDevice = DocumentScannerUsbDevice
                 },
-                new SystemSettings
-                {
-                    EnableAutoStart = EnableAutoStart,
-                    CaptureStreamType = CaptureStreamType,
-                    Urls = Urls,
-                    SnapshotCameraType = SnapshotCameraType
-                },
+                systemSettings,
                 CameraConfigs.Select(c => new CameraConfig
                 {
                     Name = c.Name,
@@ -312,6 +324,31 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
+    private void RefreshAvailablePrinters()
+    {
+        try
+        {
+            var printers = _ticketPrintingService.ListInstalledPrinters()
+                .OrderBy(p => p)
+                .ToList();
+
+            AvailablePrinters.Clear();
+            foreach (var printer in printers)
+                AvailablePrinters.Add(printer);
+
+            // If current selected printer is not in the list, add it (might be disconnected/renamed)
+            if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&
+                !AvailablePrinters.Contains(SelectedPrinterName))
+            {
+                AvailablePrinters.Insert(0, SelectedPrinterName);
+            }
+        }
+        catch
+        {
+            // If getting printers fails, keep existing list
+        }
+    }
+
     private async Task LoadSettingsAsync()
     {
         try
@@ -337,6 +374,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
             Urls = settings.SystemSettings.Urls;
             SnapshotCameraType = settings.SystemSettings.SnapshotCameraType;
+            EnablePrinter = settings.SystemSettings.EnablePrinter;
+            SelectedPrinterName = settings.SystemSettings.SelectedPrinterName;
+
+            // Ensure the loaded printer is in the available list (might be disconnected)
+            if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&
+                !AvailablePrinters.Contains(SelectedPrinterName))
+            {
+                AvailablePrinters.Insert(0, SelectedPrinterName);
+            }
 
             // Load weighing configuration
             MinWeightThreshold = settings.WeighingConfiguration.MinWeightThreshold;
