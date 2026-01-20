@@ -303,8 +303,13 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
 
         var brush = Brushes.Black;
         float y = 20;
-        float leftMargin = 20;
-        float centerX = e.PageBounds.Width / 2;
+        
+        // Use MarginBounds to ensure content fits within printable area
+        // This is critical for physical printers like EPSON LQ-630K which have smaller printable areas
+        float leftMargin = e.MarginBounds.Left;
+        float rightMargin = e.MarginBounds.Right;
+        float printableWidth = e.MarginBounds.Width;
+        float centerX = e.MarginBounds.Left + printableWidth / 2;
         float lineHeight = 25;
 
         // Draw company name (centered)
@@ -319,16 +324,18 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
             centerX - titleSize.Width / 2, y);
         y += lineHeight + 10;
 
-        // Draw header info line
+        // Draw header info line - adjust positions to fit within printable area
+        float headerCol2 = leftMargin + printableWidth * 0.35f;
+        float headerCol3 = leftMargin + printableWidth * 0.65f;
         graphics.DrawString($"打印时间: {dto.PrintTime:yyyy-MM-dd HH:mm:ss}", smallFont, brush, leftMargin, y);
-        graphics.DrawString($"流水号: {dto.SerialNumber}", smallFont, brush, 250, y);
-        graphics.DrawString($"计量单位: {dto.MeasurementUnit}", smallFont, brush, 450, y);
+        graphics.DrawString($"流水号: {dto.SerialNumber}", smallFont, brush, headerCol2, y);
+        graphics.DrawString($"计量单位: {dto.MeasurementUnit}", smallFont, brush, headerCol3, y);
         y += lineHeight + 10;
 
         // Define table structure with columns
         // Table has 4 columns: Label1 | Value1 | Label2 | Value2
         // Based on sample.png: label columns are ~38% width, value columns are ~62% width
-        float tableWidth = e.PageBounds.Width - 2 * leftMargin;
+        float tableWidth = printableWidth;
         float sectionWidth = tableWidth / 2; // Each section (left/right) takes half the table width
         float labelWidth = sectionWidth * 0.38f; // Label column is 38% of section width
         float valueWidth = sectionWidth * 0.62f; // Value column is 62% of section width
@@ -337,7 +344,7 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
         float col2 = col1 + labelWidth; // Left column values start
         float col3 = col2 + valueWidth; // Right column labels start
         float col4 = col3 + labelWidth; // Right column values start
-        float tableRight = e.PageBounds.Width - leftMargin;
+        float tableRight = rightMargin; // Use right margin bound for rightmost border
         float tableTop = y;
 
         // Draw table content with grid lines
