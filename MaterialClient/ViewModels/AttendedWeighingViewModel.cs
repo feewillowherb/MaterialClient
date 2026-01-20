@@ -1499,10 +1499,35 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
         try
         {
+            if (!IsPrinterEnabled)
+            {
+                await ShowMessageBoxAsync("未启用打印机功能，请在系统设置中启用并选择打印机。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(PrinterName))
+            {
+                await ShowMessageBoxAsync("未选择打印机，请在系统设置中选择打印机。");
+                return;
+            }
+
             var waybill = await _weighingMatchingService.GetWaybillByIdAsync(SelectedListItem.Id);
             var dto = await _weighingMatchingService.CreateWeighingTicketDtoAsync(SelectedListItem, waybill);
 
             var printingService = _serviceProvider.GetRequiredService<ITicketPrintingService>();
+
+            // Re-check printer existence at click time (avoid showing preview when printer is missing/offline).
+            var installedPrinters = printingService.ListInstalledPrinters();
+            var isPrinterOnline = installedPrinters.Any(p =>
+                string.Equals(p, PrinterName, StringComparison.OrdinalIgnoreCase));
+            IsPrinterOnline = isPrinterOnline;
+
+            if (!isPrinterOnline)
+            {
+                await ShowMessageBoxAsync($"打印机不在线或未安装：{PrinterName}");
+                return;
+            }
+
             var previewPath = Path.Combine(
                 Path.GetTempPath(),
                 $"ticket_preview_{SelectedListItem.Id}_{DateTime.Now:yyyyMMddHHmmss}.png");

@@ -233,6 +233,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         }
     }
 
+    /// <summary>
+    ///     完成按钮文本（根据当前记录的收发料类型动态显示）
+    /// </summary>
+    public string CompleteButtonText
+    {
+        get
+        {
+            var deliveryType = _listItem?.DeliveryType ?? DeliveryType.Receiving;
+            return deliveryType == DeliveryType.Sending ? "完成本次发货" : "完成本次收货";
+        }
+    }
+
     #endregion
 
     #region 初始化
@@ -418,6 +430,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         
         // 通知 ProviderLabelText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(ProviderLabelText));
+
+        // 通知 CompleteButtonText 属性变化（因为它依赖于 _listItem.DeliveryType）
+        this.RaisePropertyChanged(nameof(CompleteButtonText));
         
         // 保存临时拍照文件路径
         _capturedBillPhotoPath = capturedBillPhotoPath;
