@@ -17,7 +17,7 @@
                     Padding="10,0"
                     Height="50">
                 <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="上一车次物料信息"
+                    <TextBlock Text="物料信息"
                                FontSize="14"
                                Foreground="#222222"
                                VerticalAlignment="Center" />
