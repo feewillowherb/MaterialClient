@@ -20,18 +20,31 @@
 
         <!-- Title Bar -->
         <Border Grid.Row="0"
+                x:Name="TitleBarBorder"
                 Background="#2D2D2D"
                 Padding="16,12"
                 BorderBrush="#3D3D3D"
                 BorderThickness="0,0,0,1"
                 PointerPressed="TitleBar_OnPointerPressed"
                 Cursor="Arrow">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Text="{Binding ImageTitle, TargetNullValue='图片查看'}"
                            FontSize="16"
                            Foreground="White"
                            VerticalAlignment="Center" />
                 <Button Grid.Column="1"
+                        x:Name="FullscreenButton"
+                        Content="⛶"
+                        FontSize="18"
+                        Foreground="White"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        Cursor="Hand"
+                        Click="FullscreenButton_OnClick"
+                        ToolTip.Tip="全屏 (F11)" />
+                <Button Grid.Column="2"
                         Content="✕"
                         FontSize="18"
                         Foreground="White"
@@ -51,7 +64,8 @@
             <Grid HorizontalAlignment="Center"
                   VerticalAlignment="Center"
                   Margin="20">
-                <Image Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                <Image x:Name="ImageControl"
+                       Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
                        Stretch="Uniform"
                        MaxWidth="1100"
                        MaxHeight="700" />
