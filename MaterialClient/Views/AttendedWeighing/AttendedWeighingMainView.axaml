@@ -23,7 +23,7 @@
                                    Foreground="#222222"
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding SelectedListItem.JoinTime, StringFormat='{}{0:yyyy-MM-dd}', TargetNullValue=''}"
-                                   FontSize="12"
+                                   FontSize="14"
                                    Foreground="#666666"
                                    Margin="8,0,0,0"
                                    VerticalAlignment="Center" />
