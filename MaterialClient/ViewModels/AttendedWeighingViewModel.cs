@@ -160,10 +160,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
         _truckScaleWeightService.WeightUpdates
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(weight => 
-            { 
+            .Subscribe(weight =>
+            {
                 Logger?.LogDebug($"UI Weight Update: {weight}");
-                CurrentWeight = weight; 
+                CurrentWeight = weight;
             })
             .DisposeWith(_disposables);
 
@@ -317,7 +317,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             }
 
             var installedPrinters = await Task.Run(() => printingService.ListInstalledPrinters());
-            var isOnline = installedPrinters.Any(p => string.Equals(p, PrinterName, StringComparison.OrdinalIgnoreCase));
+            var isOnline =
+                installedPrinters.Any(p => string.Equals(p, PrinterName, StringComparison.OrdinalIgnoreCase));
 
             Dispatcher.UIThread.Post(() => { IsPrinterOnline = isOnline; });
         }
@@ -796,17 +797,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async _ =>
             {
-                Logger?.LogInformation("AttendedWeighingViewModel: Received SettingsSavedMessage, checking camera status");
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received SettingsSavedMessage, checking camera status");
 
                 try
                 {
                     await CheckCameraStatusOnceAsync();
                     await LoadPrinterSettingsAsync();
-                    Logger?.LogInformation("AttendedWeighingViewModel: Camera status check completed after settings save");
+                    Logger?.LogInformation(
+                        "AttendedWeighingViewModel: Camera status check completed after settings save");
                 }
                 catch (Exception ex)
                 {
-                    Logger?.LogError(ex, "AttendedWeighingViewModel: Error while checking camera status after settings save");
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error while checking camera status after settings save");
                 }
             })
             .DisposeWith(_disposables);
@@ -943,7 +947,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
 
     public bool CanPrintSolidWaste => SelectedListItem is
-        { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed, WeighingMode: WeighingMode.SolidWaste };
+    {
+        ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed,
+        WeighingMode: WeighingMode.SolidWaste
+    };
 
     public string DeliveryTypeTitleText => IsReceiving ? "收料信息" : "发料信息";
 
@@ -1207,7 +1214,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private async void OnDetailCompleteCompleted(object? sender, EventArgs e)
     {
         await RefreshAsync();
-        await SelectUnmatchedNextItemAsync();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
@@ -1313,7 +1320,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
                 if (nextItem != null)
                 {
-                                   
                     SelectedListItem = nextItem;
                     // 如果 DetailView 正在显示，需要更新 DetailViewModel
                     if (!IsShowingMainView && DetailViewModel != null)
@@ -1321,7 +1327,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                         // 如果 DetailViewModel 已存在，更新其数据
                         DetailViewModel.InitializeData(nextItem, CapturedBillPhotoPath);
                     }
-                    else if (nextItem is not { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                    else if (nextItem is not
+                             { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
                     {
                         // 如果不是已完成的 Waybill，打开详情视图
                         _ = OpenDetail(nextItem);

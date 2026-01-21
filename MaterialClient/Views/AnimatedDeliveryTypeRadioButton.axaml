@@ -7,6 +7,17 @@
              x:Class="MaterialClient.Views.AnimatedDeliveryTypeRadioButton"
              x:DataType="views:AnimatedDeliveryTypeRadioButton">
 
+  <!-- Transition on PulseProgress ensures BaseOpacity/TargetOpacity stay complementary -->
+  <UserControl.Styles>
+    <Style Selector="views|AnimatedDeliveryTypeRadioButton">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="PulseProgress" Duration="0:0:0.5" />
+        </Transitions>
+      </Setter>
+    </Style>
+  </UserControl.Styles>
+
   <RadioButton Cursor="Hand"
                GroupName="{Binding GroupName, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
                IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}, Mode=TwoWay}"
@@ -20,20 +31,30 @@
                 BorderBrush="Transparent"
                 Background="Transparent"
                 Padding="{Binding ContentPadding, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}">
-          <TextBlock Name="bdText"
-                     Text="{Binding Text, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
-                     Foreground="{Binding AnimatedForeground, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
-                     FontSize="{Binding AnimatedFontSize, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
-                     FontWeight="{Binding AnimatedFontWeight, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
-                     VerticalAlignment="Center"
-                     HorizontalAlignment="Center">
-            <TextBlock.Transitions>
-              <Transitions>
-                <DoubleTransition Property="FontSize" Duration="0:0:0.5" />
-                <BrushTransition Property="Foreground" Duration="0:0:0.5" />
-              </Transitions>
-            </TextBlock.Transitions>
-          </TextBlock>
+          <!--
+               Layout-stable animation:
+               - Base text: 14/Normal, foreground depends on checked state (white/blue)
+               - Target text: 16/Bold, red
+               We only animate PulseProgress (0-1) at UserControl level, then BaseOpacity
+               and TargetOpacity are computed to always sum to 1.0, preventing ghosting.
+          -->
+          <Grid>
+            <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       Foreground="{Binding BaseForeground, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       FontSize="14"
+                       FontWeight="Normal"
+                       Opacity="{Binding BaseOpacity, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center" />
+
+            <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       Foreground="#FF0000"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Opacity="{Binding TargetOpacity, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center" />
+          </Grid>
         </Border>
       </ControlTemplate>
     </RadioButton.Template>

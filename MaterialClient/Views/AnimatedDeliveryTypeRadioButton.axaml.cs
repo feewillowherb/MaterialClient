@@ -35,29 +35,32 @@ public partial class AnimatedDeliveryTypeRadioButton : UserControl
 
     private static readonly IBrush UncheckedForegroundBrush = Brushes.White;
     private static readonly IBrush CheckedForegroundBrush = new SolidColorBrush(Color.Parse("#5A7FE6"));
-    private static readonly IBrush ActiveCheckedForegroundBrush = new SolidColorBrush(Colors.Red);
 
     private readonly DispatcherTimer _pulseTimer;
     private bool _pulseOn;
 
-    private IBrush _animatedForeground = UncheckedForegroundBrush;
-    private double _animatedFontSize = 14;
-    private FontWeight _animatedFontWeight = FontWeight.Normal;
+    private IBrush _baseForeground = UncheckedForegroundBrush;
+    private double _baseOpacity = 1d;
+    private double _targetOpacity;
 
-    public static readonly DirectProperty<AnimatedDeliveryTypeRadioButton, IBrush> AnimatedForegroundProperty =
+    public static readonly DirectProperty<AnimatedDeliveryTypeRadioButton, IBrush> BaseForegroundProperty =
         AvaloniaProperty.RegisterDirect<AnimatedDeliveryTypeRadioButton, IBrush>(
-            nameof(AnimatedForeground),
-            o => o.AnimatedForeground);
+            nameof(BaseForeground),
+            o => o.BaseForeground);
 
-    public static readonly DirectProperty<AnimatedDeliveryTypeRadioButton, double> AnimatedFontSizeProperty =
+    // PulseProgress must be StyledProperty (not DirectProperty) to support transitions
+    public static readonly StyledProperty<double> PulseProgressProperty =
+        AvaloniaProperty.Register<AnimatedDeliveryTypeRadioButton, double>(nameof(PulseProgress), defaultValue: 0d);
+
+    public static readonly DirectProperty<AnimatedDeliveryTypeRadioButton, double> BaseOpacityProperty =
         AvaloniaProperty.RegisterDirect<AnimatedDeliveryTypeRadioButton, double>(
-            nameof(AnimatedFontSize),
-            o => o.AnimatedFontSize);
+            nameof(BaseOpacity),
+            o => o.BaseOpacity);
 
-    public static readonly DirectProperty<AnimatedDeliveryTypeRadioButton, FontWeight> AnimatedFontWeightProperty =
-        AvaloniaProperty.RegisterDirect<AnimatedDeliveryTypeRadioButton, FontWeight>(
-            nameof(AnimatedFontWeight),
-            o => o.AnimatedFontWeight);
+    public static readonly DirectProperty<AnimatedDeliveryTypeRadioButton, double> TargetOpacityProperty =
+        AvaloniaProperty.RegisterDirect<AnimatedDeliveryTypeRadioButton, double>(
+            nameof(TargetOpacity),
+            o => o.TargetOpacity);
 
     public AnimatedDeliveryTypeRadioButton()
     {
@@ -65,7 +68,8 @@ public partial class AnimatedDeliveryTypeRadioButton : UserControl
 
         _pulseTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(1500)
+            // 2000ms per leg: base -> target -> base ...
+            Interval = TimeSpan.FromMilliseconds(2000)
         };
         _pulseTimer.Tick += (_, _) =>
         {
@@ -76,6 +80,13 @@ public partial class AnimatedDeliveryTypeRadioButton : UserControl
         // React to state changes to update animated target values.
         this.GetObservable(IsCheckedProperty).Subscribe(_ => UpdateAnimationState());
         this.GetObservable(IsWeighingActiveProperty).Subscribe(_ => UpdateAnimationState());
+        
+        // Update complementary opacities when PulseProgress changes (via transition)
+        this.GetObservable(PulseProgressProperty).Subscribe(progress =>
+        {
+            BaseOpacity = 1d - progress;
+            TargetOpacity = progress;
+        });
 
         // Initial state.
         UpdateAnimationState();
@@ -129,22 +140,28 @@ public partial class AnimatedDeliveryTypeRadioButton : UserControl
         set => SetValue(ContentPaddingProperty, value);
     }
 
-    public IBrush AnimatedForeground
+    public IBrush BaseForeground
     {
-        get => _animatedForeground;
-        private set => SetAndRaise(AnimatedForegroundProperty, ref _animatedForeground, value);
+        get => _baseForeground;
+        private set => SetAndRaise(BaseForegroundProperty, ref _baseForeground, value);
     }
 
-    public double AnimatedFontSize
+    public double PulseProgress
     {
-        get => _animatedFontSize;
-        private set => SetAndRaise(AnimatedFontSizeProperty, ref _animatedFontSize, value);
+        get => GetValue(PulseProgressProperty);
+        set => SetValue(PulseProgressProperty, value);
     }
 
-    public FontWeight AnimatedFontWeight
+    public double BaseOpacity
     {
-        get => _animatedFontWeight;
-        private set => SetAndRaise(AnimatedFontWeightProperty, ref _animatedFontWeight, value);
+        get => _baseOpacity;
+        private set => SetAndRaise(BaseOpacityProperty, ref _baseOpacity, value);
+    }
+
+    public double TargetOpacity
+    {
+        get => _targetOpacity;
+        private set => SetAndRaise(TargetOpacityProperty, ref _targetOpacity, value);
     }
 
     private void UpdateAnimationState()
@@ -178,24 +195,23 @@ public partial class AnimatedDeliveryTypeRadioButton : UserControl
 
         if (!isChecked)
         {
-            AnimatedForeground = UncheckedForegroundBrush;
-            AnimatedFontSize = 14;
-            AnimatedFontWeight = FontWeight.Normal;
+            BaseForeground = UncheckedForegroundBrush;
+            PulseProgress = 0d;
             return;
         }
 
         if (!shouldPulse)
         {
-            AnimatedForeground = CheckedForegroundBrush;
-            AnimatedFontSize = 14;
-            AnimatedFontWeight = FontWeight.Normal;
+            BaseForeground = CheckedForegroundBrush;
+            PulseProgress = 0d;
             return;
         }
 
-        // Pulsing: base(checked) <-> target(active checked)
-        AnimatedForeground = _pulseOn ? ActiveCheckedForegroundBrush : CheckedForegroundBrush;
-        AnimatedFontSize = _pulseOn ? 16 : 14;
-        AnimatedFontWeight = _pulseOn ? FontWeight.Bold : FontWeight.Normal;
+        // Pulsing (layout-stable): crossfade between base and target layers.
+        // PulseProgress controls opacity: 0 = base visible, 1 = target visible.
+        // BaseOpacity = 1 - PulseProgress, TargetOpacity = PulseProgress (always sum to 1).
+        BaseForeground = CheckedForegroundBrush;
+        PulseProgress = _pulseOn ? 1d : 0d;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)

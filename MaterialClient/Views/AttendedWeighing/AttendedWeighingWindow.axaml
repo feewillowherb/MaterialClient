@@ -159,14 +159,14 @@
                                                                             Command="{Binding SetReceivingCommand}"
                                                                             IsWeighingActive="{Binding IsWeighingActive}"
                                                                             CornerRadius="8,8,0,0"
-                                                                            ContentPadding="20,6" />
+                                                                            ContentPadding="20,10" />
                                     <views1:AnimatedDeliveryTypeRadioButton Text="发料"
                                                                             GroupName="DeliveryType"
                                                                             IsChecked="{Binding IsSending}"
                                                                             Command="{Binding SetSendingCommand}"
                                                                             IsWeighingActive="{Binding IsWeighingActive}"
                                                                             CornerRadius="0,0,8,8"
-                                                                            ContentPadding="20,6" />
+                                                                            ContentPadding="20,10" />
                                 </StackPanel>
                             </Border>
 
