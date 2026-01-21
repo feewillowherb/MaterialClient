@@ -100,6 +100,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .Subscribe(_ => this.RaisePropertyChanged(nameof(HasCameraStatuses)))
             .DisposeWith(_disposables);
 
+        this.WhenAnyValue(x => x.IsReceiving)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(DeliveryTypeTitleText)))
+            .DisposeWith(_disposables);
+
         this.WhenAnyValue(x => x.IsShowingMainView)
             .Subscribe(async isShowingMainView =>
             {
@@ -940,6 +944,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     public bool CanPrintSolidWaste => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed, WeighingMode: WeighingMode.SolidWaste };
+
+    public string DeliveryTypeTitleText => IsReceiving ? "收料信息" : "发料信息";
 
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
     public bool IsSending => !IsReceiving;

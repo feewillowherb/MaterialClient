@@ -211,6 +211,19 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         }
     }
 
+    public string DeliveryTypeTitleText
+    {
+        get
+        {
+            return _listItem?.DeliveryType switch
+            {
+                DeliveryType.Sending => "发料信息",
+                DeliveryType.Receiving => "收料信息",
+                _ => "物料信息"
+            };
+        }
+    }
+
     /// <summary>
     ///     完成按钮文本（根据当前记录的收发料类型动态显示）
     /// </summary>
@@ -409,6 +422,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         
         // 通知 ProviderLabelText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(ProviderLabelText));
+
+        // 通知 DeliveryTypeTitleText 属性变化（因为它依赖于 _listItem.DeliveryType）
+        this.RaisePropertyChanged(nameof(DeliveryTypeTitleText));
 
         // 通知 CompleteButtonText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(CompleteButtonText));

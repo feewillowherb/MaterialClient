@@ -36,13 +36,13 @@
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Orientation="Horizontal"
                             VerticalAlignment="Center">
-                    <TextBlock Text="物料信息"
+                    <TextBlock Text="{Binding DeliveryTypeTitleText}"
                                FontSize="14"
                                Foreground="#222222"
                                VerticalAlignment="Center" />
                     <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd}', TargetNullValue=''}"
                                FontSize="14"
-                               Foreground="#666666"
+                               Foreground="#222222"
                                Margin="8,0,0,0"
                                VerticalAlignment="Center" />
                 </StackPanel>
@@ -130,7 +130,7 @@
         </Panel>
 
         <!--第四行：按钮栏-->
-        <Grid Grid.Row="4" Margin="0,5,0,0">
+        <Grid Grid.Row="4" Margin="0,0,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />

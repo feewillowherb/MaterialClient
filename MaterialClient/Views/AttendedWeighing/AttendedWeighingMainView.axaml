@@ -18,13 +18,13 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="物料信息"
+                        <TextBlock Text="{Binding DeliveryTypeTitleText}"
                                    FontSize="14"
                                    Foreground="#222222"
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding SelectedListItem.JoinTime, StringFormat='{}{0:yyyy-MM-dd}', TargetNullValue=''}"
                                    FontSize="14"
-                                   Foreground="#666666"
+                                   Foreground="#222222"
                                    Margin="8,0,0,0"
                                    VerticalAlignment="Center" />
                     </StackPanel>
