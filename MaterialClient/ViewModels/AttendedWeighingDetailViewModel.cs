@@ -245,7 +245,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         // 直接创建材料选择弹窗 ViewModel 实例，而不是通过 IOC 容器获取
         // 这样可以确保使用的是同一个实例，避免数据传递问题
         MaterialsSelectionPopupViewModel = new MaterialsSelectionPopupViewModel(_serviceProvider);
-        
+
         // 订阅材料选择事件（使用 Where 过滤 null，确保只有选择时才触发）
         // 保存订阅以防止被垃圾回收
         _materialSelectionSubscription = MaterialsSelectionPopupViewModel.WhenAnyValue(x => x.SelectedMaterial)
@@ -416,10 +416,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         JoinTime = _listItem.JoinTime;
         OutTime = _listItem.OutTime;
         Operator = _listItem.Operator;
-        
+
         // 初始化 WeighingMode：使用记录的实际模式
         WeighingMode = _listItem.WeighingMode;
-        
+
         // 通知 ProviderLabelText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(ProviderLabelText));
 
@@ -428,10 +428,10 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
         // 通知 CompleteButtonText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(CompleteButtonText));
-        
+
         // 保存临时拍照文件路径
         _capturedBillPhotoPath = capturedBillPhotoPath;
-        
+
         // 根据 ItemType 判断是否显示匹配按钮：Waybill 类型不显示，WeighingRecord 类型在 LoadWeighingRecordDetailsAsync 中根据 MatchedId 判断
         IsMatchButtonVisible = _listItem.ItemType != WeighingListItemType.Waybill;
         // 仅当为 Waybill 且 OrderType == FirstWeight（即未完成）时显示"完成本次收货"按钮
@@ -501,9 +501,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             var hasMaterialId = firstMaterialDto?.MaterialId.HasValue ?? _listItem.MaterialId.HasValue;
             var hasMaterialUnitId = firstMaterialDto?.MaterialUnitId.HasValue ?? _listItem.MaterialUnitId.HasValue;
             var hasProviderId = _listItem.ProviderId.HasValue;
-            
-            var needsRecommendation = (!hasMaterialId || !hasMaterialUnitId || !hasProviderId) && 
-                                     !string.IsNullOrWhiteSpace(PlateNumber);
+
+            var needsRecommendation = (!hasMaterialId || !hasMaterialUnitId || !hasProviderId) &&
+                                      !string.IsNullOrWhiteSpace(PlateNumber);
 
             WaybillRecommendationDto? recommendation = null;
             if (needsRecommendation)
@@ -512,7 +512,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 {
                     var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
                     recommendation = await weighingMatchingService.GetRecommendationByPlateNumberAsync(PlateNumber);
-                    
+
                     if (recommendation != null)
                     {
                         Logger?.LogInformation(
@@ -622,25 +622,25 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             if (_listItem.ItemType == WeighingListItemType.WeighingRecord)
             {
                 var record = await _weighingRecordRepository.GetAsync(_listItem.Id);
-                
+
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = record.GetSolidWasteOrderNumber();
                 SelectedStreet = record.GetStreet();
                 SelectedSolidWasteType = record.GetSolidWasteType();
                 SelectedProviderId = record.ProviderId;
                 _listItem.ProviderId = record.ProviderId;
-                
+
                 // 读取 MaterialId 和 WaybillQuantity
                 var materialId = record.GetProperty<int?>("SolidWasteInfo.MaterialId");
                 var waybillQuantity = record.GetProperty<decimal?>("SolidWasteInfo.WaybillQuantity");
-                
+
                 if (materialId.HasValue)
                 {
                     var material = SolidWasteMaterials.FirstOrDefault(m => m.Id == materialId.Value);
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
-                        
+
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
                         if (MaterialItems.Count > 0)
@@ -659,38 +659,38 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             {
                 var waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
                 var waybill = await waybillRepository.GetAsync(_listItem.Id);
-                
+
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
                 SelectedStreet = waybill.GetStreet();
                 SelectedSolidWasteType = waybill.GetSolidWasteType();
                 SelectedProviderId = waybill.ProviderId;
                 _listItem.ProviderId = waybill.ProviderId;
-                
+
                 // 读取 MaterialId 和 WaybillQuantity
                 var materialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
                 var waybillQuantity = waybill.GetProperty<decimal?>("SolidWasteInfo.WaybillQuantity");
-                
+
                 // 如果 ExtraProperties 中没有，尝试从标准字段读取
                 if (!materialId.HasValue && waybill.MaterialId.HasValue)
                 {
                     materialId = waybill.MaterialId;
                 }
-                
+
                 if (materialId.HasValue)
                 {
                     var material = SolidWasteMaterials.FirstOrDefault(m => m.Id == materialId.Value);
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
-                        
+
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
                         if (MaterialItems.Count > 0)
                         {
                             var firstRow = MaterialItems[0];
                             firstRow.SetMaterialUnits(units);
-                            
+
                             // 如果 Waybill 有 MaterialUnitId，使用它；否则选择第一个
                             var unitId = waybill.MaterialUnitId ?? units.FirstOrDefault()?.Id;
                             if (unitId.HasValue)
@@ -886,6 +886,41 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         var materialId = SelectedSolidWasteMaterial?.Id;
         var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
 
+        if (providerId == null)
+        {
+            await ShowMessageBoxAsync("请先选择供应商");
+            return;
+        }
+
+        if (materialId == null)
+        {
+            await ShowMessageBoxAsync("请先选择材料");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(SelectedStreet))
+        {
+            await ShowMessageBoxAsync("请先选择镇街");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(SelectedSolidWasteType))
+        {
+            await ShowMessageBoxAsync("请先选择类型");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(SolidWasteOrderNumber))
+        {
+            await ShowMessageBoxAsync("请填写联单号");
+            return;
+        }
+        
+        
+        
+        
+
+
         var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
         try
         {
@@ -945,6 +980,15 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             // 不需要再次打开 ManualMatchEditWindow，因为它已经在 ManualMatchWindow 中打开过了
             if (matchedRecord != null)
             {
+                // 触发 ManualMatchSaveCompleted 事件（如果有 WaybillId）
+                if (matchWindow.SavedWaybillId.HasValue)
+                {
+                    ManualMatchSaveCompleted?.Invoke(this, new ManualMatchSaveCompletedEventArgs
+                    {
+                        WaybillId = matchWindow.SavedWaybillId
+                    });
+                }
+
                 MatchCompleted?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1120,7 +1164,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         }
 
         var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
-        
+
         // 先更新数据
         await weighingMatchingService.UpdateListItemAsync(new UpdateListItemInput(
             _listItem.Id,
@@ -1145,7 +1189,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
 
         var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
-        
+
         try
         {
             // 先保存固废模式数据
@@ -1230,13 +1274,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         CurrentMaterialRow.SelectedMaterial = material;
         IsMaterialPopupOpen = false;
         CurrentMaterialRow = null;
-        
+
         // 清空弹窗的 SelectedMaterial，以便下次选择时能再次触发事件
         if (MaterialsSelectionPopupViewModel != null)
         {
             MaterialsSelectionPopupViewModel.SelectedMaterial = null;
         }
-        
+
         return Task.CompletedTask;
     }
 
@@ -1250,6 +1294,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     public event EventHandler? CloseRequested;
     public event EventHandler? MatchCompleted;
     public event EventHandler<CompleteCompletedEventArgs>? CompleteCompleted;
+    public event EventHandler<ManualMatchSaveCompletedEventArgs>? ManualMatchSaveCompleted;
 
     #endregion
 }
@@ -1383,7 +1428,7 @@ public partial class MaterialItemRow : ReactiveObject
                 SelectedMaterialUnit = null;
                 MaterialUnits.Clear();
                 foreach (var unit in units) MaterialUnits.Add(unit);
-                
+
                 // 如果单位列表不为空且当前没有选中的单位，自动选择第一个
                 if (MaterialUnits.Count > 0 && SelectedMaterialUnit == null)
                 {

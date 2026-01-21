@@ -11,6 +11,7 @@ public partial class ManualMatchWindow : Window
 {
     private readonly IServiceProvider? _serviceProvider;
     private readonly ManualMatchWindowViewModel? _viewModel;
+    private long? _savedWaybillId;
 
     /// <summary>
     ///     无参构造函数（用于设计器）
@@ -43,6 +44,11 @@ public partial class ManualMatchWindow : Window
     public DeliveryType SelectedDeliveryType =>
         _viewModel?.SelectedDeliveryType ?? DeliveryType.Receiving;
 
+    /// <summary>
+    ///     保存的运单ID
+    /// </summary>
+    public long? SavedWaybillId => _savedWaybillId;
+
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         Close(null);
@@ -58,6 +64,15 @@ public partial class ManualMatchWindow : Window
             _viewModel.SelectedCandidateRecord.Record,
             _viewModel.SelectedDeliveryType,
             _serviceProvider);
+
+        // 订阅 SaveCompleted 事件以捕获 WaybillId
+        if (editWindow.ViewModel != null)
+        {
+            editWindow.ViewModel.SaveCompleted += (_, args) =>
+            {
+                _savedWaybillId = args.WaybillId;
+            };
+        }
 
         var result = await editWindow.ShowDialog<bool?>(this);
 

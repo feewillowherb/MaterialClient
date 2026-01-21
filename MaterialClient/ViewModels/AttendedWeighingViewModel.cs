@@ -1162,6 +1162,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             DetailViewModel.CloseRequested += OnDetailCloseRequested;
             DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
             DetailViewModel.CompleteCompleted += OnDetailCompleteCompleted;
+            DetailViewModel.ManualMatchSaveCompleted += OnDetailManualMatchSaveCompleted;
 
             IsShowingMainView = false;
         }
@@ -1183,6 +1184,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             DetailViewModel.CloseRequested -= OnDetailCloseRequested;
             DetailViewModel.MatchCompleted -= OnDetailMatchCompleted;
             DetailViewModel.CompleteCompleted -= OnDetailCompleteCompleted;
+            DetailViewModel.ManualMatchSaveCompleted -= OnDetailManualMatchSaveCompleted;
         }
 
         SelectedListItem = null;
@@ -1217,6 +1219,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         await SelectLatestCompletedItemAsync(e.Id, e.OrderType);
     }
 
+    private async void OnDetailManualMatchSaveCompleted(object? sender, ManualMatchSaveCompletedEventArgs e)
+    {
+        await RefreshAsync();
+
+        // Select the newly created waybill (similar to OnDetailCompleteCompleted)
+        if (e.WaybillId.HasValue)
+        {
+            await SelectLatestCompletedItemAsync(e.WaybillId.Value, OrderTypeEnum.Completed);
+        }
+    }
+
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
     {
         await RefreshAsync();
@@ -1232,14 +1245,14 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         try
         {
             WeighingListItemDto? targetItem = null;
-            
+
             // Case 1: Search for specific item by Id and OrderType
             if (id.HasValue && orderType.HasValue)
             {
                 // Search in current list
-                targetItem = ListItems.FirstOrDefault(item => 
+                targetItem = ListItems.FirstOrDefault(item =>
                     item.Id == id.Value && item.OrderType == orderType.Value);
-                
+
                 if (targetItem == null)
                 {
                     // Switch to completed mode and refresh
@@ -1248,19 +1261,30 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     IsShowUnmatched = false;
                     CurrentPage = 1;
                     await RefreshAsync();
-                    
+
                     // Search again after refresh
-                    targetItem = ListItems.FirstOrDefault(item => 
+                    targetItem = ListItems.FirstOrDefault(item =>
                         item.Id == id.Value && item.OrderType == orderType.Value);
+
+                    if (targetItem == null)
+                    {
+                        IsShowCompleted = false;
+                        IsShowAllRecords = false;
+                        IsShowUnmatched = true;
+                        CurrentPage = 1;
+                        await RefreshAsync();
+                        targetItem = ListItems.FirstOrDefault(item =>
+                            item.Id == id.Value && item.OrderType == orderType.Value);
+                    }
                 }
             }
             // Case 2: Use existing "select latest completed" logic
             else
             {
                 // 从当前列表中查找第一个完成数据
-                targetItem = ListItems.FirstOrDefault(item => 
+                targetItem = ListItems.FirstOrDefault(item =>
                     item.OrderType == OrderTypeEnum.Completed);
-                
+
                 if (targetItem == null)
                 {
                     // 如果当前页没有完成数据，切换到显示完成数据模式并刷新
@@ -1269,17 +1293,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     IsShowUnmatched = false;
                     CurrentPage = 1;
                     await RefreshAsync();
-                    
+
                     // 刷新后选择第一条（应该就是已完成的第一个）
                     targetItem = ListItems.FirstOrDefault();
                 }
             }
-            
+
             // Select and open the target item
             if (targetItem != null)
             {
                 SelectedListItem = targetItem;
-                
+
                 // 根据项类型执行相应的选择逻辑，确保显示正确的视图
                 if (targetItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
                     SelectCompletedWaybill(targetItem);
