@@ -1217,7 +1217,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     {
         await RefreshAsync();
         //BackToMain();
-        await SelectUnmatchedNextItemAsync();
+        await SelectLatestCompletedItemAsync();
     }
 
     private async void OnDetailManualMatchSaveCompleted(object? sender, ManualMatchSaveCompletedEventArgs e)
