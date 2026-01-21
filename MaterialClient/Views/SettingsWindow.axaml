@@ -519,6 +519,39 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Printer Settings Group -->
+                <Border Classes="section-border"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="打印机设置"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="Black"
+                                   Margin="0,0,0,8" />
+
+                        <CheckBox Content="启用打印机功能"
+                                  IsChecked="{Binding EnablePrinter}" />
+
+                        <Grid ColumnDefinitions="Auto,*"
+                              RowDefinitions="Auto"
+                              RowSpacing="12"
+                              ColumnSpacing="12">
+                            <TextBlock Text="票据打印机:"
+                                       Grid.Row="0"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="120" />
+                            <ComboBox ItemsSource="{Binding AvailablePrinters}"
+                                      SelectedItem="{Binding SelectedPrinterName}"
+                                      Grid.Row="0"
+                                      Grid.Column="1"
+                                      PlaceholderText="请选择打印机"
+                                      IsEnabled="{Binding EnablePrinter}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 

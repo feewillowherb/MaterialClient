@@ -40,9 +40,6 @@ namespace MaterialClient.ViewModels;
 public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransientDependency
 {
     private WeighingListItemDto _listItem = null!;
-    private readonly IRepository<Material, int> _materialRepository;
-    private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
-    private readonly IRepository<Provider, int> _providerRepository;
     private readonly IMaterialService _materialService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
@@ -56,9 +53,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     {
         _serviceProvider = serviceProvider;
         _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
-        _materialRepository = _serviceProvider.GetRequiredService<IRepository<Material, int>>();
-        _providerRepository = _serviceProvider.GetRequiredService<IRepository<Provider, int>>();
-        _materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
         _materialService = _serviceProvider.GetRequiredService<IMaterialService>();
         _streetsConfig = _serviceProvider.GetRequiredService<IOptions<StreetsConfig>>();
         _solidWasteTypeConfig = _serviceProvider.GetRequiredService<IOptions<SolidWasteTypeConfig>>();
@@ -97,29 +91,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     try
                     {
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
-                        if (units.Count > 0)
+                        if (units.Count > 0 && MaterialItems.Count > 0)
                         {
                             // 自动选择第一个单位（按 UnitName 排序后的第一个）
                             // 注意：LoadMaterialUnitsForRowAsync 已经按 UnitName 排序
-                            // 这里我们需要通过 MaterialUnitRepository 获取并设置
-                            var materialUnitRepository = _serviceProvider.GetRequiredService<IRepository<MaterialUnit, int>>();
-                            var materialUnits = await materialUnitRepository.GetListAsync(u => u.MaterialId == material.Id);
-                            var firstUnit = materialUnits.OrderBy(u => u.UnitName).FirstOrDefault();
-                            if (firstUnit != null)
-                            {
-                                // 在 SolidWaste 模式下，单位是只读的，不需要设置 SelectedMaterialUnit
-                                // 但我们需要确保 MaterialItems 中的第一行有正确的单位
-                                if (MaterialItems.Count > 0)
-                                {
-                                    var firstRow = MaterialItems[0];
-                                    var unitDtos = await LoadMaterialUnitsForRowAsync(material.Id);
-                                    firstRow.SetMaterialUnits(unitDtos);
-                                    if (unitDtos.Count > 0)
-                                    {
-                                        firstRow.InitializeSelection(material, unitDtos, unitDtos[0].Id);
-                                    }
-                                }
-                            }
+                            var firstRow = MaterialItems[0];
+                            firstRow.SetMaterialUnits(units);
+                            firstRow.InitializeSelection(material, units, units[0].Id);
                         }
                     }
                     catch (Exception ex)
@@ -230,6 +208,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             return _listItem?.DeliveryType == DeliveryType.Receiving
                 ? "发货单位"
                 : "收货单位";
+        }
+    }
+
+    /// <summary>
+    ///     完成按钮文本（根据当前记录的收发料类型动态显示）
+    /// </summary>
+    public string CompleteButtonText
+    {
+        get
+        {
+            var deliveryType = _listItem?.DeliveryType ?? DeliveryType.Receiving;
+            return deliveryType == DeliveryType.Sending ? "完成本次发货" : "完成本次收货";
         }
     }
 
@@ -418,6 +408,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         
         // 通知 ProviderLabelText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(ProviderLabelText));
+
+        // 通知 CompleteButtonText 属性变化（因为它依赖于 _listItem.DeliveryType）
+        this.RaisePropertyChanged(nameof(CompleteButtonText));
         
         // 保存临时拍照文件路径
         _capturedBillPhotoPath = capturedBillPhotoPath;
@@ -707,9 +700,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     {
         try
         {
-            var providers = await _providerRepository.GetListAsync();
+            var providers = await _materialService.GetAllProvidersAsync();
             Providers.Clear();
-            foreach (var provider in providers.OrderBy(p => p.ProviderName))
+            foreach (var provider in providers)
                 Providers.Add(new ProviderDto
                 {
                     Id = provider.Id,
@@ -730,9 +723,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     {
         try
         {
-            var materials = await _materialRepository.GetListAsync();
+            var materials = await _materialService.GetAllMaterialsAsync();
             Materials.Clear();
-            foreach (var material in materials.OrderBy(m => m.Name)) Materials.Add(material);
+            foreach (var material in materials) Materials.Add(material);
         }
         catch (Exception ex)
         {
@@ -746,9 +739,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         var result = new ObservableCollection<MaterialUnitDto>();
         try
         {
-            var units = await _materialUnitRepository.GetListAsync(u => u.MaterialId == materialId
-            );
-            foreach (var unit in units.OrderBy(u => u.UnitName))
+            var units = await _materialService.GetMaterialUnitsByMaterialIdAsync(materialId);
+            foreach (var unit in units)
                 result.Add(new MaterialUnitDto
                 {
                     Id = unit.Id,
@@ -786,8 +778,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
             // 加载材料列表到 SolidWasteMaterials（用于固废模式材料选择）
             SolidWasteMaterials.Clear();
-            var materials = await _materialRepository.GetListAsync();
-            foreach (var material in materials.OrderBy(m => m.Name))
+            var materials = await _materialService.GetAllMaterialsAsync();
+            foreach (var material in materials)
                 SolidWasteMaterials.Add(material);
         }
         catch (Exception ex)

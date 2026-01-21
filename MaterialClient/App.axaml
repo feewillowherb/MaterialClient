@@ -242,6 +242,16 @@
         <!--     <Setter Property="Opacity" Value="1"/> -->
         <!-- </Style> -->
 
+        <!-- Global: disable hover visual changes for all Buttons -->
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="BorderBrush" Value="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="BorderThickness" Value="{Binding BorderThickness, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="CornerRadius" Value="{Binding CornerRadius, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="TextElement.Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
+        </Style>
+
         <!-- Border 卡片样式 -->
         <Style Selector="Border.card-border">
             <Setter Property="Background" Value="White" />

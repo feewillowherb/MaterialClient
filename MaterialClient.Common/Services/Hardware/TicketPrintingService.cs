@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Printing;
 using System.Globalization;
 using System.Runtime.Versioning;
@@ -55,6 +56,14 @@ public interface ITicketPrintingService
     /// <param name="imagePath">Path to the image file</param>
     /// <param name="printerName">Optional printer name. If null, uses default or auto-detected printer</param>
     void PrintImage(string imagePath, string? printerName = null);
+
+    /// <summary>
+    /// Render weighing ticket to an image file (PNG) for preview.
+    /// </summary>
+    /// <param name="dto">Ticket data to render</param>
+    /// <param name="outputImagePath">Full path to output image (PNG)</param>
+    /// <returns>Path to the generated image file</returns>
+    string RenderTicketToImage(WeighingTicketDto dto, string outputImagePath);
 }
 
 /// <summary>
@@ -215,6 +224,55 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
 
     #endregion
 
+    #region Preview Rendering
+
+    /// <summary>
+    /// Render weighing ticket to an image file (PNG) for preview.
+    /// </summary>
+    public string RenderTicketToImage(WeighingTicketDto dto, string outputImagePath)
+    {
+        // Ensure output directory exists
+        var outputDir = Path.GetDirectoryName(outputImagePath);
+        if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+            Directory.CreateDirectory(outputDir);
+
+        // Render a compact "ticket" canvas sized to DrawTicket() output.
+        // DrawTicket() currently draws ~8 rows plus header, typically within ~350-420px height.
+        // We keep a bit of padding to avoid clipping while avoiding A4-like whitespace.
+        const int logicalWidth = 900;
+        const int logicalHeight = 520;
+        const float scale = 2.0f; // higher pixel density for clarity
+
+        var pixelWidth = (int)Math.Ceiling(logicalWidth * scale);
+        var pixelHeight = (int)Math.Ceiling(logicalHeight * scale);
+
+        using var bitmap = new Bitmap(pixelWidth, pixelHeight);
+        using var graphics = Graphics.FromImage(bitmap);
+
+        graphics.Clear(Color.White);
+        graphics.ScaleTransform(scale, scale);
+        graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+        graphics.PixelOffsetMode = PixelOffsetMode.Half;
+        graphics.CompositingQuality = CompositingQuality.HighQuality;
+        graphics.SmoothingMode = SmoothingMode.None;
+        graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+        // Reuse existing DrawTicket() by providing a PrintPageEventArgs with margins.
+        var pageBounds = new Rectangle(0, 0, logicalWidth, logicalHeight);
+        var marginBounds = new Rectangle(40, 20, logicalWidth - 80, logicalHeight - 40);
+        var pageSettings = new PageSettings();
+        var args = new PrintPageEventArgs(graphics, marginBounds, pageBounds, pageSettings);
+
+        DrawTicket(args, dto);
+
+        bitmap.Save(outputImagePath, ImageFormat.Png);
+        _logger?.LogInformation("Ticket preview image generated: {OutputPath}", outputImagePath);
+
+        return outputImagePath;
+    }
+
+    #endregion
+
     #region Physical Printer Printing
 
     /// <summary>
@@ -303,8 +361,13 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
 
         var brush = Brushes.Black;
         float y = 20;
-        float leftMargin = 20;
-        float centerX = e.PageBounds.Width / 2;
+        
+        // Use MarginBounds to ensure content fits within printable area
+        // This is critical for physical printers like EPSON LQ-630K which have smaller printable areas
+        float leftMargin = e.MarginBounds.Left;
+        float rightMargin = e.MarginBounds.Right;
+        float printableWidth = e.MarginBounds.Width;
+        float centerX = e.MarginBounds.Left + printableWidth / 2;
         float lineHeight = 25;
 
         // Draw company name (centered)
@@ -319,16 +382,18 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
             centerX - titleSize.Width / 2, y);
         y += lineHeight + 10;
 
-        // Draw header info line
+        // Draw header info line - adjust positions to fit within printable area
+        float headerCol2 = leftMargin + printableWidth * 0.35f;
+        float headerCol3 = leftMargin + printableWidth * 0.65f;
         graphics.DrawString($"打印时间: {dto.PrintTime:yyyy-MM-dd HH:mm:ss}", smallFont, brush, leftMargin, y);
-        graphics.DrawString($"流水号: {dto.SerialNumber}", smallFont, brush, 250, y);
-        graphics.DrawString($"计量单位: {dto.MeasurementUnit}", smallFont, brush, 450, y);
+        graphics.DrawString($"流水号: {dto.SerialNumber}", smallFont, brush, headerCol2, y);
+        graphics.DrawString($"计量单位: {dto.MeasurementUnit}", smallFont, brush, headerCol3, y);
         y += lineHeight + 10;
 
         // Define table structure with columns
         // Table has 4 columns: Label1 | Value1 | Label2 | Value2
         // Based on sample.png: label columns are ~38% width, value columns are ~62% width
-        float tableWidth = e.PageBounds.Width - 2 * leftMargin;
+        float tableWidth = printableWidth;
         float sectionWidth = tableWidth / 2; // Each section (left/right) takes half the table width
         float labelWidth = sectionWidth * 0.38f; // Label column is 38% of section width
         float valueWidth = sectionWidth * 0.62f; // Value column is 62% of section width
@@ -337,7 +402,7 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
         float col2 = col1 + labelWidth; // Left column values start
         float col3 = col2 + valueWidth; // Right column labels start
         float col4 = col3 + labelWidth; // Right column values start
-        float tableRight = e.PageBounds.Width - leftMargin;
+        float tableRight = rightMargin; // Use right margin bound for rightmost border
         float tableTop = y;
 
         // Draw table content with grid lines

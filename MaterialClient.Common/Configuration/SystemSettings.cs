@@ -38,4 +38,14 @@ public class SystemSettings
     ///     用于系统级别的默认模式设置
     /// </summary>
     public WeighingMode DefaultWeighingMode { get; set; } = WeighingMode.Standard;
+
+    /// <summary>
+    ///     Enable printer functionality
+    /// </summary>
+    public bool EnablePrinter { get; set; } = false;
+
+    /// <summary>
+    ///     Selected printer name for printing tickets
+    /// </summary>
+    public string SelectedPrinterName { get; set; } = string.Empty;
 }

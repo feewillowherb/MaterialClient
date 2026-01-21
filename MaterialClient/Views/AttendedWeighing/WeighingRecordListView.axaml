@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:models="using:MaterialClient.Common.Models"
-             xmlns:converters="using:MaterialClient.Converters"
              xmlns:u="https://irihi.tech/ursa"
              x:Class="MaterialClient.Views.AttendedWeighing.WeighingRecordListView"
              x:DataType="vm:AttendedWeighingViewModel">

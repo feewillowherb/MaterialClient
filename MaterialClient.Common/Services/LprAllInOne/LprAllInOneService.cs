@@ -3,14 +3,14 @@ using MaterialClient.Common.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Common.Services.LPRAllInOne;
+namespace MaterialClient.Common.Services.LprAllInOne;
 
 /// <summary>
 ///     LPRAllInOne 设备服务接口
 ///     用于触发车牌识别一体机的手动识别功能
 ///     基于 comet 轮询机制：设备会轮询服务器端点，服务器在响应中返回触发消息
 /// </summary>
-public interface ILPRAllInOneService
+public interface ILprAllInOneService
 {
     /// <summary>
     ///     触发手动识别
@@ -32,14 +32,14 @@ public interface ILPRAllInOneService
 ///     基于 comet 轮询机制：设备会轮询 GET /api/CarLicense/CallDeviceStatus
 ///     当需要触发抓拍时，在响应中返回 {"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
 /// </summary>
-public class LPRAllInOneService : ILPRAllInOneService, ISingletonDependency
+public class LprAllInOneService : ILprAllInOneService, ISingletonDependency
 {
-    private readonly ILogger<LPRAllInOneService>? _logger;
+    private readonly ILogger<LprAllInOneService>? _logger;
     
     // 存储每个设备IP的触发标志（设备IP -> 是否需要触发）
     private readonly ConcurrentDictionary<string, bool> _triggerFlags = new();
 
-    public LPRAllInOneService(ILogger<LPRAllInOneService>? logger = null)
+    public LprAllInOneService(ILogger<LprAllInOneService>? logger = null)
     {
         _logger = logger;
     }

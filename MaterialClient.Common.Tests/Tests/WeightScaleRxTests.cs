@@ -7,6 +7,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Volo.Abp.Domain.Repositories;
@@ -221,9 +222,12 @@ public class WeightScaleRxTests
 
         var eventBus = Substitute.For<Volo.Abp.EventBus.Local.ILocalEventBus>();
 
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+
         // 创建服务实例
         return new AttendedWeighingService(
             fileRepo,
+            configuration,
             hikvisionService,
             eventBus,
             logger,

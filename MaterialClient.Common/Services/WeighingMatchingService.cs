@@ -574,6 +574,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     [UnitOfWork]
     public async Task<PagedResultDto<WeighingListItemDto>> GetListItemsAsync(GetWeighingListItemsInput input)
     {
+        var weighingMode = await _settingsService.GetWeighingModeAsync();
+
         var result = new List<WeighingListItemDto>();
         var isCompleted = input.IsCompleted;
         var allRecords = new List<WeighingRecord>();
@@ -585,6 +587,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             var weighingRecordQuery = await _weighingRecordRepository.GetQueryableAsync();
             var unmatchedRecords = await weighingRecordQuery
                 .Where(r => r.MatchedId == null)
+                .Where(r => r.WeighingMode == weighingMode)
                 .ToListAsync();
             allRecords.AddRange(unmatchedRecords);
 
@@ -592,6 +595,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             var waybillQuery = await _waybillRepository.GetQueryableAsync();
             var firstWeightWaybills = await waybillQuery
                 .Where(w => w.OrderType == OrderTypeEnum.FirstWeight)
+                .Where(w => w.WeighingMode == weighingMode)
                 .ToListAsync();
             allWaybills.AddRange(firstWeightWaybills);
         }
@@ -602,6 +606,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             var waybillQuery = await _waybillRepository.GetQueryableAsync();
             var completedWaybills = await waybillQuery
                 .Where(w => w.OrderType == OrderTypeEnum.Completed)
+                .Where(w => w.WeighingMode == weighingMode)
                 .ToListAsync();
             allWaybills.AddRange(completedWaybills);
         }
