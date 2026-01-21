@@ -286,7 +286,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     .OrderBy(s => s)
                     .ToList();
                 return Task.FromResult<System.Collections.Generic.IReadOnlyList<string>>(result);
-            });
+            },
+            allowAddNew: false);
 
         _ = StreetsPopupViewModel.InitializeAsync();
 

@@ -82,6 +82,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     private readonly Func<string?, int, int, Task<PagedResultDto<T>>>? _loadPageFunc;
     private readonly Func<Task<IReadOnlyList<T>>>? _loadAllFunc;
     private readonly Func<string, Task<T?>>? _createNewItemFunc;
+    private readonly bool _allowAddNew;
 
     private IReadOnlyList<T> _allItems = Array.Empty<T>();
 
@@ -102,7 +103,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         Func<string?, int, int, Task<PagedResultDto<T>>>? loadPageFunc = null,
         Func<Task<IReadOnlyList<T>>>? loadAllFunc = null,
         Func<string, Task<T?>>? createNewItemFunc = null,
-        int pageSize = DefaultPageSize)
+        int pageSize = DefaultPageSize,
+        bool allowAddNew = true)
         : base(logger)
     {
         _pagingMode = pagingMode;
@@ -110,6 +112,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         _loadPageFunc = loadPageFunc;
         _loadAllFunc = loadAllFunc;
         _createNewItemFunc = createNewItemFunc;
+        _allowAddNew = allowAddNew;
 
         _pageSize = pageSize <= 0 ? DefaultPageSize : pageSize;
 
@@ -166,7 +169,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     public bool ShowResults => TotalCount > 0;
 
-    public bool ShowAddNewButton => TotalCount == 0 && !string.IsNullOrWhiteSpace(SearchText);
+    public bool ShowAddNewButton => _allowAddNew && TotalCount == 0 && !string.IsNullOrWhiteSpace(SearchText);
 
     public string AddNewButtonText
     {
