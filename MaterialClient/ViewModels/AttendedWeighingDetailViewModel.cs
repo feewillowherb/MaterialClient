@@ -1213,31 +1213,31 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         if (providerId == null)
         {
             await ShowMessageBoxAsync("请先选择供应商");
-            return;
+            throw new InvalidOperationException("请先选择供应商");
         }
 
         if (materialId == null)
         {
             await ShowMessageBoxAsync("请先选择材料");
-            return;
+            throw new InvalidOperationException("请先选择材料");
         }
 
         if (string.IsNullOrEmpty(SelectedStreet))
         {
             await ShowMessageBoxAsync("请先选择镇街");
-            return;
+            throw new InvalidOperationException("请先选择镇街");
         }
 
         if (string.IsNullOrEmpty(SelectedSolidWasteType))
         {
             await ShowMessageBoxAsync("请先选择类型");
-            return;
+            throw new InvalidOperationException("请先选择类型");
         }
 
         if (string.IsNullOrEmpty(SolidWasteOrderNumber))
         {
             await ShowMessageBoxAsync("请填写联单号");
-            return;
+            throw new InvalidOperationException("请填写联单号");
         }
 
 
