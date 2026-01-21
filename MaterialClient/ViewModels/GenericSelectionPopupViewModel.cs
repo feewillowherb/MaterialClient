@@ -172,8 +172,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     {
         get
         {
-            var text = SearchText?.Trim();
-            return string.IsNullOrWhiteSpace(text) ? "新增" : $"新增 \"{text}\"";
+            return "新增";
         }
     }
 

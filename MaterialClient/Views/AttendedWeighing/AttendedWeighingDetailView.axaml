@@ -129,7 +129,7 @@
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
                         Command="{Binding SaveCommand}" />
-                <Button Width="90" Height="32" FontSize="12" Content="关闭"
+                <Button Width="90" Height="32" FontSize="12" Content="下一个"
                         Classes="primary-button"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
