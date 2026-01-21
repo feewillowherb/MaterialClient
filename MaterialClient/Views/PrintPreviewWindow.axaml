@@ -59,20 +59,30 @@
                 BorderBrush="#3D3D3D"
                 BorderThickness="0,1,0,0"
                 Padding="16,12">
-            <Grid ColumnDefinitions="*,Auto,Auto"
-                  ColumnSpacing="10">
+            <Grid>
                 <TextBlock Text="{Binding StatusText, TargetNullValue=''}"
                            Foreground="#CCCCCC"
                            VerticalAlignment="Center" />
-                <Button Grid.Column="1"
-                        Content="取消"
-                        Padding="18,8"
-                        Command="{Binding CloseCommand}" />
-                <Button Grid.Column="2"
-                        Content="打印"
-                        Padding="18,8"
-                        Command="{Binding PrintCommand}"
-                        IsEnabled="{Binding CanPrint}" />
+
+                <!-- Buttons moved left as a group -->
+                <StackPanel Orientation="Horizontal"
+                            Spacing="10"
+                            HorizontalAlignment="Right"
+                            Margin="0,0,100,0">
+                    <Button Content="取消"
+                            Width="90" Height="32" FontSize="12"
+                            Classes="outline-button"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Command="{Binding CloseCommand}" />
+                    <Button Content="打印"
+                            Width="90" Height="32" FontSize="12"
+                            Classes="primary-button"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Command="{Binding PrintCommand}"
+                            IsEnabled="{Binding CanPrint}" />
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>
