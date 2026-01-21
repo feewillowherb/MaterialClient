@@ -15,7 +15,7 @@ namespace MaterialClient.Common.Providers;
 ///     车牌号推荐服务
 ///     使用IMemoryCache管理车牌号缓存，永久性缓存，满时自动清理最后10个，线程安全
 /// </summary>
-public class RecommendPlateNumberService : DomainService, ISingletonDependency
+public class RecommendPlateNumberService : ISingletonDependency
 {
     private const string CacheKey = "PlateNumbers";
     private const int MaxCacheSize = 200;
@@ -55,7 +55,7 @@ public class RecommendPlateNumberService : DomainService, ISingletonDependency
                 // 加载配置
                 var settings = await _settingsService.GetSettingsAsync();
                 _minDiffCharCount = settings.SystemSettings.MinDiffCharCount;
-                
+
                 // 限制在 0-2 范围内
                 if (_minDiffCharCount < 0) _minDiffCharCount = 0;
                 if (_minDiffCharCount > 2) _minDiffCharCount = 2;

@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Documents;
+using Avalonia.Controls.Notifications;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using MaterialClient.Common.Entities;
@@ -21,6 +24,7 @@ using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
 using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MsBox.Avalonia;
@@ -40,6 +44,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IWeighingMatchingService _weighingMatchingService;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
+    private DispatcherTimer? _notificationFadeOutTimer;
+    private readonly TextBlock _notificationTextBlockHolder = new();
 
     public AttendedWeighingViewModel(
         IWeighingMatchingService weighingMatchingService,
@@ -218,6 +224,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     public void Dispose()
     {
         _ = StopUsbCameraPreviewAsync();
+        _notificationFadeOutTimer?.Stop();
+        _notificationFadeOutTimer = null;
         _disposables.Dispose();
     }
 
@@ -637,8 +645,52 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     {
         MessageBus.Current.Listen<DeliveryTypeChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(message => { IsReceiving = message.DeliveryType == DeliveryType.Receiving; })
+            .Subscribe(message =>
+            {
+                IsReceiving = message.DeliveryType == DeliveryType.Receiving;
+                ShowDeliveryTypeChangedNotification(message.DeliveryType);
+            })
             .DisposeWith(_disposables);
+    }
+
+    private void ShowDeliveryTypeChangedNotification(DeliveryType deliveryType)
+    {
+        try
+        {
+            var modeText = deliveryType == DeliveryType.Receiving ? "收料" : "发料";
+            var modeColor = deliveryType == DeliveryType.Receiving ? Brushes.Green : Brushes.Red;
+            
+            // Clear existing inlines and add new formatted text
+            var inlines = _notificationTextBlockHolder.Inlines;
+            inlines.Clear();
+            inlines.Add(new Run("称重模式已切换到") { Foreground = Brushes.White });
+            inlines.Add(new Run(modeText) { Foreground = modeColor, FontWeight = FontWeight.Bold, FontSize = 16 });
+            
+            // Notify that Inlines collection has changed
+            this.RaisePropertyChanged(nameof(DeliveryTypeNotificationInlines));
+            
+            // Set fade in
+            DeliveryTypeNotificationOpacity = 1.0;
+
+            // Stop any existing timer
+            _notificationFadeOutTimer?.Stop();
+
+            // Create and start fade out timer (2 seconds display, then fade out)
+            _notificationFadeOutTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2)
+            };
+            _notificationFadeOutTimer.Tick += (sender, e) =>
+            {
+                _notificationFadeOutTimer.Stop();
+                DeliveryTypeNotificationOpacity = 0.0;
+            };
+            _notificationFadeOutTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogDebug(ex, "Failed to show delivery type change notification");
+        }
     }
 
     /// <summary>
@@ -920,6 +972,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     [Reactive] private bool _isShowingMainView = true;
 
     public bool IsShowingDetailView => !IsShowingMainView;
+
+    public InlineCollection DeliveryTypeNotificationInlines => _notificationTextBlockHolder.Inlines;
+
+    [Reactive] private double _deliveryTypeNotificationOpacity;
 
     [Reactive] private AttendedWeighingDetailViewModel? _detailViewModel;
 

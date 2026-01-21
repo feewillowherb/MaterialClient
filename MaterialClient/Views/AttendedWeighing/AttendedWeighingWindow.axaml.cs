@@ -56,7 +56,7 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
                 NotificationManager = new WindowNotificationManager(topLevel)
                 {
                     Position = NotificationPosition.TopCenter,
-                    MaxItems = 3
+                    MaxItems = 1
                 };
         }
 

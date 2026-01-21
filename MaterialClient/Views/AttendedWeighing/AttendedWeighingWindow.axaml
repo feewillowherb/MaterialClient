@@ -122,9 +122,11 @@
                 <!-- Weight Display Center -->
                 <Grid Grid.Column="1"
                       HorizontalAlignment="Center"
-                      ColumnDefinitions="Auto,Auto,Auto,Auto">
+                      ColumnDefinitions="Auto,Auto,Auto,Auto"
+                      RowDefinitions="Auto,Auto">
                     <!-- Province Selector -->
-                    <Border Background="#5A7FE6"
+                    <Border Grid.Row="0"
+                            Background="#5A7FE6"
                             CornerRadius="8"
                             Padding="20,12"
                             VerticalAlignment="Center"
@@ -139,6 +141,7 @@
 
                     <!-- DeliveryType Selector, Weight Value and Unit with Outer Border -->
                     <Border Grid.Column="1"
+                            Grid.Row="0"
                             Grid.ColumnSpan="3"
                             Background="#5A7FE6"
                             CornerRadius="8"
@@ -198,6 +201,23 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+
+                    <!-- Delivery Type Change Notification (positioned in red box area, outside Border) -->
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="1"
+                               Grid.ColumnSpan="3"
+                               Inlines="{Binding DeliveryTypeNotificationInlines}"
+                               Opacity="{Binding DeliveryTypeNotificationOpacity}"
+                               FontSize="14"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               Margin="0,4,0,0">
+                        <TextBlock.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" />
+                            </Transitions>
+                        </TextBlock.Transitions>
+                    </TextBlock>
                 </Grid>
 
                 <!-- Right Side Info -->
