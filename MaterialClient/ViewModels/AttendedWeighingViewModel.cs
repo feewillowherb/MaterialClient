@@ -1248,44 +1248,31 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         DetailViewModel = null;
     }
 
-    private async void OnDetailSaveCompleted(object? sender, EventArgs e)
+    private async void OnDetailSaveCompleted(object? sender, ItemOperationCompletedEventArgs e)
     {
-        await RefreshAsync();
-        //BackToMain();
-        //await SelectLatestCompletedItemAsync();
+        await NavigateToItemAsync(e);
     }
 
-    private async void OnDetailAbolishCompleted(object? sender, EventArgs e)
+    private async void OnDetailAbolishCompleted(object? sender, ItemOperationCompletedEventArgs e)
     {
+        // Abolish操作删除了item，所以导航到下一个未匹配项
         await RefreshAsync();
-        //BackToMain();
         await SelectUnmatchedNextItemAsync();
     }
 
-    private async void OnDetailMatchCompleted(object? sender, EventArgs e)
+    private async void OnDetailMatchCompleted(object? sender, ItemOperationCompletedEventArgs e)
     {
-        await RefreshAsync();
-        //BackToMain();
-        await SelectUnmatchedNextItemAsync();
+        await NavigateToItemAsync(e);
     }
 
-    private async void OnDetailCompleteCompleted(object? sender, CompleteCompletedEventArgs e)
+    private async void OnDetailCompleteCompleted(object? sender, ItemOperationCompletedEventArgs e)
     {
-        await RefreshAsync();
-        //BackToMain();
-        await SelectLatestCompletedItemAsync();
+        await NavigateToItemAsync(e);
     }
 
-    private async void OnDetailManualMatchSaveCompleted(object? sender, ManualMatchSaveCompletedEventArgs e)
+    private async void OnDetailManualMatchSaveCompleted(object? sender, ItemOperationCompletedEventArgs e)
     {
-        await RefreshAsync();
-
-        // Select the newly created waybill (similar to OnDetailCompleteCompleted)
-        await SelectUnmatchedNextItemAsync();
-        // if (e.WaybillId.HasValue)
-        // {
-        //     await SelectLatestCompletedItemAsync(e.WaybillId.Value, OrderTypeEnum.FirstWeight);
-        // }
+        await NavigateToItemAsync(e);
     }
 
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
@@ -1293,6 +1280,194 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         await RefreshAsync();
         //BackToMain();
         await SelectUnmatchedNextItemAsync();
+    }
+
+    /// <summary>
+    ///     统一的导航逻辑：根据操作上下文导航到目标项
+    /// </summary>
+    private async Task NavigateToItemAsync(ItemOperationCompletedEventArgs args)
+    {
+        try
+        {
+            Logger?.LogInformation(
+                "NavigateToItemAsync: ItemId={ItemId}, ItemType={ItemType}, OrderType={OrderType}, OperationType={OperationType}",
+                args.ItemId, args.ItemType, args.OrderType, args.OperationType);
+
+            // 1. 判断是否需要切换tab（使用args判断，无需先刷新）
+            var needSwitchTab = ShouldSwitchTab(args);
+            if (needSwitchTab)
+            {
+                SwitchToAppropriateTab(args);
+            }
+
+            // 2. 刷新数据（现在已经在正确的tab上）
+            await RefreshAsync();
+
+            // 3. 跨页查找目标项
+            var targetItem = await FindItemAcrossPagesAsync(args.ItemId, args.ItemType);
+
+            if (targetItem != null)
+            {
+                // 4. 选择目标项
+                SelectedListItem = targetItem;
+
+                // 5. 选择正确的视图
+                SelectViewForItem(targetItem);
+
+                Logger?.LogInformation(
+                    "NavigateToItemAsync: Successfully navigated to item {ItemId} on page {CurrentPage}",
+                    args.ItemId, CurrentPage);
+            }
+            else
+            {
+                Logger?.LogWarning(
+                    "NavigateToItemAsync: Target item {ItemId} not found after searching across pages",
+                    args.ItemId);
+
+                // 如果未找到目标项，根据操作类型选择备用行为
+                if (args.OperationType == "Complete")
+                {
+                    // Complete操作：尝试选择第一个已完成项
+                    await SelectLatestCompletedItemAsync();
+                }
+                else
+                {
+                    // 其他操作：选择下一个未匹配项
+                    await SelectUnmatchedNextItemAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "NavigateToItemAsync failed for ItemId={ItemId}", args.ItemId);
+        }
+    }
+
+    /// <summary>
+    ///     判断是否需要切换tab
+    /// </summary>
+    private bool ShouldSwitchTab(ItemOperationCompletedEventArgs args)
+    {
+        // 如果显示全部记录，永不切换tab
+        if (IsShowAllRecords)
+        {
+            Logger?.LogDebug("ShouldSwitchTab: IsShowAllRecords=true, no tab switch needed");
+            return false;
+        }
+
+        // 判断目标项是否已完成
+        bool itemIsCompleted = args.IsCompleted;
+
+        // 判断当前tab是否能显示目标项
+        bool currentTabCanShowItem =
+            (IsShowCompleted && itemIsCompleted) ||
+            (IsShowUnmatched && !itemIsCompleted);
+
+        bool shouldSwitch = !currentTabCanShowItem;
+
+        Logger?.LogDebug(
+            "ShouldSwitchTab: itemIsCompleted={ItemIsCompleted}, currentTab={CurrentTab}, shouldSwitch={ShouldSwitch}",
+            itemIsCompleted,
+            IsShowCompleted ? "Completed" : (IsShowUnmatched ? "Unmatched" : "All"),
+            shouldSwitch);
+
+        return shouldSwitch;
+    }
+
+    /// <summary>
+    ///     切换到合适的tab以显示目标项
+    /// </summary>
+    private void SwitchToAppropriateTab(ItemOperationCompletedEventArgs args)
+    {
+        if (args.IsCompleted)
+        {
+            // 切换到已完成tab
+            IsShowCompleted = true;
+            IsShowUnmatched = false;
+            IsShowAllRecords = false;
+            Logger?.LogInformation("Switched to Completed tab");
+        }
+        else
+        {
+            // 切换到未完成tab
+            IsShowUnmatched = true;
+            IsShowCompleted = false;
+            IsShowAllRecords = false;
+            Logger?.LogInformation("Switched to Unmatched tab");
+        }
+    }
+
+    /// <summary>
+    ///     跨页查找目标项（限制最多搜索10页）
+    /// </summary>
+    private async Task<WeighingListItemDto?> FindItemAcrossPagesAsync(long itemId, WeighingListItemType itemType)
+    {
+        const int maxPagesToSearch = 10;
+        var startPage = CurrentPage;
+
+        // 首先在当前页查找（快速路径）
+        var item = ListItems.FirstOrDefault(x => x.Id == itemId && x.ItemType == itemType);
+        if (item != null)
+        {
+            Logger?.LogDebug("FindItemAcrossPagesAsync: Found item on current page {CurrentPage}", CurrentPage);
+            return item;
+        }
+
+        Logger?.LogInformation(
+            "FindItemAcrossPagesAsync: Item not found on current page, searching across pages (max {MaxPages})",
+            maxPagesToSearch);
+
+        // 从第1页开始搜索
+        for (int page = 1; page <= Math.Min(TotalPages, maxPagesToSearch); page++)
+        {
+            if (page == CurrentPage)
+            {
+                // 已经搜索过当前页，跳过
+                continue;
+            }
+
+            CurrentPage = page;
+            await RefreshAsync();
+
+            item = ListItems.FirstOrDefault(x => x.Id == itemId && x.ItemType == itemType);
+            if (item != null)
+            {
+                Logger?.LogInformation(
+                    "FindItemAcrossPagesAsync: Found item on page {Page}",
+                    page);
+                return item;
+            }
+        }
+
+        // 未找到，恢复原页码
+        CurrentPage = startPage;
+        await RefreshAsync();
+
+        Logger?.LogWarning(
+            "FindItemAcrossPagesAsync: Item {ItemId} not found after searching {PagesSearched} pages",
+            itemId, Math.Min(TotalPages, maxPagesToSearch));
+
+        return null;
+    }
+
+    /// <summary>
+    ///     根据项目状态选择合适的视图
+    /// </summary>
+    private void SelectViewForItem(WeighingListItemDto item)
+    {
+        // 规则：Waybill + Completed → MainView（只读摘要）
+        // 其他 → DetailView（可编辑表单）
+        if (item.ItemType == WeighingListItemType.Waybill && item.OrderType == OrderTypeEnum.Completed)
+        {
+            IsShowingMainView = true;
+            Logger?.LogDebug("SelectViewForItem: Showing MainView for completed waybill");
+        }
+        else
+        {
+            // 打开DetailView
+            _ = OpenDetail(item);
+            Logger?.LogDebug("SelectViewForItem: Showing DetailView for editable item");
+        }
     }
 
     /// <summary>
