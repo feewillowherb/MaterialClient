@@ -79,6 +79,14 @@ The `AttendedWeighingService` uses an RxState-inspired pattern with:
   - `AttendedWeighingServiceMemoryLeakTests` - Verifies proper resource cleanup
   - Mock implementations for all hardware services
 
+#### Integration Test Conventions
+
+- **Test DTO Naming**: All test data transfer objects (records) used in integration tests MUST use the `TestDto` suffix (e.g., `WeighingRecordTestDto`, `WaybillVerifyTestDto`)
+- **Step Definition Style**: Integration test step definitions SHOULD prefer table-based data setup over individual parameter-based steps for better readability and maintainability
+  - Use `Given [Entity] as below` with Reqnroll `Table` parameter for data setup
+  - Use `Then [Entity] as below` with Reqnroll `Table` parameter for verification
+  - Individual parameter-based steps are acceptable for simple cases or backward compatibility
+
 ### Git Workflow
 
 - **Main Branch**: `main` or `v2` (recent merge from main to v2 recommended)

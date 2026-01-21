@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using MaterialClient.Common.EntityFrameworkCore;
+using MaterialClient.Common.Tests;
 using Volo.Abp;
 using Volo.Abp.Modularity;
 
@@ -34,6 +35,8 @@ public class MaterialClientDomainTestModule : AbpModule
             logging.AddSerilog(Log.Logger);
             logging.SetMinimumLevel(LogLevel.Trace);
         });
+
+        context.Services.AddScoped<TestManager>();
     }
 }
 
