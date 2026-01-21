@@ -885,42 +885,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         var providerId = SelectedProviderId;
         var materialId = SelectedSolidWasteMaterial?.Id;
         var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
-
-        if (providerId == null)
-        {
-            await ShowMessageBoxAsync("请先选择供应商");
-            return;
-        }
-
-        if (materialId == null)
-        {
-            await ShowMessageBoxAsync("请先选择材料");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(SelectedStreet))
-        {
-            await ShowMessageBoxAsync("请先选择镇街");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(SelectedSolidWasteType))
-        {
-            await ShowMessageBoxAsync("请先选择类型");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(SolidWasteOrderNumber))
-        {
-            await ShowMessageBoxAsync("请填写联单号");
-            return;
-        }
-        
-        
-        
-        
-
-
         var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
         try
         {
@@ -1187,6 +1151,37 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         var providerId = SelectedProviderId;
         var materialId = SelectedSolidWasteMaterial?.Id;
         var materialUnitId = MaterialItems.FirstOrDefault()?.SelectedMaterialUnit?.Id;
+        
+        if (providerId == null)
+        {
+            await ShowMessageBoxAsync("请先选择供应商");
+            return;
+        }
+
+        if (materialId == null)
+        {
+            await ShowMessageBoxAsync("请先选择材料");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(SelectedStreet))
+        {
+            await ShowMessageBoxAsync("请先选择镇街");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(SelectedSolidWasteType))
+        {
+            await ShowMessageBoxAsync("请先选择类型");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(SolidWasteOrderNumber))
+        {
+            await ShowMessageBoxAsync("请填写联单号");
+            return;
+        }
+
 
         var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
 
