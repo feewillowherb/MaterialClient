@@ -319,8 +319,22 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 if (isOpen && StreetsPopupViewModel != null)
                 {
                     StreetsPopupViewModel.SearchText = string.Empty;
-                    StreetsPopupViewModel.SelectedItem = null;
                     StreetsPopupViewModel.CurrentPage = 1;
+                    
+                    // Sync current selection to popup
+                    if (!string.IsNullOrEmpty(SelectedStreet))
+                    {
+                        StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
+                        {
+                            Value = SelectedStreet,
+                            DisplayText = SelectedStreet
+                        };
+                    }
+                    else
+                    {
+                        StreetsPopupViewModel.SelectedItem = null;
+                    }
+                    
                     _ = StreetsPopupViewModel.RefreshAsync();
                 }
             });
@@ -352,8 +366,22 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 if (isOpen && MaterialsPopupViewModel != null)
                 {
                     MaterialsPopupViewModel.SearchText = string.Empty;
-                    MaterialsPopupViewModel.SelectedItem = null;
                     MaterialsPopupViewModel.CurrentPage = 1;
+                    
+                    // Sync current selection to popup
+                    if (SelectedSolidWasteMaterial != null)
+                    {
+                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
+                        {
+                            Value = SelectedSolidWasteMaterial,
+                            DisplayText = SelectedSolidWasteMaterial.Name ?? string.Empty
+                        };
+                    }
+                    else
+                    {
+                        MaterialsPopupViewModel.SelectedItem = null;
+                    }
+                    
                     _ = MaterialsPopupViewModel.RefreshAsync();
                 }
             });
@@ -386,8 +414,24 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(item =>
             {
                 if (item == null) return;
-                SelectedProvider = item.Value;
+                var selectedId = item.Value.Id;
+                
+                // Close popup first
                 IsProvidersPopupOpen = false;
+                
+                // Reload Providers and sync selection
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        await LoadProvidersAsync();
+                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "同步供应商选择失败");
+                    }
+                });
             });
 
         this.WhenAnyValue(x => x.IsProvidersPopupOpen)
@@ -396,8 +440,22 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 if (isOpen && ProvidersPopupViewModel != null)
                 {
                     ProvidersPopupViewModel.SearchText = string.Empty;
-                    ProvidersPopupViewModel.SelectedItem = null;
                     ProvidersPopupViewModel.CurrentPage = 1;
+                    
+                    // Sync current selection to popup
+                    if (SelectedProvider != null)
+                    {
+                        ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
+                        {
+                            Value = SelectedProvider,
+                            DisplayText = SelectedProvider.ProviderName
+                        };
+                    }
+                    else
+                    {
+                        ProvidersPopupViewModel.SelectedItem = null;
+                    }
+                    
                     _ = ProvidersPopupViewModel.RefreshAsync();
                 }
             });

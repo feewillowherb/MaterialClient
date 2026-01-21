@@ -1216,7 +1216,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private async void OnDetailCompleteCompleted(object? sender, CompleteCompletedEventArgs e)
     {
         await RefreshAsync();
-        await SelectLatestCompletedItemAsync(e.Id, e.OrderType);
+        //BackToMain();
+        await SelectUnmatchedNextItemAsync();
     }
 
     private async void OnDetailManualMatchSaveCompleted(object? sender, ManualMatchSaveCompletedEventArgs e)
@@ -1224,10 +1225,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         await RefreshAsync();
 
         // Select the newly created waybill (similar to OnDetailCompleteCompleted)
-        if (e.WaybillId.HasValue)
-        {
-            await SelectLatestCompletedItemAsync(e.WaybillId.Value, OrderTypeEnum.Completed);
-        }
+        await SelectUnmatchedNextItemAsync();
+        // if (e.WaybillId.HasValue)
+        // {
+        //     await SelectLatestCompletedItemAsync(e.WaybillId.Value, OrderTypeEnum.FirstWeight);
+        // }
     }
 
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
