@@ -1008,7 +1008,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             // 不需要再次打开 ManualMatchEditWindow，因为它已经在 ManualMatchWindow 中打开过了
             if (matchedRecord != null)
             {
-                // 触发匹配完成事件，传递完整的操作上下文
+                // 触发手动匹配保存完成事件，传递新创建的 Waybill 信息
+                // 注意：两个 WeighingRecord 已经合并成一个 Waybill，应该追踪 Waybill 而不是原 WeighingRecord
                 if (matchWindow.SavedWaybillId.HasValue)
                 {
                     ManualMatchSaveCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
@@ -1018,13 +1019,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                         isCompleted: false,
                         operationType: "ManualMatch"));
                 }
-
-                MatchCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
-                    itemId: weighingRecord.Id,
-                    itemType: WeighingListItemType.WeighingRecord,
-                    orderType: null, // 匹配后WeighingRecord的状态
-                    isCompleted: false,
-                    operationType: "Match"));
+                // 不触发 MatchCompleted 事件，避免导航到已合并的 WeighingRecord
             }
         }
         catch (Exception ex)
