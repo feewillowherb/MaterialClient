@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:views="clr-namespace:MaterialClient.Views"
+             mc:Ignorable="d"
+             x:Class="MaterialClient.Views.AnimatedDeliveryTypeRadioButton"
+             x:DataType="views:AnimatedDeliveryTypeRadioButton">
+
+  <RadioButton Cursor="Hand"
+               GroupName="{Binding GroupName, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+               IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}, Mode=TwoWay}"
+               Command="{Binding Command, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+               CommandParameter="{Binding CommandParameter, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}">
+    <RadioButton.Template>
+      <ControlTemplate TargetType="RadioButton">
+        <Border Name="bd"
+                BorderThickness="1"
+                CornerRadius="{Binding CornerRadius, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                BorderBrush="Transparent"
+                Background="Transparent"
+                Padding="{Binding ContentPadding, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}">
+          <TextBlock Name="bdText"
+                     Text="{Binding Text, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                     Foreground="{Binding AnimatedForeground, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                     FontSize="{Binding AnimatedFontSize, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                     FontWeight="{Binding AnimatedFontWeight, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Center">
+            <TextBlock.Transitions>
+              <Transitions>
+                <DoubleTransition Property="FontSize" Duration="0:0:0.5" />
+                <BrushTransition Property="Foreground" Duration="0:0:0.5" />
+              </Transitions>
+            </TextBlock.Transitions>
+          </TextBlock>
+        </Border>
+      </ControlTemplate>
+    </RadioButton.Template>
+
+    <!-- Keep existing checked background behavior -->
+    <RadioButton.Styles>
+      <Style Selector="RadioButton:checked /template/ Border#bd">
+        <Setter Property="Background" Value="#FFFFFF" />
+        <Setter Property="BorderBrush" Value="#FFFFFF" />
+      </Style>
+    </RadioButton.Styles>
+  </RadioButton>
+</UserControl>

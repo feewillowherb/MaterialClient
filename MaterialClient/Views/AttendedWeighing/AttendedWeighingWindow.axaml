@@ -153,68 +153,20 @@
                                     CornerRadius="8"
                                     VerticalAlignment="Center">
                                 <StackPanel Orientation="Vertical">
-                                    <RadioButton GroupName="DeliveryType"
-                                                 IsChecked="{Binding IsReceiving}"
-                                                 Command="{Binding SetReceivingCommand}"
-                                                 Cursor="Hand">
-                                        <RadioButton.Template>
-                                            <ControlTemplate TargetType="RadioButton">
-                                                <Border Name="bd"
-                                                        BorderThickness="1"
-                                                        CornerRadius="8,8,0,0"
-                                                        BorderBrush="Transparent"
-                                                        Background="Transparent"
-                                                        Padding="20,6">
-                                                    <TextBlock Name="bdText"
-                                                               Text="收料"
-                                                               Foreground="#FFFFFF"
-                                                               FontSize="14"
-                                                               VerticalAlignment="Center"
-                                                               HorizontalAlignment="Center" />
-                                                </Border>
-                                            </ControlTemplate>
-                                        </RadioButton.Template>
-                                        <RadioButton.Styles>
-                                            <Style Selector="RadioButton:checked /template/ Border#bd">
-                                                <Setter Property="Background" Value="#FFFFFF" />
-                                                <Setter Property="BorderBrush" Value="#FFFFFF" />
-                                            </Style>
-                                            <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
-                                                <Setter Property="Foreground" Value="#5A7FE6" />
-                                            </Style>
-                                        </RadioButton.Styles>
-                                    </RadioButton>
-                                    <RadioButton GroupName="DeliveryType"
-                                                 IsChecked="{Binding IsSending}"
-                                                 Command="{Binding SetSendingCommand}"
-                                                 Cursor="Hand">
-                                        <RadioButton.Template>
-                                            <ControlTemplate TargetType="RadioButton">
-                                                <Border Name="bd"
-                                                        BorderThickness="1"
-                                                        CornerRadius="0,0,8,8"
-                                                        BorderBrush="Transparent"
-                                                        Background="Transparent"
-                                                        Padding="20,6">
-                                                    <TextBlock Name="bdText"
-                                                               Text="发料"
-                                                               Foreground="#FFFFFF"
-                                                               FontSize="14"
-                                                               VerticalAlignment="Center"
-                                                               HorizontalAlignment="Center" />
-                                                </Border>
-                                            </ControlTemplate>
-                                        </RadioButton.Template>
-                                        <RadioButton.Styles>
-                                            <Style Selector="RadioButton:checked /template/ Border#bd">
-                                                <Setter Property="Background" Value="#FFFFFF" />
-                                                <Setter Property="BorderBrush" Value="#FFFFFF" />
-                                            </Style>
-                                            <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
-                                                <Setter Property="Foreground" Value="#5A7FE6" />
-                                            </Style>
-                                        </RadioButton.Styles>
-                                    </RadioButton>
+                                    <views1:AnimatedDeliveryTypeRadioButton Text="收料"
+                                                                            GroupName="DeliveryType"
+                                                                            IsChecked="{Binding IsReceiving}"
+                                                                            Command="{Binding SetReceivingCommand}"
+                                                                            IsWeighingActive="{Binding IsWeighingActive}"
+                                                                            CornerRadius="8,8,0,0"
+                                                                            ContentPadding="20,6" />
+                                    <views1:AnimatedDeliveryTypeRadioButton Text="发料"
+                                                                            GroupName="DeliveryType"
+                                                                            IsChecked="{Binding IsSending}"
+                                                                            Command="{Binding SetSendingCommand}"
+                                                                            IsWeighingActive="{Binding IsWeighingActive}"
+                                                                            CornerRadius="0,0,8,8"
+                                                                            ContentPadding="20,6" />
                                 </StackPanel>
                             </Border>
 
