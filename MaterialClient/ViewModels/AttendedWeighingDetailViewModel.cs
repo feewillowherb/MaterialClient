@@ -1073,7 +1073,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 }
             }
 
-            CompleteCompleted?.Invoke(this, EventArgs.Empty);
+            CompleteCompleted?.Invoke(this, new CompleteCompletedEventArgs
+            {
+                Id = _listItem.Id,
+                OrderType = _listItem.OrderType
+            });
         }
         catch (Exception ex)
         {
@@ -1245,9 +1249,15 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     public event EventHandler? AbolishCompleted;
     public event EventHandler? CloseRequested;
     public event EventHandler? MatchCompleted;
-    public event EventHandler? CompleteCompleted;
+    public event EventHandler<CompleteCompletedEventArgs>? CompleteCompleted;
 
     #endregion
+}
+
+public class CompleteCompletedEventArgs : EventArgs
+{
+    public long? Id { get; init; }
+    public OrderTypeEnum? OrderType { get; init; }
 }
 
 /// <summary>
