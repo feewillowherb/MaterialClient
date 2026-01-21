@@ -84,5 +84,8 @@
         <Compile Update="Views\MaterialsSelectionPopup.axaml.cs">
           <DependentUpon>MaterialsSelectionPopup.axaml</DependentUpon>
         </Compile>
+        <Compile Update="Views\LoadingDotsAnimation.axaml.cs">
+          <DependentUpon>LoadingDotsAnimation.axaml</DependentUpon>
+        </Compile>
     </ItemGroup>
 </Project>

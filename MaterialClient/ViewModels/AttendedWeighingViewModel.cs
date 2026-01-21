@@ -582,6 +582,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _disposables.Add(timeTimer);
     }
 
+
     /// <summary>
     ///     订阅状态变化消息（通过 ReactiveUI MessageBus）
     /// </summary>
@@ -593,6 +594,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             {
                 _currentWeighingStatus = message.Status;
                 this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
+                this.RaisePropertyChanged(nameof(IsWeighingActive));
             })
             .DisposeWith(_disposables);
     }
@@ -931,6 +933,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private int _frameCounter; // 帧计数器，用于只处理一半的帧
 
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
+    public bool IsWeighingActive => _currentWeighingStatus != AttendedWeighingStatus.OffScale;
 
     public bool IsCompletedWaybillSelected => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };

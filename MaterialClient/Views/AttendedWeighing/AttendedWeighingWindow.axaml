@@ -257,6 +257,16 @@
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"
                            Margin="-150,0,0,0" />
+
+                <!-- Loading Animation Dots -->
+                <views1:LoadingDotsAnimation Grid.Column="2"
+                                             IsActive="{Binding IsWeighingActive}"
+                                             Foreground="White"
+                                             FontSize="18"
+                                             FontWeight="Bold"
+                                             VerticalAlignment="Center"
+                                             HorizontalAlignment="Right"
+                                             Margin="-75,0,0,0" />
             </Grid>
         </Grid>
 
