@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:views="clr-namespace:MaterialClient.Views"
+             mc:Ignorable="d"
+             x:Class="MaterialClient.Views.AnimatedDeliveryTypeRadioButton"
+             x:DataType="views:AnimatedDeliveryTypeRadioButton">
+
+  <!-- Transition on PulseProgress ensures BaseOpacity/TargetOpacity stay complementary -->
+  <UserControl.Styles>
+    <Style Selector="views|AnimatedDeliveryTypeRadioButton">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="PulseProgress" Duration="0:0:0.5" />
+        </Transitions>
+      </Setter>
+    </Style>
+  </UserControl.Styles>
+
+  <RadioButton Cursor="Hand"
+               GroupName="{Binding GroupName, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+               IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}, Mode=TwoWay}"
+               Command="{Binding Command, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+               CommandParameter="{Binding CommandParameter, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}">
+    <RadioButton.Template>
+      <ControlTemplate TargetType="RadioButton">
+        <Border Name="bd"
+                BorderThickness="1"
+                CornerRadius="{Binding CornerRadius, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                BorderBrush="Transparent"
+                Background="Transparent"
+                Padding="{Binding ContentPadding, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}">
+          <!--
+               Layout-stable animation:
+               - Base text: 14/Normal, foreground depends on checked state (white/blue)
+               - Target text: 16/Bold, red
+               We only animate PulseProgress (0-1) at UserControl level, then BaseOpacity
+               and TargetOpacity are computed to always sum to 1.0, preventing ghosting.
+          -->
+          <Grid>
+            <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       Foreground="{Binding BaseForeground, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       FontSize="14"
+                       FontWeight="Normal"
+                       Opacity="{Binding BaseOpacity, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center" />
+
+            <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       Foreground="#FF0000"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Opacity="{Binding TargetOpacity, RelativeSource={RelativeSource AncestorType=views:AnimatedDeliveryTypeRadioButton}}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center" />
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </RadioButton.Template>
+
+    <!-- Keep existing checked background behavior -->
+    <RadioButton.Styles>
+      <Style Selector="RadioButton:checked /template/ Border#bd">
+        <Setter Property="Background" Value="#FFFFFF" />
+        <Setter Property="BorderBrush" Value="#FFFFFF" />
+      </Style>
+    </RadioButton.Styles>
+  </RadioButton>
+</UserControl>

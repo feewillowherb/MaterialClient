@@ -38,6 +38,11 @@ public partial class ManualMatchEditWindow : Window
         DataContext = _viewModel;
     }
 
+    /// <summary>
+    ///     获取 ViewModel（用于事件订阅）
+    /// </summary>
+    public ManualMatchEditWindowViewModel? ViewModel => _viewModel;
+
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         Close((bool?)false);

@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Documents;
+using Avalonia.Controls.Notifications;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using MaterialClient.Common.Entities;
@@ -21,6 +24,7 @@ using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
 using MaterialClient.Views;
+using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MsBox.Avalonia;
@@ -40,6 +44,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IWeighingMatchingService _weighingMatchingService;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
+    private DispatcherTimer? _notificationFadeOutTimer;
+    private readonly TextBlock _notificationTextBlockHolder = new();
 
     public AttendedWeighingViewModel(
         IWeighingMatchingService weighingMatchingService,
@@ -100,6 +106,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .Subscribe(_ => this.RaisePropertyChanged(nameof(HasCameraStatuses)))
             .DisposeWith(_disposables);
 
+        this.WhenAnyValue(x => x.IsReceiving)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(DeliveryTypeTitleText)))
+            .DisposeWith(_disposables);
+
         this.WhenAnyValue(x => x.IsShowingMainView)
             .Subscribe(async isShowingMainView =>
             {
@@ -156,10 +166,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
         _truckScaleWeightService.WeightUpdates
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(weight => 
-            { 
+            .Subscribe(weight =>
+            {
                 Logger?.LogDebug($"UI Weight Update: {weight}");
-                CurrentWeight = weight; 
+                CurrentWeight = weight;
             })
             .DisposeWith(_disposables);
 
@@ -214,6 +224,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     public void Dispose()
     {
         _ = StopUsbCameraPreviewAsync();
+        _notificationFadeOutTimer?.Stop();
+        _notificationFadeOutTimer = null;
         _disposables.Dispose();
     }
 
@@ -313,7 +325,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             }
 
             var installedPrinters = await Task.Run(() => printingService.ListInstalledPrinters());
-            var isOnline = installedPrinters.Any(p => string.Equals(p, PrinterName, StringComparison.OrdinalIgnoreCase));
+            var isOnline =
+                installedPrinters.Any(p => string.Equals(p, PrinterName, StringComparison.OrdinalIgnoreCase));
 
             Dispatcher.UIThread.Post(() => { IsPrinterOnline = isOnline; });
         }
@@ -582,6 +595,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _disposables.Add(timeTimer);
     }
 
+
     /// <summary>
     ///     订阅状态变化消息（通过 ReactiveUI MessageBus）
     /// </summary>
@@ -593,6 +607,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             {
                 _currentWeighingStatus = message.Status;
                 this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
+                this.RaisePropertyChanged(nameof(IsWeighingActive));
             })
             .DisposeWith(_disposables);
     }
@@ -630,8 +645,52 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     {
         MessageBus.Current.Listen<DeliveryTypeChangedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(message => { IsReceiving = message.DeliveryType == DeliveryType.Receiving; })
+            .Subscribe(message =>
+            {
+                IsReceiving = message.DeliveryType == DeliveryType.Receiving;
+                ShowDeliveryTypeChangedNotification(message.DeliveryType);
+            })
             .DisposeWith(_disposables);
+    }
+
+    private void ShowDeliveryTypeChangedNotification(DeliveryType deliveryType)
+    {
+        try
+        {
+            var modeText = deliveryType == DeliveryType.Receiving ? "收料" : "发料";
+            var modeColor = deliveryType == DeliveryType.Receiving ? Brushes.Green : Brushes.Red;
+            
+            // Clear existing inlines and add new formatted text
+            var inlines = _notificationTextBlockHolder.Inlines;
+            inlines.Clear();
+            inlines.Add(new Run("称重模式已切换到") { Foreground = Brushes.White });
+            inlines.Add(new Run(modeText) { Foreground = modeColor, FontWeight = FontWeight.Bold, FontSize = 16 });
+            
+            // Notify that Inlines collection has changed
+            this.RaisePropertyChanged(nameof(DeliveryTypeNotificationInlines));
+            
+            // Set fade in
+            DeliveryTypeNotificationOpacity = 1.0;
+
+            // Stop any existing timer
+            _notificationFadeOutTimer?.Stop();
+
+            // Create and start fade out timer (2 seconds display, then fade out)
+            _notificationFadeOutTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2)
+            };
+            _notificationFadeOutTimer.Tick += (sender, e) =>
+            {
+                _notificationFadeOutTimer.Stop();
+                DeliveryTypeNotificationOpacity = 0.0;
+            };
+            _notificationFadeOutTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogDebug(ex, "Failed to show delivery type change notification");
+        }
     }
 
     /// <summary>
@@ -790,17 +849,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async _ =>
             {
-                Logger?.LogInformation("AttendedWeighingViewModel: Received SettingsSavedMessage, checking camera status");
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received SettingsSavedMessage, checking camera status");
 
                 try
                 {
                     await CheckCameraStatusOnceAsync();
                     await LoadPrinterSettingsAsync();
-                    Logger?.LogInformation("AttendedWeighingViewModel: Camera status check completed after settings save");
+                    Logger?.LogInformation(
+                        "AttendedWeighingViewModel: Camera status check completed after settings save");
                 }
                 catch (Exception ex)
                 {
-                    Logger?.LogError(ex, "AttendedWeighingViewModel: Error while checking camera status after settings save");
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error while checking camera status after settings save");
                 }
             })
             .DisposeWith(_disposables);
@@ -911,6 +973,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     public bool IsShowingDetailView => !IsShowingMainView;
 
+    public InlineCollection DeliveryTypeNotificationInlines => _notificationTextBlockHolder.Inlines;
+
+    [Reactive] private double _deliveryTypeNotificationOpacity;
+
     [Reactive] private AttendedWeighingDetailViewModel? _detailViewModel;
 
     [Reactive] private int _currentPage = 1;
@@ -931,12 +997,18 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private int _frameCounter; // 帧计数器，用于只处理一半的帧
 
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
+    public bool IsWeighingActive => _currentWeighingStatus != AttendedWeighingStatus.OffScale;
 
     public bool IsCompletedWaybillSelected => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
 
     public bool CanPrintSolidWaste => SelectedListItem is
-        { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed, WeighingMode: WeighingMode.SolidWaste };
+    {
+        ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed,
+        WeighingMode: WeighingMode.SolidWaste
+    };
+
+    public string DeliveryTypeTitleText => IsReceiving ? "收料信息" : "发料信息";
 
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
     public bool IsSending => !IsReceiving;
@@ -1146,6 +1218,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             DetailViewModel.CloseRequested += OnDetailCloseRequested;
             DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
             DetailViewModel.CompleteCompleted += OnDetailCompleteCompleted;
+            DetailViewModel.ManualMatchSaveCompleted += OnDetailManualMatchSaveCompleted;
 
             IsShowingMainView = false;
         }
@@ -1167,6 +1240,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             DetailViewModel.CloseRequested -= OnDetailCloseRequested;
             DetailViewModel.MatchCompleted -= OnDetailMatchCompleted;
             DetailViewModel.CompleteCompleted -= OnDetailCompleteCompleted;
+            DetailViewModel.ManualMatchSaveCompleted -= OnDetailManualMatchSaveCompleted;
         }
 
         SelectedListItem = null;
@@ -1195,10 +1269,23 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         await SelectUnmatchedNextItemAsync();
     }
 
-    private async void OnDetailCompleteCompleted(object? sender, EventArgs e)
+    private async void OnDetailCompleteCompleted(object? sender, CompleteCompletedEventArgs e)
     {
         await RefreshAsync();
+        //BackToMain();
+        await SelectLatestCompletedItemAsync();
+    }
+
+    private async void OnDetailManualMatchSaveCompleted(object? sender, ManualMatchSaveCompletedEventArgs e)
+    {
+        await RefreshAsync();
+
+        // Select the newly created waybill (similar to OnDetailCompleteCompleted)
         await SelectUnmatchedNextItemAsync();
+        // if (e.WaybillId.HasValue)
+        // {
+        //     await SelectLatestCompletedItemAsync(e.WaybillId.Value, OrderTypeEnum.FirstWeight);
+        // }
     }
 
     private async void OnDetailCloseRequested(object? sender, EventArgs e)
@@ -1211,50 +1298,75 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     选择已完成的第一个数据
     /// </summary>
-    private async Task SelectLatestCompletedItemAsync()
+    private async Task SelectLatestCompletedItemAsync(long? id = null, OrderTypeEnum? orderType = null)
     {
         try
         {
-            // 从当前列表中查找第一个完成数据
-            var firstCompleted = ListItems
-                .FirstOrDefault(item => item.OrderType == OrderTypeEnum.Completed);
+            WeighingListItemDto? targetItem = null;
 
-            if (firstCompleted != null)
+            // Case 1: Search for specific item by Id and OrderType
+            if (id.HasValue && orderType.HasValue)
             {
-                // 如果当前页有完成数据，直接选择
-                SelectedListItem = firstCompleted;
+                // Search in current list
+                targetItem = ListItems.FirstOrDefault(item =>
+                    item.Id == id.Value && item.OrderType == orderType.Value);
 
-                // 根据项类型执行相应的选择逻辑，确保显示正确的视图
-                if (firstCompleted is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
-                    SelectCompletedWaybill(firstCompleted);
-                else
-                    _ = OpenDetail(firstCompleted);
-            }
-            else
-            {
-                // 如果当前页没有完成数据，切换到显示完成数据模式并刷新
-                IsShowCompleted = true;
-                IsShowAllRecords = false;
-                IsShowUnmatched = false;
-                CurrentPage = 1;
-                await RefreshAsync();
-
-                // 刷新后选择第一条（应该就是已完成的第一个）
-                if (ListItems.Count > 0)
+                if (targetItem == null)
                 {
-                    var selectedItem = ListItems.FirstOrDefault();
-                    if (selectedItem != null)
-                    {
-                        SelectedListItem = selectedItem;
+                    // Switch to completed mode and refresh
+                    IsShowCompleted = true;
+                    IsShowAllRecords = false;
+                    IsShowUnmatched = false;
+                    CurrentPage = 1;
+                    await RefreshAsync();
 
-                        // 根据项类型执行相应的选择逻辑
-                        if (selectedItem is
-                            { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
-                            SelectCompletedWaybill(selectedItem);
-                        else
-                            _ = OpenDetail(selectedItem);
+                    // Search again after refresh
+                    targetItem = ListItems.FirstOrDefault(item =>
+                        item.Id == id.Value && item.OrderType == orderType.Value);
+
+                    if (targetItem == null)
+                    {
+                        IsShowCompleted = false;
+                        IsShowAllRecords = false;
+                        IsShowUnmatched = true;
+                        CurrentPage = 1;
+                        await RefreshAsync();
+                        targetItem = ListItems.FirstOrDefault(item =>
+                            item.Id == id.Value && item.OrderType == orderType.Value);
                     }
                 }
+            }
+            // Case 2: Use existing "select latest completed" logic
+            else
+            {
+                // 从当前列表中查找第一个完成数据
+                targetItem = ListItems.FirstOrDefault(item =>
+                    item.OrderType == OrderTypeEnum.Completed);
+
+                if (targetItem == null)
+                {
+                    // 如果当前页没有完成数据，切换到显示完成数据模式并刷新
+                    IsShowCompleted = true;
+                    IsShowAllRecords = false;
+                    IsShowUnmatched = false;
+                    CurrentPage = 1;
+                    await RefreshAsync();
+
+                    // 刷新后选择第一条（应该就是已完成的第一个）
+                    targetItem = ListItems.FirstOrDefault();
+                }
+            }
+
+            // Select and open the target item
+            if (targetItem != null)
+            {
+                SelectedListItem = targetItem;
+
+                // 根据项类型执行相应的选择逻辑，确保显示正确的视图
+                if (targetItem is { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                    SelectCompletedWaybill(targetItem);
+                else
+                    _ = OpenDetail(targetItem);
             }
         }
         catch
@@ -1304,7 +1416,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
                 if (nextItem != null)
                 {
-                                   
                     SelectedListItem = nextItem;
                     // 如果 DetailView 正在显示，需要更新 DetailViewModel
                     if (!IsShowingMainView && DetailViewModel != null)
@@ -1312,7 +1423,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                         // 如果 DetailViewModel 已存在，更新其数据
                         DetailViewModel.InitializeData(nextItem, CapturedBillPhotoPath);
                     }
-                    else if (nextItem is not { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
+                    else if (nextItem is not
+                             { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed })
                     {
                         // 如果不是已完成的 Waybill，打开详情视图
                         _ = OpenDetail(nextItem);

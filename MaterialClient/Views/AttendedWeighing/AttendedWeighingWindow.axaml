@@ -122,9 +122,11 @@
                 <!-- Weight Display Center -->
                 <Grid Grid.Column="1"
                       HorizontalAlignment="Center"
-                      ColumnDefinitions="Auto,Auto,Auto,Auto">
+                      ColumnDefinitions="Auto,Auto,Auto,Auto"
+                      RowDefinitions="Auto,Auto">
                     <!-- Province Selector -->
-                    <Border Background="#5A7FE6"
+                    <Border Grid.Row="0"
+                            Background="#5A7FE6"
                             CornerRadius="8"
                             Padding="20,12"
                             VerticalAlignment="Center"
@@ -139,6 +141,7 @@
 
                     <!-- DeliveryType Selector, Weight Value and Unit with Outer Border -->
                     <Border Grid.Column="1"
+                            Grid.Row="0"
                             Grid.ColumnSpan="3"
                             Background="#5A7FE6"
                             CornerRadius="8"
@@ -153,68 +156,20 @@
                                     CornerRadius="8"
                                     VerticalAlignment="Center">
                                 <StackPanel Orientation="Vertical">
-                                    <RadioButton GroupName="DeliveryType"
-                                                 IsChecked="{Binding IsReceiving}"
-                                                 Command="{Binding SetReceivingCommand}"
-                                                 Cursor="Hand">
-                                        <RadioButton.Template>
-                                            <ControlTemplate TargetType="RadioButton">
-                                                <Border Name="bd"
-                                                        BorderThickness="1"
-                                                        CornerRadius="8,8,0,0"
-                                                        BorderBrush="Transparent"
-                                                        Background="Transparent"
-                                                        Padding="20,6">
-                                                    <TextBlock Name="bdText"
-                                                               Text="收料"
-                                                               Foreground="#FFFFFF"
-                                                               FontSize="14"
-                                                               VerticalAlignment="Center"
-                                                               HorizontalAlignment="Center" />
-                                                </Border>
-                                            </ControlTemplate>
-                                        </RadioButton.Template>
-                                        <RadioButton.Styles>
-                                            <Style Selector="RadioButton:checked /template/ Border#bd">
-                                                <Setter Property="Background" Value="#FFFFFF" />
-                                                <Setter Property="BorderBrush" Value="#FFFFFF" />
-                                            </Style>
-                                            <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
-                                                <Setter Property="Foreground" Value="#5A7FE6" />
-                                            </Style>
-                                        </RadioButton.Styles>
-                                    </RadioButton>
-                                    <RadioButton GroupName="DeliveryType"
-                                                 IsChecked="{Binding IsSending}"
-                                                 Command="{Binding SetSendingCommand}"
-                                                 Cursor="Hand">
-                                        <RadioButton.Template>
-                                            <ControlTemplate TargetType="RadioButton">
-                                                <Border Name="bd"
-                                                        BorderThickness="1"
-                                                        CornerRadius="0,0,8,8"
-                                                        BorderBrush="Transparent"
-                                                        Background="Transparent"
-                                                        Padding="20,6">
-                                                    <TextBlock Name="bdText"
-                                                               Text="发料"
-                                                               Foreground="#FFFFFF"
-                                                               FontSize="14"
-                                                               VerticalAlignment="Center"
-                                                               HorizontalAlignment="Center" />
-                                                </Border>
-                                            </ControlTemplate>
-                                        </RadioButton.Template>
-                                        <RadioButton.Styles>
-                                            <Style Selector="RadioButton:checked /template/ Border#bd">
-                                                <Setter Property="Background" Value="#FFFFFF" />
-                                                <Setter Property="BorderBrush" Value="#FFFFFF" />
-                                            </Style>
-                                            <Style Selector="RadioButton:checked /template/ TextBlock#bdText">
-                                                <Setter Property="Foreground" Value="#5A7FE6" />
-                                            </Style>
-                                        </RadioButton.Styles>
-                                    </RadioButton>
+                                    <views1:AnimatedDeliveryTypeRadioButton Text="收料"
+                                                                            GroupName="DeliveryType"
+                                                                            IsChecked="{Binding IsReceiving}"
+                                                                            Command="{Binding SetReceivingCommand}"
+                                                                            IsWeighingActive="{Binding IsWeighingActive}"
+                                                                            CornerRadius="8,8,0,0"
+                                                                            ContentPadding="20,10" />
+                                    <views1:AnimatedDeliveryTypeRadioButton Text="发料"
+                                                                            GroupName="DeliveryType"
+                                                                            IsChecked="{Binding IsSending}"
+                                                                            Command="{Binding SetSendingCommand}"
+                                                                            IsWeighingActive="{Binding IsWeighingActive}"
+                                                                            CornerRadius="0,0,8,8"
+                                                                            ContentPadding="20,10" />
                                 </StackPanel>
                             </Border>
 
@@ -246,6 +201,23 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+
+                    <!-- Delivery Type Change Notification (positioned in red box area, outside Border) -->
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="1"
+                               Grid.ColumnSpan="3"
+                               Inlines="{Binding DeliveryTypeNotificationInlines}"
+                               Opacity="{Binding DeliveryTypeNotificationOpacity}"
+                               FontSize="14"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               Margin="0,4,0,0">
+                        <TextBlock.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" />
+                            </Transitions>
+                        </TextBlock.Transitions>
+                    </TextBlock>
                 </Grid>
 
                 <!-- Right Side Info -->
@@ -257,6 +229,16 @@
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"
                            Margin="-150,0,0,0" />
+
+                <!-- Loading Animation Dots -->
+                <views1:LoadingDotsAnimation Grid.Column="2"
+                                             IsActive="{Binding IsWeighingActive}"
+                                             Foreground="White"
+                                             FontSize="18"
+                                             FontWeight="Bold"
+                                             VerticalAlignment="Center"
+                                             HorizontalAlignment="Right"
+                                             Margin="-75,0,0,0" />
             </Grid>
         </Grid>
 
