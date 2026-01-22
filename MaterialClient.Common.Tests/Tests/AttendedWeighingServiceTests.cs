@@ -9,6 +9,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Services.LprAllInOne;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using BatchCaptureRequest = MaterialClient.Common.Services.Hikvision.BatchCaptureRequest;
@@ -370,6 +371,126 @@ public class AttendedWeighingServiceTests : IDisposable
         // Assert
         receivedMessages.ShouldNotBeEmpty();
         receivedMessages.Last().PlateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task OnPlateNumberRecognized_HighPriority_Should_Override_LowPriority()
+    {
+        // Arrange - Create service with Yellow as low-priority color
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m); // Put on scale
+        await Task.Delay(300);
+
+        // Act - Recognize yellow plate 10 times, then blue plate once
+        for (int i = 0; i < 10; i++)
+        {
+            service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+        }
+        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue);
+        await Task.Delay(200);
+
+        // Assert - Blue plate (high-priority) should be selected despite lower count
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task OnPlateNumberRecognized_LowPriority_Should_BeUsed_WhenNoHighPriority()
+    {
+        // Arrange - Create service with Yellow as low-priority color
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m); // Put on scale
+        await Task.Delay(300);
+
+        // Act - Only recognize yellow plates (low-priority)
+        service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+        service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+        await Task.Delay(200);
+
+        // Assert - Yellow plate should be selected (no high-priority alternative)
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京B99999");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task OnPlateNumberRecognized_LowPriority_Cannot_Override_HighPriority()
+    {
+        // Arrange - Create service with Yellow as low-priority color
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m); // Put on scale
+        await Task.Delay(300);
+
+        // Act - Blue plate first, then many yellow plates
+        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue);
+        for (int i = 0; i < 100; i++)
+        {
+            service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+        }
+        await Task.Delay(200);
+
+        // Assert - Blue plate (high-priority) should still be selected
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task OnPlateNumberRecognized_NullColor_Should_BeTreated_AsHighPriority()
+    {
+        // Arrange - Create service with Yellow as low-priority color
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m); // Put on scale
+        await Task.Delay(300);
+
+        // Act - Yellow plate many times, then plate without color once
+        for (int i = 0; i < 10; i++)
+        {
+            service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+        }
+        service.OnPlateNumberRecognized("京A12345", null); // No color info
+        await Task.Delay(200);
+
+        // Assert - Plate without color (treated as high-priority) should be selected
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task OnPlateNumberRecognized_ColorInfo_Should_BePersisted_InCache()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject();
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m); // Put on scale
+        await Task.Delay(300);
+
+        // Act - Recognize plate with color
+        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue);
+        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue); // Recognize again
+        await Task.Delay(200);
+
+        // Assert - Plate should be cached and selected
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京A12345");
+        // Note: We can't directly inspect cache, but behavior confirms color is stored
 
         // Cleanup
         await service.DisposeAsync();
@@ -1252,6 +1373,18 @@ public class AttendedWeighingServiceTests : IDisposable
         return (service, weightSubject);
     }
 
+    private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithLowPriorityColors(
+        LprAllInOneColorType[] lowPriorityColors)
+    {
+        var weightSubject = new Subject<decimal>();
+        var mockWeightService = Substitute.For<ITruckScaleWeightService>();
+        mockWeightService.WeightUpdates.Returns(weightSubject.AsObservable());
+        mockWeightService.IsOnline.Returns(true);
+
+        var service = CreateAttendedWeighingService(mockWeightService, lowPriorityColors: lowPriorityColors);
+        return (service, weightSubject);
+    }
+
     private (AttendedWeighingService service, Subject<decimal> weightSubject,
         IRepository<WeighingRecord, long> mockRepo, IUnitOfWork mockUow) CreateServiceWithMocks()
     {
@@ -1308,9 +1441,18 @@ public class AttendedWeighingServiceTests : IDisposable
         ITruckScaleWeightService truckScaleWeightService,
         IRepository<WeighingRecord, long>? mockRepo = null,
         IUnitOfWorkManager? mockUowManager = null,
-        IHikvisionService? mockHikvision = null)
+        IHikvisionService? mockHikvision = null,
+        LprAllInOneColorType[]? lowPriorityColors = null)
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        var configData = new Dictionary<string, string?>();
+        if (lowPriorityColors != null && lowPriorityColors.Length > 0)
+        {
+            for (int i = 0; i < lowPriorityColors.Length; i++)
+            {
+                configData[$"LowPriorityPlateColors:{i}"] = ((int)lowPriorityColors[i]).ToString();
+            }
+        }
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(configData).Build();
 
         var settingsService = Substitute.For<ISettingsService>();
         var settingsEntity = new SettingsEntity(

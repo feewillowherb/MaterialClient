@@ -37,6 +37,11 @@ public record PlateNumberCacheRecord
     ///     最后更新时间
     /// </summary>
     public DateTime LastUpdateTime { get; init; }
+
+    /// <summary>
+    ///     车牌颜色类型（用于优先级判断）
+    /// </summary>
+    public LprAllInOneColorType? ColorType { get; init; }
 }
 
 /// <summary>
@@ -159,9 +164,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // Plate number cache (field-level management)
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
 
-    // Plate color filtering config (initialized once at startup)
+    // Plate color priority config (initialized once at startup)
     private bool _plateColorFilterInitialized;
-    private HashSet<LprAllInOneColorType> _filteredPlateColors = new();
+    private HashSet<LprAllInOneColorType> _lowPriorityPlateColors = new();
 
     // 订阅管理
     private IDisposable? _stateSubscription;
@@ -192,24 +197,24 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _stabilityWindowMs = config.StabilityWindowMs;
         _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
 
-        // Load plate color filter config from appsettings.json (initialize once)
+        // Load plate color priority config from appsettings.json (initialize once)
         if (!_plateColorFilterInitialized)
         {
-            var filteredColors = _configuration.GetSection("FilteredPlateColors").Get<LprAllInOneColorType[]>();
-            if (filteredColors == null || filteredColors.Length == 0)
+            var lowPriorityColors = _configuration.GetSection("LowPriorityPlateColors").Get<LprAllInOneColorType[]>();
+            if (lowPriorityColors == null || lowPriorityColors.Length == 0)
             {
-                _filteredPlateColors = new HashSet<LprAllInOneColorType>();
+                _lowPriorityPlateColors = new HashSet<LprAllInOneColorType>();
             }
             else
             {
-                _filteredPlateColors = filteredColors
+                _lowPriorityPlateColors = lowPriorityColors
                     .Select(v => (LprAllInOneColorType)v)
                     .ToHashSet();
             }
 
             _plateColorFilterInitialized = true;
-            _logger?.LogInformation("Loaded FilteredPlateColors from appsettings: {Colors}",
-                _filteredPlateColors.Count == 0 ? "none" : string.Join(", ", _filteredPlateColors));
+            _logger?.LogInformation("Loaded low-priority plate colors from appsettings: {Colors}",
+                _lowPriorityPlateColors.Count == 0 ? "none" : string.Join(", ", _lowPriorityPlateColors));
         }
 
         // 共享源流，避免多次订阅，只保留最近5秒的数据（背压保护）
@@ -397,12 +402,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
-        // Filter by plate color (when provided)
-        if (colorType.HasValue && _filteredPlateColors.Contains(colorType.Value))
+        // Log low-priority plate colors (but don't reject them)
+        if (colorType.HasValue && _lowPriorityPlateColors.Contains(colorType.Value))
         {
-            _logger?.LogInformation("车牌颜色已过滤: Plate={Plate}, Color={Color}",
+            _logger?.LogInformation("检测到低优先级车牌颜色: Plate={Plate}, Color={Color}",
                 plateNumber, colorType.Value);
-            return;
         }
 
         // 过滤掉"挂"字（仅处理简体"挂"）
@@ -433,12 +437,12 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             return;
         }
 
-        // 更新车牌缓存（使用推荐的车牌号）
+        // 更新车牌缓存（使用推荐的车牌号，并存储颜色信息）
         _plateNumberCache.AddOrUpdate(
             finalPlateNumber,
-            new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow },
+            new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow, ColorType = colorType },
             (key, oldValue) => new PlateNumberCacheRecord
-                { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow });
+                { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow, ColorType = colorType ?? oldValue.ColorType });
 
         // 获取最频繁的车牌号并发送通知
         var mostFrequent = GetMostFrequentPlateNumber();
@@ -447,17 +451,35 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    ///     获取当前识别次数最大的车牌号
+    ///     获取当前识别次数最大的车牌号（优先选择高优先级车牌）
     /// </summary>
     public string? GetMostFrequentPlateNumber()
     {
         if (_plateNumberCache.IsEmpty) return null;
 
-        var mostFrequent = _plateNumberCache
-            .OrderByDescending(kvp => kvp.Value.Count)
-            .FirstOrDefault();
+        // Separate high-priority and low-priority plates
+        var highPriorityPlates = _plateNumberCache
+            .Where(kvp => !kvp.Value.ColorType.HasValue || !_lowPriorityPlateColors.Contains(kvp.Value.ColorType.Value))
+            .ToList();
 
-        return mostFrequent.Key;
+        // If we have high-priority plates, select from them
+        if (highPriorityPlates.Count > 0)
+        {
+            var mostFrequent = highPriorityPlates
+                .OrderByDescending(kvp => kvp.Value.Count)
+                .First();
+            return mostFrequent.Key;
+        }
+
+        // Fall back to low-priority plates if no high-priority plates exist
+        var lowPriorityMostFrequent = _plateNumberCache
+            .OrderByDescending(kvp => kvp.Value.Count)
+            .First();
+
+        _logger?.LogInformation("使用低优先级车牌（无高优先级车牌可用）: Plate={Plate}, Color={Color}",
+            lowPriorityMostFrequent.Key, lowPriorityMostFrequent.Value.ColorType);
+
+        return lowPriorityMostFrequent.Key;
     }
 
     /// <summary>

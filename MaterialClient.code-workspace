@@ -7,5 +7,7 @@
 			"path": "E:/SDK/CH-HCNetSDKV6.1.9.48_build20230410_win64"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"powershell.cwd": "MaterialClient"
+	}
 }
