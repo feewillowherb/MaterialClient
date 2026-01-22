@@ -1,6 +1,7 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
@@ -35,13 +36,16 @@ public class SettingsService : DomainService, ISettingsService
 {
     private readonly IRepository<SettingsEntity, int> _settingsRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly IWindowsAutoStartService? _windowsAutoStartService;
 
     public SettingsService(
         IRepository<SettingsEntity, int> settingsRepository,
-        IUnitOfWorkManager unitOfWorkManager)
+        IUnitOfWorkManager unitOfWorkManager,
+        IWindowsAutoStartService? windowsAutoStartService = null)
     {
         _settingsRepository = settingsRepository;
         _unitOfWorkManager = unitOfWorkManager;
+        _windowsAutoStartService = windowsAutoStartService;
     }
 
     /// <summary>
@@ -104,6 +108,28 @@ public class SettingsService : DomainService, ISettingsService
         }
 
         await uow.CompleteAsync();
+
+        // Synchronize Windows auto-start registry with database setting
+        if (_windowsAutoStartService != null)
+        {
+            try
+            {
+                if (settings.SystemSettings.EnableAutoStart)
+                {
+                    await _windowsAutoStartService.EnableAutoStartAsync();
+                }
+                else
+                {
+                    await _windowsAutoStartService.DisableAutoStartAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log warning but don't fail the save operation
+                // Registry sync failures should not prevent settings from being saved
+                Logger.LogWarning(ex, "Failed to synchronize auto-start setting with Windows registry");
+            }
+        }
 
         // TODO: Restart all devices after saving settings
         // - Restart truck scale service with new scale settings

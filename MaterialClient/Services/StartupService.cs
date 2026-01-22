@@ -39,7 +39,10 @@ public class StartupService(
     {
         try
         {
-            // Step 0: 在启动时同时创建三个窗口（但不显示）
+            // Step 0: Synchronize auto-start setting with Windows registry
+            await SyncAutoStartOnStartupAsync();
+
+            // Step 0.5: 在启动时同时创建三个窗口（但不显示）
             _authCodeWindow = serviceProvider.GetRequiredService<AuthCodeWindow>();
             _loginWindow = serviceProvider.GetRequiredService<LoginWindow>();
             _attendedWeighingWindow = serviceProvider.GetRequiredService<AttendedWeighingWindow>();
@@ -196,5 +199,60 @@ public class StartupService(
         if (_authCodeWindow != null && _authCodeWindow.IsVisible) _authCodeWindow.Hide();
 
         if (_loginWindow != null && _loginWindow.IsVisible) _loginWindow.Hide();
+    }
+
+    /// <summary>
+    ///     Synchronize auto-start setting between database and Windows registry
+    ///     This ensures consistency even if registry was manually modified
+    /// </summary>
+    private async Task SyncAutoStartOnStartupAsync()
+    {
+        try
+        {
+            var settingsService = serviceProvider.GetService<MaterialClient.Common.Services.ISettingsService>();
+            var autoStartService = serviceProvider.GetService<MaterialClient.Common.Services.IWindowsAutoStartService>();
+
+            if (settingsService == null || autoStartService == null)
+            {
+                logger?.LogDebug("Auto-start services not available, skipping synchronization");
+                return;
+            }
+
+            // Load settings from database
+            var settings = await settingsService.GetSettingsAsync();
+            var dbAutoStartEnabled = settings.SystemSettings.EnableAutoStart;
+
+            // Check registry state
+            var registryAutoStartEnabled = await autoStartService.IsAutoStartEnabledAsync();
+
+            // Compare and repair if inconsistent
+            if (dbAutoStartEnabled != registryAutoStartEnabled)
+            {
+                logger?.LogInformation(
+                    "Auto-start inconsistency detected. Database: {DbState}, Registry: {RegistryState}. Repairing...",
+                    dbAutoStartEnabled, registryAutoStartEnabled);
+
+                if (dbAutoStartEnabled)
+                {
+                    await autoStartService.EnableAutoStartAsync();
+                    logger?.LogInformation("Auto-start inconsistency repaired: Enabled in registry");
+                }
+                else
+                {
+                    await autoStartService.DisableAutoStartAsync();
+                    logger?.LogInformation("Auto-start inconsistency repaired: Disabled in registry");
+                }
+            }
+            else
+            {
+                logger?.LogDebug("Auto-start state consistent. Database: {DbState}, Registry: {RegistryState}",
+                    dbAutoStartEnabled, registryAutoStartEnabled);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Don't block application startup if sync fails
+            logger?.LogWarning(ex, "Failed to synchronize auto-start setting on startup. Application will continue normally.");
+        }
     }
 }
