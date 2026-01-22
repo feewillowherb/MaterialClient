@@ -42,6 +42,17 @@ MaterialClient is a Windows desktop application for material weighing management
   - Entities: `MaterialClient.Common/Entities/`
   - DTOs: `MaterialClient.Common/Api/Dtos/`
 
+### Build Configuration
+
+- **Directory.Build.props**: Common build settings and package references applied to all projects
+  - AutoConstructor is automatically available to all projects via this file
+  - Located at solution root, automatically imported by MSBuild
+- **Directory.Packages.props**: Central Package Management (CPM) for version control
+  - All package versions are defined in this single file
+  - Projects reference packages without version numbers (versions come from Directory.Packages.props)
+  - Ensures version consistency across all projects
+  - Requires .NET SDK 6.0+ (project uses .NET SDK 10.0)
+
 ### Architecture Patterns
 
 - **MVVM Pattern**: View-ViewModel separation using Avalonia ReactiveUI
