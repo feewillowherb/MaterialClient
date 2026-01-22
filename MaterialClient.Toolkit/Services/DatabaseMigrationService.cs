@@ -1,11 +1,11 @@
 using MaterialClient.Common.Entities;
 using MaterialClient.EFCore;
-using MaterialClientToolkit.Models;
+using MaterialClient.Toolkit.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text;
 
-namespace MaterialClientToolkit.Services;
+namespace MaterialClient.Toolkit.Services;
 
 /// <summary>
 /// 数据库迁移服务

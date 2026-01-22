@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <RootNamespace>MaterialClient.Common</RootNamespace>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <!-- 强制禁用单一文件发布，即使命令行参数传入也会被覆盖 -->
         <PublishSingleFile Condition="'$(OutputType)' != 'Exe' And '$(OutputType)' != 'WinExe'">false</PublishSingleFile>

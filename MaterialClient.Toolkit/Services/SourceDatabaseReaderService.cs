@@ -1,8 +1,8 @@
-using MaterialClientToolkit.Models;
+using MaterialClient.Toolkit.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
-namespace MaterialClientToolkit.Services;
+namespace MaterialClient.Toolkit.Services;
 
 /// <summary>
 /// 源数据库读取服务

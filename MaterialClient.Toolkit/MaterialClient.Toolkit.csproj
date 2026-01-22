@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <RootNamespace>MaterialClient.Toolkit</RootNamespace>
         <OutputType>Exe</OutputType>
         <!-- 自包含部署：包含 .NET 运行时，目标机器无需安装 .NET -->
         <SelfContained>true</SelfContained>
