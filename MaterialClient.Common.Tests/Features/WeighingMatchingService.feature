@@ -15,7 +15,7 @@ Feature: WeighingMatchingService - Automatic Matching and Waybill Creation
       | PlateNumber | Weight | CreatedAt           | ProviderId |
       | 京A12345    | 10.0   | 2025-01-01 10:00:00 |            |
       | 京A12345    | 15.0   | 2025-01-01 10:30:00 |            |
-    And the delivery type is Delivery
+    And the delivery type is Sending
     When matching is performed
     Then 1 waybill should be created
     And Waybills as below
@@ -39,33 +39,39 @@ Feature: WeighingMatchingService - Automatic Matching and Waybill Creation
       | PlateNumber | Weight | CreatedAt           | ProviderId |
       | 京A12345    | 15.0   | 2025-01-01 10:00:00 |            |
       | 京A12345    | 10.0   | 2025-01-01 10:30:00 |            |
-    And the delivery type is Delivery
+    And the delivery type is Sending
     When matching is performed
     Then 0 waybills should be created
-    And record 1 should have RecordType Unmatch
-    And record 2 should have RecordType Unmatch
+    And Weighing records as below
+      | PlateNumber | Weight | MatchedType |
+      | 京A12345    | 15.0   |             |
+      | 京A12345    | 10.0   |             |
 
   Scenario: Match fails when time window is exceeded
     Given Weighing records as below
       | PlateNumber | Weight | CreatedAt           | ProviderId |
       | 京A12345    | 10.0   | 2025-01-01 10:00:00 |            |
       | 京A12345    | 15.0   | 2025-01-01 14:00:00 |            |
-    And the delivery type is Delivery
+    And the delivery type is Sending
     When matching is performed
     Then 0 waybills should be created
-    And record 1 should have RecordType Unmatch
-    And record 2 should have RecordType Unmatch
+    And Weighing records as below
+      | PlateNumber | Weight | MatchedType |
+      | 京A12345    | 10.0   |             |
+      | 京A12345    | 15.0   |             |
 
   Scenario: Match fails when plate numbers are different
     Given Weighing records as below
       | PlateNumber | Weight | CreatedAt           | ProviderId |
       | 京A12345    | 10.0   | 2025-01-01 10:00:00 |            |
       | 京B67890    | 15.0   | 2025-01-01 10:30:00 |            |
-    And the delivery type is Delivery
+    And the delivery type is Sending
     When matching is performed
     Then 0 waybills should be created
-    And record 1 should have RecordType Unmatch
-    And record 2 should have RecordType Unmatch
+    And Weighing records as below
+      | PlateNumber | Weight | MatchedType |
+      | 京A12345    | 10.0   |             |
+      | 京B67890    | 15.0   |             |
 
   Scenario: Select shortest time interval when multiple candidates exist
     Given Weighing records as below
@@ -73,19 +79,21 @@ Feature: WeighingMatchingService - Automatic Matching and Waybill Creation
       | 京A12345    | 10.0   | 2025-01-01 10:00:00 |            |
       | 京A12345    | 15.0   | 2025-01-01 10:30:00 |            |
       | 京A12345    | 20.0   | 2025-01-01 11:00:00 |            |
-    And the delivery type is Delivery
+    And the delivery type is Sending
     When matching is performed
     Then 1 waybill should be created
-    And record 1 should have RecordType Join
-    And record 2 should have RecordType Out
-    And record 3 should have RecordType Unmatch
+    And Weighing records as below
+      | PlateNumber | Weight | MatchedType |
+      | 京A12345    | 10.0   | Join        |
+      | 京A12345    | 15.0   | Out         |
+      | 京A12345    | 20.0   |             |
 
   Scenario: Extract Provider from Join or Out record
     Given Weighing records as below
       | PlateNumber | Weight | CreatedAt | ProviderId |
       | 京A12345    | 10.0   | 2025-01-01 10:00:00 | 1          |
       | 京A12345    | 15.0   | 2025-01-01 10:30:00 |            |
-    And the delivery type is Delivery
+    And the delivery type is Sending
     When matching is performed
     Then 1 waybill should be created
     And Waybills as below
