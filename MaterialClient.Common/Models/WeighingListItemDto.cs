@@ -151,6 +151,30 @@ public class WeighingListItemDto
         var materials = record.Materials;
         var firstMaterial = materials.FirstOrDefault();
 
+        // 根据收发料类型正确设置重量
+        // WeighingRecord 只有一次称重的 TotalWeight，需要根据 DeliveryType 判断它的语义
+        decimal? weight = null; // 毛重
+        decimal? truckWeight = null; // 皮重
+
+        if (record.DeliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Receiving)
+        {
+            // 收料：进场是满车（毛重），出场是空车（皮重）
+            weight = record.TotalWeight; // 毛重 = TotalWeight
+            truckWeight = null; // 皮重未知（尚未第二次称重）
+        }
+        else if (record.DeliveryType == MaterialClient.Common.Entities.Enums.DeliveryType.Sending)
+        {
+            // 发料：进场是空车（皮重），出场是满车（毛重）
+            weight = null; // 毛重未知（尚未第二次称重）
+            truckWeight = record.TotalWeight; // 皮重 = TotalWeight
+        }
+        else
+        {
+            // DeliveryType 未知：无法确定语义，默认当作毛重
+            weight = record.TotalWeight;
+            truckWeight = null;
+        }
+
         return new WeighingListItemDto
         {
             Id = record.Id,
@@ -163,7 +187,8 @@ public class WeighingListItemDto
             MaterialId = firstMaterial?.MaterialId,
             MaterialUnitId = firstMaterial?.MaterialUnitId,
             DeliveryType = record.DeliveryType,
-            Weight = record.TotalWeight,
+            Weight = weight, // 根据 DeliveryType 设置毛重
+            TruckWeight = truckWeight, // 根据 DeliveryType 设置皮重
             OrderNo = null,
             WaybillQuantity = firstMaterial?.WaybillQuantity,
             Operator = record.Creator,
