@@ -1393,7 +1393,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    ///     尝试重写称重记录的车牌号
+    ///     尝试重写称重记录的车牌号和收发类型
     ///     在清空车牌缓存前调用，用最频繁识别的车牌号更新最近创建的称重记录
     /// </summary>
     private async Task TryReWritePlateNumberAsync()
@@ -1419,17 +1419,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             using var uow = _unitOfWorkManager.Begin();
             var weighingRecord = await _weighingRecordRepository.GetAsync(recordId.Value);
 
+            var currentDeliveryType = _deliveryTypeSubject.Value;
+            var hasChanges = false;
+
             if (weighingRecord.PlateNumber != plateNumber)
             {
                 var oldPlateNumber = weighingRecord.PlateNumber;
                 weighingRecord.PlateNumber = plateNumber;
-                await _weighingRecordRepository.UpdateAsync(weighingRecord);
-                await uow.CompleteAsync();
+                hasChanges = true;
 
                 _logger?.LogInformation(
                     $"Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
-
-                await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
 
                 // 通过 ReactiveUI MessageBus 发送更新车牌号消息
                 var updateMessage = new UpdatePlateNumberMessage(weighingRecord.Id, plateNumber);
@@ -1439,11 +1439,28 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     " Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
                     weighingRecord.Id, plateNumber);
             }
+
+            if (weighingRecord.DeliveryType != currentDeliveryType)
+            {
+                var oldDeliveryType = weighingRecord.DeliveryType;
+                weighingRecord.DeliveryType = currentDeliveryType;
+                hasChanges = true;
+
+                _logger?.LogInformation(
+                    $"Rewrote delivery type for weighing record {weighingRecord.Id}, from '{oldDeliveryType}' to '{currentDeliveryType}'");
+            }
+
+            if (hasChanges)
+            {
+                await _weighingRecordRepository.UpdateAsync(weighingRecord);
+                await uow.CompleteAsync();
+                await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+            }
             else
             {
                 await uow.CompleteAsync();
                 _logger?.LogDebug(
-                    $"Plate number unchanged for weighing record {recordId.Value}");
+                    $"Plate number and delivery type unchanged for weighing record {recordId.Value}");
                 await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
             }
         }

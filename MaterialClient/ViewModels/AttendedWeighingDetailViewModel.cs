@@ -930,7 +930,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             var message = new SaveCompletedMessage(_listItem.Id, _listItem.ItemType);
             MessageBus.Current.SendMessage(message);
 
-            SaveCompleted?.Invoke(this, EventArgs.Empty);
+            // 触发保存完成事件，传递完整的操作上下文
+            SaveCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
+                itemId: _listItem.Id,
+                itemType: _listItem.ItemType,
+                orderType: _listItem.OrderType,
+                isCompleted: _listItem.OrderType == OrderTypeEnum.Completed,
+                operationType: "Save"));
         }
         catch (Exception ex)
         {
@@ -1002,16 +1008,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             // 不需要再次打开 ManualMatchEditWindow，因为它已经在 ManualMatchWindow 中打开过了
             if (matchedRecord != null)
             {
-                // 触发 ManualMatchSaveCompleted 事件（如果有 WaybillId）
+                // 触发手动匹配保存完成事件，传递新创建的 Waybill 信息
+                // 注意：两个 WeighingRecord 已经合并成一个 Waybill，应该追踪 Waybill 而不是原 WeighingRecord
                 if (matchWindow.SavedWaybillId.HasValue)
                 {
-                    ManualMatchSaveCompleted?.Invoke(this, new ManualMatchSaveCompletedEventArgs
-                    {
-                        WaybillId = matchWindow.SavedWaybillId
-                    });
+                    ManualMatchSaveCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
+                        itemId: matchWindow.SavedWaybillId.Value,
+                        itemType: WeighingListItemType.Waybill,
+                        orderType: OrderTypeEnum.FirstWeight, // 手动匹配后是FirstWeight
+                        isCompleted: false,
+                        operationType: "ManualMatch"));
                 }
-
-                MatchCompleted?.Invoke(this, EventArgs.Empty);
+                // 不触发 MatchCompleted 事件，避免导航到已合并的 WeighingRecord
             }
         }
         catch (Exception ex)
@@ -1092,7 +1100,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         try
         {
             await _weighingRecordRepository.DeleteAsync(_listItem.Id);
-            AbolishCompleted?.Invoke(this, EventArgs.Empty);
+            
+            // 触发废单完成事件（item已删除，使用删除前的信息）
+            AbolishCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
+                itemId: _listItem.Id,
+                itemType: _listItem.ItemType,
+                orderType: _listItem.OrderType,
+                isCompleted: false,
+                operationType: "Abolish"));
         }
         catch (Exception ex)
         {
@@ -1139,11 +1154,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 }
             }
 
-            CompleteCompleted?.Invoke(this, new CompleteCompletedEventArgs
-            {
-                Id = _listItem.Id,
-                OrderType = _listItem.OrderType
-            });
+            // 触发完成事件，传递完整的操作上下文
+            CompleteCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
+                itemId: _listItem.Id,
+                itemType: WeighingListItemType.Waybill, // Complete后总是Waybill
+                orderType: OrderTypeEnum.Completed, // Complete后总是Completed
+                isCompleted: true,
+                operationType: "Complete"));
         }
         catch (Exception ex)
         {
@@ -1342,20 +1359,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     #region 事件
 
-    public event EventHandler? SaveCompleted;
-    public event EventHandler? AbolishCompleted;
+    public event EventHandler<ItemOperationCompletedEventArgs>? SaveCompleted;
+    public event EventHandler<ItemOperationCompletedEventArgs>? AbolishCompleted;
     public event EventHandler? CloseRequested;
-    public event EventHandler? MatchCompleted;
-    public event EventHandler<CompleteCompletedEventArgs>? CompleteCompleted;
-    public event EventHandler<ManualMatchSaveCompletedEventArgs>? ManualMatchSaveCompleted;
+    public event EventHandler<ItemOperationCompletedEventArgs>? MatchCompleted;
+    public event EventHandler<ItemOperationCompletedEventArgs>? CompleteCompleted;
+    public event EventHandler<ItemOperationCompletedEventArgs>? ManualMatchSaveCompleted;
 
     #endregion
-}
-
-public class CompleteCompletedEventArgs : EventArgs
-{
-    public long? Id { get; init; }
-    public OrderTypeEnum? OrderType { get; init; }
 }
 
 /// <summary>

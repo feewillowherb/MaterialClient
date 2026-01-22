@@ -123,7 +123,7 @@
                 <Grid Grid.Column="1"
                       HorizontalAlignment="Center"
                       ColumnDefinitions="Auto,Auto,Auto,Auto"
-                      RowDefinitions="Auto,Auto">
+                      RowDefinitions="Auto">
                     <!-- Province Selector -->
                     <Border Grid.Row="0"
                             Background="#5A7FE6"
@@ -202,16 +202,19 @@
                         </Grid>
                     </Border>
 
-                    <!-- Delivery Type Change Notification (positioned in red box area, outside Border) -->
-                    <TextBlock Grid.Row="1"
+                    <!-- Delivery Type Change Notification (overlapped with Border, offset vertically) -->
+                    <TextBlock Grid.Row="0"
                                Grid.Column="1"
                                Grid.ColumnSpan="3"
                                Inlines="{Binding DeliveryTypeNotificationInlines}"
                                Opacity="{Binding DeliveryTypeNotificationOpacity}"
                                FontSize="14"
-                               HorizontalAlignment="Center"
+                               HorizontalAlignment="Left"
                                VerticalAlignment="Top"
-                               Margin="0,4,0,0">
+                               Margin="0,0,0,0">
+                        <TextBlock.RenderTransform>
+                            <TranslateTransform Y="90" />
+                        </TextBlock.RenderTransform>
                         <TextBlock.Transitions>
                             <Transitions>
                                 <DoubleTransition Property="Opacity" Duration="0:0:0.5" />
@@ -237,7 +240,7 @@
                                              FontSize="18"
                                              FontWeight="Bold"
                                              VerticalAlignment="Center"
-                                             HorizontalAlignment="Right"
+                                             HorizontalAlignment="Left"
                                              Margin="-75,0,0,0" />
             </Grid>
         </Grid>
