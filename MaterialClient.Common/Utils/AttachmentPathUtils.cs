@@ -31,7 +31,7 @@ public static class AttachmentPathUtils
     }
 
     /// <summary>
-    ///     获取本地存储路径（包含日期目录，使用反斜杠，适用于Windows文件系统）
+    ///     获取本地存储路径（相对路径，包含日期目录）
     /// </summary>
     /// <param name="attachType">附件类型</param>
     /// <param name="date">日期，如果为 null 则使用当前日期</param>
@@ -41,6 +41,20 @@ public static class AttachmentPathUtils
         var now = date ?? DateTime.Now;
         var basePath = GetBasePath(attachType);
         return $"{basePath}/{now.Year}/{now:MM}/{now:dd}/";
+    }
+
+    /// <summary>
+    ///     获取本地存储的绝对路径（基于应用程序可执行文件目录）
+    ///     用于确保应用从任何工作目录（包括 C:\Windows\System32）启动时都能正确访问附件
+    /// </summary>
+    /// <param name="attachType">附件类型</param>
+    /// <param name="date">日期，如果为 null 则使用当前日期</param>
+    /// <returns>绝对路径格式：{AppContext.BaseDirectory}\{basePath}\{year}\{MM}\{dd}\</returns>
+    public static string GetLocalStorageAbsolutePath(AttachType attachType, DateTime? date = null)
+    {
+        var relativePath = GetLocalStoragePath(attachType, date);
+        var appDirectory = AppContext.BaseDirectory;
+        return Path.Combine(appDirectory, relativePath);
     }
 
     /// <summary>
@@ -68,29 +82,31 @@ public static class AttachmentPathUtils
 
     /// <summary>
     ///     获取完整的本地文件路径（票据照片）
+    ///     返回绝对路径，确保从任何工作目录启动都能正确访问文件
     /// </summary>
     /// <param name="attachType">附件类型</param>
     /// <param name="date">日期，如果为 null 则使用当前日期</param>
-    /// <returns>完整路径：{basePath}\{year}\{MM}\{dd}\bill_{timestamp}.jpg</returns>
+    /// <returns>完整绝对路径：{AppContext.BaseDirectory}\{basePath}\{year}\{MM}\{dd}\bill_{timestamp}.jpg</returns>
     public static string GetBillPhotoFullPath(AttachType attachType, DateTime? date = null)
     {
-        var basePath = GetLocalStoragePath(attachType, date);
+        var basePath = GetLocalStorageAbsolutePath(attachType, date);
         var fileName = GenerateBillPhotoFileName(date);
         return Path.Combine(basePath, fileName);
     }
 
     /// <summary>
     ///     获取完整的本地文件路径（监控照片）
+    ///     返回绝对路径，确保从任何工作目录启动都能正确访问文件
     /// </summary>
     /// <param name="attachType">附件类型</param>
     /// <param name="cameraName">摄像头名称</param>
     /// <param name="channel">通道号</param>
     /// <param name="date">日期，如果为 null 则使用当前日期</param>
-    /// <returns>完整路径：{basePath}\{year}\{MM}\{dd}\{cameraName}_{channel}_{guid}.jpg</returns>
+    /// <returns>完整绝对路径：{AppContext.BaseDirectory}\{basePath}\{year}\{MM}\{dd}\{cameraName}_{channel}_{guid}.jpg</returns>
     public static string GetMonitoringPhotoFullPath(AttachType attachType, string cameraName, int channel,
         DateTime? date = null)
     {
-        var basePath = GetLocalStoragePath(attachType, date);
+        var basePath = GetLocalStorageAbsolutePath(attachType, date);
         var fileName = GenerateMonitoringPhotoFileName(cameraName, channel);
         return Path.Combine(basePath, fileName);
     }
