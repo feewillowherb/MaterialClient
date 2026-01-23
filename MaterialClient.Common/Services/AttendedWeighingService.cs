@@ -1393,8 +1393,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                         continue;
                     }
 
+                    // Storage: Convert to relative path for database portability (migration-friendly)
                     var fileName = Path.GetFileName(photoPath);
-                    var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.UnmatchedEntryPhoto);
+                    var relativePath = PathManager.ToRelativePath(photoPath);
+                    var attachmentFile = new AttachmentFile(fileName, relativePath, AttachType.UnmatchedEntryPhoto);
 
                     await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 
