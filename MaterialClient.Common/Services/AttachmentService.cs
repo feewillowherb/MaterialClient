@@ -4,6 +4,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
+using MaterialClient.Common.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -242,8 +243,10 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
             }
 
             // 创建新的AttachmentFile
+            // Storage: Convert to relative path for database portability (migration-friendly)
             var fileName = Path.GetFileName(photoPath);
-            var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.TicketPhoto);
+            var relativePath = PathManager.ToRelativePath(photoPath);
+            var attachmentFile = new AttachmentFile(fileName, relativePath, AttachType.TicketPhoto);
             await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 
             // 根据ItemType创建关联记录

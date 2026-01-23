@@ -1068,7 +1068,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // 转换为 BatchCaptureRequest
             var requests = new List<BatchCaptureRequest>();
             var now = DateTime.Now;
-            var basePath = AttachmentPathUtils.GetLocalStoragePath(AttachType.EntryPhoto, now);
+            // FIX: Use absolute path to ensure photos are saved to application directory
+            // when launched from any working directory (e.g., C:\Windows\System32)
+            var basePath = AttachmentPathUtils.GetLocalStorageAbsolutePath(AttachType.EntryPhoto, now);
 
             foreach (var cameraConfig in cameraConfigs)
             {
@@ -1391,8 +1393,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                         continue;
                     }
 
+                    // Storage: Convert to relative path for database portability (migration-friendly)
                     var fileName = Path.GetFileName(photoPath);
-                    var attachmentFile = new AttachmentFile(fileName, photoPath, AttachType.UnmatchedEntryPhoto);
+                    var relativePath = PathManager.ToRelativePath(photoPath);
+                    var attachmentFile = new AttachmentFile(fileName, relativePath, AttachType.UnmatchedEntryPhoto);
 
                     await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 

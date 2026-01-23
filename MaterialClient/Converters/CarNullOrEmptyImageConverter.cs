@@ -4,6 +4,7 @@ using System.IO;
 using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using MaterialClient.Common.Utils;
 
 namespace MaterialClient.Converters;
 
@@ -35,16 +36,18 @@ public class CarNullOrEmptyImageConverter : IValueConverter
         // 否则尝试加载指定路径的图片
         try
         {
-            // 如果路径是本地文件路径
-            if (File.Exists(path)) return new Bitmap(path);
-
-            // 如果是资源路径
+            // 如果是资源路径，直接处理
             if (path.StartsWith("avares://") || path.StartsWith("/Assets/"))
             {
                 var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient{path}") : new Uri(path);
                 var stream = AssetLoader.Open(uri);
                 return new Bitmap(stream);
             }
+
+            // 如果路径是本地文件路径，转换为绝对路径后加载
+            // This ensures images load correctly even when app starts from System32
+            var absolutePath = PathManager.ToAbsolutePath(path);
+            if (File.Exists(absolutePath)) return new Bitmap(absolutePath);
 
             return _defaultBitmap;
         }

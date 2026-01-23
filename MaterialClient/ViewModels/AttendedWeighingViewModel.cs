@@ -1664,8 +1664,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             }
 
             // 生成文件路径
+            // FIX: Use absolute path to ensure photos are saved to application directory
+            // when launched from any working directory (e.g., C:\Windows\System32)
             var now = DateTime.Now;
-            var photosDir = AttachmentPathUtils.GetLocalStoragePath(AttachType.TicketPhoto, now);
+            var photosDir = AttachmentPathUtils.GetLocalStorageAbsolutePath(AttachType.TicketPhoto, now);
             var fileName = AttachmentPathUtils.GenerateBillPhotoFileName(now);
 
             // 确保目录存在
