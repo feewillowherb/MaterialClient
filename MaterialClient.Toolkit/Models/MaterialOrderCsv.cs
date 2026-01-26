@@ -1,7 +1,7 @@
 using Magicodes.ExporterAndImporter.Core;
 using Magicodes.ExporterAndImporter.Csv;
 
-namespace MaterialClientToolkit.Models;
+namespace MaterialClient.Toolkit.Models;
 
 /// <summary>
 /// Material_Order CSV数据模型

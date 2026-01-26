@@ -14,10 +14,6 @@ public sealed partial class Steps : MaterialClientDomainTestBase<MaterialClientD
 
     private bool _isThrow = true;
 
-    // TODO: Add your test manager or service references here
-    // Example:
-    // private TestManager M => GetRequiredService<TestManager>();
-
     [Given(@"Now is (.*)")]
     public void GivenNowIs(DateTime p0)
     {
@@ -52,4 +48,3 @@ public sealed partial class Steps : MaterialClientDomainTestBase<MaterialClientD
         // domainException.Message.ShouldBe(exceptionMessage);
     }
 }
-

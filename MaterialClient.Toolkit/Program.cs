@@ -1,5 +1,5 @@
-﻿using MaterialClientToolkit.Services;
 using MaterialClient.EFCore;
+using MaterialClient.Toolkit.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,7 +8,7 @@ using Volo.Abp;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Uow;
 
-namespace MaterialClientToolkit;
+namespace MaterialClient.Toolkit;
 
 internal class Program
 {

@@ -1,4 +1,5 @@
 using MaterialClient.Common.Api;
+using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Tests.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,9 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Volo.Abp;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
@@ -30,13 +34,70 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
 
         ConfigureInMemorySqlite(context.Services);
 
-        // Register mock API for testing
+        // ============================================
+        // Mock API Registrations
+        // ============================================
+        
+        // Register BasePlatformApi mock for license validation
         context.Services.AddSingleton<IBasePlatformApi>(sp =>
         {
             var mockApi = Substitute.For<IBasePlatformApi>();
             return mockApi;
         });
 
+        // Register MaterialPlatformApi mock for authentication and material data operations
+        // This mock provides default successful login response for BDD scenarios
+        context.Services.AddSingleton<IMaterialPlatformApi>(sp =>
+        {
+            var mockApi = Substitute.For<IMaterialPlatformApi>();
+            
+            // Setup default login response for authentication scenarios
+            mockApi.UserLoginAsync(Arg.Any<LoginRequestDto>(), Arg.Any<CancellationToken>())
+                .Returns(callInfo => Task.FromResult(new HttpResult<object>
+                {
+                    Success = true,
+                    Code = 0,
+                    Msg = "成功",
+                    Data = new LoginUserDto
+                    {
+                        UserId = 1,
+                        UserName = "testuser",
+                        ClientId = Guid.NewGuid(),
+                        Token = "test-access-token",
+                        TrueName = "测试用户",
+                        IsAdmin = false,
+                        IsCompany = true,
+                        ProductType = 2,
+                        FromProductId = 1,
+                        ProductId = 1,
+                        ProductName = "测试产品",
+                        CoId = 1,
+                        CoName = "测试公司",
+                        Url = "http://test.com",
+                        AuthEndTime = DateTime.UtcNow.AddMonths(6)
+                    }
+                }));
+            
+            return mockApi;
+        });
+
+        // Register SoundDeviceApi mock for audio playback operations
+        // This mock eliminates dependency on external HTTP service (localhost:8888)
+        context.Services.AddSingleton<ISoundDeviceApi>(sp =>
+        {
+            var mockApi = Substitute.For<ISoundDeviceApi>();
+            
+            // Setup stub implementation for audio playback
+            mockApi.PlayAudioAsync(Arg.Any<SoundDevicePlayRequestDto>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult("{\"success\": true, \"message\": \"Mock audio played\"}"));
+            
+            return mockApi;
+        });
+
+        // ============================================
+        // Test Services
+        // ============================================
+        
         // Register test service for test-only data persistence operations
         context.Services.AddTransient<ITestService, TestService>();
     }

@@ -44,6 +44,17 @@ MaterialClient is a Windows desktop application for material weighing management
   - Static Factory Methods: `MaterialClient.Common/Utils/` (e.g., `DatabaseConnectionStringFactory`)
   - Dependency Injection Factory Services: `MaterialClient.Common/Providers/` (e.g., `RecommendPlateNumberService`)
 
+### Build Configuration
+
+- **Directory.Build.props**: Common build settings and package references applied to all projects
+  - AutoConstructor is automatically available to all projects via this file
+  - Located at solution root, automatically imported by MSBuild
+- **Directory.Packages.props**: Central Package Management (CPM) for version control
+  - All package versions are defined in this single file
+  - Projects reference packages without version numbers (versions come from Directory.Packages.props)
+  - Ensures version consistency across all projects
+  - Requires .NET SDK 6.0+ (project uses .NET SDK 10.0)
+
 ### Architecture Patterns
 
 - **MVVM Pattern**: View-ViewModel separation using Avalonia ReactiveUI
@@ -80,6 +91,14 @@ The `AttendedWeighingService` uses an RxState-inspired pattern with:
 - **Key Test Suites**:
   - `AttendedWeighingServiceMemoryLeakTests` - Verifies proper resource cleanup
   - Mock implementations for all hardware services
+
+#### Integration Test Conventions
+
+- **Test DTO Naming**: All test data transfer objects (records) used in integration tests MUST use the `TestDto` suffix (e.g., `WeighingRecordTestDto`, `WaybillVerifyTestDto`)
+- **Step Definition Style**: Integration test step definitions SHOULD prefer table-based data setup over individual parameter-based steps for better readability and maintainability
+  - Use `Given [Entity] as below` with Reqnroll `Table` parameter for data setup
+  - Use `Then [Entity] as below` with Reqnroll `Table` parameter for verification
+  - Individual parameter-based steps are acceptable for simple cases or backward compatibility
 
 ### Git Workflow
 

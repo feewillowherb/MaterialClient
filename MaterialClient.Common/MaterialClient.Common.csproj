@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <RootNamespace>MaterialClient.Common</RootNamespace>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <!-- 强制禁用单一文件发布，即使命令行参数传入也会被覆盖 -->
         <PublishSingleFile Condition="'$(OutputType)' != 'Exe' And '$(OutputType)' != 'WinExe'">false</PublishSingleFile>
@@ -18,33 +16,29 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AutoConstructor" Version="5.6.0">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.1"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="Refit.HttpClientFactory" Version="9.0.2"/>
-        <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.1"/>
-        <PackageReference Include="Volo.Abp.Autofac" Version="10.0.1"/>
-        <PackageReference Include="Volo.Abp.Core" Version="10.0.1"/>
-        <PackageReference Include="Volo.Abp.Ddd.Domain" Version="10.0.1"/>
-        <PackageReference Include="Volo.Abp.Ddd.Application.Contracts" Version="10.0.1"/>
-        <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite" Version="10.0.1"/>
-        <PackageReference Include="System.Management" Version="10.0.1"/>
-        <PackageReference Include="System.IO.Ports" Version="10.0.1"/>
-        <PackageReference Include="System.Reactive" Version="7.0.0-preview.1"/>
-        <PackageReference Include="ReactiveUI" Version="20.1.1"/>
-        <PackageReference Include="Serilog" Version="4.3.0"/>
-        <PackageReference Include="Serilog.Sinks.File" Version="8.0.0-dev-02318"/>
-        <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0"/>
-        <PackageReference Include="Yitter.IdGenerator" Version="1.0.14"/>
-        <PackageReference Include="FlashCap" Version="1.11.0"/>
-        <PackageReference Include="Aliyun.OSS.SDK.NetCore" Version="2.14.1"/>
-        <PackageReference Include="System.Drawing.Common" Version="10.0.0-preview.1.25080.3"/>
+        <PackageReference Include="Refit.HttpClientFactory"/>
+        <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
+        <PackageReference Include="Volo.Abp.Autofac"/>
+        <PackageReference Include="Volo.Abp.Core"/>
+        <PackageReference Include="Volo.Abp.Ddd.Domain"/>
+        <PackageReference Include="Volo.Abp.Ddd.Application.Contracts"/>
+        <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite"/>
+        <PackageReference Include="System.Management"/>
+        <PackageReference Include="System.IO.Ports"/>
+        <PackageReference Include="System.Reactive"/>
+        <PackageReference Include="ReactiveUI"/>
+        <PackageReference Include="Serilog"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="Serilog.Extensions.Logging"/>
+        <PackageReference Include="Yitter.IdGenerator"/>
+        <PackageReference Include="FlashCap"/>
+        <PackageReference Include="Aliyun.OSS.SDK.NetCore"/>
+        <PackageReference Include="System.Drawing.Common"/>
     </ItemGroup>
 
 

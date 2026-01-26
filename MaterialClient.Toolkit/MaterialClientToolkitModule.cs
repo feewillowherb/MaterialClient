@@ -1,13 +1,13 @@
 using MaterialClient.Common;
-using MaterialClientToolkit.Services;
+using MaterialClient.Toolkit.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
 using Volo.Abp.Modularity;
 
-namespace MaterialClientToolkit;
+namespace MaterialClient.Toolkit;
 
 /// <summary>
-/// MaterialClientToolkit ABP模块
+/// MaterialClient.Toolkit ABP模块
 /// </summary>
 [DependsOn(
     typeof(MaterialClientCommonModule)

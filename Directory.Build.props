@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    Directory.Build.props is automatically imported by all projects in the solution.
+    This file contains common build settings and package references that apply to all projects.
+  -->
+
+  <PropertyGroup>
+    <!-- Common build properties for all projects -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MaterialClient</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- AutoConstructor source generator - available to all projects -->
+    <PackageReference Include="AutoConstructor">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

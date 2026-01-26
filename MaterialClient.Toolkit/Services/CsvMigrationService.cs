@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClientToolkit.Services;
+namespace MaterialClient.Toolkit.Services;
 
 /// <summary>
 /// CSV数据迁移服务

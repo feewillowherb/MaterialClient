@@ -2,15 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using NSubstitute;
 using Reqnroll;
 using Shouldly;
-using MaterialClient.Common.Configuration;
+using MaterialClient.Common;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
-using MaterialClient.Common.EntityFrameworkCore;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 
@@ -19,17 +16,12 @@ namespace MaterialClient.Common.Tests;
 [Binding]
 public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<MaterialClientDomainTestModule>
 {
-    private WeighingMatchingService? _matchingService;
     private List<WeighingRecord> _testRecords = new();
     private List<Waybill> _createdWaybills = new();
     private DeliveryType _deliveryType = DeliveryType.Receiving;
     private int _waybillsCreatedCount;
 
-    private IRepository<WeighingRecord, long> WeighingRecordRepository =>
-        GetRequiredService<IRepository<WeighingRecord, long>>();
-
-    private IRepository<Waybill, long> WaybillRepository =>
-        GetRequiredService<IRepository<Waybill, long>>();
+    private TestManager M => GetRequiredService<TestManager>();
 
     [Given(@"the weighing configuration has match duration of (.*) hours")]
     public void GivenTheWeighingConfigurationHasMatchDuration(int hours)
@@ -49,122 +41,33 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
         // Repository is available through DI
     }
 
-    [Given(@"there are (.*) unmatched weighing records")]
-    public void GivenThereAreUnmatchedWeighingRecords(int count)
+    [Given(@"Weighing records as below")]
+    public async Task GivenWeighingRecordsAsBelow(Table table)
     {
-        _testRecords.Clear();
-        // Records will be created in subsequent steps
-    }
+        var infos = table.CreateSet<WeighingRecordTestDto>().ToList();
 
-    [Given(@"record (.*) has plate number ""(.*)"" and weight (.*) kg created at ""(.*)""")]
-    public async Task GivenRecordHasPlateNumberAndWeightCreatedAt(int recordIndex, string plateNumber, decimal weight,
-        string creationTime)
-    {
         await WithUnitOfWorkAsync(async () =>
         {
-            var record = new WeighingRecord(weight) // Id will be auto-generated
+            _testRecords.Clear();
+            foreach (var info in infos)
             {
-                PlateNumber = plateNumber,
-            };
+                var record = new WeighingRecord(info.Weight)
+                {
+                    PlateNumber = info.PlateNumber,
+                    ProviderId = info.ProviderId
+                };
 
-            await WeighingRecordRepository.InsertAsync(record);
+                // Set AddDate before inserting
+                var creationTimeValue = DateTime.Parse(info.CreatedAt);
+                record.AddDate = creationTimeValue;
+                
+                await M.WeighingRecordRepository.InsertAsync(record);
 
-            // Set CreationTime using reflection (since it's read-only from FullAuditedEntity)
-            var creationTimeValue = DateTime.Parse(creationTime);
-            var creationTimeProperty = typeof(Volo.Abp.Domain.Entities.Auditing.CreationAuditedEntity<long>)
-                .GetProperty("CreationTime",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            if (creationTimeProperty != null && creationTimeProperty.CanWrite)
-            {
-                creationTimeProperty.SetValue(record, creationTimeValue);
-                await WeighingRecordRepository.UpdateAsync(record);
+                _testRecords.Add(record);
             }
-
-            _testRecords.Add(record);
         });
     }
 
-    [Given(@"record (.*) has plate number ""(.*)"" and weight (.*) kg and ProviderId (.*)")]
-    public async Task GivenRecordHasPlateNumberAndWeightAndProviderId(int recordIndex, string plateNumber,
-        decimal weight, int? providerId)
-    {
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var record = new WeighingRecord(weight) // Id will be auto-generated
-            {
-                PlateNumber = plateNumber,
-            };
-
-            await WeighingRecordRepository.InsertAsync(record);
-
-            // Set CreationTime using EF Core Entry (since it's read-only from FullAuditedEntity)
-            var creationTimeValue = DateTime.UtcNow.AddHours(-recordIndex);
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var entry = dbContext.Entry(record);
-            entry.Property("CreationTime").CurrentValue = creationTimeValue;
-            await dbContext.SaveChangesAsync();
-
-            _testRecords.Add(record);
-        });
-    }
-
-    [Given(@"record (.*) has plate number ""(.*)"" and weight (.*) kg and MaterialId (.*)")]
-    public async Task GivenRecordHasPlateNumberAndWeightAndMaterialId(int recordIndex, string plateNumber,
-        decimal weight, int? materialId)
-    {
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var record = new WeighingRecord(weight) // Id will be auto-generated
-            {
-                PlateNumber = plateNumber,
-            };
-
-            await WeighingRecordRepository.InsertAsync(record);
-
-            // Set CreationTime using EF Core Entry (since it's read-only from FullAuditedEntity)
-            var creationTimeValue = DateTime.UtcNow.AddHours(-recordIndex);
-            var dbContext = GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
-            var entry = dbContext.Entry(record);
-            entry.Property("CreationTime").CurrentValue = creationTimeValue;
-            await dbContext.SaveChangesAsync();
-
-            _testRecords.Add(record);
-        });
-    }
-
-    [Given(@"there are (.*) unmatched weighing records with same plate number ""(.*)""")]
-    public void GivenThereAreUnmatchedWeighingRecordsWithSamePlateNumber(int count, string plateNumber)
-    {
-        _testRecords.Clear();
-        // Records will be created in subsequent steps
-    }
-
-    [Given(@"record (.*) has weight (.*) kg created at ""(.*)""")]
-    public async Task GivenRecordHasWeightCreatedAt(int recordIndex, decimal weight, string creationTime)
-    {
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var record = new WeighingRecord(weight) // Id will be auto-generated
-            {
-                PlateNumber = "京A12345", // Same plate number for all records
-            };
-
-            await WeighingRecordRepository.InsertAsync(record);
-
-            // Set CreationTime using reflection (since it's read-only from FullAuditedEntity)
-            var creationTimeValue = DateTime.Parse(creationTime);
-            var creationTimeProperty = typeof(Volo.Abp.Domain.Entities.Auditing.CreationAuditedEntity<long>)
-                .GetProperty("CreationTime",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            if (creationTimeProperty != null && creationTimeProperty.CanWrite)
-            {
-                creationTimeProperty.SetValue(record, creationTimeValue);
-                await WeighingRecordRepository.UpdateAsync(record);
-            }
-
-            _testRecords.Add(record);
-        });
-    }
 
     [Given(@"the delivery type is (.*)")]
     public void GivenTheDeliveryTypeIs(string deliveryType)
@@ -177,105 +80,150 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            _matchingService = GetRequiredService<WeighingMatchingService>();
-            // _waybillsCreatedCount = await _matchingService.TryMatchAndCreateWaybillsAsync(_deliveryType);
+            // Try to match each test record
+            foreach (var record in _testRecords)
+            {
+                await M.MatchingService.AutoMatchAsync(record.Id);
+            }
 
             // Load created waybills
-            var waybills = await WaybillRepository.GetListAsync();
+            var waybills = await M.WaybillRepository.GetListAsync();
             _createdWaybills = waybills.ToList();
             _waybillsCreatedCount = _createdWaybills.Count;
 
-            // Reload test records to get updated RecordType
-            var allRecords = await WeighingRecordRepository.GetListAsync();
+            // Reload test records to get updated MatchedType
+            var allRecords = await M.WeighingRecordRepository.GetListAsync();
             _testRecords = allRecords.Where(r => _testRecords.Any(tr => tr.Id == r.Id)).ToList();
         });
     }
 
-    [Then(@"(.*) waybill should be created")]
+    [Then(@"Waybills as below")]
+    public async Task ThenWaybillsAsBelow(Table table)
+    {
+        var infos = table.CreateSet<WaybillVerifyTestDto>().ToList();
+
+        var waybills = await M.WaybillRepository.GetListAsync();
+        waybills.Count.ShouldBe(infos.Count, $"Expected {infos.Count} waybill(s), but found {waybills.Count}");
+
+        foreach (var info in infos)
+        {
+            var waybill = waybills.FirstOrDefault(w => w.PlateNumber == info.PlateNumber);
+            waybill.ShouldNotBeNull($"Waybill with plate number {info.PlateNumber} should exist");
+
+            if (info.OrderTruckWeight.HasValue)
+            {
+                waybill.OrderTruckWeight.ShouldNotBeNull("OrderTruckWeight should not be null");
+                waybill.OrderTruckWeight!.Value.ShouldBe(info.OrderTruckWeight.Value, 0.01m);
+            }
+
+            if (info.OrderTotalWeight.HasValue)
+            {
+                waybill.OrderTotalWeight.ShouldNotBeNull("OrderTotalWeight should not be null");
+                waybill.OrderTotalWeight!.Value.ShouldBe(info.OrderTotalWeight.Value, 0.01m);
+            }
+
+            if (info.OrderGoodsWeight.HasValue)
+            {
+                waybill.OrderGoodsWeight.ShouldNotBeNull("OrderGoodsWeight should not be null");
+                waybill.OrderGoodsWeight!.Value.ShouldBe(info.OrderGoodsWeight.Value, 0.01m);
+            }
+
+            if (!string.IsNullOrEmpty(info.JoinTime))
+            {
+                var expectedJoinTime = DateTime.Parse(info.JoinTime);
+                waybill.JoinTime.ShouldNotBeNull("JoinTime should not be null");
+                waybill.JoinTime!.Value.ShouldBe(expectedJoinTime, TimeSpan.FromSeconds(1));
+            }
+
+            if (!string.IsNullOrEmpty(info.OutTime))
+            {
+                var expectedOutTime = DateTime.Parse(info.OutTime);
+                waybill.OutTime.ShouldNotBeNull("OutTime should not be null");
+                waybill.OutTime!.Value.ShouldBe(expectedOutTime, TimeSpan.FromSeconds(1));
+            }
+
+            if (info.ProviderId.HasValue)
+            {
+                waybill.ProviderId.ShouldBe(info.ProviderId.Value);
+            }
+
+            // Verify record matched types if specified
+            if (!string.IsNullOrEmpty(info.Record1MatchedType) || !string.IsNullOrEmpty(info.Record2MatchedType))
+            {
+                var records = await M.WeighingRecordRepository.GetListAsync(r => r.WaybillId == waybill.Id);
+                // Order by Id as records are created sequentially
+                var recordList = records.OrderBy(r => r.Id).ToList();
+
+                if (!string.IsNullOrEmpty(info.Record1MatchedType) && recordList.Count > 0)
+                {
+                    var expectedType = Enum.Parse<WeighingRecordMatchType>(info.Record1MatchedType);
+                    recordList[0].MatchedType.ShouldBe(expectedType, $"Record 1 should have MatchedType {info.Record1MatchedType}");
+                }
+
+                if (!string.IsNullOrEmpty(info.Record2MatchedType) && recordList.Count > 1)
+                {
+                    var expectedType = Enum.Parse<WeighingRecordMatchType>(info.Record2MatchedType);
+                    recordList[1].MatchedType.ShouldBe(expectedType, $"Record 2 should have MatchedType {info.Record2MatchedType}");
+                }
+            }
+        }
+    }
+
+    [Then(@"(\d+) waybill(?:s)? should be created")]
     public void ThenWaybillShouldBeCreated(int expectedCount)
     {
         _waybillsCreatedCount.ShouldBe(expectedCount, $"{expectedCount} waybill(s) should be created");
         _createdWaybills.Count.ShouldBe(expectedCount, $"{expectedCount} waybill(s) should exist in repository");
     }
 
-    [Then(@"record (.*) should have RecordType (.*)")]
-    public void ThenRecordShouldHaveRecordType(int recordIndex, string expectedType)
+    [Then(@"Weighing records as below")]
+    public async Task ThenWeighingRecordsAsBelow(Table table)
     {
-        // var expected = Enum.Parse<WeighingRecordType>(expectedType);
-        // var record = _testRecords[recordIndex - 1]; // Convert to 0-based index
-        // record.RecordType.ShouldBe(expected, $"Record {recordIndex} should have RecordType {expectedType}");
+        var infos = table.CreateSet<WeighingRecordVerifyTestDto>().ToList();
+
+        var records = await M.WeighingRecordRepository.GetListAsync();
+        records.Count.ShouldBeGreaterThanOrEqualTo(infos.Count, $"Expected at least {infos.Count} record(s), but found {records.Count}");
+
+        foreach (var info in infos)
+        {
+            var record = records.FirstOrDefault(r => r.PlateNumber == info.PlateNumber && 
+                                                     Math.Abs(r.TotalWeight - info.Weight) < 0.01m);
+            record.ShouldNotBeNull($"Weighing record with plate number {info.PlateNumber} and weight {info.Weight} should exist");
+
+            if (!string.IsNullOrEmpty(info.MatchedType))
+            {
+                var expectedType = Enum.Parse<WeighingRecordMatchType>(info.MatchedType);
+                record.MatchedType.ShouldBe(expectedType, $"Record with plate {info.PlateNumber} should have MatchedType {info.MatchedType}");
+            }
+            else
+            {
+                record.MatchedType.ShouldBeNull($"Record with plate {info.PlateNumber} should have MatchedType null (Unmatch)");
+            }
+        }
     }
 
-    [Then(@"the waybill should have OrderNo generated from Guid")]
-    public void ThenTheWaybillShouldHaveOrderNoGeneratedFromGuid()
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        Guid.TryParse(waybill.OrderNo, out _).ShouldBeTrue("OrderNo should be a valid GUID");
-    }
+}
 
-    [Then(@"the waybill should have plate number ""(.*)""")]
-    public void ThenTheWaybillShouldHavePlateNumber(string expectedPlateNumber)
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        waybill.PlateNumber.ShouldBe(expectedPlateNumber);
-    }
+file record WeighingRecordTestDto(string PlateNumber, decimal Weight, string CreatedAt, int? ProviderId = null);
 
-    [Then(@"the waybill should have JoinTime ""(.*)""")]
-    public void ThenTheWaybillShouldHaveJoinTime(string expectedTime)
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        var expected = DateTime.Parse(expectedTime);
-        waybill.JoinTime.ShouldNotBeNull("JoinTime should not be null");
-        waybill.JoinTime!.Value.ShouldBe(expected, TimeSpan.FromSeconds(1));
-    }
+file record WeighingRecordVerifyTestDto(string PlateNumber, decimal Weight, string MatchedType);
 
-    [Then(@"the waybill should have OutTime ""(.*)""")]
-    public void ThenTheWaybillShouldHaveOutTime(string expectedTime)
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        var expected = DateTime.Parse(expectedTime);
-        waybill.OutTime.ShouldNotBeNull("OutTime should not be null");
-        waybill.OutTime!.Value.ShouldBe(expected, TimeSpan.FromSeconds(1));
-    }
+file record WaybillVerifyTestDto(
+    string PlateNumber,
+    decimal? OrderTruckWeight,
+    decimal? OrderTotalWeight,
+    decimal? OrderGoodsWeight,
+    string? JoinTime,
+    string? OutTime,
+    int? ProviderId,
+    string? Record1MatchedType,
+    string? Record2MatchedType
+);
 
-    [Then(@"the waybill should have OrderTruckWeight (.*) kg")]
-    public void ThenTheWaybillShouldHaveOrderTruckWeight(decimal expectedWeight)
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        waybill.OrderTruckWeight.ShouldNotBeNull("OrderTruckWeight should not be null");
-        waybill.OrderTruckWeight!.Value.ShouldBe(expectedWeight, 0.01m);
-    }
-
-    [Then(@"the waybill should have OrderTotalWeight (.*) kg")]
-    public void ThenTheWaybillShouldHaveOrderTotalWeight(decimal expectedWeight)
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        waybill.OrderTotalWeight.ShouldNotBeNull("OrderTotalWeight should not be null");
-        waybill.OrderTotalWeight!.Value.ShouldBe(expectedWeight, 0.01m);
-    }
-
-    [Then(@"the waybill should have OrderGoodsWeight (.*) kg")]
-    public void ThenTheWaybillShouldHaveOrderGoodsWeight(decimal expectedWeight)
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        waybill.OrderGoodsWeight.ShouldNotBeNull("OrderGoodsWeight should not be null");
-        waybill.OrderGoodsWeight!.Value.ShouldBe(expectedWeight, 0.01m);
-    }
-
-    [Then(@"the waybill should have ProviderId (.*)")]
-    public void ThenTheWaybillShouldHaveProviderId(int expectedProviderId)
-    {
-        _createdWaybills.ShouldNotBeEmpty("At least one waybill should exist");
-        var waybill = _createdWaybills.First();
-        waybill.ProviderId.ShouldBe(expectedProviderId);
-    }
-
-    // Note: Waybill does not have MaterialId property, so this step is removed
+[AutoConstructor]
+internal sealed partial class TestManager
+{
+    [field: AutoConstructorInject] public IRepository<WeighingRecord, long> WeighingRecordRepository { get; }
+    [field: AutoConstructorInject] public IRepository<Waybill, long> WaybillRepository { get; }
+    [field: AutoConstructorInject] public MaterialClient.Common.Services.WeighingMatchingService MatchingService { get; }
 }
