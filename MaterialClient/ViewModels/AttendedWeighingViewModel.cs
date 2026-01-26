@@ -1711,12 +1711,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     }
 
     [ReactiveCommand]
-    private void OpenSettings()
+    private async Task OpenSettings()
     {
         try
         {
+            var parentWin = GetParentWindow();
             var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
-            settingsWindow.Show();
+            
+            if (parentWin != null)
+                await settingsWindow.ShowDialog(parentWin);
+            else
+                settingsWindow.Show();
         }
         catch
         {
