@@ -1,0 +1,74 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.ViewModels"
+        x:Class="MaterialClient.Views.Dialogs.AddLprDialog"
+        x:DataType="vm:AddLprDialogViewModel"
+        Title="添加抓拍机"
+        Width="450" Height="300"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/fd-ico.ico">
+    
+    <Grid RowDefinitions="*,Auto" Margin="20">
+        <StackPanel Grid.Row="0" Spacing="16">
+            <TextBlock Text="车牌识别配置"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="Black"
+                       Margin="0,0,0,8" />
+            
+            <!-- Name -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="设备名称:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding Name}"
+                         Grid.Column="1"
+                         Watermark="camera_1" />
+            </Grid>
+            
+            <!-- IP -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="设备IP:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding Ip}"
+                         Grid.Column="1"
+                         Watermark="192.168.3.245" />
+            </Grid>
+            
+            <!-- Direction -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="进出方向:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <ComboBox SelectedIndex="{Binding DirectionIndex}"
+                          Grid.Column="1">
+                    <ComboBoxItem Content="进场" />
+                    <ComboBoxItem Content="出场" />
+                </ComboBox>
+            </Grid>
+        </StackPanel>
+        
+        <StackPanel Grid.Row="1" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    Spacing="12"
+                    Margin="0,20,0,0">
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Padding="24,8"
+                    CornerRadius="4" />
+            <Button Content="确定"
+                    Command="{Binding SaveCommand}"
+                    Classes="primary-button"
+                    Padding="24,8"
+                    CornerRadius="4" />
+        </StackPanel>
+    </Grid>
+</Window>
