@@ -306,12 +306,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="名称"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -320,12 +320,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="IP"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -334,12 +334,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="端口"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -348,12 +348,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="通道号"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -362,12 +362,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="用户名"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -376,12 +376,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="密码"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -390,12 +390,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="操作"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -414,72 +414,72 @@
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding Name}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Border Grid.Column="1" 
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding Ip}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Border Grid.Column="2" 
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding Port}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Border Grid.Column="3" 
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding Channel}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Border Grid.Column="4" 
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding UserName}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Border Grid.Column="5" 
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="****"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Button Grid.Column="6"
@@ -489,9 +489,10 @@
                                                     Background="Transparent"
                                                     Foreground="Red"
                                                     BorderThickness="0"
-                                                    Width="107"
-                                                    Height="35"
-                                                    Margin="0,0,0,0" />
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center"
+                                                    VerticalContentAlignment="Center"
+                                                    Height="35" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
@@ -531,12 +532,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="设备名称"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -545,12 +546,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="设备IP"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -559,12 +560,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="进出方向"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -573,12 +574,12 @@
                                         BorderThickness="1"
                                         Height="35"
                                         VerticalAlignment="Top"
-                                        HorizontalAlignment="Center"
-                                        Width="107"
+                                        HorizontalAlignment="Stretch"
                                         Background="#E6E6E6">
                                     <TextBlock Text="操作"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
+                                               TextAlignment="Center"
                                                FontSize="14"
                                                Foreground="Black" />
                                 </Border>
@@ -597,36 +598,36 @@
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding Name}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Border Grid.Column="1" 
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding Ip}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Border Grid.Column="2" 
                                                     BorderBrush="#E6E6E6" 
                                                     BorderThickness="1"
                                                     Height="35"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center"
-                                                    Width="107">
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch">
                                                 <TextBlock Text="{Binding DirectionText}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
+                                                           TextAlignment="Center"
                                                            FontSize="14" />
                                             </Border>
                                             <Button Grid.Column="3"
@@ -636,9 +637,10 @@
                                                     Background="Transparent"
                                                     Foreground="Red"
                                                     BorderThickness="0"
-                                                    Width="107"
-                                                    Height="35"
-                                                    Margin="0,0,0,0" />
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center"
+                                                    VerticalContentAlignment="Center"
+                                                    Height="35" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
