@@ -137,10 +137,18 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
     /// Print weighing ticket to PDF file using Microsoft Print to PDF
     /// </summary>
     /// <param name="dto">Ticket data to print</param>
-    /// <param name="outputPdfPath">Path where the PDF file should be saved</param>
+    /// <param name="outputPdfPath">Path where the PDF file should be saved (can be relative or absolute)</param>
     /// <returns>Path to the generated PDF file</returns>
     public string PrintToPdf(WeighingTicketDto dto, string outputPdfPath)
     {
+        // FIX: Convert relative path to absolute path at entry point
+        // This ensures PDF files are created in the application directory when
+        // the app is launched from System32 or any other working directory
+        if (!Path.IsPathRooted(outputPdfPath))
+        {
+            outputPdfPath = Path.Combine(AppContext.BaseDirectory, outputPdfPath);
+        }
+        
         // Ensure output directory exists
         var outputDir = Path.GetDirectoryName(outputPdfPath);
         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
@@ -174,10 +182,18 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
     /// Print an image file to PDF using Microsoft Print to PDF
     /// </summary>
     /// <param name="imagePath">Path to the image file</param>
-    /// <param name="outputPdfPath">Path where the PDF file should be saved</param>
+    /// <param name="outputPdfPath">Path where the PDF file should be saved (can be relative or absolute)</param>
     /// <returns>Path to the generated PDF file</returns>
     public string PrintImageToPdf(string imagePath, string outputPdfPath)
     {
+        // FIX: Convert relative path to absolute path at entry point
+        // This ensures PDF files are created in the application directory when
+        // the app is launched from System32 or any other working directory
+        if (!Path.IsPathRooted(outputPdfPath))
+        {
+            outputPdfPath = Path.Combine(AppContext.BaseDirectory, outputPdfPath);
+        }
+        
         if (!File.Exists(imagePath))
         {
             throw new FileNotFoundException($"Image file not found: {imagePath}");
@@ -229,8 +245,19 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
     /// <summary>
     /// Render weighing ticket to an image file (PNG) for preview.
     /// </summary>
+    /// <param name="dto">Ticket data to render</param>
+    /// <param name="outputImagePath">Path where the image should be saved (can be relative or absolute)</param>
+    /// <returns>Path to the generated image file</returns>
     public string RenderTicketToImage(WeighingTicketDto dto, string outputImagePath)
     {
+        // FIX: Convert relative path to absolute path at entry point
+        // This ensures image files are created in the application directory when
+        // the app is launched from System32 or any other working directory
+        if (!Path.IsPathRooted(outputImagePath))
+        {
+            outputImagePath = Path.Combine(AppContext.BaseDirectory, outputImagePath);
+        }
+        
         // Ensure output directory exists
         var outputDir = Path.GetDirectoryName(outputImagePath);
         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))

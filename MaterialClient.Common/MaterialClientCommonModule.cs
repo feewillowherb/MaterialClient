@@ -1,6 +1,7 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.LprAllInOne;
+using MaterialClient.Common.Utils;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -33,6 +34,11 @@ public class MaterialClientCommonModule : AbpModule
         // Configure SQLite connection from configuration
         var connectionString = configuration.GetConnectionString("Default")
                                ?? "Data Source=MaterialClient.db";
+        
+        // FIX: Convert relative database path to absolute path based on AppContext.BaseDirectory
+        // This ensures the database can be accessed when the app is launched from any working directory
+        // (e.g., C:\Windows\System32\ via Task Scheduler or Registry auto-start)
+        connectionString = DatabaseConnectionStringFactory.FixConnectionString(connectionString);
 
         services.Configure<AbpDbContextOptions>(options =>
         {

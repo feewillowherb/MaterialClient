@@ -41,6 +41,8 @@ MaterialClient is a Windows desktop application for material weighing management
   - Services: `MaterialClient.Common/Services/`
   - Entities: `MaterialClient.Common/Entities/`
   - DTOs: `MaterialClient.Common/Api/Dtos/`
+  - Static Factory Methods: `MaterialClient.Common/Utils/` (e.g., `DatabaseConnectionStringFactory`)
+  - Dependency Injection Factory Services: `MaterialClient.Common/Providers/` (e.g., `RecommendPlateNumberService`)
 
 ### Build Configuration
 
@@ -224,6 +226,13 @@ See `openspec/AGENTS.md` for complete OpenSpec workflow documentation.
 - **Attachment Storage**: Photos stored locally or uploaded to Aliyun OSS
 - **ID Generation**: Snowflake IDs require unique worker ID per instance
 
+### Code Organization Constraints
+
+- **Factory Method Pattern (MANDATORY)**: Configuration-unrelated logic (e.g., path resolution, resource creation) MUST be implemented in factory methods, NOT in business code or configuration initialization code
+- **Static Factory Methods**: Place in `MaterialClient.Common/Utils/` directory (e.g., `DatabaseConnectionStringFactory.FixConnectionString`)
+- **Dependency Injection Factory Services**: Place in `MaterialClient.Common/Providers/` directory (e.g., `RecommendPlateNumberService`)
+- **Separation of Concerns**: Business code and configuration initialization code should ONLY call factory methods, not implement path resolution or resource creation logic directly
+
 ## External Dependencies
 
 ### Hardware Services
@@ -268,6 +277,12 @@ MaterialClient/
 │   │   ├── Hardware/                 # Hardware service implementations
 │   │   ├── Hikvision/                # Camera integration
 │   │   └── LPRAllInOne/              # License plate recognition
+│   ├── Utils/                        # Static factory methods and utilities
+│   │   ├── DatabaseConnectionStringFactory.cs
+│   │   └── AttachmentPathUtils.cs
+│   ├── Providers/                    # Dependency injection factory services
+│   │   ├── RecommendPlateNumberService.cs
+│   │   └── PlateNumberValidator.cs
 │   └── MaterialClient.Common.csproj  # Dependencies
 ├── MaterialClient.Common.Tests/      # Unit and integration tests
 ├── MaterialClientToolkit/            # Utility tools
@@ -290,6 +305,10 @@ MaterialClient/
 5. Use dependency injection for service composition
 6. Write tests before or alongside implementation
 7. Ensure proper disposal of Rx subscriptions
+8. **Factory Method Pattern**: If implementing configuration-unrelated logic (path resolution, resource creation), create factory methods:
+   - Static factories → `MaterialClient.Common/Utils/`
+   - DI factories → `MaterialClient.Common/Providers/`
+   - Do NOT implement such logic directly in business code or configuration initialization
 
 ### When Fixing Bugs
 
