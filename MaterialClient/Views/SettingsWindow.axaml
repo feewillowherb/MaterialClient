@@ -118,7 +118,8 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         Grid.Column="1"
-                        Click="CloseButton_Click" />
+                        Click="CloseButton_Click"
+                        IsVisible="False" />
             </Grid>
         </Border>
 
