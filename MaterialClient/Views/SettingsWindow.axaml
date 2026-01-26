@@ -359,17 +359,7 @@
                                     <DataGridTextColumn Header="端口" Width="107" Binding="{Binding Port}" />
                                     <DataGridTextColumn Header="通道号" Width="107" Binding="{Binding Channel}" />
                                     <DataGridTextColumn Header="用户名" Width="107" Binding="{Binding UserName}" />
-                                    <DataGridTemplateColumn Header="密码" Width="107">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="****"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="密码" Width="107" Binding="{Binding Password}" />
                                     <DataGridTemplateColumn Header="操作" Width="107">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -444,6 +434,38 @@
                                     </DataGridTemplateColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
+
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="12"
+                              ColumnSpacing="12" Margin="0,12,0,0">
+                            <TextBlock Text="接收车牌识别地址:"
+                                       Grid.Row="0"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="120" />
+                            <TextBox Text="{Binding Urls}"
+                                     Grid.Row="0"
+                                     Grid.Column="1"
+                                     Watermark="localhost:9960 或 http://192.168.1.100:9960" />
+
+                            <TextBlock Text="车牌识别摄像头类型:"
+                                       Grid.Row="1"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Foreground="Black"
+                                       MinWidth="120" />
+                            <ComboBox ItemsSource="{Binding SnapshotCameraTypeOptions}"
+                                      SelectedItem="{Binding SnapshotCameraType}"
+                                      Grid.Row="1"
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ., Converter={StaticResource SnapshotCameraTypeConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
                         </StackPanel>
                     </Border>
 
@@ -465,26 +487,15 @@
                         <CheckBox Content="开机自动启动"
                                   IsChecked="{Binding EnableAutoStart}" />
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12"
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
                               ColumnSpacing="12">
-                            <TextBlock Text="服务地址:"
+                            <TextBlock Text="拍照码流类型:"
                                        Grid.Row="0"
                                        Grid.Column="0"
                                        VerticalAlignment="Center"
                                        Foreground="Black"
                                        MinWidth="120" />
-                            <TextBox Text="{Binding Urls}"
-                                     Grid.Row="0"
-                                     Grid.Column="1"
-                                     Watermark="localhost:9960 或 http://192.168.1.100:9960" />
-
-                            <TextBlock Text="拍照码流类型:"
-                                       Grid.Row="1"
-                                       Grid.Column="0"
-                                       VerticalAlignment="Center"
-                                       Foreground="Black"
-                                       MinWidth="120" />
-                            <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto">
+                            <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto">
                                 <ComboBox ItemsSource="{Binding StreamTypeOptions}"
                                           SelectedItem="{Binding CaptureStreamType}"
                                           Grid.Column="0"
@@ -503,24 +514,6 @@
                                         Padding="12,6"
                                         CornerRadius="4" />
                             </Grid>
-
-                            <TextBlock Text="拍照摄像头类型:"
-                                       Grid.Row="2"
-                                       Grid.Column="0"
-                                       VerticalAlignment="Center"
-                                       Foreground="Black"
-                                       MinWidth="120" />
-                            <ComboBox ItemsSource="{Binding SnapshotCameraTypeOptions}"
-                                      SelectedItem="{Binding SnapshotCameraType}"
-                                      Grid.Row="2"
-                                      Grid.Column="1"
-                                      HorizontalAlignment="Stretch">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding ., Converter={StaticResource SnapshotCameraTypeConverter}}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
                         </Grid>
                     </StackPanel>
                     </Border>
