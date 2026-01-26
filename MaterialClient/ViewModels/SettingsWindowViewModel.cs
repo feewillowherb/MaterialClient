@@ -60,7 +60,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     // Scale settings
     [Reactive] private string _scaleSerialPort = "COM3";
     [Reactive] private ScaleUnit _scaleUnit = ScaleUnit.Ton;
-    [Reactive] private ScaleType _scaleType = ScaleType.Default;
+    [Reactive] private ScaleType _scaleType = ScaleType.Yaohua;
 
     /// <summary>
     ///     Scale unit options for ComboBox
@@ -79,7 +79,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     /// </summary>
     public ObservableCollection<ScaleType> ScaleTypeOptions { get; } = new()
     {
-        ScaleType.Default,
+        ScaleType.Yaohua,
         ScaleType.DingSong
     };
 

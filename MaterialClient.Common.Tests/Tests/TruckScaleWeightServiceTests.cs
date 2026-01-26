@@ -562,7 +562,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
                 SerialPort = "COM3",
                 BaudRate = "9600",
                 CommunicationMethod = "TF0",
-                ScaleType = ScaleType.Default,
+                ScaleType = ScaleType.Yaohua,
                 ScaleUnit = ScaleUnit.Kg
             };
             
@@ -627,7 +627,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
             SerialPort = "COM3",
             BaudRate = "9600",
             CommunicationMethod = "TF0",
-            ScaleType = ScaleType.Default,
+            ScaleType = ScaleType.Yaohua,
             ScaleUnit = ScaleUnit.Kg
         };
         
