@@ -86,5 +86,8 @@
         <Compile Update="Views\LoadingDotsAnimation.axaml.cs">
           <DependentUpon>LoadingDotsAnimation.axaml</DependentUpon>
         </Compile>
+        <Compile Update="Views\Dialogs\AddCameraDialog.axaml.cs">
+          <DependentUpon>AddCameraDialog.axaml</DependentUpon>
+        </Compile>
     </ItemGroup>
 </Project>

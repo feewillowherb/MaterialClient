@@ -4,6 +4,9 @@ using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -11,6 +14,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Views.Dialogs;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -234,12 +238,24 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     }
 
     [ReactiveCommand]
-    private void AddCamera()
+    private async Task AddCameraAsync()
     {
-        CameraConfigs.Add(new CameraConfigViewModel
+        var dialogViewModel = new AddCameraDialogViewModel
         {
-            Name = $"camera_{CameraConfigs.Count + 1}"
-        });
+            Name = $"camera_{CameraConfigs.Count + 1}",
+            Port = "8000",
+            Channel = "1",
+            UserName = "admin"
+        };
+
+        var dialog = new AddCameraDialog(dialogViewModel);
+        var window = GetWindow();
+        var result = await dialog.ShowDialog<CameraConfigViewModel?>(window);
+
+        if (result != null)
+        {
+            CameraConfigs.Add(result);
+        }
     }
 
     [ReactiveCommand]
@@ -249,13 +265,77 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     }
 
     [ReactiveCommand]
-    private void AddLicensePlateRecognition()
+    private async Task AddLicensePlateRecognitionAsync()
     {
-        LicensePlateRecognitionConfigs.Add(new LicensePlateRecognitionConfigViewModel
+        var dialogViewModel = new AddLprDialogViewModel
         {
             Name = $"camera_{LicensePlateRecognitionConfigs.Count + 1}",
             Direction = LicensePlateDirection.In
-        });
+        };
+
+        var dialog = new AddLprDialog(dialogViewModel);
+        var window = GetWindow();
+        var result = await dialog.ShowDialog<LicensePlateRecognitionConfigViewModel?>(window);
+
+        if (result != null)
+        {
+            LicensePlateRecognitionConfigs.Add(result);
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task EditCameraAsync(CameraConfigViewModel? config)
+    {
+        if (config == null) return;
+
+        var dialogViewModel = new AddCameraDialogViewModel
+        {
+            Name = config.Name,
+            Ip = config.Ip,
+            Port = config.Port,
+            Channel = config.Channel,
+            UserName = config.UserName,
+            Password = config.Password
+        };
+
+        var dialog = new AddCameraDialog(dialogViewModel);
+        var window = GetWindow();
+        var result = await dialog.ShowDialog<CameraConfigViewModel?>(window);
+
+        if (result != null)
+        {
+            var index = CameraConfigs.IndexOf(config);
+            if (index >= 0)
+            {
+                CameraConfigs[index] = result;
+            }
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task EditLprAsync(LicensePlateRecognitionConfigViewModel? config)
+    {
+        if (config == null) return;
+
+        var dialogViewModel = new AddLprDialogViewModel
+        {
+            Name = config.Name,
+            Ip = config.Ip,
+            Direction = config.Direction
+        };
+
+        var dialog = new AddLprDialog(dialogViewModel);
+        var window = GetWindow();
+        var result = await dialog.ShowDialog<LicensePlateRecognitionConfigViewModel?>(window);
+
+        if (result != null)
+        {
+            var index = LicensePlateRecognitionConfigs.IndexOf(config);
+            if (index >= 0)
+            {
+                LicensePlateRecognitionConfigs[index] = result;
+            }
+        }
     }
 
     [ReactiveCommand]
@@ -297,6 +377,21 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Show error message - in a real app you'd use a dialog service
             // Error: ex.Message
         }
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private Window GetWindow()
+    {
+        // Helper to get current window instance for ShowDialog parent
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.Windows.FirstOrDefault(w => w.DataContext == this) 
+                   ?? throw new InvalidOperationException("Cannot find window");
+        }
+        throw new InvalidOperationException("Application is not running in desktop mode");
     }
 
     #endregion
@@ -463,7 +558,11 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     public LicensePlateRecognitionConfigViewModel()
     {
         this.WhenAnyValue(x => x.Direction)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(DirectionIndex)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(DirectionIndex));
+                this.RaisePropertyChanged(nameof(DirectionText));
+            });
     }
 
     /// <summary>
@@ -477,4 +576,9 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
             if (value is >= 0 and <= 1) Direction = (LicensePlateDirection)value;
         }
     }
+
+    /// <summary>
+    ///     Direction as text for display
+    /// </summary>
+    public string DirectionText => Direction == LicensePlateDirection.In ? "进场" : "出场";
 }
