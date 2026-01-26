@@ -19,24 +19,30 @@ public partial class SettingsWindow : Window, ITransientDependency
     private readonly Dictionary<string, ListBoxItem> _navigationItems = new();
     private bool _isNavigationClick = false; // Prevent recursive updates
 
-    public SettingsWindow(SettingsWindowViewModel viewModel)
+
+    public SettingsWindow() : this(null)
+    {
+    }
+
+    public SettingsWindow(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
+        if (Design.IsDesignMode) return;
+        var viewModel = serviceProvider?.GetService(typeof(SettingsWindowViewModel)) as SettingsWindowViewModel;
+
+
         DataContext = viewModel;
 
         // Subscribe to close requested event
-        viewModel.CloseRequested += OnCloseRequested;
+        viewModel?.CloseRequested += OnCloseRequested;
     }
 
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        
+
         // Initialize section tracking after window is loaded
-        Dispatcher.UIThread.Post(() =>
-        {
-            InitializeSectionTracking();
-        }, DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(() => { InitializeSectionTracking(); }, DispatcherPriority.Loaded);
     }
 
     private void InitializeSectionTracking()
@@ -122,7 +128,7 @@ public partial class SettingsWindow : Window, ITransientDependency
                 // Calculate a score: lower is better
                 // Prefer sections whose top is at or slightly above the viewport top
                 double score;
-                
+
                 if (sectionTopInViewport <= threshold)
                 {
                     // Section top is at or above threshold - this is ideal
@@ -145,7 +151,7 @@ public partial class SettingsWindow : Window, ITransientDependency
         }
 
         // Update navigation selection
-        if (activeSection != null && 
+        if (activeSection != null &&
             _navigationItems.TryGetValue(activeSection, out var navItem) &&
             NavigationList != null &&
             NavigationList.SelectedItem != navItem) // Only update if different to avoid unnecessary updates

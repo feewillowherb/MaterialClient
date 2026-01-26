@@ -45,6 +45,57 @@
             <Setter Property="Margin" Value="0,20,0,16"/>
             <Setter Property="Padding" Value="0"/>
         </Style>
+        
+        <!-- DataGrid Styles for Settings Tables -->
+        <Style Selector="DataGrid.settings-table">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="CanUserResizeColumns" Value="False"/>
+            <Setter Property="CanUserReorderColumns" Value="False"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#E6E6E6"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="RowHeight" Value="35"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        
+        <Style Selector="DataGrid.settings-table > DataGridColumnHeader">
+            <Setter Property="Background" Value="#E6E6E6"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#E6E6E6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        
+        <Style Selector="DataGrid.settings-table > DataGridRow">
+            <Setter Property="Background" Value="White"/>
+        </Style>
+        
+        <Style Selector="DataGrid.settings-table > DataGridRow:selected">
+            <Setter Property="Background" Value="#F0F0F0"/>
+        </Style>
+        
+        <Style Selector="DataGrid.settings-table > DataGridCell">
+            <Setter Property="BorderBrush" Value="#E6E6E6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        
+        <Style Selector="DataGrid.settings-table > DataGridCell > TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        
     </Window.Styles>
 
     <Grid RowDefinitions="50,*" ColumnDefinitions="160,*">
@@ -285,218 +336,58 @@
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Button Content="增加摄像头"
-                                        Command="{Binding AddCameraCommand}"
-                                        Grid.Column="1"
-                                        Background="Transparent"
-                                        Foreground="#2196F3"
-                                        BorderThickness="0"
-                                        Padding="0"
-                                        Margin="20,10,0,10"
-                                        HorizontalAlignment="Left" />
-                            </Grid>
+                            <Button Content="增加摄像头"
+                                    Command="{Binding AddCameraCommand}"
+                                    Background="#4A85F9"
+                                    Foreground="White"
+                                    FontWeight="Bold"
+                                    FontSize="14"
+                                    Width="120"
+                                    Height="35"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,10,0,10"
+                                    CornerRadius="4" />
                             
                             <!-- Camera List Display -->
-                            <Grid ColumnDefinitions="107,107,107,107,107,107,Auto" 
-                                  Margin="0,0,0,0">
-                                <!-- Table Header -->
-                                <Border Grid.Column="0" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="名称"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="1" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="IP"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="2" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="端口"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="3" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="通道号"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="4" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="用户名"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="5" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="密码"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="6" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="操作"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                            </Grid>
-
-                            <ListBox ItemsSource="{Binding CameraConfigs}" 
-                                     BorderThickness="0"
-                                     Background="Transparent"
-                                     Margin="0,0,0,0">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:CameraConfigViewModel">
-                                        <Grid ColumnDefinitions="107,107,107,107,107,107,Auto" 
-                                              Margin="0,0,0,0"
-                                              Height="35">
-                                            <Border Grid.Column="0" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding Name}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Border Grid.Column="1" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding Ip}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Border Grid.Column="2" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding Port}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Border Grid.Column="3" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding Channel}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Border Grid.Column="4" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding UserName}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Border Grid.Column="5" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
+                            <DataGrid x:Name="CameraDataGrid"
+                                      ItemsSource="{Binding CameraConfigs}"
+                                      Classes="settings-table"
+                                      MaxHeight="300">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="名称" Width="107" Binding="{Binding Name}" />
+                                    <DataGridTextColumn Header="IP" Width="107" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="端口" Width="107" Binding="{Binding Port}" />
+                                    <DataGridTextColumn Header="通道号" Width="107" Binding="{Binding Channel}" />
+                                    <DataGridTextColumn Header="用户名" Width="107" Binding="{Binding UserName}" />
+                                    <DataGridTemplateColumn Header="密码" Width="107">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
                                                 <TextBlock Text="****"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
                                                            TextAlignment="Center"
                                                            FontSize="14" />
-                                            </Border>
-                                            <Button Grid.Column="6"
-                                                    Content="删除"
-                                                    Command="{Binding $parent[ListBox].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Background="Transparent"
-                                                    Foreground="Red"
-                                                    BorderThickness="0"
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center"
-                                                    Height="35" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="操作" Width="107">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="删除"
+                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent"
+                                                        Foreground="Red"
+                                                        BorderThickness="0"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Center"
+                                                        VerticalContentAlignment="Center"
+                                                        Height="35" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </StackPanel>
                     </Border>
 
@@ -516,135 +407,43 @@
                         <StackPanel Spacing="12">
                             <Button Content="增加抓拍机"
                                     Command="{Binding AddLicensePlateRecognitionCommand}"
-                                    Background="Transparent"
-                                    Foreground="#2196F3"
-                                    BorderThickness="0"
-                                    Padding="0"
-                                    Margin="20,10,0,10"
-                                    HorizontalAlignment="Left" />
+                                    Background="#4A85F9"
+                                    Foreground="White"
+                                    FontWeight="Bold"
+                                    FontSize="14"
+                                    Width="120"
+                                    Height="35"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,10,0,10"
+                                    CornerRadius="4" />
                             
                             <!-- LPR List Display -->
-                            <Grid ColumnDefinitions="107,107,107,Auto" 
-                                  Margin="0,0,0,0">
-                                <!-- Table Header -->
-                                <Border Grid.Column="0" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="设备名称"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="1" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="设备IP"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="2" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="进出方向"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                                <Border Grid.Column="3" 
-                                        BorderBrush="#E6E6E6" 
-                                        BorderThickness="1"
-                                        Height="35"
-                                        VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Background="#E6E6E6">
-                                    <TextBlock Text="操作"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="14"
-                                               Foreground="Black" />
-                                </Border>
-                            </Grid>
-
-                            <ListBox ItemsSource="{Binding LicensePlateRecognitionConfigs}" 
-                                     BorderThickness="0"
-                                     Background="Transparent"
-                                     Margin="0,0,0,0">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:LicensePlateRecognitionConfigViewModel">
-                                        <Grid ColumnDefinitions="107,107,107,Auto" 
-                                              Margin="0,0,0,0"
-                                              Height="35">
-                                            <Border Grid.Column="0" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding Name}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Border Grid.Column="1" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding Ip}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Border Grid.Column="2" 
-                                                    BorderBrush="#E6E6E6" 
-                                                    BorderThickness="1"
-                                                    Height="35"
-                                                    VerticalAlignment="Stretch"
-                                                    HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{Binding DirectionText}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           FontSize="14" />
-                                            </Border>
-                                            <Button Grid.Column="3"
-                                                    Content="删除"
-                                                    Command="{Binding $parent[ListBox].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Background="Transparent"
-                                                    Foreground="Red"
-                                                    BorderThickness="0"
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center"
-                                                    Height="35" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                            <DataGrid x:Name="LprDataGrid"
+                                      ItemsSource="{Binding LicensePlateRecognitionConfigs}"
+                                      Classes="settings-table"
+                                      MaxHeight="300">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="设备名称" Width="107" Binding="{Binding Name}" />
+                                    <DataGridTextColumn Header="设备IP" Width="107" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="进出方向" Width="107" Binding="{Binding DirectionText}" />
+                                    <DataGridTemplateColumn Header="操作" Width="107">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="删除"
+                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent"
+                                                        Foreground="Red"
+                                                        BorderThickness="0"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Center"
+                                                        VerticalContentAlignment="Center"
+                                                        Height="35" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </StackPanel>
                     </Border>
 
