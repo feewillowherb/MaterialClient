@@ -292,7 +292,7 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
 
         return session;
     }
-
+    [UnitOfWork]
     public async Task<UserSession?> GetCurrentSessionAsync()
     {
         return await _sessionRepository.FirstOrDefaultAsync();

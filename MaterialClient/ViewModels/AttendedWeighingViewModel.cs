@@ -1730,6 +1730,30 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     }
 
     [ReactiveCommand]
+    private async Task OpenProjectInfo()
+    {
+        try
+        {
+            var parentWin = GetParentWindow();
+            var viewModel = _serviceProvider.GetRequiredService<ProjectInfoWindowViewModel>();
+            
+            // Initialize data before showing window
+            await viewModel.InitializeAsync();
+            
+            var projectInfoWindow = new ProjectInfoWindow(viewModel);
+            
+            if (parentWin != null)
+                await projectInfoWindow.ShowDialog(parentWin);
+            else
+                projectInfoWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "打开项目信息窗口失败");
+        }
+    }
+
+    [ReactiveCommand]
     private void OpenImageViewer(string? imagePath)
     {
         if (string.IsNullOrEmpty(imagePath))
