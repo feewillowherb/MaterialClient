@@ -28,9 +28,9 @@ public class ScaleSettings
     public ScaleUnit ScaleUnit { get; set; } = ScaleUnit.Kg;
 
     /// <summary>
-    ///     Scale type (default: Default)
+    ///     Scale type (default: Yaohua)
     /// </summary>
-    public ScaleType ScaleType { get; set; } = ScaleType.Default;
+    public ScaleType ScaleType { get; set; } = ScaleType.Yaohua;
 
     /// <summary>
     ///     判断配置是否有效

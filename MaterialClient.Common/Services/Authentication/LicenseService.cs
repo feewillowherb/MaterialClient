@@ -195,7 +195,7 @@ public partial class LicenseService : DomainService, ILicenseService
 
         return license;
     }
-
+    [UnitOfWork]
     public async Task<LicenseInfo?> GetCurrentLicenseAsync()
     {
         return await _licenseRepository.FirstOrDefaultAsync();
