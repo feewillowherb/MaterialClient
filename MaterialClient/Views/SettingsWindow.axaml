@@ -10,99 +10,99 @@
         SystemDecorations="None"
         Icon="/Assets/fd-ico.ico"
         CanResize="False">
-    
+
     <Window.Styles>
         <!-- Navigation ListBox Styles -->
         <Style Selector="ListBox.settings-nav">
-            <Setter Property="Background" Value="#F5F5F5"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#F5F5F5" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
-        
+
         <Style Selector="ListBox.settings-nav > ListBoxItem">
-            <Setter Property="Height" Value="50"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Height" Value="50" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
-        
+
         <Style Selector="ListBox.settings-nav > ListBoxItem:pointerover">
-            <Setter Property="Background" Value="#E8E8E8"/>
+            <Setter Property="Background" Value="#E8E8E8" />
         </Style>
-        
+
         <Style Selector="ListBox.settings-nav > ListBoxItem:selected">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#6398FF"/>
-            <Setter Property="BorderBrush" Value="#6398FF"/>
-            <Setter Property="BorderThickness" Value="3,0,0,0"/>
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#6398FF" />
+            <Setter Property="BorderBrush" Value="#6398FF" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
         </Style>
-        
+
         <!-- Section Header Style -->
         <Style Selector="Border.section-header">
-            <Setter Property="BorderBrush" Value="#E6E6E6"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
-            <Setter Property="Margin" Value="0,20,0,16"/>
-            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderBrush" Value="#E6E6E6" />
+            <Setter Property="BorderThickness" Value="0,0,0,2" />
+            <Setter Property="Margin" Value="0,20,0,16" />
+            <Setter Property="Padding" Value="0" />
         </Style>
-        
+
         <!-- DataGrid Styles for Settings Tables -->
         <Style Selector="DataGrid.settings-table">
-            <Setter Property="AutoGenerateColumns" Value="False"/>
-            <Setter Property="IsReadOnly" Value="True"/>
-            <Setter Property="CanUserResizeColumns" Value="False"/>
-            <Setter Property="CanUserReorderColumns" Value="False"/>
-            <Setter Property="GridLinesVisibility" Value="All"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#E6E6E6"/>
-            <Setter Property="SelectionMode" Value="Single"/>
-            <Setter Property="HeadersVisibility" Value="Column"/>
-            <Setter Property="RowHeight" Value="35"/>
-            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="AutoGenerateColumns" Value="False" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="CanUserResizeColumns" Value="False" />
+            <Setter Property="CanUserReorderColumns" Value="False" />
+            <Setter Property="GridLinesVisibility" Value="All" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#E6E6E6" />
+            <Setter Property="SelectionMode" Value="Single" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="RowHeight" Value="35" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
         </Style>
-        
+
         <Style Selector="DataGrid.settings-table > DataGridColumnHeader">
-            <Setter Property="Background" Value="#E6E6E6"/>
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="BorderBrush" Value="#E6E6E6"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="#E6E6E6" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Height" Value="35" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="BorderBrush" Value="#E6E6E6" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
-        
+
         <Style Selector="DataGrid.settings-table > DataGridRow">
-            <Setter Property="Background" Value="White"/>
+            <Setter Property="Background" Value="White" />
         </Style>
-        
+
         <Style Selector="DataGrid.settings-table > DataGridRow:selected">
-            <Setter Property="Background" Value="#F0F0F0"/>
+            <Setter Property="Background" Value="#F0F0F0" />
         </Style>
-        
+
         <Style Selector="DataGrid.settings-table > DataGridCell">
-            <Setter Property="BorderBrush" Value="#E6E6E6"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="VerticalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#E6E6E6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
-        
+
         <Style Selector="DataGrid.settings-table > DataGridCell > TextBlock">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="TextAlignment" Value="Center"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="14" />
         </Style>
-        
+
     </Window.Styles>
 
     <Grid RowDefinitions="50,*" ColumnDefinitions="160,*">
         <!-- Custom Title Bar -->
-        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" 
-                Background="#6498FE" 
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                Background="#6498FE"
                 HorizontalAlignment="Stretch">
             <Grid ColumnDefinitions="*,Auto" Margin="15,0">
                 <TextBlock Text="系统设置"
@@ -134,12 +134,12 @@
 
         <!-- Left Navigation Panel -->
         <ListBox x:Name="NavigationList"
-Grid.Row="1"
-Grid.Column="0"
-Classes="settings-nav"
-SelectionChanged="OnNavigationSelectionChanged"
-BorderThickness="1,0,1,1"
-BorderBrush="LightGray">
+                 Grid.Row="1"
+                 Grid.Column="0"
+                 Classes="settings-nav"
+                 SelectionChanged="OnNavigationSelectionChanged"
+                 BorderThickness="1,0,1,1"
+                 BorderBrush="LightGray">
             <ListBoxItem Tag="ScaleSettings" x:Name="ScaleSettingsNavItem">地磅设置</ListBoxItem>
             <ListBoxItem Tag="WeighingSettings" x:Name="WeighingSettingsNavItem">称重设置</ListBoxItem>
             <ListBoxItem Tag="CameraSettings" x:Name="CameraSettingsNavItem">摄像头设置</ListBoxItem>
@@ -151,218 +151,224 @@ BorderBrush="LightGray">
 
         <!-- Right Content Panel -->
         <Border Grid.Row="1" Grid.Column="1"
-BorderBrush="LightGray"
-BorderThickness="0,0,1,1">
+                BorderBrush="LightGray"
+                BorderThickness="0,0,1,1">
             <ScrollViewer x:Name="ContentScrollViewer"
-VerticalScrollBarVisibility="Auto"
-HorizontalScrollBarVisibility="Hidden">
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Hidden">
                 <StackPanel Spacing="0" Margin="0">
                     <!-- Scale Settings Group -->
                     <Border x:Name="ScaleSettings"
-Classes="section-header"
-Padding="0,0,0,0">
+                            Classes="section-header"
+                            Padding="0,0,0,0">
                         <TextBlock Text="地磅设置"
-FontSize="14"
-Background="White"
-Foreground="Black"
-Margin="10,0,0,-15"
-Width="80"
-TextAlignment="Center" />
+                                   FontSize="14"
+                                   Background="White"
+                                   Foreground="Black"
+                                   Margin="20,0,0,-15"
+                                   Width="64"
+                                   HorizontalAlignment="Left"
+                                   TextAlignment="Center" />
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
-ColumnSpacing="12">
-                            <TextBlock Text="串口:"
-Grid.Row="0"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-Width="120" />
-                            <ComboBox ItemsSource="{Binding AvailableSerialPorts}"
-SelectedItem="{Binding ScaleSerialPort}"
-Grid.Row="0"
-Grid.Column="1"
-PlaceholderText="请选择串口" />
+                                  ColumnSpacing="12">
+                                <TextBlock Text="串口:"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           Width="120" />
+                                <ComboBox ItemsSource="{Binding AvailableSerialPorts}"
+                                          SelectedItem="{Binding ScaleSerialPort}"
+                                          Grid.Row="0"
+                                          Grid.Column="1"
+                                          PlaceholderText="请选择串口" />
 
-                            <TextBlock Text="波特率:"
-Grid.Row="1"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-Width="120" />
-                            <TextBox Text="{Binding ScaleBaudRate}"
-Grid.Row="1"
-Grid.Column="1"
-Watermark="9600" />
+                                <TextBlock Text="波特率:"
+                                           Grid.Row="1"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           Width="120" />
+                                <TextBox Text="{Binding ScaleBaudRate}"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         Watermark="9600" />
 
-                            <TextBlock Text="通讯方式:"
-Grid.Row="2"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-Width="120" />
-                            <TextBox Text="{Binding ScaleCommunicationMethod}"
-Grid.Row="2"
-Grid.Column="1"
-Watermark="TF0" />
+                                <TextBlock Text="通讯方式:"
+                                           Grid.Row="2"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           Width="120" />
+                                <TextBox Text="{Binding ScaleCommunicationMethod}"
+                                         Grid.Row="2"
+                                         Grid.Column="1"
+                                         Watermark="TF0" />
 
-                            <TextBlock Text="地磅单位:"
-Grid.Row="3"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-Width="120" />
-                            <ComboBox ItemsSource="{Binding ScaleUnitOptions}"
-SelectedItem="{Binding ScaleUnit}"
-Grid.Row="3"
-Grid.Column="1"
-HorizontalAlignment="Stretch">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding ., Converter={StaticResource ScaleUnitConverter}}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
+                                <TextBlock Text="地磅单位:"
+                                           Grid.Row="3"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           Width="120" />
+                                <ComboBox ItemsSource="{Binding ScaleUnitOptions}"
+                                          SelectedItem="{Binding ScaleUnit}"
+                                          Grid.Row="3"
+                                          Grid.Column="1"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock
+                                                Text="{Binding ., Converter={StaticResource ScaleUnitConverter}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
 
-                            <TextBlock Text="地磅类型:"
-Grid.Row="4"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-Width="120" />
-                            <ComboBox ItemsSource="{Binding ScaleTypeOptions}"
-SelectedItem="{Binding ScaleType}"
-Grid.Row="4"
-Grid.Column="1"
-HorizontalAlignment="Stretch">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding ., Converter={StaticResource ScaleTypeConverter}}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
+                                <TextBlock Text="地磅类型:"
+                                           Grid.Row="4"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           Width="120" />
+                                <ComboBox ItemsSource="{Binding ScaleTypeOptions}"
+                                          SelectedItem="{Binding ScaleType}"
+                                          Grid.Row="4"
+                                          Grid.Column="1"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock
+                                                Text="{Binding ., Converter={StaticResource ScaleTypeConverter}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                             </Grid>
                         </StackPanel>
                     </Border>
 
                     <!-- Weighing Settings Group -->
                     <Border x:Name="WeighingSettings"
-Classes="section-header"
-Padding="0,0,0,0">
+                            Classes="section-header"
+                            Padding="0,0,0,0">
                         <TextBlock Text="称重设置"
-FontSize="14"
-Background="White"
-Foreground="Black"
-Margin="10,0,0,-15"
-Width="80"
-TextAlignment="Center" />
+                                   FontSize="14"
+                                   Background="White"
+                                   Foreground="Black"
+                                   Margin="20,0,0,-15"
+                                   Width="64"
+                                   HorizontalAlignment="Left"
+                                   TextAlignment="Center" />
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
-ColumnSpacing="12">
-                            <TextBlock Text="最小称重阈值(吨):"
-Grid.Row="0"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding MinWeightThreshold}"
-Grid.Row="0"
-Grid.Column="1"
-Watermark="0.5" />
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                                  RowSpacing="12"
+                                  ColumnSpacing="12">
+                                <TextBlock Text="最小称重阈值(吨):"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding MinWeightThreshold}"
+                                         Grid.Row="0"
+                                         Grid.Column="1"
+                                         Watermark="0.5" />
 
-                            <TextBlock Text="重量稳定性阈值(吨):"
-Grid.Row="1"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding WeightStabilityThreshold}"
-Grid.Row="1"
-Grid.Column="1"
-Watermark="0.05" />
+                                <TextBlock Text="重量稳定性阈值(吨):"
+                                           Grid.Row="1"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding WeightStabilityThreshold}"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         Watermark="0.05" />
 
-                            <TextBlock Text="稳定性窗口时间(毫秒):"
-Grid.Row="2"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding StabilityWindowMs}"
-Grid.Row="2"
-Grid.Column="1"
-Watermark="3000" />
+                                <TextBlock Text="稳定性窗口时间(毫秒):"
+                                           Grid.Row="2"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding StabilityWindowMs}"
+                                         Grid.Row="2"
+                                         Grid.Column="1"
+                                         Watermark="3000" />
 
-                            <TextBlock Text="稳定性检查间隔(毫秒):"
-Grid.Row="3"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding StabilityCheckIntervalMs}"
-Grid.Row="3"
-Grid.Column="1"
-Watermark="200" />
+                                <TextBlock Text="稳定性检查间隔(毫秒):"
+                                           Grid.Row="3"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding StabilityCheckIntervalMs}"
+                                         Grid.Row="3"
+                                         Grid.Column="1"
+                                         Watermark="200" />
 
-                            <TextBlock Text="匹配最大时间间隔(分钟):"
-Grid.Row="4"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding MaxIntervalMinutes}"
-Grid.Row="4"
-Grid.Column="1"
-Watermark="300" />
+                                <TextBlock Text="匹配最大时间间隔(分钟):"
+                                           Grid.Row="4"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding MaxIntervalMinutes}"
+                                         Grid.Row="4"
+                                         Grid.Column="1"
+                                         Watermark="300" />
 
-                            <TextBlock Text="匹配最小重量差(吨):"
-Grid.Row="5"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding MinWeightDiff}"
-Grid.Row="5"
-Grid.Column="1"
-Watermark="1" />
-                        </Grid>
-                    </StackPanel>
+                                <TextBlock Text="匹配最小重量差(吨):"
+                                           Grid.Row="5"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding MinWeightDiff}"
+                                         Grid.Row="5"
+                                         Grid.Column="1"
+                                         Watermark="1" />
+                            </Grid>
+                        </StackPanel>
                     </Border>
 
                     <!-- Camera Settings Group -->
                     <Border x:Name="CameraSettings"
-Classes="section-header"
-Padding="0,0,0,0">
+                            Classes="section-header"
+                            Padding="0,0,0,0">
                         <TextBlock Text="摄像头设置"
-FontSize="14"
-Background="White"
-Foreground="Black"
-Margin="10,0,0,-15"
-Width="80"
-TextAlignment="Center" />
+                                   FontSize="14"
+                                   Background="White"
+                                   Foreground="Black"
+                                   Margin="20,0,0,-15"
+                                   Width="80"
+                                   HorizontalAlignment="Left"
+                                   TextAlignment="Center" />
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
                             <Button Content="增加摄像头"
-Command="{Binding AddCameraCommand}"
-Background="#4A85F9"
-Foreground="White"
-FontWeight="Bold"
-FontSize="14"
-Width="120"
-Height="35"
-HorizontalAlignment="Left"
-Margin="0,10,0,10"
-CornerRadius="4" />
+                                    Command="{Binding AddCameraCommand}"
+                                    Background="#4A85F9"
+                                    Foreground="White"
+                                    FontWeight="Bold"
+                                    FontSize="14"
+                                    Width="120"
+                                    Height="35"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,10,0,10"
+                                    CornerRadius="4" />
 
                             <!-- Camera List Display -->
                             <DataGrid x:Name="CameraDataGrid"
-ItemsSource="{Binding CameraConfigs}"
-Classes="settings-table"
-MaxHeight="300">
+                                      ItemsSource="{Binding CameraConfigs}"
+                                      Classes="settings-table"
+                                      MaxHeight="300">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="名称" Width="107" Binding="{Binding Name}" />
                                     <DataGridTextColumn Header="IP" Width="107" Binding="{Binding Ip}" />
@@ -374,84 +380,85 @@ MaxHeight="300">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <Button Content="删除"
-Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
-CommandParameter="{Binding}"
-Background="Transparent"
-Foreground="Red"
-BorderThickness="0"
-HorizontalAlignment="Stretch"
-HorizontalContentAlignment="Center"
-VerticalContentAlignment="Center"
-Height="35" />
+                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent"
+                                                        Foreground="Red"
+                                                        BorderThickness="0"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Center"
+                                                        VerticalContentAlignment="Center"
+                                                        Height="35" />
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
-ColumnSpacing="12" Margin="0,12,0,0">
-                            <TextBlock Text="拍照码流类型:"
-Grid.Row="0"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="120" />
-                            <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto">
-                                <ComboBox ItemsSource="{Binding StreamTypeOptions}"
-SelectedItem="{Binding CaptureStreamType}"
-Grid.Column="0"
-HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock
-Text="{Binding ., Converter={StaticResource StreamTypeConverter}}" />
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                <Button Content="测试拍照"
-Grid.Column="1"
-Command="{Binding TestCaptureCommand}"
-Classes="primary-button"
-Margin="8,0,0,0"
-Padding="12,6"
-CornerRadius="4" />
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
+                                  ColumnSpacing="12" Margin="0,12,0,0">
+                                <TextBlock Text="拍照码流类型:"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto">
+                                    <ComboBox ItemsSource="{Binding StreamTypeOptions}"
+                                              SelectedItem="{Binding CaptureStreamType}"
+                                              Grid.Column="0"
+                                              HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock
+                                                    Text="{Binding ., Converter={StaticResource StreamTypeConverter}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <Button Content="测试拍照"
+                                            Grid.Column="1"
+                                            Command="{Binding TestCaptureCommand}"
+                                            Classes="primary-button"
+                                            Margin="8,0,0,0"
+                                            Padding="12,6"
+                                            CornerRadius="4" />
+                                </Grid>
                             </Grid>
-                        </Grid>
                         </StackPanel>
                     </Border>
 
                     <!-- License Plate Recognition Settings Group -->
                     <Border x:Name="LprSettings"
-Classes="section-header"
-Padding="0,0,0,0">
+                            Classes="section-header"
+                            Padding="0,0,0,0">
                         <TextBlock Text="车牌识别设置"
-FontSize="14"
-Background="White"
-Foreground="Black"
-Margin="10,0,0,-15"
-Width="80"
-TextAlignment="Center" />
+                                   FontSize="14"
+                                   Background="White"
+                                   Foreground="Black"
+                                   Margin="20,0,0,-15"
+                                   Width="96"
+                                   HorizontalAlignment="Left"
+                                   TextAlignment="Center" />
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
                             <Button Content="增加抓拍机"
-Command="{Binding AddLicensePlateRecognitionCommand}"
-Background="#4A85F9"
-Foreground="White"
-FontWeight="Bold"
-FontSize="14"
-Width="120"
-Height="35"
-HorizontalAlignment="Left"
-Margin="0,10,0,10"
-CornerRadius="4" />
+                                    Command="{Binding AddLicensePlateRecognitionCommand}"
+                                    Background="#4A85F9"
+                                    Foreground="White"
+                                    FontWeight="Bold"
+                                    FontSize="14"
+                                    Width="120"
+                                    Height="35"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,10,0,10"
+                                    CornerRadius="4" />
 
                             <!-- LPR List Display -->
                             <DataGrid x:Name="LprDataGrid"
-ItemsSource="{Binding LicensePlateRecognitionConfigs}"
-Classes="settings-table"
-MaxHeight="300">
+                                      ItemsSource="{Binding LicensePlateRecognitionConfigs}"
+                                      Classes="settings-table"
+                                      MaxHeight="300">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="设备名称" Width="107" Binding="{Binding Name}" />
                                     <DataGridTextColumn Header="设备IP" Width="107" Binding="{Binding Ip}" />
@@ -460,179 +467,182 @@ MaxHeight="300">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <Button Content="删除"
-Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
-CommandParameter="{Binding}"
-Background="Transparent"
-Foreground="Red"
-BorderThickness="0"
-HorizontalAlignment="Stretch"
-HorizontalContentAlignment="Center"
-VerticalContentAlignment="Center"
-Height="35" />
+                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent"
+                                                        Foreground="Red"
+                                                        BorderThickness="0"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Center"
+                                                        VerticalContentAlignment="Center"
+                                                        Height="35" />
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="12"
-ColumnSpacing="12" Margin="0,12,0,0">
-                            <TextBlock Text="接收车牌识别地址:"
-Grid.Row="0"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="120" />
-                            <TextBox Text="{Binding Urls}"
-Grid.Row="0"
-Grid.Column="1"
-Watermark="localhost:9960 或 http://192.168.1.100:9960" />
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="12"
+                                  ColumnSpacing="12" Margin="0,12,0,0">
+                                <TextBlock Text="接收车牌识别地址:"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <TextBox Text="{Binding Urls}"
+                                         Grid.Row="0"
+                                         Grid.Column="1"
+                                         Watermark="localhost:9960 或 http://192.168.1.100:9960" />
 
-                            <TextBlock Text="车牌识别摄像头类型:"
-Grid.Row="1"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="120" />
-                            <ComboBox ItemsSource="{Binding SnapshotCameraTypeOptions}"
-SelectedItem="{Binding SnapshotCameraType}"
-Grid.Row="1"
-Grid.Column="1"
-HorizontalAlignment="Stretch">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock
-Text="{Binding ., Converter={StaticResource SnapshotCameraTypeConverter}}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </Grid>
+                                <TextBlock Text="车牌识别摄像头类型:"
+                                           Grid.Row="1"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <ComboBox ItemsSource="{Binding SnapshotCameraTypeOptions}"
+                                          SelectedItem="{Binding SnapshotCameraType}"
+                                          Grid.Row="1"
+                                          Grid.Column="1"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock
+                                                Text="{Binding ., Converter={StaticResource SnapshotCameraTypeConverter}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
                     <!-- System Settings Group -->
                     <Border x:Name="SystemSettings"
-Classes="section-header"
-Padding="0,0,0,0">
+                            Classes="section-header"
+                            Padding="0,0,0,0">
                         <TextBlock Text="系统设置"
-FontSize="14"
-Background="White"
-Foreground="Black"
-Margin="10,0,0,-15"
-Width="80"
-TextAlignment="Center" />
+                                   FontSize="14"
+                                   Background="White"
+                                   Foreground="Black"
+                                   Margin="20,0,0,-15"
+                                   Width="64"
+                                   HorizontalAlignment="Left"
+                                   TextAlignment="Center" />
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
 
-                        <CheckBox Content="开机自动启动"
-IsChecked="{Binding EnableAutoStart}" />
-                    </StackPanel>
+                            <CheckBox Content="开机自动启动"
+                                      IsChecked="{Binding EnableAutoStart}" />
+                        </StackPanel>
                     </Border>
 
                     <!-- Sound Device Settings Group -->
                     <Border x:Name="SoundSettings"
-Classes="section-header"
-Padding="0,0,0,0">
+                            Classes="section-header"
+                            Padding="0,0,0,0">
                         <TextBlock Text="音响设备设置"
-FontSize="14"
-Background="White"
-Foreground="Black"
-Margin="10,0,0,-15"
-Width="80"
-TextAlignment="Center" />
+                                   FontSize="14"
+                                   Background="White"
+                                   Foreground="Black"
+                                   Margin="20,0,0,-15"
+                                   Width="96"
+                                   HorizontalAlignment="Left"
+                                   TextAlignment="Center" />
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
 
-                        <CheckBox Content="启用音响设备"
-IsChecked="{Binding SoundDeviceEnabled}" />
+                            <CheckBox Content="启用音响设备"
+                                      IsChecked="{Binding SoundDeviceEnabled}" />
 
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
-ColumnSpacing="12">
-                            <TextBlock Text="本地IP地址:"
-Grid.Row="0"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding SoundDeviceLocalIP}"
-Grid.Row="0"
-Grid.Column="1"
-Watermark="192.168.1.100" />
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
+                                  ColumnSpacing="12">
+                                <TextBlock Text="本地IP地址:"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding SoundDeviceLocalIP}"
+                                         Grid.Row="0"
+                                         Grid.Column="1"
+                                         Watermark="192.168.1.100" />
 
-                            <TextBlock Text="音响设备IP:"
-Grid.Row="1"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding SoundDeviceSoundIP}"
-Grid.Row="1"
-Grid.Column="1"
-Watermark="192.168.1.200" />
+                                <TextBlock Text="音响设备IP:"
+                                           Grid.Row="1"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding SoundDeviceSoundIP}"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         Watermark="192.168.1.200" />
 
-                            <TextBlock Text="音响设备序列号:"
-Grid.Row="2"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding SoundDeviceSoundSN}"
-Grid.Row="2"
-Grid.Column="1"
-Watermark="SN123456" />
+                                <TextBlock Text="音响设备序列号:"
+                                           Grid.Row="2"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding SoundDeviceSoundSN}"
+                                         Grid.Row="2"
+                                         Grid.Column="1"
+                                         Watermark="SN123456" />
 
-                            <TextBlock Text="音量(0-100):"
-Grid.Row="3"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="160" />
-                            <TextBox Text="{Binding SoundDeviceSoundVolume}"
-Grid.Row="3"
-Grid.Column="1"
-Watermark="0" />
-                        </Grid>
-                    </StackPanel>
+                                <TextBlock Text="音量(0-100):"
+                                           Grid.Row="3"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <TextBox Text="{Binding SoundDeviceSoundVolume}"
+                                         Grid.Row="3"
+                                         Grid.Column="1"
+                                         Watermark="0" />
+                            </Grid>
+                        </StackPanel>
                     </Border>
 
                     <!-- Printer Settings Group -->
                     <Border x:Name="PrinterSettings"
-Classes="section-header"
-Padding="0,0,0,0">
+                            Classes="section-header"
+                            Padding="0,0,0,0">
                         <TextBlock Text="打印机设置"
-FontSize="14"
-Background="White"
-Foreground="Black"
-Margin="10,0,0,-15"
-Width="80"
-TextAlignment="Center" />
+                                   FontSize="14"
+                                   Background="White"
+                                   Foreground="Black"
+                                   Margin="20,0,0,-15"
+                                   Width="80"
+                                   HorizontalAlignment="Left"
+                                   TextAlignment="Center" />
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
 
-                        <CheckBox Content="启用打印机功能"
-IsChecked="{Binding EnablePrinter}" />
+                            <CheckBox Content="启用打印机功能"
+                                      IsChecked="{Binding EnablePrinter}" />
 
-                        <Grid ColumnDefinitions="Auto,*"
-RowDefinitions="Auto"
-RowSpacing="12"
-ColumnSpacing="12">
-                            <TextBlock Text="票据打印机:"
-Grid.Row="0"
-Grid.Column="0"
-VerticalAlignment="Center"
-Foreground="Black"
-MinWidth="120" />
-                            <ComboBox ItemsSource="{Binding AvailablePrinters}"
-SelectedItem="{Binding SelectedPrinterName}"
-Grid.Row="0"
-Grid.Column="1"
-PlaceholderText="请选择打印机"
-IsEnabled="{Binding EnablePrinter}" />
-                        </Grid>
-                    </StackPanel>
+                            <Grid ColumnDefinitions="Auto,*"
+                                  RowDefinitions="Auto"
+                                  RowSpacing="12"
+                                  ColumnSpacing="12">
+                                <TextBlock Text="票据打印机:"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <ComboBox ItemsSource="{Binding AvailablePrinters}"
+                                          SelectedItem="{Binding SelectedPrinterName}"
+                                          Grid.Row="0"
+                                          Grid.Column="1"
+                                          PlaceholderText="请选择打印机"
+                                          IsEnabled="{Binding EnablePrinter}" />
+                            </Grid>
+                        </StackPanel>
                     </Border>
 
                 </StackPanel>
@@ -641,19 +651,19 @@ IsEnabled="{Binding EnablePrinter}" />
 
         <!-- Save Button (Bottom Center) -->
         <Button Grid.Row="1"
-Grid.Column="1"
-Content="确认保存"
-Command="{Binding SaveCommand}"
-Background="#4A85F9"
-Foreground="White"
-FontWeight="Bold"
-FontSize="14"
-Width="120"
-Height="35"
-HorizontalAlignment="Center"
-VerticalAlignment="Bottom"
-Margin="0,0,0,30"
-CornerRadius="4" />
+                Grid.Column="1"
+                Content="确认保存"
+                Command="{Binding SaveCommand}"
+                Background="#4A85F9"
+                Foreground="White"
+                FontWeight="Bold"
+                FontSize="14"
+                Width="120"
+                Height="35"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,30"
+                CornerRadius="4" />
 
     </Grid>
 </Window>
