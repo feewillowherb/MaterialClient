@@ -11,6 +11,7 @@
         Height="300"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
         Background="White"
         Icon="/Assets/fd-ico.ico">
 
