@@ -43,7 +43,7 @@
         <Style Selector="Border.section-header">
             <Setter Property="BorderBrush" Value="#E6E6E6" />
             <Setter Property="BorderThickness" Value="0,0,0,2" />
-            <Setter Property="Margin" Value="0,20,0,16" />
+            <Setter Property="Margin" Value="0,5,0,16" />
             <Setter Property="Padding" Value="0" />
         </Style>
 
@@ -155,20 +155,23 @@
                 BorderThickness="0,0,1,1">
             <ScrollViewer x:Name="ContentScrollViewer"
                           VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Hidden">
+                          HorizontalScrollBarVisibility="Hidden"
+                          AllowAutoHide="True">
                 <StackPanel Spacing="0" Margin="0">
                     <!-- Scale Settings Group -->
                     <Border x:Name="ScaleSettings"
                             Classes="section-header"
                             Padding="0,0,0,0">
-                        <TextBlock Text="地磅设置"
-                                   FontSize="14"
-                                   Background="White"
-                                   Foreground="Black"
-                                   Margin="20,0,0,-15"
-                                   Width="64"
-                                   HorizontalAlignment="Left"
-                                   TextAlignment="Center" />
+                        <Canvas>
+                            <TextBlock Text="地磅设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="64"
+                                       TextAlignment="Center" />
+                        </Canvas>
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
@@ -253,14 +256,16 @@
                     <Border x:Name="WeighingSettings"
                             Classes="section-header"
                             Padding="0,0,0,0">
-                        <TextBlock Text="称重设置"
-                                   FontSize="14"
-                                   Background="White"
-                                   Foreground="Black"
-                                   Margin="20,0,0,-15"
-                                   Width="64"
-                                   HorizontalAlignment="Left"
-                                   TextAlignment="Center" />
+                        <Canvas>
+                            <TextBlock Text="称重设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="64"
+                                       TextAlignment="Center" />
+                        </Canvas>
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
@@ -341,14 +346,16 @@
                     <Border x:Name="CameraSettings"
                             Classes="section-header"
                             Padding="0,0,0,0">
-                        <TextBlock Text="摄像头设置"
-                                   FontSize="14"
-                                   Background="White"
-                                   Foreground="Black"
-                                   Margin="20,0,0,-15"
-                                   Width="80"
-                                   HorizontalAlignment="Left"
-                                   TextAlignment="Center" />
+                        <Canvas>
+                            <TextBlock Text="摄像头设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="80"
+                                       TextAlignment="Center" />
+                        </Canvas>
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
@@ -431,14 +438,16 @@
                     <Border x:Name="LprSettings"
                             Classes="section-header"
                             Padding="0,0,0,0">
-                        <TextBlock Text="车牌识别设置"
-                                   FontSize="14"
-                                   Background="White"
-                                   Foreground="Black"
-                                   Margin="20,0,0,-15"
-                                   Width="96"
-                                   HorizontalAlignment="Left"
-                                   TextAlignment="Center" />
+                        <Canvas>
+                            <TextBlock Text="车牌识别设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="96"
+                                       TextAlignment="Center" />
+                        </Canvas>
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
@@ -521,14 +530,16 @@
                     <Border x:Name="SystemSettings"
                             Classes="section-header"
                             Padding="0,0,0,0">
-                        <TextBlock Text="系统设置"
-                                   FontSize="14"
-                                   Background="White"
-                                   Foreground="Black"
-                                   Margin="20,0,0,-15"
-                                   Width="64"
-                                   HorizontalAlignment="Left"
-                                   TextAlignment="Center" />
+                        <Canvas>
+                            <TextBlock Text="系统设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="64"
+                                       TextAlignment="Center" />
+                        </Canvas>
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
@@ -542,14 +553,16 @@
                     <Border x:Name="SoundSettings"
                             Classes="section-header"
                             Padding="0,0,0,0">
-                        <TextBlock Text="音响设备设置"
-                                   FontSize="14"
-                                   Background="White"
-                                   Foreground="Black"
-                                   Margin="20,0,0,-15"
-                                   Width="96"
-                                   HorizontalAlignment="Left"
-                                   TextAlignment="Center" />
+                        <Canvas>
+                            <TextBlock Text="音响设备设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="96"
+                                       TextAlignment="Center" />
+                        </Canvas>
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
@@ -610,14 +623,16 @@
                     <Border x:Name="PrinterSettings"
                             Classes="section-header"
                             Padding="0,0,0,0">
-                        <TextBlock Text="打印机设置"
-                                   FontSize="14"
-                                   Background="White"
-                                   Foreground="Black"
-                                   Margin="20,0,0,-15"
-                                   Width="80"
-                                   HorizontalAlignment="Left"
-                                   TextAlignment="Center" />
+                        <Canvas>
+                            <TextBlock Text="打印机设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="80"
+                                       TextAlignment="Center" />
+                        </Canvas>
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
