@@ -102,6 +102,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         LprDeviceType.Huaxiazhixin
     };
 
+    /// <summary>
+    ///     是否显示海康威视专用配置字段
+    /// </summary>
+    public bool ShowHikvisionLprFields => LprDeviceType == LprDeviceType.Hikvision;
+
     // Weighing configuration
     [Reactive] private decimal _minWeightThreshold = 0.5m;
     [Reactive] private decimal _weightStabilityThreshold = 0.05m;
@@ -193,7 +198,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 {
                     Name = l.Name,
                     Ip = l.Ip,
-                    Direction = l.Direction
+                    Direction = l.Direction,
+                    UserName = l.UserName,
+                    Password = l.Password,
+                    Port = l.Port,
+                    Channel = l.Channel
                 }).ToList(),
                 new WeighingConfiguration
                 {
@@ -268,7 +277,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [ReactiveCommand]
     private async Task AddLicensePlateRecognitionAsync()
     {
-        var dialogViewModel = new AddLprDialogViewModel
+        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType)
         {
             Name = $"camera_{LicensePlateRecognitionConfigs.Count + 1}",
             Direction = LicensePlateDirection.In
@@ -318,11 +327,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         if (config == null) return;
 
-        var dialogViewModel = new AddLprDialogViewModel
+        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType)
         {
             Name = config.Name,
             Ip = config.Ip,
-            Direction = config.Direction
+            Direction = config.Direction,
+            UserName = config.UserName,
+            Password = config.Password,
+            Port = config.Port,
+            Channel = config.Channel
         };
 
         var dialog = new AddLprDialog(dialogViewModel);
@@ -510,7 +523,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 {
                     Name = config.Name,
                     Ip = config.Ip,
-                    Direction = config.Direction
+                    Direction = config.Direction,
+                    UserName = config.UserName,
+                    Password = config.Password,
+                    Port = config.Port,
+                    Channel = config.Channel ?? "1"
                 });
 
             // Load sound device settings
@@ -557,6 +574,14 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     [Reactive] private string _ip = string.Empty;
 
     [Reactive] private string _name = string.Empty;
+
+    [Reactive] private string? _userName;
+
+    [Reactive] private string? _password;
+
+    [Reactive] private string? _port;
+
+    [Reactive] private string? _channel;
 
     public LicensePlateRecognitionConfigViewModel()
     {

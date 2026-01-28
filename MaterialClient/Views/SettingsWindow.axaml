@@ -469,22 +469,38 @@
                                       Classes="settings-table"
                                       MaxHeight="300">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="设备名称" Width="107" Binding="{Binding Name}" />
-                                    <DataGridTextColumn Header="设备IP" Width="107" Binding="{Binding Ip}" />
-                                    <DataGridTextColumn Header="进出方向" Width="107" Binding="{Binding DirectionText}" />
-                                    <DataGridTemplateColumn Header="操作" Width="107">
+                                    <DataGridTextColumn Header="设备名称" Width="80" Binding="{Binding Name}" />
+                                    <DataGridTextColumn Header="设备IP" Width="90" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="进出方向" Width="70" Binding="{Binding DirectionText}" />
+                                    <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
+                                    <DataGridTextColumn Header="密码" Width="70" Binding="{Binding Password}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
+                                    <DataGridTextColumn Header="端口" Width="60" Binding="{Binding Port}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
+                                    <DataGridTextColumn Header="通道" Width="50" Binding="{Binding Channel}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
+                                    <DataGridTemplateColumn Header="操作" Width="100">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Button Content="删除"
-                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        Background="Transparent"
-                                                        Foreground="Red"
-                                                        BorderThickness="0"
-                                                        HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Center"
-                                                        VerticalContentAlignment="Center"
-                                                        Height="35" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                                                    <Button Content="编辑"
+                                                            Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).EditLprCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            Foreground="#4A85F9"
+                                                            BorderThickness="0"
+                                                            HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Height="35" />
+                                                    <Button Content="删除"
+                                                            Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            Foreground="Red"
+                                                            BorderThickness="0"
+                                                            HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Height="35" />
+                                                </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>

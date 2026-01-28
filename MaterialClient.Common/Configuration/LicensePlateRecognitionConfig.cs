@@ -23,6 +23,30 @@ public class LicensePlateRecognitionConfig
     public LicensePlateDirection Direction { get; set; } = LicensePlateDirection.In;
 
     /// <summary>
+    ///     设备认证用户名(海康威视专用)
+    ///     仅在 LprDeviceType == Hikvision 时使用
+    /// </summary>
+    public string? UserName { get; set; }
+
+    /// <summary>
+    ///     设备认证密码(海康威视专用)
+    ///     仅在 LprDeviceType == Hikvision 时使用
+    /// </summary>
+    public string? Password { get; set; }
+
+    /// <summary>
+    ///     设备服务端口号(海康威视专用)
+    ///     仅在 LprDeviceType == Hikvision 时使用
+    /// </summary>
+    public string? Port { get; set; }
+
+    /// <summary>
+    ///     通道号(海康威视专用,默认值为 "1")
+    ///     仅在 LprDeviceType == Hikvision 时使用
+    /// </summary>
+    public string? Channel { get; set; }
+
+    /// <summary>
     ///     判断配置是否有效
     ///     需要Name和Ip都不为空
     /// </summary>

@@ -10,9 +10,31 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class AddLprDialogViewModel : ViewModelBase
 {
+    private readonly LprDeviceType _lprDeviceType;
+
     [Reactive] private string _name = string.Empty;
     [Reactive] private string _ip = string.Empty;
     [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.In;
+    [Reactive] private string? _userName;
+    [Reactive] private string? _password;
+    [Reactive] private string? _port;
+    [Reactive] private string? _channel = "1";
+
+    /// <summary>
+    ///     是否显示海康威视专用配置字段
+    /// </summary>
+    public bool ShowHikvisionLprFields => _lprDeviceType == LprDeviceType.Hikvision;
+
+    public AddLprDialogViewModel(LprDeviceType lprDeviceType = LprDeviceType.Hikvision)
+    {
+        _lprDeviceType = lprDeviceType;
+        this.WhenAnyValue(x => x.Direction)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(DirectionIndex));
+                this.RaisePropertyChanged(nameof(DirectionText));
+            });
+    }
 
     public int DirectionIndex
     {
@@ -48,7 +70,11 @@ public partial class AddLprDialogViewModel : ViewModelBase
         {
             Name = Name,
             Ip = Ip,
-            Direction = Direction
+            Direction = Direction,
+            UserName = UserName,
+            Password = Password,
+            Port = Port,
+            Channel = Channel ?? "1"
         };
     }
 
