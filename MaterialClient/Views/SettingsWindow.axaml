@@ -451,7 +451,7 @@
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
-                            <Button Content="增加抓拍机"
+                            <Button Content="增加车牌识别设备"
                                     Command="{Binding AddLicensePlateRecognitionCommand}"
                                     Background="#4A85F9"
                                     Foreground="White"
@@ -504,21 +504,21 @@
                                          Grid.Column="1"
                                          Watermark="localhost:9960 或 http://192.168.1.100:9960" />
 
-                                <TextBlock Text="车牌识别摄像头类型:"
+                                <TextBlock Text="车牌识别设备类型:"
                                            Grid.Row="1"
                                            Grid.Column="0"
                                            VerticalAlignment="Center"
                                            Foreground="Black"
                                            MinWidth="120" />
-                                <ComboBox ItemsSource="{Binding SnapshotCameraTypeOptions}"
-                                          SelectedItem="{Binding SnapshotCameraType}"
+                                <ComboBox ItemsSource="{Binding LprDeviceTypeOptions}"
+                                          SelectedItem="{Binding LprDeviceType}"
                                           Grid.Row="1"
                                           Grid.Column="1"
                                           HorizontalAlignment="Stretch">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock
-                                                Text="{Binding ., Converter={StaticResource SnapshotCameraTypeConverter}}" />
+                                                Text="{Binding ., Converter={StaticResource LprDeviceTypeConverter}}" />
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>

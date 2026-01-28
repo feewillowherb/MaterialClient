@@ -352,7 +352,7 @@ public class MinimalWebHostService : IAsyncDisposable
                         var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
                         weighingService.OnPlateNumberRecognized(plateNum);
 
-                        logger.LogInformation($"华夏智信抓拍车牌号：{plateNum}");
+                        logger.LogInformation($"华夏智信识别车牌号：{plateNum}");
 
                         // Optional: access other fields if needed
                         // var plateColor = form["plate_color"];
@@ -387,7 +387,7 @@ public class MinimalWebHostService : IAsyncDisposable
 
 
         // LprAllInOne comet 轮询端点 - 设备状态查询
-        // 设备会轮询此端点（GET 或 POST），如果需要触发抓拍，在响应中返回触发消息
+        // 设备会轮询此端点（GET 或 POST），如果需要触发车牌识别，在响应中返回触发消息
         // 根据 cap.md，设备会发送设备注册消息（心跳），包含 ipaddr 字段
         app.MapMethods(LprAllInOneCallDeviceStatusPath, new[] { "GET", "POST" }, async (HttpContext context) =>
         {
@@ -434,12 +434,12 @@ public class MinimalWebHostService : IAsyncDisposable
                     });
                 }
 
-                // 检查是否需要触发抓拍
+                // 检查是否需要触发车牌识别
                 var lprService = _sharedServiceProvider
                     .GetService<MaterialClient.Common.Services.LprAllInOne.ILprAllInOneService>();
                 if (lprService != null && lprService.CheckAndClearTriggerFlag(deviceIp))
                 {
-                    // 需要触发抓拍，返回触发消息
+                    // 需要触发车牌识别，返回触发消息
                     // 根据 cap.md (700-711)，返回格式：{"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
                     statusLogger.LogInformation("Returning manual trigger message for device IP: {Ip}", deviceIp);
                     return Results.Json(new

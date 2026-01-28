@@ -1036,7 +1036,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // Capture all cameras (Hikvision)
             var photoPaths = await CaptureAllCamerasAsync("WeightStabilized");
 
-            // 触发 LPRAllInOne 抓拍（方法内部会判断 SnapshotCameraType）
+            // 触发 LPRAllInOne 车牌识别（方法内部会判断 LprDeviceType）
             await TriggerCaptureOnWeightStabilizedAsync();
 
             // 创建WeighingRecord（传入照片路径）
@@ -1133,8 +1133,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             var settings = await _settingsService.GetSettingsAsync();
 
-            // 如果类型为 Hikvision，不做任何动作
-            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
+            // 如果类型不是 LprAllInOne，不做任何动作
+            if (settings.SystemSettings.LprDeviceType != LprDeviceType.LprAllInOne)
             {
                 return;
             }
@@ -1201,8 +1201,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             var settings = await _settingsService.GetSettingsAsync();
 
-            // 如果类型为 Hikvision，不做任何动作
-            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
+            // 如果类型不是 LprAllInOne，不做任何动作
+            if (settings.SystemSettings.LprDeviceType != LprDeviceType.LprAllInOne)
             {
                 return;
             }
@@ -1268,8 +1268,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             var settings = await _settingsService.GetSettingsAsync();
 
-            // 如果类型为 Hikvision，不做任何动作
-            if (settings.SystemSettings.SnapshotCameraType != SnapshotCameraType.LprAllInOne)
+            // 如果类型不是 LprAllInOne，不做任何动作
+            if (settings.SystemSettings.LprDeviceType != LprDeviceType.LprAllInOne)
             {
                 return;
             }

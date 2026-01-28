@@ -21,7 +21,7 @@ public interface ILprAllInOneService
     Task<bool> TriggerManualRecognitionAsync(LicensePlateRecognitionConfig config);
 
     /// <summary>
-    ///     检查设备是否需要触发抓拍，并清除标志
+    ///     检查设备是否需要触发车牌识别，并清除标志
     /// </summary>
     /// <param name="deviceIp">设备IP地址</param>
     /// <returns>如果需要触发返回 true，否则返回 false</returns>
@@ -30,7 +30,7 @@ public interface ILprAllInOneService
 /// <summary>
 ///     LPRAllInOne 设备服务实现
 ///     基于 comet 轮询机制：设备会轮询 GET /api/CarLicense/CallDeviceStatus
-///     当需要触发抓拍时，在响应中返回 {"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
+///     当需要触发车牌识别时，在响应中返回 {"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
 /// </summary>
 public class LprAllInOneService : ILprAllInOneService, ISingletonDependency
 {
@@ -91,7 +91,7 @@ public class LprAllInOneService : ILprAllInOneService, ISingletonDependency
     }
 
     /// <summary>
-    ///     检查设备是否需要触发抓拍，并清除标志
+    ///     检查设备是否需要触发车牌识别，并清除标志
     ///     如果返回 true，表示需要触发，标志会被清除
     /// </summary>
     public bool CheckAndClearTriggerFlag(string deviceIp)

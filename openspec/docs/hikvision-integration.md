@@ -14,7 +14,7 @@ NOTES: Technical documentation. Describes implementation patterns and integratio
 请将 SDK 的 x64 动态库拷贝到以下目录（已在工程中配置自动复制到输出目录）：
 
 - 目标：`MaterialClient.Common/Native/HCNetSDK/win64/`
-- 推荐最小集（登录/抓拍通常需要）：
+- 推荐最小集（登录/车牌识别通常需要）：
   - `HCNetSDK.dll`
   - `HCCore.dll`
   - `PlayCtrl.dll`
@@ -73,7 +73,7 @@ bool ok = service.CaptureJpeg(config, 1, path, quality: 90);
 
 测试文件：`MaterialClient.Common.UnitTest/UnitTest1.cs`
 - 用实际参数连接摄像头。
-- 执行一次抓拍，保存到 `captures/`。
+- 执行一次车牌识别，保存到 `captures/`。
 - 断言：文件存在且大小大于 0。
 
 运行命令：

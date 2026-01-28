@@ -23,10 +23,10 @@ public class SystemSettings
     public string Urls { get; set; } = "http://localhost:9960";
 
     /// <summary>
-    ///     Snapshot camera type (Hikvision or LPRAllInOne)
-    ///     Default: Hikvision
+    ///     车牌识别设备类型 (Hikvision 或 LprAllInOne 或 Huaxiazhixin)
+    ///     默认值: Hikvision
     /// </summary>
-    public SnapshotCameraType SnapshotCameraType { get; set; } = SnapshotCameraType.Hikvision;
+    public LprDeviceType LprDeviceType { get; set; } = LprDeviceType.Hikvision;
 
     /// <summary>
     ///     最小字符差异数（0-2），用于车牌号推荐匹配

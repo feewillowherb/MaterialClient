@@ -13,8 +13,8 @@ namespace MaterialClient.Common.Services.Hikvision;
 
 /// <summary>
 ///     海康威视设备服务接口
-///     注意：此服务专门用于海康威视设备的抓拍功能，与 SystemSettings.SnapshotCameraType 配置无关。
-///     无论 SnapshotCameraType 设置为 Hikvision 还是 LPRAllInOne，此服务都会正常工作。
+///     注意：此服务专门用于海康威视设备的车牌识别功能，与 SystemSettings.LprDeviceType 配置无关。
+///     无论 LprDeviceType 设置为 Hikvision 还是 LprAllInOne，此服务都会正常工作。
 /// </summary>
 public interface IHikvisionService
 {
@@ -33,9 +33,9 @@ public interface IHikvisionService
 
 /// <summary>
 ///     海康威视设备服务实现
-///     注意：此服务专门用于海康威视设备的抓拍功能，与 SystemSettings.SnapshotCameraType 配置无关。
-///     无论 SnapshotCameraType 设置为 Hikvision 还是 LPRAllInOne，此服务都会正常工作。
-///     调用方应根据 SnapshotCameraType 配置决定是否调用此服务的方法。
+///     注意：此服务专门用于海康威视设备的车牌识别功能，与 SystemSettings.LprDeviceType 配置无关。
+///     无论 LprDeviceType 设置为 Hikvision 还是 LprAllInOne，此服务都会正常工作。
+///     调用方应根据 LprDeviceType 配置决定是否调用此服务的方法。
 /// </summary>
 public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 {

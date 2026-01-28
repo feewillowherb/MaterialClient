@@ -76,15 +76,15 @@ public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientDomainT
             EnableAutoStart = true,
             CaptureStreamType = StreamType.Mainstream,  // 使用主码流
             Urls = "http://test-server:8080",
-            SnapshotCameraType = SnapshotCameraType.LprAllInOne,
+            LprDeviceType = LprDeviceType.LprAllInOne,
             MinDiffCharCount = 1
         };
 
         var options = Options.Create(customSettings);
 
         // 在测试中使用自定义配置
-        var snapshotCameraType = customSettings.SnapshotCameraType;
-        snapshotCameraType.ShouldBe(SnapshotCameraType.LprAllInOne);
+        var lprDeviceType = customSettings.LprDeviceType;
+        lprDeviceType.ShouldBe(LprDeviceType.LprAllInOne);
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public class MultipleConfigReplacementsTests : MaterialClientTestBase<MaterialCl
             EnableAutoStart = false,
             CaptureStreamType = StreamType.Substream,
             Urls = "http://integration-test.local:9999",
-            SnapshotCameraType = SnapshotCameraType.Hikvision,
+            LprDeviceType = LprDeviceType.Hikvision,
             MinDiffCharCount = 2
         };
 
@@ -311,7 +311,7 @@ public class DirectConfigurationUnitTests
         // Assert - 验证默认值
         settings.EnableAutoStart.ShouldBeFalse();
         settings.CaptureStreamType.ShouldBe(StreamType.Substream);
-        settings.SnapshotCameraType.ShouldBe(SnapshotCameraType.Hikvision);
+        settings.LprDeviceType.ShouldBe(LprDeviceType.Hikvision);
         settings.MinDiffCharCount.ShouldBe(0);
     }
 

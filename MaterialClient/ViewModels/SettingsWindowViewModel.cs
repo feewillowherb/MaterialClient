@@ -45,7 +45,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableAutoStart;
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
     [Reactive] private string _urls = "http://localhost:9960";
-    [Reactive] private SnapshotCameraType _snapshotCameraType = SnapshotCameraType.Hikvision;
+    [Reactive] private LprDeviceType _lprDeviceType = LprDeviceType.Hikvision;
     [Reactive] private bool _enablePrinter;
     [Reactive] private string _selectedPrinterName = string.Empty;
 
@@ -93,13 +93,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     };
 
     /// <summary>
-    ///     Snapshot camera type options for ComboBox
+    ///     车牌识别设备类型选项（用于下拉框）
     /// </summary>
-    public ObservableCollection<SnapshotCameraType> SnapshotCameraTypeOptions { get; } = new()
+    public ObservableCollection<LprDeviceType> LprDeviceTypeOptions { get; } = new()
     {
-        SnapshotCameraType.Hikvision,
-        SnapshotCameraType.LprAllInOne,
-        SnapshotCameraType.Huaxiazhixin
+        LprDeviceType.Hikvision,
+        LprDeviceType.LprAllInOne,
+        LprDeviceType.Huaxiazhixin
     };
 
     // Weighing configuration
@@ -162,7 +162,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.EnableAutoStart = EnableAutoStart;
             systemSettings.CaptureStreamType = CaptureStreamType;
             systemSettings.Urls = Urls;
-            systemSettings.SnapshotCameraType = SnapshotCameraType;
+            systemSettings.LprDeviceType = LprDeviceType;
             systemSettings.EnablePrinter = EnablePrinter;
             systemSettings.SelectedPrinterName = SelectedPrinterName;
 
@@ -471,7 +471,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
             Urls = settings.SystemSettings.Urls;
-            SnapshotCameraType = settings.SystemSettings.SnapshotCameraType;
+            LprDeviceType = settings.SystemSettings.LprDeviceType;
             EnablePrinter = settings.SystemSettings.EnablePrinter;
             SelectedPrinterName = settings.SystemSettings.SelectedPrinterName;
 

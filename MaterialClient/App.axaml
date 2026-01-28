@@ -28,7 +28,7 @@
                 <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
                 <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
                 <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
-                <converters:SnapshotCameraTypeConverter x:Key="SnapshotCameraTypeConverter" />
+                <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
                 
                 <!-- Color Brushes -->
                 <SolidColorBrush x:Key="PrimaryBlue">#4169E1</SolidColorBrush>

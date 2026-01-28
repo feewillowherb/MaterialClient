@@ -188,7 +188,7 @@ var systemSettings = new SystemSettings
     EnableAutoStart = true,
     CaptureStreamType = StreamType.Mainstream,
     Urls = "http://test-server:8080",
-    SnapshotCameraType = SnapshotCameraType.Hikvision,
+    LprDeviceType = LprDeviceType.Hikvision,
     MinDiffCharCount = 1
 };
 ```
