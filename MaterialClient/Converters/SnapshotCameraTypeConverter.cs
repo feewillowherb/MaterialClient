@@ -1,5 +1,7 @@
 using System;
+using System.ComponentModel;
 using System.Globalization;
+using System.Reflection;
 using Avalonia.Data.Converters;
 using MaterialClient.Common.Entities.Enums;
 
@@ -14,12 +16,7 @@ public class SnapshotCameraTypeConverter : IValueConverter
     {
         if (value is SnapshotCameraType cameraType)
         {
-            return cameraType switch
-            {
-                SnapshotCameraType.Hikvision => "海康威视",
-                SnapshotCameraType.LprAllInOne => "车牌识别一体机",
-                _ => value.ToString()
-            };
+            return GetEnumDescription(cameraType);
         }
 
         return value?.ToString();
@@ -28,6 +25,16 @@ public class SnapshotCameraTypeConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotImplementedException();
+    }
+
+    private static string GetEnumDescription(Enum value)
+    {
+        var field = value.GetType().GetField(value.ToString());
+        if (field == null)
+            return value.ToString();
+
+        var attribute = field.GetCustomAttribute<DescriptionAttribute>();
+        return attribute?.Description ?? value.ToString();
     }
 }
 

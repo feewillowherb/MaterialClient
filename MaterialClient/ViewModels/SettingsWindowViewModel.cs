@@ -98,7 +98,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public ObservableCollection<SnapshotCameraType> SnapshotCameraTypeOptions { get; } = new()
     {
         SnapshotCameraType.Hikvision,
-        SnapshotCameraType.LprAllInOne
+        SnapshotCameraType.LprAllInOne,
+        SnapshotCameraType.Huaxiazhixin
     };
 
     // Weighing configuration
@@ -355,13 +356,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             var successCount = results.Count(r => r.Success);
             var failCount = results.Count - successCount;
             _logger.LogInformation("测试拍照完成，成功: {SuccessCount}, 失败: {FailCount}", successCount, failCount);
-            
+
             // Log detailed results
             foreach (var result in results)
             {
                 if (result.Success)
                 {
-                    _logger.LogInformation("拍照成功 - 设备: {DeviceKey}, 通道: {Channel}, 文件: {FilePath}, 大小: {FileSize} bytes",
+                    _logger.LogInformation(
+                        "拍照成功 - 设备: {DeviceKey}, 通道: {Channel}, 文件: {FilePath}, 大小: {FileSize} bytes",
                         result.Request.DeviceKey, result.Request.Channel, result.Request.SaveFullPath, result.FileSize);
                 }
                 else
@@ -388,9 +390,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         // Helper to get current window instance for ShowDialog parent
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            return desktop.Windows.FirstOrDefault(w => w.DataContext == this) 
+            return desktop.Windows.FirstOrDefault(w => w.DataContext == this)
                    ?? throw new InvalidOperationException("Cannot find window");
         }
+
         throw new InvalidOperationException("Application is not running in desktop mode");
     }
 
