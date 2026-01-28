@@ -42,4 +42,14 @@ public class AliyunOssConfig
                !string.IsNullOrWhiteSpace(Secret) &&
                !string.IsNullOrWhiteSpace(BucketName);
     }
+
+    /// <summary>
+    ///     构建OSS完整URL
+    /// </summary>
+    /// <param name="ossObjectKey">OSS对象键</param>
+    /// <returns>OSS完整URL</returns>
+    public string GetOssUrl(string ossObjectKey)
+    {
+        return $"https://{BucketName}.{RegionId}/{ossObjectKey}";
+    }
 }
