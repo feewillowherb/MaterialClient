@@ -53,14 +53,8 @@ public partial class AddLprDialogViewModel : ViewModelBase
 
     public LicensePlateRecognitionConfigViewModel? Result { get; private set; }
 
-    public AddLprDialogViewModel()
+    public AddLprDialogViewModel() : this(LprDeviceType.Hikvision)
     {
-        this.WhenAnyValue(x => x.Direction)
-            .Subscribe(_ =>
-            {
-                this.RaisePropertyChanged(nameof(DirectionIndex));
-                this.RaisePropertyChanged(nameof(DirectionText));
-            });
     }
 
     [ReactiveCommand]

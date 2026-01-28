@@ -359,13 +359,13 @@
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
-                            <Button Content="增加摄像头"
+                            <Button Content="增加"
                                     Command="{Binding AddCameraCommand}"
                                     Background="#4A85F9"
                                     Foreground="White"
                                     FontWeight="Bold"
                                     FontSize="14"
-                                    Width="120"
+                                    Width="80"
                                     Height="35"
                                     HorizontalAlignment="Left"
                                     Margin="0,10,0,10"
@@ -380,9 +380,7 @@
                                     <DataGridTextColumn Header="名称" Width="107" Binding="{Binding Name}" />
                                     <DataGridTextColumn Header="IP" Width="107" Binding="{Binding Ip}" />
                                     <DataGridTextColumn Header="端口" Width="107" Binding="{Binding Port}" />
-                                    <DataGridTextColumn Header="通道号" Width="107" Binding="{Binding Channel}" />
                                     <DataGridTextColumn Header="用户名" Width="107" Binding="{Binding UserName}" />
-                                    <DataGridTextColumn Header="密码" Width="107" Binding="{Binding Password}" />
                                     <DataGridTemplateColumn Header="操作" Width="107">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -451,13 +449,13 @@
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
-                            <Button Content="增加车牌识别设备"
+                            <Button Content="增加"
                                     Command="{Binding AddLicensePlateRecognitionCommand}"
                                     Background="#4A85F9"
                                     Foreground="White"
                                     FontWeight="Bold"
                                     FontSize="14"
-                                    Width="120"
+                                    Width="80"
                                     Height="35"
                                     HorizontalAlignment="Left"
                                     Margin="0,10,0,10"
@@ -469,13 +467,11 @@
                                       Classes="settings-table"
                                       MaxHeight="300">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="设备名称" Width="80" Binding="{Binding Name}" />
-                                    <DataGridTextColumn Header="设备IP" Width="90" Binding="{Binding Ip}" />
-                                    <DataGridTextColumn Header="进出方向" Width="70" Binding="{Binding DirectionText}" />
-                                    <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
-                                    <DataGridTextColumn Header="密码" Width="70" Binding="{Binding Password}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
-                                    <DataGridTextColumn Header="端口" Width="60" Binding="{Binding Port}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
-                                    <DataGridTextColumn Header="通道" Width="50" Binding="{Binding Channel}" IsVisible="{Binding $parent[Window].ShowHikvisionLprFields}" />
+                                    <DataGridTextColumn Header="名称" Width="80" Binding="{Binding Name}" />
+                                    <DataGridTextColumn Header="IP" Width="90" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="方向" Width="60" Binding="{Binding DirectionText}" />
+                                    <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" />
+                                    <DataGridTextColumn Header="端口" Width="60" Binding="{Binding Port}" />
                                     <DataGridTemplateColumn Header="操作" Width="100">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>

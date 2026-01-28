@@ -35,6 +35,13 @@ public partial class SettingsWindow : Window, ITransientDependency
 
         // Subscribe to close requested event
         viewModel?.CloseRequested += OnCloseRequested;
+
+        // Subscribe to LprDeviceType changes to update column visibility
+        if (viewModel != null)
+        {
+            viewModel.WhenAnyValue(x => x.LprDeviceType)
+                .Subscribe(_ => UpdateLprColumnVisibility(viewModel.ShowHikvisionLprFields));
+        }
     }
 
     protected override void OnOpened(EventArgs e)
@@ -42,7 +49,16 @@ public partial class SettingsWindow : Window, ITransientDependency
         base.OnOpened(e);
 
         // Initialize section tracking after window is loaded
-        Dispatcher.UIThread.Post(() => { InitializeSectionTracking(); }, DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(() => 
+        { 
+            InitializeSectionTracking();
+            
+            // Initialize LPR column visibility based on current device type
+            if (DataContext is SettingsWindowViewModel viewModel)
+            {
+                UpdateLprColumnVisibility(viewModel.ShowHikvisionLprFields);
+            }
+        }, DispatcherPriority.Loaded);
     }
 
     private void InitializeSectionTracking()
@@ -211,6 +227,24 @@ public partial class SettingsWindow : Window, ITransientDependency
     private void OnCloseRequested(object? sender, EventArgs e)
     {
         Close();
+    }
+
+    private void UpdateLprColumnVisibility(bool isVisible)
+    {
+        if (LprDataGrid?.Columns == null) return;
+
+        // Update Hikvision-specific columns visibility by header name
+        var hikvisionHeaders = new[] { "用户名", "端口" };
+        
+        foreach (var column in LprDataGrid.Columns)
+        {
+            if (column is DataGridTextColumn textColumn && 
+                textColumn.Header?.ToString() is { } header &&
+                hikvisionHeaders.Contains(header))
+            {
+                textColumn.IsVisible = isVisible;
+            }
+        }
     }
 
     protected override void OnClosed(EventArgs e)

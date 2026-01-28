@@ -110,11 +110,8 @@
                         <TextBox Text="{Binding Channel}"
                                  Grid.Column="1"
                                  IsEnabled="False"
-                                 Background="LightGray">
-                            <TextBox.ToolTip>
-                                <ToolTip Content="通道号固定为 1,无需修改" />
-                            </TextBox.ToolTip>
-                        </TextBox>
+                                 Background="LightGray"
+                                 ToolTip.Tip="通道号固定为 1,无需修改" />
                     </Grid>
                 </StackPanel>
             </StackPanel>

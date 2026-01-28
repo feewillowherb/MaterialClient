@@ -137,6 +137,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _ticketPrintingService = ticketPrintingService;
         _logger = logger;
 
+        // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
+        this.WhenAnyValue(x => x.LprDeviceType)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(ShowHikvisionLprFields)));
+
         // Load available serial ports
         RefreshAvailableSerialPorts();
         RefreshAvailablePrinters();
