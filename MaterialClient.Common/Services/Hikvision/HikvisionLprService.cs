@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -5,11 +6,51 @@ using System.Runtime.InteropServices;
 using System.Text;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.Hikvision;
+
+/// <summary>
+///     海康威视车牌识别服务接口
+///     支持多设备管理，可动态添加/更新设备和检查设备在线状态
+/// </summary>
+public interface IHikvisionLprService
+{
+    /// <summary>
+    ///     添加或更新设备配置
+    ///     如果设备已存在则更新配置，否则添加新设备
+    /// </summary>
+    /// <param name="config">设备配置</param>
+    void AddOrUpdateDevice(LicensePlateRecognitionConfig config);
+
+    /// <summary>
+    ///     检查设备是否在线
+    ///     尝试连接设备并验证连接状态
+    /// </summary>
+    /// <param name="config">设备配置</param>
+    /// <returns>设备是否在线</returns>
+    bool IsOnline(LicensePlateRecognitionConfig config);
+
+    /// <summary>
+    ///     启动监听服务
+    ///     从 SystemSettings.Urls 获取监听地址和端口，启动监听服务，可接收多个海康设备的车牌识别数据
+    /// </summary>
+    /// <returns>启动是否成功</returns>
+    Task<bool> StartAsync();
+
+    /// <summary>
+    ///     停止监听服务
+    /// </summary>
+    Task StopAsync();
+
+    /// <summary>
+    ///     车牌识别事件流
+    /// </summary>
+    IObservable<LicensePlateRecognizedEvent> PlateRecognized { get; }
+}
 
 /// <summary>
 ///     海康威视车牌识别服务实现
@@ -20,13 +61,15 @@ public sealed class HikvisionLprService : IHikvisionLprService, ISingletonDepend
 {
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _deviceConfigs = new();
     private readonly ILogger<HikvisionLprService>? _logger;
+    private readonly ISettingsService _settingsService;
     private GCHandle? _callbackHandle;
     private bool _isInitialized;
     private int _listenHandle = -1;
     private readonly Subject<LicensePlateRecognizedEvent> _plateRecognizedSubject = new();
 
-    public HikvisionLprService(ILogger<HikvisionLprService>? logger = null)
+    public HikvisionLprService(ISettingsService settingsService, ILogger<HikvisionLprService>? logger = null)
     {
+        _settingsService = settingsService;
         _logger = logger;
     }
 
@@ -80,19 +123,8 @@ public sealed class HikvisionLprService : IHikvisionLprService, ISingletonDepend
     /// <summary>
     ///     启动监听服务
     /// </summary>
-    public async Task<bool> StartAsync(string listenLocalIp, int listenLocalPort)
+    public async Task<bool> StartAsync()
     {
-        // 验证参数
-        if (string.IsNullOrWhiteSpace(listenLocalIp))
-        {
-            throw new ArgumentException("监听 IP 地址不能为空", nameof(listenLocalIp));
-        }
-
-        if (listenLocalPort <= 0 || listenLocalPort > 65535)
-        {
-            throw new ArgumentException("监听端口必须在 1-65535 范围内", nameof(listenLocalPort));
-        }
-
         await Task.CompletedTask; // 保持方法签名为异步
 
         // 检查是否已经启动
@@ -104,6 +136,31 @@ public sealed class HikvisionLprService : IHikvisionLprService, ISingletonDepend
 
         try
         {
+            // 从 SystemSettings.Urls 获取监听地址和端口
+            var settings = await _settingsService.GetSettingsAsync();
+            var urls = settings.SystemSettings.Urls;
+            
+            if (string.IsNullOrWhiteSpace(urls))
+            {
+                _logger?.LogError("SystemSettings.Urls 为空，无法启动监听服务");
+                return false;
+            }
+
+            // 解析 URL，提取 IP 和端口
+            var (listenLocalIp, listenLocalPort) = ParseUrl(urls);
+            
+            if (string.IsNullOrWhiteSpace(listenLocalIp))
+            {
+                _logger?.LogError("无法从 SystemSettings.Urls 解析 IP 地址: {Urls}", urls);
+                return false;
+            }
+
+            if (listenLocalPort <= 0 || listenLocalPort > 65535)
+            {
+                _logger?.LogError("从 SystemSettings.Urls 解析的端口无效: {Port}, Urls={Urls}", listenLocalPort, urls);
+                return false;
+            }
+
             // 确保 SDK 已初始化
             EnsureInitialized();
 
@@ -141,8 +198,7 @@ public sealed class HikvisionLprService : IHikvisionLprService, ISingletonDepend
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "启动监听服务时发生异常: IP={Ip}, Port={Port}",
-                listenLocalIp, listenLocalPort);
+            _logger?.LogError(ex, "启动监听服务时发生异常");
 
             // 清理资源
             if (_callbackHandle.HasValue)
@@ -153,6 +209,40 @@ public sealed class HikvisionLprService : IHikvisionLprService, ISingletonDepend
 
             _listenHandle = -1;
             return false;
+        }
+    }
+
+    /// <summary>
+    ///     解析 URL，提取 IP 地址和端口
+    /// </summary>
+    private (string ip, int port) ParseUrl(string url)
+    {
+        try
+        {
+            // 如果没有协议前缀，自动添加 http://
+            var urlToParse = url.Trim();
+            if (!urlToParse.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !urlToParse.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                urlToParse = "http://" + urlToParse;
+            }
+
+            var uri = new Uri(urlToParse);
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : 80; // 默认端口 80
+
+            // 如果 host 是 localhost，转换为 0.0.0.0（监听所有接口）
+            if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                host = "0.0.0.0";
+            }
+
+            return (host, port);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "解析 URL 失败: {Url}", url);
+            return (string.Empty, 0);
         }
     }
 

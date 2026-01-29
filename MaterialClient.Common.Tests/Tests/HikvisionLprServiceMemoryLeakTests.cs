@@ -41,7 +41,7 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
         // Act
         for (var i = 0; i < iterations; i++)
         {
-            await service.StartAsync("192.168.1.10", 7200);
+            await service.StartAsync();
             await service.StopAsync();
 
             if (i % 10 == 0)
@@ -187,7 +187,7 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
         var duration = TimeSpan.FromSeconds(2); // 短时间运行以避免测试时间过长
         var stopwatch = Stopwatch.StartNew();
 
-        await service.StartAsync("192.168.1.10", 7200);
+        await service.StartAsync();
 
         // 订阅事件流
         var subscription = service.PlateRecognized.Subscribe(@event =>

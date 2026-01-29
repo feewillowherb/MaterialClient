@@ -64,7 +64,7 @@ public sealed class MockHikvisionLprService : IHikvisionLprService, IDisposable
     /// <summary>
     ///     启动监听服务
     /// </summary>
-    public async Task<bool> StartAsync(string listenLocalIp, int listenLocalPort)
+    public async Task<bool> StartAsync()
     {
         await Task.CompletedTask;
 

@@ -134,7 +134,7 @@ public class HikvisionLprServiceTests : IDisposable
         _service.StartAsyncReturnValue = true;
 
         // Act
-        var result = await _service.StartAsync("192.168.1.10", 7200);
+        var result = await _service.StartAsync();
 
         // Assert
         Assert.True(result);
@@ -145,49 +145,27 @@ public class HikvisionLprServiceTests : IDisposable
     {
         // Arrange
         _service.StartAsyncReturnValue = true;
-        await _service.StartAsync("192.168.1.10", 7200);
+        await _service.StartAsync();
 
         // Act
-        var result = await _service.StartAsync("192.168.1.10", 7200);
+        var result = await _service.StartAsync();
 
         // Assert
         Assert.False(result); // 已启动，应返回 false
     }
 
     [Fact]
-    public async Task StartAsync_ShouldThrowOnInvalidIp()
-    {
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _service.StartAsync("", 7200));
-        await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _service.StartAsync("   ", 7200));
-    }
-
-    [Fact]
-    public async Task StartAsync_ShouldThrowOnInvalidPort()
-    {
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _service.StartAsync("192.168.1.10", 0));
-        await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _service.StartAsync("192.168.1.10", -1));
-        await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _service.StartAsync("192.168.1.10", 65536));
-    }
-
-    [Fact]
     public async Task StopAsync_ShouldStopSuccessfully()
     {
         // Arrange
-        await _service.StartAsync("192.168.1.10", 7200);
+        await _service.StartAsync();
 
         // Act
         await _service.StopAsync();
 
         // Assert
         // 再次启动应该成功（如果停止成功）
-        var result = await _service.StartAsync("192.168.1.10", 7200);
+        var result = await _service.StartAsync();
         Assert.True(result);
     }
 
