@@ -1,4 +1,5 @@
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,11 +66,17 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             // Start Hikvision camera services
             await StartHikvisionCamerasAsync(settings);
 
+            // Start Hikvision LPR service if device type is Hikvision
+            if (settings.SystemSettings.LprDeviceType == LprDeviceType.Hikvision)
+            {
+                await StartHikvisionLprServiceAsync();
+            }
+
             _isStarted = true; // 标记为已启动
 
             // TODO: Start other devices
             // - Start document scanner service
-            // - Start license plate recognition services
+            // - Start other license plate recognition services (LprAllInOne, Huaxiazhixin)
         }
         catch (Exception ex)
         {
@@ -94,11 +101,14 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             // Note: HikvisionService uses login/logout per operation, so no explicit cleanup needed
             _logger?.LogInformation("Hikvision camera services closed");
 
+            // Stop Hikvision LPR service if it was started
+            await StopHikvisionLprServiceAsync();
+
             _isStarted = false; // 重置启动状态
 
             // TODO: Close other devices
             // - Close document scanner service
-            // - Close license plate recognition services
+            // - Close other license plate recognition services
 
             await Task.CompletedTask;
         }
@@ -147,6 +157,14 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     private IHikvisionService GetHikvisionService()
     {
         return _serviceProvider.GetRequiredService<IHikvisionService>();
+    }
+
+    /// <summary>
+    ///     Get Hikvision LPR service lazily to avoid circular dependency
+    /// </summary>
+    private IHikvisionLprService GetHikvisionLprService()
+    {
+        return _serviceProvider.GetRequiredService<IHikvisionLprService>();
     }
 
     /// <summary>
@@ -223,6 +241,75 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
         {
             _logger?.LogError(ex, "Error starting Hikvision cameras");
             // Don't throw, allow other devices to continue starting
+        }
+    }
+
+    /// <summary>
+    ///     Start Hikvision LPR service
+    /// </summary>
+    private async Task StartHikvisionLprServiceAsync()
+    {
+        try
+        {
+            var hikvisionLprService = GetHikvisionLprService();
+            
+            // 添加配置的 LPR 设备
+            var settings = await _settingsService.GetSettingsAsync();
+            var lprConfigs = settings.LicensePlateRecognitionConfigs;
+            
+            if (lprConfigs == null || lprConfigs.Count == 0)
+            {
+                _logger?.LogInformation("No Hikvision LPR devices configured");
+            }
+            else
+            {
+                foreach (var lprConfig in lprConfigs)
+                {
+                    if (lprConfig.IsValid())
+                    {
+                        hikvisionLprService.AddOrUpdateDevice(lprConfig);
+                        _logger?.LogInformation("Hikvision LPR device added: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Hikvision LPR device configuration invalid: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
+                    }
+                }
+            }
+
+            // 启动监听服务
+            var started = await hikvisionLprService.StartAsync();
+            if (started)
+            {
+                _logger?.LogInformation("Hikvision LPR service started successfully");
+            }
+            else
+            {
+                _logger?.LogWarning("Hikvision LPR service failed to start or was already started");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error starting Hikvision LPR service");
+            // Don't throw, allow other devices to continue starting
+        }
+    }
+
+    /// <summary>
+    ///     Stop Hikvision LPR service
+    /// </summary>
+    private async Task StopHikvisionLprServiceAsync()
+    {
+        try
+        {
+            var hikvisionLprService = GetHikvisionLprService();
+            await hikvisionLprService.StopAsync();
+            _logger?.LogInformation("Hikvision LPR service stopped");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error stopping Hikvision LPR service");
+            // Don't throw, allow other cleanup to continue
         }
     }
 }
