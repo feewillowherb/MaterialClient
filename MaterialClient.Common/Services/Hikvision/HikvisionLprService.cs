@@ -253,7 +253,7 @@ public sealed class HikvisionLprService : IHikvisionLprService, ISingletonDepend
             var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(pAlarmInfo);
 
             // 使用 GBK 编码提取车牌号
-            var plateNumber = HikvisionEncodingHelper.GetStringFromPtr(plateResult.struPlateInfo.sLicense, 48, _logger);
+            var plateNumber = HikvisionEncodingHelper.GetString(plateResult.sLicense, _logger);
 
             // 创建事件
             var @event = new LicensePlateRecognizedEvent
@@ -300,7 +300,7 @@ public sealed class HikvisionLprService : IHikvisionLprService, ISingletonDepend
                 var plateInfo = itsResult.struPlateInfo[i];
 
                 // 使用 GBK 编码提取车牌号
-                var plateNumber = HikvisionEncodingHelper.GetStringFromPtr(plateInfo.sLicense, 48, _logger);
+                var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
 
                 // 创建事件
                 var @event = new LicensePlateRecognizedEvent

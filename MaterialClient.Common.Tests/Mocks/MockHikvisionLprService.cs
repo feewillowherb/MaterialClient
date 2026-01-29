@@ -1,8 +1,9 @@
 using System.Collections.Concurrent;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hikvision;
-using ReactiveExtensions;
 
 namespace MaterialClient.Common.Tests.Mocks;
 
@@ -10,7 +11,7 @@ namespace MaterialClient.Common.Tests.Mocks;
 ///     海康威视车牌识别服务的 Mock 实现
 ///     用于单元测试，可以模拟车牌识别事件
 /// </summary>
-public sealed class MockHikvisionLprService : IHikvisionLprService
+public sealed class MockHikvisionLprService : IHikvisionLprService, IDisposable
 {
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _deviceConfigs = new();
     private readonly Subject<LicensePlateRecognizedEvent> _plateRecognizedSubject = new();
@@ -170,5 +171,13 @@ public sealed class MockHikvisionLprService : IHikvisionLprService
     {
         _deviceConfigs.TryGetValue(deviceIp, out var config);
         return config;
+    }
+
+    /// <summary>
+    ///     释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        _plateRecognizedSubject?.Dispose();
     }
 }
