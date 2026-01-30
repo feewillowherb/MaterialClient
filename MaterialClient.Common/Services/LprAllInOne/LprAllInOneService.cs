@@ -30,6 +30,20 @@ public interface ILprAllInOneService
     /// <param name="deviceIp">设备IP地址</param>
     /// <returns>如果需要触发返回 true，否则返回 false</returns>
     bool CheckAndClearTriggerFlag(string deviceIp);
+
+    /// <summary>
+    ///     记录设备最后轮询时间（用于在线状态判断）
+    /// </summary>
+    /// <param name="deviceIp">设备IP地址</param>
+    void RecordLastSeen(string deviceIp);
+
+    /// <summary>
+    ///     根据最后轮询时间判断设备是否在线
+    /// </summary>
+    /// <param name="deviceIp">设备IP地址</param>
+    /// <param name="timeout">超过此时间未轮询视为离线；null 使用默认 2 分钟</param>
+    /// <returns>若在 timeout 内有过轮询则 true，否则 false</returns>
+    bool IsOnline(string deviceIp, TimeSpan? timeout = null);
 }
 /// <summary>
 ///     LPRAllInOne 设备服务实现
@@ -39,9 +53,17 @@ public interface ILprAllInOneService
 public class LprAllInOneService : ILprAllInOneService, ILprDevice, ISingletonDependency
 {
     private readonly ILogger<LprAllInOneService>? _logger;
-    
+
+    /// <summary>
+    ///     默认在线超时：超过此时间未收到轮询视为离线
+    /// </summary>
+    private static readonly TimeSpan DefaultOnlineTimeout = TimeSpan.FromMinutes(2);
+
     // 存储每个设备IP的触发标志（设备IP -> 是否需要触发）
     private readonly ConcurrentDictionary<string, bool> _triggerFlags = new();
+
+    // 存储每个设备IP的最后轮询时间（UTC），用于在线状态判断
+    private readonly ConcurrentDictionary<string, DateTime> _lastSeenUtcByIp = new();
 
     public LprAllInOneService(ILogger<LprAllInOneService>? logger = null)
     {
@@ -114,6 +136,25 @@ public class LprAllInOneService : ILprAllInOneService, ILprDevice, ISingletonDep
             return true;
         }
 
+        return false;
+    }
+
+    /// <inheritdoc />
+    public void RecordLastSeen(string deviceIp)
+    {
+        if (string.IsNullOrWhiteSpace(deviceIp))
+            return;
+        _lastSeenUtcByIp.AddOrUpdate(deviceIp, DateTime.UtcNow, (_, _) => DateTime.UtcNow);
+    }
+
+    /// <inheritdoc />
+    public bool IsOnline(string deviceIp, TimeSpan? timeout = null)
+    {
+        if (string.IsNullOrWhiteSpace(deviceIp))
+            return false;
+        var effectiveTimeout = timeout ?? DefaultOnlineTimeout;
+        if (_lastSeenUtcByIp.TryGetValue(deviceIp, out var lastSeen))
+            return DateTime.UtcNow - lastSeen <= effectiveTimeout;
         return false;
     }
 

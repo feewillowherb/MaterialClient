@@ -470,6 +470,7 @@
                                     <DataGridTextColumn Header="名称" Width="80" Binding="{Binding Name}" />
                                     <DataGridTextColumn Header="IP" Width="120" Binding="{Binding Ip}" />
                                     <DataGridTextColumn Header="方向" Width="80" Binding="{Binding DirectionText}" />
+                                    <DataGridTextColumn Header="在线" Width="60" Binding="{Binding OnlineStatusText}" />
                                     <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" />
                                     <DataGridTextColumn Header="端口" Width="80" Binding="{Binding Port}" />
                                     <DataGridTemplateColumn Header="操作" Width="120">

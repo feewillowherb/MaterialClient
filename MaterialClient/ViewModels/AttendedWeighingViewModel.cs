@@ -1717,15 +1717,15 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             var parentWin = GetParentWindow();
             var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
-            
+
             if (parentWin != null)
                 await settingsWindow.ShowDialog(parentWin);
             else
                 settingsWindow.Show();
         }
-        catch
+        catch (Exception ex)
         {
-            // Handle error opening settings window
+            Logger?.LogError(ex, "打开系统设置窗口失败");
         }
     }
 

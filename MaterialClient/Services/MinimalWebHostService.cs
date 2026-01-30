@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Huaxiazhixin;
 using MaterialClient.Common.Services.LprAllInOne;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -385,8 +386,9 @@ public class MinimalWebHostService : IAsyncDisposable
                     if (!string.IsNullOrEmpty(camIp))
                     {
                         logger.LogInformation($"华夏智信设备心跳：{camIp}");
-                        // 注意：原代码中的 Params 和 onlineTime 更新逻辑需要根据实际需求实现
-                        // 这里仅记录日志，如果需要设备状态管理，可以添加相应的服务
+                        var huaxiazhixinOnlineState = _sharedServiceProvider
+                            .GetService<IHuaxiazhixinLprOnlineState>();
+                        huaxiazhixinOnlineState?.RecordLastSeen(camIp);
                     }
                 }
 
@@ -453,9 +455,12 @@ public class MinimalWebHostService : IAsyncDisposable
                     });
                 }
 
-                // 检查是否需要触发车牌识别
+                // 记录设备最后轮询时间，用于在线状态判断
                 var lprService = _sharedServiceProvider
                     .GetService<MaterialClient.Common.Services.LprAllInOne.ILprAllInOneService>();
+                lprService?.RecordLastSeen(deviceIp);
+
+                // 检查是否需要触发车牌识别
                 if (lprService != null && lprService.CheckAndClearTriggerFlag(deviceIp))
                 {
                     // 需要触发车牌识别，返回触发消息

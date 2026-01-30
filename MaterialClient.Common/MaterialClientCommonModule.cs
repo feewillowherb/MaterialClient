@@ -1,5 +1,7 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Providers;
+using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Huaxiazhixin;
 using MaterialClient.Common.Services.LprAllInOne;
 using MaterialClient.Common.Utils;
 using MaterialClient.EFCore;
@@ -57,6 +59,9 @@ public class MaterialClientCommonModule : AbpModule
         // Configure AliyunOss
         services.Configure<AliyunOssConfig>(
             configuration.GetSection("AliyunOss"));
+
+        // 显式注册 IHuaxiazhixinLprOnlineState，确保 LprDeviceOnlineStatusService 能解析（ABP 约定可能只暴露默认接口）
+        services.AddSingleton<IHuaxiazhixinLprOnlineState>(sp => sp.GetRequiredService<HuaxiazhixinLprService>());
     }
 
 }

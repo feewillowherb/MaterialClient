@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -31,7 +34,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
     private readonly ITicketPrintingService _ticketPrintingService;
+    private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
+    private Timer? _lprOnlineStatusTimer;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -129,12 +134,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ITruckScaleWeightService truckScaleWeightService,
         IHikvisionService hikvisionService,
         ITicketPrintingService ticketPrintingService,
+        ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
         ILogger<SettingsWindowViewModel> logger)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
         _ticketPrintingService = ticketPrintingService;
+        _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
         _logger = logger;
 
         // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
@@ -147,6 +154,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         // Load settings
         _ = LoadSettingsAsync();
+
+        // LPR 设备在线状态：每 10 分钟检查一次
+        _lprOnlineStatusTimer = new Timer(
+            _ => _ = RefreshLprOnlineStatusesAsync(),
+            null,
+            TimeSpan.FromMinutes(10),
+            TimeSpan.FromMinutes(10));
     }
 
     #region Events
@@ -464,6 +478,34 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
+    /// <summary>
+    ///     刷新 LPR 设备在线状态（由 10 分钟定时器或加载设置后调用）
+    /// </summary>
+    private async Task RefreshLprOnlineStatusesAsync()
+    {
+        var type = LprDeviceType;
+        var configViewModels = LicensePlateRecognitionConfigs.ToList();
+        if (configViewModels.Count == 0)
+            return;
+        var configs = configViewModels.Select(l => new LicensePlateRecognitionConfig
+        {
+            Name = l.Name,
+            Ip = l.Ip,
+            Direction = l.Direction,
+            UserName = l.UserName,
+            Password = l.Password,
+            Port = l.Port,
+            Channel = l.Channel ?? "1"
+        }).ToList();
+        var statuses = await Task.Run(() => _lprDeviceOnlineStatusService.GetOnlineStatuses(type, configs).ToList());
+        var statusList = statuses;
+        Dispatcher.UIThread.Post(() =>
+        {
+            for (var i = 0; i < statusList.Count && i < LicensePlateRecognitionConfigs.Count; i++)
+                LicensePlateRecognitionConfigs[i].IsOnline = statusList[i].IsOnline;
+        });
+    }
+
     private async Task LoadSettingsAsync()
     {
         try
@@ -534,6 +576,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     Channel = config.Channel ?? "1"
                 });
 
+            // 首次加载后刷新 LPR 设备在线状态
+            _ = RefreshLprOnlineStatusesAsync();
+
             // Load sound device settings
             SoundDeviceEnabled = settings.SoundDeviceSettings.Enabled;
             SoundDeviceLocalIP = settings.SoundDeviceSettings.LocalIP;
@@ -587,6 +632,16 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 
     [Reactive] private string? _channel;
 
+    /// <summary>
+    ///     设备是否在线（由 10 分钟定时检查更新）
+    /// </summary>
+    [Reactive] private bool _isOnline;
+
+    /// <summary>
+    ///     在线状态显示文本
+    /// </summary>
+    public string OnlineStatusText => IsOnline ? "在线" : "离线";
+
     public LicensePlateRecognitionConfigViewModel()
     {
         this.WhenAnyValue(x => x.Direction)
@@ -595,6 +650,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
                 this.RaisePropertyChanged(nameof(DirectionIndex));
                 this.RaisePropertyChanged(nameof(DirectionText));
             });
+        this.WhenAnyValue(x => x.IsOnline)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(OnlineStatusText)));
     }
 
     /// <summary>
