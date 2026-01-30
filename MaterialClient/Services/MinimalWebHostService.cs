@@ -6,6 +6,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.LprAllInOne;
 using Microsoft.AspNetCore.Builder;
@@ -15,6 +17,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ReactiveUI;
 using BadHttpRequestException = Microsoft.AspNetCore.Http.BadHttpRequestException;
 
 namespace MaterialClient.Services;
@@ -185,8 +188,6 @@ public class MinimalWebHostService : IAsyncDisposable
         {
             try
             {
-                var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
-
                 // 解析LprAllInOne设备数据
                 var plateResult = callback?.AlarmInfoPlate?.Result?.PlateResult;
                 var license = plateResult?.License;
@@ -197,7 +198,17 @@ public class MinimalWebHostService : IAsyncDisposable
                         ? (LprAllInOneColorType?)plateResult.ColorType.Value
                         : null;
 
-                    weighingService.OnPlateNumberRecognized(license, colorType);
+                    // 发布 MessageBus 消息(统一事件传递)
+                    var message = new LicensePlateRecognizedMessage
+                    {
+                        PlateNumber = license,
+                        ColorType = colorType,
+                        DeviceType = LprDeviceType.LprAllInOne,
+                        DeviceName = callback?.AlarmInfoPlate?.DeviceName ?? "Unknown",
+                        Timestamp = DateTime.Now
+                    };
+                    MessageBus.Current.SendMessage(message);
+
                     logger.LogInformation(
                         $"接收到车牌识别: {license} (设备: {callback?.AlarmInfoPlate?.DeviceName}, IP: {callback?.AlarmInfoPlate?.IpAddr})");
 
@@ -349,8 +360,16 @@ public class MinimalWebHostService : IAsyncDisposable
                     var plateNum = form["plate_num"]; // Already decoded (京A12345)
                     if (!string.IsNullOrWhiteSpace(plateNum))
                     {
-                        var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
-                        weighingService.OnPlateNumberRecognized(plateNum);
+                        // 发布 MessageBus 消息(统一事件传递)
+                        var message = new LicensePlateRecognizedMessage
+                        {
+                            PlateNumber = plateNum,
+                            ColorType = null, // 华夏智信回调中不包含颜色信息
+                            DeviceType = LprDeviceType.Huaxiazhixin,
+                            DeviceName = "Huaxiazhixin", // 可以从配置获取设备名称
+                            Timestamp = DateTime.Now
+                        };
+                        MessageBus.Current.SendMessage(message);
 
                         logger.LogInformation($"华夏智信识别车牌号：{plateNum}");
 

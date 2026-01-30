@@ -1,5 +1,9 @@
 using System.Collections.Concurrent;
+using System.Reactive;
+using System.Reactive.Linq;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Events;
+using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
@@ -32,7 +36,7 @@ public interface ILprAllInOneService
 ///     基于 comet 轮询机制：设备会轮询 GET /api/CarLicense/CallDeviceStatus
 ///     当需要触发车牌识别时，在响应中返回 {"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
 /// </summary>
-public class LprAllInOneService : ILprAllInOneService, ISingletonDependency
+public class LprAllInOneService : ILprAllInOneService, ILprDevice, ISingletonDependency
 {
     private readonly ILogger<LprAllInOneService>? _logger;
     
@@ -111,6 +115,45 @@ public class LprAllInOneService : ILprAllInOneService, ISingletonDependency
         }
 
         return false;
+    }
+
+    /// <summary>
+    ///     LprAllInOne 设备支持主动抓拍
+    /// </summary>
+    public bool SupportsActiveCapture => true;
+
+    /// <summary>
+    ///     主动触发车牌识别抓拍
+    /// </summary>
+    /// <param name="config">设备配置</param>
+    /// <returns>
+    ///     可观察的车牌识别事件流。
+    ///     由于 LprAllInOne 使用轮询机制,此方法返回一个异步流,等待设备回调。
+    /// </returns>
+    public IObservable<LicensePlateRecognizedEvent> TriggerCaptureAsync(
+        LicensePlateRecognitionConfig config)
+    {
+        return Observable.FromAsync(async () =>
+        {
+            var success = await TriggerManualRecognitionAsync(config);
+            if (!success)
+            {
+                throw new InvalidOperationException($"触发识别失败: {config.Name}");
+            }
+
+            _logger?.LogInformation("已触发 LprAllInOne 设备抓拍: Device={Device}", config.Name);
+
+            // 注意: LprAllInOne 使用轮询机制,实际结果会通过 HTTP 回调返回
+            // 并在 MinimalWebHostService 中发布到 MessageBus
+            // 这里我们返回一个占位事件,实际应用可能需要等待回调
+            return new LicensePlateRecognizedEvent
+            {
+                PlateNumber = string.Empty, // 占位,实际结果通过回调获取
+                DeviceName = config.Name,
+                Direction = config.Direction,
+                Timestamp = DateTime.Now
+            };
+        });
     }
 }
 

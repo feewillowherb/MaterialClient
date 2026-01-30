@@ -106,11 +106,6 @@ public interface IAttendedWeighingService : IAsyncDisposable
     AttendedWeighingStatus GetCurrentStatus();
 
     /// <summary>
-    ///     接收车牌识别结果
-    /// </summary>
-    void OnPlateNumberRecognized(string plateNumber, LprAllInOneColorType? colorType = null);
-
-    /// <summary>
     ///     获取当前识别次数最大的车牌号
     /// </summary>
     string? GetMostFrequentPlateNumber();
@@ -170,6 +165,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
     // 订阅管理
     private IDisposable? _stateSubscription;
+    private IDisposable? _licensePlateSubscription; // MessageBus 订阅
 
     // 异步操作追踪（用于优雅关闭）
     private readonly ConcurrentBag<Task> _pendingOperations = new();
@@ -189,6 +185,33 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         await LoadConfigurationAsync();
 
         if (_stateSubscription != null) return; // 已经启动
+
+        // 订阅 MessageBus 车牌识别消息(统一事件传递)
+        if (_licensePlateSubscription == null)
+        {
+            _licensePlateSubscription = MessageBus.Current
+                .Listen<LicensePlateRecognizedMessage>()
+                .Subscribe(msg =>
+                {
+                    try
+                    {
+                        _logger?.LogInformation(
+                            "收到 LPR 事件: {Plate} 来自 {Device} (类型: {DeviceType})",
+                            msg.PlateNumber, msg.DeviceName, msg.DeviceType);
+
+                        // 调用现有处理逻辑
+                        OnPlateNumberRecognized(msg.PlateNumber, msg.ColorType);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex,
+                            "处理 LPR 消息失败: {Plate}",
+                            msg.PlateNumber);
+                    }
+                });
+
+            _logger?.LogInformation("已订阅 LicensePlateRecognizedMessage (MessageBus)");
+        }
 
         // Load configuration into fields
         var config = await GetConfigurationAsync();
@@ -396,9 +419,9 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    ///     接收车牌识别结果
+    ///     接收车牌识别结果(通过 MessageBus 订阅调用)
     /// </summary>
-    public void OnPlateNumberRecognized(string plateNumber, LprAllInOneColorType? colorType = null)
+    private void OnPlateNumberRecognized(string plateNumber, LprAllInOneColorType? colorType = null)
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
@@ -488,6 +511,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
+
+        // 释放 MessageBus 订阅,防止内存泄漏
+        try
+        {
+            _licensePlateSubscription?.Dispose();
+            _licensePlateSubscription = null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "释放 MessageBus 订阅时发生异常");
+        }
 
         // Safely complete and dispose internal subjects (used for state management)
         try
