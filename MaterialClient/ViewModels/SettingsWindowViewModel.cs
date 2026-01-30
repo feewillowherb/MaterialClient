@@ -212,15 +212,21 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     UserName = c.UserName,
                     Password = c.Password
                 }).ToList(),
-                LicensePlateRecognitionConfigs.Select(l => new LicensePlateRecognitionConfig
+                LicensePlateRecognitionConfigs.Select(l =>
                 {
-                    Name = l.Name,
-                    Ip = l.Ip,
-                    Direction = l.Direction,
-                    UserName = l.UserName,
-                    Password = l.Password,
-                    Port = l.Port,
-                    Channel = l.Channel
+                    var config = new LicensePlateRecognitionConfig
+                    {
+                        Name = l.Name,
+                        Ip = l.Ip,
+                        Direction = l.Direction,
+                        UserName = l.UserName,
+                        Password = l.Password,
+                        Port = l.Port,
+                        Channel = l.Channel
+                    };
+                    if (HikvisionLprDefaults.ShouldApply(LprDeviceType))
+                        HikvisionLprDefaults.ApplyDefaults(config);
+                    return config;
                 }).ToList(),
                 new WeighingConfiguration
                 {
@@ -495,7 +501,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UserName = l.UserName,
             Password = l.Password,
             Port = l.Port,
-            Channel = l.Channel ?? "1"
+            Channel = l.Channel ?? HikvisionLprDefaults.DefaultChannel
         }).ToList();
         var statuses = await Task.Run(() => _lprDeviceOnlineStatusService.GetOnlineStatuses(type, configs).ToList());
         var statusList = statuses;
@@ -573,7 +579,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     UserName = config.UserName,
                     Password = config.Password,
                     Port = config.Port,
-                    Channel = config.Channel ?? "1"
+                    Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel
                 });
 
             // 首次加载后刷新 LPR 设备在线状态
