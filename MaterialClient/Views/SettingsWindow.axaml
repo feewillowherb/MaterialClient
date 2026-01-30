@@ -378,7 +378,7 @@
                                       MaxHeight="300">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="名称" Width="107" Binding="{Binding Name}" />
-                                    <DataGridTextColumn Header="IP" Width="107" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="IP" Width="120" Binding="{Binding Ip}" />
                                     <DataGridTextColumn Header="端口" Width="107" Binding="{Binding Port}" />
                                     <DataGridTextColumn Header="用户名" Width="107" Binding="{Binding UserName}" />
                                     <DataGridTemplateColumn Header="操作" Width="107">
@@ -468,11 +468,11 @@
                                       MaxHeight="300">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="名称" Width="80" Binding="{Binding Name}" />
-                                    <DataGridTextColumn Header="IP" Width="90" Binding="{Binding Ip}" />
-                                    <DataGridTextColumn Header="方向" Width="60" Binding="{Binding DirectionText}" />
+                                    <DataGridTextColumn Header="IP" Width="120" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="方向" Width="80" Binding="{Binding DirectionText}" />
                                     <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" />
-                                    <DataGridTextColumn Header="端口" Width="60" Binding="{Binding Port}" />
-                                    <DataGridTemplateColumn Header="操作" Width="100">
+                                    <DataGridTextColumn Header="端口" Width="80" Binding="{Binding Port}" />
+                                    <DataGridTemplateColumn Header="操作" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
@@ -485,7 +485,9 @@
                                                             HorizontalAlignment="Stretch"
                                                             HorizontalContentAlignment="Center"
                                                             VerticalContentAlignment="Center"
-                                                            Height="35" />
+                                                            Height="35"
+                                                            IsVisible="False"
+                                                            />
                                                     <Button Content="删除"
                                                             Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
                                                             CommandParameter="{Binding}"
@@ -584,7 +586,7 @@
 
                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
                                   ColumnSpacing="12">
-                                <TextBlock Text="本地IP地址:"
+                                <TextBlock Text="TTS服务地址:"
                                            Grid.Row="0"
                                            Grid.Column="0"
                                            VerticalAlignment="Center"
