@@ -305,7 +305,7 @@
                                         VerticalAlignment="Stretch"
                                         IsVisible="{Binding !ShouldShowPreview}" />
                                     <!-- 无预览且无照片时的占位文本 -->
-                                    <TextBlock Text="USB摄像头未连接"
+                                    <TextBlock Text="高拍仪未连接"
                                                FontSize="14"
                                                Foreground="#999"
                                                HorizontalAlignment="Center"
@@ -450,7 +450,7 @@
                             <SolidColorBrush Color="#EF4444" />
                         </Ellipse.Fill>
                     </Ellipse>
-                    <TextBlock Text="USB摄像头"
+                    <TextBlock Text="高拍仪"
                                FontSize="13"
                                Foreground="#666"
                                VerticalAlignment="Center" />
