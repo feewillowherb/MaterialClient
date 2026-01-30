@@ -420,8 +420,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     private void InitializeSoundDeviceStatusPolling()
     {
+        // Timer(0, 8s) = first poll immediately, then every 8 seconds (Interval would wait 8s for first)
         _statusPollingDisposable = Observable
-            .Interval(TimeSpan.FromSeconds(8)) // Poll every 8 seconds
+            .Timer(TimeSpan.Zero, TimeSpan.FromSeconds(8))
             .SelectMany(_ => Observable.FromAsync(cancellationToken =>
                 _soundDeviceService.IsOnlineAsync()))
             .Select(isOnline => isOnline ? 1 : 0) // Convert bool to status code
@@ -894,6 +895,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 {
                     await CheckCameraStatusOnceAsync();
                     await LoadPrinterSettingsAsync();
+                    this.RaisePropertyChanged(nameof(IsSoundDeviceEnabled));
                     Logger?.LogInformation(
                         "AttendedWeighingViewModel: Camera status check completed after settings save");
                 }
