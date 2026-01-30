@@ -95,6 +95,10 @@
   - Record 类型应具有清晰的命名，反映其业务含义，例如 `record UserInfo(string Name, int Age)` 而非 `(string, int)`。
   - 对于简单的值组合，优先使用命名 record，避免使用匿名类型或 tuple。
   - 此规则适用于方法返回值、方法参数、局部变量和字段定义。
+- **单一数据源（Single Source of Truth）（NON-NEGOTIABLE）**：
+  - 配置默认值、业务常量、枚举显示文本等必须在唯一位置定义（如静态类、常量类、资源文件），禁止在多个调用处重复字面量或魔法值。
+  - UI 默认显示的值必须与保存/持久化时使用的数据源一致，从同一处读取或应用。
+  - 新增或修改此类数据时，先确认是否已有唯一数据源；若无则新增（如 `HikvisionLprDefaults`），再在对话框初始值、保存补全、设置加载等处统一引用。
 
 ## Architecture & Technology Principles
 

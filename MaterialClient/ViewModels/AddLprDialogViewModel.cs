@@ -1,4 +1,5 @@
 using System;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -10,9 +11,40 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class AddLprDialogViewModel : ViewModelBase
 {
+    private readonly LprDeviceType _lprDeviceType;
+
     [Reactive] private string _name = string.Empty;
     [Reactive] private string _ip = string.Empty;
     [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.In;
+    [Reactive] private string? _userName;
+    [Reactive] private string? _password;
+    [Reactive] private string? _port;
+    [Reactive] private string? _channel;
+
+    /// <summary>
+    ///     是否显示海康威视专用配置字段
+    /// </summary>
+    public bool ShowHikvisionLprFields => _lprDeviceType == LprDeviceType.Hikvision;
+
+    public AddLprDialogViewModel(LprDeviceType lprDeviceType = LprDeviceType.Hikvision)
+    {
+        _lprDeviceType = lprDeviceType;
+
+        // 唯一数据源：海康威视时 UI 默认显示与保存时使用的默认值一致
+        if (HikvisionLprDefaults.ShouldApply(lprDeviceType))
+        {
+            _userName = HikvisionLprDefaults.DefaultUserName;
+            _port = HikvisionLprDefaults.DefaultPort;
+            _channel = HikvisionLprDefaults.DefaultChannel;
+        }
+
+        this.WhenAnyValue(x => x.Direction)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(DirectionIndex));
+                this.RaisePropertyChanged(nameof(DirectionText));
+            });
+    }
 
     public int DirectionIndex
     {
@@ -31,24 +63,39 @@ public partial class AddLprDialogViewModel : ViewModelBase
 
     public LicensePlateRecognitionConfigViewModel? Result { get; private set; }
 
-    public AddLprDialogViewModel()
+    public AddLprDialogViewModel() : this(LprDeviceType.Hikvision)
     {
-        this.WhenAnyValue(x => x.Direction)
-            .Subscribe(_ =>
-            {
-                this.RaisePropertyChanged(nameof(DirectionIndex));
-                this.RaisePropertyChanged(nameof(DirectionText));
-            });
     }
 
     [ReactiveCommand]
     private void Save()
     {
+        string? userName = UserName;
+        string? password = Password;
+        string? port = Port;
+        string? channel = Channel;
+
+        if (HikvisionLprDefaults.ShouldApply(_lprDeviceType))
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+                userName = HikvisionLprDefaults.DefaultUserName;
+            if (string.IsNullOrWhiteSpace(port))
+                port = HikvisionLprDefaults.DefaultPort;
+            if (string.IsNullOrWhiteSpace(channel))
+                channel = HikvisionLprDefaults.DefaultChannel;
+            if (password == null)
+                password = string.Empty;
+        }
+
         Result = new LicensePlateRecognitionConfigViewModel
         {
             Name = Name,
             Ip = Ip,
-            Direction = Direction
+            Direction = Direction,
+            UserName = userName,
+            Password = password,
+            Port = port,
+            Channel = channel ?? HikvisionLprDefaults.DefaultChannel
         };
     }
 

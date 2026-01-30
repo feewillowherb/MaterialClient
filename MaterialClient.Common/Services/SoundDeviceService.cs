@@ -28,6 +28,16 @@ public interface ISoundDeviceService
     /// <param name="text">Text to convert to speech and play</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task PlayTextV2Async(string text, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Check if sound column device is online
+    ///     Retrieves device serial number from ISettingsService, no parameters needed
+    /// </summary>
+    /// <returns>
+    ///     Returns true if device is online (status code 1 or 2), otherwise false
+    ///     Returns false if device is disabled or configuration is invalid
+    /// </returns>
+    Task<bool> IsOnlineAsync();
 }
 
 /// <summary>
@@ -361,6 +371,73 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
         {
             _logger?.LogError(ex, "Error playing text on sound device: {Text}", text);
             throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> IsOnlineAsync()
+    {
+        try
+        {
+            // 1. Get configuration
+            var settings = await _settingsService.GetSettingsAsync();
+            var soundDeviceSettings = settings.SoundDeviceSettings;
+
+            // 2. Check if device is enabled
+            if (!soundDeviceSettings.Enabled)
+            {
+                _logger?.LogDebug("Sound device is disabled, treating as offline");
+                return false;
+            }
+
+            // 3. Check if configuration is valid
+            if (!soundDeviceSettings.IsValid())
+            {
+                _logger?.LogWarning(
+                    "Sound device settings are incomplete: LocalIP={LocalIP}, SoundIP={SoundIP}, SoundSN={SoundSN}",
+                    soundDeviceSettings.LocalIP, soundDeviceSettings.SoundIP, soundDeviceSettings.SoundSN);
+                return false;
+            }
+
+            // 4. Build device serial number (add prefix)
+            var deviceSn = $"ls20://{soundDeviceSettings.SoundSN}";
+
+            // 5. Create HTTP client and API instance
+            var baseUrl = $"http://{soundDeviceSettings.SoundIP}:8888";
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.BaseAddress = new Uri(baseUrl);
+            httpClient.Timeout = TimeSpan.FromSeconds(5);
+            var api = RestService.For<ISoundDeviceApi>(httpClient);
+
+            // 6. Call remote API
+            var statusResponse = await api.GetDeviceStatusAsync(
+                type: "req",
+                app: "ls20",
+                sn: deviceSn);
+
+            // 7. Parse status code
+            var isOnline = statusResponse.Status == 1 || statusResponse.Status == 2;
+
+            _logger?.LogDebug(
+                "Sound device status check completed: DeviceSN={DeviceSN}, Status={Status}, IsOnline={IsOnline}",
+                soundDeviceSettings.SoundSN, statusResponse.Status, isOnline);
+
+            return isOnline;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger?.LogError(ex, "HTTP error while checking sound device status");
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger?.LogWarning(ex, "Timeout while checking sound device status");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Unexpected error while checking sound device status");
+            return false;
         }
     }
 }

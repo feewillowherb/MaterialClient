@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -43,21 +45,29 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private readonly IServiceProvider _serviceProvider;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IWeighingMatchingService _weighingMatchingService;
+    private readonly ISoundDeviceService _soundDeviceService;
+    private readonly ISettingsService _settingsService;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
     private DispatcherTimer? _notificationFadeOutTimer;
     private readonly TextBlock _notificationTextBlockHolder = new();
+    private readonly BehaviorSubject<int> _soundDeviceStatus = new(-1);
+    private IDisposable? _statusPollingDisposable;
 
     public AttendedWeighingViewModel(
         IWeighingMatchingService weighingMatchingService,
         IServiceProvider serviceProvider,
         ITruckScaleWeightService truckScaleWeightService,
-        IAttendedWeighingService attendedWeighingService
+        IAttendedWeighingService attendedWeighingService,
+        ISoundDeviceService soundDeviceService,
+        ISettingsService settingsService
     ) : base(serviceProvider.GetService<ILogger<AttendedWeighingViewModel>>())
     {
         _weighingMatchingService = weighingMatchingService;
         _serviceProvider = serviceProvider;
         _truckScaleWeightService = truckScaleWeightService;
         _attendedWeighingService = attendedWeighingService;
+        _soundDeviceService = soundDeviceService;
+        _settingsService = settingsService;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
 
@@ -179,6 +189,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _ = LoadPrinterSettingsAsync();
         StartPrinterStatusCheckTimer();
         _ = StartAllDevicesAsync();
+        InitializeSoundDeviceStatusPolling();
 
         // Initialize state from service
         if (_attendedWeighingService != null)
@@ -227,6 +238,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _notificationFadeOutTimer?.Stop();
         _notificationFadeOutTimer = null;
         _disposables.Dispose();
+
+        // Release sound column device status polling subscription
+        _statusPollingDisposable?.Dispose();
+        _soundDeviceStatus?.Dispose();
     }
 
     /// <summary>
@@ -398,6 +413,29 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             Logger?.LogWarning(ex, "检查 USB 摄像头状态时发生错误");
             Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
         }
+    }
+
+    /// <summary>
+    ///     Initialize sound column device status polling
+    /// </summary>
+    private void InitializeSoundDeviceStatusPolling()
+    {
+        _statusPollingDisposable = Observable
+            .Interval(TimeSpan.FromSeconds(8)) // Poll every 8 seconds
+            .SelectMany(_ => Observable.FromAsync(cancellationToken =>
+                _soundDeviceService.IsOnlineAsync()))
+            .Select(isOnline => isOnline ? 1 : 0) // Convert bool to status code
+            .Retry(3) // Retry 3 times on failure
+            .Catch(Observable.Return(-1)) // Return unknown status on exception
+            .Subscribe(
+                status =>
+                {
+                    _soundDeviceStatus.OnNext(status);
+                    this.RaisePropertyChanged(nameof(IsSoundDeviceOnline));
+                    this.RaisePropertyChanged(nameof(SoundDeviceStatusColor));
+                    this.RaisePropertyChanged(nameof(SoundDeviceStatusText));
+                },
+                ex => Logger?.LogError(ex, "Error in sound device status polling"));
     }
 
     private async Task StartUsbCameraPreviewAsync()
@@ -1029,6 +1067,53 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     public bool ShouldShowPreview => !HasBillPhoto || _isRetakingPhoto;
 
     public string PrinterTooltip => string.IsNullOrWhiteSpace(PrinterName) ? "未选择打印机" : PrinterName;
+
+    /// <summary>
+    ///     Whether sound column device is online
+    /// </summary>
+    public bool IsSoundDeviceOnline => _soundDeviceStatus.Value == 1 || _soundDeviceStatus.Value == 2;
+
+    /// <summary>
+    ///     Whether sound column device is enabled
+    /// </summary>
+    public bool IsSoundDeviceEnabled
+    {
+        get
+        {
+            try
+            {
+                var settings = _settingsService.GetSettingsAsync().GetAwaiter().GetResult();
+                return settings.SoundDeviceSettings.Enabled;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Sound column device status color
+    /// </summary>
+    public Color SoundDeviceStatusColor => _soundDeviceStatus.Value switch
+    {
+        1 => Color.Parse("#10B981"), // Online - Green
+        2 => Color.Parse("#F59E0B"), // In Task - Yellow
+        3 => Color.Parse("#EF4444"), // Power Off - Red
+        _ => Color.Parse("#9CA3AF")  // Offline/Unknown - Gray
+    };
+
+    /// <summary>
+    ///     Sound column device status text
+    /// </summary>
+    public string SoundDeviceStatusText => _soundDeviceStatus.Value switch
+    {
+        0 => "离线",
+        1 => "在线",
+        2 => "任务中",
+        3 => "断电",
+        _ => "未知"
+    };
 
     /// <summary>
     ///     获取临时保存的拍照文件路径（供DetailViewModel使用）
@@ -1717,15 +1802,15 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             var parentWin = GetParentWindow();
             var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
-            
+
             if (parentWin != null)
                 await settingsWindow.ShowDialog(parentWin);
             else
                 settingsWindow.Show();
         }
-        catch
+        catch (Exception ex)
         {
-            // Handle error opening settings window
+            Logger?.LogError(ex, "打开系统设置窗口失败");
         }
     }
 

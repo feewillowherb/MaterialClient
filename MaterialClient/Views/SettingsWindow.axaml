@@ -359,13 +359,13 @@
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
-                            <Button Content="增加摄像头"
+                            <Button Content="增加"
                                     Command="{Binding AddCameraCommand}"
                                     Background="#4A85F9"
                                     Foreground="White"
                                     FontWeight="Bold"
                                     FontSize="14"
-                                    Width="120"
+                                    Width="80"
                                     Height="35"
                                     HorizontalAlignment="Left"
                                     Margin="0,10,0,10"
@@ -378,11 +378,9 @@
                                       MaxHeight="300">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="名称" Width="107" Binding="{Binding Name}" />
-                                    <DataGridTextColumn Header="IP" Width="107" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="IP" Width="120" Binding="{Binding Ip}" />
                                     <DataGridTextColumn Header="端口" Width="107" Binding="{Binding Port}" />
-                                    <DataGridTextColumn Header="通道号" Width="107" Binding="{Binding Channel}" />
                                     <DataGridTextColumn Header="用户名" Width="107" Binding="{Binding UserName}" />
-                                    <DataGridTextColumn Header="密码" Width="107" Binding="{Binding Password}" />
                                     <DataGridTemplateColumn Header="操作" Width="107">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -451,13 +449,13 @@
                     </Border>
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
-                            <Button Content="增加抓拍机"
+                            <Button Content="增加"
                                     Command="{Binding AddLicensePlateRecognitionCommand}"
                                     Background="#4A85F9"
                                     Foreground="White"
                                     FontWeight="Bold"
                                     FontSize="14"
-                                    Width="120"
+                                    Width="80"
                                     Height="35"
                                     HorizontalAlignment="Left"
                                     Margin="0,10,0,10"
@@ -469,22 +467,39 @@
                                       Classes="settings-table"
                                       MaxHeight="300">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="设备名称" Width="107" Binding="{Binding Name}" />
-                                    <DataGridTextColumn Header="设备IP" Width="107" Binding="{Binding Ip}" />
-                                    <DataGridTextColumn Header="进出方向" Width="107" Binding="{Binding DirectionText}" />
-                                    <DataGridTemplateColumn Header="操作" Width="107">
+                                    <DataGridTextColumn Header="名称" Width="80" Binding="{Binding Name}" />
+                                    <DataGridTextColumn Header="IP" Width="120" Binding="{Binding Ip}" />
+                                    <DataGridTextColumn Header="方向" Width="80" Binding="{Binding DirectionText}" />
+                                    <DataGridTextColumn Header="在线" Width="60" Binding="{Binding OnlineStatusText}" />
+                                    <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" />
+                                    <DataGridTextColumn Header="端口" Width="80" Binding="{Binding Port}" />
+                                    <DataGridTemplateColumn Header="操作" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Button Content="删除"
-                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        Background="Transparent"
-                                                        Foreground="Red"
-                                                        BorderThickness="0"
-                                                        HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Center"
-                                                        VerticalContentAlignment="Center"
-                                                        Height="35" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                                                    <Button Content="编辑"
+                                                            Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).EditLprCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            Foreground="#4A85F9"
+                                                            BorderThickness="0"
+                                                            HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Height="35"
+                                                            IsVisible="False"
+                                                            />
+                                                    <Button Content="删除"
+                                                            Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveLicensePlateRecognitionCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            Foreground="Red"
+                                                            BorderThickness="0"
+                                                            HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Height="35" />
+                                                </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
@@ -504,21 +519,21 @@
                                          Grid.Column="1"
                                          Watermark="localhost:9960 或 http://192.168.1.100:9960" />
 
-                                <TextBlock Text="车牌识别摄像头类型:"
+                                <TextBlock Text="车牌识别设备类型:"
                                            Grid.Row="1"
                                            Grid.Column="0"
                                            VerticalAlignment="Center"
                                            Foreground="Black"
                                            MinWidth="120" />
-                                <ComboBox ItemsSource="{Binding SnapshotCameraTypeOptions}"
-                                          SelectedItem="{Binding SnapshotCameraType}"
+                                <ComboBox ItemsSource="{Binding LprDeviceTypeOptions}"
+                                          SelectedItem="{Binding LprDeviceType}"
                                           Grid.Row="1"
                                           Grid.Column="1"
                                           HorizontalAlignment="Stretch">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock
-                                                Text="{Binding ., Converter={StaticResource SnapshotCameraTypeConverter}}" />
+                                                Text="{Binding ., Converter={StaticResource LprDeviceTypeConverter}}" />
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
@@ -572,7 +587,7 @@
 
                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
                                   ColumnSpacing="12">
-                                <TextBlock Text="本地IP地址:"
+                                <TextBlock Text="TTS服务地址:"
                                            Grid.Row="0"
                                            Grid.Column="0"
                                            VerticalAlignment="Center"

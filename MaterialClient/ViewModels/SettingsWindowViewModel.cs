@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -31,7 +34,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
     private readonly ITicketPrintingService _ticketPrintingService;
+    private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
+    private Timer? _lprOnlineStatusTimer;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -45,7 +50,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableAutoStart;
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
     [Reactive] private string _urls = "http://localhost:9960";
-    [Reactive] private SnapshotCameraType _snapshotCameraType = SnapshotCameraType.Hikvision;
+    [Reactive] private LprDeviceType _lprDeviceType = LprDeviceType.Hikvision;
     [Reactive] private bool _enablePrinter;
     [Reactive] private string _selectedPrinterName = string.Empty;
 
@@ -93,13 +98,19 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     };
 
     /// <summary>
-    ///     Snapshot camera type options for ComboBox
+    ///     车牌识别设备类型选项（用于下拉框）
     /// </summary>
-    public ObservableCollection<SnapshotCameraType> SnapshotCameraTypeOptions { get; } = new()
+    public ObservableCollection<LprDeviceType> LprDeviceTypeOptions { get; } = new()
     {
-        SnapshotCameraType.Hikvision,
-        SnapshotCameraType.LprAllInOne
+        LprDeviceType.Hikvision,
+        LprDeviceType.LprAllInOne,
+        LprDeviceType.Huaxiazhixin
     };
+
+    /// <summary>
+    ///     是否显示海康威视专用配置字段
+    /// </summary>
+    public bool ShowHikvisionLprFields => LprDeviceType == LprDeviceType.Hikvision;
 
     // Weighing configuration
     [Reactive] private decimal _minWeightThreshold = 0.5m;
@@ -123,13 +134,19 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ITruckScaleWeightService truckScaleWeightService,
         IHikvisionService hikvisionService,
         ITicketPrintingService ticketPrintingService,
+        ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
         ILogger<SettingsWindowViewModel> logger)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
         _ticketPrintingService = ticketPrintingService;
+        _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
         _logger = logger;
+
+        // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
+        this.WhenAnyValue(x => x.LprDeviceType)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(ShowHikvisionLprFields)));
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
@@ -137,6 +154,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         // Load settings
         _ = LoadSettingsAsync();
+
+        // LPR 设备在线状态：每 10 分钟检查一次
+        _lprOnlineStatusTimer = new Timer(
+            _ => _ = RefreshLprOnlineStatusesAsync(),
+            null,
+            TimeSpan.FromMinutes(10),
+            TimeSpan.FromMinutes(10));
     }
 
     #region Events
@@ -161,7 +185,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.EnableAutoStart = EnableAutoStart;
             systemSettings.CaptureStreamType = CaptureStreamType;
             systemSettings.Urls = Urls;
-            systemSettings.SnapshotCameraType = SnapshotCameraType;
+            systemSettings.LprDeviceType = LprDeviceType;
             systemSettings.EnablePrinter = EnablePrinter;
             systemSettings.SelectedPrinterName = SelectedPrinterName;
 
@@ -188,11 +212,21 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     UserName = c.UserName,
                     Password = c.Password
                 }).ToList(),
-                LicensePlateRecognitionConfigs.Select(l => new LicensePlateRecognitionConfig
+                LicensePlateRecognitionConfigs.Select(l =>
                 {
-                    Name = l.Name,
-                    Ip = l.Ip,
-                    Direction = l.Direction
+                    var config = new LicensePlateRecognitionConfig
+                    {
+                        Name = l.Name,
+                        Ip = l.Ip,
+                        Direction = l.Direction,
+                        UserName = l.UserName,
+                        Password = l.Password,
+                        Port = l.Port,
+                        Channel = l.Channel
+                    };
+                    if (HikvisionLprDefaults.ShouldApply(LprDeviceType))
+                        HikvisionLprDefaults.ApplyDefaults(config);
+                    return config;
                 }).ToList(),
                 new WeighingConfiguration
                 {
@@ -267,7 +301,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [ReactiveCommand]
     private async Task AddLicensePlateRecognitionAsync()
     {
-        var dialogViewModel = new AddLprDialogViewModel
+        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType)
         {
             Name = $"camera_{LicensePlateRecognitionConfigs.Count + 1}",
             Direction = LicensePlateDirection.In
@@ -317,11 +351,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         if (config == null) return;
 
-        var dialogViewModel = new AddLprDialogViewModel
+        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType)
         {
             Name = config.Name,
             Ip = config.Ip,
-            Direction = config.Direction
+            Direction = config.Direction,
+            UserName = config.UserName,
+            Password = config.Password,
+            Port = config.Port,
+            Channel = config.Channel
         };
 
         var dialog = new AddLprDialog(dialogViewModel);
@@ -355,13 +393,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             var successCount = results.Count(r => r.Success);
             var failCount = results.Count - successCount;
             _logger.LogInformation("测试拍照完成，成功: {SuccessCount}, 失败: {FailCount}", successCount, failCount);
-            
+
             // Log detailed results
             foreach (var result in results)
             {
                 if (result.Success)
                 {
-                    _logger.LogInformation("拍照成功 - 设备: {DeviceKey}, 通道: {Channel}, 文件: {FilePath}, 大小: {FileSize} bytes",
+                    _logger.LogInformation(
+                        "拍照成功 - 设备: {DeviceKey}, 通道: {Channel}, 文件: {FilePath}, 大小: {FileSize} bytes",
                         result.Request.DeviceKey, result.Request.Channel, result.Request.SaveFullPath, result.FileSize);
                 }
                 else
@@ -388,9 +427,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         // Helper to get current window instance for ShowDialog parent
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            return desktop.Windows.FirstOrDefault(w => w.DataContext == this) 
+            return desktop.Windows.FirstOrDefault(w => w.DataContext == this)
                    ?? throw new InvalidOperationException("Cannot find window");
         }
+
         throw new InvalidOperationException("Application is not running in desktop mode");
     }
 
@@ -444,6 +484,34 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
+    /// <summary>
+    ///     刷新 LPR 设备在线状态（由 10 分钟定时器或加载设置后调用）
+    /// </summary>
+    private async Task RefreshLprOnlineStatusesAsync()
+    {
+        var type = LprDeviceType;
+        var configViewModels = LicensePlateRecognitionConfigs.ToList();
+        if (configViewModels.Count == 0)
+            return;
+        var configs = configViewModels.Select(l => new LicensePlateRecognitionConfig
+        {
+            Name = l.Name,
+            Ip = l.Ip,
+            Direction = l.Direction,
+            UserName = l.UserName,
+            Password = l.Password,
+            Port = l.Port,
+            Channel = l.Channel ?? HikvisionLprDefaults.DefaultChannel
+        }).ToList();
+        var statuses = await Task.Run(() => _lprDeviceOnlineStatusService.GetOnlineStatuses(type, configs).ToList());
+        var statusList = statuses;
+        Dispatcher.UIThread.Post(() =>
+        {
+            for (var i = 0; i < statusList.Count && i < LicensePlateRecognitionConfigs.Count; i++)
+                LicensePlateRecognitionConfigs[i].IsOnline = statusList[i].IsOnline;
+        });
+    }
+
     private async Task LoadSettingsAsync()
     {
         try
@@ -468,7 +536,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
             Urls = settings.SystemSettings.Urls;
-            SnapshotCameraType = settings.SystemSettings.SnapshotCameraType;
+            LprDeviceType = settings.SystemSettings.LprDeviceType;
             EnablePrinter = settings.SystemSettings.EnablePrinter;
             SelectedPrinterName = settings.SystemSettings.SelectedPrinterName;
 
@@ -507,8 +575,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 {
                     Name = config.Name,
                     Ip = config.Ip,
-                    Direction = config.Direction
+                    Direction = config.Direction,
+                    UserName = config.UserName,
+                    Password = config.Password,
+                    Port = config.Port,
+                    Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel
                 });
+
+            // 首次加载后刷新 LPR 设备在线状态
+            _ = RefreshLprOnlineStatusesAsync();
 
             // Load sound device settings
             SoundDeviceEnabled = settings.SoundDeviceSettings.Enabled;
@@ -555,6 +630,24 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 
     [Reactive] private string _name = string.Empty;
 
+    [Reactive] private string? _userName;
+
+    [Reactive] private string? _password;
+
+    [Reactive] private string? _port;
+
+    [Reactive] private string? _channel;
+
+    /// <summary>
+    ///     设备是否在线（由 10 分钟定时检查更新）
+    /// </summary>
+    [Reactive] private bool _isOnline;
+
+    /// <summary>
+    ///     在线状态显示文本
+    /// </summary>
+    public string OnlineStatusText => IsOnline ? "在线" : "离线";
+
     public LicensePlateRecognitionConfigViewModel()
     {
         this.WhenAnyValue(x => x.Direction)
@@ -563,6 +656,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
                 this.RaisePropertyChanged(nameof(DirectionIndex));
                 this.RaisePropertyChanged(nameof(DirectionText));
             });
+        this.WhenAnyValue(x => x.IsOnline)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(OnlineStatusText)));
     }
 
     /// <summary>

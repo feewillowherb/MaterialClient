@@ -64,7 +64,7 @@ public class OssUploadService : IOssUploadService, ITransientDependency
             await Task.Run(() => { _ossClient.PutObject(bucketName, ossObjectKey, localPath); });
 
             // 构建OSS完整URL
-            var ossUrl = $"https://{bucketName}.{_config.RegionId}/{ossObjectKey}";
+            var ossUrl = _config.GetOssUrl(ossObjectKey);
             _logger?.LogInformation("文件上传成功: {LocalPath} -> {OssUrl}", localPath, ossUrl);
             return ossUrl;
         }
@@ -107,7 +107,7 @@ public class OssUploadService : IOssUploadService, ITransientDependency
                 await Task.Run(() => { _ossClient.PutObject(bucketName, ossObjectKey, item.Attachment.LocalPath); });
 
                 // 构建OSS完整URL
-                var ossUrl = $"https://{bucketName}.{_config.RegionId}/{ossObjectKey}";
+                var ossUrl = _config.GetOssUrl(ossObjectKey);
                 result[item.Attachment.Id] = ossUrl;
 
                 _logger?.LogInformation(

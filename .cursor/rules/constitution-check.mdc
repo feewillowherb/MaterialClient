@@ -64,6 +64,7 @@ The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of t
 3. **Check All Relevant Principles**:
    - ✅ **Architecture-First**: Verify layer separation (UI → Application Services → Domain → Infrastructure)
    - ✅ **Single Responsibility Principle (NON-NEGOTIABLE)**: Verify no mixed concerns
+   - ✅ **Single Source of Truth (NON-NEGOTIABLE)**: Verify config defaults, constants, and enum display values are defined in one place; UI defaults must match the same data source used when saving
    - ✅ **ABP Framework Integration**: Verify proper ABP usage
    - ✅ **Code Character Constraints (NON-NEGOTIABLE)**: Verify English-only variable names
    - ✅ **Naming Conventions (NON-NEGOTIABLE)**: Verify MaterialClient prefix usage
@@ -82,6 +83,8 @@ The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of t
 - ❌ **ViewModel directly accessing Repository**: Violates Architecture-First
 - ❌ **Business logic in ViewModel**: Violates Single Responsibility and Architecture-First
 - ❌ **Mixed concerns in single method**: Violates Single Responsibility
+- ❌ **Duplicate default values or magic strings** (e.g. "admin", "8000" in multiple places): Violates Single Source of Truth
+- ❌ **UI default value not from same source as save/persist logic**: Violates Single Source of Truth
 - ❌ **Chinese characters in code**: Violates Code Character Constraints
 - ❌ **Tuple usage**: Violates Record vs Tuple rule
 
@@ -197,6 +200,7 @@ Before proceeding with ANY task, verify:
 - [ ] All relevant principles have been checked
 - [ ] Architecture layering is correct (no cross-layer violations)
 - [ ] Single Responsibility is maintained
+- [ ] Single Source of Truth: config defaults/constants defined in one place; UI defaults match save/persist data source
 - [ ] Code character constraints are met (English only)
 - [ ] Naming conventions are followed (MaterialClient prefix)
 - [ ] No tuples, use records instead
@@ -210,6 +214,8 @@ Before proceeding with ANY task, verify:
 |-----------|----------|-----|
 | ViewModel → Repository direct access | ❌ CRITICAL | Move to Application Service |
 | Business logic in ViewModel | ❌ CRITICAL | Move to Application Service |
+| Duplicate default values / magic strings | ❌ CRITICAL | Define single source (e.g. static defaults class), reference everywhere |
+| UI default not same as save data source | ❌ CRITICAL | Use same constants/defaults for UI init and persist |
 | Chinese characters in code | ❌ CRITICAL | Translate to English |
 | Mixed concerns in method | ⚠️ WARNING | Split into smaller methods |
 | Tuple usage | ⚠️ WARNING | Use record instead |

@@ -6,7 +6,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Huaxiazhixin;
 using MaterialClient.Common.Services.LprAllInOne;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +18,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ReactiveUI;
 using BadHttpRequestException = Microsoft.AspNetCore.Http.BadHttpRequestException;
 
 namespace MaterialClient.Services;
@@ -185,8 +189,6 @@ public class MinimalWebHostService : IAsyncDisposable
         {
             try
             {
-                var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
-
                 // 解析LprAllInOne设备数据
                 var plateResult = callback?.AlarmInfoPlate?.Result?.PlateResult;
                 var license = plateResult?.License;
@@ -197,7 +199,17 @@ public class MinimalWebHostService : IAsyncDisposable
                         ? (LprAllInOneColorType?)plateResult.ColorType.Value
                         : null;
 
-                    weighingService.OnPlateNumberRecognized(license, colorType);
+                    // 发布 MessageBus 消息(统一事件传递)
+                    var message = new LicensePlateRecognizedMessage
+                    {
+                        PlateNumber = license,
+                        ColorType = colorType,
+                        DeviceType = LprDeviceType.LprAllInOne,
+                        DeviceName = callback?.AlarmInfoPlate?.DeviceName ?? "Unknown",
+                        Timestamp = DateTime.Now
+                    };
+                    MessageBus.Current.SendMessage(message);
+
                     logger.LogInformation(
                         $"接收到车牌识别: {license} (设备: {callback?.AlarmInfoPlate?.DeviceName}, IP: {callback?.AlarmInfoPlate?.IpAddr})");
 
@@ -349,10 +361,18 @@ public class MinimalWebHostService : IAsyncDisposable
                     var plateNum = form["plate_num"]; // Already decoded (京A12345)
                     if (!string.IsNullOrWhiteSpace(plateNum))
                     {
-                        var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
-                        weighingService.OnPlateNumberRecognized(plateNum);
+                        // 发布 MessageBus 消息(统一事件传递)
+                        var message = new LicensePlateRecognizedMessage
+                        {
+                            PlateNumber = plateNum,
+                            ColorType = null, // 华夏智信回调中不包含颜色信息
+                            DeviceType = LprDeviceType.Huaxiazhixin,
+                            DeviceName = "Huaxiazhixin", // 可以从配置获取设备名称
+                            Timestamp = DateTime.Now
+                        };
+                        MessageBus.Current.SendMessage(message);
 
-                        logger.LogInformation($"华夏智信抓拍车牌号：{plateNum}");
+                        logger.LogInformation($"华夏智信识别车牌号：{plateNum}");
 
                         // Optional: access other fields if needed
                         // var plateColor = form["plate_color"];
@@ -366,8 +386,9 @@ public class MinimalWebHostService : IAsyncDisposable
                     if (!string.IsNullOrEmpty(camIp))
                     {
                         logger.LogInformation($"华夏智信设备心跳：{camIp}");
-                        // 注意：原代码中的 Params 和 onlineTime 更新逻辑需要根据实际需求实现
-                        // 这里仅记录日志，如果需要设备状态管理，可以添加相应的服务
+                        var huaxiazhixinOnlineState = _sharedServiceProvider
+                            .GetService<IHuaxiazhixinLprOnlineState>();
+                        huaxiazhixinOnlineState?.RecordLastSeen(camIp);
                     }
                 }
 
@@ -387,7 +408,7 @@ public class MinimalWebHostService : IAsyncDisposable
 
 
         // LprAllInOne comet 轮询端点 - 设备状态查询
-        // 设备会轮询此端点（GET 或 POST），如果需要触发抓拍，在响应中返回触发消息
+        // 设备会轮询此端点（GET 或 POST），如果需要触发车牌识别，在响应中返回触发消息
         // 根据 cap.md，设备会发送设备注册消息（心跳），包含 ipaddr 字段
         app.MapMethods(LprAllInOneCallDeviceStatusPath, new[] { "GET", "POST" }, async (HttpContext context) =>
         {
@@ -434,12 +455,15 @@ public class MinimalWebHostService : IAsyncDisposable
                     });
                 }
 
-                // 检查是否需要触发抓拍
+                // 记录设备最后轮询时间，用于在线状态判断
                 var lprService = _sharedServiceProvider
                     .GetService<MaterialClient.Common.Services.LprAllInOne.ILprAllInOneService>();
+                lprService?.RecordLastSeen(deviceIp);
+
+                // 检查是否需要触发车牌识别
                 if (lprService != null && lprService.CheckAndClearTriggerFlag(deviceIp))
                 {
-                    // 需要触发抓拍，返回触发消息
+                    // 需要触发车牌识别，返回触发消息
                     // 根据 cap.md (700-711)，返回格式：{"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
                     statusLogger.LogInformation("Returning manual trigger message for device IP: {Ip}", deviceIp);
                     return Results.Json(new
