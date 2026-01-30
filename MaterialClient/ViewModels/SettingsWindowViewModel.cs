@@ -34,9 +34,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
     private readonly ITicketPrintingService _ticketPrintingService;
-    private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
-    private Timer? _lprOnlineStatusTimer;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -134,14 +132,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ITruckScaleWeightService truckScaleWeightService,
         IHikvisionService hikvisionService,
         ITicketPrintingService ticketPrintingService,
-        ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
         ILogger<SettingsWindowViewModel> logger)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
         _ticketPrintingService = ticketPrintingService;
-        _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
         _logger = logger;
 
         // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
@@ -154,13 +150,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         // Load settings
         _ = LoadSettingsAsync();
-
-        // LPR 设备在线状态：每 10 分钟检查一次
-        _lprOnlineStatusTimer = new Timer(
-            _ => _ = RefreshLprOnlineStatusesAsync(),
-            null,
-            TimeSpan.FromMinutes(10),
-            TimeSpan.FromMinutes(10));
     }
 
     #region Events
@@ -484,34 +473,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
-    /// <summary>
-    ///     刷新 LPR 设备在线状态（由 10 分钟定时器或加载设置后调用）
-    /// </summary>
-    private async Task RefreshLprOnlineStatusesAsync()
-    {
-        var type = LprDeviceType;
-        var configViewModels = LicensePlateRecognitionConfigs.ToList();
-        if (configViewModels.Count == 0)
-            return;
-        var configs = configViewModels.Select(l => new LicensePlateRecognitionConfig
-        {
-            Name = l.Name,
-            Ip = l.Ip,
-            Direction = l.Direction,
-            UserName = l.UserName,
-            Password = l.Password,
-            Port = l.Port,
-            Channel = l.Channel ?? HikvisionLprDefaults.DefaultChannel
-        }).ToList();
-        var statuses = await Task.Run(() => _lprDeviceOnlineStatusService.GetOnlineStatuses(type, configs).ToList());
-        var statusList = statuses;
-        Dispatcher.UIThread.Post(() =>
-        {
-            for (var i = 0; i < statusList.Count && i < LicensePlateRecognitionConfigs.Count; i++)
-                LicensePlateRecognitionConfigs[i].IsOnline = statusList[i].IsOnline;
-        });
-    }
-
     private async Task LoadSettingsAsync()
     {
         try
@@ -581,9 +542,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     Port = config.Port,
                     Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel
                 });
-
-            // 首次加载后刷新 LPR 设备在线状态
-            _ = RefreshLprOnlineStatusesAsync();
 
             // Load sound device settings
             SoundDeviceEnabled = settings.SoundDeviceSettings.Enabled;

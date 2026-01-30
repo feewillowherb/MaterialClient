@@ -17,6 +17,7 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
@@ -47,6 +48,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private readonly IWeighingMatchingService _weighingMatchingService;
     private readonly ISoundDeviceService _soundDeviceService;
     private readonly ISettingsService _settingsService;
+    private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
     private DispatcherTimer? _notificationFadeOutTimer;
     private readonly TextBlock _notificationTextBlockHolder = new();
@@ -59,7 +61,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         ITruckScaleWeightService truckScaleWeightService,
         IAttendedWeighingService attendedWeighingService,
         ISoundDeviceService soundDeviceService,
-        ISettingsService settingsService
+        ISettingsService settingsService,
+        ILprDeviceOnlineStatusService lprDeviceOnlineStatusService
     ) : base(serviceProvider.GetService<ILogger<AttendedWeighingViewModel>>())
     {
         _weighingMatchingService = weighingMatchingService;
@@ -68,6 +71,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _attendedWeighingService = attendedWeighingService;
         _soundDeviceService = soundDeviceService;
         _settingsService = settingsService;
+        _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
 
@@ -188,6 +192,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         StartUsbCameraStatusCheckTimer();
         _ = LoadPrinterSettingsAsync();
         StartPrinterStatusCheckTimer();
+        _ = CheckLprOnlineStatusAsync();
+        StartLprStatusCheckTimer();
         _ = StartAllDevicesAsync();
         InitializeSoundDeviceStatusPolling();
 
@@ -413,6 +419,52 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             Logger?.LogWarning(ex, "检查 USB 摄像头状态时发生错误");
             Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
         }
+    }
+
+    private async Task CheckLprOnlineStatusAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var deviceType = settings.SystemSettings.LprDeviceType;
+            var configs = settings.LicensePlateRecognitionConfigs;
+
+            if (configs == null || configs.Count == 0)
+            {
+                Dispatcher.UIThread.Post(() => { IsLprOnline = false; });
+                return;
+            }
+
+            var statuses = _lprDeviceOnlineStatusService.GetOnlineStatuses(deviceType, configs);
+            var anyOnline = statuses.Any(s => s.IsOnline);
+
+            Dispatcher.UIThread.Post(() => { IsLprOnline = anyOnline; });
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "检查车牌识别设备状态时发生错误");
+            Dispatcher.UIThread.Post(() => { IsLprOnline = false; });
+        }
+    }
+
+    private void StartLprStatusCheckTimer()
+    {
+        var lprStatusTimer = new Timer(_ =>
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await CheckLprOnlineStatusAsync();
+                }
+                catch
+                {
+                    Dispatcher.UIThread.Post(() => { IsLprOnline = false; });
+                }
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(60));
+
+        _disposables.Add(lprStatusTimer);
     }
 
     /// <summary>
@@ -895,6 +947,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 {
                     await CheckCameraStatusOnceAsync();
                     await LoadPrinterSettingsAsync();
+                    await CheckLprOnlineStatusAsync();
                     this.RaisePropertyChanged(nameof(IsSoundDeviceEnabled));
                     Logger?.LogInformation(
                         "AttendedWeighingViewModel: Camera status check completed after settings save");
@@ -998,6 +1051,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     [Reactive] private bool _isPrinterEnabled;
 
     [Reactive] private bool _isPrinterOnline;
+
+    [Reactive] private bool _isLprOnline;
 
     [Reactive] private string _printerName = string.Empty;
 
