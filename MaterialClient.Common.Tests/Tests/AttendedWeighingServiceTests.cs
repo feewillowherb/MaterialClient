@@ -239,10 +239,10 @@ public class AttendedWeighingServiceTests : IDisposable
         var (service, _) = CreateServiceWithWeightSubject();
         await service.StartAsync();
 
-        // Act
-        service.OnPlateNumberRecognized("");
-        service.OnPlateNumberRecognized("   ");
-        service.OnPlateNumberRecognized(null!);
+        // Act - 发送无效车牌消息
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "" });
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "   " });
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = null! });
         await Task.Delay(100);
 
         // Assert
@@ -262,7 +262,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act
-        service.OnPlateNumberRecognized("京A12345挂");
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345挂" });
         await Task.Delay(200);
 
         // Assert
@@ -283,7 +283,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act
-        service.OnPlateNumberRecognized("京A12345");
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
         await Task.Delay(200);
 
         // Assert
@@ -303,7 +303,7 @@ public class AttendedWeighingServiceTests : IDisposable
         // Stay off scale (weight = 0)
 
         // Act
-        service.OnPlateNumberRecognized("京A12345");
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
         await Task.Delay(200);
 
         // Assert
@@ -323,9 +323,9 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act
-        service.OnPlateNumberRecognized("京A12345");
-        service.OnPlateNumberRecognized("京A12345");
-        service.OnPlateNumberRecognized("粤B67890");
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "粤B67890" });
         await Task.Delay(200);
 
         // Assert
@@ -365,7 +365,7 @@ public class AttendedWeighingServiceTests : IDisposable
         _disposables.Add(subscription);
 
         // Act
-        service.OnPlateNumberRecognized("京A12345");
+        SendPlateRecognition("京A12345");
         await Task.Delay(300);
 
         // Assert
@@ -388,9 +388,9 @@ public class AttendedWeighingServiceTests : IDisposable
         // Act - Recognize yellow plate 10 times, then blue plate once
         for (int i = 0; i < 10; i++)
         {
-            service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+            SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
         }
-        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue);
+        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
         await Task.Delay(200);
 
         // Assert - Blue plate (high-priority) should be selected despite lower count
@@ -411,8 +411,8 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act - Only recognize yellow plates (low-priority)
-        service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
-        service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+        SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
+        SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
         await Task.Delay(200);
 
         // Assert - Yellow plate should be selected (no high-priority alternative)
@@ -433,10 +433,10 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act - Blue plate first, then many yellow plates
-        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue);
+        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
         for (int i = 0; i < 100; i++)
         {
-            service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+            SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
         }
         await Task.Delay(200);
 
@@ -460,9 +460,9 @@ public class AttendedWeighingServiceTests : IDisposable
         // Act - Yellow plate many times, then plate without color once
         for (int i = 0; i < 10; i++)
         {
-            service.OnPlateNumberRecognized("京B99999", LprAllInOneColorType.Yellow);
+            SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
         }
-        service.OnPlateNumberRecognized("京A12345", null); // No color info
+        SendPlateRecognition("京A12345", null); // No color info
         await Task.Delay(200);
 
         // Assert - Plate without color (treated as high-priority) should be selected
@@ -483,8 +483,8 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act - Recognize plate with color
-        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue);
-        service.OnPlateNumberRecognized("京A12345", LprAllInOneColorType.Blue); // Recognize again
+        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
+        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue); // Recognize again
         await Task.Delay(200);
 
         // Assert - Plate should be cached and selected
@@ -706,7 +706,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.StartAsync();
         weightSubject.OnNext(1.0m);
         await Task.Delay(300);
-        service.OnPlateNumberRecognized("京A12345");
+        SendPlateRecognition("京A12345");
         await Task.Delay(200);
 
         // Act - Reset by going off scale
@@ -1341,7 +1341,7 @@ public class AttendedWeighingServiceTests : IDisposable
         // Act - Cause various operations
         weightSubject.OnNext(1.0m);
         await Task.Delay(300);
-        service.OnPlateNumberRecognized("京A12345");
+        SendPlateRecognition("京A12345");
         await Task.Delay(200);
 
         // Assert - Service should still be operational
@@ -1361,6 +1361,21 @@ public class AttendedWeighingServiceTests : IDisposable
     #endregion
 
     #region Helper Methods
+
+    /// <summary>
+    /// 辅助方法:通过 MessageBus 发送车牌识别消息
+    /// </summary>
+    private void SendPlateRecognition(string plateNumber, LprAllInOneColorType? colorType = null)
+    {
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage
+        {
+            PlateNumber = plateNumber,
+            ColorType = colorType,
+            DeviceType = LprDeviceType.Hikvision,
+            DeviceName = "TestDevice",
+            Timestamp = DateTime.Now
+        });
+    }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithWeightSubject()
     {
