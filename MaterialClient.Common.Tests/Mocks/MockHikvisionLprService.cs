@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Services.LprAllInOne;
+using ReactiveUI;
 
 namespace MaterialClient.Common.Tests.Mocks;
 
@@ -11,10 +13,9 @@ namespace MaterialClient.Common.Tests.Mocks;
 ///     海康威视车牌识别服务的 Mock 实现
 ///     用于单元测试，可以模拟车牌识别事件
 /// </summary>
-public sealed class MockHikvisionLprService : IHikvisionLprService, IDisposable
+public sealed class MockHikvisionLprService : IHikvisionLprService, ILprDevice, IDisposable
 {
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _deviceConfigs = new();
-    private readonly Subject<LicensePlateRecognizedEvent> _plateRecognizedSubject = new();
     private bool _isStarted;
 
     /// <summary>
@@ -33,9 +34,9 @@ public sealed class MockHikvisionLprService : IHikvisionLprService, IDisposable
     public bool StartAsyncReturnValue { get; set; } = true;
 
     /// <summary>
-    ///     车牌识别事件流
+    ///     海康威视设备支持主动抓拍
     /// </summary>
-    public IObservable<LicensePlateRecognizedEvent> PlateRecognized => _plateRecognizedSubject.AsObservable();
+    public bool SupportsActiveCapture => true;
 
     /// <summary>
     ///     添加或更新设备配置
@@ -86,6 +87,13 @@ public sealed class MockHikvisionLprService : IHikvisionLprService, IDisposable
         _isStarted = false;
     }
 
+    /// <inheritdoc />
+    public Task TriggerCaptureAsync(LicensePlateRecognitionConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     ///     模拟车牌识别事件
     /// </summary>
@@ -93,11 +101,16 @@ public sealed class MockHikvisionLprService : IHikvisionLprService, IDisposable
     {
         ArgumentNullException.ThrowIfNull(@event);
 
-        // 记录事件
         RecognizedEvents.Add(@event);
 
-        // 发布到事件流
-        _plateRecognizedSubject.OnNext(@event);
+        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage
+        {
+            PlateNumber = @event.PlateNumber,
+            ColorType = null,
+            DeviceType = LprDeviceType.Hikvision,
+            DeviceName = @event.DeviceName,
+            Timestamp = @event.Timestamp
+        });
     }
 
     /// <summary>
@@ -178,6 +191,5 @@ public sealed class MockHikvisionLprService : IHikvisionLprService, IDisposable
     /// </summary>
     public void Dispose()
     {
-        _plateRecognizedSubject?.Dispose();
     }
 }

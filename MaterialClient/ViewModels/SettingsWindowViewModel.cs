@@ -29,7 +29,7 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 ///     Settings window ViewModel
 /// </summary>
-public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependency
+public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependency, IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
@@ -37,6 +37,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ITicketPrintingService _ticketPrintingService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private readonly ISoundDeviceService _soundDeviceService;
+    private readonly ILprDeviceResolver _lprDeviceResolver;
+    private readonly IDisposable _lprMessageSubscription;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -139,7 +141,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         IHikvisionService hikvisionService,
         ITicketPrintingService ticketPrintingService,
         ILogger<SettingsWindowViewModel> logger,
-        ISoundDeviceService soundDeviceService)
+        ISoundDeviceService soundDeviceService,
+        ILprDeviceResolver lprDeviceResolver)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
@@ -147,6 +150,20 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _ticketPrintingService = ticketPrintingService;
         _logger = logger;
         _soundDeviceService = soundDeviceService;
+        _lprDeviceResolver = lprDeviceResolver;
+
+        // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
+        _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
+            .Subscribe(msg =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var item = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
+                        string.Equals(c.Name, msg.DeviceName, StringComparison.Ordinal));
+                    if (item != null)
+                        item.LastCapturePlateNumber = msg.PlateNumber ?? string.Empty;
+                });
+            });
 
         // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
         this.WhenAnyValue(x => x.LprDeviceType)
@@ -380,6 +397,44 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     }
 
     [ReactiveCommand]
+    private async Task TestLprCaptureAsync(LicensePlateRecognitionConfigViewModel? row)
+    {
+        if (row == null) return;
+
+        var config = new LicensePlateRecognitionConfig
+        {
+            Name = row.Name,
+            Ip = row.Ip,
+            Direction = row.Direction,
+            UserName = row.UserName,
+            Password = row.Password,
+            Port = row.Port,
+            Channel = row.Channel
+        };
+
+        var device = _lprDeviceResolver.GetDevice(LprDeviceType);
+        if (!device.SupportsActiveCapture)
+        {
+            _logger.LogWarning("当前设备类型不支持主动抓拍: {Type}", LprDeviceType);
+            return;
+        }
+
+        try
+        {
+            await device.TriggerCaptureAsync(config);
+            _logger.LogInformation("已触发测试抓拍: Device={Device}", config.Name);
+        }
+        catch (NotSupportedException ex)
+        {
+            _logger.LogWarning(ex, "设备不支持主动抓拍: {Device}", config.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "测试抓拍失败: Device={Device}", config.Name);
+        }
+    }
+
+    [ReactiveCommand]
     private async Task TestCaptureAsync()
     {
         try
@@ -598,6 +653,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _lprMessageSubscription?.Dispose();
+    }
+
     #endregion
 }
 
@@ -642,6 +703,11 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     ///     设备是否在线（由 10 分钟定时检查更新）
     /// </summary>
     [Reactive] private bool _isOnline;
+
+    /// <summary>
+    ///     最近一次测试抓拍的车牌号（来自 MessageBus）
+    /// </summary>
+    [Reactive] private string _lastCapturePlateNumber = string.Empty;
 
     /// <summary>
     ///     在线状态显示文本

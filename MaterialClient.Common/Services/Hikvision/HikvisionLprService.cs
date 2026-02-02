@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Runtime.InteropServices;
 using System.Text;
 using MaterialClient.Common.Configuration;
@@ -49,11 +46,6 @@ public interface IHikvisionLprService
     ///     停止监听服务
     /// </summary>
     Task StopAsync();
-
-    /// <summary>
-    ///     车牌识别事件流
-    /// </summary>
-    IObservable<LicensePlateRecognizedEvent> PlateRecognized { get; }
 }
 
 /// <summary>
@@ -70,18 +62,12 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
     private GCHandle? _callbackHandle;
     private bool _isInitialized;
     private int _listenHandle = -1;
-    private readonly Subject<LicensePlateRecognizedEvent> _plateRecognizedSubject = new();
 
     public HikvisionLprService(ISettingsService settingsService, ILogger<HikvisionLprService>? logger = null)
     {
         _settingsService = settingsService;
         _logger = logger;
     }
-
-    /// <summary>
-    ///     车牌识别事件流
-    /// </summary>
-    public IObservable<LicensePlateRecognizedEvent> PlateRecognized => _plateRecognizedSubject.AsObservable();
 
     /// <summary>
     ///     海康威视设备支持主动抓拍
@@ -355,18 +341,6 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
             // 使用 GBK 编码提取车牌号
             var plateNumber = HikvisionEncodingHelper.GetString(plateResult.sLicense, _logger);
 
-            // 创建事件
-            var @event = new LicensePlateRecognizedEvent
-            {
-                PlateNumber = plateNumber,
-                DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
-                Direction = config?.Direction ?? LicensePlateDirection.In,
-                Timestamp = DateTime.Now
-            };
-
-            // 发布事件到 Observable 流
-            _plateRecognizedSubject.OnNext(@event);
-
             // 发布 MessageBus 消息(统一事件传递)
             var message = new LicensePlateRecognizedMessage
             {
@@ -380,7 +354,7 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
 
             _logger?.LogInformation(
                 "收到车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                @event.DeviceName, @event.PlateNumber, @event.Direction, @event.Timestamp);
+                message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.In, message.Timestamp);
         }
         catch (Exception ex)
         {
@@ -413,18 +387,6 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
                 // 使用 GBK 编码提取车牌号
                 var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
 
-                // 创建事件
-                var @event = new LicensePlateRecognizedEvent
-                {
-                    PlateNumber = plateNumber,
-                    DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
-                    Direction = config?.Direction ?? LicensePlateDirection.In,
-                    Timestamp = DateTime.Now
-                };
-
-                // 发布事件到 Observable 流
-                _plateRecognizedSubject.OnNext(@event);
-
                 // 发布 MessageBus 消息(统一事件传递)
                 var message = new LicensePlateRecognizedMessage
                 {
@@ -438,7 +400,7 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
 
                 _logger?.LogInformation(
                     "收到 ITS 车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                    @event.DeviceName, @event.PlateNumber, @event.Direction, @event.Timestamp);
+                    message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.In, message.Timestamp);
             }
         }
         catch (Exception ex)
@@ -627,106 +589,52 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
     }
 
     /// <summary>
-    ///     主动触发海康威视设备的车牌识别
+    ///     主动触发海康威视设备的车牌识别；识别结果通过 MessageBus 的 LicensePlateRecognizedMessage 交付。
     /// </summary>
     /// <param name="config">设备配置</param>
-    /// <returns>
-    ///     可观察的车牌识别事件流。
-    ///     如果设备不支持主动抓拍,应返回空流或抛出 NotSupportedException。
-    /// </returns>
-    /// <remarks>
-    ///     实现应处理:
-    ///     - 设备登录/认证
-    ///     - 触发抓拍命令
-    ///     - 等待识别结果(带超时)
-    ///     - 错误处理(网络超时、设备离线、SDK 调用失败)
-    /// </remarks>
-    public IObservable<LicensePlateRecognizedEvent> TriggerCaptureAsync(
-        LicensePlateRecognitionConfig config)
+    public async Task TriggerCaptureAsync(LicensePlateRecognitionConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        return Observable.Create<LicensePlateRecognizedEvent>(observer =>
+        // 1. 确保登录(使用会话缓存,避免重复登录)
+        var key = BuildDeviceKey(config);
+        var userId = _deviceKeyToUserId.AddOrUpdate(
+            key,
+            _ => LoginDevice(config),
+            (_, existingUserId) => existingUserId >= 0 ? existingUserId : LoginDevice(config));
+
+        if (userId < 0)
         {
-            try
-            {
-                // 1. 确保登录(使用会话缓存,避免重复登录)
-                var key = BuildDeviceKey(config);
-                var userId = _deviceKeyToUserId.AddOrUpdate(
-                    key,
-                    _ => LoginDevice(config),           // 首次登录
-                    (_, existingUserId) => existingUserId >= 0
-                        ? existingUserId                 // 复用现有会话
-                        : LoginDevice(config));          // 会话失效,重新登录
+            _logger?.LogError("登录海康威视设备失败: {Device}", config.Name);
+            throw new InvalidOperationException($"设备登录失败: {config.Name}");
+        }
 
-                if (userId < 0)
-                {
-                    _logger?.LogError("登录海康威视设备失败: {Device}", config.Name);
-                    observer.OnError(new Exception($"设备登录失败: {config.Name}"));
-                    return Disposable.Empty;
-                }
+        // 2. 触发抓拍；结果由设备回调发布到 MessageBus
+        var snapCfg = new HikvisionSdk.NET_DVR_SNAPCFG
+        {
+            dwSize = (uint)Marshal.SizeOf<HikvisionSdk.NET_DVR_SNAPCFG>(),
+            byRelatedDriveWay = 0,
+            bySnapTimes = 0, // 0 = 单次抓拍
+            wSnapWaitTime = 0,
+            wIntervalTime = new ushort[4],
+            dwSnapVehicleNum = 0,
+            struJpegPara = new HikvisionSdk.NET_DVR_JPEGPARA { wPicSize = 0xff, wPicQuality = 1 },
+            byRes2 = new byte[16]
+        };
 
-                // 2. 触发抓拍
-                // 设置通道号
-                if (!int.TryParse(config.Channel, out var channel) || channel <= 0)
-                {
-                    channel = 1; // 默认通道
-                }
+        var result = HikvisionSdk.NET_DVR_ContinuousShoot(userId, ref snapCfg);
 
-                // 分配缓冲区接收抓拍结果
-                const int bufferSize = 10 * 1024 * 1024; // 10MB
-                var buffer = new byte[bufferSize];
-                uint jpegSize = 0;
+        if (!result)
+        {
+            var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+            var error = GetErrorDescription(errorCode);
+            _logger?.LogError("触发抓拍失败: {Error}", error);
+            throw new InvalidOperationException($"触发抓拍失败: {error}");
+        }
 
-                // 调用连续抓拍接口
-                // dwShootInterval = 0 表示只抓拍一次
-                var result = HikvisionSdk.NET_DVR_ContinuousShoot(
-                    userId,
-                    channel,
-                    0,          // dwShootInterval: 抓拍间隔(毫秒),0表示只抓拍一次
-                    out jpegSize,
-                    buffer,
-                    (uint)bufferSize);
+        _logger?.LogInformation("已触发海康威视设备抓拍: Device={Device}", config.Name);
 
-                if (!result)
-                {
-                    var errorCode = HikvisionSdk.NET_DVR_GetLastError();
-                    var error = GetErrorDescription(errorCode);
-                    _logger?.LogError("触发抓拍失败: {Error}", error);
-                    observer.OnError(new Exception($"触发抓拍失败: {error}"));
-                    // 注意: 不登出设备,保持会话复用
-                    return Disposable.Empty;
-                }
-
-                _logger?.LogInformation("已触发海康威视设备抓拍: Device={Device}, Channel={Channel}, JpegSize={Size}",
-                    config.Name, channel, jpegSize);
-
-                // 3. 订阅结果(带超时)
-                var subscription = PlateRecognized
-                    .Where(e => e.DeviceName == config.Name)
-                    .Timeout(TimeSpan.FromSeconds(30))
-                    .Take(1)
-                    .Subscribe(
-                        observer.OnNext,
-                        observer.OnError,
-                        observer.OnCompleted
-                    );
-
-                // 4. 返回清理函数
-                return Disposable.Create(() =>
-                {
-                    subscription?.Dispose();
-                    // 注意: 不调用 NET_DVR_Logout,保持会话以供后续抓拍复用
-                    // 会话将在服务停止或设备长时间不活动时清理
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "触发抓拍时发生异常: Device={Device}", config.Name);
-                observer.OnError(ex);
-                return Disposable.Empty;
-            }
-        });
+        await Task.CompletedTask;
     }
 
     /// <summary>

@@ -472,10 +472,21 @@
                                     <DataGridTextColumn Header="方向" Width="80" Binding="{Binding DirectionText}" />
                                     <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" />
                                     <DataGridTextColumn Header="端口" Width="80" Binding="{Binding Port}" />
-                                    <DataGridTemplateColumn Header="操作" Width="120">
+                                    <DataGridTextColumn Header="抓拍结果" Width="100" Binding="{Binding LastCapturePlateNumber}" />
+                                    <DataGridTemplateColumn Header="操作" Width="180">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                                                    <Button Content="测试抓拍"
+                                                            Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).TestLprCaptureCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            Foreground="#4A85F9"
+                                                            BorderThickness="0"
+                                                            HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Height="35" />
                                                     <Button Content="编辑"
                                                             Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).EditLprCommand}"
                                                             CommandParameter="{Binding}"
