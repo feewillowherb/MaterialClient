@@ -93,16 +93,43 @@
                                Text="产品名称:"
                                FontSize="14"
                                VerticalAlignment="Center" />
-                    <Button Grid.Column="1"
-                            Content="{Binding ProductNameDisplay}"
-                            Command="{Binding ProductNameTapCommand}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            HorizontalContentAlignment="Left"
-                            VerticalContentAlignment="Center"
-                            FontSize="14"
-                            Cursor="Hand" />
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                        <Button Content="{Binding ProductNameDisplay}"
+                                Command="{Binding ProductNameTapCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                HorizontalContentAlignment="Left"
+                                VerticalContentAlignment="Center"
+                                FontSize="14"
+                                FontWeight="Normal"
+                                Foreground="Black"
+                                Cursor="Hand">
+                            <Button.ContentTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"
+                                               FontSize="14"
+                                               FontWeight="Normal"
+                                               Foreground="Black"
+                                               VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </Button.ContentTemplate>
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Foreground" Value="Black" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="FontWeight" Value="Normal" />
+                                </Style>
+                                <Style Selector="Button:focus">
+                                    <Setter Property="Foreground" Value="Black" />
+                                    <Setter Property="FontWeight" Value="Normal" />
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                    </StackPanel>
                 </Grid>
 
                 <!-- 到期时间 -->
