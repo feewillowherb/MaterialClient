@@ -38,6 +38,12 @@ public interface ISoundDeviceService
     ///     Returns false if device is disabled or configuration is invalid
     /// </returns>
     Task<bool> IsOnlineAsync();
+
+    /// <summary>
+    ///     Play fixed test text on sound device for testing purposes
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task PlayTextV2TestAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -438,6 +444,24 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
         {
             _logger?.LogError(ex, "Unexpected error while checking sound device status");
             return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task PlayTextV2TestAsync(CancellationToken cancellationToken = default)
+    {
+        const string testText = "音柱测试";
+        _logger?.LogInformation("Starting sound device test with text: {TestText}", testText);
+
+        try
+        {
+            await PlayTextV2Async(testText, cancellationToken);
+            _logger?.LogInformation("Sound device test completed successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Sound device test failed");
+            throw;
         }
     }
 }

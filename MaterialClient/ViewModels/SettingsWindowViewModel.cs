@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -35,6 +36,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly IHikvisionService _hikvisionService;
     private readonly ITicketPrintingService _ticketPrintingService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
+    private readonly ISoundDeviceService _soundDeviceService;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -125,6 +127,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private string _soundDeviceSoundSN = string.Empty;
     [Reactive] private string _soundDeviceSoundVolume = "0";
 
+    // Sound device test status
+    [Reactive] private bool _isSoundDeviceTestRunning = false;
+    [Reactive] private string? _soundDeviceTestResult = null;
+
     public ObservableCollection<string> AvailablePrinters { get; } = new();
 
     public SettingsWindowViewModel(
@@ -132,13 +138,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ITruckScaleWeightService truckScaleWeightService,
         IHikvisionService hikvisionService,
         ITicketPrintingService ticketPrintingService,
-        ILogger<SettingsWindowViewModel> logger)
+        ILogger<SettingsWindowViewModel> logger,
+        ISoundDeviceService soundDeviceService)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
         _ticketPrintingService = ticketPrintingService;
         _logger = logger;
+        _soundDeviceService = soundDeviceService;
 
         // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
         this.WhenAnyValue(x => x.LprDeviceType)
@@ -404,6 +412,40 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             _logger.LogError(ex, "测试拍照时发生异常");
             // Show error message - in a real app you'd use a dialog service
             // Error: ex.Message
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task TestSoundDeviceAsync()
+    {
+        try
+        {
+            IsSoundDeviceTestRunning = true;
+            SoundDeviceTestResult = null;
+
+            await _soundDeviceService.PlayTextV2TestAsync(CancellationToken.None);
+
+            SoundDeviceTestResult = "测试成功";
+            _logger.LogInformation("Sound device test succeeded");
+        }
+        catch (HttpRequestException)
+        {
+            SoundDeviceTestResult = "测试失败: 网络错误，请检查音响设备IP地址";
+            _logger.LogError("Sound device test failed: Network error");
+        }
+        catch (TaskCanceledException)
+        {
+            SoundDeviceTestResult = "测试失败: 请求超时，请检查音响设备是否在线";
+            _logger.LogError("Sound device test failed: Timeout");
+        }
+        catch (Exception ex)
+        {
+            SoundDeviceTestResult = $"测试失败: {ex.Message}";
+            _logger.LogError(ex, "Sound device test failed");
+        }
+        finally
+        {
+            IsSoundDeviceTestRunning = false;
         }
     }
 
