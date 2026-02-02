@@ -68,6 +68,11 @@ public interface IAuthenticationService
     ///     更新会话活动时间
     /// </summary>
     Task UpdateSessionActivityAsync();
+
+    /// <summary>
+    ///     删除所有授权相关数据：LicenseInfo、UserSession、UserCredential
+    /// </summary>
+    Task ClearAllAuthDataAsync();
 }
 
 /// <summary>
@@ -366,6 +371,20 @@ public partial class AuthenticationService : DomainService, IAuthenticationServi
             session.UpdateActivity();
             await _sessionRepository.UpdateAsync(session);
         }
+    }
+
+    [UnitOfWork]
+    public async Task ClearAllAuthDataAsync()
+    {
+        var sessions = await _sessionRepository.GetListAsync();
+        foreach (var session in sessions)
+            await _sessionRepository.DeleteAsync(session);
+
+        var credentials = await _credentialRepository.GetListAsync();
+        foreach (var credential in credentials)
+            await _credentialRepository.DeleteAsync(credential);
+
+        await _licenseService.ClearLicenseAsync();
     }
 
     /// <summary>

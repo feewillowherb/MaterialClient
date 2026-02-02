@@ -63,6 +63,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
@@ -82,8 +83,30 @@
                                VerticalAlignment="Center" />
                 </Grid>
 
-                <!-- 到期时间 -->
+                <!-- 产品名称（点击 20 次删除 LicenseInfo / UserSession / UserCredential） -->
                 <Grid Grid.Row="1" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="产品名称:"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Content="{Binding ProductNameDisplay}"
+                            Command="{Binding ProductNameTapCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            HorizontalContentAlignment="Left"
+                            VerticalContentAlignment="Center"
+                            FontSize="14"
+                            Cursor="Hand" />
+                </Grid>
+
+                <!-- 到期时间 -->
+                <Grid Grid.Row="2" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80" />
                         <ColumnDefinition Width="*" />
@@ -100,7 +123,7 @@
                 </Grid>
 
                 <!-- 机器码 -->
-                <Grid Grid.Row="2" Margin="0,0,0,20">
+                <Grid Grid.Row="3" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80" />
                         <ColumnDefinition Width="*" />
@@ -116,7 +139,7 @@
                 </Grid>
 
                 <!-- 授权码 -->
-                <Grid Grid.Row="3" Margin="0,0,0,20">
+                <Grid Grid.Row="4" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80" />
                         <ColumnDefinition Width="*" />
@@ -132,7 +155,7 @@
                 </Grid>
 
                 <!-- Spacer -->
-                <Border Grid.Row="4" />
+                <Border Grid.Row="5" />
             </Grid>
         </Grid>
     </Grid>

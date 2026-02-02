@@ -1,6 +1,9 @@
 using System;
 using System.Threading.Tasks;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Services.Authentication;
+using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
 
@@ -11,10 +14,16 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransientDependency
 {
+    private const int ProductNameTapThreshold = 20;
+
     private readonly IAuthenticationService _authenticationService;
     private readonly ILicenseService _licenseService;
 
+    private int _productNameTapCount;
+
     [Reactive] private string _projectName = string.Empty;
+
+    [Reactive] private string _productNameDisplay = string.Empty;
 
     [Reactive] private string _expirationDate = string.Empty;
 
@@ -28,7 +37,13 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
     {
         _authenticationService = authenticationService;
         _licenseService = licenseService;
+        ProductNameTapCommand = ReactiveCommand.CreateFromTask(OnProductNameDisplayTappedAsync);
     }
+
+    /// <summary>
+    ///     点击产品名称时触发；连续点击 20 次后删除 LicenseInfo、UserSession、UserCredential 并刷新
+    /// </summary>
+    public IReactiveCommand ProductNameTapCommand { get; }
 
     /// <summary>
     ///     初始化数据
@@ -42,10 +57,12 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
             if (session != null)
             {
                 ProjectName = session.CompanyName ?? string.Empty;
+                ProductNameDisplay = TryGetProductCodeDescription(session.ProductId);
             }
             else
             {
                 ProjectName = "未登录";
+                ProductNameDisplay = "获取失败";
             }
 
             // 获取授权信息
@@ -87,10 +104,41 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
         {
             // 如果获取数据失败，显示默认值
             ProjectName = "获取失败";
+            ProductNameDisplay = "获取失败";
             ExpirationDate = "获取失败";
             MachineCode = string.Empty;
             AuthCode = string.Empty;
         }
+    }
+
+    /// <summary>
+    ///     将 UserSession.ProductId 转为 ProductCode 的 Description；转换失败返回「获取失败」。
+    /// </summary>
+    private static string TryGetProductCodeDescription(long productId)
+    {
+        try
+        {
+            var value = (int)productId;
+            if (Enum.IsDefined(typeof(ProductCode), value))
+                return ((ProductCode)value).GetDescription();
+        }
+        catch (OverflowException)
+        {
+            // productId 超出 int 范围
+        }
+
+        return "获取失败";
+    }
+
+    private async Task OnProductNameDisplayTappedAsync()
+    {
+        _productNameTapCount++;
+        if (_productNameTapCount < ProductNameTapThreshold)
+            return;
+
+        _productNameTapCount = 0;
+        await _authenticationService.ClearAllAuthDataAsync();
+        await InitializeAsync();
     }
 
     /// <summary>
