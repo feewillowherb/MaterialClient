@@ -72,9 +72,10 @@ internal static class HikvisionSdk
     /// <summary>
     ///     连续抓拍
     /// </summary>
+    /// <param name="lUserID">用户句柄</param>
+    /// <param name="lpInter">抓拍配置，与 HCNetSDK.h NET_DVR_ContinuousShoot(LONG lUserID, LPNET_DVR_SNAPCFG lpInter) 一致</param>
     [DllImport("HCNetSDK.dll")]
-    public static extern bool NET_DVR_ContinuousShoot(int lUserID, int lChannel, uint dwShootInterval,
-        out uint lpJpegSize, byte[] pJpegBuffer, uint dwBufSize);
+    public static extern bool NET_DVR_ContinuousShoot(int lUserID, ref NET_DVR_SNAPCFG lpInter);
 
     /// <summary>
     ///     获取最后一次错误码
@@ -174,14 +175,24 @@ internal static class HikvisionSdk
     }
 
     /// <summary>
-    ///     抓拍配置
+    ///     抓拍配置（与 HCNetSDK.h tagNET_DVR_SNAPCFG 一致）
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct NET_DVR_SNAPCFG
     {
-        public int dwSnapInterval;
-        public int bySnapCount;
-        public int byRes;
+        public uint dwSize;
+        public byte byRelatedDriveWay;
+        public byte bySnapTimes;
+        public ushort wSnapWaitTime;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+        public ushort[] wIntervalTime;
+
+        public uint dwSnapVehicleNum;
+        public NET_DVR_JPEGPARA struJpegPara;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] byRes2;
     }
 
     /// <summary>

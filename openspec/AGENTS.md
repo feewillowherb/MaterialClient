@@ -9,6 +9,7 @@ Instructions for AI coding assistants using OpenSpec for spec-driven development
 - Pick a unique `change-id`: kebab-case, verb-led (`add-`, `update-`, `remove-`, `refactor-`)
 - Scaffold: `proposal.md`, `tasks.md`, `design.md` (only if needed), and delta specs per affected capability
 - Write deltas: use `## ADDED|MODIFIED|REMOVED|RENAMED Requirements`; include at least one `#### Scenario:` per requirement
+- **Document language (NON-NEGOTIABLE)**: All markdown under `openspec/` (specs, changes, proposal.md, tasks.md, design.md, spec.md) MUST be written in English.
 - Validate: `openspec validate [change-id] --strict` and fix issues
 - Request approval: Do not start implementation until proposal is approved
 
@@ -71,6 +72,12 @@ After deployment, create separate PR to:
 - [ ] Read `openspec/project.md` for conventions
 - [ ] Run `openspec list` to see active changes
 - [ ] Run `openspec list --specs` to see existing capabilities
+
+**Document Language (NON-NEGOTIABLE):**
+- All markdown files under `openspec/` MUST be written in English. This includes:
+  - `specs/**/*.md`, `changes/**/proposal.md`, `tasks.md`, `design.md`, and all delta `spec.md` files.
+  - Requirement text, scenario descriptions, proposal content, task lists, and design decisions.
+- Do not use Chinese or other non-English languages in openspec markdown; translate to English.
 
 **Before Creating Specs:**
 - Always check if capability already exists

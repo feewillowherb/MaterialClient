@@ -62,6 +62,7 @@ The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of t
    ```
 
 3. **Check All Relevant Principles**:
+   - ✅ **Plan Language (NON-NEGOTIABLE)**: Implementation plans (e.g. plan.md, `.cursor/plans/*.plan.md`) MUST be written in English.
    - ✅ **Architecture-First**: Verify layer separation (UI → Application Services → Domain → Infrastructure)
    - ✅ **Single Responsibility Principle (NON-NEGOTIABLE)**: Verify no mixed concerns
    - ✅ **Single Source of Truth (NON-NEGOTIABLE)**: Verify config defaults, constants, and enum display values are defined in one place; UI defaults must match the same data source used when saving
@@ -80,6 +81,7 @@ The Constitution (`.specify/memory/constitution.md`) is the **supreme law** of t
 
 ### Common Violations to Check:
 
+- ❌ **Plan or plan sections in non-English**: Violates Plan Language (NON-NEGOTIABLE)
 - ❌ **ViewModel directly accessing Repository**: Violates Architecture-First
 - ❌ **Business logic in ViewModel**: Violates Single Responsibility and Architecture-First
 - ❌ **Mixed concerns in single method**: Violates Single Responsibility
@@ -198,6 +200,7 @@ Before proceeding with ANY task, verify:
 - [ ] Confirmation message printed in response (✅ or ❌)
 - [ ] Constitution content verified and understood
 - [ ] All relevant principles have been checked
+- [ ] Plan document is written in English (NON-NEGOTIABLE for plan creation)
 - [ ] Architecture layering is correct (no cross-layer violations)
 - [ ] Single Responsibility is maintained
 - [ ] Single Source of Truth: config defaults/constants defined in one place; UI defaults match save/persist data source
@@ -212,6 +215,7 @@ Before proceeding with ANY task, verify:
 
 | Violation | Severity | Fix |
 |-----------|----------|-----|
+| Plan or plan sections in non-English | ❌ CRITICAL | Rewrite plan in English |
 | ViewModel → Repository direct access | ❌ CRITICAL | Move to Application Service |
 | Business logic in ViewModel | ❌ CRITICAL | Move to Application Service |
 | Duplicate default values / magic strings | ❌ CRITICAL | Define single source (e.g. static defaults class), reference everywhere |

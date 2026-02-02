@@ -1,8 +1,5 @@
 using System.Collections.Concurrent;
-using System.Reactive;
-using System.Reactive.Linq;
 using MaterialClient.Common.Configuration;
-using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
@@ -167,34 +164,14 @@ public class LprAllInOneService : ILprAllInOneService, ILprDevice, ISingletonDep
     ///     主动触发车牌识别抓拍
     /// </summary>
     /// <param name="config">设备配置</param>
-    /// <returns>
-    ///     可观察的车牌识别事件流。
-    ///     由于 LprAllInOne 使用轮询机制,此方法返回一个异步流,等待设备回调。
-    /// </returns>
-    public IObservable<LicensePlateRecognizedEvent> TriggerCaptureAsync(
-        LicensePlateRecognitionConfig config)
+    /// <remarks>识别结果通过 HTTP 回调发布到 MessageBus。</remarks>
+    public async Task TriggerCaptureAsync(LicensePlateRecognitionConfig config)
     {
-        return Observable.FromAsync(async () =>
-        {
-            var success = await TriggerManualRecognitionAsync(config);
-            if (!success)
-            {
-                throw new InvalidOperationException($"触发识别失败: {config.Name}");
-            }
+        var success = await TriggerManualRecognitionAsync(config);
+        if (!success)
+            throw new InvalidOperationException($"触发识别失败: {config.Name}");
 
-            _logger?.LogInformation("已触发 LprAllInOne 设备抓拍: Device={Device}", config.Name);
-
-            // 注意: LprAllInOne 使用轮询机制,实际结果会通过 HTTP 回调返回
-            // 并在 MinimalWebHostService 中发布到 MessageBus
-            // 这里我们返回一个占位事件,实际应用可能需要等待回调
-            return new LicensePlateRecognizedEvent
-            {
-                PlateNumber = string.Empty, // 占位,实际结果通过回调获取
-                DeviceName = config.Name,
-                Direction = config.Direction,
-                Timestamp = DateTime.Now
-            };
-        });
+        _logger?.LogInformation("已触发 LprAllInOne 设备抓拍: Device={Device}", config.Name);
     }
 }
 

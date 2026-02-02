@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -28,15 +29,16 @@ namespace MaterialClient.ViewModels;
 /// <summary>
 ///     Settings window ViewModel
 /// </summary>
-public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependency
+public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependency, IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IHikvisionService _hikvisionService;
     private readonly ITicketPrintingService _ticketPrintingService;
-    private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private readonly ILogger<SettingsWindowViewModel> _logger;
-    private Timer? _lprOnlineStatusTimer;
+    private readonly ISoundDeviceService _soundDeviceService;
+    private readonly ILprDeviceResolver _lprDeviceResolver;
+    private readonly IDisposable _lprMessageSubscription;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -127,6 +129,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private string _soundDeviceSoundSN = string.Empty;
     [Reactive] private string _soundDeviceSoundVolume = "0";
 
+    // Sound device test status
+    [Reactive] private bool _isSoundDeviceTestRunning = false;
+    [Reactive] private string? _soundDeviceTestResult = null;
+
     public ObservableCollection<string> AvailablePrinters { get; } = new();
 
     public SettingsWindowViewModel(
@@ -134,15 +140,30 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ITruckScaleWeightService truckScaleWeightService,
         IHikvisionService hikvisionService,
         ITicketPrintingService ticketPrintingService,
-        ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
-        ILogger<SettingsWindowViewModel> logger)
+        ILogger<SettingsWindowViewModel> logger,
+        ISoundDeviceService soundDeviceService,
+        ILprDeviceResolver lprDeviceResolver)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
         _hikvisionService = hikvisionService;
         _ticketPrintingService = ticketPrintingService;
-        _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
         _logger = logger;
+        _soundDeviceService = soundDeviceService;
+        _lprDeviceResolver = lprDeviceResolver;
+
+        // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
+        _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
+            .Subscribe(msg =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var item = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
+                        string.Equals(c.Name, msg.DeviceName, StringComparison.Ordinal));
+                    if (item != null)
+                        item.LastCapturePlateNumber = msg.PlateNumber ?? string.Empty;
+                });
+            });
 
         // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
         this.WhenAnyValue(x => x.LprDeviceType)
@@ -154,13 +175,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         // Load settings
         _ = LoadSettingsAsync();
-
-        // LPR 设备在线状态：每 10 分钟检查一次
-        _lprOnlineStatusTimer = new Timer(
-            _ => _ = RefreshLprOnlineStatusesAsync(),
-            null,
-            TimeSpan.FromMinutes(10),
-            TimeSpan.FromMinutes(10));
     }
 
     #region Events
@@ -383,6 +397,44 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     }
 
     [ReactiveCommand]
+    private async Task TestLprCaptureAsync(LicensePlateRecognitionConfigViewModel? row)
+    {
+        if (row == null) return;
+
+        var config = new LicensePlateRecognitionConfig
+        {
+            Name = row.Name,
+            Ip = row.Ip,
+            Direction = row.Direction,
+            UserName = row.UserName,
+            Password = row.Password,
+            Port = row.Port,
+            Channel = row.Channel
+        };
+
+        var device = _lprDeviceResolver.GetDevice(LprDeviceType);
+        if (!device.SupportsActiveCapture)
+        {
+            _logger.LogWarning("当前设备类型不支持主动抓拍: {Type}", LprDeviceType);
+            return;
+        }
+
+        try
+        {
+            await device.TriggerCaptureAsync(config);
+            _logger.LogInformation("已触发测试抓拍: Device={Device}", config.Name);
+        }
+        catch (NotSupportedException ex)
+        {
+            _logger.LogWarning(ex, "设备不支持主动抓拍: {Device}", config.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "测试抓拍失败: Device={Device}", config.Name);
+        }
+    }
+
+    [ReactiveCommand]
     private async Task TestCaptureAsync()
     {
         try
@@ -415,6 +467,40 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             _logger.LogError(ex, "测试拍照时发生异常");
             // Show error message - in a real app you'd use a dialog service
             // Error: ex.Message
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task TestSoundDeviceAsync()
+    {
+        try
+        {
+            IsSoundDeviceTestRunning = true;
+            SoundDeviceTestResult = null;
+
+            await _soundDeviceService.PlayTextV2TestAsync(CancellationToken.None);
+
+            SoundDeviceTestResult = "测试成功";
+            _logger.LogInformation("Sound device test succeeded");
+        }
+        catch (HttpRequestException)
+        {
+            SoundDeviceTestResult = "测试失败: 网络错误，请检查音响设备IP地址";
+            _logger.LogError("Sound device test failed: Network error");
+        }
+        catch (TaskCanceledException)
+        {
+            SoundDeviceTestResult = "测试失败: 请求超时，请检查音响设备是否在线";
+            _logger.LogError("Sound device test failed: Timeout");
+        }
+        catch (Exception ex)
+        {
+            SoundDeviceTestResult = $"测试失败: {ex.Message}";
+            _logger.LogError(ex, "Sound device test failed");
+        }
+        finally
+        {
+            IsSoundDeviceTestRunning = false;
         }
     }
 
@@ -482,34 +568,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         {
             // If getting printers fails, keep existing list
         }
-    }
-
-    /// <summary>
-    ///     刷新 LPR 设备在线状态（由 10 分钟定时器或加载设置后调用）
-    /// </summary>
-    private async Task RefreshLprOnlineStatusesAsync()
-    {
-        var type = LprDeviceType;
-        var configViewModels = LicensePlateRecognitionConfigs.ToList();
-        if (configViewModels.Count == 0)
-            return;
-        var configs = configViewModels.Select(l => new LicensePlateRecognitionConfig
-        {
-            Name = l.Name,
-            Ip = l.Ip,
-            Direction = l.Direction,
-            UserName = l.UserName,
-            Password = l.Password,
-            Port = l.Port,
-            Channel = l.Channel ?? HikvisionLprDefaults.DefaultChannel
-        }).ToList();
-        var statuses = await Task.Run(() => _lprDeviceOnlineStatusService.GetOnlineStatuses(type, configs).ToList());
-        var statusList = statuses;
-        Dispatcher.UIThread.Post(() =>
-        {
-            for (var i = 0; i < statusList.Count && i < LicensePlateRecognitionConfigs.Count; i++)
-                LicensePlateRecognitionConfigs[i].IsOnline = statusList[i].IsOnline;
-        });
     }
 
     private async Task LoadSettingsAsync()
@@ -582,9 +640,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel
                 });
 
-            // 首次加载后刷新 LPR 设备在线状态
-            _ = RefreshLprOnlineStatusesAsync();
-
             // Load sound device settings
             SoundDeviceEnabled = settings.SoundDeviceSettings.Enabled;
             SoundDeviceLocalIP = settings.SoundDeviceSettings.LocalIP;
@@ -596,6 +651,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         {
             // If loading fails, use default values
         }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _lprMessageSubscription?.Dispose();
     }
 
     #endregion
@@ -642,6 +703,11 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     ///     设备是否在线（由 10 分钟定时检查更新）
     /// </summary>
     [Reactive] private bool _isOnline;
+
+    /// <summary>
+    ///     最近一次测试抓拍的车牌号（来自 MessageBus）
+    /// </summary>
+    [Reactive] private string _lastCapturePlateNumber = string.Empty;
 
     /// <summary>
     ///     在线状态显示文本

@@ -249,8 +249,12 @@ public partial class SettingsWindow : Window, ITransientDependency
 
     protected override void OnClosed(EventArgs e)
     {
-        // Unsubscribe from event
-        if (DataContext is SettingsWindowViewModel viewModel) viewModel.CloseRequested -= OnCloseRequested;
+        // Unsubscribe from event and dispose ViewModel (MessageBus subscription)
+        if (DataContext is SettingsWindowViewModel viewModel)
+        {
+            viewModel.CloseRequested -= OnCloseRequested;
+            (viewModel as IDisposable)?.Dispose();
+        }
         base.OnClosed(e);
     }
 }

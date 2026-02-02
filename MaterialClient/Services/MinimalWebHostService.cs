@@ -72,8 +72,20 @@ public class MinimalWebHostService : IAsyncDisposable
     /// <summary>
     ///     启动 Web Host
     /// </summary>
+    /// <remarks>
+    ///     当 LPR 设备类型为海康威视时不再启动 Web Host，避免与海康监听端口（SystemSettings.Urls）冲突。
+    /// </remarks>
     public async Task StartAsync()
     {
+        var settingsService = _sharedServiceProvider.GetRequiredService<ISettingsService>();
+        var settings = await settingsService.GetSettingsAsync();
+        if (settings.SystemSettings.LprDeviceType == LprDeviceType.Hikvision)
+        {
+            var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
+            logger?.LogInformation("Web Host 未启动：当前为海康威视 LPR，与监听端口冲突");
+            return;
+        }
+
         lock (_lock)
         {
             if (_isRunning) throw new InvalidOperationException("Web Host is already running");
@@ -93,9 +105,7 @@ public class MinimalWebHostService : IAsyncDisposable
             // 配置 API 端点
             ConfigureEndpoints(_webApplication);
 
-            // Configure URLs from SystemSettings
-            var settingsService = _sharedServiceProvider.GetRequiredService<ISettingsService>();
-            var settings = await settingsService.GetSettingsAsync();
+            // Configure URLs from SystemSettings (settings already loaded above)
             var urls = settings.SystemSettings.Urls;
             if (string.IsNullOrWhiteSpace(urls))
             {

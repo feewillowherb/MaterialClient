@@ -1,11 +1,10 @@
 using System.Diagnostics;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Tests.Mocks;
+using ReactiveUI;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -74,11 +73,10 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
         var service = new MockHikvisionLprService();
         var eventCount = 10000;
 
-        // 订阅事件流（模拟真实场景）
-        var subscription = service.PlateRecognized.Subscribe(@event =>
+        // 订阅 MessageBus（模拟真实场景）
+        var subscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>().Subscribe(msg =>
         {
-            // 模拟事件处理
-            var _ = @event.PlateNumber;
+            var _ = msg.PlateNumber;
         });
 
         // 强制 GC 并记录初始内存
@@ -141,12 +139,12 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
 
         _output.WriteLine($"初始内存: {initialMemory / 1024} KB");
 
-        // Act: 创建多个订阅
+        // Act: 创建多个 MessageBus 订阅
         for (var i = 0; i < subscriptionCount; i++)
         {
-            var subscription = service.PlateRecognized.Subscribe(@event =>
+            var subscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>().Subscribe(msg =>
             {
-                var _ = @event.PlateNumber;
+                var _ = msg.PlateNumber;
             });
             subscriptions.Add(subscription);
         }
@@ -189,10 +187,10 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
 
         await service.StartAsync();
 
-        // 订阅事件流
-        var subscription = service.PlateRecognized.Subscribe(@event =>
+        // 订阅 MessageBus
+        var subscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>().Subscribe(msg =>
         {
-            var _ = @event.PlateNumber;
+            var _ = msg.PlateNumber;
         });
 
         // 强制 GC 并记录初始内存
@@ -205,7 +203,7 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
 
         var eventCount = 0;
 
-        // Act: 持续生成事件
+        // Act: 持续生成事件（SimulatePlateRecognition 会发送 MessageBus 消息）
         while (stopwatch.Elapsed < duration)
         {
             service.SimulatePlateRecognition($"京A{eventCount:D5}", "Camera1", LicensePlateDirection.In);

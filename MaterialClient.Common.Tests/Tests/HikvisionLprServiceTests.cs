@@ -1,11 +1,8 @@
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Tests.Mocks;
-using Microsoft.Extensions.Logging;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -18,19 +15,11 @@ public class HikvisionLprServiceTests : IDisposable
 {
     private readonly ITestOutputHelper _output;
     private readonly MockHikvisionLprService _service;
-    private readonly List<LicensePlateRecognizedEvent> _receivedEvents = new();
 
     public HikvisionLprServiceTests(ITestOutputHelper output)
     {
         _output = output;
         _service = new MockHikvisionLprService();
-
-        // 订阅事件流以接收事件
-        _service.PlateRecognized.Subscribe(@event =>
-        {
-            _receivedEvents.Add(@event);
-            _output.WriteLine($"收到事件: Device={@event.DeviceName}, Plate={@event.PlateNumber}, Direction={@event.Direction}, Time={@event.Timestamp}");
-        });
     }
 
     [Fact]
@@ -191,11 +180,9 @@ public class HikvisionLprServiceTests : IDisposable
         // Act
         _service.SimulatePlateRecognition(@event);
 
-        // Assert
+        // Assert (Mock records to RecognizedEvents and sends LicensePlateRecognizedMessage via MessageBus)
         Assert.Single(_service.RecognizedEvents);
-        Assert.Single(_receivedEvents);
         Assert.Same(@event, _service.RecognizedEvents[0]);
-        Assert.Same(@event, _receivedEvents[0]);
     }
 
     [Fact]
@@ -211,7 +198,6 @@ public class HikvisionLprServiceTests : IDisposable
 
         // Assert
         Assert.Equal(2, _service.RecognizedEvents.Count);
-        Assert.Equal(2, _receivedEvents.Count);
     }
 
     [Fact]
@@ -222,7 +208,6 @@ public class HikvisionLprServiceTests : IDisposable
 
         // Assert
         Assert.Single(_service.RecognizedEvents);
-        Assert.Single(_receivedEvents);
         Assert.Equal("京A12345", _service.RecognizedEvents[0].PlateNumber);
         Assert.Equal("Camera1", _service.RecognizedEvents[0].DeviceName);
         Assert.Equal(LicensePlateDirection.In, _service.RecognizedEvents[0].Direction);
@@ -301,6 +286,14 @@ public class HikvisionLprServiceTests : IDisposable
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => _service.SimulatePlateRecognition(null!));
+    }
+
+    [Fact]
+    public async Task TriggerCaptureAsync_ShouldCompleteWithoutThrowing()
+    {
+        var config = CreateTestConfig("192.168.1.100", "Camera1");
+
+        await _service.TriggerCaptureAsync(config);
     }
 
     private LicensePlateRecognitionConfig CreateTestConfig(string ip, string name,
