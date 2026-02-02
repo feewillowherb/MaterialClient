@@ -381,19 +381,48 @@
                                     <DataGridTextColumn Header="IP" Width="120" Binding="{Binding Ip}" />
                                     <DataGridTextColumn Header="端口" Width="107" Binding="{Binding Port}" />
                                     <DataGridTextColumn Header="用户名" Width="107" Binding="{Binding UserName}" />
-                                    <DataGridTemplateColumn Header="操作" Width="107">
+                                    <DataGridTemplateColumn Header="测试结果" Width="80">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Button Content="删除"
-                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
+                                                <Button Content="查看"
+                                                        Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).OpenLastTestCaptureCommand}"
                                                         CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding HasLastTestCapture}"
                                                         Background="Transparent"
-                                                        Foreground="Red"
+                                                        Foreground="{Binding LastTestFailed, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='Red|#20C9A6'}"
                                                         BorderThickness="0"
                                                         HorizontalAlignment="Stretch"
                                                         HorizontalContentAlignment="Center"
                                                         VerticalContentAlignment="Center"
                                                         Height="35" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="操作" Width="140">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <Button Content="测试"
+                                                            Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).TestCameraCaptureCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            Foreground="#4A85F9"
+                                                            BorderThickness="0"
+                                                            HorizontalAlignment="Left"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Height="35" />
+                                                    <Button Content="删除"
+                                                            Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).RemoveCameraCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            Foreground="Red"
+                                                            BorderThickness="0"
+                                                            HorizontalAlignment="Left"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Height="35" />
+                                                </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>

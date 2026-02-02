@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
@@ -310,6 +311,77 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private void RemoveCamera(CameraConfigViewModel? config)
     {
         if (config != null) CameraConfigs.Remove(config);
+    }
+
+    [ReactiveCommand]
+    private Task TestCameraCaptureAsync(CameraConfigViewModel? config)
+    {
+        if (config == null) return Task.CompletedTask;
+
+        var cameraConfig = new CameraConfig
+        {
+            Name = config.Name,
+            Ip = config.Ip,
+            Port = config.Port,
+            Channel = config.Channel,
+            UserName = config.UserName,
+            Password = config.Password
+        };
+
+        var row = config;
+        _ = RunTestCaptureInBackground(row, cameraConfig);
+        return Task.CompletedTask;
+    }
+
+    private async Task RunTestCaptureInBackground(CameraConfigViewModel row, CameraConfig cameraConfig)
+    {
+        try
+        {
+            var result = await _hikvisionService.TestCaptureAsync(cameraConfig);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (result != null && result.Success)
+                {
+                    row.LastTestCapturePath = result.Request.SaveFullPath;
+                    row.LastTestFailed = false;
+                    _logger.LogInformation("测试拍照成功: {Name}, 文件: {Path}", row.Name, result.Request.SaveFullPath);
+                }
+                else
+                {
+                    row.LastTestFailed = true;
+                    _logger.LogWarning("测试拍照失败: {Name}, {Message}", row.Name, result?.ErrorMessage ?? "无结果");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                row.LastTestFailed = true;
+                _logger.LogError(ex, "测试拍照异常: {Name}", row.Name);
+            });
+        }
+    }
+
+    [ReactiveCommand]
+    private void OpenLastTestCapture(CameraConfigViewModel? config)
+    {
+        if (config == null || string.IsNullOrEmpty(config.LastTestCapturePath)) return;
+        var path = config.LastTestCapturePath;
+        if (!File.Exists(path))
+        {
+            _logger.LogWarning("测试拍照文件不存在: {Path}", path);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "打开测试拍照文件失败: {Path}", path);
+        }
     }
 
     [ReactiveCommand]
@@ -678,6 +750,27 @@ public partial class CameraConfigViewModel : ReactiveObject
     [Reactive] private string _port = string.Empty;
 
     [Reactive] private string _userName = string.Empty;
+
+    /// <summary>
+    ///     Path to the last test capture image for this camera.
+    /// </summary>
+    [Reactive] private string? _lastTestCapturePath;
+
+    /// <summary>
+    ///     Whether the last test capture for this camera failed (used to show "查看" in red).
+    /// </summary>
+    [Reactive] private bool _lastTestFailed;
+
+    /// <summary>
+    ///     Whether this camera has a last test capture to open.
+    /// </summary>
+    public bool HasLastTestCapture => !string.IsNullOrEmpty(LastTestCapturePath);
+
+    public CameraConfigViewModel()
+    {
+        this.WhenAnyValue(x => x.LastTestCapturePath)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(HasLastTestCapture)));
+    }
 }
 
 /// <summary>
