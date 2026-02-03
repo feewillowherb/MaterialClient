@@ -82,13 +82,9 @@ public partial class AuthCodeWindowViewModel : ReactiveViewModelBase, ITransient
 
         try
         {
-            // Call license service to verify
-            await _licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode);
-
-            // Persist default weighing mode chosen by user
-            var settings = await _settingsService.GetSettingsAsync();
-            settings.SystemSettings.DefaultWeighingMode = DefaultWeighingMode;
-            await _settingsService.SaveSettingsAsync(settings);
+            var productCode = DefaultWeighingMode == WeighingMode.SolidWaste ? ProductCode.SolidWaste : ProductCode.Standard;
+            await _licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode, productCode);
+            await _settingsService.SaveDefaultWeighingModeAsync(productCode);
 
             // Success
             IsVerified = true;

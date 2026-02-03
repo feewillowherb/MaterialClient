@@ -324,6 +324,8 @@ public class SoundDeviceServiceTests : IDisposable
             var settings = await GetSettingsAsync();
             return settings.SystemSettings.DefaultWeighingMode;
         }
+
+        public Task SaveDefaultWeighingModeAsync(ProductCode productCode) => Task.CompletedTask;
     }
 }
 
