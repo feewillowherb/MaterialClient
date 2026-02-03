@@ -2,7 +2,7 @@
 ; 用于创建 MaterialClient 应用程序的安装程序
 
 #define MyAppName "MaterialClient"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "FindongSoft"
 #define MyAppURL "http://www.example.com/"
 #define MyAppExeName "MaterialClient.exe"
@@ -46,7 +46,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 Source: "{#SourceDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 配置文件
-Source: "{#SourceDir}\appsettings.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\appsettings.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 Source: "{#SourceDir}\appsettings.secret.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 
 

@@ -27,6 +27,12 @@ public interface ISettingsService
     ///     Get default weighing mode from settings
     /// </summary>
     Task<WeighingMode> GetWeighingModeAsync();
+
+    /// <summary>
+    ///     Persist default weighing mode from the given product code (e.g. after successful auth).
+    /// </summary>
+    /// <param name="productCode">Product code chosen for authorization</param>
+    Task SaveDefaultWeighingModeAsync(ProductCode productCode);
 }
 
 /// <summary>
@@ -145,5 +151,18 @@ public class SettingsService : DomainService, ISettingsService
     {
         var settings = await GetSettingsAsync();
         return settings.SystemSettings.DefaultWeighingMode;
+    }
+
+    /// <summary>
+    ///     Persist default weighing mode from the given product code (e.g. after successful auth).
+    /// </summary>
+    [UnitOfWork]
+    public async Task SaveDefaultWeighingModeAsync(ProductCode productCode)
+    {
+        var settings = await GetSettingsAsync();
+        var systemSettings = settings.SystemSettings;
+        systemSettings.DefaultWeighingMode = productCode == ProductCode.SolidWaste ? WeighingMode.SolidWaste : WeighingMode.Standard;
+        settings.SystemSettings = systemSettings;
+        await SaveSettingsAsync(settings);
     }
 }

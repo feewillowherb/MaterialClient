@@ -1,7 +1,7 @@
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
-using Microsoft.Extensions.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -20,9 +20,10 @@ public interface ILicenseService
     ///     验证授权码并保存授权信息
     /// </summary>
     /// <param name="authorizationCode">授权码</param>
+    /// <param name="productCode">产品代码（用于授权验证）</param>
     /// <returns>授权信息</returns>
     /// <exception cref="Volo.Abp.BusinessException">授权码无效或验证失败</exception>
-    Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode);
+    Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode, ProductCode productCode);
 
     /// <summary>
     ///     测试方法：验证授权码（不联网，返回固定有效的授权信息）
@@ -56,19 +57,14 @@ public interface ILicenseService
 public partial class LicenseService : DomainService, ILicenseService
 {
     private readonly IBasePlatformApi _basePlatformApi;
-    private readonly IConfiguration _configuration;
     private readonly IJsonSerializer _jsonSerializer;
     private readonly IRepository<LicenseInfo, Guid> _licenseRepository;
     private readonly IMachineCodeService _machineCodeService;
 
     [UnitOfWork]
-    public async Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode)
+    public async Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode, ProductCode productCode)
     {
         if (string.IsNullOrWhiteSpace(authorizationCode)) throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
-
-        // Get product code from configuration
-        var productCode = _configuration["BasePlatform:ProductCode"];
-        if (string.IsNullOrWhiteSpace(productCode)) throw new BusinessException("AUTH:NO_PRODUCT_CODE", "产品代码未配置");
 
         // Get machine code
         var machineCode = _machineCodeService.GetMachineCode();
@@ -76,7 +72,7 @@ public partial class LicenseService : DomainService, ILicenseService
         // Call base platform API to verify authorization code
         var request = new LicenseRequestDto
         {
-            ProductCode = productCode,
+            ProductCode = ((int)productCode).ToString(),
             Code = authorizationCode
         };
 

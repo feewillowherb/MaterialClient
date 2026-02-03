@@ -409,7 +409,7 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             var deviceSn = $"ls20://{soundDeviceSettings.SoundSN}";
 
             // 5. Create HTTP client and API instance
-            var baseUrl = $"http://{soundDeviceSettings.SoundIP}:8888";
+            var baseUrl = $"http://{soundDeviceSettings.LocalIP}:8888";
             var httpClient = _httpClientFactory.CreateClient();
             httpClient.BaseAddress = new Uri(baseUrl);
             httpClient.Timeout = TimeSpan.FromSeconds(5);

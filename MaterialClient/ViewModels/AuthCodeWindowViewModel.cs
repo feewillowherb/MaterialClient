@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp;
@@ -13,6 +16,7 @@ namespace MaterialClient.ViewModels;
 public partial class AuthCodeWindowViewModel : ReactiveViewModelBase, ITransientDependency
 {
     private readonly ILicenseService _licenseService;
+    private readonly ISettingsService _settingsService;
 
     [Reactive] private string _authorizationCode = string.Empty;
 
@@ -26,9 +30,37 @@ public partial class AuthCodeWindowViewModel : ReactiveViewModelBase, ITransient
 
     [Reactive] private string _statusMessageColor = "#000000";
 
-    public AuthCodeWindowViewModel(ILicenseService licenseService)
+    /// <summary>
+    ///     默认称重模式（用户在授权窗口选择，验证成功后持久化）
+    /// </summary>
+    [Reactive] private WeighingMode _defaultWeighingMode = WeighingMode.Standard;
+
+    /// <summary>
+    ///     ComboBox 选项：标准、固废
+    /// </summary>
+    public static IList<WeighingMode> DefaultWeighingModeOptions { get; } =
+        new[] { WeighingMode.Standard, WeighingMode.SolidWaste };
+
+    public AuthCodeWindowViewModel(ILicenseService licenseService, ISettingsService settingsService)
     {
         _licenseService = licenseService;
+        _settingsService = settingsService;
+    }
+
+    /// <summary>
+    ///     从已保存的设置中加载当前默认称重模式，用于打开窗口时预填 ComboBox。
+    /// </summary>
+    public async Task LoadCurrentDefaultWeighingModeAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            DefaultWeighingMode = settings.SystemSettings.DefaultWeighingMode;
+        }
+        catch
+        {
+            // 保持默认值 WeighingMode.Standard
+        }
     }
 
     #region Commands
@@ -50,8 +82,9 @@ public partial class AuthCodeWindowViewModel : ReactiveViewModelBase, ITransient
 
         try
         {
-            // Call license service to verify
-            await _licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode);
+            var productCode = DefaultWeighingMode == WeighingMode.SolidWaste ? ProductCode.SolidWaste : ProductCode.Standard;
+            await _licenseService.VerifyAuthorizationCodeAsync(AuthorizationCode, productCode);
+            await _settingsService.SaveDefaultWeighingModeAsync(productCode);
 
             // Success
             IsVerified = true;

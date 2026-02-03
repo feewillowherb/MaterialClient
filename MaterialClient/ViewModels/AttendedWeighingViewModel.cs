@@ -195,7 +195,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _ = CheckLprOnlineStatusAsync();
         StartLprStatusCheckTimer();
         _ = StartAllDevicesAsync();
-        InitializeSoundDeviceStatusPolling();
+        // InitializeSoundDeviceStatusPolling(); // Disabled: sound column status not needed in current version
 
         // Initialize state from service
         if (_attendedWeighingService != null)

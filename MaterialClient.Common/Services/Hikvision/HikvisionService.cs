@@ -29,6 +29,10 @@ public interface IHikvisionService
     bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath);
     Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests);
     Task<List<BatchCaptureResult>> TestCaptureAsync();
+    /// <summary>
+    ///     Test capture for a single camera. Returns the result or null if config is invalid or capture fails.
+    /// </summary>
+    Task<BatchCaptureResult?> TestCaptureAsync(CameraConfig cameraConfig);
 }
 
 /// <summary>
@@ -386,6 +390,52 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         var results = await CaptureJpegFromStreamBatchAsync(requests);
 
         return results;
+    }
+
+    public async Task<BatchCaptureResult?> TestCaptureAsync(CameraConfig cameraConfig)
+    {
+        if (cameraConfig == null || !cameraConfig.IsValid())
+            return null;
+
+        if (!int.TryParse(cameraConfig.Port, out var port) ||
+            !int.TryParse(cameraConfig.Channel, out var channel))
+            return null;
+
+        var streamTypeSuffix = "sub";
+        if (_settingsService != null)
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var streamType = settings.SystemSettings.CaptureStreamType;
+            streamTypeSuffix = streamType == StreamType.Substream ? "sub" : "main";
+        }
+
+        var appDirectory = AppContext.BaseDirectory;
+        var testImageDir = Path.Combine(appDirectory, "TestImage");
+        Directory.CreateDirectory(testImageDir);
+
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+        var fileName = $"test_{cameraConfig.Name}_ch{channel}_{streamTypeSuffix}_{timestamp}.jpg";
+        var savePath = Path.Combine(testImageDir, fileName);
+
+        var hikvisionConfig = new HikvisionDeviceConfig
+        {
+            Ip = cameraConfig.Ip,
+            Port = port,
+            Username = cameraConfig.UserName,
+            Password = cameraConfig.Password,
+            Channels = new[] { channel }
+        };
+
+        var request = new BatchCaptureRequest
+        {
+            Config = hikvisionConfig,
+            Channel = channel,
+            SaveFullPath = savePath,
+            DeviceKey = $"{cameraConfig.Ip}:{port}"
+        };
+
+        var results = await CaptureJpegFromStreamBatchAsync(new List<BatchCaptureRequest> { request });
+        return results.Count > 0 ? results[0] : null;
     }
 
     public static uint GetLastErrorCode()

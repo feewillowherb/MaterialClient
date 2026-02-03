@@ -1,6 +1,10 @@
 using System;
 using System.Threading.Tasks;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Extensions;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
+using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
 
@@ -11,10 +15,17 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransientDependency
 {
+    private const int ProductNameTapThreshold = 20;
+
     private readonly IAuthenticationService _authenticationService;
     private readonly ILicenseService _licenseService;
+    private readonly ISettingsService _settingsService;
+
+    private int _productNameTapCount;
 
     [Reactive] private string _projectName = string.Empty;
+
+    [Reactive] private string _productNameDisplay = string.Empty;
 
     [Reactive] private string _expirationDate = string.Empty;
 
@@ -24,11 +35,19 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
 
     public ProjectInfoWindowViewModel(
         IAuthenticationService authenticationService,
-        ILicenseService licenseService)
+        ILicenseService licenseService,
+        ISettingsService settingsService)
     {
         _authenticationService = authenticationService;
         _licenseService = licenseService;
+        _settingsService = settingsService;
+        ProductNameTapCommand = ReactiveCommand.CreateFromTask(OnProductNameDisplayTappedAsync);
     }
+
+    /// <summary>
+    ///     点击产品名称时触发；连续点击 20 次后删除 LicenseInfo、UserSession、UserCredential 并刷新
+    /// </summary>
+    public IReactiveCommand ProductNameTapCommand { get; }
 
     /// <summary>
     ///     初始化数据
@@ -40,13 +59,13 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
             // 获取用户会话信息
             var session = await _authenticationService.GetCurrentSessionAsync();
             if (session != null)
-            {
                 ProjectName = session.CompanyName ?? string.Empty;
-            }
             else
-            {
                 ProjectName = "未登录";
-            }
+
+            // 产品显示名从 SystemSettings.DefaultWeighingMode 获取
+            var settings = await _settingsService.GetSettingsAsync();
+            ProductNameDisplay = settings.SystemSettings.DefaultWeighingMode.GetDescription();
 
             // 获取授权信息
             var license = await _licenseService.GetCurrentLicenseAsync();
@@ -87,10 +106,22 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
         {
             // 如果获取数据失败，显示默认值
             ProjectName = "获取失败";
+            ProductNameDisplay = "获取失败";
             ExpirationDate = "获取失败";
             MachineCode = string.Empty;
             AuthCode = string.Empty;
         }
+    }
+
+    private async Task OnProductNameDisplayTappedAsync()
+    {
+        _productNameTapCount++;
+        if (_productNameTapCount < ProductNameTapThreshold)
+            return;
+
+        _productNameTapCount = 0;
+        await _authenticationService.ClearAllAuthDataAsync();
+        await InitializeAsync();
     }
 
     /// <summary>
