@@ -865,7 +865,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // 处理状态转换的副作用（状态转换已在流中完成）
         if (newStatus != previousStatus)
         {
-            _logger?.LogInformation(
+            _logger?.LogDebug(
                 $"Status changed {previousStatus} -> {newStatus}, current weight: {weight}t");
 
             // 关键修复：当状态从 WaitingForStability 转为 WeightStabilized 时，立即创建记录
