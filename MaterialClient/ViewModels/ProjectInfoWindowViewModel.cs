@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Extensions;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -18,6 +19,7 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
 
     private readonly IAuthenticationService _authenticationService;
     private readonly ILicenseService _licenseService;
+    private readonly ISettingsService _settingsService;
 
     private int _productNameTapCount;
 
@@ -33,10 +35,12 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
 
     public ProjectInfoWindowViewModel(
         IAuthenticationService authenticationService,
-        ILicenseService licenseService)
+        ILicenseService licenseService,
+        ISettingsService settingsService)
     {
         _authenticationService = authenticationService;
         _licenseService = licenseService;
+        _settingsService = settingsService;
         ProductNameTapCommand = ReactiveCommand.CreateFromTask(OnProductNameDisplayTappedAsync);
     }
 
@@ -55,15 +59,13 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
             // 获取用户会话信息
             var session = await _authenticationService.GetCurrentSessionAsync();
             if (session != null)
-            {
                 ProjectName = session.CompanyName ?? string.Empty;
-                ProductNameDisplay = TryGetProductCodeDescription(session.ProductId);
-            }
             else
-            {
                 ProjectName = "未登录";
-                ProductNameDisplay = "获取失败";
-            }
+
+            // 产品显示名从 SystemSettings.DefaultWeighingMode 获取
+            var settings = await _settingsService.GetSettingsAsync();
+            ProductNameDisplay = settings.SystemSettings.DefaultWeighingMode.GetDescription();
 
             // 获取授权信息
             var license = await _licenseService.GetCurrentLicenseAsync();
@@ -109,25 +111,6 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
             MachineCode = string.Empty;
             AuthCode = string.Empty;
         }
-    }
-
-    /// <summary>
-    ///     将 UserSession.ProductId 转为 ProductCode 的 Description；转换失败返回「获取失败」。
-    /// </summary>
-    private static string TryGetProductCodeDescription(long productId)
-    {
-        try
-        {
-            var value = (int)productId;
-            if (Enum.IsDefined(typeof(ProductCode), value))
-                return ((ProductCode)value).GetDescription();
-        }
-        catch (OverflowException)
-        {
-            // productId 超出 int 范围
-        }
-
-        return "获取失败";
     }
 
     private async Task OnProductNameDisplayTappedAsync()
