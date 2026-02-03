@@ -214,52 +214,6 @@ public class MaterialClientModule : AbpModule
         // 注册并启动后台工作器（可通过配置禁用）
         var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        // TEMP(2026-01-19): Bootstrap SystemSettings.DefaultWeighingMode from appsettings.json into DB.
-        // Purpose: temporary isolation/initialization to ensure the default is persisted per installation.
-        // TODO(2026-01-19): Remove this block after rollout/migration is complete.
-        try
-        {
-            var configuredDefaultWeighingMode = configuration["SystemSettings:DefaultWeighingMode"];
-            if (!string.IsNullOrWhiteSpace(configuredDefaultWeighingMode))
-            {
-                var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
-
-                if (!Enum.TryParse<WeighingMode>(configuredDefaultWeighingMode, true, out var desiredMode))
-                {
-                    logger?.LogWarning(
-                        "Invalid config value for SystemSettings:DefaultWeighingMode: {ConfiguredValue}",
-                        configuredDefaultWeighingMode);
-                }
-                else
-                {
-                    var settingsService = context.ServiceProvider.GetRequiredService<ISettingsService>();
-                    var settings = await settingsService.GetSettingsAsync();
-
-                    var currentMode = settings.SystemSettings.DefaultWeighingMode;
-                    if (currentMode != desiredMode)
-                    {
-                        // 获取 SystemSettings 对象，修改后重新 set 回去以触发序列化
-                        var systemSettings = settings.SystemSettings;
-                        systemSettings.DefaultWeighingMode = desiredMode;
-                        settings.SystemSettings = systemSettings;
-                        
-                        await settingsService.SaveSettingsAsync(settings);
-
-                        logger?.LogInformation(
-                            "Updated SystemSettings.DefaultWeighingMode from {OldMode} to {NewMode} based on appsettings.json.",
-                            currentMode,
-                            desiredMode);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Do not block app startup on temporary initialization logic.
-            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
-            logger?.LogError(ex, "Failed to bootstrap SystemSettings.DefaultWeighingMode from configuration.");
-        }
-
         var pollingEnabled = configuration.GetValue("BackgroundServices:Polling", true);
         if (pollingEnabled)
         {

@@ -56,6 +56,13 @@ public partial class AuthCodeWindow : Window, ITransientDependency
         Close();
     }
 
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        if (DataContext is AuthCodeWindowViewModel viewModel)
+            _ = viewModel.LoadCurrentDefaultWeighingModeAsync();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _authSuccessSubscription?.Dispose();

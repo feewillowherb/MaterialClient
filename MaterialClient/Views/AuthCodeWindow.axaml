@@ -60,6 +60,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
@@ -90,8 +91,30 @@
                                TextWrapping="Wrap" />
                 </StackPanel>
 
+                <!-- Default Weighing Mode Row -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="30,5,30,5">
+                    <TextBlock Text="客户端版本"
+                               FontSize="14"
+                               Width="100"
+                               VerticalAlignment="Center"
+                               Padding="10" />
+                    <ComboBox ItemsSource="{Binding DefaultWeighingModeOptions}"
+                              SelectedItem="{Binding DefaultWeighingMode}"
+                              Width="168"
+                              Height="35"
+                              FontSize="14"
+                              VerticalContentAlignment="Center"
+                              IsEnabled="{Binding !IsVerifying}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ., Converter={StaticResource WeighingModeConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
                 <!-- Loading Indicator -->
-                <StackPanel Grid.Row="1"
+                <StackPanel Grid.Row="2"
                             Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             IsVisible="{Binding IsVerifying}"
@@ -102,10 +125,10 @@
                 </StackPanel>
 
                 <!-- Spacer -->
-                <Border Grid.Row="2" />
+                <Border Grid.Row="3" />
 
                 <!-- Button Row -->
-                <StackPanel Grid.Row="3"
+                <StackPanel Grid.Row="4"
                             Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             Margin="0,0,0,20">
