@@ -9,9 +9,9 @@ namespace MaterialClient.Views;
 
 public partial class ImageViewerWindow : Window, ITransientDependency
 {
+    private const double ImageMargin = 40; // 20 each side
     private readonly IDisposable? _closeSubscription;
-    private bool _isFullscreen;
-    private WindowState _previousWindowState;
+    private bool _isMaximized;
     private PixelPoint _previousPosition;
     private Size _previousSize;
 
@@ -38,106 +38,101 @@ public partial class ImageViewerWindow : Window, ITransientDependency
         }
     }
 
-    private void FullscreenButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void MaximizeButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        ToggleFullscreen();
+        ToggleMaximize();
+    }
+
+    private void ImageArea_OnDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        ToggleMaximize();
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.F11)
         {
-            ToggleFullscreen();
+            ToggleMaximize();
             e.Handled = true;
         }
-        else if (e.Key == Key.Escape && _isFullscreen)
+        else if (e.Key == Key.Escape && _isMaximized)
         {
-            ExitFullscreen();
+            ExitMaximize();
             e.Handled = true;
         }
     }
 
-    private void ToggleFullscreen()
+    private void ToggleMaximize()
     {
-        if (_isFullscreen)
+        if (_isMaximized)
         {
-            ExitFullscreen();
+            ExitMaximize();
         }
         else
         {
-            EnterFullscreen();
+            EnterMaximize();
         }
     }
 
-    private void EnterFullscreen()
+    private void EnterMaximize()
     {
-        // 保存当前窗口状态
-        _previousWindowState = WindowState;
         _previousPosition = Position;
         _previousSize = new Size(Width, Height);
 
-        // 隐藏标题栏
-        if (this.FindControl<Border>("TitleBarBorder") is { } titleBar)
-        {
-            titleBar.IsVisible = false;
-        }
-
-        // 移除图片尺寸限制以充分利用全屏空间
-        if (this.FindControl<Image>("ImageControl") is { } image)
-        {
-            image.MaxWidth = double.PositiveInfinity;
-            image.MaxHeight = double.PositiveInfinity;
-        }
-
-        // 设置全屏
         WindowState = WindowState.Maximized;
-        SystemDecorations = SystemDecorations.None;
+        _isMaximized = true;
 
-        // 更新按钮图标
-        if (this.FindControl<Button>("FullscreenButton") is { } button)
+        Resized += OnWindowResized;
+        // 首次最大化时在布局完成后按当前视口更新图片尺寸
+        Avalonia.Threading.Dispatcher.UIThread.Post(UpdateImageMaxSizeForViewport, Avalonia.Threading.DispatcherPriority.Loaded);
+
+        if (this.FindControl<Button>("MaximizeButton") is { } button)
         {
             button.Content = "⛝";
-            ToolTip.SetTip(button, "退出全屏 (F11 或 ESC)");
+            ToolTip.SetTip(button, "还原 (F11 或双击)");
         }
-
-        _isFullscreen = true;
     }
 
-    private void ExitFullscreen()
+    private void OnWindowResized(object? sender, WindowResizedEventArgs e)
     {
-        // 显示标题栏
-        if (this.FindControl<Border>("TitleBarBorder") is { } titleBar)
-        {
-            titleBar.IsVisible = true;
-        }
+        UpdateImageMaxSizeForViewport();
+    }
 
-        // 恢复图片尺寸限制
+    private void UpdateImageMaxSizeForViewport()
+    {
+        if (!_isMaximized) return;
+        var scrollViewer = this.FindControl<ScrollViewer>("ImageScrollViewer");
+        var image = this.FindControl<Image>("ImageControl");
+        if (scrollViewer == null || image == null) return;
+        var viewport = scrollViewer.Viewport;
+        var w = Math.Max(0, viewport.Width - ImageMargin);
+        var h = Math.Max(0, viewport.Height - ImageMargin);
+        image.MaxWidth = w;
+        image.MaxHeight = h;
+    }
+
+    private void ExitMaximize()
+    {
+        Resized -= OnWindowResized;
+
         if (this.FindControl<Image>("ImageControl") is { } image)
         {
             image.MaxWidth = 1100;
             image.MaxHeight = 700;
         }
 
-        // 恢复窗口装饰
-        SystemDecorations = SystemDecorations.None;
+        WindowState = WindowState.Normal;
+        Position = _previousPosition;
+        Width = _previousSize.Width;
+        Height = _previousSize.Height;
 
-        // 恢复窗口状态
-        WindowState = _previousWindowState;
-        if (_previousWindowState == WindowState.Normal)
-        {
-            Position = _previousPosition;
-            Width = _previousSize.Width;
-            Height = _previousSize.Height;
-        }
-
-        // 更新按钮图标
-        if (this.FindControl<Button>("FullscreenButton") is { } button)
+        if (this.FindControl<Button>("MaximizeButton") is { } button)
         {
             button.Content = "⛶";
-            ToolTip.SetTip(button, "全屏 (F11)");
+            ToolTip.SetTip(button, "最大化 (F11 或双击)");
         }
 
-        _isFullscreen = false;
+        _isMaximized = false;
     }
 
     protected override void OnClosed(EventArgs e)
