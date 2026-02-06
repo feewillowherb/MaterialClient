@@ -46,6 +46,7 @@
                            Margin="0,0,8,0" />
                     <views:SearchableSelectionBox x:Name="ProvidersSelectionBox"
                                                  Grid.Column="1"
+                                                 Height="32"
                                                  DataContext="{Binding ProvidersPopupViewModel}"
                                                  IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsProvidersPopupOpen, Mode=TwoWay}"
                                                  PlaceholderText="请选择供应商"
@@ -62,6 +63,7 @@
                            Margin="0,0,8,0" />
                     <views:SearchableSelectionBox x:Name="MaterialsSelectionBox"
                                                  Grid.Column="1"
+                                                 Height="32"
                                                  DataContext="{Binding MaterialsPopupViewModel}"
                                                  IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsMaterialsPopupOpen, Mode=TwoWay}"
                                                  PlaceholderText="请选择材料"

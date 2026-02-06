@@ -3,8 +3,8 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              x:Class="MaterialClient.Views.SearchableSelectionBox"
              x:DataType="vm:IGenericSelectionPopupBindings"
-             Height="20"
-             MinHeight="20">
+             Height="32"
+             MinHeight="32">
 
     <Border x:Name="RootBorder"
             Background="White"
