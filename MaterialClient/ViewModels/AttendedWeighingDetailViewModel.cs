@@ -1097,10 +1097,27 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [ReactiveCommand]
     private async Task AbolishAsync()
     {
+        var result = await Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            var parentWin = GetParentWindow();
+            var messageBox = MessageBoxManager.GetMessageBoxStandard(
+                "确认废单",
+                "确定要废除此单吗？",
+                ButtonEnum.YesNo,
+                Icon.Question);
+
+            if (parentWin != null)
+                return await messageBox.ShowWindowDialogAsync(parentWin);
+            return await messageBox.ShowAsync();
+        });
+
+        if (result != ButtonResult.Yes)
+            return;
+
         try
         {
             await _weighingRecordRepository.DeleteAsync(_listItem.Id);
-            
+
             // 触发废单完成事件（item已删除，使用删除前的信息）
             AbolishCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
                 itemId: _listItem.Id,
