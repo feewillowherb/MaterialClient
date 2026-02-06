@@ -23,6 +23,11 @@ public interface IGenericSelectionPopupBindings : IGenericSelectionPopupViewMode
 {
     string SearchText { get; set; }
 
+    /// <summary>
+    /// Display text of the currently selected item (for closed-state display). Empty when none selected.
+    /// </summary>
+    string SelectedDisplayText { get; }
+
     IEnumerable PagedItems { get; }
 
     object? SelectedItem { get; set; }
@@ -167,6 +172,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     public T? SelectedValue => SelectedItem != null ? SelectedItem.Value : default;
 
+    public string SelectedDisplayText => SelectedItem?.DisplayText ?? string.Empty;
+
     public bool ShowResults => TotalCount > 0;
 
     public bool ShowAddNewButton => _allowAddNew && TotalCount == 0 && !string.IsNullOrWhiteSpace(SearchText);
@@ -190,7 +197,11 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             });
 
         this.WhenAnyValue(x => x.SelectedItem)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(SelectedValue)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(SelectedValue));
+                this.RaisePropertyChanged(nameof(SelectedDisplayText));
+            });
     }
 
     /// <summary>
@@ -254,27 +265,37 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 return;
             }
 
-            // Client-side
-            var filtered = FilterClientSide(_allItems, SearchText);
-            TotalCount = filtered.Count;
-            TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
+            // Client-side: run filtering and paging off UI thread to avoid freezing while typing
+            var searchText = SearchText;
+            var currentPage = CurrentPage;
+            var pageSize = PageSize;
+            var allItems = _allItems;
 
-            if (_currentPage > TotalPages && TotalPages > 0)
+            var (totalCount, totalPages, page) = await Task.Run(() =>
             {
-                _currentPage = TotalPages;
+                var filtered = FilterClientSide(allItems, searchText);
+                int total = filtered.Count;
+                int totalPgs = total > 0 ? (int)Math.Ceiling(total / (double)pageSize) : 1;
+                int pageIndex = Math.Clamp(currentPage, 1, totalPgs);
+                var p = filtered
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+                return (total, totalPgs, p);
+            }).ConfigureAwait(true);
+
+            TotalCount = totalCount;
+            TotalPages = totalPages;
+            if (_currentPage > totalPages && totalPages > 0)
+            {
+                _currentPage = totalPages;
                 this.RaisePropertyChanged(nameof(CurrentPage));
             }
-
             if (_currentPage < 1)
             {
                 _currentPage = 1;
                 this.RaisePropertyChanged(nameof(CurrentPage));
             }
-
-            var page = filtered
-                .Skip((CurrentPage - 1) * PageSize)
-                .Take(PageSize)
-                .ToList();
 
             await SetItemsAsync(TotalCount, page);
         }
@@ -395,5 +416,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     }
 
     ICommand IGenericSelectionPopupBindings.PageChangeCommand => PageChangeCommand;
+
+    string IGenericSelectionPopupBindings.SelectedDisplayText => SelectedDisplayText;
 }
 
