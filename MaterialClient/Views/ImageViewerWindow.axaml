@@ -66,7 +66,12 @@
                   HorizontalAlignment="Center"
                   VerticalAlignment="Center"
                   Margin="20"
-                  DoubleTapped="ImageArea_OnDoubleTapped">
+                  DoubleTapped="ImageArea_OnDoubleTapped"
+                  PointerWheelChanged="ImageArea_OnPointerWheelChanged"
+                  PointerPressed="ImageArea_OnPointerPressed"
+                  PointerMoved="ImageArea_OnPointerMoved"
+                  PointerReleased="ImageArea_OnPointerReleased"
+                  PointerCaptureLost="ImageArea_OnPointerCaptureLost">
                 <Image x:Name="ImageControl"
                        Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
                        Stretch="Uniform"
