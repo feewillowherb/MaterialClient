@@ -257,7 +257,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.EntryPhoto1}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.EntryPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto1Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>
@@ -269,7 +269,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.EntryPhoto2}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.EntryPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto2Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>
@@ -281,7 +281,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.EntryPhoto3}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.EntryPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto3Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>
@@ -293,7 +293,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.EntryPhoto4}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.EntryPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.EntryPhoto4Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>
@@ -323,7 +323,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.ExitPhoto1}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.ExitPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto1Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>
@@ -335,7 +335,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.ExitPhoto2}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.ExitPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto2Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>
@@ -347,7 +347,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.ExitPhoto3}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.ExitPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto3Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>
@@ -359,7 +359,7 @@
                                     CommandParameter="{Binding PhotoGridViewModel.ExitPhoto4}">
                                 <Border Background="#E5E7EB" CornerRadius="4">
                                     <Image
-                                        Source="{Binding PhotoGridViewModel.ExitPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                        Source="{Binding PhotoGridViewModel.ExitPhoto4Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                         Stretch="UniformToFill" />
                                 </Border>
                             </Button>

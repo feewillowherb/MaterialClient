@@ -52,7 +52,7 @@
                             CommandParameter="{Binding EntryPhoto1}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding EntryPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding EntryPhoto1Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
@@ -64,7 +64,7 @@
                             CommandParameter="{Binding EntryPhoto2}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding EntryPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding EntryPhoto2Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
@@ -76,7 +76,7 @@
                             CommandParameter="{Binding EntryPhoto3}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding EntryPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding EntryPhoto3Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
@@ -88,7 +88,7 @@
                             CommandParameter="{Binding EntryPhoto4}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding EntryPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding EntryPhoto4Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
@@ -107,7 +107,7 @@
                             CommandParameter="{Binding ExitPhoto1}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding ExitPhoto1, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding ExitPhoto1Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
@@ -119,7 +119,7 @@
                             CommandParameter="{Binding ExitPhoto2}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding ExitPhoto2, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding ExitPhoto2Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
@@ -131,7 +131,7 @@
                             CommandParameter="{Binding ExitPhoto3}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding ExitPhoto3, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding ExitPhoto3Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
@@ -143,7 +143,7 @@
                             CommandParameter="{Binding ExitPhoto4}">
                         <Border Background="#E5E7EB" CornerRadius="4">
                             <Image
-                                Source="{Binding ExitPhoto4, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                Source="{Binding ExitPhoto4Thumbnail, Converter={StaticResource NullableBitmapToImageConverter}}"
                                 Stretch="UniformToFill" />
                         </Border>
                     </Button>
