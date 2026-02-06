@@ -237,7 +237,7 @@ public partial class ImageViewerWindow : Window, ITransientDependency
 
         if (this.FindControl<Button>("MaximizeButton") is { } button)
         {
-            button.Content = "⛝";
+            button.Content = "⤢";
             ToolTip.SetTip(button, "还原 (F11 或双击)");
         }
     }
