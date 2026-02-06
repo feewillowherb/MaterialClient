@@ -33,7 +33,7 @@
                            Foreground="White"
                            VerticalAlignment="Center" />
                 <Button Grid.Column="1"
-                        x:Name="FullscreenButton"
+                        x:Name="MaximizeButton"
                         Content="⛶"
                         FontSize="18"
                         Foreground="White"
@@ -42,8 +42,8 @@
                         Padding="12,6"
                         Margin="0,0,8,0"
                         Cursor="Hand"
-                        Click="FullscreenButton_OnClick"
-                        ToolTip.Tip="全屏 (F11)" />
+                        Click="MaximizeButton_OnClick"
+                        ToolTip.Tip="最大化 (F11 或双击)" />
                 <Button Grid.Column="2"
                         Content="✕"
                         FontSize="18"
@@ -57,13 +57,21 @@
         </Border>
 
         <!-- Image Container -->
-        <ScrollViewer Grid.Row="1"
+        <ScrollViewer x:Name="ImageScrollViewer"
+                      Grid.Row="1"
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
                       Background="#1E1E1E">
-            <Grid HorizontalAlignment="Center"
+            <Grid x:Name="ImageContainerGrid"
+                  HorizontalAlignment="Center"
                   VerticalAlignment="Center"
-                  Margin="20">
+                  Margin="20"
+                  DoubleTapped="ImageArea_OnDoubleTapped"
+                  PointerWheelChanged="ImageArea_OnPointerWheelChanged"
+                  PointerPressed="ImageArea_OnPointerPressed"
+                  PointerMoved="ImageArea_OnPointerMoved"
+                  PointerReleased="ImageArea_OnPointerReleased"
+                  PointerCaptureLost="ImageArea_OnPointerCaptureLost">
                 <Image x:Name="ImageControl"
                        Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
                        Stretch="Uniform"
