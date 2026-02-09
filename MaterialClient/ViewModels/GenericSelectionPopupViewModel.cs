@@ -84,7 +84,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     private readonly GenericSelectionPagingMode _pagingMode;
     private readonly Func<T, string> _displayTextSelector;
-    private readonly Func<string?, int, int, Task<PagedResultDto<T>>>? _loadPageFunc;
+    private readonly Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? _loadPageFunc;
+    private readonly Func<T, int?>? _getSelectedId;
     private readonly Func<Task<IReadOnlyList<T>>>? _loadAllFunc;
     private readonly Func<string, Task<T?>>? _createNewItemFunc;
     private readonly bool _allowAddNew;
@@ -105,7 +106,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         GenericSelectionPagingMode pagingMode,
         Func<T, string> displayTextSelector,
         ILogger? logger = null,
-        Func<string?, int, int, Task<PagedResultDto<T>>>? loadPageFunc = null,
+        Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? loadPageFunc = null,
+        Func<T, int?>? getSelectedId = null,
         Func<Task<IReadOnlyList<T>>>? loadAllFunc = null,
         Func<string, Task<T?>>? createNewItemFunc = null,
         int pageSize = DefaultPageSize,
@@ -115,6 +117,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         _pagingMode = pagingMode;
         _displayTextSelector = displayTextSelector;
         _loadPageFunc = loadPageFunc;
+        _getSelectedId = getSelectedId;
         _loadAllFunc = loadAllFunc;
         _createNewItemFunc = createNewItemFunc;
         _allowAddNew = allowAddNew;
@@ -253,10 +256,19 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                     return;
                 }
 
+                IReadOnlyList<int>? selectedIds = null;
+                if (_getSelectedId != null && SelectedItem != null)
+                {
+                    var id = _getSelectedId(SelectedItem.Value);
+                    if (id.HasValue)
+                        selectedIds = new List<int> { id.Value };
+                }
+
                 var result = await _loadPageFunc(
                     string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim(),
                     CurrentPage,
-                    PageSize);
+                    PageSize,
+                    selectedIds);
 
                 TotalCount = (int)result.TotalCount;
                 TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;

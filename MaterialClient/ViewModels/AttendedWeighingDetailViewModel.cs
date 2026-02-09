@@ -344,8 +344,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             pagingMode: GenericSelectionPagingMode.ServerSide,
             displayTextSelector: m => m.Name ?? string.Empty,
             logger: Logger,
-            loadPageFunc: (search, pageIndex, pageSize) =>
-                _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize),
+            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
+                _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize, selectedIds),
+            getSelectedId: m => m.Id,
             createNewItemFunc: async name =>
                 (Material?)await _materialService.CreateMaterialAsync(name));
 
@@ -391,8 +392,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             pagingMode: GenericSelectionPagingMode.ServerSide,
             displayTextSelector: p => p.ProviderName,
             logger: Logger,
-            loadPageFunc: (search, pageIndex, pageSize) =>
-                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize),
+            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
+                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds),
+            getSelectedId: p => p.Id,
             createNewItemFunc: async name =>
             {
                 var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;

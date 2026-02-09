@@ -126,7 +126,8 @@ public partial class MaterialsSelectionPopupViewModel : ViewModelBase
             var result = await _materialService.GetPagedMaterialsAsync(
                 searchText: string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim(),
                 pageIndex: CurrentPage,
-                pageSize: PageSize
+                pageSize: PageSize,
+                selectedIds: null
             );
 
             // 更新总数
