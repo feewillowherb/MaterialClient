@@ -645,7 +645,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             }
 
             if (SelectedProviderId.HasValue)
-                SelectedProvider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
+            {
+                var provider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
+                if (provider != null)
+                {
+                    SelectedProvider = provider;
+                    ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
+                    {
+                        Value = provider,
+                        DisplayText = provider.ProviderName
+                    };
+                }
+            }
 
             // 如果是 SolidWaste 模式，加载 SolidWaste 数据
             if (IsSolidWasteMode)
@@ -695,6 +706,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = record.GetSolidWasteOrderNumber();
                 SelectedStreet = record.GetStreet();
+                if (!string.IsNullOrEmpty(SelectedStreet))
+                {
+                    StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
+                    {
+                        Value = SelectedStreet,
+                        DisplayText = SelectedStreet
+                    };
+                }
                 SelectedSolidWasteType = record.GetSolidWasteType();
                 SelectedProviderId = record.ProviderId;
                 _listItem.ProviderId = record.ProviderId;
@@ -709,6 +728,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
+                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
+                        {
+                            Value = material,
+                            DisplayText = material.Name ?? string.Empty
+                        };
 
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
@@ -732,6 +756,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
                 SelectedStreet = waybill.GetStreet();
+                if (!string.IsNullOrEmpty(SelectedStreet))
+                {
+                    StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
+                    {
+                        Value = SelectedStreet,
+                        DisplayText = SelectedStreet
+                    };
+                }
                 SelectedSolidWasteType = waybill.GetSolidWasteType();
                 SelectedProviderId = waybill.ProviderId;
                 _listItem.ProviderId = waybill.ProviderId;
@@ -752,6 +784,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
+                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
+                        {
+                            Value = material,
+                            DisplayText = material.Name ?? string.Empty
+                        };
 
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
