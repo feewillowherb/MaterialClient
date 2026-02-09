@@ -94,6 +94,13 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     private ObservableCollection<GenericSelectionItem<T>> _pagedItems = new();
 
+    /// <summary>
+    /// When set by the caller before RefreshAsync, these ids are used as selectedIds for the load
+    /// (so the first page includes them) and selection is restored after the list is populated.
+    /// Cleared after use so the grid does not clear SelectedItem before we read it.
+    /// </summary>
+    public IReadOnlyList<int>? PendingSelectedIds { get; set; }
+
     [Reactive] private string _searchText = string.Empty;
     [Reactive] private GenericSelectionItem<T>? _selectedItem;
 
@@ -257,7 +264,9 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 }
 
                 IReadOnlyList<int>? selectedIds = null;
-                if (_getSelectedId != null && SelectedItem != null)
+                if (PendingSelectedIds != null && PendingSelectedIds.Count > 0)
+                    selectedIds = PendingSelectedIds;
+                else if (_getSelectedId != null && SelectedItem != null)
                 {
                     var id = _getSelectedId(SelectedItem.Value);
                     if (id.HasValue)
@@ -273,7 +282,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 TotalCount = (int)result.TotalCount;
                 TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
 
-                await SetItemsAsync(TotalCount, result.Items);
+                await SetItemsAsync(TotalCount, result.Items, selectedIds);
                 return;
             }
 
@@ -333,7 +342,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             .ToList();
     }
 
-    private async Task SetItemsAsync(long totalCount, IReadOnlyList<T> items)
+    private async Task SetItemsAsync(long totalCount, IReadOnlyList<T> items, IReadOnlyList<int>? selectedIdsToRestore = null)
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -348,6 +357,18 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             }
 
             this.RaisePropertyChanged(nameof(PagedItems));
+
+            if (selectedIdsToRestore != null && selectedIdsToRestore.Count > 0 && _getSelectedId != null)
+            {
+                var id = selectedIdsToRestore[0];
+                var wrapper = PagedItems.FirstOrDefault(w => _getSelectedId(w.Value) == id);
+                if (wrapper != null)
+                {
+                    SelectedItem = wrapper;
+                    Dispatcher.UIThread.Post(() => SelectedItem = wrapper, DispatcherPriority.Loaded);
+                }
+                PendingSelectedIds = null;
+            }
         });
     }
 

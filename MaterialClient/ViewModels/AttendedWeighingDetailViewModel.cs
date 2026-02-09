@@ -357,6 +357,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(item =>
             {
                 if (item == null) return;
+                if (item.Value.Id == SelectedSolidWasteMaterial?.Id)
+                    return;
                 SelectedSolidWasteMaterial = item.Value;
                 IsMaterialsPopupOpen = false;
             });
@@ -368,8 +370,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 {
                     MaterialsPopupViewModel.SearchText = string.Empty;
                     MaterialsPopupViewModel.CurrentPage = 1;
-                    
-                    // Sync current selection to popup
+                    MaterialsPopupViewModel.PendingSelectedIds = SelectedSolidWasteMaterial != null
+                        ? new List<int> { SelectedSolidWasteMaterial.Id }
+                        : null;
                     if (SelectedSolidWasteMaterial != null)
                     {
                         MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
@@ -382,7 +385,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     {
                         MaterialsPopupViewModel.SelectedItem = null;
                     }
-                    
                     _ = MaterialsPopupViewModel.RefreshAsync();
                 }
             });
@@ -416,6 +418,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(item =>
             {
                 if (item == null) return;
+                if (item.Value.Id == SelectedProvider?.Id)
+                    return;
                 var selectedId = item.Value.Id;
                 var selectedProvider = item.Value;
 
@@ -448,8 +452,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 {
                     ProvidersPopupViewModel.SearchText = string.Empty;
                     ProvidersPopupViewModel.CurrentPage = 1;
-                    
-                    // Sync current selection to popup
+                    ProvidersPopupViewModel.PendingSelectedIds = SelectedProvider != null
+                        ? new List<int> { SelectedProvider.Id }
+                        : null;
                     if (SelectedProvider != null)
                     {
                         ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
@@ -462,7 +467,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     {
                         ProvidersPopupViewModel.SelectedItem = null;
                     }
-                    
                     _ = ProvidersPopupViewModel.RefreshAsync();
                 }
             });
