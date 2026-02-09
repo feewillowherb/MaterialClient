@@ -415,11 +415,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             {
                 if (item == null) return;
                 var selectedId = item.Value.Id;
-                
-                // Close popup first
+                var selectedProvider = item.Value;
+
+                // Immediate sync so the form shows the new provider (e.g. after "新增")
+                SelectedProvider = selectedProvider;
+                if (!Providers.Any(p => p.Id == selectedId))
+                    Providers.Insert(0, selectedProvider);
+
                 IsProvidersPopupOpen = false;
-                
-                // Reload Providers and sync selection
+
+                // Reload Providers in background so the list is up to date for next open
                 Dispatcher.UIThread.Post(async () =>
                 {
                     try

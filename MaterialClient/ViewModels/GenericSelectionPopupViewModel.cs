@@ -358,6 +358,9 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     ICommand IGenericSelectionPopupViewModel.SelectItemCommand => SelectItemCommand;
 
+    /// <summary>
+    /// Creatable pattern: insert into list first, then set selection (see docs/design-creatable-selection-react-select.md).
+    /// </summary>
     [ReactiveCommand]
     private async Task AddNewItemAsync()
     {
@@ -380,14 +383,25 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 return;
             }
 
-            SelectedItem = new GenericSelectionItem<T>
+            var wrapper = new GenericSelectionItem<T>
             {
                 Value = newItem,
                 DisplayText = _displayTextSelector(newItem) ?? string.Empty
             };
 
-            // Refresh so the created item can appear in list on next open.
-            await RefreshAsync();
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                PagedItems.Insert(0, wrapper);
+                TotalCount += 1;
+                TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
+                this.RaisePropertyChanged(nameof(TotalCountInfo));
+                this.RaisePropertyChanged(nameof(CurrentPageInfo));
+                this.RaisePropertyChanged(nameof(ShowResults));
+                this.RaisePropertyChanged(nameof(ShowAddNewButton));
+                SelectedItem = wrapper;
+                // If the grid clears selection when the collection updates, restore it on the next frame.
+                Dispatcher.UIThread.Post(() => SelectedItem = wrapper, DispatcherPriority.Loaded);
+            });
         }
         catch (Exception ex)
         {
