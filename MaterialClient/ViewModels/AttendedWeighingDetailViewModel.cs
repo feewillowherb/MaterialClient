@@ -64,6 +64,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         // 初始化 SolidWaste 下拉选择弹窗（镇街/材料/供应商）
         InitializeSolidWasteSelectionPopups();
 
+        // NEW: Initialize refactored provider selection component
+        InitializeProvidersSelectionComponent();
+
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
             .Subscribe(_ => GoodsWeight = AllWeight - TruckWeight);
@@ -196,6 +199,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [Reactive] private bool _isStreetsPopupOpen;
     [Reactive] private bool _isMaterialsPopupOpen;
     [Reactive] private bool _isProvidersPopupOpen;
+
+    // NEW: Refactored components (Proof of Concept)
+    [Reactive] private SearchableSelectionViewModel<ProviderDto>? _providersSelectionViewModel;
+
+    /// <summary>
+    /// NEW: Refactored provider selection component (unified SearchableComboBox + SelectionListPopup)
+    /// </summary>
+    public SearchableSelectionViewModel<ProviderDto>? ProvidersSelectionViewModel
+    {
+        get => _providersSelectionViewModel;
+        private set => this.RaiseAndSetIfChanged(ref _providersSelectionViewModel, value);
+    }
 
     /// <summary>
     ///     供应商标签文本（根据当前记录的收发料类型动态显示）
@@ -472,6 +487,95 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             });
     }
 
+    /// <summary>
+    /// NEW: Initialize refactored provider selection component (Proof of Concept)
+    /// </summary>
+    private void InitializeProvidersSelectionComponent()
+    {
+        // Create the new refactored component
+        ProvidersSelectionViewModel = SearchableSelectionFactory.CreateForAbpService(
+            displayTextSelector: p => p.ProviderName,
+            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
+                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds),
+            getIdSelector: p => p.Id,
+            createNewItemFunc: async name =>
+            {
+                var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
+                var created = await _materialService.CreateProviderAsync(name, deliveryType);
+                return (ProviderDto?)new ProviderDto
+                {
+                    Id = created.Id,
+                    ProviderType = created.ProviderType ?? (int)deliveryType,
+                    ProviderName = created.ProviderName,
+                    ContactName = created.ContectName,
+                    ContactPhone = created.ContectPhone
+                };
+            },
+            logger: Logger,
+            pageSize: 10,
+            allowAddNew: true);
+
+        _ = ProvidersSelectionViewModel.InitializeAsync();
+
+        // Subscribe to selection changes
+        ProvidersSelectionViewModel.WhenAnyValue(x => x.SelectedItem)
+            .Where(item => item != null)
+            .Subscribe(item =>
+            {
+                if (item == null) return;
+                if (item.Value.Id == SelectedProvider?.Id)
+                    return;
+                var selectedId = item.Value.Id;
+                var selectedProvider = item.Value;
+
+                // Immediate sync so the form shows the new provider (e.g. after "新增")
+                SelectedProvider = selectedProvider;
+                if (!Providers.Any(p => p.Id == selectedId))
+                    Providers.Insert(0, selectedProvider);
+
+                // Reload Providers in background so the list is up to date for next open
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        await LoadProvidersAsync();
+                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "同步供应商选择失败");
+                    }
+                });
+            });
+
+        // Subscribe to popup open events to sync current selection
+        ProvidersSelectionViewModel.WhenAnyValue(x => x.IsPopupOpen)
+            .Subscribe(isOpen =>
+            {
+                if (isOpen && ProvidersSelectionViewModel != null)
+                {
+                    ProvidersSelectionViewModel.SearchText = string.Empty;
+                    ProvidersSelectionViewModel.CurrentPage = 1;
+                    ProvidersSelectionViewModel.PendingSelectedIds = SelectedProvider != null
+                        ? new List<int> { SelectedProvider.Id }
+                        : null;
+                    if (SelectedProvider != null)
+                    {
+                        ProvidersSelectionViewModel.SelectedItem = new SearchableSelectionItem<ProviderDto>
+                        {
+                            Value = SelectedProvider,
+                            DisplayText = SelectedProvider.ProviderName
+                        };
+                    }
+                    else
+                    {
+                        ProvidersSelectionViewModel.SelectedItem = null;
+                    }
+                    _ = ProvidersSelectionViewModel.RefreshAsync();
+                }
+            });
+    }
+
     public void InitializeData(WeighingListItemDto listItem, string? capturedBillPhotoPath = null)
     {
         _listItem = listItem;
@@ -655,6 +759,15 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                         Value = provider,
                         DisplayText = provider.ProviderName
                     };
+                    // NEW: Also sync to refactored component
+                    if (ProvidersSelectionViewModel != null)
+                    {
+                        ProvidersSelectionViewModel.SelectedItem = new SearchableSelectionItem<ProviderDto>
+                        {
+                            Value = provider,
+                            DisplayText = provider.ProviderName
+                        };
+                    }
                 }
             }
 

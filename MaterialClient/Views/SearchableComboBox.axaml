@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MaterialClient.Views.SearchableComboBox"
+             Height="32"
+             MinHeight="32">
+
+    <Border x:Name="RootBorder"
+            Background="White"
+            BorderBrush="#E5E7EB"
+            BorderThickness="1"
+            CornerRadius="0"
+            Padding="6,0,6,0"
+            PointerPressed="OnRootPointerPressed"
+            Focusable="False">
+        <Grid ColumnDefinitions="*,Auto">
+            <!-- Display when popup closed -->
+            <Border x:Name="DisplayPanel"
+                    Grid.Column="0"
+                    Background="Transparent"
+                    VerticalAlignment="Stretch"
+                    HorizontalAlignment="Stretch"
+                    PointerPressed="OnDisplayPointerPressed">
+                <TextBlock x:Name="DisplayTextBlock"
+                           FontSize="12"
+                           Foreground="#333333"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           TextTrimming="CharacterEllipsis" />
+            </Border>
+            <!-- Search input when popup open -->
+            <TextBox x:Name="SearchTextBox"
+                     Grid.Column="0"
+                     Height="20"
+                     FontSize="12"
+                     Watermark="输入关键字查找"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Padding="0"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Stretch"
+                     IsVisible="False" />
+            <!-- Dropdown arrow -->
+            <Path Grid.Column="1"
+                  Width="10"
+                  Height="6"
+                  Margin="6,0,0,0"
+                  VerticalAlignment="Center"
+                  Fill="#666666"
+                  Data="M 0 0 L 5 5 L 10 0 Z"
+                  IsHitTestVisible="False" />
+        </Grid>
+    </Border>
+</UserControl>

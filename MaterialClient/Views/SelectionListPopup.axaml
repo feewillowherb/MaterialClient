@@ -1,0 +1,119 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:u="https://irihi.tech/ursa"
+             x:Class="MaterialClient.Views.SelectionListPopup"
+             Width="400" Height="250">
+
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="White"
+            BorderBrush="#E5E7EB"
+            BorderThickness="3"
+            CornerRadius="4"
+            Padding="0">
+        <Grid RowDefinitions="*,50">
+
+            <!-- DataGrid 区域 -->
+            <Border Grid.Row="0"
+                    BorderBrush="#E5E7EB"
+                    BorderThickness="0"
+                    Background="Transparent">
+                <Grid>
+                    <DataGrid Height="200"
+                              AutoGenerateColumns="False"
+                              CanUserResizeColumns="False"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              HorizontalAlignment="Stretch"
+                              BorderThickness="0"
+                              Background="White"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              RowHeight="30"
+                              ItemsSource="{Binding PagedItems}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              SelectionChanged="OnItemSelectionChanged"
+                              DoubleTapped="OnItemDoubleTapped"
+                              IsVisible="{Binding ShowResults}">
+
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="*">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock FontSize="10"
+                                               Text="名称"
+                                               Foreground="Black"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:SearchableSelectionItem`1">
+                                        <TextBlock Text="{Binding DisplayText}"
+                                                   FontSize="10"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Empty state + add new -->
+                    <StackPanel IsVisible="{Binding ShowAddNewButton}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="10">
+                        <TextBlock Text="未找到匹配结果"
+                                   FontSize="12"
+                                   Foreground="#666666"
+                                   HorizontalAlignment="Center" />
+                        <Button Classes="primary-button"
+                                Height="36"
+                                FontSize="12"
+                                Padding="12,0"
+                                Content="{Binding AddNewButtonText}"
+                                Command="{Binding AddNewItemCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 分页控件区域 -->
+            <Grid Grid.Row="1"
+                  Height="50"
+                  VerticalAlignment="Center"
+                  Margin="10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 分页信息 -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentPageInfo}"
+                               FontSize="14"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding TotalCountInfo}"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Ursa 分页组件 -->
+                <u:Pagination Grid.Column="1"
+                              CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
+                              TotalCount="{Binding TotalCount}"
+                              PageSize="{Binding PageSize}"
+                              Command="{Binding PageChangeCommand}" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

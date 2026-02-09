@@ -2,121 +2,126 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Disposables;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using System.Windows.Input;
-using System.Collections;
 using Volo.Abp.Application.Dtos;
 
 namespace MaterialClient.ViewModels;
 
-public interface IGenericSelectionItem
-{
-    string DisplayText { get; }
-}
-
-public interface IGenericSelectionPopupBindings : IGenericSelectionPopupViewModel
+/// <summary>
+/// Interface for the new unified searchable selection component
+/// </summary>
+public interface ISearchableSelection<T>
 {
     string SearchText { get; set; }
-
-    /// <summary>
-    /// Display text of the currently selected item (for closed-state display). Empty when none selected.
-    /// </summary>
+    T? SelectedValue { get; }
     string SelectedDisplayText { get; }
-
-    IEnumerable PagedItems { get; }
-
-    object? SelectedItem { get; set; }
-
-    bool ShowResults { get; }
-
-    bool ShowAddNewButton { get; }
-
-    string AddNewButtonText { get; }
-
+    ObservableCollection<SearchableSelectionItem<T>> PagedItems { get; }
+    SearchableSelectionItem<T>? SelectedItem { get; set; }
+    bool IsPopupOpen { get; set; }
     int CurrentPage { get; set; }
-
     int PageSize { get; set; }
-
     int TotalCount { get; }
-
-    string CurrentPageInfo { get; }
-
-    string TotalCountInfo { get; }
-
-    ICommand PageChangeCommand { get; }
-}
-
-public interface IGenericSelectionPopupViewModel
-{
     ICommand SelectItemCommand { get; }
-
     ICommand AddNewItemCommand { get; }
+    ICommand PageChangeCommand { get; }
+    Task InitializeAsync();
+    Task RefreshAsync();
 }
 
-public enum GenericSelectionPagingMode
+/// <summary>
+/// Configuration interface for SearchableSelectionViewModel
+/// </summary>
+public interface ISearchableSelectionConfig<T>
 {
-    ClientSide,
-    ServerSide
+    Func<T, string> DisplayTextSelector { get; }
+    Func<T, int?>? GetIdSelector { get; }
+    Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? LoadPageFunc { get; }
+    Func<Task<IReadOnlyList<T>>>? LoadAllFunc { get; }
+    Func<string, Task<T?>>? CreateNewItemFunc { get; }
+    bool AllowAddNew { get; }
+    int PageSize { get; }
 }
 
-public sealed class GenericSelectionItem<T>
-    : IGenericSelectionItem
+/// <summary>
+/// Simple configuration record for SearchableSelectionViewModel
+/// </summary>
+public sealed record SearchableSelectionConfig<T> : ISearchableSelectionConfig<T>
+{
+    public required Func<T, string> DisplayTextSelector { get; init; }
+    public Func<T, int?>? GetIdSelector { get; init; }
+    public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? LoadPageFunc { get; init; }
+    public Func<Task<IReadOnlyList<T>>>? LoadAllFunc { get; init; }
+    public Func<string, Task<T?>>? CreateNewItemFunc { get; init; }
+    public bool AllowAddNew { get; init; } = true;
+    public int PageSize { get; init; } = 10;
+}
+
+/// <summary>
+/// Wrapper item for searchable selection
+/// </summary>
+public sealed class SearchableSelectionItem<T>
 {
     public required T Value { get; init; }
     public required string DisplayText { get; init; }
 }
 
 /// <summary>
-/// [OBSOLETE] This ViewModel is replaced by SearchableSelectionViewModel&lt;T&gt;.
-/// This component will be removed in a future version.
-/// Please migrate to SearchableSelectionViewModel&lt;T&gt; for new development.
-/// Migration guide: Use SearchableSelectionViewModel&lt;T&gt; instead.
+/// Paging mode for searchable selection
 /// </summary>
-[Obsolete("GenericSelectionPopupViewModel<T> is obsolete. Use SearchableSelectionViewModel<T> instead. This will be removed in v2.5.")]
-public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
-    , IGenericSelectionPopupViewModel
-    , IGenericSelectionPopupBindings
+public enum SearchableSelectionPagingMode
+{
+    ClientSide,
+    ServerSide
+}
+
+/// <summary>
+/// Unified searchable selection ViewModel with search + pagination + create new functionality.
+/// - ClientSide: loads all items once, then filters/pages in-memory
+/// - ServerSide: queries page-by-page via ABP application services
+/// </summary>
+public sealed partial class SearchableSelectionViewModel<T> : ViewModelBase, ISearchableSelection<T>, IDisposable
 {
     private const int DefaultPageSize = 10;
 
-    private readonly GenericSelectionPagingMode _pagingMode;
+    private readonly SearchableSelectionPagingMode _pagingMode;
     private readonly Func<T, string> _displayTextSelector;
     private readonly Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? _loadPageFunc;
-    private readonly Func<T, int?>? _getSelectedId;
+    private readonly Func<T, int?>? _getIdSelector;
     private readonly Func<Task<IReadOnlyList<T>>>? _loadAllFunc;
     private readonly Func<string, Task<T?>>? _createNewItemFunc;
     private readonly bool _allowAddNew;
+    private readonly CompositeDisposable _disposables = new();
 
     private IReadOnlyList<T> _allItems = Array.Empty<T>();
-
-    private ObservableCollection<GenericSelectionItem<T>> _pagedItems = new();
+    private ObservableCollection<SearchableSelectionItem<T>> _pagedItems = new();
 
     /// <summary>
-    /// When set by the caller before RefreshAsync, these ids are used as selectedIds for the load
-    /// (so the first page includes them) and selection is restored after the list is populated.
-    /// Cleared after use so the grid does not clear SelectedItem before we read it.
+    /// Pending selected IDs to be restored after data loading
     /// </summary>
     public IReadOnlyList<int>? PendingSelectedIds { get; set; }
 
     [Reactive] private string _searchText = string.Empty;
-    [Reactive] private GenericSelectionItem<T>? _selectedItem;
+    [Reactive] private SearchableSelectionItem<T>? _selectedItem;
+    [Reactive] private bool _isPopupOpen;
+    [Reactive] private int _currentPage = 1;
+    [Reactive] private int _pageSize = DefaultPageSize;
+    [Reactive] private int _totalCount;
+    [Reactive] private int _totalPages = 1;
 
-    private int _currentPage = 1;
-    private int _pageSize = DefaultPageSize;
-    private int _totalCount;
-    private int _totalPages = 1;
-
-    public GenericSelectionPopupViewModel(
-        GenericSelectionPagingMode pagingMode,
+    public SearchableSelectionViewModel(
+        SearchableSelectionPagingMode pagingMode,
         Func<T, string> displayTextSelector,
         ILogger? logger = null,
         Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? loadPageFunc = null,
-        Func<T, int?>? getSelectedId = null,
+        Func<T, int?>? getIdSelector = null,
         Func<Task<IReadOnlyList<T>>>? loadAllFunc = null,
         Func<string, Task<T?>>? createNewItemFunc = null,
         int pageSize = DefaultPageSize,
@@ -126,17 +131,40 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         _pagingMode = pagingMode;
         _displayTextSelector = displayTextSelector;
         _loadPageFunc = loadPageFunc;
-        _getSelectedId = getSelectedId;
+        _getIdSelector = getIdSelector;
         _loadAllFunc = loadAllFunc;
         _createNewItemFunc = createNewItemFunc;
         _allowAddNew = allowAddNew;
 
         _pageSize = pageSize <= 0 ? DefaultPageSize : pageSize;
 
-        InitializeFiltering();
+        InitializeReactiveChains();
     }
 
-    public ObservableCollection<GenericSelectionItem<T>> PagedItems
+    /// <summary>
+    /// Constructor with configuration interface
+    /// </summary>
+    public SearchableSelectionViewModel(ISearchableSelectionConfig<T> config, ILogger? logger = null)
+        : this(
+            DeterminePagingMode(config),
+            config.DisplayTextSelector,
+            logger,
+            config.LoadPageFunc,
+            config.GetIdSelector,
+            config.LoadAllFunc,
+            config.CreateNewItemFunc,
+            config.PageSize,
+            config.AllowAddNew)
+    {
+    }
+
+    private static SearchableSelectionPagingMode DeterminePagingMode(ISearchableSelectionConfig<T> config)
+    {
+        // If LoadPageFunc is provided, use ServerSide; otherwise ClientSide
+        return config.LoadPageFunc != null ? SearchableSelectionPagingMode.ServerSide : SearchableSelectionPagingMode.ClientSide;
+    }
+
+    public ObservableCollection<SearchableSelectionItem<T>> PagedItems
     {
         get => _pagedItems;
         private set => this.RaiseAndSetIfChanged(ref _pagedItems, value);
@@ -182,7 +210,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     public string CurrentPageInfo => $"当前页:{CurrentPage}";
     public string TotalCountInfo => $"共{TotalCount}条记录";
 
-    public T? SelectedValue => SelectedItem != null ? SelectedItem.Value : default;
+    public T? SelectedValue => SelectedItem?.Value ?? default;
 
     public string SelectedDisplayText => SelectedItem?.DisplayText ?? string.Empty;
 
@@ -190,31 +218,59 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     public bool ShowAddNewButton => _allowAddNew && TotalCount == 0 && !string.IsNullOrWhiteSpace(SearchText);
 
-    public string AddNewButtonText
-    {
-        get
-        {
-            return "新增";
-        }
-    }
+    public string AddNewButtonText => "新增";
 
-    private void InitializeFiltering()
+    private void InitializeReactiveChains()
     {
+        // Search throttling with 300ms debounce
         this.WhenAnyValue(x => x.SearchText)
             .Throttle(TimeSpan.FromMilliseconds(300))
-            .Subscribe(_1 =>
+            .ObserveOn(RxApp.TaskpoolScheduler)
+            .SelectMany(_ => LoadDataAsync().ToObservable())
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ =>
             {
-                CurrentPage = 1;
-                _ = RefreshAsync();
-            });
+                this.RaisePropertyChanged(nameof(PagedItems));
+                this.RaisePropertyChanged(nameof(CurrentPageInfo));
+                this.RaisePropertyChanged(nameof(TotalCountInfo));
+                this.RaisePropertyChanged(nameof(ShowResults));
+                this.RaisePropertyChanged(nameof(ShowAddNewButton));
+            })
+            .DisposeWith(_disposables);
 
+        // Selection state propagation
         this.WhenAnyValue(x => x.SelectedItem)
             .Subscribe(_ =>
             {
                 this.RaisePropertyChanged(nameof(SelectedValue));
                 this.RaisePropertyChanged(nameof(SelectedDisplayText));
-            });
+
+                // Auto-close popup after selection if configured
+                if (SelectedItem != null && CloseOnSelect)
+                {
+                    IsPopupOpen = false;
+                }
+            })
+            .DisposeWith(_disposables);
+
+        // Popup state management
+        this.WhenAnyValue(x => x.IsPopupOpen)
+            .Subscribe(isOpen =>
+            {
+                if (isOpen)
+                {
+                    // Reset to first page when opening
+                    CurrentPage = 1;
+                    _ = RefreshAsync();
+                }
+            })
+            .DisposeWith(_disposables);
     }
+
+    /// <summary>
+    /// Close popup after selection (default: true)
+    /// </summary>
+    public bool CloseOnSelect { get; set; } = true;
 
     /// <summary>
     /// For client-side mode: load all items once before first use.
@@ -222,7 +278,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     /// </summary>
     public async Task InitializeAsync()
     {
-        if (_pagingMode != GenericSelectionPagingMode.ClientSide)
+        if (_pagingMode != SearchableSelectionPagingMode.ClientSide)
         {
             await RefreshAsync();
             return;
@@ -241,7 +297,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "初始化选择弹窗数据失败");
+            Logger?.LogError(ex, "初始化选择组件数据失败");
             _allItems = Array.Empty<T>();
         }
 
@@ -257,7 +313,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     {
         try
         {
-            if (_pagingMode == GenericSelectionPagingMode.ServerSide)
+            if (_pagingMode == SearchableSelectionPagingMode.ServerSide)
             {
                 if (_loadPageFunc == null)
                 {
@@ -268,9 +324,9 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 IReadOnlyList<int>? selectedIds = null;
                 if (PendingSelectedIds != null && PendingSelectedIds.Count > 0)
                     selectedIds = PendingSelectedIds;
-                else if (_getSelectedId != null && SelectedItem != null)
+                else if (_getIdSelector != null && SelectedItem != null)
                 {
-                    var id = _getSelectedId(SelectedItem.Value);
+                    var id = _getIdSelector(SelectedItem.Value);
                     if (id.HasValue)
                         selectedIds = new List<int> { id.Value };
                 }
@@ -314,7 +370,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "加载选择弹窗数据失败");
+            Logger?.LogError(ex, "加载选择组件数据失败");
             TotalCount = 0;
             TotalPages = 1;
             await SetItemsAsync(totalCount: 0, items: Array.Empty<T>());
@@ -325,7 +381,6 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             this.RaisePropertyChanged(nameof(TotalCountInfo));
             this.RaisePropertyChanged(nameof(ShowResults));
             this.RaisePropertyChanged(nameof(ShowAddNewButton));
-            this.RaisePropertyChanged(nameof(AddNewButtonText));
         }
     }
 
@@ -351,7 +406,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             PagedItems.Clear();
             foreach (var item in items)
             {
-                PagedItems.Add(new GenericSelectionItem<T>
+                PagedItems.Add(new SearchableSelectionItem<T>
                 {
                     Value = item,
                     DisplayText = _displayTextSelector(item) ?? string.Empty
@@ -360,10 +415,10 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
             this.RaisePropertyChanged(nameof(PagedItems));
 
-            if (selectedIdsToRestore != null && selectedIdsToRestore.Count > 0 && _getSelectedId != null)
+            if (selectedIdsToRestore != null && selectedIdsToRestore.Count > 0 && _getIdSelector != null)
             {
                 var id = selectedIdsToRestore[0];
-                var wrapper = PagedItems.FirstOrDefault(w => _getSelectedId(w.Value) == id);
+                var wrapper = PagedItems.FirstOrDefault(w => _getIdSelector(w.Value) == id);
                 if (wrapper != null)
                 {
                     SelectedItem = wrapper;
@@ -381,7 +436,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     }
 
     [ReactiveCommand]
-    private Task SelectItemAsync(GenericSelectionItem<T>? item)
+    private Task SelectItemAsync(SearchableSelectionItem<T>? item)
     {
         if (item != null)
         {
@@ -391,10 +446,10 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         return Task.CompletedTask;
     }
 
-    ICommand IGenericSelectionPopupViewModel.SelectItemCommand => SelectItemCommand;
+    ICommand ISearchableSelection<T>.SelectItemCommand => SelectItemCommand;
 
     /// <summary>
-    /// Creatable pattern: insert into list first, then set selection (see docs/design-creatable-selection-react-select.md).
+    /// Creatable pattern: insert into list first, then set selection
     /// </summary>
     [ReactiveCommand]
     private async Task AddNewItemAsync()
@@ -418,7 +473,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 return;
             }
 
-            var wrapper = new GenericSelectionItem<T>
+            var wrapper = new SearchableSelectionItem<T>
             {
                 Value = newItem,
                 DisplayText = _displayTextSelector(newItem) ?? string.Empty
@@ -444,18 +499,11 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         }
     }
 
-    ICommand IGenericSelectionPopupViewModel.AddNewItemCommand => AddNewItemCommand;
+    ICommand ISearchableSelection<T>.AddNewItemCommand => AddNewItemCommand;
+    ICommand ISearchableSelection<T>.PageChangeCommand => PageChangeCommand;
 
-    IEnumerable IGenericSelectionPopupBindings.PagedItems => PagedItems;
-
-    object? IGenericSelectionPopupBindings.SelectedItem
+    public void Dispose()
     {
-        get => SelectedItem;
-        set => SelectedItem = value as GenericSelectionItem<T>;
+        _disposables.Dispose();
     }
-
-    ICommand IGenericSelectionPopupBindings.PageChangeCommand => PageChangeCommand;
-
-    string IGenericSelectionPopupBindings.SelectedDisplayText => SelectedDisplayText;
 }
-
