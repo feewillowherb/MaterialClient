@@ -29,7 +29,7 @@ public class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
 #if DEBUG
-            this.AttachDevTools();
+            this.AttachDeveloperTools();
 #endif
 
 
