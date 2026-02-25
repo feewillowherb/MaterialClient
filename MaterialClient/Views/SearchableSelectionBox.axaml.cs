@@ -10,13 +10,6 @@ using MaterialClient.ViewModels;
 
 namespace MaterialClient.Views;
 
-/// <summary>
-/// [OBSOLETE] This component is replaced by SearchableComboBox.
-/// This component will be removed in a future version.
-/// Please migrate to SearchableComboBox + SelectionListPopup for new development.
-/// Migration guide: Use SearchableSelectionViewModel<T> with SearchableComboBox instead.
-/// </summary>
-[Obsolete("SearchableSelectionBox is obsolete. Use SearchableComboBox + SelectionListPopup instead. This will be removed in v2.5.")]
 public partial class SearchableSelectionBox : UserControl
 {
     public static readonly StyledProperty<bool> IsPopupOpenProperty =

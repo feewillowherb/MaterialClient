@@ -72,12 +72,10 @@ public sealed class GenericSelectionItem<T>
 }
 
 /// <summary>
-/// [OBSOLETE] This ViewModel is replaced by SearchableSelectionViewModel&lt;T&gt;.
-/// This component will be removed in a future version.
-/// Please migrate to SearchableSelectionViewModel&lt;T&gt; for new development.
-/// Migration guide: Use SearchableSelectionViewModel&lt;T&gt; instead.
+/// Reusable selection popup VM with search + pagination.
+/// - ClientSide: loads all items once, then filters/pages in-memory.
+/// - ServerSide: queries page-by-page via provided delegate.
 /// </summary>
-[Obsolete("GenericSelectionPopupViewModel<T> is obsolete. Use SearchableSelectionViewModel<T> instead. This will be removed in v2.5.")]
 public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     , IGenericSelectionPopupViewModel
     , IGenericSelectionPopupBindings
