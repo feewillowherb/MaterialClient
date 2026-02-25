@@ -28,6 +28,11 @@ public class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+#if DEBUG
+            this.AttachDevTools();
+#endif
+
+
             // Avoid duplicate validations from both Avalonia and MVVM frameworks (ReactiveUI). 
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
