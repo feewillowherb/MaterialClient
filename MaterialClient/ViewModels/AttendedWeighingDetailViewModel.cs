@@ -352,22 +352,17 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
         _ = MaterialsPopupViewModel.InitializeAsync();
 
-        MaterialsPopupViewModel.WhenAnyValue(x => x.SelectedItem)
-            .Where(item => item != null)
-            .Subscribe(item =>
+        var wasMaterialsPopupOpen = false;
+        this.WhenAnyValue(x => x.IsMaterialsPopupOpen, x => x.MaterialsPopupViewModel.SelectedItem)
+            .Subscribe(tuple =>
             {
-                if (item == null) return;
-                if (item.Value.Id == SelectedSolidWasteMaterial?.Id)
-                    return;
-                SelectedSolidWasteMaterial = item.Value;
-                IsMaterialsPopupOpen = false;
-            });
+                var (isOpen, selectedItem) = tuple;
+                if (MaterialsPopupViewModel == null) return;
 
-        this.WhenAnyValue(x => x.IsMaterialsPopupOpen)
-            .Subscribe(isOpen =>
-            {
-                if (isOpen && MaterialsPopupViewModel != null)
+                // 1) 先处理“弹窗刚打开”
+                if (isOpen && !wasMaterialsPopupOpen)
                 {
+                    wasMaterialsPopupOpen = true;
                     MaterialsPopupViewModel.SearchText = string.Empty;
                     MaterialsPopupViewModel.CurrentPage = 1;
                     MaterialsPopupViewModel.PendingSelectedIds = SelectedSolidWasteMaterial != null
@@ -385,8 +380,49 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     {
                         MaterialsPopupViewModel.SelectedItem = null;
                     }
-                    _ = MaterialsPopupViewModel.RefreshAsync();
+                    //_ = MaterialsPopupViewModel.RefreshAsync();
                 }
+                if (!isOpen) wasMaterialsPopupOpen = false;
+
+                // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
+                if (selectedItem == null) return;
+                if (selectedItem.Value.Id == SelectedSolidWasteMaterial?.Id)
+                {
+                    Logger?.LogDebug("材料选择弹窗选中项与当前选中材料相同（Id={Id}），忽略本次变化", selectedItem.Value.Id);
+                    //return;
+                }
+
+                if (wasMaterialsPopupOpen == false)
+                {
+                    Logger?.LogDebug("材料选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
+                    return;
+                }
+
+                var selectedId = selectedItem.Value.Id;
+                var selectedMaterial = selectedItem.Value;
+
+                SelectedSolidWasteMaterial = selectedMaterial;
+                if (!SolidWasteMaterials.Any(m => m.Id == selectedId))
+                    SolidWasteMaterials.Insert(0, selectedMaterial);
+
+                IsMaterialsPopupOpen = false;
+
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        // 重新加载材料列表以确保数据最新
+                        SolidWasteMaterials.Clear();
+                        var materials = await _materialService.GetAllMaterialsAsync();
+                        foreach (var material in materials)
+                            SolidWasteMaterials.Add(material);
+                        SelectedSolidWasteMaterial = SolidWasteMaterials.FirstOrDefault(m => m.Id == selectedId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "同步材料选择失败");
+                    }
+                });
             });
 
         // 供应商：服务端分页（支持按搜索新增）
