@@ -479,12 +479,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     }
                     //_ = ProvidersPopupViewModel.RefreshAsync();
                 }
-                if (!isOpen) wasProvidersPopupOpen = false;
+
+                if (!isOpen)
+                {
+                    wasProvidersPopupOpen = false;
+                    return;
+                }
 
                 // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
                 if (selectedItem == null)
                 {
-
                     Logger?.LogDebug("供应商选择弹窗选中项为 null，忽略本次变化");
                     return;
                 }
@@ -500,7 +504,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     Logger?.LogDebug("供应商选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
                     return;
                 }
-                
+
                 var selectedId = selectedItem.Value.Id;
                 var selectedProvider = selectedItem.Value;
 
