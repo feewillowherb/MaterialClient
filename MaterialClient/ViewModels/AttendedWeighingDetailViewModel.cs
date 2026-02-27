@@ -413,43 +413,17 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
         _ = ProvidersPopupViewModel.InitializeAsync();
 
-        ProvidersPopupViewModel.WhenAnyValue(x => x.SelectedItem)
-            .Where(item => item != null)
-            .Subscribe(item =>
+        var wasProvidersPopupOpen = false;
+        this.WhenAnyValue(x => x.IsProvidersPopupOpen, x => x.ProvidersPopupViewModel.SelectedItem)
+            .Subscribe(tuple =>
             {
-                if (item == null) return;
-                if (item.Value.Id == SelectedProvider?.Id)
-                    return;
-                var selectedId = item.Value.Id;
-                var selectedProvider = item.Value;
+                var (isOpen, selectedItem) = tuple;
+                if (ProvidersPopupViewModel == null) return;
 
-                // Immediate sync so the form shows the new provider (e.g. after "新增")
-                SelectedProvider = selectedProvider;
-                if (!Providers.Any(p => p.Id == selectedId))
-                    Providers.Insert(0, selectedProvider);
-
-                IsProvidersPopupOpen = false;
-
-                // Reload Providers in background so the list is up to date for next open
-                Dispatcher.UIThread.Post(async () =>
+                // 1) 先处理“弹窗刚打开”
+                if (isOpen && !wasProvidersPopupOpen)
                 {
-                    try
-                    {
-                        await LoadProvidersAsync();
-                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger?.LogError(ex, "同步供应商选择失败");
-                    }
-                });
-            });
-
-        this.WhenAnyValue(x => x.IsProvidersPopupOpen)
-            .Subscribe(isOpen =>
-            {
-                if (isOpen && ProvidersPopupViewModel != null)
-                {
+                    wasProvidersPopupOpen = true;
                     ProvidersPopupViewModel.SearchText = string.Empty;
                     ProvidersPopupViewModel.CurrentPage = 1;
                     ProvidersPopupViewModel.PendingSelectedIds = SelectedProvider != null
@@ -467,8 +441,51 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     {
                         ProvidersPopupViewModel.SelectedItem = null;
                     }
-                    _ = ProvidersPopupViewModel.RefreshAsync();
+                    //_ = ProvidersPopupViewModel.RefreshAsync();
                 }
+                if (!isOpen) wasProvidersPopupOpen = false;
+
+                // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
+                if (selectedItem == null)
+                {
+
+                    Logger?.LogDebug("供应商选择弹窗选中项为 null，忽略本次变化");
+                    return;
+                }
+
+                if (selectedItem.Value.Id == SelectedProvider?.Id)
+                {
+                    Logger?.LogDebug("供应商选择弹窗选中项与当前选中供应商相同（Id={Id}），忽略本次变化", selectedItem.Value.Id);
+                    //return;
+                }
+
+                if (wasProvidersPopupOpen == false)
+                {
+                    Logger?.LogDebug("供应商选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
+                    return;
+                }
+                
+                var selectedId = selectedItem.Value.Id;
+                var selectedProvider = selectedItem.Value;
+
+                SelectedProvider = selectedProvider;
+                if (!Providers.Any(p => p.Id == selectedId))
+                    Providers.Insert(0, selectedProvider);
+
+                IsProvidersPopupOpen = false;
+
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        await LoadProvidersAsync();
+                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "同步供应商选择失败");
+                    }
+                });
             });
     }
 
