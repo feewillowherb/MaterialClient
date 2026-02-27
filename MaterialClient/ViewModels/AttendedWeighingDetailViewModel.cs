@@ -1038,6 +1038,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 orderType: _listItem.OrderType,
                 isCompleted: _listItem.OrderType == OrderTypeEnum.Completed,
                 operationType: "Save"));
+
+            // 保存成功后弹出通知
+            Dispatcher.UIThread.Post(() =>
+            {
+                var parentWin = GetParentWindow();
+                if (parentWin is AttendedWeighingWindow attendedWindow
+                    && attendedWindow.NotificationManager != null)
+                    attendedWindow.NotificationManager.Show(
+                        new Notification("提示", "保存成功", NotificationType.Success));
+            });
         }
         catch (Exception ex)
         {
