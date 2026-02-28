@@ -20,7 +20,7 @@ public class WeighingTicketDto
     public string SerialNumber { get; set; } = string.Empty;
 
     /// <summary>计量单位 - Measurement Unit</summary>
-    public string MeasurementUnit { get; set; } = "公斤";
+    public string MeasurementUnit { get; set; } = "千克";
 
     // Vehicle and Goods Information
     /// <summary>车号 - Vehicle Number</summary>
@@ -90,7 +90,7 @@ public class WeighingTicketDto
             VehicleNumber = "浙A8V676",
             GoodsName = "装修垃圾",
             ShippingUnit = "山河锦旭府",
-            ReceivingUnit = "固废资源化综合体",
+            ReceivingUnit = "东部资源化处置点",
             EntryTime = new DateTime(2025, 10, 31, 5, 18, 19),
             ExitTime = new DateTime(2025, 10, 31, 5, 22, 56),
             GrossWeight = 16030,
