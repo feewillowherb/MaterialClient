@@ -382,15 +382,15 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     }
                     //_ = MaterialsPopupViewModel.RefreshAsync();
                 }
-                if (!isOpen) wasMaterialsPopupOpen = false;
+
+                if (!isOpen)
+                {
+                    wasMaterialsPopupOpen = false;
+                    return;
+                }
 
                 // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
                 if (selectedItem == null) return;
-                if (selectedItem.Value.Id == SelectedSolidWasteMaterial?.Id)
-                {
-                    Logger?.LogDebug("材料选择弹窗选中项与当前选中材料相同（Id={Id}），忽略本次变化", selectedItem.Value.Id);
-                    //return;
-                }
 
                 if (wasMaterialsPopupOpen == false)
                 {
@@ -492,13 +492,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     Logger?.LogDebug("供应商选择弹窗选中项为 null，忽略本次变化");
                     return;
                 }
-
-                if (selectedItem.Value.Id == SelectedProvider?.Id)
-                {
-                    Logger?.LogDebug("供应商选择弹窗选中项与当前选中供应商相同（Id={Id}），忽略本次变化", selectedItem.Value.Id);
-                    //return;
-                }
-
                 if (wasProvidersPopupOpen == false)
                 {
                     Logger?.LogDebug("供应商选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
