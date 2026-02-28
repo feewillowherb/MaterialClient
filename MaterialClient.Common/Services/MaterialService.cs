@@ -23,11 +23,13 @@ public interface IMaterialService
     /// <param name="searchText">搜索关键字（可选）</param>
     /// <param name="pageIndex">页码（从1开始）</param>
     /// <param name="pageSize">每页大小</param>
-    /// <returns>分页结果，包含总数和当前页数据</returns>
+    /// <param name="selectedIds">已选 id 列表，保证这些项出现在当前页结果前部</param>
+    /// <returns>分页结果，Items 条数为 pageSize + selectedIds.Count（或更少）</returns>
     Task<PagedResultDto<Material>> GetPagedMaterialsAsync(
         string? searchText = null,
         int pageIndex = 1,
-        int pageSize = 10);
+        int pageSize = 10,
+        IReadOnlyList<int>? selectedIds = null);
 
     /// <summary>
     ///     获取所有材料列表（未删除的）
@@ -54,11 +56,13 @@ public interface IMaterialService
     /// <param name="searchText">搜索关键字（可选）</param>
     /// <param name="pageIndex">页码（从1开始）</param>
     /// <param name="pageSize">每页大小</param>
-    /// <returns>分页结果，包含总数和当前页数据</returns>
+    /// <param name="selectedIds">已选 id 列表，保证这些项出现在当前页结果前部</param>
+    /// <returns>分页结果，Items 条数为 pageSize + selectedIds.Count（或更少）</returns>
     Task<PagedResultDto<ProviderDto>> GetPagedProvidersAsync(
         string? searchText = null,
         int pageIndex = 1,
-        int pageSize = 10);
+        int pageSize = 10,
+        IReadOnlyList<int>? selectedIds = null);
 
     /// <summary>
     ///     新增供应商
@@ -101,45 +105,56 @@ public class MaterialService : DomainService, IMaterialService
     public async Task<PagedResultDto<Material>> GetPagedMaterialsAsync(
         string? searchText = null,
         int pageIndex = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        IReadOnlyList<int>? selectedIds = null)
     {
         var weighingMode = await _settingsService.GetWeighingModeAsync();
 
-        // 构建查询条件
         var queryable = await _materialRepository.GetQueryableAsync();
-
         queryable = queryable.AsNoTracking();
 
-        // 应用搜索过滤
         if (!string.IsNullOrWhiteSpace(searchText))
         {
             var search = searchText.Trim();
             queryable = queryable.Where(m =>
-                (m.Name != null && m.Name.Contains(search)) //||
-                // (m.Specifications != null && m.Specifications.Contains(search)) ||
-                // (m.Size != null && m.Size.Contains(search)) ||
-                // (m.Code != null && m.Code.Contains(search))
-            );
+                (m.Name != null && m.Name.Contains(search)));
         }
 
-        // 只查询未删除的记录
         queryable = queryable.Where(m => !m.IsDeleted);
-
-        // 按系统称重模式过滤
         queryable = queryable.Where(m => m.WeighingMode == weighingMode);
 
-        // 获取总数
         var totalCount = await queryable.CountAsync();
 
-        // 分页查询
-        var skipCount = (pageIndex - 1) * pageSize;
-        var items = await queryable
-            .OrderBy(m => m.Name)
-            .Skip(skipCount)
-            .Take(pageSize)
-            .ToListAsync();
+        var merged = new List<Material>();
 
-        return new PagedResultDto<Material>(totalCount, items);
+        if (selectedIds != null && selectedIds.Count > 0)
+        {
+            var selectedList = await queryable
+                .Where(m => selectedIds.Contains(m.Id))
+                .OrderBy(m => m.Name)
+                .ToListAsync();
+            var selectedSet = selectedList.Select(m => m.Id).ToHashSet();
+            merged.AddRange(selectedList);
+
+            var pageQuery = queryable
+                .Where(m => !selectedSet.Contains(m.Id))
+                .OrderBy(m => m.Name)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize);
+            var pageItems = await pageQuery.ToListAsync();
+            merged.AddRange(pageItems);
+        }
+        else
+        {
+            var items = await queryable
+                .OrderBy(m => m.Name)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            merged.AddRange(items);
+        }
+
+        return new PagedResultDto<Material>(totalCount, merged);
     }
 
     /// <inheritdoc />
@@ -210,7 +225,8 @@ public class MaterialService : DomainService, IMaterialService
     public async Task<PagedResultDto<ProviderDto>> GetPagedProvidersAsync(
         string? searchText = null,
         int pageIndex = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        IReadOnlyList<int>? selectedIds = null)
     {
         var weighingMode = await _settingsService.GetWeighingModeAsync();
 
@@ -228,11 +244,30 @@ public class MaterialService : DomainService, IMaterialService
 
         var totalCount = await queryable.CountAsync();
 
-        var skipCount = (pageIndex - 1) * pageSize;
-        var items = await queryable
-            .OrderBy(p => p.ProviderName)
-            .Skip(skipCount)
-            .Take(pageSize)
+        var merged = new List<ProviderDto>();
+
+        if (selectedIds != null && selectedIds.Count > 0)
+        {
+            var selectedList = await queryable
+                .Where(p => selectedIds.Contains(p.Id))
+                .OrderBy(p => p.ProviderName)
+                .Select(p => new ProviderDto
+                {
+                    Id = p.Id,
+                    ProviderType = p.ProviderType ?? 0,
+                    ProviderName = p.ProviderName ?? string.Empty,
+                    ContactName = p.ContectName,
+                    ContactPhone = p.ContectPhone
+                })
+                .ToListAsync();
+            var selectedSet = selectedList.Select(p => p.Id).ToHashSet();
+            merged.AddRange(selectedList);
+
+            var pageItems = await queryable
+                .Where(p => !selectedSet.Contains(p.Id))
+                .OrderBy(p => p.ProviderName)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
             .Select(p => new ProviderDto
             {
                 Id = p.Id,
@@ -242,8 +277,27 @@ public class MaterialService : DomainService, IMaterialService
                 ContactPhone = p.ContectPhone
             })
             .ToListAsync();
+            merged.AddRange(pageItems);
+        }
+        else
+        {
+            var items = await queryable
+                .OrderBy(p => p.ProviderName)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => new ProviderDto
+                {
+                    Id = p.Id,
+                    ProviderType = p.ProviderType ?? 0,
+                    ProviderName = p.ProviderName ?? string.Empty,
+                    ContactName = p.ContectName,
+                    ContactPhone = p.ContectPhone
+                })
+                .ToListAsync();
+            merged.AddRange(items);
+        }
 
-        return new PagedResultDto<ProviderDto>(totalCount, items);
+        return new PagedResultDto<ProviderDto>(totalCount, merged);
     }
 
     /// <inheritdoc />

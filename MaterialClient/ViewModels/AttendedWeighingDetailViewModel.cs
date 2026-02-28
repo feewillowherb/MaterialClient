@@ -344,31 +344,30 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             pagingMode: GenericSelectionPagingMode.ServerSide,
             displayTextSelector: m => m.Name ?? string.Empty,
             logger: Logger,
-            loadPageFunc: (search, pageIndex, pageSize) =>
-                _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize),
+            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
+                _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize, selectedIds),
+            getSelectedId: m => m.Id,
             createNewItemFunc: async name =>
                 (Material?)await _materialService.CreateMaterialAsync(name));
 
         _ = MaterialsPopupViewModel.InitializeAsync();
 
-        MaterialsPopupViewModel.WhenAnyValue(x => x.SelectedItem)
-            .Where(item => item != null)
-            .Subscribe(item =>
+        var wasMaterialsPopupOpen = false;
+        this.WhenAnyValue(x => x.IsMaterialsPopupOpen, x => x.MaterialsPopupViewModel.SelectedItem)
+            .Subscribe(tuple =>
             {
-                if (item == null) return;
-                SelectedSolidWasteMaterial = item.Value;
-                IsMaterialsPopupOpen = false;
-            });
+                var (isOpen, selectedItem) = tuple;
+                if (MaterialsPopupViewModel == null) return;
 
-        this.WhenAnyValue(x => x.IsMaterialsPopupOpen)
-            .Subscribe(isOpen =>
-            {
-                if (isOpen && MaterialsPopupViewModel != null)
+                // 1) 先处理“弹窗刚打开”
+                if (isOpen && !wasMaterialsPopupOpen)
                 {
+                    wasMaterialsPopupOpen = true;
                     MaterialsPopupViewModel.SearchText = string.Empty;
                     MaterialsPopupViewModel.CurrentPage = 1;
-                    
-                    // Sync current selection to popup
+                    MaterialsPopupViewModel.PendingSelectedIds = SelectedSolidWasteMaterial != null
+                        ? new List<int> { SelectedSolidWasteMaterial.Id }
+                        : null;
                     if (SelectedSolidWasteMaterial != null)
                     {
                         MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
@@ -381,9 +380,49 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     {
                         MaterialsPopupViewModel.SelectedItem = null;
                     }
-                    
-                    _ = MaterialsPopupViewModel.RefreshAsync();
+                    //_ = MaterialsPopupViewModel.RefreshAsync();
                 }
+
+                if (!isOpen)
+                {
+                    wasMaterialsPopupOpen = false;
+                    return;
+                }
+
+                // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
+                if (selectedItem == null) return;
+
+                if (wasMaterialsPopupOpen == false)
+                {
+                    Logger?.LogDebug("材料选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
+                    return;
+                }
+
+                var selectedId = selectedItem.Value.Id;
+                var selectedMaterial = selectedItem.Value;
+
+                SelectedSolidWasteMaterial = selectedMaterial;
+                if (!SolidWasteMaterials.Any(m => m.Id == selectedId))
+                    SolidWasteMaterials.Insert(0, selectedMaterial);
+
+                IsMaterialsPopupOpen = false;
+
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        // 重新加载材料列表以确保数据最新
+                        SolidWasteMaterials.Clear();
+                        var materials = await _materialService.GetAllMaterialsAsync();
+                        foreach (var material in materials)
+                            SolidWasteMaterials.Add(material);
+                        SelectedSolidWasteMaterial = SolidWasteMaterials.FirstOrDefault(m => m.Id == selectedId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "同步材料选择失败");
+                    }
+                });
             });
 
         // 供应商：服务端分页（支持按搜索新增）
@@ -391,8 +430,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             pagingMode: GenericSelectionPagingMode.ServerSide,
             displayTextSelector: p => p.ProviderName,
             logger: Logger,
-            loadPageFunc: (search, pageIndex, pageSize) =>
-                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize),
+            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
+                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds),
+            getSelectedId: p => p.Id,
             createNewItemFunc: async name =>
             {
                 var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
@@ -409,40 +449,22 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
         _ = ProvidersPopupViewModel.InitializeAsync();
 
-        ProvidersPopupViewModel.WhenAnyValue(x => x.SelectedItem)
-            .Where(item => item != null)
-            .Subscribe(item =>
+        var wasProvidersPopupOpen = false;
+        this.WhenAnyValue(x => x.IsProvidersPopupOpen, x => x.ProvidersPopupViewModel.SelectedItem)
+            .Subscribe(tuple =>
             {
-                if (item == null) return;
-                var selectedId = item.Value.Id;
-                
-                // Close popup first
-                IsProvidersPopupOpen = false;
-                
-                // Reload Providers and sync selection
-                Dispatcher.UIThread.Post(async () =>
-                {
-                    try
-                    {
-                        await LoadProvidersAsync();
-                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger?.LogError(ex, "同步供应商选择失败");
-                    }
-                });
-            });
+                var (isOpen, selectedItem) = tuple;
+                if (ProvidersPopupViewModel == null) return;
 
-        this.WhenAnyValue(x => x.IsProvidersPopupOpen)
-            .Subscribe(isOpen =>
-            {
-                if (isOpen && ProvidersPopupViewModel != null)
+                // 1) 先处理“弹窗刚打开”
+                if (isOpen && !wasProvidersPopupOpen)
                 {
+                    wasProvidersPopupOpen = true;
                     ProvidersPopupViewModel.SearchText = string.Empty;
                     ProvidersPopupViewModel.CurrentPage = 1;
-                    
-                    // Sync current selection to popup
+                    ProvidersPopupViewModel.PendingSelectedIds = SelectedProvider != null
+                        ? new List<int> { SelectedProvider.Id }
+                        : null;
                     if (SelectedProvider != null)
                     {
                         ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
@@ -455,9 +477,48 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     {
                         ProvidersPopupViewModel.SelectedItem = null;
                     }
-                    
-                    _ = ProvidersPopupViewModel.RefreshAsync();
+                    //_ = ProvidersPopupViewModel.RefreshAsync();
                 }
+
+                if (!isOpen)
+                {
+                    wasProvidersPopupOpen = false;
+                    return;
+                }
+
+                // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
+                if (selectedItem == null)
+                {
+                    Logger?.LogDebug("供应商选择弹窗选中项为 null，忽略本次变化");
+                    return;
+                }
+                if (wasProvidersPopupOpen == false)
+                {
+                    Logger?.LogDebug("供应商选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
+                    return;
+                }
+
+                var selectedId = selectedItem.Value.Id;
+                var selectedProvider = selectedItem.Value;
+
+                SelectedProvider = selectedProvider;
+                if (!Providers.Any(p => p.Id == selectedId))
+                    Providers.Insert(0, selectedProvider);
+
+                IsProvidersPopupOpen = false;
+
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        await LoadProvidersAsync();
+                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "同步供应商选择失败");
+                    }
+                });
             });
     }
 
@@ -634,7 +695,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             }
 
             if (SelectedProviderId.HasValue)
-                SelectedProvider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
+            {
+                var provider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
+                if (provider != null)
+                {
+                    SelectedProvider = provider;
+                    ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
+                    {
+                        Value = provider,
+                        DisplayText = provider.ProviderName
+                    };
+                }
+            }
 
             // 如果是 SolidWaste 模式，加载 SolidWaste 数据
             if (IsSolidWasteMode)
@@ -684,6 +756,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = record.GetSolidWasteOrderNumber();
                 SelectedStreet = record.GetStreet();
+                if (!string.IsNullOrEmpty(SelectedStreet))
+                {
+                    StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
+                    {
+                        Value = SelectedStreet,
+                        DisplayText = SelectedStreet
+                    };
+                }
                 SelectedSolidWasteType = record.GetSolidWasteType();
                 SelectedProviderId = record.ProviderId;
                 _listItem.ProviderId = record.ProviderId;
@@ -698,6 +778,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
+                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
+                        {
+                            Value = material,
+                            DisplayText = material.Name ?? string.Empty
+                        };
 
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
@@ -721,6 +806,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
                 SelectedStreet = waybill.GetStreet();
+                if (!string.IsNullOrEmpty(SelectedStreet))
+                {
+                    StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
+                    {
+                        Value = SelectedStreet,
+                        DisplayText = SelectedStreet
+                    };
+                }
                 SelectedSolidWasteType = waybill.GetSolidWasteType();
                 SelectedProviderId = waybill.ProviderId;
                 _listItem.ProviderId = waybill.ProviderId;
@@ -741,6 +834,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
+                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
+                        {
+                            Value = material,
+                            DisplayText = material.Name ?? string.Empty
+                        };
 
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
@@ -937,6 +1035,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 orderType: _listItem.OrderType,
                 isCompleted: _listItem.OrderType == OrderTypeEnum.Completed,
                 operationType: "Save"));
+
+            // 保存成功后弹出通知
+            Dispatcher.UIThread.Post(() =>
+            {
+                var parentWin = GetParentWindow();
+                if (parentWin is AttendedWeighingWindow attendedWindow
+                    && attendedWindow.NotificationManager != null)
+                    attendedWindow.NotificationManager.Show(
+                        new Notification("提示", "保存成功", NotificationType.Success));
+            });
         }
         catch (Exception ex)
         {

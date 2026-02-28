@@ -1,6 +1,11 @@
+using System;
+using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
+using Avalonia.Controls.Primitives;
+using Avalonia.Threading;
 using MaterialClient.ViewModels;
+using System.Reactive.Linq;
 
 namespace MaterialClient.Views.AttendedWeighing;
 
@@ -9,96 +14,62 @@ public partial class SolidWasteModeFormView : UserControl
     public SolidWasteModeFormView()
     {
         InitializeComponent();
+        this.GetObservable(DataContextProperty).Subscribe(OnDataContextChanged);
     }
 
-    private void StreetsSelectionButton_Click(object? sender, RoutedEventArgs e)
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
-        if (sender is Button button &&
-            StreetsSelectionPopup != null &&
-            StreetsSelectionPopupControl != null)
+        base.OnAttachedToVisualTree(e);
+        Dispatcher.UIThread.Post(SetPopupPlacementTargets, DispatcherPriority.Loaded);
+    }
+
+    private void OnDataContextChanged(object? _)
+    {
+        if (DataContext is INotifyPropertyChanged npc)
         {
-            StreetsSelectionPopup.PlacementTarget = button;
-
-            var popupWidth = StreetsSelectionPopupControl.Width > 0
-                ? StreetsSelectionPopupControl.Width
-                : 400;
-
-            var buttonWidth = button.Bounds.Width > 0
-                ? button.Bounds.Width
-                : button.DesiredSize.Width;
-
-            if (buttonWidth <= 0)
-            {
-                buttonWidth = 80;
-            }
-
-            StreetsSelectionPopup.HorizontalOffset = (popupWidth / 2) - (buttonWidth / 2);
-
-            if (DataContext is AttendedWeighingDetailViewModel vm)
-            {
-                vm.IsStreetsPopupOpen = true;
-            }
+            npc.PropertyChanged -= Vm_PropertyChanged;
+            npc.PropertyChanged += Vm_PropertyChanged;
         }
     }
 
-    private void MaterialsSelectionButton_Click(object? sender, RoutedEventArgs e)
+    private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is Button button &&
-            MaterialsSelectionPopup != null &&
-            MaterialsSelectionPopupControl != null)
+        if (sender is not AttendedWeighingDetailViewModel vm) return;
+
+        switch (e.PropertyName)
         {
-            MaterialsSelectionPopup.PlacementTarget = button;
-
-            var popupWidth = MaterialsSelectionPopupControl.Width > 0
-                ? MaterialsSelectionPopupControl.Width
-                : 400;
-
-            var buttonWidth = button.Bounds.Width > 0
-                ? button.Bounds.Width
-                : button.DesiredSize.Width;
-
-            if (buttonWidth <= 0)
-            {
-                buttonWidth = 80;
-            }
-
-            MaterialsSelectionPopup.HorizontalOffset = (popupWidth / 2) - (buttonWidth / 2);
-
-            if (DataContext is AttendedWeighingDetailViewModel vm)
-            {
-                vm.IsMaterialsPopupOpen = true;
-            }
+            case nameof(AttendedWeighingDetailViewModel.IsStreetsPopupOpen):
+                if (vm.IsStreetsPopupOpen)
+                    Dispatcher.UIThread.Post(() => ApplyPopupOffset(StreetsSelectionPopup, StreetsSelectionPopupControl, StreetsSelectionBox), DispatcherPriority.Loaded);
+                break;
+            case nameof(AttendedWeighingDetailViewModel.IsMaterialsPopupOpen):
+                if (vm.IsMaterialsPopupOpen)
+                    Dispatcher.UIThread.Post(() => ApplyPopupOffset(MaterialsSelectionPopup, MaterialsSelectionPopupControl, MaterialsSelectionBox), DispatcherPriority.Loaded);
+                break;
+            case nameof(AttendedWeighingDetailViewModel.IsProvidersPopupOpen):
+                if (vm.IsProvidersPopupOpen)
+                    Dispatcher.UIThread.Post(() => ApplyPopupOffset(ProvidersSelectionPopup, ProvidersSelectionPopupControl, ProvidersSelectionBox), DispatcherPriority.Loaded);
+                break;
         }
     }
 
-    private void ProvidersSelectionButton_Click(object? sender, RoutedEventArgs e)
+    private void SetPopupPlacementTargets()
     {
-        if (sender is Button button &&
-            ProvidersSelectionPopup != null &&
-            ProvidersSelectionPopupControl != null)
-        {
-            ProvidersSelectionPopup.PlacementTarget = button;
+        if (StreetsSelectionPopup != null && StreetsSelectionBox != null)
+            StreetsSelectionPopup.PlacementTarget = StreetsSelectionBox;
+        if (MaterialsSelectionPopup != null && MaterialsSelectionBox != null)
+            MaterialsSelectionPopup.PlacementTarget = MaterialsSelectionBox;
+        if (ProvidersSelectionPopup != null && ProvidersSelectionBox != null)
+            ProvidersSelectionPopup.PlacementTarget = ProvidersSelectionBox;
+    }
 
-            var popupWidth = ProvidersSelectionPopupControl.Width > 0
-                ? ProvidersSelectionPopupControl.Width
-                : 400;
+    private static void ApplyPopupOffset(Popup? popup, Control? popupContent, Control? trigger)
+    {
+        if (popup == null || popupContent == null || trigger == null) return;
 
-            var buttonWidth = button.Bounds.Width > 0
-                ? button.Bounds.Width
-                : button.DesiredSize.Width;
-
-            if (buttonWidth <= 0)
-            {
-                buttonWidth = 80;
-            }
-
-            ProvidersSelectionPopup.HorizontalOffset = (popupWidth / 2) - (buttonWidth / 2);
-
-            if (DataContext is AttendedWeighingDetailViewModel vm)
-            {
-                vm.IsProvidersPopupOpen = true;
-            }
-        }
+        var popupWidth = popupContent.Width > 0 ? popupContent.Width : 400;
+        var triggerWidth = trigger.Bounds.Width > 0 ? trigger.Bounds.Width : trigger.DesiredSize.Width;
+        if (triggerWidth <= 0) triggerWidth = 80;
+        popup.HorizontalOffset = (popupWidth / 2) - (triggerWidth / 2);
     }
 }
-

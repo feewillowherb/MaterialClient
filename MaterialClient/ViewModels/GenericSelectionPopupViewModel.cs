@@ -23,6 +23,11 @@ public interface IGenericSelectionPopupBindings : IGenericSelectionPopupViewMode
 {
     string SearchText { get; set; }
 
+    /// <summary>
+    /// Display text of the currently selected item (for closed-state display). Empty when none selected.
+    /// </summary>
+    string SelectedDisplayText { get; }
+
     IEnumerable PagedItems { get; }
 
     object? SelectedItem { get; set; }
@@ -79,7 +84,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     private readonly GenericSelectionPagingMode _pagingMode;
     private readonly Func<T, string> _displayTextSelector;
-    private readonly Func<string?, int, int, Task<PagedResultDto<T>>>? _loadPageFunc;
+    private readonly Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? _loadPageFunc;
+    private readonly Func<T, int?>? _getSelectedId;
     private readonly Func<Task<IReadOnlyList<T>>>? _loadAllFunc;
     private readonly Func<string, Task<T?>>? _createNewItemFunc;
     private readonly bool _allowAddNew;
@@ -87,6 +93,13 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     private IReadOnlyList<T> _allItems = Array.Empty<T>();
 
     private ObservableCollection<GenericSelectionItem<T>> _pagedItems = new();
+
+    /// <summary>
+    /// When set by the caller before RefreshAsync, these ids are used as selectedIds for the load
+    /// (so the first page includes them) and selection is restored after the list is populated.
+    /// Cleared after use so the grid does not clear SelectedItem before we read it.
+    /// </summary>
+    public IReadOnlyList<int>? PendingSelectedIds { get; set; }
 
     [Reactive] private string _searchText = string.Empty;
     [Reactive] private GenericSelectionItem<T>? _selectedItem;
@@ -100,7 +113,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         GenericSelectionPagingMode pagingMode,
         Func<T, string> displayTextSelector,
         ILogger? logger = null,
-        Func<string?, int, int, Task<PagedResultDto<T>>>? loadPageFunc = null,
+        Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<T>>>? loadPageFunc = null,
+        Func<T, int?>? getSelectedId = null,
         Func<Task<IReadOnlyList<T>>>? loadAllFunc = null,
         Func<string, Task<T?>>? createNewItemFunc = null,
         int pageSize = DefaultPageSize,
@@ -110,6 +124,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         _pagingMode = pagingMode;
         _displayTextSelector = displayTextSelector;
         _loadPageFunc = loadPageFunc;
+        _getSelectedId = getSelectedId;
         _loadAllFunc = loadAllFunc;
         _createNewItemFunc = createNewItemFunc;
         _allowAddNew = allowAddNew;
@@ -167,6 +182,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     public T? SelectedValue => SelectedItem != null ? SelectedItem.Value : default;
 
+    public string SelectedDisplayText => SelectedItem?.DisplayText ?? string.Empty;
+
     public bool ShowResults => TotalCount > 0;
 
     public bool ShowAddNewButton => _allowAddNew && TotalCount == 0 && !string.IsNullOrWhiteSpace(SearchText);
@@ -190,7 +207,11 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             });
 
         this.WhenAnyValue(x => x.SelectedItem)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(SelectedValue)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(SelectedValue));
+                this.RaisePropertyChanged(nameof(SelectedDisplayText));
+            });
     }
 
     /// <summary>
@@ -242,15 +263,26 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                     return;
                 }
 
+                IReadOnlyList<int>? selectedIds = null;
+                if (PendingSelectedIds != null && PendingSelectedIds.Count > 0)
+                    selectedIds = PendingSelectedIds;
+                else if (_getSelectedId != null && SelectedItem != null)
+                {
+                    var id = _getSelectedId(SelectedItem.Value);
+                    if (id.HasValue)
+                        selectedIds = new List<int> { id.Value };
+                }
+
                 var result = await _loadPageFunc(
                     string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim(),
                     CurrentPage,
-                    PageSize);
+                    PageSize,
+                    selectedIds);
 
                 TotalCount = (int)result.TotalCount;
                 TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
 
-                await SetItemsAsync(TotalCount, result.Items);
+                await SetItemsAsync(TotalCount, result.Items, selectedIds);
                 return;
             }
 
@@ -310,7 +342,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             .ToList();
     }
 
-    private async Task SetItemsAsync(long totalCount, IReadOnlyList<T> items)
+    private async Task SetItemsAsync(long totalCount, IReadOnlyList<T> items, IReadOnlyList<int>? selectedIdsToRestore = null)
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -325,6 +357,18 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             }
 
             this.RaisePropertyChanged(nameof(PagedItems));
+
+            if (selectedIdsToRestore != null && selectedIdsToRestore.Count > 0 && _getSelectedId != null)
+            {
+                var id = selectedIdsToRestore[0];
+                var wrapper = PagedItems.FirstOrDefault(w => _getSelectedId(w.Value) == id);
+                if (wrapper != null)
+                {
+                    SelectedItem = wrapper;
+                    Dispatcher.UIThread.Post(() => SelectedItem = wrapper, DispatcherPriority.Loaded);
+                }
+                PendingSelectedIds = null;
+            }
         });
     }
 
@@ -347,6 +391,9 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     ICommand IGenericSelectionPopupViewModel.SelectItemCommand => SelectItemCommand;
 
+    /// <summary>
+    /// Creatable pattern: insert into list first, then set selection (see docs/design-creatable-selection-react-select.md).
+    /// </summary>
     [ReactiveCommand]
     private async Task AddNewItemAsync()
     {
@@ -369,14 +416,25 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 return;
             }
 
-            SelectedItem = new GenericSelectionItem<T>
+            var wrapper = new GenericSelectionItem<T>
             {
                 Value = newItem,
                 DisplayText = _displayTextSelector(newItem) ?? string.Empty
             };
 
-            // Refresh so the created item can appear in list on next open.
-            await RefreshAsync();
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                PagedItems.Insert(0, wrapper);
+                TotalCount += 1;
+                TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
+                this.RaisePropertyChanged(nameof(TotalCountInfo));
+                this.RaisePropertyChanged(nameof(CurrentPageInfo));
+                this.RaisePropertyChanged(nameof(ShowResults));
+                this.RaisePropertyChanged(nameof(ShowAddNewButton));
+                SelectedItem = wrapper;
+                // If the grid clears selection when the collection updates, restore it on the next frame.
+                Dispatcher.UIThread.Post(() => SelectedItem = wrapper, DispatcherPriority.Loaded);
+            });
         }
         catch (Exception ex)
         {
@@ -395,5 +453,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     }
 
     ICommand IGenericSelectionPopupBindings.PageChangeCommand => PageChangeCommand;
+
+    string IGenericSelectionPopupBindings.SelectedDisplayText => SelectedDisplayText;
 }
 
