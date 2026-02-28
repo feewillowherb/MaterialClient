@@ -14,7 +14,7 @@ using Avalonia.Threading;
 using MaterialClient.Common.Models;
 using Volo.Abp.Application.Dtos;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.Controls;
 
 /// <summary>
 /// 可创建、可分页、可搜索的选择控件。单一 TextBox 作为输入/展示面，内嵌 Popup 列表与分页。
@@ -80,6 +80,14 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
     public static readonly StyledProperty<bool> ShowAddNewButtonProperty =
         AvaloniaProperty.Register<PageableSearchableSelectionBox, bool>(
             nameof(ShowAddNewButton), defaultValue: false);
+
+    public static readonly StyledProperty<string> CurrentPageInfoProperty =
+        AvaloniaProperty.Register<PageableSearchableSelectionBox, string>(
+            nameof(CurrentPageInfo), defaultValue: "当前页:1");
+
+    public static readonly StyledProperty<string> TotalCountInfoProperty =
+        AvaloniaProperty.Register<PageableSearchableSelectionBox, string>(
+            nameof(TotalCountInfo), defaultValue: "共0条记录");
 
     public static readonly StyledProperty<ICommand?> PageChangeCommandProperty =
         AvaloniaProperty.Register<PageableSearchableSelectionBox, ICommand?>(
@@ -179,6 +187,18 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
         set => SetValue(ShowAddNewButtonProperty, value);
     }
 
+    public string CurrentPageInfo
+    {
+        get => GetValue(CurrentPageInfoProperty);
+        set => SetValue(CurrentPageInfoProperty, value);
+    }
+
+    public string TotalCountInfo
+    {
+        get => GetValue(TotalCountInfoProperty);
+        set => SetValue(TotalCountInfoProperty, value);
+    }
+
     public ICommand? PageChangeCommand
     {
         get => GetValue(PageChangeCommandProperty);
@@ -201,7 +221,6 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
     private DataGrid? _partItemsList;
     private IDisposable? _searchSubscription;
     private CancellationTokenSource? _loadCts;
-    private CancellationTokenSource? _debounceCts;
 
     public PageableSearchableSelectionBox()
     {
@@ -225,10 +244,16 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
         _partPopup = e.NameScope.Find<Popup>("PART_Popup");
         _partItemsList = e.NameScope.Find<DataGrid>("PART_ItemsList");
 
+        // 以 TextBox 为锚点，使 Popup 与输入框左对齐
+        if (_partPopup != null && _partTextBox != null)
+            _partPopup.PlacementTarget = _partTextBox;
+
         if (_partTextBox != null)
         {
             _partTextBox.GotFocus -= OnTextBoxGotFocus;
             _partTextBox.GotFocus += OnTextBoxGotFocus;
+            _partTextBox.PointerPressed -= OnTextBoxPointerPressed;
+            _partTextBox.PointerPressed += OnTextBoxPointerPressed;
             _partTextBox.KeyDown -= OnTextBoxKeyDown;
             _partTextBox.KeyDown += OnTextBoxKeyDown;
         }
@@ -251,6 +276,17 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
     }
 
     private void OnTextBoxGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        TryOpenPopup();
+    }
+
+    private void OnTextBoxPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // 点击时也打开 Popup（第二次及以后 GotFocus 可能不触发，因为已获得焦点）
+        TryOpenPopup();
+    }
+
+    private void TryOpenPopup()
     {
         if (!IsPopupOpen)
         {
@@ -347,6 +383,8 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
                 PagedItems = result.Items ?? Array.Empty<SelectionItem>();
                 TotalCount = (int)result.TotalCount;
                 TotalPages = TotalCount > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
+                CurrentPageInfo = $"当前页:{CurrentPage}";
+                TotalCountInfo = $"共{TotalCount}条记录";
                 ShowAddNewButton = TotalCount == 0 && AllowCreateNew && AddNewCommand != null;
                 RestoreSelectedItemIfInCurrentPage();
             });
@@ -366,6 +404,8 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
         PagedItems = Array.Empty<SelectionItem>();
         TotalCount = 0;
         TotalPages = 1;
+        CurrentPageInfo = "当前页:1";
+        TotalCountInfo = "共0条记录";
         ShowAddNewButton = AllowCreateNew && AddNewCommand != null;
     }
 
@@ -407,7 +447,6 @@ public partial class PageableSearchableSelectionBox : TemplatedControl
 
         public void Execute(object? parameter)
         {
-            // 将当前搜索文本作为“新增”名称传给外部命令
             _box.AddNewCommand?.Execute(_box.SearchText);
         }
 

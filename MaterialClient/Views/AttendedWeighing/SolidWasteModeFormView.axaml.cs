@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
+using MaterialClient.Controls;
 using MaterialClient.ViewModels;
 using MaterialClient.Views;
 using System.Reactive.Linq;

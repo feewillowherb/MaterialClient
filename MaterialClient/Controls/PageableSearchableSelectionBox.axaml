@@ -1,11 +1,11 @@
-<views:PageableSearchableSelectionBox xmlns="https://github.com/avaloniaui"
+<controls:PageableSearchableSelectionBox xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:views="using:MaterialClient.Views"
+             xmlns:controls="using:MaterialClient.Controls"
              xmlns:models="using:MaterialClient.Common.Models"
              xmlns:u="https://irihi.tech/ursa"
-             x:Class="MaterialClient.Views.PageableSearchableSelectionBox">
-    <views:PageableSearchableSelectionBox.Template>
-        <ControlTemplate x:DataType="views:PageableSearchableSelectionBox">
+             x:Class="MaterialClient.Controls.PageableSearchableSelectionBox">
+    <controls:PageableSearchableSelectionBox.Template>
+        <ControlTemplate x:DataType="controls:PageableSearchableSelectionBox">
         <Panel>
             <TextBox Name="PART_TextBox"
                      Height="32"
@@ -18,8 +18,9 @@
                      Padding="6,0,6,0" />
 
             <Popup Name="PART_Popup"
-                   Placement="Bottom"
-                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                   Placement="AnchorAndGravity"
+                   PlacementAnchor="BottomLeft"
+                   PlacementGravity="BottomLeft"
                    IsOpen="{TemplateBinding IsPopupOpen}"
                    IsLightDismissEnabled="True">
                 <Border Background="White"
@@ -28,6 +29,12 @@
                         CornerRadius="4"
                         MaxHeight="300"
                         Width="{Binding PopupWidth, RelativeSource={RelativeSource TemplatedParent}, FallbackValue=400, TargetNullValue=400}">
+                    <Border.Styles>
+                        <Style Selector="DataGridColumnHeader">
+                            <Setter Property="Background" Value="White" />
+                            <Setter Property="Foreground" Value="#333333" />
+                        </Style>
+                    </Border.Styles>
                     <Grid RowDefinitions="*,50">
                         <DataGrid Name="PART_ItemsList"
                                  Grid.Row="0"
@@ -58,6 +65,17 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CurrentPageInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,10,0" />
+                                <TextBlock Text="{Binding TotalCountInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                                           FontSize="14"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
                             <u:Pagination Grid.Column="1"
                                          CurrentPage="{Binding CurrentPage, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                          TotalCount="{Binding TotalCount, RelativeSource={RelativeSource TemplatedParent}}"
@@ -84,5 +102,5 @@
             </Popup>
         </Panel>
         </ControlTemplate>
-    </views:PageableSearchableSelectionBox.Template>
-</views:PageableSearchableSelectionBox>
+    </controls:PageableSearchableSelectionBox.Template>
+</controls:PageableSearchableSelectionBox>
