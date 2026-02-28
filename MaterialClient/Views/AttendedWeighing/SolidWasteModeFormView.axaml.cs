@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
+using MaterialClient.Views;
 using System.Reactive.Linq;
 
 namespace MaterialClient.Views.AttendedWeighing;
@@ -30,6 +31,10 @@ public partial class SolidWasteModeFormView : UserControl
             npc.PropertyChanged -= Vm_PropertyChanged;
             npc.PropertyChanged += Vm_PropertyChanged;
         }
+
+        // PageableSearchableSelectionBox 的 LoadPageAsync 需在代码中赋值（无法在 XAML 中绑定委托）
+        if (DataContext is AttendedWeighingDetailViewModel vm && ProvidersSelectionBox is PageableSearchableSelectionBox providerBox)
+            providerBox.LoadPageAsync = vm.LoadProvidersPageAsync;
     }
 
     private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -46,10 +51,6 @@ public partial class SolidWasteModeFormView : UserControl
                 if (vm.IsMaterialsPopupOpen)
                     Dispatcher.UIThread.Post(() => ApplyPopupOffset(MaterialsSelectionPopup, MaterialsSelectionPopupControl, MaterialsSelectionBox), DispatcherPriority.Loaded);
                 break;
-            case nameof(AttendedWeighingDetailViewModel.IsProvidersPopupOpen):
-                if (vm.IsProvidersPopupOpen)
-                    Dispatcher.UIThread.Post(() => ApplyPopupOffset(ProvidersSelectionPopup, ProvidersSelectionPopupControl, ProvidersSelectionBox), DispatcherPriority.Loaded);
-                break;
         }
     }
 
@@ -59,8 +60,6 @@ public partial class SolidWasteModeFormView : UserControl
             StreetsSelectionPopup.PlacementTarget = StreetsSelectionBox;
         if (MaterialsSelectionPopup != null && MaterialsSelectionBox != null)
             MaterialsSelectionPopup.PlacementTarget = MaterialsSelectionBox;
-        if (ProvidersSelectionPopup != null && ProvidersSelectionBox != null)
-            ProvidersSelectionPopup.PlacementTarget = ProvidersSelectionBox;
     }
 
     private static void ApplyPopupOffset(Popup? popup, Control? popupContent, Control? trigger)

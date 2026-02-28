@@ -90,5 +90,8 @@
         <Compile Update="Views\Dialogs\AddCameraDialog.axaml.cs">
           <DependentUpon>AddCameraDialog.axaml</DependentUpon>
         </Compile>
+        <Compile Update="Views\PageableSearchableSelectionBox.axaml.cs">
+          <DependentUpon>PageableSearchableSelectionBox.axaml</DependentUpon>
+        </Compile>
     </ItemGroup>
 </Project>

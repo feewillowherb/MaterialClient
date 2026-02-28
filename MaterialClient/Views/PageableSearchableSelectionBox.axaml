@@ -1,0 +1,88 @@
+<views:PageableSearchableSelectionBox xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:MaterialClient.Views"
+             xmlns:models="using:MaterialClient.Common.Models"
+             xmlns:u="https://irihi.tech/ursa"
+             x:Class="MaterialClient.Views.PageableSearchableSelectionBox">
+    <views:PageableSearchableSelectionBox.Template>
+        <ControlTemplate x:DataType="views:PageableSearchableSelectionBox">
+        <Panel>
+            <TextBox Name="PART_TextBox"
+                     Height="32"
+                     FontSize="12"
+                     Watermark="{TemplateBinding Watermark}"
+                     Text="{Binding SearchText, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                     Background="White"
+                     BorderBrush="#E5E7EB"
+                     BorderThickness="1"
+                     Padding="6,0,6,0" />
+
+            <Popup Name="PART_Popup"
+                   Placement="Bottom"
+                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                   IsOpen="{TemplateBinding IsPopupOpen}"
+                   IsLightDismissEnabled="True">
+                <Border Background="White"
+                        BorderBrush="#E5E7EB"
+                        BorderThickness="3"
+                        CornerRadius="4"
+                        MaxHeight="300"
+                        Width="{Binding PopupWidth, RelativeSource={RelativeSource TemplatedParent}, FallbackValue=400, TargetNullValue=400}">
+                    <Grid RowDefinitions="*,50">
+                        <DataGrid Name="PART_ItemsList"
+                                 Grid.Row="0"
+                                 AutoGenerateColumns="False"
+                                 ItemsSource="{Binding PagedItems, RelativeSource={RelativeSource TemplatedParent}}"
+                                 SelectedItem="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                 IsReadOnly="True"
+                                 GridLinesVisibility="Horizontal"
+                                 HeadersVisibility="Column"
+                                 BorderThickness="0"
+                                 Background="White"
+                                 RowHeight="30"
+                                 CanUserResizeColumns="False"
+                                 CanUserSortColumns="False"
+                                 SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="名称"
+                                                    Width="*">
+                                    <DataGridTextColumn.Binding>
+                                        <Binding Path="Name" />
+                                    </DataGridTextColumn.Binding>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Name="PART_Pager" Grid.Row="1" Height="50" VerticalAlignment="Center" Margin="10,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <u:Pagination Grid.Column="1"
+                                         CurrentPage="{Binding CurrentPage, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                         TotalCount="{Binding TotalCount, RelativeSource={RelativeSource TemplatedParent}}"
+                                         PageSize="{Binding PageSize, RelativeSource={RelativeSource TemplatedParent}}"
+                                         Command="{Binding PageChangeCommand, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Grid>
+
+                        <StackPanel Name="PART_AddNewPanel"
+                                   Grid.Row="0"
+                                   IsVisible="{Binding ShowAddNewButton, RelativeSource={RelativeSource TemplatedParent}}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Spacing="10">
+                            <TextBlock Text="未找到匹配结果" FontSize="12" Foreground="#666666" HorizontalAlignment="Center" />
+                            <Button Content="{Binding AddNewButtonText, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Command="{Binding AddNewItemCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Classes="primary-button"
+                                    Height="36"
+                                    FontSize="12"
+                                    Padding="12,0" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Popup>
+        </Panel>
+        </ControlTemplate>
+    </views:PageableSearchableSelectionBox.Template>
+</views:PageableSearchableSelectionBox>

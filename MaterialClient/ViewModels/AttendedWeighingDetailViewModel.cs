@@ -10,11 +10,13 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Avalonia.Threading;
+using System.Threading;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
@@ -30,6 +32,7 @@ using MsBox.Avalonia.Enums;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
@@ -75,6 +78,28 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(provider =>
             {
                 if (provider != null) SelectedProviderId = provider.Id;
+                SelectedProviderItem = provider?.ToSelectionItem();
+            });
+
+        // PageableSearchableSelectionBox：选中供应商项时同步到 SelectedProviderId / SelectedProvider
+        this.WhenAnyValue(x => x.SelectedProviderItem)
+            .Where(item => item != null)
+            .Subscribe(item =>
+            {
+                if (item == null) return;
+                SelectedProviderId = item.Id;
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        await LoadProvidersAsync();
+                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == item.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogError(ex, "同步供应商选择失败");
+                    }
+                }, DispatcherPriority.Background);
             });
 
         // 订阅 WeighingMode 变化，更新 IsSolidWasteMode
@@ -137,6 +162,11 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [Reactive] private ProviderDto? _selectedProvider;
 
     [Reactive] private int? _selectedProviderId;
+
+    /// <summary>
+    ///     供应商选择项（供 PageableSearchableSelectionBox 使用，与 SelectedProvider 双向同步）
+    /// </summary>
+    [Reactive] private SelectionItem? _selectedProviderItem;
 
     [Reactive] private ObservableCollection<Material> _materials = new();
 
@@ -889,6 +919,51 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         {
             Logger?.LogError(ex, "加载供应商列表失败");
             // 如果加载失败，保持空列表
+        }
+    }
+
+    /// <summary>
+    ///     供 PageableSearchableSelectionBox 使用的分页加载方法
+    /// </summary>
+    public async Task<PagedResultDto<SelectionItem>> LoadProvidersPageAsync(
+        string? searchText,
+        int page,
+        int pageSize,
+        IReadOnlyList<int>? selectedIds,
+        CancellationToken cancellationToken)
+    {
+        var result = await _materialService.GetPagedProvidersAsync(searchText, page, pageSize, selectedIds);
+        var items = result.Items.Select(p => p.ToSelectionItem()).ToList();
+        return new PagedResultDto<SelectionItem>(result.TotalCount, items);
+    }
+
+    /// <summary>
+    ///     供 PageableSearchableSelectionBox 使用的“新增供应商”命令（参数为名称）
+    /// </summary>
+    [ReactiveCommand]
+    private async Task CreateProviderForSelectionAsync(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        try
+        {
+            var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
+            var created = await _materialService.CreateProviderAsync(name.Trim(), deliveryType);
+            var dto = new ProviderDto
+            {
+                Id = created.Id,
+                ProviderType = created.ProviderType ?? (int)deliveryType,
+                ProviderName = created.ProviderName,
+                ContactName = created.ContectName,
+                ContactPhone = created.ContectPhone
+            };
+            if (!Providers.Any(p => p.Id == dto.Id))
+                Providers.Insert(0, dto);
+            SelectedProvider = dto;
+            SelectedProviderItem = dto.ToSelectionItem();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "新增供应商失败");
         }
     }
 
