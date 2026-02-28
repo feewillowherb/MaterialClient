@@ -86,7 +86,7 @@ public class WeighingTicketDto
             DocumentTitle = "东部资源化处置点称重计量单",
             PrintTime = new DateTime(2025, 10, 31, 5, 22, 56),
             SerialNumber = "A202510310006",
-            MeasurementUnit = "公斤",
+            MeasurementUnit = "千克",
             VehicleNumber = "浙A8V676",
             GoodsName = "装修垃圾",
             ShippingUnit = "山河锦旭府",
