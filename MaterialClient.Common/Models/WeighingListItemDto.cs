@@ -123,6 +123,11 @@ public class WeighingListItemDto
     public string? OffsetInfo { get; set; }
 
     /// <summary>
+    ///     订单净重（运单净重，用于固废模式显示）
+    /// </summary>
+    public decimal? OrderGoodsWeight { get; set; }
+
+    /// <summary>
     ///     物料列表（支持多物料）
     /// </summary>
     public List<WeighingListItemMaterialDto> Materials { get; set; } = new();
@@ -256,6 +261,7 @@ public class WeighingListItemDto
             Remark = waybill.Remark,
             Operator = waybill.Creator,
             WeighingMode = waybill.WeighingMode,
+            OrderGoodsWeight = waybill.OrderGoodsWeight,
             // 预计算偏差信息
             OffsetInfo = $"{waybill.OffsetRate:F2}% {waybill.OffsetResult.GetDescription()}"
         };

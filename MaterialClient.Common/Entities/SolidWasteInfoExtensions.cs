@@ -18,7 +18,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     默认发货单位
     /// </summary>
-    private const string DefaultShipper = "固废资源化综合体";
+    private const string DefaultShipper = "东部资源化处置点";
 
     /// <summary>
     ///     联单编号最大长度
