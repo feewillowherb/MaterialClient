@@ -213,7 +213,7 @@
                                     Padding="10,6"
                                     Height="40">
                                 <Grid>
-                                    <TextBlock Text="偏差"
+                                    <TextBlock Text="{Binding OffsetBlockTitle, TargetNullValue='偏差'}"
                                                FontSize="14"
                                                Foreground="#222222"
                                                VerticalAlignment="Center"
@@ -221,7 +221,7 @@
                                 </Grid>
                             </Border>
                             <!-- Value -->
-                            <TextBlock Text="{Binding OffsetInfo, TargetNullValue='--'}"
+                            <TextBlock Text="{Binding OffsetBlockValue, TargetNullValue='--'}"
                                        FontSize="15"
                                        Foreground="#222222"
                                        HorizontalAlignment="Center"

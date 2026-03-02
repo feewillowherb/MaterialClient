@@ -213,7 +213,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         {
             PrintTime = DateTime.Now,
             SerialNumber = string.IsNullOrWhiteSpace(waybill.OrderNo) ? waybill.Id.ToString() : waybill.OrderNo,
-            MeasurementUnit = "公斤",
+            MeasurementUnit = "千克",
 
             VehicleNumber = item.PlateNumber ?? waybill.PlateNumber ?? string.Empty,
             GoodsName = goodsName,

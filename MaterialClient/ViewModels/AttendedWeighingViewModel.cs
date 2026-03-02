@@ -1038,6 +1038,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     [Reactive] private string? _offsetInfo;
 
+    [Reactive] private string? _offsetBlockTitle;
+
+    [Reactive] private string? _offsetBlockValue;
+
     [Reactive] private string? _joinWeightInfo;
 
     [Reactive] private string? _outWeightInfo;
@@ -1322,6 +1326,18 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         MaterialInfo = item.MaterialInfo;
         OffsetInfo = item.OffsetInfo;
 
+        // Block 6：固废模式显示「净重」+ OrderGoodsWeight 吨，标准模式显示「偏差」+ OffsetInfo
+        if (item.WeighingMode == WeighingMode.SolidWaste)
+        {
+            OffsetBlockTitle = "净重";
+            OffsetBlockValue = item.OrderGoodsWeight.HasValue ? $"{item.OrderGoodsWeight.Value:F2} 吨" : "--";
+        }
+        else
+        {
+            OffsetBlockTitle = "偏差";
+            OffsetBlockValue = item.OffsetInfo;
+        }
+
         // 使用预计算的进出场重量
         if (item.JoinWeight.HasValue)
             JoinWeightInfo = $"{item.JoinWeight.Value:F2} 吨 {item.JoinTime:HH:mm:ss}";
@@ -1341,6 +1357,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     {
         MaterialInfo = null;
         OffsetInfo = null;
+        OffsetBlockTitle = null;
+        OffsetBlockValue = null;
         JoinWeightInfo = null;
         OutWeightInfo = null;
     }

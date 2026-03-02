@@ -89,3 +89,7 @@ ScaffoldingReadMe.txt
 
 # ---- Installer output ----
 Installer/
+
+# ---- Claude / MCP Temporary Directories ----
+tempclaude-*
+*.cwd

@@ -18,7 +18,7 @@ using Volo.Abp.Application.Dtos;
 
 namespace MaterialClient.Views;
 
-public class SearchablePageableSelectBox : TemplatedControl
+public partial class SearchablePageableSelectBox : TemplatedControl
 {
     public static readonly StyledProperty<object?> SelectedItemProperty =
         AvaloniaProperty.Register<SearchablePageableSelectBox, object?>(nameof(SelectedItem), defaultBindingMode: BindingMode.TwoWay);
@@ -44,6 +44,27 @@ public class SearchablePageableSelectBox : TemplatedControl
     public static readonly StyledProperty<bool> IsPopupOpenProperty =
         AvaloniaProperty.Register<SearchablePageableSelectBox, bool>(nameof(IsPopupOpen), defaultValue: false);
 
+    public static readonly StyledProperty<ObservableCollection<object>> ItemsProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, ObservableCollection<object>>(nameof(Items));
+
+    public static readonly StyledProperty<int> CurrentPageProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, int>(nameof(CurrentPage), defaultValue: 1);
+
+    public static readonly StyledProperty<int> TotalCountProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, int>(nameof(TotalCount), defaultValue: 0);
+
+    public static readonly StyledProperty<string> CurrentPageInfoProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, string>(nameof(CurrentPageInfo), defaultValue: "当前页: 1");
+
+    public static readonly StyledProperty<string> TotalCountInfoProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, string>(nameof(TotalCountInfo), defaultValue: "共0条记录");
+
+    public static readonly StyledProperty<bool> ShowAddNewProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, bool>(nameof(ShowAddNew), defaultValue: false);
+
+    public static readonly StyledProperty<IReactiveCommand> PageChangeCommandProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, IReactiveCommand>(nameof(PageChangeCommand));
+
     // Read-only direct property for IsLoading
     public static readonly DirectProperty<SearchablePageableSelectBox, bool> IsLoadingProperty =
         AvaloniaProperty.RegisterDirect<SearchablePageableSelectBox, bool>(
@@ -57,7 +78,6 @@ public class SearchablePageableSelectBox : TemplatedControl
     private bool _isLoading;
     private readonly ObservableCollection<object> _items;
     private string _searchText = string.Empty;
-    private int _currentPage = 1;
     private CancellationTokenSource? _cts;
     private readonly DispatcherTimer _debounceTimer;
     private TextBox? _textBox;
@@ -101,7 +121,11 @@ public class SearchablePageableSelectBox : TemplatedControl
     public IReactiveCommand? AddNewCommand
     {
         get => GetValue(AddNewCommandProperty);
-        set => SetValue(AddNewCommandProperty, value);
+        set
+        {
+            SetValue(AddNewCommandProperty, value);
+            ShowAddNew = value != null;
+        }
     }
 
     public bool IsPopupOpen
@@ -110,36 +134,67 @@ public class SearchablePageableSelectBox : TemplatedControl
         set => SetValue(IsPopupOpenProperty, value);
     }
 
+    public ObservableCollection<object> Items
+    {
+        get => GetValue(ItemsProperty);
+        private set => SetValue(ItemsProperty, value);
+    }
+
+    public int CurrentPage
+    {
+        get => GetValue(CurrentPageProperty);
+        private set
+        {
+            SetValue(CurrentPageProperty, value);
+            SetValue(CurrentPageInfoProperty, $"当前页: {value}");
+        }
+    }
+
+    public int TotalCount
+    {
+        get => GetValue(TotalCountProperty);
+        private set
+        {
+            SetValue(TotalCountProperty, value);
+            SetValue(TotalCountInfoProperty, $"共{value}条记录");
+        }
+    }
+
+    public string CurrentPageInfo => GetValue(CurrentPageInfoProperty);
+
+    public string TotalCountInfo => GetValue(TotalCountInfoProperty);
+
+    public bool ShowAddNew
+    {
+        get => GetValue(ShowAddNewProperty);
+        private set => SetValue(ShowAddNewProperty, value);
+    }
+
+    public IReactiveCommand PageChangeCommand
+    {
+        get => GetValue(PageChangeCommandProperty);
+        private set => SetValue(PageChangeCommandProperty, value);
+    }
+
     public bool IsLoading
     {
         get => _isLoading;
         private set => SetAndRaise(IsLoadingProperty, ref _isLoading, value);
     }
 
-    public ObservableCollection<object> Items => _items;
-
-    public int CurrentPage => _currentPage;
-
-    public int TotalCount { get; private set; }
-
-    public string CurrentPageInfo => $"当前页: {CurrentPage}";
-
-    public string TotalCountInfo => $"共{TotalCount}条记录";
-
-    public bool ShowAddNew => AddNewCommand != null;
-
-    public ReactiveCommand<Unit, Unit> PageChangeCommand { get; }
-
     public SearchablePageableSelectBox()
     {
         _items = new ObservableCollection<object>();
-        _debounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
-        _debounceTimer.Tick += OnDebounceElapsed;
-
+        Items = _items;
+        CurrentPage = 1;
+        TotalCount = 0;
+        ShowAddNew = false;
         PageChangeCommand = ReactiveCommand.Create(() =>
         {
             _ = LoadPageAsyncInternal();
         });
+        _debounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _debounceTimer.Tick += OnDebounceElapsed;
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
@@ -169,11 +224,30 @@ public class SearchablePageableSelectBox : TemplatedControl
 
     private async void OnTextBoxGotFocus(object? sender, GotFocusEventArgs e)
     {
+        // 更新 TextBox 显示文本为当前选中项的显示文本
+        if (_textBox != null && SelectedItem != null)
+        {
+            _textBox.Text = GetDisplayText(SelectedItem);
+        }
         IsPopupOpen = true;
         if (string.IsNullOrEmpty(_searchText))
         {
             _ = LoadPageAsyncInternal();
         }
+    }
+
+    private string GetDisplayText(object? item)
+    {
+        if (item == null) return string.Empty;
+        if (!string.IsNullOrEmpty(DisplayMemberPath))
+        {
+            var property = item.GetType().GetProperty(DisplayMemberPath);
+            if (property != null)
+            {
+                return property.GetValue(item)?.ToString() ?? string.Empty;
+            }
+        }
+        return item.ToString() ?? string.Empty;
     }
 
     private void OnTextBoxTextChanged(object? sender, TextChangedEventArgs e)
@@ -189,7 +263,7 @@ public class SearchablePageableSelectBox : TemplatedControl
         {
             _searchText = _textBox.Text ?? string.Empty;
         }
-        _currentPage = 1;
+        CurrentPage = 1;
         await LoadPageAsyncInternal();
     }
 
@@ -203,7 +277,7 @@ public class SearchablePageableSelectBox : TemplatedControl
             {
                 _searchText = textBox.Text ?? string.Empty;
             }
-            _currentPage = 1;
+            CurrentPage = 1;
             _ = LoadPageAsyncInternal();
         }
         else if (e.Key == Key.Escape)
@@ -224,6 +298,11 @@ public class SearchablePageableSelectBox : TemplatedControl
     private void OnPopupClosed(object? sender, EventArgs e)
     {
         IsPopupOpen = false;
+        // 重置 TextBox 显示文本为当前选中项的显示文本
+        if (_textBox != null)
+        {
+            _textBox.Text = SelectedItem != null ? GetDisplayText(SelectedItem) : string.Empty;
+        }
     }
 
     private async Task LoadPageAsyncInternal()
@@ -240,7 +319,7 @@ public class SearchablePageableSelectBox : TemplatedControl
         try
         {
             IsLoading = true;
-            var result = await loadFunc(_searchText, _currentPage, PageSize);
+            var result = await loadFunc(_searchText, CurrentPage, PageSize);
 
             _items.Clear();
             foreach (var item in result.Items ?? [])
