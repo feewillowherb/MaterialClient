@@ -44,13 +44,14 @@
                            FontSize="12"
                            Foreground="#333333"
                            Margin="0,0,8,0" />
-                    <views:SearchableSelectionBox x:Name="ProvidersSelectionBox"
-                                                 Grid.Column="1"
-                                                 Height="32"
-                                                 DataContext="{Binding ProvidersPopupViewModel}"
-                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsProvidersPopupOpen, Mode=TwoWay}"
-                                                 PlaceholderText="请选择供应商"
-                                                 Margin="0,5,0,5" />
+                    <views:SearchablePageableSelectBox x:Name="ProvidersSelectionBox"
+                                                      Grid.Column="1"
+                                                      Height="32"
+                                                      SelectedItem="{Binding SelectedProvider, Mode=TwoWay}"
+                                                      LoadPageAsync="{Binding LoadPagedProvidersAsync}"
+                                                      GetItemId="{Binding GetProviderId}"
+                                                      Watermark="请选择供应商"
+                                                      PageSize="10" />
                 </Grid>
 
                 <!-- 材料名称 -->

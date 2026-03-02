@@ -1,0 +1,97 @@
+<TemplatedControl xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:u="https://irihi.tech/ursa"
+                  x:Class="MaterialClient.Views.SearchablePageableSelectBox">
+
+  <TemplatedControl.Template>
+    <ControlTemplate>
+      <StackPanel>
+        <Border Name="PART_Border"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="0">
+          <Grid>
+            <TextBox Name="PART_TextBox"
+                     Text="{Binding SearchText, RelativeSource={RelativeSource TemplatedParent}}"
+                     Watermark="{Binding Watermark, RelativeSource={RelativeSource TemplatedParent}}"
+                     Margin="8,0,8,0"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Stretch" />
+
+            <Path Data="M0,0 L0,10 L5,5 Z"
+                  Fill="Gray"
+                  Width="10"
+                  Height="10"
+                  HorizontalAlignment="Right"
+                  Margin="0,0,8,0"
+                  IsVisible="{TemplateBinding IsPopupOpen}" />
+          </Grid>
+        </Border>
+
+        <Popup Name="PART_Popup"
+               IsOpen="{Binding IsPopupOpen, RelativeSource={RelativeSource TemplatedParent}}"
+               Placement="Bottom"
+               PlacementTarget="PART_Border">
+          <Border Background="White"
+                  BorderBrush="Gray"
+                  BorderThickness="1"
+                  CornerRadius="4"
+                  Padding="8"
+                  Width="400"
+                  MaxHeight="400">
+            <StackPanel>
+              <Grid Height="300">
+                <ListBox Name="PART_ItemsList"
+                         ItemsSource="{Binding Items, RelativeSource={RelativeSource TemplatedParent}}"
+                         SelectedItem="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                         DisplayMemberPath="{Binding DisplayMemberPath, RelativeSource={RelativeSource TemplatedParent}}"
+                         VerticalAlignment="Stretch"
+                         HorizontalAlignment="Stretch" />
+
+                <Border Background="White"
+                        IsVisible="{Binding IsLoading, RelativeSource={RelativeSource TemplatedParent}}">
+                  <TextBlock Text="加载中..."
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             Foreground="Gray" />
+                </Border>
+              </Grid>
+
+              <Grid Margin="0,8,0,0">
+                <u:Pagination PageIndex="{Binding CurrentPage, RelativeSource={RelativeSource TemplatedParent}}"
+                              PageSize="{Binding PageSize, RelativeSource={RelativeSource TemplatedParent}}"
+                              Total="{Binding TotalCount, RelativeSource={RelativeSource TemplatedParent}}"
+                              Command="{Binding PageChangeCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                              HorizontalAlignment="Center" />
+              </Grid>
+
+              <Border Margin="0,8,0,0"
+                      Background="#F0F0F0"
+                      CornerRadius="4"
+                      Padding="8,4"
+                      IsVisible="{Binding ShowAddNew, RelativeSource={RelativeSource TemplatedParent}}">
+                <Button Name="PART_AddNew"
+                        Command="{Binding AddNewCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                        HorizontalAlignment="Center"
+                        Content="+ 新建" />
+              </Border>
+
+              <StackPanel Orientation="Horizontal"
+                          Margin="0,8,0,0"
+                          HorizontalAlignment="Center">
+                <TextBlock Text="{Binding CurrentPageInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                           Foreground="Gray"
+                           Margin="0,0,8,0" />
+                <TextBlock Text="{Binding TotalCountInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                           Foreground="Gray" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Popup>
+      </StackPanel>
+    </ControlTemplate>
+  </TemplatedControl.Template>
+
+</TemplatedControl>

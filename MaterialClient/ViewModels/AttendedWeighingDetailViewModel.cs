@@ -1492,6 +1492,58 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     public event EventHandler<ItemOperationCompletedEventArgs>? ManualMatchSaveCompleted;
 
     #endregion
+
+    #region SearchablePageableSelectBox Support
+
+    /// <summary>
+    ///     加载分页供应商数据
+    /// </summary>
+    public async Task<Volo.Abp.Application.Dtos.PagedResultDto<object>> LoadPagedProvidersAsync(
+        string searchText,
+        int pageIndex,
+        int pageSize)
+    {
+        var selectedIds = SelectedProvider != null ? new List<int> { SelectedProvider.Id } : null;
+        var result = await _materialService.GetPagedProvidersAsync(searchText, pageIndex, pageSize, selectedIds);
+
+        return new Volo.Abp.Application.Dtos.PagedResultDto<object>(result.TotalCount, result.Items.Cast<object>().ToList());
+    }
+
+    /// <summary>
+    ///     获取供应商 ID
+    /// </summary>
+    public int GetProviderId(object? provider)
+    {
+        if (provider is ProviderDto dto)
+            return dto.Id;
+        return 0;
+    }
+
+    /// <summary>
+    ///     加载分页材料数据
+    /// </summary>
+    public async Task<Volo.Abp.Application.Dtos.PagedResultDto<object>> LoadPagedMaterialsAsync(
+        string searchText,
+        int pageIndex,
+        int pageSize)
+    {
+        var selectedIds = SelectedSolidWasteMaterial != null ? new List<int> { SelectedSolidWasteMaterial.Id } : null;
+        var result = await _materialService.GetPagedMaterialsAsync(searchText, pageIndex, pageSize, selectedIds);
+
+        return new Volo.Abp.Application.Dtos.PagedResultDto<object>(result.TotalCount, result.Items.Cast<object>().ToList());
+    }
+
+    /// <summary>
+    ///     获取材料 ID
+    /// </summary>
+    public int GetMaterialId(object? material)
+    {
+        if (material is Material m)
+            return m.Id;
+        return 0;
+    }
+
+    #endregion
 }
 
 /// <summary>
