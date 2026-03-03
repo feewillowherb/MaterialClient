@@ -1,13 +1,13 @@
 # Project Context
 
-## Purpose
+## 目的
 
-MaterialClient is a Windows desktop application for material weighing management in industrial settings. The system provides attended (有人值守) and unattended weighing operations, integrating with hardware devices including truck scales, license plate recognition cameras, and security cameras. It manages weighing records, automatically matches inbound/outbound weighings to generate waybills, and synchronizes data with a remote platform.
+MaterialClient 是一个用于工业环境材料称重管理的 Windows 桌面应用程序。该系统提供有人值守和无人值守的称重操作，与包括地磅、车牌识别摄像头和安防摄像头在内的硬件设备集成。它管理称重记录，自动匹配入站/出站称重以生成运单，并与远程平台同步数据。
 
-## Tech Stack
+## 技术栈
 
 - **Language**: C# 13 / .NET 10.0
-- **Framework**: Avalonia UI 11.3.9 (Cross-platform desktop UI framework)
+- **Framework**: Avalonia UI 11.3.9（跨平台桌面 UI 框架）
 - **Architecture**: MVVM pattern with ReactiveUI 20.1.1
 - **Database**: SQLite with Entity Framework Core 10.0.1
 - **Dependency Injection**: Volo.Abp Autofac 10.0.1
@@ -24,13 +24,13 @@ MaterialClient is a Windows desktop application for material weighing management
 
 ## Project Conventions
 
-### Code Style
+### 代码风格
 
-- **Nullable Reference Types**: Enabled throughout the codebase
-- **Implicit Usings**: Enabled for .NET 10.0
+- **Nullable Reference Types**: 在整个代码库中启用
+- **Implicit Usings**: 为 .NET 10.0 启用
 - **Source Generators**:
-  - AutoConstructor 5.6.0 for automatic constructor injection
-  - ReactiveUI.SourceGenerators 2.5.1 for ReactiveUI boilerplate
+  - AutoConstructor 5.6.0 用于自动构造函数注入
+  - ReactiveUI.SourceGenerators 2.5.1 用于 ReactiveUI 样板代码
 - **Naming Conventions**:
   - Async methods end with `Async` suffix
   - Private fields use `_camelCase` notation
@@ -44,53 +44,53 @@ MaterialClient is a Windows desktop application for material weighing management
   - Static Factory Methods: `MaterialClient.Common/Utils/` (e.g., `DatabaseConnectionStringFactory`)
   - Dependency Injection Factory Services: `MaterialClient.Common/Providers/` (e.g., `RecommendPlateNumberService`)
 
-### Build Configuration
+### 构建配置
 
-- **Directory.Build.props**: Common build settings and package references applied to all projects
-  - AutoConstructor is automatically available to all projects via this file
-  - Located at solution root, automatically imported by MSBuild
-- **Directory.Packages.props**: Central Package Management (CPM) for version control
-  - All package versions are defined in this single file
-  - Projects reference packages without version numbers (versions come from Directory.Packages.props)
-  - Ensures version consistency across all projects
-  - Requires .NET SDK 6.0+ (project uses .NET SDK 10.0)
+- **Directory.Build.props**: 应用于所有项目的通用构建设置和包引用
+  - AutoConstructor 通过此文件自动对所有项目可用
+  - 位于解决方案根目录，由 MSBuild 自动导入
+- **Directory.Packages.props**: 用于版本控制的 Central Package Management (CPM)
+  - 所有包版本都在此单一文件中定义
+  - 项目引用包时不带版本号（版本来自 Directory.Packages.props）
+  - 确保所有项目的版本一致性
+  - 需要 .NET SDK 6.0+（项目使用 .NET SDK 10.0）
 
-### Architecture Patterns
+### 架构模式
 
-- **MVVM Pattern**: View-ViewModel separation using Avalonia ReactiveUI
-- **Repository Pattern**: `IRepository<TEntity, TKey>` from Volo.Abp for data access
-- **Unit of Work**: `IUnitOfWorkManager` for transaction management
-- **Service Layer**: Business logic in service classes (e.g., `AttendedWeighingService`, `MaterialService`)
-- **Rx State Management**: Using BehaviorSubject and Reactive Extensions for state streams
-- **Hardware Abstraction**: Service interfaces for hardware devices (`ITruckScaleWeightService`, `ILPRAllInOneService`, `IHikvisionService`)
-- **API Integration**: Refit interfaces for HTTP communication with remote platform
+- **MVVM Pattern**: 使用 Avalonia ReactiveUI 的 View-ViewModel 分离
+- **Repository Pattern**: 使用 Volo.Abp 的 `IRepository<TEntity, TKey>` 进行数据访问
+- **Unit of Work**: 使用 `IUnitOfWorkManager` 进行事务管理
+- **Service Layer**: 服务类中的业务逻辑（例如 `AttendedWeighingService`、`MaterialService`）
+- **Rx State Management**: 使用 BehaviorSubject 和 Reactive Extensions 进行状态流管理
+- **Hardware Abstraction**: 硬件设备的服务接口（`ITruckScaleWeightService`、`ILPRAllInOneService`、`IHikvisionService`）
+- **API Integration**: 使用 Refit 接口与远程平台进行 HTTP 通信
 
-**Current State Management Pattern**:
-The `AttendedWeighingService` uses an RxState-inspired pattern with:
-- Unified state object (`WeighingServiceState`)
-- Pure function reducers (`WeighingServiceStateReducer`)
-- Side-effect separation (async operations outside reducer)
-- Action-based state mutations
+**当前状态管理模式**:
+`AttendedWeighingService` 使用受 RxState 启发的模式，具有：
+- 统一状态对象（`WeighingServiceState`）
+- 纯函数 reducers（`WeighingServiceStateReducer`）
+- 副作用分离（reducer 外部的异步操作）
+- 基于操作的状态突变
 
-**Important - Memory Leak Considerations**:
-- Proper subscription disposal is critical - always dispose subscriptions
-- Avoid circular references in Rx streams
-- Use `RefCount()` for hot observables
-- Prefer `ConcurrentQueue` over `ConcurrentBag` for pending operations
-- Add size limits to `Buffer()` and `Replay()` operators
+**重要 - 内存泄漏考虑因素**:
+- 正确的订阅处置至关重要 - 始终处置订阅
+- 避免 Rx 流中的循环引用
+- 对热可观察对象使用 `RefCount()`
+- 对于待处理操作，优先使用 `ConcurrentQueue` 而不是 `ConcurrentBag`
+- 为 `Buffer()` 和 `Replay()` 操作符添加大小限制
 
-### Testing Strategy
+### 测试策略
 
-- **Test Framework**: xUnit (implied by `.Tests` project structure)
+- **Test Framework**: xUnit（由 `.Tests` 项目结构暗示）
 - **Test Categories**:
-  - Unit tests for business logic and reducers
-  - Integration tests for database operations
-  - Memory leak tests for long-running services
-  - Hardware mock implementations for testing without physical devices
+  - 业务逻辑和 reducers 的单元测试
+  - 数据库操作的集成测试
+  - 长时间运行服务的内存泄漏测试
+  - 用于在没有物理设备的情况下进行测试的硬件 mock 实现
 - **Test Visibility**: `InternalsVisibleTo` attribute for testing internal members
 - **Key Test Suites**:
-  - `AttendedWeighingServiceMemoryLeakTests` - Verifies proper resource cleanup
-  - Mock implementations for all hardware services
+  - `AttendedWeighingServiceMemoryLeakTests` - 验证正确的资源清理
+  - 所有硬件服务的 mock 实现
 
 #### Integration Test Conventions
 
@@ -112,35 +112,35 @@ The `AttendedWeighingService` uses an RxState-inspired pattern with:
 
 ### OpenSpec Workflow
 
-This project uses OpenSpec for specification-driven development:
+本项目使用 OpenSpec 进行规范驱动的开发：
 
-1. **Before Making Changes**:
-   - Read `openspec/project.md` (this file)
-   - Run `openspec list` to see active changes
-   - Run `openspec list --specs` to see existing capabilities
-   - Check `openspec/specs/[capability]/spec.md` for requirements
+1. **在进行更改之前**:
+   - 阅读 `openspec/project.md`（本文件）
+   - 运行 `openspec list` 查看活跃的更改
+   - 运行 `openspec list --specs` 查看现有功能
+   - 检查 `openspec/specs/[capability]/spec.md` 中的需求
 
-2. **Creating Proposals**:
-   - Required for: New features, breaking changes, architecture changes, performance optimizations
-   - NOT required for: Bug fixes, typos, formatting, non-breaking dependency updates
-   - Use verb-led change IDs: `add-*`, `update-*`, `remove-*`, `refactor-*`
+2. **创建提案**:
+   - 适用于：新功能、破坏性更改、架构更改、性能优化
+   - 不适用于：Bug 修复、拼写错误、格式、非破坏性依赖更新
+   - 使用动词引导的变更 ID：`add-*`、`update-*`、`remove-*`、`refactor-*`
 
-3. **Proposal Structure**:
-   - `openspec/changes/[change-id]/proposal.md` - Why, what, impact
-   - `openspec/changes/[change-id]/tasks.md` - Implementation checklist
-   - `openspec/changes/[change-id]/design.md` - Technical decisions (optional)
-   - `openspec/changes/[change-id]/specs/[capability]/spec.md` - Delta requirements
+3. **提案结构**:
+   - `openspec/changes/[change-id]/proposal.md` - 原因、内容、影响
+   - `openspec/changes/[change-id]/tasks.md` - 实施检查清单
+   - `openspec/changes/[change-id]/design.md` - 技术决策（可选）
+   - `openspec/changes/[change-id]/specs/[capability]/spec.md` - Delta 需求
 
-4. **Delta Operations**:
-   - `## ADDED Requirements` - New capabilities
-   - `## MODIFIED Requirements` - Changed behavior (paste full updated requirement)
-   - `## REMOVED Requirements` - Deprecated features
-   - Use `#### Scenario:` format (4 hashtags) for scenarios
+4. **Delta 操作**:
+   - `## ADDED Requirements` - 新功能
+   - `## MODIFIED Requirements` - 更改的行为（粘贴完整更新的需求）
+   - `## REMOVED Requirements` - 已弃用的功能
+   - 对 scenario 使用 `#### Scenario:` 格式（4 个井号）
 
-5. **Validation**:
-   - Run `openspec validate [change-id] --strict` before requesting approval
-   - Ensure every requirement has at least one scenario
-   - Do not start implementation until proposal is approved
+5. **验证**:
+   - 在请求批准之前运行 `openspec validate [change-id] --strict`
+   - 确保每个需求至少有一个 scenario
+   - 在提案获得批准之前不要开始实施
 
 See `openspec/AGENTS.md` for complete OpenSpec workflow documentation.
 
