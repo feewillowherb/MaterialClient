@@ -31,7 +31,7 @@
         </Border>
 
         <Popup Name="PART_Popup"
-               IsOpen="{Binding IsPopupOpen, RelativeSource={RelativeSource TemplatedParent}}"
+               IsOpen="{TemplateBinding IsPopupOpen}"
                Placement="Bottom"
                PlacementTarget="PART_Border">
           <Border Background="White"
