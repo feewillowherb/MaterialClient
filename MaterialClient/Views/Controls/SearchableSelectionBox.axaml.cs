@@ -8,7 +8,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using MaterialClient.ViewModels;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.Views.Controls;
 
 public partial class SearchableSelectionBox : UserControl
 {

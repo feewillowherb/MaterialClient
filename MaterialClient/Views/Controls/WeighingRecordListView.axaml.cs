@@ -3,16 +3,16 @@ using Avalonia.Controls;
 using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MaterialClient.Views.AttendedWeighing;
+namespace MaterialClient.Views.Controls;
 
-public partial class AttendedWeighingMainView : UserControl
+public partial class WeighingRecordListView : UserControl
 {
-    public AttendedWeighingMainView() : this(null)
+    public WeighingRecordListView(): this(null)
     {
         InitializeComponent();
     }
-
-    public AttendedWeighingMainView(IServiceProvider? serviceProvider)
+    
+    public WeighingRecordListView(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
         DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModel>();

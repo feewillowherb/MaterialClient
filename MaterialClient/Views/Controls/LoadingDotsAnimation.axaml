@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="50" d:DesignHeight="30"
-             x:Class="MaterialClient.Views.LoadingDotsAnimation">
+             x:Class="MaterialClient.Views.Controls.LoadingDotsAnimation">
     <TextBlock x:Name="DotsTextBlock"
                Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
                FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=UserControl}}"

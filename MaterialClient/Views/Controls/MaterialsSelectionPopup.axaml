@@ -4,7 +4,7 @@
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              xmlns:u="https://irihi.tech/ursa"
-             x:Class="MaterialClient.Views.MaterialsSelectionPopup"
+             x:Class="MaterialClient.Views.Controls.MaterialsSelectionPopup"
              x:DataType="vm:MaterialsSelectionPopupViewModel"
              Width="400" Height="300">
     
