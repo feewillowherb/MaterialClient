@@ -3,6 +3,7 @@
     <PropertyGroup>
         <RootNamespace>MaterialClient.Toolkit</RootNamespace>
         <OutputType>Exe</OutputType>
+        <Description>物料客户端工具库 - 通用工具和实用程序</Description>
         <!-- 自包含部署：包含 .NET 运行时，目标机器无需安装 .NET -->
         <SelfContained>true</SelfContained>
         <!-- 单文件发布：将所有文件打包成一个可执行文件 -->

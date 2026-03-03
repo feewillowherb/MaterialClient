@@ -1,522 +1,226 @@
-# SDD Maintenance Guide
+# SDD 维护指南
 
-**Version**: 1.0
-**Created**: 2026-01-15
-**Owner**: Lead Architect / Tech Lead
-
----
-
-## Purpose
-
-This guide defines the process for maintaining the Software Design Document (SDD) to ensure it remains accurate and useful throughout the project lifecycle.
+**版本**: 1.0
+**创建**: 2026-01-15
+**负责人**: 首席架构师 / 技术负责人
 
 ---
 
-## Maintenance Schedule
+## 目的
 
-### Quarterly Reviews
-
-**Frequency**: Every 3 months (January, April, July, October)
-
-**Activities**:
-1. Review technology stack versions - Update if changed
-2. Verify architecture diagrams match implementation
-3. Check ADRs for accuracy - Update or deprecate if needed
-4. Review technical debt status - Update priorities/resolutions
-5. Validate data model documentation - Update entity changes
-6. Update constraint documentation - Add new constraints as discovered
-
-**Responsibility**: Lead Architect
+本指南定义了维护软件设计文档 (SDD) 的流程，以确保其在整个项目生命周期中保持准确和有用。
 
 ---
 
-## Update Triggers
+## 维护计划
 
-### Automatic Triggers
+### 季度审查
 
-The SDD MUST be updated when:
+**频率**: 每 3 个月（1月、4月、7月、10月）
 
-| Trigger | Section(s) to Update | Timeline |
+**活动**:
+1. 审查技术栈版本 - 如有变更则更新
+2. 验证架构图与实现匹配
+3. 检查 ADR 的准确性 - 如需要则更新或弃用
+4. 审查技术债务状态 - 更新优先级/解决方案
+5. 验证数据模型文档 - 更新实体变更
+6. 更新约束文档 - 发现新约束时添加
+
+**负责人**: 首席架构师
+
+---
+
+## 更新触发器
+
+### 自动触发器
+
+SDD 必须在以下情况下更新：
+
+| 触发器 | 要更新的章节 | 时间线 |
 |---------|---------------------|----------|
-| New service added | Module Design (Section 2) | Before PR merge |
-| Service interface changed | Module Design (Section 2) | Before PR merge |
-| New entity added | Data Model (Section 4) | Before PR merge |
-| Entity schema changed | Data Model (Section 4) | Before PR merge |
-| Major architecture change | Architecture Overview (Section 1), Diagrams (Section 5) | Before PR merge |
-| Technology version upgrade | Technology Stack (Section 1.2) | Before upgrade |
-| New ADR needed | Technical Decisions (Section 6) | When decision made |
-| Performance issue identified | Constraints & Risks (Section 7.4) | When discovered |
-| Technical debt resolved | Technical Debt (Section 7.4) | When resolved |
-
-### Manual Triggers
-
-The SDD SHOULD be updated when:
-- Code review reveals documentation gaps
-- Onboarding feedback indicates unclear areas
-- Architecture changes are planned
-- Retrospective identifies documentation needs
+| 添加新服务 | 模块设计（第 2 节） | PR 合并前 |
+| 服务接口变更 | 模块设计（第 2 节） | PR 合并前 |
+| 添加新实体 | 数据模型（第 4 节） | PR 合并前 |
+| 实体架构变更 | 数据模型（第 4 节） | PR 合并前 |
+| 重大架构变更 | 架构概述（第 1 节）、图表（第 5 节） | PR 合并前 |
+| 技术版本升级 | 技术栈（第 1.2 节） | 升级前 |
+| 需要新的 ADR | 技术决策（第 6 节） | 决策做出时 |
+| 发现性能问题 | 约束与风险（第 7.4 节） | 发现时 |
+| 技术债务解决 | 技术债务（第 7.4 节） | 解决时 |
 
 ---
 
-## Update Process
+## 更新流程
 
-### 1. Identify Update Need
+### 标准更新
 
-**Who**: Any team member
+1. **更新相关章节**
+   - 编辑对应的 SDD 章节
+   - 保持格式和结构一致
 
-**How**:
-- Create GitHub issue with label `documentation`
-- Tag issue with `sdd` label
-- Describe what needs updating and why
+2. **更新图表（如适用）**
+   - 更新 Mermaid 图表以反映变更
+   - 验证图表语法正确性
 
-**Example Issue Template**:
-```markdown
-## SDD Update Needed
+3. **审查变更**
+   - 自我检查完整性和准确性
+   - 确保没有引入错误
 
-**Section**: Module Design (Section 2)
-**Reason**: New service `BarcodeScannerService` added in PR #123
-**Changes Required**:
-- Add service to catalog table
-- Document interface and dependencies
-- Add to component diagram if needed
+4. **提交和 PR**
+   - 创建描述性提交消息
+   - 参考 SDD 更新指南
+   - 指定至少一名审查者
 
-**PR Reference**: #123
-**Priority**: High (blocks merge)
-```
-
----
-
-### 2. Make Updates
-
-**Who**: Assignee (usually tech lead or architect)
-
-**Process**:
-1. Checkout `main` branch
-2. Create `docs/update-sdd-<section>-<date>` branch
-3. Edit `docs/SDD.md`
-4. Update document metadata (Last Updated date)
-5. Commit with descriptive message
-6. Create PR for review
-
-**Commit Message Format**:
-```
-docs(sdd): Update Module Design section
-
-- Add BarcodeScannerService to service catalog
-- Document interface and dependencies
-- Update component diagram
-
-Refs: #124
-```
+5. **审查和合并**
+   - 审查者验证准确性
+   - 首席架构师最终批准
+   - 合并到主分支
 
 ---
 
-### 3. Review and Merge
+## 重大更新
 
-**Review Checklist**:
-- [ ] Technical accuracy verified
-- [ ] Consistency with codebase
-- [ ] No conflicting information
-- [ ] Diagrams render correctly (Mermaid syntax)
-- [ ] Tables formatted properly
-- [ ] Links/anchors work
+当重大架构变更需要 SDD 结构性更改时：
 
-**Approval**: Tech Lead or Architect
-
-**Merge**: Squash merge to `main`
+1. **创建分支**: `feature/update-sdd-<change-name>`
+2. **提案变更**: 在团队会议上讨论重大 SDD 更新
+3. **更新多个章节**: 如果需要，影响所有相关部分
+4. **更新附录**: 添加或删除相关文档
+5. **全面审查**: 由架构团队进行全面审查
+6. **发布说明**: 在 PR 中记录重大变更
 
 ---
 
-## Section-Specific Guidelines
+## 角色和职责
 
-### Section 1: Architecture Overview
+### 首席架构师
 
-**When to Update**:
-- Technology stack version changes
-- New architectural patterns introduced
-- System boundaries change
+- **所有者**: SDD 的最终责任
+- **季度审查**: 主持季度审查
+- **重大更新**: 批准重大 SDD 更新
+- **ADR 审查**: 审查所有新 ADR
 
-**Review Focus**:
-- Version numbers accurate
-- Pattern descriptions match implementation
-- Positioning statement still accurate
+### 技术负责人
 
----
+- **技术栈**: 保持第 1.2 节最新
+- **服务目录**: 维护第 2 节
+- **数据模型**: 维护第 4 节
 
-### Section 2: Module Design
+### 开发者
 
-**When to Update**:
-- New service added
-- Service interface changed
-- New dependencies added
+- **小更新**: 对小变更创建 SDD 更新 PR
+- **审查**: 在实施前审查与工作相关的 SDD 部分
+- **问题报告**: 报告发现的 SDD 不准确之处
 
-**Review Focus**:
-- Service catalog complete
-- Interfaces match code
-- Dependencies accurate
-- State management approach documented
+### 文档负责人
+
+- **格式**: 确保 Markdown 和图表语法正确
+- **链接**: 验证所有内部链接工作
+- **一致性**: 确保术语和风格一致
 
 ---
 
-### Section 3: State Management Architecture
+## 质量标准
 
-**When to Update**:
-- New Rx patterns introduced
-- State management refactored
-- Performance optimizations applied
+### 准确性
 
-**Review Focus**:
-- Rx patterns documented
-- Disposal patterns followed
-- Threading model accurate
+- ✅ SDD 与实际代码库匹配
+- ✅ 所有示例可编译/运行
+- ✅ 所有链接有效
+- ✅ 所有图表可渲染
 
----
+### 完整性
 
-### Section 4: Data Model
+- ✅ 所有服务已记录
+- ✅ 所有实体已记录
+- ✅ 所有 ADR 已记录
+- ✅ 所有约束已记录
 
-**When to Update**:
-- New entity added
-- Entity schema changed
-- New enum added
-- Relationships changed
+### 清晰性
 
-**Review Focus**:
-- All entities listed
-- Fields match code
-- Relationships accurate
-- Enums documented
+- ✅ 技术术语一致
+- ✅ 图表可理解
+- ✅ 代码示例有帮助
+- ✅ 结构合乎逻辑
 
 ---
 
-### Section 5: Architecture Diagrams
+## 工具和模板
 
-**When to Update**:
-- New components added
-- Data flows changed
-- Deployment changed
-
-**Review Focus**:
-- Mermaid syntax valid
-- Components current
-- Relationships accurate
-- All diagrams render
-
----
-
-### Section 6: Technical Decisions (ADRs)
-
-**When to Update**:
-- New technical decision made
-- Existing decision reversed
-- Decision implemented/deprecated
-
-**Review Focus**:
-- Status current (Accepted/Superseded/Deprecated)
-- Context still accurate
-- Consequences documented
-
-**ADR Status Changes**:
-```markdown
-**Status**: Superseded by ADR-012
-**Superseded**: 2026-02-01
-**Reason**: Migrated to unified state pattern
-```
-
----
-
-### Section 7: Constraints & Risks
-
-**When to Update**:
-- New constraint discovered
-- Technical debt resolved
-- Risk mitigated
-
-**Review Focus**:
-- Constraints accurate
-- Technical debt current
-- Priority levels appropriate
-
----
-
-### Section 8: Development Guidelines
-
-**When to Update**:
-- New best practices identified
-- Coding standards changed
-- Testing strategy updated
-
-**Review Focus**:
-- Guidelines followed
-- Examples current
-- Test coverage goals met
-
----
-
-## Documentation Quality Standards
-
-### Accuracy
-
-- All code references must be accurate
-- Version numbers must match actual versions
-- Diagrams must reflect actual architecture
-
-**Verification**:
-```bash
-# Check for outdated references
-grep -r "Version.*9\." docs/SDD.md  # Should be 10.x
-```
-
----
-
-### Completeness
-
-- All services documented
-- All entities listed
-- All ADRs for major decisions present
-
-**Checklist**:
-- Service catalog matches `Services/` directory
-- Entity list matches `Entities/` directory
-- ADR count matches significant decisions
-
----
-
-### Clarity
-
-- Technical jargon explained
-- Acronyms defined on first use
-- Examples provided for complex concepts
-
-**Review**:
-- Can new developer understand architecture?
-- Can AI assistant parse documentation?
-
----
-
-### Consistency
-
-- Terminology consistent throughout
-- Formatting follows style guide
-- Diagrams use consistent notation
-
-**Enforcement**:
-- Use predefined templates (ADR, service docs)
-- Markdown linter (markdownlint)
-- Peer review
-
----
-
-## OpenSpec Integration
-
-### Pre-Commit Checklist
-
-Add to OpenSpec workflow:
-
-```yaml
-# .openspec/workflows/feature-workflow.yml
-check_sdd_update:
-  - if: "changes affect architecture or module design"
-    check: |
-      Has docs/SDD.md been updated?
-      Are affected sections current?
-```
-
----
-
-### Code Review Checklist
-
-Add to PR template:
+### ADR 模板
 
 ```markdown
-## Documentation
+# ADR-XXX: [决策标题]
 
-- [ ] SDD updated if architecture changed
-- [ ] New services documented in Module Design
-- [ ] New entities documented in Data Model
-- [ ] ADR created for significant decisions
+**状态**: [提议 | 已接受 | 已弃用 | 已替代]
+**日期**: YYYY-MM-DD
+**决策者**: [姓名/角色]
+
+## 背景
+
+[描述驱动此决策的背景和上下文]
+
+## 决策
+
+[描述决策]
+
+## 理由
+
+[解释此决策的原因]
+
+## 权衡
+
+[讨论此决策的权衡]
+
+## 后果
+
+[描述采用此决策的后果]
+
+## 替代方案
+
+[列出考虑的替代方案]
 ```
 
----
+### 审查清单
 
-## Roles and Responsibilities
+更新 SDD 前：
 
-### Lead Architect
-
-**Primary Responsibilities**:
-- Own SDD maintenance schedule
-- Review and approve all updates
-- Conduct quarterly reviews
-- Resolve documentation conflicts
-
-**Time Allocation**: 2-4 hours per month
+- [ ] 我已更新所有相关章节
+- [ ] 我已验证图表可渲染
+- [ ] 我已检查所有链接有效
+- [ ] 我已更新 ADR（如需要）
+- [ ] 我已添加提交消息
+- [ ] 我已指定审查者
 
 ---
 
-### Tech Lead
+## 版本历史
 
-**Primary Responsibilities**:
-- Review documentation updates in PRs
-- Identify documentation gaps during code reviews
-- Mentor team on documentation practices
-
-**Time Allocation**: 1-2 hours per week
+| 版本 | 日期 | 变更 | 作者 |
+|------|------|------|------|
+| 1.0 | 2026-01-15 | 初始版本 | Claude |
 
 ---
 
-### Developers
+## 相关文档
 
-**Primary Responsibilities**:
-- Update documentation for their changes
-- Identify and report documentation gaps
-- Follow documentation guidelines
-
-**Time Allocation**: Per change (typically 15-30 minutes)
+- [SDD.md](./SDD.md) - 主要软件设计文档
+- [sdd-gap-analysis.md](./sdd-gap-analysis.md) - 差距分析
+- [sdd-quality-assessment.md](./sdd-quality-assessment.md) - 质量评估
+- [sdd-creation-summary.md](./sdd-creation-summary.md) - 创建总结
 
 ---
 
-## Tools and Resources
+## 问题和支持
 
-### Markdown Linting
+如有问题或建议关于 SDD 维护：
 
-```bash
-# Install markdownlint
-npm install -g markdownlint-cli
-
-# Check SDD
-markdownlint docs/SDD.md
-
-# Auto-fix issues
-markdownlint docs/SDD.md --fix
-```
-
-### Mermaid Validation
-
-```bash
-# Use Mermaid live editor
-# https://mermaid.live/
-# Paste diagrams to validate syntax
-```
-
-### Link Checking
-
-```bash
-# Find broken anchors
-grep -n '\[.*\](#' docs/SDD.md | while read line; do
-  anchor=$(echo "$line" | sed 's/.*#\(.*\)/\1/')
-  if ! grep -q "### $anchor" docs/SDD.md; then
-    echo "Broken anchor: $anchor"
-  fi
-done
-```
+1. **创建问题**: 在仓库中创建 GitHub 问题
+2. **标记**: 使用 `documentation` 标签
+3. **分配**: 分配给首席架构师
 
 ---
 
-## Metrics
-
-### Track These Metrics
-
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Documentation freshness | < 1 month stale | Time since last update |
-| PR documentation compliance | > 90% | PRs with SDD updates |
-| Onboarding time | < 1 week | New developer time to productivity |
-| Documentation issues | < 5 per quarter | GitHub issues labeled `documentation` |
-
-### Quarterly Report Template
-
-```markdown
-# SDD Maintenance Report - QX 2026
-
-## Updates Made
-- Section X updated: [description]
-- ADR-XXX added: [description]
-
-## Metrics
-- Documentation freshness: X days
-- PR compliance: XX%
-- Onboarding time: X weeks
-
-## Issues Identified
-- [List gaps or inaccuracies found]
-
-## Action Items
-- [ ] [Next quarter priorities]
-```
-
----
-
-## Escalation Path
-
-### Documentation Gaps
-
-1. **Developer** identifies gap → Creates issue
-2. **Tech Lead** prioritizes → Assigns to developer
-3. **Developer** updates → Creates PR
-4. **Tech Lead** reviews → Approves/requests changes
-5. **Lead Architect** approves → Merges
-
-### Conflicting Information
-
-1. **Any team member** identifies conflict → Creates issue
-2. **Tech Lead** investigates → Determines correct version
-3. **Lead Architect** resolves → Updates documentation
-4. **Team** notified → Announcement in standup
-
----
-
-## Continuous Improvement
-
-### Retrospective
-
-**Frequency**: Annually
-
-**Activities**:
-- Review maintenance process effectiveness
-- Identify pain points
-- Update guidelines based on lessons learned
-- Adjust time allocations if needed
-
-**Output**: Updated maintenance guide
-
----
-
-### Training
-
-**New Developer Onboarding**:
-1. Review SDD with new developer
-2. Explain maintenance process
-3. Assign documentation buddy
-4. Monitor first documentation update
-
-**Team Training**:
-- Quarterly documentation workshop
-- Share documentation best practices
-- Review tools and automation
-
----
-
-## Appendix
-
-### Quick Reference
-
-| Task | Command/File | Notes |
-|------|--------------|-------|
-| Update SDD | Edit `docs/SDD.md` | Update metadata date |
-| Check links | `markdownlint` | Run before commit |
-| Validate diagrams | Mermaid Live Editor | https://mermaid.live/ |
-| Create ADR | Use ADR template | Section 6 format |
-| Report issue | GitHub label `sdd` | Include section reference |
-
----
-
-### Contact
-
-**SDD Owner**: Lead Architect
-**Process Questions**: Tech Lead
-**Tool Support**: DevOps Engineer
-
----
-
-**Document Version**: 1.0
-**Last Updated**: 2026-01-15
-**Next Review**: 2026-04-15
+**最后更新**: 2026-01-15
+**所有者**: 首席架构师 / 技术负责人
+**状态**: ✅ 活跃
