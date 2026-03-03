@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.Views.Controls;
 
 public partial class CameraStatusPopup : UserControl
 {

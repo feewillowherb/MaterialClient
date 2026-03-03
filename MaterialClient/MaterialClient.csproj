@@ -69,22 +69,22 @@
         <Compile Update="Views\PlateNumberInputWindow.axaml.cs">
             <DependentUpon>PlateNumberInputWindow.axaml</DependentUpon>
         </Compile>
-        <Compile Update="Views\PhotoGridView.axaml.cs">
+        <Compile Update="Views\Controls\PhotoGridView.axaml.cs">
             <DependentUpon>PhotoGridView.axaml</DependentUpon>
         </Compile>
-        <Compile Update="Views\AttendedWeighing\AttendedWeighingDetailView.axaml.cs">
+        <Compile Update="Views\Controls\AttendedWeighingDetailView.axaml.cs">
             <DependentUpon>AttendedWeighingDetailView.axaml</DependentUpon>
         </Compile>
-        <Compile Update="Views\AttendedWeighing\WeighingRecordListView.axaml.cs">
+        <Compile Update="Views\Controls\WeighingRecordListView.axaml.cs">
             <DependentUpon>WeighingRecordListView.axaml</DependentUpon>
         </Compile>
         <Compile Update="Views\GoodsSelectionPopup.axaml.cs">
           <DependentUpon>GoodsSelectionPopup.axaml</DependentUpon>
         </Compile>
-        <Compile Update="Views\MaterialsSelectionPopup.axaml.cs">
+        <Compile Update="Views\Controls\MaterialsSelectionPopup.axaml.cs">
           <DependentUpon>MaterialsSelectionPopup.axaml</DependentUpon>
         </Compile>
-        <Compile Update="Views\LoadingDotsAnimation.axaml.cs">
+        <Compile Update="Views\Controls\LoadingDotsAnimation.axaml.cs">
           <DependentUpon>LoadingDotsAnimation.axaml</DependentUpon>
         </Compile>
         <Compile Update="Views\Dialogs\AddCameraDialog.axaml.cs">

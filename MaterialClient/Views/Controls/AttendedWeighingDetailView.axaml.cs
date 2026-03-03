@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MaterialClient.Views.AttendedWeighing;
+namespace MaterialClient.Views.Controls;
 
 public partial class AttendedWeighingDetailView : UserControl
 {

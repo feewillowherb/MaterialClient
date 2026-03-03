@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.Views.Controls;
 
 public partial class LoadingDotsAnimation : UserControl
 {

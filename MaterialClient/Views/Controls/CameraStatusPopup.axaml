@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
-             x:Class="MaterialClient.Views.CameraStatusPopup"
+             x:Class="MaterialClient.Views.Controls.CameraStatusPopup"
              x:DataType="vm:AttendedWeighingViewModel"
              Classes="card-border"
              Padding="12"

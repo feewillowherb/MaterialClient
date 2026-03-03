@@ -4,7 +4,7 @@ using MaterialClient.ViewModels;
 using System.Linq;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.Views.Controls;
 
 public partial class GenericSelectionPopup : UserControl, ITransientDependency
 {

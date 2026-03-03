@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
-namespace MaterialClient.Views.AttendedWeighing;
+namespace MaterialClient.Views.Controls;
 
 public partial class StandardModeFormView : UserControl
 {

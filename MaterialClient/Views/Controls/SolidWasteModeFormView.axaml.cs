@@ -7,7 +7,7 @@ using Avalonia.Threading;
 using MaterialClient.ViewModels;
 using System.Reactive.Linq;
 
-namespace MaterialClient.Views.AttendedWeighing;
+namespace MaterialClient.Views.Controls;
 
 public partial class SolidWasteModeFormView : UserControl
 {

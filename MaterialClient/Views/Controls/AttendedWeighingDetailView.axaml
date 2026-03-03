@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
-             xmlns:aw="using:MaterialClient.Views.AttendedWeighing"
-             x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingDetailView"
+             xmlns:aw="using:MaterialClient.Views.Controls"
+             x:Class="MaterialClient.Views.Controls.AttendedWeighingDetailView"
              x:DataType="vm:AttendedWeighingDetailViewModel"
              x:Name="DetailViewRoot">
 

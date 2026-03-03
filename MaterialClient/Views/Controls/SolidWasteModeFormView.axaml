@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MaterialClient.ViewModels"
-             xmlns:views="using:MaterialClient.Views"
-             x:Class="MaterialClient.Views.AttendedWeighing.SolidWasteModeFormView"
+             xmlns:views="using:MaterialClient.Views.Controls"
+             x:Class="MaterialClient.Views.Controls.SolidWasteModeFormView"
              x:DataType="vm:AttendedWeighingDetailViewModel">
 
     <Grid Background="White">

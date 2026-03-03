@@ -3,7 +3,7 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:models="using:MaterialClient.Common.Models"
              xmlns:u="https://irihi.tech/ursa"
-             x:Class="MaterialClient.Views.AttendedWeighing.WeighingRecordListView"
+             x:Class="MaterialClient.Views.Controls.WeighingRecordListView"
              x:DataType="vm:AttendedWeighingViewModel">
 
     <!-- Left Column: Record List -->
