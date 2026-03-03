@@ -18,7 +18,7 @@ using Volo.Abp.Application.Dtos;
 
 namespace MaterialClient.Views;
 
-public class SearchablePageableSelectBox : TemplatedControl
+public partial class SearchablePageableSelectBox : TemplatedControl
 {
     public static readonly StyledProperty<object?> SelectedItemProperty =
         AvaloniaProperty.Register<SearchablePageableSelectBox, object?>(nameof(SelectedItem), defaultBindingMode: BindingMode.TwoWay);
@@ -35,14 +35,20 @@ public class SearchablePageableSelectBox : TemplatedControl
     public static readonly StyledProperty<int> PageSizeProperty =
         AvaloniaProperty.Register<SearchablePageableSelectBox, int>(nameof(PageSize), defaultValue: 10);
 
-    public static readonly StyledProperty<Func<string, int, int, Task<PagedResultDto<object>>>?> LoadPageAsyncProperty =
-        AvaloniaProperty.Register<SearchablePageableSelectBox, Func<string, int, int, Task<PagedResultDto<object>>>?>(nameof(LoadPageAsync));
+    public static readonly StyledProperty<Func<string?, int, int, IReadOnlyList<int>?, CancellationToken, Task<PagedResultDto<object>>>?> LoadPageAsyncProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, Func<string?, int, int, IReadOnlyList<int>?, CancellationToken, Task<PagedResultDto<object>>>?>(nameof(LoadPageAsync));
 
     public static readonly StyledProperty<IReactiveCommand?> AddNewCommandProperty =
         AvaloniaProperty.Register<SearchablePageableSelectBox, IReactiveCommand?>(nameof(AddNewCommand));
 
     public static readonly StyledProperty<bool> IsPopupOpenProperty =
         AvaloniaProperty.Register<SearchablePageableSelectBox, bool>(nameof(IsPopupOpen), defaultValue: false);
+
+    public static readonly StyledProperty<string?> SearchTextProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, string?>(nameof(SearchText));
+
+    public static readonly StyledProperty<int> CurrentPageProperty =
+        AvaloniaProperty.Register<SearchablePageableSelectBox, int>(nameof(CurrentPage), defaultValue: 1);
 
     // Read-only direct property for IsLoading
     public static readonly DirectProperty<SearchablePageableSelectBox, bool> IsLoadingProperty =
@@ -56,8 +62,6 @@ public class SearchablePageableSelectBox : TemplatedControl
 
     private bool _isLoading;
     private readonly ObservableCollection<object> _items;
-    private string _searchText = string.Empty;
-    private int _currentPage = 1;
     private CancellationTokenSource? _cts;
     private readonly DispatcherTimer _debounceTimer;
     private TextBox? _textBox;
@@ -92,7 +96,7 @@ public class SearchablePageableSelectBox : TemplatedControl
         set => SetValue(PageSizeProperty, value);
     }
 
-    public Func<string, int, int, Task<PagedResultDto<object>>>? LoadPageAsync
+    public Func<string?, int, int, IReadOnlyList<int>?, CancellationToken, Task<PagedResultDto<object>>>? LoadPageAsync
     {
         get => GetValue(LoadPageAsyncProperty);
         set => SetValue(LoadPageAsyncProperty, value);
@@ -110,6 +114,18 @@ public class SearchablePageableSelectBox : TemplatedControl
         set => SetValue(IsPopupOpenProperty, value);
     }
 
+    public string? SearchText
+    {
+        get => GetValue(SearchTextProperty);
+        set => SetValue(SearchTextProperty, value);
+    }
+
+    public int CurrentPage
+    {
+        get => GetValue(CurrentPageProperty);
+        set => SetValue(CurrentPageProperty, value);
+    }
+
     public bool IsLoading
     {
         get => _isLoading;
@@ -117,8 +133,6 @@ public class SearchablePageableSelectBox : TemplatedControl
     }
 
     public ObservableCollection<object> Items => _items;
-
-    public int CurrentPage => _currentPage;
 
     public int TotalCount { get; private set; }
 
@@ -129,6 +143,45 @@ public class SearchablePageableSelectBox : TemplatedControl
     public bool ShowAddNew => AddNewCommand != null;
 
     public ReactiveCommand<Unit, Unit> PageChangeCommand { get; }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == SelectedItemProperty)
+        {
+            UpdateTextBoxText();
+        }
+        else if (change.Property == CurrentPageProperty)
+        {
+            // Page changed from pagination component, reload data
+            _ = LoadPageAsyncInternal();
+        }
+    }
+
+    private void UpdateTextBoxText()
+    {
+        if (_textBox != null)
+        {
+            _textBox.Text = GetDisplayText(SelectedItem);
+        }
+    }
+
+    private string? GetDisplayText(object? item)
+    {
+        if (item == null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrEmpty(DisplayMemberPath))
+        {
+            var property = item.GetType().GetProperty(DisplayMemberPath);
+            return property?.GetValue(item)?.ToString();
+        }
+
+        return item.ToString();
+    }
 
     public SearchablePageableSelectBox()
     {
@@ -170,7 +223,7 @@ public class SearchablePageableSelectBox : TemplatedControl
     private async void OnTextBoxGotFocus(object? sender, GotFocusEventArgs e)
     {
         IsPopupOpen = true;
-        if (string.IsNullOrEmpty(_searchText))
+        if (string.IsNullOrEmpty(SearchText))
         {
             _ = LoadPageAsyncInternal();
         }
@@ -187,9 +240,9 @@ public class SearchablePageableSelectBox : TemplatedControl
         _debounceTimer.Stop();
         if (_textBox != null)
         {
-            _searchText = _textBox.Text ?? string.Empty;
+            SearchText = _textBox.Text ?? string.Empty;
         }
-        _currentPage = 1;
+        CurrentPage = 1;
         await LoadPageAsyncInternal();
     }
 
@@ -201,9 +254,9 @@ public class SearchablePageableSelectBox : TemplatedControl
             var textBox = sender as TextBox;
             if (textBox != null)
             {
-                _searchText = textBox.Text ?? string.Empty;
+                SearchText = textBox.Text ?? string.Empty;
             }
-            _currentPage = 1;
+            CurrentPage = 1;
             _ = LoadPageAsyncInternal();
         }
         else if (e.Key == Key.Escape)
@@ -223,7 +276,13 @@ public class SearchablePageableSelectBox : TemplatedControl
 
     private void OnPopupClosed(object? sender, EventArgs e)
     {
+        // Reset to selected item's display, discarding user input
+        SearchText = GetDisplayText(SelectedItem);
+        UpdateTextBoxText();
         IsPopupOpen = false;
+
+        // Retain focus on TextBox after popup closes
+        _textBox?.Focus();
     }
 
     private async Task LoadPageAsyncInternal()
@@ -237,10 +296,21 @@ public class SearchablePageableSelectBox : TemplatedControl
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
 
+        // Extract selected ID for guarantee
+        IReadOnlyList<int>? selectedIds = null;
+        if (SelectedItem != null && GetItemId != null)
+        {
+            var id = GetItemId(SelectedItem);
+            if (id != 0)
+            {
+                selectedIds = new[] { id };
+            }
+        }
+
         try
         {
             IsLoading = true;
-            var result = await loadFunc(_searchText, _currentPage, PageSize);
+            var result = await loadFunc(SearchText, CurrentPage, PageSize, selectedIds, _cts.Token);
 
             _items.Clear();
             foreach (var item in result.Items ?? [])

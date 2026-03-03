@@ -46,9 +46,14 @@
                 <ListBox Name="PART_ItemsList"
                          ItemsSource="{Binding Items, RelativeSource={RelativeSource TemplatedParent}}"
                          SelectedItem="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
-                         DisplayMemberPath="{Binding DisplayMemberPath, RelativeSource={RelativeSource TemplatedParent}}"
                          VerticalAlignment="Stretch"
-                         HorizontalAlignment="Stretch" />
+                         HorizontalAlignment="Stretch">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" />
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
 
                 <Border Background="White"
                         IsVisible="{Binding IsLoading, RelativeSource={RelativeSource TemplatedParent}}">
@@ -60,9 +65,9 @@
               </Grid>
 
               <Grid Margin="0,8,0,0">
-                <u:Pagination PageIndex="{Binding CurrentPage, RelativeSource={RelativeSource TemplatedParent}}"
+                <u:Pagination CurrentPage="{Binding CurrentPage, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                               PageSize="{Binding PageSize, RelativeSource={RelativeSource TemplatedParent}}"
-                              Total="{Binding TotalCount, RelativeSource={RelativeSource TemplatedParent}}"
+                              TotalCount="{Binding TotalCount, RelativeSource={RelativeSource TemplatedParent}}"
                               Command="{Binding PageChangeCommand, RelativeSource={RelativeSource TemplatedParent}}"
                               HorizontalAlignment="Center" />
               </Grid>

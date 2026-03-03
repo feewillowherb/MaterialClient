@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -1499,11 +1500,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     ///     加载分页供应商数据
     /// </summary>
     public async Task<Volo.Abp.Application.Dtos.PagedResultDto<object>> LoadPagedProvidersAsync(
-        string searchText,
+        string? searchText,
         int pageIndex,
-        int pageSize)
+        int pageSize,
+        IReadOnlyList<int>? selectedIds,
+        CancellationToken cancellationToken)
     {
-        var selectedIds = SelectedProvider != null ? new List<int> { SelectedProvider.Id } : null;
         var result = await _materialService.GetPagedProvidersAsync(searchText, pageIndex, pageSize, selectedIds);
 
         return new Volo.Abp.Application.Dtos.PagedResultDto<object>(result.TotalCount, result.Items.Cast<object>().ToList());
@@ -1523,11 +1525,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     ///     加载分页材料数据
     /// </summary>
     public async Task<Volo.Abp.Application.Dtos.PagedResultDto<object>> LoadPagedMaterialsAsync(
-        string searchText,
+        string? searchText,
         int pageIndex,
-        int pageSize)
+        int pageSize,
+        IReadOnlyList<int>? selectedIds,
+        CancellationToken cancellationToken)
     {
-        var selectedIds = SelectedSolidWasteMaterial != null ? new List<int> { SelectedSolidWasteMaterial.Id } : null;
         var result = await _materialService.GetPagedMaterialsAsync(searchText, pageIndex, pageSize, selectedIds);
 
         return new Volo.Abp.Application.Dtos.PagedResultDto<object>(result.TotalCount, result.Items.Cast<object>().ToList());
