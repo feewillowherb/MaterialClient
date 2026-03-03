@@ -9,7 +9,7 @@ Instructions for AI coding assistants using OpenSpec for spec-driven development
 - Pick a unique `change-id`: kebab-case, verb-led (`add-`, `update-`, `remove-`, `refactor-`)
 - Scaffold: `proposal.md`, `tasks.md`, `design.md` (only if needed), and delta specs per affected capability
 - Write deltas: use `## ADDED|MODIFIED|REMOVED|RENAMED Requirements`; include at least one `#### Scenario:` per requirement
-- **Document language (NON-NEGOTIABLE)**: All markdown under `openspec/` (specs, changes, proposal.md, tasks.md, design.md, spec.md) MUST be written in English.
+- **Document language**: Prefer Chinese for markdown documentation. Use English only for technical terms, code references, API names, and when specifically required.
 - Validate: `openspec validate [change-id] --strict` and fix issues
 - Request approval: Do not start implementation until proposal is approved
 
@@ -73,13 +73,19 @@ After deployment, create separate PR to:
 - [ ] Run `openspec list` to see active changes
 - [ ] Run `openspec list --specs` to see existing capabilities
 
-**Document Language (NON-NEGOTIABLE):**
-- All markdown files under `openspec/` MUST be written in English. This includes:
-  - `specs/**/*.md`, `changes/**/proposal.md`, `tasks.md`, `design.md`, and all delta `spec.md` files.
-  - Requirement text, scenario descriptions, proposal content, task lists, and design decisions.
-- Do not use Chinese or other non-English languages in openspec markdown; translate to English.
-
 **Before Creating Specs:**
+
+**Document Language:**
+- Prefer Chinese for all markdown documentation (`docs/`, `specs/`, `changes/`, root-level files)
+- Preserve English for:
+  - Technical terms and technical terminology (API, HTTP, REST, JSON, XML, SQL, etc.)
+  - Code references and method names
+  - File paths and class names
+  - Programming language keywords
+  - Exception messages in code
+- Use consistent translation: When technical terms have established translations, use them consistently
+- Maintain consistency with existing Chinese documentation
+
 - Always check if capability already exists
 - Prefer modifying existing specs over creating duplicates
 - Use `openspec show [spec]` to review current state
