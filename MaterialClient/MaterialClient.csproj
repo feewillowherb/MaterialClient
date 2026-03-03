@@ -2,6 +2,7 @@
     <PropertyGroup>
         <RootNamespace>MaterialClient</RootNamespace>
         <OutputType>WinExe</OutputType>
+        <Description>物料客户端 - 卡车称重管理和物料跟踪桌面应用程序</Description>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>

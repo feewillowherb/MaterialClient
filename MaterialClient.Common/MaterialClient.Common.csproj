@@ -3,6 +3,7 @@
     <PropertyGroup>
         <RootNamespace>MaterialClient.Common</RootNamespace>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <Description>物料客户端共享库 - 核心业务逻辑、数据访问和领域服务</Description>
         <!-- 强制禁用单一文件发布，即使命令行参数传入也会被覆盖 -->
         <PublishSingleFile Condition="'$(OutputType)' != 'Exe' And '$(OutputType)' != 'WinExe'">false</PublishSingleFile>
         <!-- 或者完全跳过类库的发布（推荐） -->
