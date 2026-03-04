@@ -1,10 +1,10 @@
-# Translation Glossary
+# 翻译词汇表
 
-This glossary defines standard translations for common technical terms used in the MaterialClient project.
+本词汇表定义 MaterialClient 项目中常用技术术语的标准译法。
 
-## General Technical Terms
+## 通用技术术语
 
-| English Term | Chinese Translation | Notes |
+| 英文术语 | 中文译名 | 备注 |
 |-------------|-------------------|-------|
 | API | API | Keep in English |
 | HTTP | HTTP | Keep in English |
@@ -52,9 +52,9 @@ This glossary defines standard translations for common technical terms used in t
 | Runtime | 运行时 | - |
 | Compile-time | 编译时 | - |
 
-## Avalonia/UI Terms
+## Avalonia/UI 术语
 
-| English Term | Chinese Translation | Notes |
+| 英文术语 | 中文译名 | 备注 |
 |-------------|-------------------|-------|
 | Window | 窗口 | - |
 | UserControl | 用户控件 | - |
@@ -96,9 +96,9 @@ This glossary defines standard translations for common technical terms used in t
 | Commands | 命令 | - |
 | Events | 事件 | - |
 
-## Domain-Specific Terms (Material/Weighing)
+## 领域术语（物料/称重）
 
-| English Term | Chinese Translation | Notes |
+| 英文术语 | 中文译名 | 备注 |
 |-------------|-------------------|-------|
 | Material | 物料 | - |
 | Weighing | 称重 | - |
@@ -141,9 +141,9 @@ This glossary defines standard translations for common technical terms used in t
 | Exit | 出口 | - |
 | Checkpoint | 检查点 | - |
 
-## ReactiveUI/Zafiro Terms
+## ReactiveUI/Zafiro 术语
 
-| English Term | Chinese Translation | Notes |
+| 英文术语 | 中文译名 | 备注 |
 |-------------|-------------------|-------|
 | ObservableObject | 可观察对象 | - |
 | ReactiveObject | 响应式对象 | - |
@@ -164,9 +164,9 @@ This glossary defines standard translations for common technical terms used in t
 | Subscribe | 订阅 | - |
 | Unsubscribe | 取消订阅 | - |
 
-## Architecture/Design Terms
+## 架构/设计术语
 
-| English Term | Chinese Translation | Notes |
+| 英文术语 | 中文译名 | 备注 |
 |-------------|-------------------|-------|
 | Architecture | 架构 | - |
 | Design Pattern | 设计模式 | - |
@@ -185,9 +185,9 @@ This glossary defines standard translations for common technical terms used in t
 | Interface Segregation Principle | 接口隔离原则 | - |
 | Dependency Inversion Principle | 依赖倒置原则 | - |
 
-## Database/Data Terms
+## 数据库/数据术语
 
-| English Term | Chinese Translation | Notes |
+| 英文术语 | 中文译名 | 备注 |
 |-------------|-------------------|-------|
 | Entity | 实体 | - |
 | Entity Framework | Entity Framework | Keep in English |
@@ -214,9 +214,9 @@ This glossary defines standard translations for common technical terms used in t
 | Take/TakeWhile | 取/条件取 | - |
 | Skip/SkipWhile | 跳过/条件跳过 | - |
 
-## Version Control/Build Terms
+## 版本控制/构建术语
 
-| English Term | Chinese Translation | Notes |
+| 英文术语 | 中文译名 | 备注 |
 |-------------|-------------------|-------|
 | Git | Git | Keep in English |
 | Repository | 仓库 | - |
@@ -238,10 +238,10 @@ This glossary defines standard translations for common technical terms used in t
 | Minor Version | 次版本 | - |
 | Patch Version | 补丁版本 | - |
 
-## Guidelines for Technical Terms
+## 技术术语指南
 
-1. **Keep English for**: API, HTTP, REST, JSON, XML, Git, MVC, MVVM, LINQ, EF Core, CI/CD, etc.
-2. **Translate with English notes**: When a technical term has an English counterpart, keep the English term in parentheses (e.g., "API (Application Programming Interface)")
-3. **Be consistent**: Use the same translation throughout all documents and comments
-4. **Maintain context**: Consider the domain context when choosing translations
-5. **Technical accuracy**: Prioritize technical accuracy over literal translation
+1. **保留英文**：API、HTTP、REST、JSON、XML、Git、MVC、MVVM、LINQ、EF Core、CI/CD 等
+2. **翻译并附英文备注**：技术术语有英文对应时，在括号中保留英文（如「API (Application Programming Interface）」）
+3. **保持一致**：在所有文档与注释中使用同一译法
+4. **保持上下文**：选择译名时考虑领域上下文
+5. **技术准确**：优先保证技术准确性，而非字面翻译

@@ -1,421 +1,183 @@
-# Implementation Tasks: Sound Device Test Feature
+# 实施任务：音响设备测试功能
 
-## Task Overview
+## 任务概览
 
-This document provides an ordered checklist of implementation tasks for the sound device test feature. Tasks are organized by priority and dependency order.
+本文档提供音响设备测试功能的实施任务有序清单，按优先级与依赖排列。
 
-## Phase 1: Service Layer Implementation
+## 阶段 1：服务层实现
 
-### Task 1.1: Add Test Method to ISoundDeviceService Interface
+### 任务 1.1：在 ISoundDeviceService 接口中增加测试方法
 
-**File**: `MaterialClient.Common/Services/SoundDeviceService.cs`
+**文件**：`MaterialClient.Common/Services/SoundDeviceService.cs`
 
-**Steps**:
-1. Locate the `ISoundDeviceService` interface definition (around line 16)
-2. Add new method signature after existing `PlayTextV2Async` method:
-   ```csharp
-   /// <summary>
-   ///     Play fixed test text on sound device for testing purposes
-   /// </summary>
-   /// <param name="cancellationToken">Cancellation token</param>
-   Task PlayTextV2TestAsync(CancellationToken cancellationToken = default);
-   ```
-3. Add XML documentation comment explaining the method purpose
+**步骤**：
+1. 找到 `ISoundDeviceService` 接口定义（约第 16 行）
+2. 在现有 `PlayTextV2Async` 方法后增加新方法签名（含 XML 注释，说明用于播放固定测试文本、支持取消）
+3. 确保方法名带 Async 后缀、注释格式正确
 
-**Validation**:
-- Interface compiles without errors
-- Method signature follows project async naming convention (Async suffix)
-- XML documentation is present and properly formatted
+**验证**：接口可编译；方法符合异步命名约定；XML 文档完整。
 
-**Dependencies**: None
+**依赖**：无
 
 ---
 
-### Task 1.2: Implement PlayTextV2TestAsync Method
+### 任务 1.2：实现 PlayTextV2TestAsync 方法
 
-**File**: `MaterialClient.Common/Services/SoundDeviceService.cs`
+**文件**：`MaterialClient.Common/Services/SoundDeviceService.cs`
 
-**Steps**:
-1. Implement the `PlayTextV2TestAsync` method in `SoundDeviceService` class (after `PlayTextV2Async` method, around line 375)
-2. Implementation should:
-   - Use fixed test text: "音柱测试"
-   - Call existing `PlayTextV2Async` method internally to reuse logic
-   - Wrap call in try-catch block for exception handling
-   - Log test operation start using `_logger?.LogInformation`
-   - Log success/failure using appropriate log levels
-   - Respect `CancellationToken` parameter
-3. Follow existing error handling patterns from `PlayTextV2Async` method
+**步骤**：
+1. 在 `SoundDeviceService` 类中实现 `PlayTextV2TestAsync`（在 `PlayTextV2Async` 之后，约第 375 行）
+2. 实现须：使用固定测试文本「音柱测试」；内部调用现有 `PlayTextV2Async`；try-catch 处理异常；用 _logger 记录开始/成功/失败；尊重 CancellationToken
+3. 遵循 `PlayTextV2Async` 的现有错误处理方式
 
-**Pseudo-code**:
-```csharp
-public async Task PlayTextV2TestAsync(CancellationToken cancellationToken = default)
-{
-    const string testText = "音柱测试";
-    _logger?.LogInformation("Starting sound device test with text: {TestText}", testText);
+**验证**：编译通过；固定文本为「音柱测试」；有开始/成功/失败日志；取消令牌传入底层方法；异常不会未捕获抛出。
 
-    try
-    {
-        await PlayTextV2Async(testText, cancellationToken);
-        _logger?.LogInformation("Sound device test completed successfully");
-    }
-    catch (Exception ex)
-    {
-        _logger?.LogError(ex, "Sound device test failed");
-        throw;
-    }
-}
-```
-
-**Validation**:
-- Method compiles without errors
-- Fixed test text is "音柱测试"
-- Logging is implemented for start, success, and failure cases
-- Cancellation token is passed through to underlying method
-- Exception handling prevents uncaught exceptions
-
-**Dependencies**: Task 1.1 must be completed first
+**依赖**：任务 1.1
 
 ---
 
-## Phase 2: ViewModel Implementation
+## 阶段 2：ViewModel 实现
 
-### Task 2.1: Add ISoundDeviceService Dependency to ViewModel
+### 任务 2.1：在 ViewModel 中注入 ISoundDeviceService
 
-**File**: `MaterialClient/ViewModels/SettingsWindowViewModel.cs`
+**文件**：`MaterialClient/ViewModels/SettingsWindowViewModel.cs`
 
-**Steps**:
-1. Locate the constructor around line 130
-2. Add `ISoundDeviceService` parameter to constructor
-3. Add private readonly field for the service:
-   ```csharp
-   private readonly ISoundDeviceService _soundDeviceService;
-   ```
-4. Assign parameter to field in constructor body
+**步骤**：在构造函数（约第 130 行）增加 `ISoundDeviceService` 参数及私有只读字段 `_soundDeviceService`，在构造函数体中赋值（或由 AutoConstructor 处理）。
 
-**Validation**:
-- Code compiles without errors
-- AutoConstructor source generator will handle the parameter assignment
-- Dependency injection will resolve `ISoundDeviceService` at runtime
+**验证**：编译通过；运行时依赖注入能解析 ISoundDeviceService。
 
-**Dependencies**: Phase 1 must be completed
+**依赖**：阶段 1 完成
 
 ---
 
-### Task 2.2: Add Test Status Properties
+### 任务 2.2：增加测试状态属性
 
-**File**: `MaterialClient/ViewModels/SettingsWindowViewModel.cs`
+**文件**：`MaterialClient/ViewModels/SettingsWindowViewModel.cs`
 
-**Steps**:
-1. Add observable properties for test status tracking after line 126 (after sound device settings properties):
-   ```csharp
-   [Reactive] private bool _isSoundDeviceTestRunning = false;
-   [Reactive] private string? _soundDeviceTestResult = null;
-   ```
-2. These properties will be bound to UI for status display
+**步骤**：在音响设备设置属性之后（约第 126 行后）增加：`[Reactive] private bool _isSoundDeviceTestRunning = false;` 与 `[Reactive] private string? _soundDeviceTestResult = null;`，用于 UI 状态展示。
 
-**Validation**:
-- Properties compile without errors
-- ReactiveUI source generator generates property change notifications
-- Property names follow camelCase convention
+**验证**：属性可编译；ReactiveUI 源生成器生成变更通知；命名符合 camelCase。
 
-**Dependencies**: Task 2.1
+**依赖**：任务 2.1
 
 ---
 
-### Task 2.3: Add Test Command
+### 任务 2.3：增加测试命令
 
-**File**: `MaterialClient/ViewModels/SettingsWindowViewModel.cs`
+**文件**：`MaterialClient/ViewModels/SettingsWindowViewModel.cs`
 
-**Steps**:
-1. Add ReactiveCommand method after existing commands (after `TestCaptureAsync` around line 408):
-   ```csharp
-   [ReactiveCommand]
-   private async Task TestSoundDeviceAsync()
-   {
-       try
-       {
-           IsSoundDeviceTestRunning = true;
-           SoundDeviceTestResult = null;
+**步骤**：在现有命令之后（如 `TestCaptureAsync` 约第 408 行后）增加 `[ReactiveCommand]` 的 `TestSoundDeviceAsync`：try 中设 IsSoundDeviceTestRunning=true、SoundDeviceTestResult=null，调用 _soundDeviceService.PlayTextV2TestAsync(CancellationToken.None)，成功则设「测试成功」并记录日志；catch 中设 SoundDeviceTestResult 为错误信息并记录日志；finally 中 IsSoundDeviceTestRunning=false。
 
-           await _soundDeviceService.PlayTextV2TestAsync(CancellationToken.None);
+**验证**：命令可编译；源生成器生成命令属性；async/await 正确；finally 确保运行状态重置；错误信息友好。
 
-           SoundDeviceTestResult = "测试成功";
-           _logger.LogInformation("Sound device test succeeded");
-       }
-       catch (Exception ex)
-       {
-           SoundDeviceTestResult = $"测试失败: {ex.Message}";
-           _logger.LogError(ex, "Sound device test failed");
-       }
-       finally
-       {
-           IsSoundDeviceTestRunning = false;
-       }
-   }
-   ```
-
-**Validation**:
-- Command compiles without errors
-- ReactiveUI source generator generates command property
-- Async/await pattern is properly used
-- Finally block ensures `IsSoundDeviceTestRunning` is always reset
-- User-friendly error messages are set
-
-**Dependencies**: Task 2.2
+**依赖**：任务 2.2
 
 ---
 
-### Task 2.4: Configure Test Command CanExecute
+### 任务 2.4：配置测试命令的 CanExecute
 
-**File**: `MaterialClient/ViewModels/SettingsWindowViewModel.cs`
+**文件**：`MaterialClient/ViewModels/SettingsWindowViewModel.cs`
 
-**Steps**:
-1. In constructor, add canExecute logic for test command after existing subscriptions (around line 145):
-   ```csharp
-   // Configure TestSoundDevice command to only enable when sound device is enabled
-   TestSoundDevice = ReactiveCommand.CreateFromTask(TestSoundDeviceAsync,
-       this.WhenAnyValue(x => x.SoundDeviceEnabled).Select(enabled => enabled));
-   ```
-2. This ensures test button is only clickable when sound device is enabled
+**步骤**：在构造函数中（约第 145 行后）为测试命令设置 canExecute：仅当 SoundDeviceEnabled 为 true 时可执行（例如使用 WhenAnyValue(x => x.SoundDeviceEnabled)）。
 
-**Validation**:
-- Command canExecute logic compiles
-- Test button becomes enabled/disabled based on `SoundDeviceEnabled` checkbox
-- Rx subscription properly observes property changes
+**验证**：canExecute 逻辑可编译；测试按钮随 SoundDeviceEnabled 启用/禁用；Rx 订阅正确观察属性变化。
 
-**Dependencies**: Task 2.3
+**依赖**：任务 2.3
 
 ---
 
-## Phase 3: UI Implementation
+## 阶段 3：UI 实现
 
-### Task 3.1: Add Test Button to Settings Window
+### 任务 3.1：在设置窗口增加测试按钮
 
-**File**: `MaterialClient/Views/SettingsWindow.axaml`
+**文件**：`MaterialClient/Views/SettingsWindow.axaml`
 
-**Steps**:
-1. Locate the sound device settings section (around line 584 where checkbox is)
-2. After the volume TextBox (around line 628), add test button:
-   ```xml
-   <Button Content="测试音响"
-           Command="{Binding TestSoundDevice}"
-           IsEnabled="{Binding IsSoundDeviceTestRunning, Converter={x:Static Converters:BoolNegationConverter.Instance}}"
-           Margin="0,10,0,0"
-           Padding="20,8"
-           HorizontalAlignment="Left" />
-   ```
-3. Add status TextBlock below button:
-   ```xml
-   <TextBlock Text="{Binding SoundDeviceTestResult}"
-              Foreground="Blue"
-              Margin="0,5,0,0"
-              TextWrapping="Wrap"
-              FontSize="12"
-              Visibility="{Binding SoundDeviceTestResult, Converter={x:Static Converters:StringNotNullToVisibilityConverter.Instance}}" />
-   ```
+**步骤**：在音响设备设置区块（约第 584 行复选框附近）、音量 TextBox 之后（约第 628 行）增加「测试音响」按钮，Command 绑定 TestSoundDevice，IsEnabled 绑定 IsSoundDeviceTestRunning 取反；其下增加用于显示 SoundDeviceTestResult 的 TextBlock，Visibility 由结果非空转换器控制。若无 BoolNegationConverter、StringNotNullToVisibilityConverter 需新增或使用现有转换器。
 
-**Note**: You may need to create `BoolNegationConverter` and `StringNotNullToVisibilityConverter` if they don't exist in the project. Alternatively, use existing converters or inline logic.
+**验证**：按钮出现在音响区块；绑定正确；运行中按钮禁用；有结果时显示状态文本。
 
-**Validation**:
-- Button appears in sound device section
-- Button is bound to `TestSoundDevice` command
-- Button is disabled when test is running
-- Status text appears when test result is available
-
-**Dependencies**: Phase 2 must be completed
+**依赖**：阶段 2 完成
 
 ---
 
-### Task 3.2: Verify UI Layout and Styling
+### 任务 3.2：核对 UI 布局与样式
 
-**File**: `MaterialClient/Views/SettingsWindow.axaml`
+**步骤**：确保按钮与现有风格一致、边距与周围控件一致、位置合理、状态文本可读；在不同窗口尺寸下无溢出。
 
-**Steps**:
-1. Ensure test button aligns with existing UI style
-2. Check spacing and margins match surrounding controls
-3. Verify button is positioned logically (below configuration controls)
-4. Ensure status text is readable and properly styled
-5. Test with different window sizes to ensure no overflow
+**验证**：视觉一致、无布局重叠、文字可读对齐。
 
-**Validation**:
-- Button and status text are visually consistent with existing UI
-- No layout issues or overlaps
-- All text is readable and properly aligned
-
-**Dependencies**: Task 3.1
+**依赖**：任务 3.1
 
 ---
 
-## Phase 4: Testing
+## 阶段 4：测试
 
-### Task 4.1: Write Unit Tests
+### 任务 4.1：编写单元测试
 
-**File**: `MaterialClient.Common.Tests/Tests/SoundDeviceServiceTests.cs`
+**文件**：`MaterialClient.Common.Tests/Tests/SoundDeviceServiceTests.cs`
 
-**Steps**:
-1. Add unit test for `PlayTextV2TestAsync` method
-2. Mock `ISettingsService` to return valid sound device settings
-3. Verify test text is "音柱测试"
-4. Verify logging is called appropriately
-5. Test cancellation token handling
-6. Test exception handling and re-throwing
+**步骤**：为 PlayTextV2TestAsync 增加单元测试；Mock ISettingsService 返回有效配置；验证测试文本为「音柱测试」、日志调用、取消令牌、异常处理与重新抛出。
 
-**Example Test Structure**:
-```csharp
-[Fact]
-public async Task PlayTextV2TestAsync_ShouldUseFixedTestText()
-{
-    // Arrange
-    var mockSettingsService = new Mock<ISettingsService>();
-    // ... setup mock
-    var service = new SoundDeviceService(...);
+**验证**：测试通过；覆盖成功、失败、取消；Mock 配置正确。
 
-    // Act
-    await service.PlayTextV2TestAsync(CancellationToken.None);
-
-    // Assert
-    // Verify PlayTextV2Async was called with "音柱测试"
-}
-```
-
-**Validation**:
-- All tests pass
-- Test coverage includes success, failure, and cancellation cases
-- Mocks are properly configured
-
-**Dependencies**: Phase 1-3 completed
+**依赖**：阶段 1–3 完成
 
 ---
 
-### Task 4.2: Manual Testing
+### 任务 4.2：手工测试
 
-**Steps**:
-1. Launch application and open Settings window
-2. Enable sound device with valid configuration
-3. Click "测试音响" button
-4. Verify "音柱测试" is played through sound device
-5. Verify "测试成功" message appears
-6. Test with sound device disabled - button should be disabled
-7. Test with invalid configuration - verify error message appears
-8. Test cancellation - close settings window during test
+**步骤**：启动应用并打开设置；启用音响并配置有效信息；点击「测试音响」；确认播放「音柱测试」并显示「测试成功」；禁用设备时按钮应禁用；无效配置时显示错误；测试期间关闭窗口无资源泄漏。
 
-**Validation**:
-- Audio plays correctly when device is configured
-- Appropriate success/error messages displayed
-- UI remains responsive during async operation
-- No memory leaks or resource issues
+**验证**：配置正确时播放正常、成功/错误信息正确、异步时 UI 保持响应、无内存或资源问题。
 
-**Dependencies**: Task 4.1
+**依赖**：任务 4.1
 
 ---
 
-### Task 4.3: Memory Leak Testing
+### 任务 4.3：内存泄漏测试
 
-**File**: `MaterialClient.Common.Tests/Tests/SoundDeviceServiceMemoryLeakTests.cs` (new file)
+**文件**：`MaterialClient.Common.Tests/Tests/SoundDeviceServiceMemoryLeakTests.cs`（新文件）
 
-**Steps**:
-1. Create memory leak test following `AttendedWeighingServiceMemoryLeakTests` pattern
-2. Run test loop for multiple iterations (e.g., 1000 test calls)
-3. Verify memory usage remains stable
-4. Check for undisposed HttpClient instances
-5. Verify Rx subscriptions are properly disposed
+**步骤**：按 AttendedWeighingServiceMemoryLeakTests 模式编写；多轮迭代（如 1000 次）；验证内存稳定、HttpClient 与 Rx 订阅正确释放。
 
-**Validation**:
-- Memory usage is stable over test iterations
-- No undisposed resources detected
-- Test passes consistently
+**验证**：内存稳定、无未释放资源、测试稳定通过。
 
-**Dependencies**: Task 4.2
+**依赖**：任务 4.2
 
 ---
 
-## Phase 5: Documentation
+## 阶段 5：文档
 
-### Task 5.1: Update User Documentation (if applicable)
+### 任务 5.1：更新用户文档（若适用）
 
-**Steps**:
-1. Document sound device test feature in user manual
-2. Add screenshots of test button in Settings window
-3. Explain test procedure and troubleshooting tips
-4. Document common error messages and their meanings
+**步骤**：在用户手册中描述音响设备测试功能；增加设置窗口测试按钮截图；说明测试步骤与排障建议；记录常见错误信息含义。
 
-**Validation**:
-- Documentation is clear and accurate
-- Screenshots match current UI
-- Troubleshooting tips cover common scenarios
-
-**Dependencies**: Phase 4 completed
+**依赖**：阶段 4 完成
 
 ---
 
-### Task 5.2: Update Developer Documentation
+### 任务 5.2：更新开发文档
 
-**Steps**:
-1. Add code comments explaining test method purpose
-2. Document any new patterns or conventions introduced
-3. Update architecture documentation if needed
+**步骤**：为测试方法补充注释；记录新引入的模式或约定；必要时更新架构文档。
 
-**Validation**:
-- Code comments are clear and helpful
-- Any architectural decisions are documented
-
-**Dependencies**: Task 5.1
+**依赖**：任务 5.1
 
 ---
 
-## Task Dependencies Summary
+## 任务依赖摘要
 
-```
-Phase 1: Service Layer (No dependencies)
-├─ Task 1.1: Interface method
-└─ Task 1.2: Method implementation (depends on 1.1)
+阶段 1（服务层）→ 阶段 2（ViewModel）→ 阶段 3（UI）→ 阶段 4（测试）→ 阶段 5（文档）；各阶段内任务按上述顺序有依赖。阶段 4 中 4.1 可在阶段 3 完成后开始；阶段 5 的两项在阶段 4 完成后可并行。
 
-Phase 2: ViewModel (depends on Phase 1)
-├─ Task 2.1: Add service dependency
-├─ Task 2.2: Add status properties (depends on 2.1)
-├─ Task 2.3: Add test command (depends on 2.2)
-└─ Task 2.4: Configure canExecute (depends on 2.3)
+## 验证清单（估算）
 
-Phase 3: UI (depends on Phase 2)
-├─ Task 3.1: Add button and status
-└─ Task 3.2: Verify layout (depends on 3.1)
-
-Phase 4: Testing (depends on Phases 1-3)
-├─ Task 4.1: Unit tests
-├─ Task 4.2: Manual testing (depends on 4.1)
-└─ Task 4.3: Memory leak testing (depends on 4.2)
-
-Phase 5: Documentation (depends on Phase 4)
-├─ Task 5.1: User documentation
-└─ Task 5.2: Developer documentation (depends on 5.1)
-```
-
-## Parallelization Opportunities
-
-- **Phase 1** tasks are sequential (1.2 depends on 1.1)
-- **Phase 2** tasks are sequential (each depends on previous)
-- **Phase 3** tasks are sequential (3.2 depends on 3.1)
-- **Phase 4** tasks are mostly sequential, but 4.1 can start once Phase 3 is complete
-- **Phase 5** tasks can be done in parallel with each other once Phase 4 is done
-
-## Estimated Validation Checklist
-
-Use this checklist to verify complete implementation:
-
-- [x] `ISoundDeviceService.PlayTextV2TestAsync` method added to interface
-- [x] `PlayTextV2TestAsync` implementation uses fixed text "音柱测试"
-- [x] Implementation includes proper logging and error handling
-- [x] `ISoundDeviceService` injected into `SettingsWindowViewModel`
-- [x] `IsSoundDeviceTestRunning` and `SoundDeviceTestResult` properties added
-- [x] `TestSoundDeviceAsync` command implemented with ReactiveUI
-- [x] Command canExecute properly tied to `SoundDeviceEnabled` (via Button.IsEnabled binding)
-- [x] Test button added to SettingsWindow.axaml
-- [x] Status text display added to UI
-- [ ] Unit tests written and passing (requires .NET SDK)
-- [ ] Manual testing completed successfully (requires hardware)
-- [ ] Memory leak tests passing (requires .NET SDK)
-- [x] Code follows project MVVM and ReactiveUI patterns
-- [x] All async methods use `Async` suffix
-- [x] All Rx subscriptions properly disposed
-- [x] No compiler warnings or errors (syntax verified)
-- [ ] OpenSpec validation passes: `openspec validate sound-device-test-feature --strict`
+- [x] ISoundDeviceService.PlayTextV2TestAsync 已加入接口
+- [x] 实现使用固定文本「音柱测试」并含日志与错误处理
+- [x] ISoundDeviceService 已注入 SettingsWindowViewModel
+- [x] IsSoundDeviceTestRunning、SoundDeviceTestResult 已添加
+- [x] TestSoundDeviceAsync 命令已用 ReactiveUI 实现，canExecute 与 SoundDeviceEnabled 绑定
+- [x] 测试按钮与状态文本已加入 SettingsWindow.axaml
+- [ ] 单元测试已编写并通过（需 .NET SDK）
+- [ ] 手工测试通过（需硬件）
+- [ ] 内存泄漏测试通过（需 .NET SDK）
+- [x] 代码符合 MVVM 与 ReactiveUI 模式，异步方法带 Async 后缀，Rx 订阅正确释放，无编译警告/错误
+- [ ] OpenSpec 校验通过：`openspec validate sound-device-test-feature --strict`

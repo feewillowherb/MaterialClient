@@ -1,36 +1,28 @@
-# Spec Delta: license-plate-recognition
+# 规范增量：license-plate-recognition
 
-**Change ID**: `hikvision-lpr-implementation`
-**Affected Spec**: `license-plate-recognition`
-**Type**: Implementation
+**变更 ID**：`hikvision-lpr-implementation`
+**涉及规范**：`license-plate-recognition`
+**类型**：实现
 
 ---
 
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Hikvision LPR Service Implementation
+### 需求：海康威视 LPR 服务实现
 
-The system SHALL provide a complete implementation of the `IHikvisionLprService` interface, enabling communication with Hikvision LPR devices for both passive (device-pushed) and manual (app-triggered) license plate capture.
+系统应提供 `IHikvisionLprService` 接口的完整实现，支持与海康威视 LPR 设备通信，包括被动（设备推送）与手动（应用触发）车牌抓拍。
 
-#### Scenario: Service initializes HCNetSDK and starts listening
+#### 场景：服务初始化 HCNetSDK 并开始监听
 
-- **GIVEN** the system has Hikvision LPR devices configured
-- **AND** the application starts
-- **WHEN** the `HikvisionLprService.StartAsync(string listenLocalIp, int listenLocalPort)` is called
-- **THEN** the system SHALL:
-  - Call `NET_DVR_Init()` to initialize HCNetSDK (only once globally)
-  - Create a `MSGCallBack` delegate instance for the callback function
-  - **CRITICAL**: Pin the callback delegate using `GCHandle.Alloc()` to prevent garbage collection
-  - Call `NET_DVR_StartListen_V30(listenLocalIp, listenLocalPort, callback, IntPtr.Zero)`
-  - Store the returned listen handle for later cleanup
-  - Return `true` if listen started successfully, `false` otherwise
-  - Log the initialization and listen start operations
+- **给定**系统已配置海康威视 LPR 设备且应用已启动
+- **当**调用 `HikvisionLprService.StartAsync(string listenLocalIp, int listenLocalPort)` 时
+- **则**系统应：调用 `NET_DVR_Init()` 初始化 HCNetSDK（全局仅一次）、创建 `MSGCallBack` 委托实例、**关键**：使用 `GCHandle.Alloc()` 固定回调委托以防被 GC 回收、调用 `NET_DVR_StartListen_V30`、保存返回的监听句柄供后续清理、成功返回 `true` 否则 `false`、记录初始化与监听启动日志
 
-#### Scenario: Service stops listening and cleans up resources
+#### 场景：服务停止监听并释放资源
 
-- **GIVEN** the `HikvisionLprService` is currently listening for LPR events
-- **WHEN** the `HikvisionLprService.StopAsync()` is called
-- **THEN** the system SHALL:
+- **给定** `HikvisionLprService` 当前正在监听 LPR 事件
+- **当**调用 `HikvisionLprService.StopAsync()` 时
+- **则**系统应：
   - Check if a listen handle exists (≥ 0)
   - Call `NET_DVR_StopListen_V30(listenHandle)` with the stored handle
   - **CRITICAL**: Release the pinned callback delegate by calling `GCHandle.Free()`
@@ -38,7 +30,7 @@ The system SHALL provide a complete implementation of the `IHikvisionLprService`
   - Optionally call `NET_DVR_Cleanup()` if this is the final cleanup
   - Log the stop and cleanup operations
 
-#### Scenario: Service adds or updates device configuration
+#### 场景：服务添加或更新设备配置
 
 - **GIVEN** the operator wants to add or update a Hikvision LPR device
 - **WHEN** `HikvisionLprService.AddOrUpdateDevice(LicensePlateRecognitionConfig config)` is called
@@ -50,7 +42,7 @@ The system SHALL provide a complete implementation of the `IHikvisionLprService`
   - Store the config for later device identification in callbacks
   - Log the add or update operation
 
-#### Scenario: Service checks device online status
+#### 场景：服务检查设备在线状态
 
 - **GIVEN** a Hikvision LPR device configuration
 - **WHEN** `HikvisionLprService.IsOnline(LicensePlateRecognitionConfig config)` is called
@@ -64,7 +56,7 @@ The system SHALL provide a complete implementation of the `IHikvisionLprService`
   - On failure, call `NET_DVR_GetLastError()` and log the error code and description
   - Logout after the check (optional, for session management)
 
-#### Scenario: Service receives plate recognition result via callback
+#### 场景：服务通过回调接收车牌识别结果
 
 - **GIVEN** the `HikvisionLprService` is listening
 - **AND** a Hikvision device recognizes a license plate
@@ -85,7 +77,7 @@ The system SHALL provide a complete implementation of the `IHikvisionLprService`
   - Log the recognition event
   - **NOT**: Perform any blocking I/O or long-running operations in the callback
 
-#### Scenario: Multiple devices send recognition results simultaneously
+#### 场景：多台设备同时发送识别结果
 
 - **GIVEN** multiple Hikvision LPR devices are configured
 - **AND** all devices are configured to push results to the same client listen port
@@ -100,15 +92,15 @@ The system SHALL provide a complete implementation of the `IHikvisionLprService`
 
 ---
 
-### Requirement: HCNetSDK P/Invoke Integration
+### 需求：HCNetSDK P/Invoke 集成
 
-The system SHALL provide P/Invoke declarations for HCNetSDK functions and structures, enabling managed code to call the native Hikvision SDK.
+系统应提供 HCNetSDK 函数与结构的 P/Invoke 声明，使托管代码能调用海康威视原生 SDK。
 
-#### Scenario: HikvisionSdk module defines all required P/Invoke declarations
+#### 场景：HikvisionSdk 模块定义所有需要的 P/Invoke 声明
 
-- **GIVEN** the system needs to call HCNetSDK functions
-- **WHEN** the development team implements the service
-- **THEN** the system SHALL:
+- **给定**系统需要调用 HCNetSDK 函数
+- **当**开发团队实现服务时
+- **则**系统应：
   - Create a `HikvisionSdk.cs` module in `MaterialClient.Common/Services/Hikvision/`
   - Define the `MSGCallBack` delegate type with signature:
     - `void MSGCallBack(int lCommand, IntPtr pAlarmer, IntPtr pAlarmInfo, uint dwBufLen, IntPtr pUser)`

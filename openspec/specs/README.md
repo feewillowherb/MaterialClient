@@ -1,40 +1,40 @@
-# OpenSpec Specifications
+# OpenSpec 规范说明
 
-This directory contains current capability specifications for the MaterialClient project.
+本目录包含 MaterialClient 项目的当前能力规范。
 
-## Purpose
+## 目的
 
-Specifications in this directory define the features and capabilities of the MaterialClient system. Each specification follows the OpenSpec format and goes through a formal review and approval process.
+本目录中的规范定义 MaterialClient 系统的功能与能力。每份规范遵循 OpenSpec 格式，并经过正式评审与批准流程。
 
-## Directory Structure
+## 目录结构
 
 ```
 specs/
-├── <capability-name>/
-│   ├── spec.md         # Capability specification
-│   ├── design.md       # Design documentation (optional)
-│   └── tasks.md        # Implementation tasks
-└── _template/          # Specification template
+├── <能力名称>/
+│   ├── spec.md         # 能力规范
+│   ├── design.md       # 设计文档（可选）
+│   └── tasks.md       # 实现任务
+└── _template/         # 规范模板
 ```
 
-## Creating a New Specification
+## 创建新规范
 
-1. Copy the template from `_template/`
-2. Create a new directory named after the capability
-3. Fill in the specification documents
-4. Follow the OpenSpec review process
+1. 从 `_template/` 复制模板
+2. 以能力名称创建新目录
+3. 填写规范文档
+4. 遵循 OpenSpec 评审流程
 
-## Template
+## 模板
 
-Use the template in `_template/` to ensure consistency.
+使用 `_template/` 中的模板以保证一致性。
 
-## Status
+## 状态
 
-All specifications in this directory are **ACTIVE** and maintained.
+本目录下所有规范均为**现行**并持续维护。
 
-For archived specifications, see `openspec/archive/legacy/specs/`.
+已归档规范请参见 `openspec/archive/legacy/specs/`。
 
 ---
 
-**Last Updated**: 2026-01-15
-**Maintainer**: Tech Lead
+**最后更新**：2026-01-15  
+**维护者**：技术负责人

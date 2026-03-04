@@ -1,307 +1,163 @@
-# Proposal: Sound Device Test Feature
+# 提案：音响设备测试功能
 
-## Metadata
+## 元数据
 
-- **Change ID**: `sound-device-test-feature`
-- **Title**: Sound Device Test Feature
-- **Status**: ExecutionCompleted
-- **Created**: 2025-02-02
-- **Author**: AI Assistant
+- **变更 ID**：`sound-device-test-feature`
+- **标题**：音响设备测试功能
+- **状态**：ExecutionCompleted
+- **创建日期**：2025-02-02
+- **作者**：AI Assistant
 
-## Overview
+## 概览
 
-Add a quick test capability for sound devices in the MaterialClient application. Currently, users can enable/disable sound devices in SettingsWindow but have no way to verify if the device is working correctly without going through a complete weighing workflow. This proposal adds a test button in the settings UI that triggers a fixed audio test phrase "音柱测试" to validate sound device functionality.
+在 MaterialClient 应用中为音响设备增加快速测试能力。当前用户可在设置窗口中启用/禁用音响设备，但无法在不走完整称重流程的情况下验证设备是否工作正常。本提案在设置 UI 中增加测试按钮，点击后播放固定测试语音「音柱测试」，以验证音响设备功能。
 
-## Problem Statement
+## 问题陈述
 
-### Current Limitations
+### 当前限制
 
-1. **Configuration Validation Difficulty**: After enabling sound device in SettingsWindow, users cannot immediately verify if the device configuration is correct (IP, SN, volume settings)
+1. **配置验证困难**：在设置窗口中启用音响设备后，用户无法立即验证设备配置是否正确（IP、SN、音量等）
+2. **排障效率低**：音响设备故障只能在实际称重流程中发现，需完整业务流才能复现问题
+3. **体验不佳**：缺少即时反馈机制，配置变更后对设备状态存在不确定性
 
-2. **Inefficient Troubleshooting**: Sound device failures can only be discovered during actual weighing operations, requiring a complete business flow to reproduce issues
+### 影响
 
-3. **Poor User Experience**: Lack of immediate feedback mechanism creates uncertainty about device status after configuration changes
+- 系统管理员需完成完整称重流程才能测试音响设备变更，浪费时间
+- 配置错误（错误 IP、序列号、网络问题）发现较晚
+- 无法在初次部署或更换硬件后验证设备功能
 
-### Impact
+## 提议方案
 
-- System administrators waste time completing full weighing workflows just to test sound device changes
-- Configuration errors (wrong IP, serial number, network issues) are discovered late
-- No way to verify device functionality during initial setup or after hardware replacement
+### 1. UI 层变更（SettingsWindow）
 
-## Proposed Solution
+在设置窗口的音响设备配置区块增加**测试按钮**：
 
-### 1. UI Layer Changes (SettingsWindow)
+- **位置**：紧邻音响设备启用/禁用开关
+- **功能**：点击触发音响设备测试
+- **状态反馈**：显示测试进行中及最终结果（成功/失败/超时）
+- **可用性**：仅当音响设备已启用且配置正确时可用
 
-Add a **Test Button** in the sound device configuration section of SettingsWindow:
+### 2. 服务层实现（ISoundDeviceService）
 
-- **Location**: Adjacent to the sound device enable/disable toggle
-- **Functionality**: Clicking triggers the sound device test
-- **Status Feedback**: Display test in-progress and final result (success/failure/timeout)
-- **Availability**: Only enabled when sound device is enabled and properly configured
-
-### 2. Service Layer Implementation (ISoundDeviceService)
-
-Add a new test method to the `ISoundDeviceService` interface:
+在 `ISoundDeviceService` 接口中增加新的测试方法：
 
 ```csharp
 Task PlayTextV2TestAsync(CancellationToken cancellationToken);
 ```
 
-**Implementation Requirements**:
+**实现要求**：
 
-- **Fixed Test Text**: Always use "音柱测试" (Sound Column Test)
-- **Cancellation Support**: Support operation cancellation via `CancellationToken`
-- **Exception Handling**: Catch and log device exceptions, provide user-friendly error messages
-- **Implementation Location**: `MaterialClient.Common/Services/SoundDeviceService.cs`
+- **固定测试文本**：始终使用「音柱测试」
+- **取消支持**：通过 `CancellationToken` 支持操作取消
+- **异常处理**：捕获并记录设备异常，提供用户可读的错误信息
+- **实现位置**：`MaterialClient.Common/Services/SoundDeviceService.cs`
 
-### 3. MVVM Integration
+### 3. MVVM 集成
 
-Follow project MVVM architecture patterns:
+遵循项目 MVVM 架构：
 
-- **ViewModel**: Add test command in `SettingsWindowViewModel.cs`
-- **ReactiveUI**: Use `ReactiveCommand` for test button command binding
-- **State Management**: Observable properties to reflect test status
-- **Dependency Injection**: Inject `ISoundDeviceService` through constructor
+- **ViewModel**：在 `SettingsWindowViewModel.cs` 中增加测试命令
+- **ReactiveUI**：使用 `ReactiveCommand` 绑定测试按钮
+- **状态管理**：可观察属性反映测试状态
+- **依赖注入**：通过构造函数注入 `ISoundDeviceService`
 
-### 4. Error Handling & Logging
+### 4. 错误处理与日志
 
-- **Serilog**: Log test operation start, success, failure events
-- **User Feedback**: Display test result in UI (success/failure/timeout message)
-- **Timeout Mechanism**: Configure reasonable timeout to avoid long blocking (default: 30 seconds)
+- **Serilog**：记录测试开始、成功、失败
+- **用户反馈**：在 UI 显示测试结果（成功/失败/超时信息）
+- **超时机制**：配置合理超时避免长时间阻塞（默认 30 秒）
 
-## Scope
+## 范围
 
-### In Scope
+### 范围内
 
-- Add test button UI in SettingsWindow sound device section
-- Implement `PlayTextV2TestAsync` method in `SoundDeviceService`
-- Add test command in `SettingsWindowViewModel` with ReactiveUI
-- Implement test status feedback in UI (in-progress, success, failure)
-- Add logging for test operations
-- Handle cancellation tokens properly
+- 在设置窗口音响设备区块增加测试按钮 UI
+- 在 `SoundDeviceService` 中实现 `PlayTextV2TestAsync`
+- 在 `SettingsWindowViewModel` 中用 ReactiveUI 增加测试命令
+- 在 UI 中实现测试状态反馈（进行中、成功、失败）
+- 为测试操作增加日志
+- 正确传递与处理取消令牌
 
-### Out of Scope
+### 范围外
 
-- Sound device discovery or auto-configuration features
-- Advanced diagnostics (network connectivity tests, volume calibration)
-- Multiple test phrases or custom test text
-- Test history or statistics
-- Sound device configuration validation beyond existing `IsValid()` check
+- 音响设备发现或自动配置
+- 高级诊断（网络连通测试、音量校准）
+- 多种测试短语或自定义测试文本
+- 测试历史或统计
+- 超出现有 `IsValid()` 的音响设备配置校验
 
-## Impact Analysis
+## 影响分析
 
-### Functional Impact
+### 功能影响
 
-- **New Feature**: Quick sound device testing capability
-- **Modified Files**:
-  - `Views/SettingsWindow.axaml` - Add test button UI
-  - `ViewModels/SettingsWindowViewModel.cs` - Add test command and status properties
-  - `Services/ISoundDeviceService.cs` - Add test method to interface
-  - `Services/SoundDeviceService.cs` - Implement test method
+- **新功能**：快速音响设备测试能力
+- **修改文件**：SettingsWindow.axaml、SettingsWindowViewModel.cs、ISoundDeviceService、SoundDeviceService.cs
 
-### Technical Impact
+### 技术与性能影响
 
-- **API Surface**: New method added to `ISoundDeviceService` interface (backward compatible)
-- **Dependencies**: No new external dependencies required
-- **Memory Management**: Must ensure proper disposal of HttpClient instances in test method
-- **Threading**: Async/await pattern with proper cancellation token handling
+- **API**：在 `ISoundDeviceService` 增加新方法（向后兼容）
+- **依赖**：无新外部依赖
+- **内存**：须确保测试方法中 HttpClient 正确释放
+- **线程**：使用 async/await 并正确处理取消令牌；测试短时（约 30 秒内），对现有称重流程无影响
 
-### Performance Impact
+### 安全与体验影响
 
-- Minimal - test operation is short-lived (~30 seconds max)
-- No impact on existing weighing workflows
-- Negligible memory footprint
+- 无新增安全顾虑，使用现有音响设备 API；测试文本固定且非用户可控
+- **正面**：可立即验证音响配置；减少排障摩擦；测试按钮为增量，不改变现有流程
 
-### Security Impact
+## 技术约束
 
-- No security concerns - uses existing sound device API
-- Test text is fixed and non-user-controlled
-- Existing authentication/authorization applies
+- **架构**：须遵循现有 MVVM（View-ViewModel 分离）、ReactiveUI（ReactiveCommand/ReactiveObject）、依赖注入（服务已注册为单例）
+- **平台**：仅 Windows x64、.NET 10.0、Avalonia UI 11.3.9
+- **代码风格**：异步方法带 Async 后缀、启用可空引用类型、使用 AutoConstructor 与 ReactiveUI.SourceGenerators、私有字段 _camelCase
+- **内存**：Rx 订阅须正确释放；HttpClient 使用后须释放；取消令牌须正确注册避免泄漏
 
-### User Experience Impact
+## 依赖
 
-- **Positive**: Immediate feedback on sound device configuration
-- **Reduced friction**: Faster troubleshooting and validation
-- **No disruption**: Test button is additive, doesn't change existing workflow
+- **内部**：ISoundDeviceService、ISettingsService、IHttpClientFactory（或按现有模式直接实例化 HttpClient）
+- **外部**：System.Reactive、Serilog、System.Text.Json
 
-## Technical Constraints
+## 备选方案
 
-### Architecture Constraints
+### 备选 1：复用 PlayTextV2Async
 
-- **MVVM Pattern**: Must follow existing MVVM architecture with View-ViewModel separation
-- **ReactiveUI**: Use `ReactiveCommand` and `ReactiveObject` for command bindings
-- **Dependency Injection**: Service already registered as singleton (`ISingletonDependency`)
+在 ViewModel 中直接调用 `PlayTextV2Async("音柱测试")`。**拒绝**：紧耦合、无「测试」语义、后续难以增加测试专用行为。
 
-### Platform Constraints
+### 备选 2：在主窗口增加测试按钮
 
-- **Target**: Windows x64 only (existing constraint due to HCNetSDK)
-- **Runtime**: .NET 10.0
-- **UI Framework**: Avalonia UI 11.3.9
+**拒绝**：主 UI 杂乱；测试本质是配置验证，设置窗口是更合适位置。
 
-### Code Style Constraints
+### 备选 3：用 Refit 定义测试方法
 
-- **Async Methods**: Must use `Async` suffix per project conventions
-- **Nullable Reference Types**: Enabled throughout codebase
-- **Source Generators**: Use `AutoConstructor` and `ReactiveUI.SourceGenerators`
-- **Naming**: Private fields use `_camelCase`, async methods end with `Async`
+**拒绝**：音响设备无专用「测试」端点，测试与生产共用播放 API，无需额外抽象。
 
-### Memory Management Constraints
+## 迁移计划
 
-- **Rx Subscriptions**: Proper disposal is critical - use `DisposeWith()` or `using` blocks
-- **HttpClient**: Must be properly disposed after use in test method
-- **Cancellation Tokens**: Ensure proper registration to avoid leaks
+- **完全向后兼容**：新增方法不破坏现有代码；无数据库或配置变更
+- **部署**：可零停机部署；无需迁移步骤；测试按钮含义直观
 
-## Dependencies
+## 测试策略
 
-### Internal Dependencies
+- **单元测试**：Mock ISettingsService，验证 PlayTextV2TestAsync、取消令牌、异常与日志、固定测试文本
+- **集成测试**：与真实音响设备端到端；验证 UI 绑定与状态更新、超时与无效配置
+- **手工测试**：启用设备后点击测试、禁用时按钮禁用、无效配置显示错误、关闭窗口不泄漏资源
 
-- `ISoundDeviceService` - Existing service for sound device operations
-- `ISettingsService` - Access to sound device configuration
-- `IHttpClientFactory` - For creating HTTP clients (or direct HttpClient instantiation per existing pattern)
+## 成功标准
 
-### External Dependencies
+1. **功能**：测试按钮出现在设置窗口音响区块；点击播放「音柱测试」；UI 显示进行中/成功/错误；仅当设备启用且配置正确时可测
+2. **技术**：无内存泄漏；取消令牌处理正确；异常均被捕获并记录；符合 MVVM 与 ReactiveUI
+3. **体验**：测试在 30 秒内完成；结果反馈清晰；异步期间 UI 不卡顿
 
-- System.Reactive (Rx.NET) - ReactiveUI infrastructure
-- Serilog - Logging framework
-- System.Text.Json - JSON serialization
+## 风险与缓解
 
-## Alternatives Considered
+- **硬件不可用**：用 mock 做单元测试，在真实硬件环境做集成验证，记录清晰不可达错误
+- **Rx 订阅泄漏**：遵循现有命令释放模式、DisposeWith、按 AttendedWeighingServiceMemoryLeakTests 做内存泄漏测试
+- **UI 阻塞**：全链路 async/await、ReactiveCommand 正确配置异步、30 秒超时
 
-### Alternative 1: Reuse `PlayTextV2Async` Method
+## 待决问题
 
-**Approach**: Call existing `PlayTextV2Async("音柱测试")` from ViewModel
+目前无。
 
-**Pros**:
-- No interface changes needed
-- Simpler implementation
+## 参考
 
-**Cons**:
-- Tight coupling - ViewModel directly calls business logic method
-- No dedicated semantic for "test" vs "production" usage
-- Harder to add test-specific behavior later (e.g., different logging, timeout)
-
-**Decision**: Rejected - Better to have explicit test method for clarity and future extensibility
-
-### Alternative 2: Add Test Button in Main Window
-
-**Approach**: Put sound device test button in main application window instead of Settings
-
-**Pros**:
-- More accessible during normal operation
-
-**Cons**:
-- Clutters main UI
-- Test is primarily a configuration validation task, not operational task
-- Settings is the logical place for device configuration tools
-
-**Decision**: Rejected - SettingsWindow is the appropriate location for configuration-related testing
-
-### Alternative 3: Use Refit for Test Method
-
-**Approach**: Create new Refit interface method for test endpoint
-
-**Pros**:
-- Consistent with existing `ISoundDeviceApi` pattern
-
-**Cons**:
-- Sound device doesn't have a dedicated "test" endpoint
-- Test uses same play API as production (`PlayTextV2Async`)
-- Would require mock endpoint or unnecessary abstraction
-
-**Decision**: Rejected - Test should reuse existing play API with fixed text
-
-## Migration Plan
-
-### Backward Compatibility
-
-- **Fully Backward Compatible**: New method addition doesn't break existing code
-- **No Database Changes**: No schema migrations required
-- **No Configuration Changes**: No new settings required
-
-### Deployment Considerations
-
-- **Zero Downtime**: Feature can be deployed without service interruption
-- **No Migration Steps**: Drop-in replacement/upgrade
-- **User Training**: Intuitive - test button is self-explanatory
-
-## Testing Strategy
-
-### Unit Tests
-
-- Test `PlayTextV2TestAsync` method with mocked `ISettingsService`
-- Test cancellation token handling
-- Test exception handling and logging
-- Verify fixed test text is always used
-
-### Integration Tests
-
-- Test end-to-end flow with real sound device hardware
-- Verify UI command binding and status updates
-- Test timeout behavior
-- Test with invalid configuration (device disabled, invalid IP)
-
-### Manual Testing
-
-- Enable sound device, click test button, verify audio plays
-- Test with sound device disabled - button should be disabled
-- Test with invalid configuration - should show error message
-- Test cancellation - close window during test should not leak resources
-
-## Success Criteria
-
-1. **Functional**:
-   - Test button appears in SettingsWindow sound device section
-   - Clicking test button plays "音柱测试" through configured sound device
-   - UI shows appropriate feedback (testing, success, error)
-   - Test only works when sound device is enabled and configured
-
-2. **Technical**:
-   - No memory leaks (verified with long-running test)
-   - Proper cancellation token handling
-   - All exceptions caught and logged
-   - Code follows project MVVM and ReactiveUI patterns
-
-3. **User Experience**:
-   - Test completes within 30 seconds
-   - Clear feedback on test result
-   - No UI freezes during async operation
-
-## Risks & Mitigations
-
-### Risk 1: Sound Device Hardware Unavailability
-
-**Risk**: Test may fail if no physical sound device is available during development/testing
-
-**Mitigation**:
-- Create mock implementation of `ISoundDeviceService` for unit tests
-- Use integration test environment with real hardware for validation
-- Log clear error messages when device is unreachable
-
-### Risk 2: Memory Leaks in Rx Subscriptions
-
-**Risk**: Improper disposal of ReactiveUI command subscriptions could cause memory leaks
-
-**Mitigation**:
-- Follow existing patterns in `SettingsWindowViewModel` for command disposal
-- Use `DisposeWith()` pattern for subscription management
-- Add memory leak test following project's `AttendedWeighingServiceMemoryLeakTests` pattern
-
-### Risk 3: UI Thread Blocking
-
-**Risk**: Long-running test operation could freeze UI if not properly awaited
-
-**Mitigation**:
-- Use async/await pattern throughout the call chain
-- Ensure `ReactiveCommand` is properly configured for async operations
-- Configure reasonable timeout (30 seconds)
-
-## Open Questions
-
-None at this time.
-
-## References
-
-- `openspec/project.md` - Project architecture and conventions
-- `MaterialClient.Common/Services/SoundDeviceService.cs` - Existing sound device implementation
-- `MaterialClient/ViewModels/SettingsWindowViewModel.cs` - Settings window ViewModel
-- `MaterialClient/Views/SettingsWindow.axaml` - Settings window UI
+- `openspec/project.md`、SoundDeviceService.cs、SettingsWindowViewModel.cs、SettingsWindow.axaml

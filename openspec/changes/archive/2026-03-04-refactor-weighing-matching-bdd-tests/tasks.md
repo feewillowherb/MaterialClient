@@ -1,27 +1,27 @@
-# Tasks: Refactor WeighingMatchingService BDD Tests to Follow StoreSample Pattern
+# 任务：按 StoreSample 模式重构 WeighingMatchingService BDD 测试
 
-**Change ID**: `refactor-weighing-matching-bdd-tests`
-**Total Tasks**: 8
-**Estimated Duration**: 1-2 days
-
----
-
-## Task Overview
-
-Refactor the WeighingMatchingService BDD tests to follow the proven StoreSample pattern, improving maintainability, readability, and consistency. The refactoring involves creating a TestManager class, simplifying step definitions, and updating the feature file to use table-based data setup.
+**变更 ID**：`refactor-weighing-matching-bdd-tests`
+**任务总数**：8
+**预估工期**：1–2 天
 
 ---
 
-## Phase 1: Setup TestManager Infrastructure
+## 任务概览
 
-### Task 1.1: Create TestManager Class
+将 WeighingMatchingService BDD 测试重构为遵循 StoreSample 模式，提升可维护性、可读性与一致性。重构包括创建 TestManager、简化步骤定义、将 Feature 改为基于表的数据准备。
 
-**Status**: Completed
-**Priority**: High
-**Estimated**: 1 hour
+---
 
-**Description**:
-Create a `TestManager` class similar to StoreSample's pattern that provides centralized access to test dependencies via dependency injection.
+## 阶段 1：搭建 TestManager 基础设施
+
+### 任务 1.1：创建 TestManager 类
+
+**状态**：已完成
+**优先级**：高
+**预估**：1 小时
+
+**描述**：
+创建与 StoreSample 模式类似的 `TestManager` 类，通过依赖注入集中提供测试依赖访问。
 
 **Steps**:
 1. Create `TestManager` class in `MaterialClient.Common.Tests/Steps.cs` (or separate file)
@@ -41,9 +41,9 @@ Create a `TestManager` class similar to StoreSample's pattern that provides cent
 
 ---
 
-### Task 1.2: Create DTOs for Table-Based Data Setup
+### 任务 1.2：为基于表的数据准备创建 DTO
 
-**Status**: Completed
+**状态**：已完成
 **Priority**: High
 **Estimated**: 30 minutes
 
@@ -77,9 +77,9 @@ Create DTO classes for parsing table data in feature files, following StoreSampl
 
 ---
 
-## Phase 2: Refactor Step Definitions
+## 阶段 2：重构步骤定义
 
-### Task 2.1: Refactor Record Setup Steps
+### 任务 2.1：重构记录准备步骤
 
 **Status**: Completed
 **Priority**: High
@@ -106,7 +106,7 @@ Refactor step definitions for creating weighing records to use table-based appro
 
 ---
 
-### Task 2.2: Refactor Matching and Verification Steps
+### 任务 2.2：重构匹配与验证步骤
 
 **Status**: Completed
 **Priority**: High
@@ -132,7 +132,7 @@ Refactor matching and verification steps to use TestManager and simplify logic.
 
 ---
 
-### Task 2.3: Clean Up Unused Steps
+### 任务 2.3：清理未用步骤
 
 **Status**: Completed
 **Priority**: Medium
@@ -156,9 +156,9 @@ Remove or consolidate redundant step definitions after refactoring.
 
 ---
 
-## Phase 3: Update Feature File
+## 阶段 3：更新 Feature 文件
 
-### Task 3.1: Convert Feature File to Table-Based Format
+### 任务 3.1：将 Feature 文件改为基于表格式
 
 **Status**: Completed
 **Priority**: High
@@ -187,9 +187,9 @@ Update `WeighingMatchingService.feature` to use table-based data setup following
 
 ---
 
-## Phase 4: Integration and Testing
+## 阶段 4：集成与测试
 
-### Task 4.1: Update Test Module Registration
+### 任务 4.1：更新测试模块注册
 
 **Status**: Completed
 **Priority**: Medium
@@ -212,7 +212,7 @@ Ensure TestManager is properly registered in the test module.
 
 ---
 
-### Task 4.2: Run All Tests and Verify
+### 任务 4.2：运行全部测试并验证
 
 **Status**: Pending
 **Priority**: High
@@ -238,10 +238,10 @@ Run all BDD tests and verify they pass after refactoring.
 
 ---
 
-## Progress Tracking
+## 进度跟踪
 
-**Phase 1 Progress**: 2/2 tasks completed
-**Phase 2 Progress**: 3/3 tasks completed
-**Phase 3 Progress**: 1/1 tasks completed
-**Phase 4 Progress**: 1/2 tasks completed (test execution pending)
-**Overall Progress**: 7/8 tasks (87.5%)
+**阶段 1 进度**：2/2 任务已完成
+**阶段 2 进度**：3/3 任务已完成
+**阶段 3 进度**：1/1 任务已完成
+**阶段 4 进度**：1/2 任务已完成（测试执行待进行）
+**总体进度**：7/8 任务（87.5%）

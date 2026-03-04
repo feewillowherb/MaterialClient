@@ -1,82 +1,82 @@
-# Unify LPR Events with MessageBus - Proposal Summary
+# 使用 MessageBus 统一 LPR 事件 - 提案摘要
 
-## Quick Overview
+## 简要概述
 
-**Change ID**: `unify-lpr-events-with-messagebus`
-**Status**: Draft (Pending Approval)
-**Type**: Refactoring
-**Created**: 2026-01-29
+**变更 ID**：`unify-lpr-events-with-messagebus`
+**状态**：草稿（待批准）
+**类型**：重构
+**创建日期**：2026-01-29
 
-## Problem Statement
+## 问题陈述
 
-Currently, LPR (License Plate Recognition) hardware callback handlers in `MinimalWebHostService` directly call `IAttendedWeighingService.OnPlateNumberRecognized()`. This creates tight coupling between the hardware layer and business logic layer, making the system harder to test and extend.
+当前 LPR（车牌识别）硬件回调在 `MinimalWebHostService` 中直接调用 `IAttendedWeighingService.OnPlateNumberRecognized()`，导致硬件层与业务逻辑层紧耦合，系统难以测试和扩展。
 
-**Current Flow**:
+**当前流程**：
 ```
-Hardware → MinimalWebHostService → weighingService.OnPlateNumberRecognized() → Processing
-```
-
-## Proposed Solution
-
-Refactor to use ReactiveUI MessageBus for decoupled event delivery:
-
-**New Flow**:
-```
-Hardware → MinimalWebHostService → MessageBus → AttendedWeighingService → Processing
+硬件 → MinimalWebHostService → weighingService.OnPlateNumberRecognized() → 处理
 ```
 
-## Key Changes
+## 拟议方案
 
-1. **Create Unified Message**: `LicensePlateRecognizedMessage` class with plate number, color, device type, device name, and timestamp
+重构为使用 ReactiveUI MessageBus 进行解耦事件投递：
 
-2. **Refactor Callback Handlers**: `MinimalWebHostService` publishes MessageBus messages instead of calling service directly
+**新流程**：
+```
+硬件 → MinimalWebHostService → MessageBus → AttendedWeighingService → 处理
+```
 
-3. **Add Service Subscription**: `AttendedWeighingService` subscribes to `LicensePlateRecognizedMessage` in constructor
+## 主要变更
 
-4. **Simplify Interface**: Remove `OnPlateNumberRecognized()` from `IAttendedWeighingService` (becomes private)
+1. **创建统一消息**：`LicensePlateRecognizedMessage` 类，包含车牌号、颜色、设备类型、设备名称与时间戳
 
-5. **Ensure Cleanup**: Properly dispose subscriptions to prevent memory leaks
+2. **重构回调处理**：`MinimalWebHostService` 改为发布 MessageBus 消息，不再直接调用服务
 
-## Benefits
+3. **增加服务订阅**：`AttendedWeighingService` 在构造函数中订阅 `LicensePlateRecognizedMessage`
 
-- ✅ **Loose Coupling**: Hardware layer no longer depends on business service
-- ✅ **Testability**: Can test callbacks and business logic independently
-- ✅ **Extensibility**: Easy to add new subscribers (logging, monitoring, alerts)
-- ✅ **Consistency**: Aligns with ADR-009 (MessageBus for cross-component communication)
-- ✅ **Performance**: MessageBus adds <1ms latency (negligible for 10-20 LPR events/minute)
+4. **简化接口**：从 `IAttendedWeighingService` 中移除 `OnPlateNumberRecognized()`（改为 private）
 
-## Files Created
+5. **确保清理**：正确释放订阅以防内存泄漏
 
-- `openspec/changes/unify-lpr-events-with-messagebus/proposal.md` - Why, what, impact
-- `openspec/changes/unify-lpr-events-with-messagebus/tasks.md` - 15 implementation tasks
-- `openspec/changes/unify-lpr-events-with-messagebus/design.md` - Technical architecture and design decisions
-- `openspec/changes/unify-lpr-events-with-messagebus/specs/license-plate-recognition/spec.md` - Modified requirements
-- `openspec/changes/unify-lpr-events-with-messagebus/README.md` - This summary
+## 收益
 
-## Validation
+- ✅ **松耦合**：硬件层不再依赖业务服务
+- ✅ **可测试**：可分别测试回调与业务逻辑
+- ✅ **可扩展**：易于新增订阅方（日志、监控、告警）
+- ✅ **一致**：与 ADR-009（跨组件通信使用 MessageBus）一致
+- ✅ **性能**：MessageBus 增加 <1ms 延迟（对 10–20 次/分钟 LPR 可忽略）
+
+## 创建的文件
+
+- `openspec/changes/unify-lpr-events-with-messagebus/proposal.md` —— 原因、内容、影响
+- `openspec/changes/unify-lpr-events-with-messagebus/tasks.md` —— 15 项实施任务
+- `openspec/changes/unify-lpr-events-with-messagebus/design.md` —— 技术架构与设计决策
+- `openspec/changes/unify-lpr-events-with-messagebus/specs/license-plate-recognition/spec.md` —— 修改后的需求
+- `openspec/changes/unify-lpr-events-with-messagebus/README.md` —— 本摘要
+
+## 验证
 
 ```bash
 openspec validate unify-lpr-events-with-messagebus --strict
 ```
 
-Result: ✅ **Valid**
+结果：✅ **有效**
 
-## Next Steps
+## 后续步骤
 
-1. **Review Proposal**: Read `proposal.md` and `design.md` for full details
-2. **Approve or Request Changes**: Provide feedback on the approach
-3. **Implement**: Follow tasks in `tasks.md` sequentially
-4. **Test**: Run unit, integration, and memory leak tests
-5. **Deploy**: Monitor system after changes
+1. **评审提案**：阅读 `proposal.md` 与 `design.md` 了解完整细节
+2. **批准或提出修改**：对方案给出反馈
+3. **实施**：按 `tasks.md` 顺序执行任务
+4. **测试**：运行单元、集成与内存泄漏测试
+5. **部署**：变更后监控系统
 
-## Estimated Effort
+## 预估工作量
 
-- **Total Tasks**: 15
-- **Estimated Duration**: 3-4 days
-- **Risk Level**: Medium (requires careful testing of all LPR device types)
+- **任务总数**：15
+- **预估周期**：3–4 天
+- **风险等级**：中（需对所有 LPR 设备类型做细致测试）
 
-## References
+## 参考
 
-- ADR-009: MessageBus for cross-component communication
-- `openspec/docs/timer-to-rx-pattern.md` - Reactive programming patterns
-- Related: `hikvision-lpr-implementation`, `hikvision-lpr-integration`
+- ADR-009：跨组件通信使用 MessageBus
+- `openspec/docs/timer-to-rx-pattern.md` —— 响应式编程模式
+- 相关：`hikvision-lpr-implementation`、`hikvision-lpr-integration`

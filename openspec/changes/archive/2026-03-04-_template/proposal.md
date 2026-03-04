@@ -1,67 +1,67 @@
-# Change: <Change Title>
+# 变更：<变更标题>
 
-**Change ID**: `<change-id>`
-**Status**: Draft
-**Created**: YYYY-MM-DD
-**Type**: Feature/Bug Fix/Refactoring/Process/Documentation
-
----
-
-## Why
-
-### Background
-
-<Context and background for this change>
-
-### Problems
-
-<What problems does this change solve?>
+**变更 ID**：`<change-id>`
+**状态**：Draft
+**创建日期**：YYYY-MM-DD
+**类型**：Feature / Bug Fix / Refactoring / Process / Documentation
 
 ---
 
-## What Changes
+## 原因
 
-### Overview
+### 背景
 
-<High-level summary of the change>
+<本变更的上下文与背景>
 
-### Detailed Changes
+### 问题
 
-1. <Change 1>
-2. <Change 2>
+<本变更要解决哪些问题？>
 
 ---
 
-## Impact
+## 变更内容
 
-### Expected Benefits
+### 概览
 
-- <Benefit 1>
-- <Benefit 2>
+<变更的高层摘要>
 
-### Risks and Mitigations
+### 详细变更
 
-| Risk | Impact | Mitigation |
+1. <变更 1>
+2. <变更 2>
+
+---
+
+## 影响
+
+### 预期收益
+
+- <收益 1>
+- <收益 2>
+
+### 风险与缓解
+
+| 风险 | 影响 | 缓解措施 |
 |------|--------|------------|
-| <Risk> | <Impact> | <Mitigation> |
+| <风险> | <影响> | <缓解> |
 
 ---
 
-## Success Criteria
+## 成功标准
 
-- [ ] <Success criterion 1>
-- [ ] <Success criterion 2>
-
----
-
-## Next Steps
-
-1. <Next step 1>
-2. <Next step 2>
+- [ ] <成功标准 1>
+- [ ] <成功标准 2>
 
 ---
 
-## References
+## 后续步骤
 
-- <Related specifications>
-- <Related changes>
+1. <后续步骤 1>
+2. <后续步骤 2>
+
+---
+
+## 参考
+
+- <相关规范>
+- <相关变更>

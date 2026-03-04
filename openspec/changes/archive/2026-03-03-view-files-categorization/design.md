@@ -1,26 +1,26 @@
-## Context
+## 上下文
 
-### Current State
+### 当前状态
 
-The MaterialClient project follows an Avalonia UI architecture with all XAML files currently located in a single `Views/` folder. This folder contains approximately [to be determined] XAML files, including:
-- Window views (MainWindow, LoginWindow, etc.)
-- Page views (Dashboard, Settings, etc.)
-- Control files (CustomButton, DataGridControl, SearchBox, etc.)
+MaterialClient 项目采用 Avalonia UI 架构，当前所有 XAML 文件均位于单一的 `Views/` 文件夹中。该文件夹内约有 [待确定] 个 XAML 文件，包括：
+- 窗口视图（MainWindow、LoginWindow 等）
+- 页面视图（Dashboard、Settings 等）
+- 控件文件（CustomButton、DataGridControl、SearchBox 等）
 
-This mixed organization makes it difficult to:
-- Quickly locate specific controls for reuse or modification
-- Understand the project structure for new team members
-- Maintain clear separation between presentation logic and reusable components
+这种混合组织导致：
+- 难以快速定位特定控件以复用或修改
+- 新成员难以理解项目结构
+- 难以在展示逻辑与可复用组件之间保持清晰分离
 
-### Project Structure
+### 项目结构
 
 ```
 MaterialClient/
-├── Views/                    (Current: mixed content)
+├── Views/                    (当前：混合内容)
 │   ├── MainWindow.axaml
 │   ├── LoginWindow.axaml
-│   ├── CustomButton.axaml    ← Control mixed with views
-│   ├── DataGridControl.axaml ← Control mixed with views
+│   ├── CustomButton.axaml    ← 控件与视图混合
+│   ├── DataGridControl.axaml ← 控件与视图混合
 │   └── ...
 ├── ViewModels/
 ├── Models/
@@ -28,406 +28,169 @@ MaterialClient/
 └── MaterialClient.csproj
 ```
 
-### Constraints
+### 约束
 
-- **No Behavioral Changes**: This is a pure refactoring; all functionality must remain identical
-- **Build Compatibility**: Project must build successfully after migration
-- **Runtime Compatibility**: Application must run without errors
-- **Minimal Disruption**: Changes should be completed in a single coherent migration
-- **Avalonia Conventions**: Follow Avalonia UI best practices for file organization
+- **无行为变更**：此为纯重构，所有功能必须完全一致
+- **构建兼容**：迁移后项目必须能成功构建
+- **运行兼容**：应用必须能无错误运行
+- **最小干扰**：变更应在一次连贯迁移中完成
+- **Avalonia 惯例**：遵循 Avalonia UI 的文件组织最佳实践
 
-### Stakeholders
+### 干系人
 
-- **Development Team**: Primary beneficiaries - improved code navigation and maintainability
-- **New Team Members**: Reduced onboarding time due to clearer structure
-- **Code Reviewers**: Easier review process with organized file locations
-
----
-
-## Goals / Non-Goals
-
-**Goals:**
-1. Separate control files from view files into a distinct `Views/Controls/` folder
-2. Update all namespace references to use `MaterialClient.Views.Controls` for controls
-3. Update project file references to reflect new file locations
-4. Maintain 100% functional compatibility - no behavioral changes
-5. Ensure project builds and runs successfully after migration
-6. Establish a clear pattern for future control additions
-
-**Non-Goals:**
-1. No functional or behavioral changes to existing features
-2. No performance optimizations (not the purpose of this change)
-3. No API changes or public interface modifications
-4. No database schema changes (not applicable)
-5. No dependency additions or removals
-6. No additional refactoring beyond file organization
+- **开发团队**：主要受益方——代码导航与可维护性提升
+- **新成员**：结构更清晰，上手时间缩短
+- **代码审阅者**：文件位置规整，审阅更易
 
 ---
 
-## Decisions
+## 目标 / 非目标
 
-### 1. Control Identification Strategy
+**目标**：
+1. 将控件文件与视图文件分离到独立的 `Views/Controls/` 文件夹
+2. 更新所有命名空间引用，控件使用 `MaterialClient.Views.Controls`
+3. 更新项目文件中的文件路径引用
+4. 保持 100% 功能兼容——无行为变更
+5. 确保迁移后项目能成功构建并运行
+6. 为后续新增控件建立清晰模式
 
-**Decision**: Identify control files by analyzing XAML root element types.
-
-**Rationale**:
-- XAML files can be programmatically analyzed to determine their type
-- Controls typically inherit from `UserControl`, `Control`, or custom control base classes
-- Views typically inherit from `Window`, `Page`, or similar presentation classes
-- This approach is deterministic and automatable
-
-**Alternatives Considered**:
-1. **File naming conventions**: Too unreliable; naming may vary
-2. **Manual selection**: Time-consuming and error-prone
-3. **Folder-based (pre-existing)**: Not applicable - files are currently mixed
-
-**Implementation**:
-- Parse each XAML file in `Views/`
-- Check root element type (e.g., `<UserControl>` vs `<Window>`)
-- Files with root elements of `UserControl`, `Control`, or custom control types → move to Controls/
-- All other files → remain in Views/
-
-### 2. Namespace Migration Approach
-
-**Decision**: Use simple find-and-replace for namespace updates with verification.
-
-**Rationale**:
-- Namespace changes follow a predictable pattern
-- `MaterialClient.Views.<ClassName>` → `MaterialClient.Views.Controls.<ClassName>`
-- XAML `xmlns` declarations need specific additions
-- Straightforward text replacement with manual verification catches edge cases
-
-**Alternatives Considered**:
-1. **Roslyn-based refactoring**: Overkill for this simple change
-2. **Manual editing**: Too slow and error-prone
-3. **IDE refactoring tools**: Not always reliable for XAML/C# combinations
-
-**Implementation**:
-- XAML files: Update `x:Class` attribute
-- Code-behind files: Update `namespace` declaration
-- View files: Add `xmlns:Controls="using:MaterialClient.Views.Controls"` where controls are used
-- Replace control references to use `Controls:` prefix
-
-### 3. Migration Execution Order
-
-**Decision**: Move files first, then update references, then verify.
-
-**Rationale**:
-- Moving files is the foundational step
-- References can't be correctly updated until files are in their final locations
-- Verification at each step ensures early error detection
-- Sequential approach makes rollback straightforward
-
-**Execution Sequence**:
-1. Analyze and identify control files
-2. Create `Views/Controls/` folder
-3. Move control files to new location
-4. Update namespaces in moved files
-5. Update references in view files
-6. Update project file paths
-7. Build and verify
-
-### 4. Rollback Strategy
-
-**Decision**: Use Git for atomic rollback capability.
-
-**Rationale**:
-- All changes are tracked in version control
-- Single commit captures the entire migration
-- Simple `git revert` or branch switch enables rollback
-- No separate rollback procedures needed
-
-**Implementation**:
-- Create a feature branch for this migration
-- Commit all changes together
-- If issues arise, revert the commit or switch back to main
+**非目标**：
+1. 不改变现有功能或行为
+2. 不做性能优化（非本次变更目的）
+3. 不修改 API 或公开接口
+4. 不涉及数据库架构（不适用）
+5. 不增加或移除依赖
+6. 除文件组织外不做额外重构
 
 ---
 
-## Risks / Trade-offs
+## 决策
 
-### Risks
+### 1. 控件识别策略
 
-**Risk: Missed control references causing build failures**
-- **Mitigation**: Use automated build verification after migration
-- **Mitigation**: Search for all usages of moved types before committing
+**决策**：通过分析 XAML 根元素类型识别控件文件。
 
-**Risk: Namespace conflicts or collisions**
-- **Mitigation**: New namespace `Controls` is unlikely to conflict with existing names
-- **Mitigation**: Verify no existing `Controls` folder or namespace exists
+**理由**：XAML 可程序化分析其类型；控件通常继承 `UserControl`、`Control` 或自定义控件基类；视图通常继承 `Window`、`Page` 等；该方法确定且可自动化。
 
-**Risk: Runtime errors from resource references**
-- **Mitigation**: Check App.axaml and resource dictionaries for control references
-- **Mitigation**: Test all views that use controls after migration
+**备选**：按文件命名约定——不可靠；人工挑选——费时易错；按既有文件夹——不适用（当前为混合）。
 
-**Risk: IDE or tooling compatibility issues**
-- **Mitigation**: Visual Studio and Rider handle XAML namespace changes well
-- **Mitigation**: Test in both IDEs if team uses both
+**实现**：解析 `Views/` 下每个 XAML，检查根元素类型；根为 `UserControl`、`Control` 或自定义控件类型的移至 Controls/；其余保留在 Views/。
 
-**Risk: Breaking existing tooling or scripts**
-- **Mitigation**: Check for build scripts or tools that reference specific file paths
-- **Mitigation**: Update any hardcoded paths found
+### 2. 命名空间迁移方式
 
-### Trade-offs
+**决策**：使用简单查找替换并辅以验证。
 
-**Trade-off: Initial effort vs. long-term benefit**
-- Initial migration requires significant effort (file identification, updates, verification)
-- Long-term benefit: Improved maintainability, faster development, better onboarding
-- **Decision**: Proceed with migration - long-term benefits outweigh initial effort
+**理由**：命名空间变更模式可预测；`MaterialClient.Views.<ClassName>` → `MaterialClient.Views.Controls.<ClassName>`；XAML 的 xmlns 需单独补充；直接文本替换加人工验证可发现边界情况。
 
-**Trade-off: Branching strategy**
-- Option 1: Feature branch with pull request (slower, safer)
-- Option 2: Direct to main with careful testing (faster, riskier)
-- **Decision**: Use feature branch - safer for team workflow and easier rollback
+**实现**：XAML 更新 `x:Class`；代码隐藏更新 `namespace`；使用控件的视图添加 `xmlns:Controls="using:MaterialClient.Views.Controls"`；控件引用改为 `Controls:` 前缀。
 
-**Trade-off: Automation vs. manual verification**
-- Fully automated migration is faster but risks edge cases
-- Manual migration is slower but more thorough
-- **Decision**: Hybrid approach - automated identification and movement with manual verification
+### 3. 迁移执行顺序
+
+**决策**：先移动文件，再更新引用，最后验证。
+
+**理由**：移动文件是基础步骤；文件未就位前无法正确更新引用；每步验证便于尽早发现错误；顺序执行便于回滚。
+
+**执行顺序**：分析并识别控件文件 → 创建 `Views/Controls/` → 移动控件文件 → 更新已移动文件中的命名空间 → 更新视图中的引用 → 更新项目文件路径 → 构建并验证。
+
+### 4. 回滚策略
+
+**决策**：使用 Git 实现原子回滚。
+
+**实现**：为本迁移创建功能分支；一次性提交所有变更；若有问题可 revert 或切回 main。
 
 ---
 
-## Migration Plan
+## 风险与权衡
 
-### Phase 1: Analysis (Day 1)
+**风险**：遗漏控件引用导致构建失败 → 迁移后做自动化构建验证；提交前搜索所有已移动类型的引用。  
+**风险**：命名空间冲突 → 新命名空间 `Controls` 与现有名冲突概率低；确认无既有 Controls 文件夹或命名空间。  
+**风险**：资源引用导致运行时错误 → 检查 App.axaml 与资源字典中的控件引用；迁移后测试所有使用控件的视图。  
+**风险**：IDE 或工具兼容 → VS 与 Rider 对 XAML 命名空间变更支持良好；若团队两者都用可都测。  
+**风险**：破坏既有脚本 → 检查构建脚本或工具是否引用具体路径；发现硬编码路径则更新。
 
-**Tasks:**
-1. Scan `Views/` folder for all XAML files
-2. Analyze each file to identify control type by root element
-3. Generate list of files to move
-4. Identify all files that reference moved controls
-5. Verify no existing `Views/Controls/` folder or namespace conflicts
-
-**Deliverable**: Migration inventory file listing:
-- Files to move (control files)
-- Files to update (reference files)
-- Expected changes per file
-
-### Phase 2: Implementation (Day 1-2)
-
-**Tasks:**
-1. Create `Views/Controls/` folder
-2. Move all identified control files to `Views/Controls/`
-3. Update `x:Class` in moved XAML files
-4. Update `namespace` in moved code-behind files
-5. Add `xmlns:Controls` declarations to view files
-6. Update control references in view files to use `Controls:` prefix
-7. Update project file with new file paths
-8. Update any resource dictionary references
-
-**Deliverable**: Complete codebase with reorganized structure
-
-### Phase 3: Verification (Day 2)
-
-**Tasks:**
-1. Build project (Debug configuration)
-2. Build project (Release configuration)
-3. Run application
-4. Manually test all views that use controls
-5. Verify controls render correctly
-6. Check for compiler warnings or errors
-
-**Deliverable**: Verification report confirming:
-- Build succeeds
-- Application runs
-- All controls render correctly
-- No runtime errors
-
-### Phase 4: Documentation (Day 2)
-
-**Tasks:**
-1. Update any internal documentation referencing file locations
-2. Create migration summary for team communication
-3. Document new file organization pattern for future reference
-
-**Deliverable**: Updated documentation and team communication
-
-### Rollback Strategy
-
-If any phase fails:
-1. Identify the failure point
-2. Revert to previous Git commit
-3. Analyze the failure
-4. Fix the issue
-5. Re-run from the failed phase
+**权衡**：初期投入 vs 长期收益——迁移需一定投入（识别、更新、验证），长期收益为可维护性、开发效率与上手体验；**决定**：执行迁移。  
+**权衡**：分支策略——功能分支+PR（较慢较稳）vs 直接 main+仔细测试（较快较险）；**决定**：使用功能分支。  
+**权衡**：自动化 vs 人工验证——全自动更快但易漏边界；人工更慢但更彻底；**决定**：混合——自动识别与移动，人工验证。
 
 ---
 
-## Open Questions
+## 迁移计划
 
-1. **Q: How many XAML files are in the Views folder?**
-   - **Status**: Needs investigation
-   - **Resolution**: Analyze during Phase 1
+### 阶段 1：分析（第 1 天）
 
-2. **Q: Are there any existing tools or scripts that reference specific Views paths?**
-   - **Status**: Needs investigation
-   - **Resolution**: Search codebase during Phase 1
+扫描 `Views/`、按根元素识别控件、生成待移动列表、找出引用已移动控件的文件、确认无既有 `Views/Controls/` 或命名空间冲突。**交付**：迁移清单（待移动文件、待更新引用文件、每文件预期变更）。
 
-3. **Q: Does the team use both Visual Studio and Rider?**
-   - **Status**: Unknown
-   - **Resolution**: Verify with team lead; test in both if needed
+### 阶段 2：实现（第 1–2 天）
 
-4. **Q: Are there any resource dictionaries that register controls?**
-   - **Status**: Needs investigation
-   - **Resolution**: Check App.axaml and resource files during Phase 1
+创建 `Views/Controls/`、移动控件文件、更新已移动 XAML 的 `x:Class`、更新代码隐藏的 `namespace`、在视图文件中添加 `xmlns:Controls` 并更新控件引用为 `Controls:`、更新 .csproj 与资源字典。**交付**：完成重组后的代码库。
 
----
+### 阶段 3：验证（第 2 天）
 
-## Visualizations
+Debug/Release 构建、运行应用、手工测试使用控件的视图、确认控件渲染正确、检查编译警告与错误。**交付**：验证报告（构建成功、应用运行、控件正常、无运行时错误）。
 
-### Component Architecture
+### 阶段 4：文档（第 2 天）
 
-```
-File Organization Structure
-├── Views/                           (Presentation Layer)
-│   ├── MainWindow.axaml            (Window)
-│   ├── LoginWindow.axaml           (Window)
-│   ├── Dashboard.axaml             (Page)
-│   └── Settings.axaml              (Page)
-│
-└── Views/Controls/                  (Reusable Components)
-    ├── CustomButton.axaml         (UserControl)
-    ├── DataGridControl.axaml      (UserControl)
-    ├── SearchBox.axaml            (UserControl)
-    └── [Additional Controls]
+更新涉及文件位置的内部文档、编写迁移总结供团队沟通、记录新文件组织模式供后续参考。**交付**：更新后的文档与团队沟通。
 
-Namespace Mapping:
-MaterialClient.Views.*         → Views/* (Windows, Pages)
-MaterialClient.Views.Controls.* → Views/Controls/* (Controls)
-```
+### 回滚
 
-### Migration Data Flow
-
-```mermaid
-flowchart TD
-    A[Phase 1: Analysis] --> B[Scan Views/ Folder]
-    B --> C[Identify Control Files]
-    C --> D[Generate Migration Inventory]
-    D --> E[Phase 2: Implementation]
-    E --> F[Create Views/Controls/]
-    F --> G[Move Control Files]
-    G --> H[Update Namespaces]
-    H --> I[Update References]
-    I --> J[Update Project File]
-    J --> K[Phase 3: Verification]
-    K --> L[Build Project]
-    L --> M[Run Application]
-    M --> N[Test Controls]
-    N --> O[Phase 4: Documentation]
-    O --> P[Update Documentation]
-    P --> Q[Migration Complete]
-
-    style A fill:#e1f5fe
-    style E fill:#fff3e0
-    style K fill:#e8f5e9
-    style O fill:#f3e5f5
-    style Q fill:#c8e6c9
-```
-
-### Update Execution Sequence
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant Git as Git
-    participant Code as Codebase
-    participant Build as Build System
-
-    Dev->>Git: Create feature branch
-    Git-->>Dev: Branch created
-
-    Dev->>Code: Identify control files
-    Code-->>Dev: List of 20+ control files
-
-    Dev->>Code: Create Views/Controls/ folder
-    Code-->>Dev: Folder created
-
-    Dev->>Code: Move control files
-    Code-->>Dev: Files relocated
-
-    Dev->>Code: Update x:Class (20 files)
-    Code-->>Dev: Namespaces updated
-
-    Dev->>Code: Update code-behind namespaces (20 files)
-    Code-->>Dev: Namespaces updated
-
-    Dev->>Code: Add xmlns:Controls (15 view files)
-    Code-->>Dev: Declarations added
-
-    Dev->>Code: Update control references (15 files)
-    Code-->>Dev: References updated
-
-    Dev->>Code: Update .csproj paths
-    Code-->>Dev: Paths updated
-
-    Dev->>Build: Build project
-    Build-->>Dev: Build succeeds ✓
-
-    Dev->>Build: Run application
-    Build-->>Dev: No runtime errors ✓
-
-    Dev->>Git: Commit changes
-    Git-->>Dev: Migration committed
-```
-
-### Detailed Code Change Inventory
-
-| File Path | Change Type | Change Description | Lines Affected |
-|-----------|-------------|-------------------|----------------|
-| `Views/Controls/` | Create | New folder for control files | N/A |
-| `Views/Controls/*.axaml` | Move | Move from Views/ + update x:Class | 1 per file |
-| `Views/Controls/*.axaml.cs` | Move | Move from Views/ + update namespace | 2 per file |
-| `Views/*.axaml` | Update | Add xmlns:Controls declaration | 1 per using file |
-| `Views/*.axaml` | Update | Update control references to Controls: prefix | 1-5 per file |
-| `MaterialClient.csproj` | Update | Update file paths for moved files | 1 per moved file |
-| `App.axaml` | Optional | Update resource references if needed | 0-5 |
-
-**Estimated Totals**:
-- Control files to move: ~20 files
-- View files to update: ~15 files
-- Total files modified: ~35 files
-- Total line changes: ~70-100 lines
+任阶段失败时：定位失败点 → 回退到上一 Git 提交 → 分析原因 → 修复 → 从失败阶段重新执行。
 
 ---
 
-## Success Criteria
+## 待决问题
 
-Migration is considered successful when:
-
-1. **Structure**: All control files are located in `Views/Controls/`
-2. **Namespaces**: All files use correct namespaces per their location
-3. **Build**: Project builds without errors or warnings
-4. **Runtime**: Application runs without errors
-5. **Functionality**: All controls render and behave identically to pre-migration
-6. **Documentation**: Team is informed of new file organization pattern
+1. Views 文件夹中 XAML 文件数量？——需在阶段 1 分析。  
+2. 是否有工具或脚本引用具体 Views 路径？——阶段 1 在代码库中搜索。  
+3. 团队是否同时使用 VS 与 Rider？——与负责人确认；必要时两者都测。  
+4. 是否有资源字典注册控件？——阶段 1 检查 App.axaml 与资源文件。
 
 ---
 
-## Appendix: Migration Commands Reference
+## 可视化
 
-### Finding Control Files
+### 组件架构
+
+（见原文 File Organization Structure 与 Namespace Mapping 图，Views/ 与 Views/Controls/ 分离，命名空间映射 MaterialClient.Views.* → Views/*，MaterialClient.Views.Controls.* → Views/Controls/*。）
+
+### 迁移数据流与执行顺序
+
+（见原文 mermaid 图：Phase 1 分析 → Phase 2 实现 → Phase 3 验证 → Phase 4 文档 → 迁移完成。）
+
+### 详细代码变更清单
+
+| 文件路径 | 变更类型 | 变更说明 | 影响行数 |
+|-----------|-------------|-------------------|-----------------|
+| `Views/Controls/` | 创建 | 控件文件用新文件夹 | N/A |
+| `Views/Controls/*.axaml` | 移动 | 从 Views/ 移入并更新 x:Class | 每文件 1 行 |
+| `Views/Controls/*.axaml.cs` | 移动 | 从 Views/ 移入并更新 namespace | 每文件 2 行 |
+| `Views/*.axaml` | 更新 | 添加 xmlns:Controls | 每个使用文件 1 行 |
+| `Views/*.axaml` | 更新 | 控件引用改为 Controls: 前缀 | 每文件 1–5 行 |
+| `MaterialClient.csproj` | 更新 | 已移动文件的路径 | 每个已移动文件 1 行 |
+| `App.axaml` | 可选 | 如需则更新资源引用 | 0–5 行 |
+
+**估算**：待移动控件约 20 个；待更新视图约 15 个；修改文件约 35 个；总变更行数约 70–100 行。
+
+---
+
+## 成功标准
+
+迁移视为成功当：所有控件文件位于 `Views/Controls/`；所有文件按位置使用正确命名空间；项目无错误无警告构建；应用无错误运行；所有控件渲染与行为与迁移前一致；团队已知晓新的文件组织模式。
+
+---
+
+## 附录：迁移命令参考
+
+### 查找控件文件
 ```bash
-# Search for UserControl root elements in XAML files
 grep -l 'UserControl' Views/*.axaml
 ```
 
-### Updating Namespaces
-```bash
-# In XAML files
-Find: x:Class="MaterialClient.Views.
-Replace: x:Class="MaterialClient.Views.Controls.
+### 更新命名空间（XAML：x:Class；代码隐藏：namespace MaterialClient.Views → MaterialClient.Views.Controls）
 
-# In code-behind files
-Find: namespace MaterialClient.Views
-Replace: namespace MaterialClient.Views.Controls
-```
-
-### Adding xmlns:Controls
-```bash
-# Add to XAML files that use controls
-Add: xmlns:Controls="using:MaterialClient.Views.Controls"
-```
+### 添加 xmlns:Controls
+在使用控件的 XAML 根元素添加：`xmlns:Controls="using:MaterialClient.Views.Controls"`
 
 ---
 
-*This design document serves as the blueprint for implementing the view files categorization migration. All decisions are made with the goal of improving code organization while maintaining 100% functional compatibility.*
+*本设计文档为视图文件分类迁移的实施蓝图。所有决策均以在保持 100% 功能兼容的前提下改进代码组织为目标。*

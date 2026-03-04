@@ -12,13 +12,13 @@
 
 ---
 
-## Documentation Structure
+## 文档结构
 
-### Primary Document: `docs/SDD.md`
+### 主文档：`docs/SDD.md`
 
-主要的 SDD 文档,包含所有核心章节,是系统架构和设计的概览性文档。
+主要的 SDD 文档，包含所有核心章节，是系统架构和设计的概览性文档。
 
-**结构**:
+**结构**：
 ```markdown
 # Software Design Document: MaterialClient
 
@@ -73,21 +73,21 @@
 - C. Change History
 ```
 
-### Supporting Documents: `docs/sdd/`
+### 支撑文档：`docs/sdd/`
 
-可选的专题文档,用于深入探讨特定主题。
+可选的专题文档，用于深入探讨特定主题。
 
-**建议的专题文档**:
+**建议的专题文档**：
 - `docs/sdd/rxstate-pattern.md` - RxState 模式深入分析
 - `docs/sdd/hardware-integration.md` - 硬件集成详细指南
 - `docs/sdd/performance-optimization.md` - 性能优化指南
 - `docs/sdd/error-handling.md` - 错误处理策略
 
-### Analysis Documents: `docs/`
+### 分析文档：`docs/`
 
-现有的分析和报告文档,作为 SDD 的参考和补充。
+现有的分析和报告文档，作为 SDD 的参考和补充。
 
-**现有文档**:
+**现有文档**：
 - `AttendedWeighingService-RxState-Optimization-Report.md`
 - `AttendedWeighingService-Rx-Evaluation-Report.md`
 - `Complete-Crash-Fix-Summary.md`
@@ -96,11 +96,11 @@
 
 ---
 
-## SDD Content Specification
+## SDD 内容规范
 
-### Chapter 1: Introduction
+### 第 1 章：引言
 
-#### 1.1 System Overview
+#### 1.1 系统概述
 
 **内容要点**:
 - 系统定位: Windows 桌面应用程序,用于称重管理和数据同步
@@ -108,7 +108,7 @@
 - 目标用户: 物料管理操作员
 - 运行环境: Windows x64, 单用户桌面应用
 
-#### 1.2 Technology Stack
+#### 1.2 技术栈
 
 **内容要点**:
 - **编程语言**: C# 13
@@ -121,7 +121,7 @@
 - **依赖注入**: Volo.Abp
 - **硬件 SDK**: HCNetSDK (海康摄像头)
 
-#### 1.3 Architecture Patterns
+#### 1.3 架构模式
 
 **内容要点**:
 - **MVVM (Model-View-ViewModel)**: UI 层架构模式
@@ -129,7 +129,7 @@
 - **Repository**: 数据访问层抽象
 - **Dependency Injection**: 依赖注入和控制反转
 
-#### 1.4 System Boundaries
+#### 1.4 系统边界
 
 **内容要点**:
 - 单用户应用,不支持多用户并发
@@ -139,11 +139,11 @@
 
 ---
 
-### Chapter 2: Architecture
+### 第 2 章：架构
 
-#### 2.1 Component Diagram
+#### 2.1 组件图
 
-**使用 Mermaid 绘制组件图**:
+**使用 Mermaid 绘制组件图**：
 
 ```mermaid
 graph TB
@@ -205,9 +205,9 @@ graph TB
     P --> R
 ```
 
-#### 2.2 Module Design
+#### 2.2 模块设计
 
-**核心服务模块**:
+**核心服务模块**：
 
 | 模块 | 职责 | 主要接口 | 依赖 |
 |------|------|---------|------|
@@ -218,15 +218,15 @@ graph TB
 | `PlateRecognitionService` | 车牌识别 | `IPlateRecognitionService` | LPR API |
 | `ApiSyncService` | 远程平台同步 | `IApiSyncService` | HttpClient |
 
-**状态管理**:
+**状态管理**：
 - 使用 RxState 模式管理服务状态
 - 统一状态对象 (如 `WeighingServiceState`)
 - 纯函数式状态转换 (Reducer)
 - 副作用分离 (Side-effect)
 
-#### 2.3 State Management Architecture
+#### 2.3 状态管理架构
 
-**RxState 模式组件**:
+**RxState 模式组件**：
 
 1. **State (状态)**: 不可变的状态对象
    ```csharp
@@ -262,13 +262,13 @@ graph TB
    }
    ```
 
-4. **Side-effect (副作用)**: 状态变化触发的操作
+4. **Side-effect（副作用）**：状态变化触发的操作
    - 日志记录
    - 数据持久化
    - UI 通知
    - 硬件控制
 
-**数据流**:
+**数据流**：
 ```
 Event Streams (Weight, Stability, Plate, ...)
     ↓
@@ -281,9 +281,9 @@ New State (WeighingServiceState)
 Side-effects (Logging, Persistence, Notifications)
 ```
 
-#### 2.4 Data Flow Diagram
+#### 2.4 数据流图
 
-**有人值守称重流程的 Rx 数据流**:
+**有人值守称重流程的 Rx 数据流**：
 
 ```mermaid
 graph LR
@@ -299,11 +299,11 @@ graph LR
 
 ---
 
-### Chapter 3: Data Model
+### 第 3 章：数据模型
 
-#### 3.1 Core Entities
+#### 3.1 核心实体
 
-**主要实体**:
+**主要实体**：
 
 1. **WeighingRecord (称重记录)**
    - `Id` (long): 主键
@@ -344,9 +344,9 @@ graph LR
    - `FilePath` (string): 文件路径
    - `CaptureTime` (DateTime): 拍摄时间
 
-#### 3.2 Entity Relationships
+#### 3.2 实体关系
 
-**实体关系图**:
+**实体关系图**：
 
 ```mermaid
 erDiagram
@@ -405,11 +405,11 @@ erDiagram
 
 ---
 
-### Chapter 4: Key Business Flows
+### 第 4 章：关键业务流程
 
-#### 4.1 Attended Weighing Flow
+#### 4.1 有人值守称重流程
 
-**时序图**:
+**时序图**：
 
 ```mermaid
 sequenceDiagram
@@ -442,9 +442,9 @@ sequenceDiagram
     Service->>Service: 重置称重周期
 ```
 
-#### 4.2 Automatic Matching Flow
+#### 4.2 自动匹配流程
 
-**流程说明**:
+**流程说明**：
 1. 系统定时扫描未匹配的称重记录 (`WeighingRecordType == Unmatch`)
 2. 根据匹配规则查找配对记录:
    - 规则 1: 车牌号相同,时间间隔在匹配时间窗口内
@@ -453,9 +453,9 @@ sequenceDiagram
 4. 创建 `Waybill`,关联两个 `WeighingRecord`
 5. 更新 `WeighingRecordType` 为 `Join` 和 `Out`
 
-#### 4.3 Remote Sync Flow
+#### 4.3 远程同步流程
 
-**流程说明**:
+**流程说明**：
 1. 系统定时扫描未同步的 `Waybill`
 2. 调用远程平台 API,上传运单数据
 3. 处理 API 响应,更新同步状态
@@ -463,13 +463,13 @@ sequenceDiagram
 
 ---
 
-### Chapter 5: Technical Decisions
+### 第 5 章：技术决策
 
-#### 5.1 Rx.NET Adoption
+#### 5.1 采用 Rx.NET
 
-**决策记录**:
+**决策记录**：
 
-| Aspect | Description |
+| 方面 | 说明 |
 |--------|-------------|
 | **Context** | 需要管理复杂的异步状态和事件流 |
 | **Options** | A: 传统事件驱动, B: Rx.NET, C: async/await + Task |
@@ -478,11 +478,11 @@ sequenceDiagram
 | **Trade-offs** | - 学习曲线较陡<br>- 调试相对困难<br>- 内存泄漏风险 |
 | **Mitigation** | - 制定 Rx 编程规范<br>- 强制 Subscription disposal 规范<br>- 提供单元测试和集成测试 |
 
-#### 5.2 Hardware Abstraction Strategy
+#### 5.2 硬件抽象策略
 
-**决策记录**:
+**决策记录**：
 
-| Aspect | Description |
+| 方面 | 说明 |
 |--------|-------------|
 | **Context** | 需要集成多种硬件设备,需要统一的抽象接口 |
 | **Options** | A: 直接调用硬件 SDK, B: 抽象接口 + Mock 实现, C: 插件化架构 |
@@ -490,21 +490,21 @@ sequenceDiagram
 | **Rationale** | - 接口隔离,易于测试<br>- Mock 实现用于开发和测试<br>- 易于替换硬件实现<br>- 符合依赖倒置原则 |
 | **Implementation** | - 定义硬件服务接口<br>- 提供真实实现 (基于硬件 SDK)<br>- 提供 Mock 实现 (用于测试)<br>- 使用依赖注入注册服务 |
 
-#### 5.3 Memory Leak Prevention
+#### 5.3 内存泄漏防护
 
-**策略**:
+**策略**：
 
-| Strategy | Description |
+| 策略 | 说明 |
 |----------|-------------|
 | **Subscription Disposal** | - 使用 `IDisposable` 管理订阅<br>- 在 `Dispose` 方法中释放所有订阅<br>- 使用 `CompositeDisposable` 管理多个订阅 |
 | **RefCount** | - 使用 `Publish().RefCount()` 共享流<br>- 避免多次订阅导致多次执行 |
 | **Buffer Limit** | - 使用 `Buffer(time, count)` 限制缓冲区大小<br>- 避免内存无限增长 |
 
-#### 5.4 Database Selection
+#### 5.4 数据库选型
 
-**决策记录**:
+**决策记录**：
 
-| Aspect | Description |
+| 方面 | 说明 |
 |--------|-------------|
 | **Context** | 单用户桌面应用,需要本地数据存储 |
 | **Options** | A: SQLite, B: SQL Server Express, C: 文件存储 (JSON/XML) |
@@ -515,38 +515,38 @@ sequenceDiagram
 
 ---
 
-### Chapter 6: Constraints and Risks
+### 第 6 章：约束与风险
 
-#### 6.1 Platform Constraints
+#### 6.1 平台约束
 
-| Constraint | Description |
+| 约束 | 说明 |
 |------------|-------------|
 | **Operating System** | Windows x64 only |
 | **Runtime** | .NET 10.0 runtime |
 | **Third-party Dependencies** | HCNetSDK (海康摄像头 SDK) |
 | **Deployment** | 单机部署,无需服务器 |
 
-#### 6.2 Hardware Constraints
+#### 6.2 硬件约束
 
-| Constraint | Description |
+| 约束 | 说明 |
 |------------|-------------|
 | **Serial Port Exclusivity** | 串口设备只能被一个进程独占使用 |
 | **Camera Bandwidth** | 同时支持的视频流数量有限 |
 | **Network Dependency** | 车牌识别和远程同步需要网络连接 |
 | **Scale Precision** | 重量测量精度受设备限制 |
 
-#### 6.3 Performance Constraints
+#### 6.3 性能约束
 
-| Constraint | Description |
+| 约束 | 说明 |
 |------------|-------------|
 | **24/7 Operation** | 系统需要长时间稳定运行 |
 | **High-frequency Stream** | 地磅重量更新频率高(每秒多次) |
 | **Memory Usage** | 需要控制内存使用,避免泄漏 |
 | **Response Time** | UI 响应时间 < 100ms |
 
-#### 6.4 Known Technical Debt
+#### 6.4 已知技术债务
 
-| Item | Priority | Description |
+| 项 | 优先级 | 说明 |
 |------|----------|-------------|
 | 内存泄漏风险 | High | 部分 Rx 订阅可能未正确释放 |
 | 错误处理不完整 | Medium | 部分异步操作缺少错误处理 |
@@ -556,12 +556,12 @@ sequenceDiagram
 
 ---
 
-### Chapter 7: Development Guidelines
+### 第 7 章：开发指南
 
-#### 7.1 Coding Standards
+#### 7.1 编码规范
 
 - 遵循 C# 编码规范
-- 使用 meaningful names
+- 使用有意义的命名
 - 保持方法简短 (< 50 行)
 - 使用注释解释复杂逻辑
 - 使用 XML 注释记录公共 API
@@ -603,9 +603,9 @@ public void Dispose()
 - 使用 `Catch` 处理错误
 - 使用 `Retry` 重试失败的操作
 
-#### 7.4 Testing Strategy
+#### 7.4 测试策略
 
-| Test Type | Target | Coverage |
+| 测试类型 | 目标 | 覆盖率 |
 |-----------|--------|----------|
 | **Unit Tests** | 纯函数 (Reducer) | 100% |
 | **Integration Tests** | 服务交互, Rx 管道 | > 80% |
@@ -614,9 +614,9 @@ public void Dispose()
 
 ---
 
-### Chapter 8: Deployment
+### 第 8 章：部署
 
-#### 8.1 Deployment Diagram
+#### 8.1 部署图
 
 ```mermaid
 graph TB
@@ -644,20 +644,20 @@ graph TB
 
 ---
 
-## Diagram Standards
+## 图表规范
 
-### Mermaid Diagrams
+### Mermaid 图表
 
-所有架构图使用 Mermaid 格式,便于版本控制和协作编辑。
+所有架构图使用 Mermaid 格式，便于版本控制和协作编辑。
 
-**支持的图表类型**:
-- `graph` / `flowchart` - 流程图
-- `sequenceDiagram` - 时序图
-- `classDiagram` - 类图
-- `erDiagram` - 实体关系图
-- `stateDiagram-v2` - 状态图
+**支持的图表类型**：
+- `graph` / `flowchart` — 流程图
+- `sequenceDiagram` — 时序图
+- `classDiagram` — 类图
+- `erDiagram` — 实体关系图
+- `stateDiagram-v2` — 状态图
 
-**示例**:
+**示例**：
 ```mermaid
 graph TD
     A[Start] --> B{Decision}
@@ -669,20 +669,20 @@ graph TD
 
 ---
 
-## Maintenance Strategy
+## 维护策略
 
-### Documentation Maintenance
+### 文档维护
 
-| Activity | Frequency | Trigger |
+| 活动 | 频率 | 触发条件 |
 |----------|-----------|---------|
 | **Regular Review** | Quarterly | 定期审查 |
 | **Major Update** | As needed | 重大架构变更 |
 | **Minor Update** | As needed | OpenSpec 提案触发 |
 | **Version Control** | Continuous | 与代码库同步 |
 
-### Change Management
+### 变更管理
 
-1. **文档变更流程**:
+1. **文档变更流程**：
    - 识别需要更新的章节
    - 修订文档内容
    - 提交 Pull Request
@@ -693,16 +693,16 @@ graph TD
    - 在 OpenSpec workflow 中增加 SDD 更新检查项
    - 重大架构变更的提案应包含 SDD 更新任务
 
-3. **维护责任**:
-   - 技术负责人负责 SDD 的整体维护
+3. **维护责任**：
+- 技术负责人负责 SDD 的整体维护
    - 模块负责人负责相关章节的更新
    - 所有开发者有责任报告文档过时问题
 
 ---
 
-## Quality Assurance
+## 质量保证
 
-### Review Checklist
+### 评审检查清单
 
 - [ ] 技术栈版本准确
 - [ ] 模块职责与实际实现一致
@@ -713,9 +713,9 @@ graph TD
 - [ ] 示例代码正确
 - [ ] 团队评审通过
 
-### Validation Criteria
+### 验证标准
 
-| Criterion | How to Validate |
+| 标准 | 如何验证 |
 |-----------|-----------------|
 | **Completeness** | 所有核心章节已完成 |
 | **Accuracy** | 技术栈版本、模块职责与实际实现一致 |
@@ -725,16 +725,16 @@ graph TD
 
 ---
 
-## Tools and Resources
+## 工具与资源
 
-### Documentation Tools
+### 文档工具
 
-- **Markdown**: 文档格式
-- **Mermaid**: 图表绘制
-- **Git**: 版本控制
-- **VS Code**: 编辑器
+- **Markdown**：文档格式
+- **Mermaid**：图表绘制
+- **Git**：版本控制
+- **VS Code**：编辑器
 
-### References
+### 参考
 
 - [Reactive Extensions (Rx) 官方文档](https://github.com/dotnet/reactive)
 - [Avalonia UI 文档](https://docs.avaloniaui.net/)
@@ -743,14 +743,14 @@ graph TD
 
 ---
 
-## Next Steps
+## 后续步骤
 
-1. **Review Design Document**: 与团队评审本文档,确认 SDD 结构和内容
-2. **Begin Implementation**: 按照 `tasks.md` 开始实施 SDD 更新
-3. **Regular Review**: 定期审查 SDD,保持文档准确性和时效性
+1. **评审设计文档**：与团队评审本文档，确认 SDD 结构和内容
+2. **开始实施**：按照 `tasks.md` 开始实施 SDD 更新
+3. **定期审查**：定期审查 SDD，保持文档准确性和时效性
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-15
-**Author**: OpenSpec Workflow
+**文档版本**：1.0
+**最后更新**：2026-01-15
+**作者**：OpenSpec Workflow

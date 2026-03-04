@@ -1,78 +1,78 @@
-# Design: Plate Color Priority System
+# 设计：车牌颜色优先级系统
 
-## Context
+## 背景
 
-The current implementation filters out certain plate colors entirely, which means they cannot be used even when they are the only plates detected. This causes operational issues when vehicles with filtered-color plates (e.g., yellow plates for trucks) need to be weighed but no other plates are available.
+当前实现会完全过滤掉某些车牌颜色，导致在仅有被过滤颜色（如货车黄牌）时可用的车牌也无法使用。当需要称重仅能识别到被过滤颜色车牌的车辆时，会造成实际使用问题。
 
-## Goals / Non-Goals
+## 目标 / 非目标
 
-**Goals:**
-- Allow low-priority color plates to be used as fallback when no other plates are available
-- Prevent low-priority plates from overriding normal plates
-- Rename variables and configuration to reflect priority-based semantics
-- Preserve existing caching and frequency-counting behavior
+**目标**：
+- 在无其他可用车牌时，允许低优先级颜色车牌作为回退使用
+- 防止低优先级车牌覆盖正常颜色车牌
+- 将变量与配置重命名为体现优先级语义
+- 保留现有缓存与频次统计行为
 
-**Non-Goals:**
-- Changing the configuration format (still use array of color type values)
-- Implementing complex priority levels (only two priorities: normal and low)
-- Modifying the plate number recommendation system
-- Maintaining backward compatibility with old configuration key name
+**非目标**：
+- 改变配置格式（仍使用颜色类型值数组）
+- 实现复杂优先级等级（仅两种：普通与低）
+- 修改车牌号推荐系统
+- 保持与旧配置键名的向后兼容
 
-## Decisions
+## 决策
 
-### Decision 1: Two-Tier Priority System
+### 决策 1：两级优先级
 
-**Decision:** Implement exactly two priority tiers (high and low) rather than a flexible priority system.
+**决策**：仅实现两个优先级档位（高与低），而非灵活优先级体系。
 
-**Rationale:**
-- Current requirement only needs "normal" vs "filtered" distinction
-- Simple boolean logic is easier to understand and maintain
-- Performance-efficient (no complex sorting or priority comparisons)
+**理由**：
+- 当前需求只需「普通」与「被过滤」的区分
+- 布尔逻辑更易理解和维护
+- 性能好（无需复杂排序或优先级比较）
 
-**Alternatives considered:**
-- Multi-level priority system (0-10 scale): Adds unnecessary complexity for current needs
-- Weighted scoring system: Over-engineering for binary decision
+**考虑过的替代**：
+- 多级优先级（0–10）：对当前需求增加不必要复杂度
+- 加权评分：对二元决策过度设计
 
-### Decision 2: Rename Variables to Reflect Priority Semantics
+### 决策 2：变量重命名以体现优先级语义
 
-**Decision:** Rename `_filteredPlateColors` to `_lowPriorityPlateColors` and `FilteredPlateColors` (config) to `LowPriorityPlateColors`.
+**决策**：将 `_filteredPlateColors` 重命名为 `_lowPriorityPlateColors`，配置项 `FilteredPlateColors` 重命名为 `LowPriorityPlateColors`。
 
-**Rationale:**
-- "Filtered" implies rejection, but new behavior is priority-based
-- "LowPriority" accurately describes the new semantics
-- Improves code readability and maintainability
-- Makes intent clear to future developers
+**理由**：
+- 「Filtered」暗示拒绝，而新行为是基于优先级
+- 「LowPriority」准确描述新语义
+- 提高代码可读性与可维护性
+- 让后续开发者意图清晰
 
-**Alternatives considered:**
-- Keep `FilteredPlateColors` name: Misleading, suggests rejection not priority
-- Use `FallbackPlateColors`: Less clear than "LowPriority"
-- Use `SecondaryPlateColors`: Ambiguous hierarchy
+**考虑过的替代**：
+- 保留 `FilteredPlateColors`：易误导，暗示拒绝而非优先级
+- 使用 `FallbackPlateColors`：不如「LowPriority」清晰
+- 使用 `SecondaryPlateColors`：层级关系模糊
 
-**Breaking Change:**
-- This is a **BREAKING** configuration change
-- Existing deployments must update configuration files
-- No automatic migration (rename required)
+**破坏性变更**：
+- 此为**破坏性**配置变更
+- 现有部署必须更新配置文件
+- 不提供自动迁移（需手动重命名）
 
-### Decision 3: Store Color Information in Cache
+### 决策 3：在缓存中存储颜色信息
 
-**Decision:** Add `ColorType` property to `PlateNumberCacheRecord` to store the color of each cached plate.
+**决策**：在 `PlateNumberCacheRecord` 中增加 `ColorType` 属性，用于存储每条缓存车牌的颜色。
 
-**Rationale:**
-- Enables priority determination without external lookups
-- Minimal memory overhead (1 nullable enum per cache entry)
-- Color information is already available at caching time
-- Allows future features (e.g., color-based analytics)
+**理由**：
+- 无需外部查询即可判断优先级
+- 内存开销小（每条缓存约 1 个可空枚举）
+- 缓存的当时已有颜色信息
+- 便于后续按颜色统计等能力
 
-**Alternatives considered:**
-- Store priority boolean only: Loses color information, harder to debug
-- Lookup color from external service: Performance overhead, unreliable
-- Separate dictionary for colors: Memory overhead, cache coherence issues
+**考虑过的替代**：
+- 仅存优先级布尔：丢失颜色信息，不利于调试
+- 从外部服务查颜色：性能与可靠性差
+- 用独立字典存颜色：内存与缓存一致性差
 
-### Decision 4: Priority Selection Algorithm
+### 决策 4：优先级选择算法
 
-**Decision:** When selecting most frequent plate, partition cache into high-priority and low-priority sets, then select from high-priority only if non-empty.
+**决策**：选择最频车牌时，先将缓存分为高优先级与低优先级集合，仅当高优先级非空时从高优先级中选择。
 
-**Algorithm:**
+**算法**：
 ```csharp
 var highPriorityPlates = _plateNumberCache
     .Where(kvp => !kvp.Value.IsLowPriority)
@@ -92,38 +92,38 @@ else
 }
 ```
 
-**Rationale:**
-- Clear separation of priorities
-- Most frequent high-priority always wins, regardless of low-priority counts
-- Low-priority can have 100 recognitions, but 1 high-priority recognition takes precedence
+**理由**：
+- 优先级边界清晰
+- 高优先级中最频者始终胜出，与低优先级次数无关
+- 低优先级即使被识别 100 次，1 次高优先级仍优先
 
-**Alternatives considered:**
-- Weighted scoring: High-priority count × 10, low-priority × 1 → More complex, harder to reason about
-- Minimum threshold before considering low-priority → Adds configuration complexity
+**考虑过的替代**：
+- 加权评分：高优先级次数×10、低优先级×1 → 更复杂、难推理
+- 低优先级达到最小阈值才考虑 → 增加配置复杂度
 
-### Decision 5: No Backward Compatibility for Configuration
+### 决策 5：不兼容旧配置键名
 
-**Decision:** Do NOT support old `FilteredPlateColors` configuration key - require migration to `LowPriorityPlateColors`.
+**决策**：不支持旧配置键 `FilteredPlateColors`，必须迁移到 `LowPriorityPlateColors`。
 
-**Rationale:**
-- Clean break from old semantics (rejection → priority)
-- Simpler code without compatibility layer
-- Forces explicit acknowledgment of behavior change
-- Configuration changes are rare (deployment-time only)
+**理由**：
+- 与旧语义（拒绝 → 优先级）彻底切割
+- 无兼容层代码更简单
+- 强制显式确认行为变化
+- 配置变更频率低（仅部署时）
 
-**Migration:**
-- Deployments must update configuration files manually
-- Add migration note to release documentation
-- Consider adding startup warning if old key is detected (but not used)
+**迁移**：
+- 部署时需手动更新配置文件
+- 在发布说明中增加迁移说明
+- 可考虑在检测到旧键时输出启动警告（但不使用该键）
 
-**Alternative considered:**
-- Support both keys with fallback: Added complexity, delays migration, confusing semantics
+**考虑过的替代**：
+- 同时支持两键并回退：增加复杂度、延缓迁移、语义混淆
 
-## Technical Design
+## 技术设计
 
-### Data Structure Changes
+### 数据结构变更
 
-**Before:**
+**变更前**：
 ```csharp
 public record PlateNumberCacheRecord
 {
@@ -132,7 +132,7 @@ public record PlateNumberCacheRecord
 }
 ```
 
-**After:**
+**变更后**：
 ```csharp
 public record PlateNumberCacheRecord
 {
@@ -141,135 +141,135 @@ public record PlateNumberCacheRecord
     public LprAllInOneColorType? ColorType { get; init; }
     
     public bool IsLowPriority => ColorType.HasValue && 
-        /* check against _filteredPlateColors */;
+        /* 与 _filteredPlateColors 比较 */;
 }
 ```
 
-**Issue:** `IsLowPriority` cannot be a simple property because it needs access to `_lowPriorityPlateColors`.
+**说明**：`IsLowPriority` 不能是简单属性，因为需要访问 `_lowPriorityPlateColors`。
 
-**Solution:** Keep `ColorType` as stored property, compute priority at selection time in `GetMostFrequentPlateNumber()`.
+**解决**：仅存储 `ColorType`，在 `GetMostFrequentPlateNumber()` 的选择阶段计算优先级。
 
-### Caching Flow Changes
+### 缓存流程变更
 
 ```mermaid
 sequenceDiagram
-    participant LPR as LPR Camera
+    participant LPR as LPR 相机
     participant Service as AttendedWeighingService
     participant Cache as PlateNumberCache
     participant Bus as MessageBus
     
     LPR->>Service: OnPlateNumberRecognized(plate, colorType)
     
-    alt colorType is provided
-        Service->>Service: Check if colorType in _lowPriorityPlateColors
-        alt Is filtered color
-            Note over Service: Mark as LOW priority
-        else Is normal color
-            Note over Service: Mark as HIGH priority
+    alt 提供了 colorType
+        Service->>Service: 检查 colorType 是否在 _lowPriorityPlateColors
+        alt 为被过滤颜色
+            Note over Service: 标记为低优先级
+        else 为普通颜色
+            Note over Service: 标记为高优先级
         end
-    else colorType is null
-        Note over Service: Default to HIGH priority
+    else colorType 为 null
+        Note over Service: 默认高优先级
     end
     
     Service->>Cache: AddOrUpdate(plate, {Count, ColorType})
-    Cache-->>Service: Updated cache
+    Cache-->>Service: 更新后缓存
     
     Service->>Service: GetMostFrequentPlateNumber()
     
-    alt Cache has high-priority plates
-        Service->>Service: Select most frequent HIGH priority
-    else Cache has only low-priority plates
-        Service->>Service: Select most frequent LOW priority
+    alt 缓存中存在高优先级车牌
+        Service->>Service: 选最频高优先级
+    else 缓存中仅有低优先级车牌
+        Service->>Service: 选最频低优先级
     end
     
     Service->>Bus: SendMessage(PlateNumberChangedMessage)
 ```
 
-### Edge Cases
+### 边界情况
 
-1. **Mixed cache (high + low priority):**
-   - Behavior: Always select from high-priority set
-   - Example: Cache has ["京A12345" (high, count=1), "京B99999" (low, count=10)]
-   - Result: Returns "京A12345" (high-priority wins despite lower count)
+1. **混合缓存（高 + 低优先级）**
+   - 行为：始终从高优先级集合中选择
+   - 示例：缓存有 ["京A12345"（高，次数=1）、"京B99999"（低，次数=10）]
+   - 结果：返回 "京A12345"（高优先级在次数更低时仍胜出）
 
-2. **All plates are low priority:**
-   - Behavior: Select most frequent low-priority plate
-   - Example: Cache has only yellow plates (all low-priority)
-   - Result: Returns most frequent yellow plate
+2. **全部为低优先级**
+   - 行为：选最频低优先级车牌
+   - 示例：缓存中仅有黄牌（均为低优先级）
+   - 结果：返回最频黄牌
 
-3. **Color information missing:**
-   - Behavior: Treat as high-priority (conservative default)
-   - Example: Old code calls `OnPlateNumberRecognized("京A12345", null)`
-   - Result: "京A12345" is treated as high-priority
+3. **缺少颜色信息**
+   - 行为：视为高优先级（保守默认）
+   - 示例：旧代码调用 `OnPlateNumberRecognized("京A12345", null)`
+   - 结果："京A12345" 按高优先级处理
 
-4. **Low-priority plate arrives first, then high-priority:**
-   - Behavior: High-priority immediately takes precedence
-   - Example: ["京B99999" (low, count=5)] then "京A12345" (high, count=1) arrives
-   - Result: Switches to "京A12345" immediately
+4. **先来低优先级再來高优先级**
+   - 行为：高优先级立即取代
+   - 示例：["京B99999"（低，次数=5）] 后 "京A12345"（高，次数=1）到达
+   - 结果：立即切换为 "京A12345"
 
-5. **Cache cleared during operation:**
-   - Behavior: Existing behavior unchanged (cache clears on status transition)
-   - Priority logic only affects selection, not clearing
+5. **操作中缓存被清空**
+   - 行为：与现有行为一致（状态切换时清空缓存）
+   - 优先级逻辑仅影响选择，不影响清空
 
-## Risks / Trade-offs
+## 风险 / 权衡
 
-### Risk: Performance Impact
-- **Risk:** Filtering cache twice (high-priority then low-priority) may slow down selection
-- **Mitigation:** Cache size is typically < 10 entries, LINQ operations are negligible
-- **Measurement:** Add benchmark test for 100-entry cache (worst case)
+### 风险：性能影响
+- **风险**：对缓存做两次筛选（先高后低）可能拖慢选择
+- **缓解**：缓存通常 <10 条，LINQ 开销可忽略
+- **度量**：为 100 条缓存增加基准测试（最坏情况）
 
-### Risk: Breaking Configuration Change
-- **Risk:** Renaming configuration key breaks existing deployments
-- **Mitigation:** 
-  - Document migration clearly in release notes
-  - Consider adding startup warning if old key is detected
-  - Configuration changes are rare (deployment-time only)
-- **Acceptance:** Breaking change is justified for semantic clarity
+### 风险：破坏性配置变更
+- **风险**：重命名配置键会破坏现有部署
+- **缓解**：
+  - 在发布说明中写清迁移步骤
+  - 可考虑在检测到旧键时输出启动警告
+  - 配置变更频率低（仅部署时）
+- **接受**：为语义清晰接受破坏性变更
 
-### Trade-off: Complexity vs Flexibility
-- **Trade-off:** Two-tier system is simple but inflexible for future needs
-- **Acceptance:** Current requirements only need binary priority, can refactor if needed
+### 权衡：复杂度与灵活性
+- **权衡**：两级简单但未来扩展空间有限
+- **接受**：当前只需二元优先级，必要时可再重构
 
-### Trade-off: Memory Overhead
-- **Trade-off:** Adding `ColorType` to each cache record increases memory by ~4 bytes per entry
-- **Acceptance:** Typical cache has 1-5 entries, total overhead < 50 bytes
+### 权衡：内存开销
+- **权衡**：每条缓存记录增加 `ColorType` 约 4 字节
+- **接受**：典型缓存 1–5 条，总开销 <50 字节
 
-## Migration Plan
+## 迁移计划
 
-**Configuration Migration Required:**
+**需要配置迁移**：
 
-**Step 1: Update Configuration Files**
+**步骤 1：更新配置文件**
 ```json
-// OLD (before migration)
+// 旧（迁移前）
 {
-  "FilteredPlateColors": [2, 3]  // Yellow, Green
+  "FilteredPlateColors": [2, 3]  // 黄、绿
 }
 
-// NEW (after migration)
+// 新（迁移后）
 {
-  "LowPriorityPlateColors": [2, 3]  // Yellow, Green
+  "LowPriorityPlateColors": [2, 3]  // 黄、绿
 }
 ```
 
-**Step 2: Deployment Sequence**
-1. Update configuration files (rename `FilteredPlateColors` → `LowPriorityPlateColors`)
-2. Deploy code update
-3. Restart application (long-running service)
-4. Monitor logs for "low-priority plate selected" messages
+**步骤 2：部署顺序**
+1. 更新配置文件（将 `FilteredPlateColors` 重命名为 `LowPriorityPlateColors`）
+2. 部署代码更新
+3. 重启应用（长驻服务）
+4. 在日志中关注「已选低优先级车牌」类消息
 
-**Step 3: Verification**
-- Check startup logs confirm configuration loaded correctly
-- Test with low-priority plate colors to verify fallback behavior
-- Verify high-priority plates take precedence
+**步骤 3：验证**
+- 确认启动日志中配置加载正确
+- 用低优先级颜色车牌验证回退行为
+- 确认高优先级车牌优先
 
-**Rollback:**
-- Revert code changes
-- Revert configuration files (rename back to `FilteredPlateColors`)
-- Restart application
-- No data cleanup needed (cache is in-memory)
+**回滚**：
+- 回滚代码
+- 回滚配置文件（改回 `FilteredPlateColors`）
+- 重启应用
+- 无需数据清理（缓存仅在内存）
 
-**Important:** Configuration MUST be updated before deploying new code, otherwise the setting will not be loaded.
+**重要**：必须先更新配置再部署新代码，否则新配置不会生效。
 
-## Open Questions
+## 待决问题
 
-None - requirements are clear from user request.
+无——用户需求已明确。

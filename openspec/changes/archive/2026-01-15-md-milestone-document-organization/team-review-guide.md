@@ -1,219 +1,219 @@
-# Team Review Guide
+# 团队审阅指南
 
-**Change ID**: md-milestone-document-organization
-**Review Date**: TBD (Scheduled by team lead)
-**Review Type**: Document Validity Assessment Validation
-
----
-
-## Purpose
-
-This guide outlines the team review process for validating document status annotations and classifications made during Phase 1 of the documentation reorganization.
+**变更 ID**：md-milestone-document-organization
+**审阅日期**：待定（由技术负责人安排）
+**审阅类型**：文档有效性评估确认
 
 ---
 
-## Review Agenda
+## 目的
 
-### 1. Overview Presentation (15 minutes)
-
-**Presenter**: Tech Lead or OpenSpec Migration Lead
-**Topics**:
-- OpenSpec adoption background
-- Documentation organization problem statement
-- Assessment methodology and findings
-- Status distribution summary
-
-### 2. Document Classification Review (30 minutes)
-
-**Focus Areas**:
-
-#### A. Superseded Specifications (24 files)
-- **Question**: Are all `specs/` files truly superseded by OpenSpec?
-- **Decision Point**: Confirm migration to `openspec/archive/legacy/specs/`
-- **Key Stakeholder**: Tech Lead, Senior Developers
-
-#### B. Technical Analysis Documents (8 files)
-- **Files**: `ReadOnlyMd/` analysis reports
-- **Question**: Do any of these contain unresolved issues or ongoing concerns?
-- **Key Files to Review**:
-  - `AttendedWeighingStatus状态机设计评估报告.md` - State machine evaluation
-  - `TruckScaleWeightService背压风险评估报告.md` - Backpressure risk assessment
-  - `重量稳定性监控优化分析.md` - Weight stability monitoring
-- **Decision Point**: Archive vs. VALID status
-- **Key Stakeholder**: Senior Developers, System Architect
-
-#### C. Agent Reports (10 files)
-- **Files**: `docs/` agent-generated reports
-- **Question**: Have all recommendations been implemented? Are any issues still pending?
-- **Key Files to Review**:
-  - `HikvisionOpenStream-Crash-Analysis-Report.md` (48 KB)
-  - `AttendedWeighingService-RxState-Optimization-Report.md` (29 KB)
-  - `ReaderWriterLockSlim-Performance-Evaluation.md` (22 KB)
-- **Decision Point**: Confirm archival, identify any pending action items
-- **Key Stakeholder**: Senior Developers, Performance Engineer
-
-#### D. Configuration Documentation (1 file)
-- **File**: `ReadOnlyMd/系统配置.md`
-- **Question**: Is this configuration current? Should it be migrated?
-- **Decision Point**: VALID → migrate to OpenSpec docs/ or update → DEPRECATED
-- **Key Stakeholder**: DevOps, System Administrator
-
-#### E. Large File Review (1 file)
-- **File**: `ReadonlyMd/cap.md` (152 KB - largest file)
-- **Question**: What is the purpose of this file? Is it still needed?
-- **Decision Point**: Keep as VALID or ARCHIVE
-- **Key Stakeholder**: Tech Lead, Project Manager
-
-#### F. Technical Pattern Documentation (2 files)
-- **Files**:
-  - `docs/TimerToRx.md` - Rx migration pattern
-  - `docs/hikvision-integration.md` - Hikvision integration
-- **Question**: Are these currently referenced by team members?
-- **Decision Point**: Confirm VALID status, migrate to OpenSpec
-- **Key Stakeholder**: All Developers
+本指南说明在文档重组阶段 1 中，对文档状态标注与分类进行确认的团队审阅流程。
 
 ---
 
-## Decision Matrix
+## 审阅议程
 
-Use this matrix to document team decisions for each document category:
+### 1. 概览介绍（15 分钟）
 
-| Category | Proposed Status | Team Decision | Rationale | Action |
-|----------|----------------|---------------|-----------|--------|
-| Legacy specs (24 files) | SUPERSEDED | | | |
-| Technical analysis (8 files) | ARCHIVED | | | |
-| Agent reports (10 files) | ARCHIVED | | | |
-| System config (1 file) | VALID | | | |
-| cap.md (1 file) | ARCHIVED | | | |
-| Technical patterns (2 files) | VALID | | | |
+**主讲人**：技术负责人或 OpenSpec 迁移负责人
+**主题**：
+- OpenSpec 采用背景
+- 文档整理问题陈述
+- 评估方法与结论
+- 状态分布摘要
 
----
+### 2. 文档分类审阅（30 分钟）
 
-## Review Questions
+**关注点**：
 
-### For Each Document Category:
+#### A. 已被取代的规范（24 个文件）
+- **问题**：`specs/` 下文件是否均已由 OpenSpec 取代？
+- **决策点**：确认迁移至 `openspec/archive/legacy/specs/`
+- **关键干系人**：技术负责人、高级开发
 
-1. **Accuracy**: Is the proposed status accurate?
-2. **Dependencies**: Does any system component depend on this document?
-3. **Alternatives**: Is there a better location/format for this information?
-4. **Action Items**: Do any recommendations need implementation before archival?
+#### B. 技术分析文档（8 个文件）
+- **文件**：`ReadOnlyMd/` 下的分析报告
+- **问题**：是否包含未解决问题或持续关注点？
+- **重点审阅文件**：
+  - `AttendedWeighingStatus状态机设计评估报告.md` - 状态机评估
+  - `TruckScaleWeightService背压风险评估报告.md` - 背压风险评估
+  - `重量稳定性监控优化分析.md` - 重量稳定性监控
+- **决策点**：归档 vs. VALID 状态
+- **关键干系人**：高级开发、系统架构师
 
-### Specific Concerns:
+#### C. Agent 报告（10 个文件）
+- **文件**：`docs/` 下 Agent 生成报告
+- **问题**：建议是否均已落实？是否仍有待办问题？
+- **重点审阅文件**：
+  - `HikvisionOpenStream-Crash-Analysis-Report.md`（48 KB）
+  - `AttendedWeighingService-RxState-Optimization-Report.md`（29 KB）
+  - `ReaderWriterLockSlim-Performance-Evaluation.md`（22 KB）
+- **决策点**：确认归档，识别待办事项
+- **关键干系人**：高级开发、性能工程师
 
-1. **Have all crash fixes been verified?**
-   - Review: `Complete-Crash-Fix-Summary.md`
-   - Verify: No recurring crashes in production
+#### D. 配置文档（1 个文件）
+- **文件**：`ReadOnlyMd/系统配置.md`
+- **问题**：该配置是否仍为当前？是否应迁移？
+- **决策点**：VALID → 迁移至 OpenSpec docs/ 或更新 → DEPRECATED
+- **关键干系人**：DevOps、系统管理员
 
-2. **Are all optimization reports complete?**
-   - Review: `AttendedWeighingService-RxState-Optimization-Report.md`
-   - Verify: Rx optimization fully implemented
+#### E. 大文件审阅（1 个文件）
+- **文件**：`ReadonlyMd/cap.md`（152 KB - 最大文件）
+- **问题**：该文件用途？是否仍需保留？
+- **决策点**：保留为 VALID 或归档
+- **关键干系人**：技术负责人、项目经理
 
-3. **Is the system configuration current?**
-   - Review: `ReadOnlyMd/系统配置.md`
-   - Verify: Matches actual system settings
-
-4. **What is the purpose of cap.md?**
-   - Review: `ReadonlyMd/cap.md`
-   - Determine: Capacity planning? Requirements? Archive?
-
----
-
-## Review Outcomes
-
-### Possible Decisions:
-
-1. **Confirm**: Status is correct, proceed with proposed action
-2. **Change**: Update status based on team feedback
-3. **Defer**: Postpone decision until more information available
-4. **Split**: Different files in category need different treatments
-
-### Action Items:
-
-- [ ] All document statuses validated
-- [ ] Status annotations updated based on feedback
-- [ ] Priority documents identified for migration
-- [ ] Dependencies documented
-- [ ] Approval to proceed to Phase 2
-
----
-
-## Post-Review Actions
-
-### If Approved:
-
-1. Update document annotations with any changes
-2. Proceed to Task 2.1: SDD Dependency Analysis
-3. Execute Phase 2: Compression and Cleanup
-
-### If Changes Required:
-
-1. Update annotations per team decisions
-2. Regenerate Validity Assessment Report
-3. Schedule follow-up review if needed
+#### F. 技术模式文档（2 个文件）
+- **文件**：
+  - `docs/TimerToRx.md` - Rx 迁移模式
+  - `docs/hikvision-integration.md` - 海康集成
+- **问题**：团队是否仍在引用这些文档？
+- **决策点**：确认 VALID 状态，迁移至 OpenSpec
+- **关键干系人**：全体开发
 
 ---
 
-## Meeting Logistics
+## 决策矩阵
 
-**Recommended Attendees**:
-- Tech Lead (required)
-- Senior Developers (required)
-- System Architect (optional but recommended)
-- DevOps Engineer (for config review)
-- Project Manager (for cap.md review)
+使用本矩阵记录各文档类别的团队决策：
 
-**Estimated Duration**: 45-60 minutes
-
-**Required Materials**:
-- Validity Assessment Report (printed or shared)
-- Document Classification Summary
-- This Review Guide
-- Project timeline and OpenSpec adoption context
-
-**Decision Making**: Consensus or majority vote with Tech Lead veto authority
+| 类别 | 建议状态 | 团队决策 | 理由 | 行动 |
+|------|----------|----------|------|------|
+| 遗留规范（24 个文件） | SUPERSEDED | | | |
+| 技术分析（8 个文件） | ARCHIVED | | | |
+| Agent 报告（10 个文件） | ARCHIVED | | | |
+| 系统配置（1 个文件） | VALID | | | |
+| cap.md（1 个文件） | ARCHIVED | | | |
+| 技术模式（2 个文件） | VALID | | | |
 
 ---
 
-## Notes Template
+## 审阅问题
+
+### 针对每个文档类别：
+
+1. **准确性**：建议状态是否准确？
+2. **依赖**：是否有系统组件依赖该文档？
+3. **替代**：该信息是否有更合适的位置/格式？
+4. **待办**：是否有建议需在归档前落实？
+
+### 具体关注点：
+
+1. **所有崩溃修复是否已确认？**
+   - 审阅：`Complete-Crash-Fix-Summary.md`
+   - 确认：生产环境无复现崩溃
+
+2. **所有优化报告是否已完成？**
+   - 审阅：`AttendedWeighingService-RxState-Optimization-Report.md`
+   - 确认：Rx 优化已全面实施
+
+3. **系统配置是否为当前？**
+   - 审阅：`ReadOnlyMd/系统配置.md`
+   - 确认：与当前系统设置一致
+
+4. **cap.md 的用途是什么？**
+   - 审阅：`ReadonlyMd/cap.md`
+   - 判断：容量规划？需求？归档？
+
+---
+
+## 审阅结果
+
+### 可能决策：
+
+1. **确认**：状态正确，按建议行动执行
+2. **变更**：根据团队反馈更新状态
+3. **推迟**：在获得更多信息前暂不决定
+4. **拆分**：同类别中不同文件需不同处理
+
+### 待办事项：
+
+- [ ] 所有文档状态已确认
+- [ ] 已根据反馈更新状态标注
+- [ ] 已识别需优先迁移的文档
+- [ ] 依赖已记录
+- [ ] 批准进入阶段 2
+
+---
+
+## 审阅后行动
+
+### 若已批准：
+
+1. 根据团队决策更新文档标注
+2. 执行任务 2.1：SDD 依赖分析
+3. 执行阶段 2：压缩与清理
+
+### 若需修改：
+
+1. 按团队决策更新标注
+2. 重新生成有效性评估报告
+3. 必要时安排后续审阅
+
+---
+
+## 会议安排
+
+**建议参会人**：
+- 技术负责人（必选）
+- 高级开发（必选）
+- 系统架构师（可选但建议）
+- DevOps 工程师（参与配置审阅）
+- 项目经理（参与 cap.md 审阅）
+
+**预估时长**：45–60 分钟
+
+**所需材料**：
+- 有效性评估报告（打印或共享）
+- 文档分类摘要
+- 本审阅指南
+- 项目时间线与 OpenSpec 采用背景
+
+**决策方式**：共识或多数决，技术负责人具否决权
+
+---
+
+## 记录模板
 
 ```
-Meeting Date: _______________
-Attendees: ___________________
+会议日期：_______________
+参会人：___________________
 _________________________________________
 
-Decisions Made:
+决策内容：
 -
 -
 -
 
-Action Items:
+待办事项：
 - [ ]
 - [ ]
 
-Concerns Raised:
+提出的顾虑：
 -
 -
 
-Follow-up Required: Yes / No
-Next Review Date: _______________
-Approval to Proceed: Yes / No
+是否需要跟进：是 / 否
+下次审阅日期：_______________
+批准继续：是 / 否
 ```
 
 ---
 
-## Contact Information
+## 联系信息
 
-**Questions About Review Process**:
-- Contact: Tech Lead or OpenSpec Migration Lead
-- Reference: `openspec/changes/md-milestone-document-organization/proposal.md`
+**审阅流程相关问题**：
+- 联系人：技术负责人或 OpenSpec 迁移负责人
+- 参考：`openspec/changes/md-milestone-document-organization/proposal.md`
 
-**Document-Specific Questions**:
-- Review the document's metadata header for REVIEWER notes
-- Check validity assessment report for detailed rationale
+**文档具体问题**：
+- 查看文档元数据头中的 REVIEWER 备注
+- 查阅有效性评估报告中的详细理由
 
 ---
 
-**Document Version**: 1.0
-**Created**: 2026-01-15
-**Created By**: Claude (OpenSpec Migration Agent)
-**Status**: Awaiting Team Review
+**文档版本**：1.0
+**创建日期**：2026-01-15
+**创建方**：Claude（OpenSpec 迁移 Agent）
+**状态**：待团队审阅

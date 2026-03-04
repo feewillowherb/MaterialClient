@@ -1,76 +1,76 @@
-# Capability Specification: <Capability Name>
+# 能力规范：<能力名称>
 
-**Feature Branch**: `<branch-name>`
-**Created**: YYYY-MM-DD
-**Status**: Draft
-**Author**: Your Name
-
----
-
-## Overview
-
-<Brief description of the capability and its purpose>
-
-### Goals
-
-- <Goal 1>
-- <Goal 2>
-- <Goal 3>
-
-### Non-Goals
-
-- <What this capability does NOT address>
+**功能分支**：`<branch-name>`  
+**创建日期**：YYYY-MM-DD  
+**状态**：草稿  
+**作者**：您的姓名
 
 ---
 
-## User Scenarios
+## 概述
 
-### Scenario 1: <Scenario Title>
+<能力的简要描述与目的>
 
-<Describe user scenario and acceptance criteria>
+### 目标
 
-**Priority**: P1/P2/P3
+- <目标 1>
+- <目标 2>
+- <目标 3>
 
-**Acceptance Criteria**:
-- [ ] <Criteria 1>
-- [ ] <Criteria 2>
+### 非目标
 
----
-
-## Requirements
-
-### Functional Requirements
-
-1. <FR-1>: <Requirement description>
-2. <FR-2>: <Requirement description>
-
-### Non-Functional Requirements
-
-1. <NFR-1>: <Requirement description>
-2. <NFR-2>: <Requirement description>
+- <本能力不涉及的内容>
 
 ---
 
-## Design Overview
+## 用户场景
 
-<High-level design approach. Link to design.md if detailed design exists>
+### 场景 1：<场景标题>
 
----
+<描述用户场景与验收标准>
 
-## Dependencies
+**优先级**：P1/P2/P3
 
-<What other capabilities or systems does this depend on?>
-
----
-
-## Success Criteria
-
-- [ ] <Success criterion 1>
-- [ ] <Success criterion 2>
+**验收标准**：
+- [ ] <标准 1>
+- [ ] <标准 2>
 
 ---
 
-## References
+## 需求
 
-- <Related specifications>
-- <External references>
+### 功能需求
+
+1. <FR-1>：<需求描述>
+2. <FR-2>：<需求描述>
+
+### 非功能需求
+
+1. <NFR-1>：<需求描述>
+2. <NFR-2>：<需求描述>
+
+---
+
+## 设计概述
+
+<高层设计思路。若存在详细设计可链接 design.md>
+
+---
+
+## 依赖
+
+<依赖的其他能力或系统？>
+
+---
+
+## 成功标准
+
+- [ ] <成功标准 1>
+- [ ] <成功标准 2>
+
+---
+
+## 参考
+
+- <相关规范>
+- <外部参考>

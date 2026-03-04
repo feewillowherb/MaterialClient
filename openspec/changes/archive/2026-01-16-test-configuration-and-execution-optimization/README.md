@@ -1,46 +1,46 @@
-# Test Configuration and Execution Optimization
+# 测试配置与执行优化
 
-**Change ID**: `test-configuration-and-execution-optimization`
-**Status**: Draft
-**Created**: 2026-01-15
+**变更 ID**：`test-configuration-and-execution-optimization`
+**状态**：草稿
+**创建日期**：2026-01-15
 
 ---
 
-## Overview
+## 概览
 
 此变更旨在修复 MaterialClient.Common.Tests 项目中的配置文件部署问题，并评估和优化测试执行性能，解决测试超时问题。
 
-## Documents
+## 文档
 
 - **[proposal.md](./proposal.md)** - 提案主文档，包含背景、问题、解决方案和影响分析
 - **[tasks.md](./tasks.md)** - 实施任务清单，包含详细的步骤和验证标准
 
-## Quick Summary
+## 简要摘要
 
-### Problems
-1. **Configuration File Not Found**: appsettings.json 未复制到构建输出目录
-2. **Test Execution Timeout**: 某些测试执行超时，无法完成完整测试运行
+### 问题
+1. **配置文件未找到**：appsettings.json 未复制到构建输出目录
+2. **测试执行超时**：某些测试执行超时，无法完成完整测试运行
 
-### Solution
+### 方案
 1. 修改 .csproj 添加 CopyToOutputDirectory 配置
 2. 评估并优化测试执行性能
 3. 验证修复效果
 
-### Impact
-- **Benefits**: 稳定的测试执行，可靠的 CI/CD 流程
-- **Risk**: 低（仅涉及配置和优化，不改变生产代码）
-- **Duration**: 0.5 day（如果需要性能优化则为 1-2 days）
+### 影响
+- **收益**：稳定的测试执行、可靠的 CI/CD 流程
+- **风险**：低（仅涉及配置和优化，不改变生产代码）
+- **工期**：0.5 天（若需性能优化则为 1–2 天）
 
-## Next Steps
+## 后续步骤
 
-1. Review the [proposal.md](./proposal.md) for detailed information
-2. Follow the tasks in [tasks.md](./tasks.md) to implement the changes
-3. Update this README as the proposal progresses
+1. 查阅 [proposal.md](./proposal.md) 了解详细信息
+2. 按 [tasks.md](./tasks.md) 中的任务实施变更
+3. 随提案进展更新本 README
 
 ---
 
-## Change Log
+## 变更日志
 
-| Date | Status | Notes |
-|------|--------|-------|
-| 2026-01-15 | Draft | Initial proposal created |
+| 日期 | 状态 | 备注 |
+|------|------|------|
+| 2026-01-15 | 草稿 | 初始提案创建 |

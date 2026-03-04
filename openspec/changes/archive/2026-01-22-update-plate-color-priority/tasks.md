@@ -1,42 +1,42 @@
-# Implementation Tasks
+# 实施任务
 
-## 1. Variable Renaming
-- [x] 1.1 Rename `_filteredPlateColors` to `_lowPriorityPlateColors` in `AttendedWeighingService.cs`
-- [x] 1.2 Update all references to the renamed variable throughout the service
-- [x] 1.3 Rename configuration key from `FilteredPlateColors` to `LowPriorityPlateColors` in configuration reading code
-- [x] 1.4 Update `PlateColorFilterConfig.cs` property name from `FilteredPlateColors` to `LowPriorityPlateColors`
-- [x] 1.5 Update log messages to use "low-priority" terminology instead of "filtered"
+## 1. 变量重命名
+- [x] 1.1 在 `AttendedWeighingService.cs` 中将 `_filteredPlateColors` 重命名为 `_lowPriorityPlateColors`
+- [x] 1.2 更新该服务内所有对重命名变量的引用
+- [x] 1.3 在配置读取代码中将配置键从 `FilteredPlateColors` 重命名为 `LowPriorityPlateColors`
+- [x] 1.4 将 `PlateColorFilterConfig.cs` 中的属性名从 `FilteredPlateColors` 改为 `LowPriorityPlateColors`
+- [x] 1.5 将日志措辞从「filtered」改为「low-priority」（低优先级）
 
-## 2. Data Structure Updates
-- [x] 2.1 Add `ColorType` property to `PlateNumberCacheRecord` (nullable `LprAllInOneColorType?`)
-- [x] 2.2 ~~Add `IsLowPriority` computed property to `PlateNumberCacheRecord` based on color~~ (Not needed - computed at selection time)
+## 2. 数据结构更新
+- [x] 2.1 在 `PlateNumberCacheRecord` 中增加 `ColorType` 属性（可空 `LprAllInOneColorType?`）
+- [x] 2.2 ~~在 `PlateNumberCacheRecord` 中根据颜色增加 `IsLowPriority` 计算属性~~（不需要——在选择时计算）
 
-## 3. Caching Logic Updates
-- [x] 3.1 Update `OnPlateNumberRecognized()` to store color information in cache
-- [x] 3.2 Remove early return for low-priority colors (lines 400-406) - store them as low-priority instead
-- [x] 3.3 Update cache AddOrUpdate logic to preserve color information when incrementing count
+## 3. 缓存逻辑更新
+- [x] 3.1 更新 `OnPlateNumberRecognized()`，在缓存中保存颜色信息
+- [x] 3.2 移除对低优先级颜色的提前返回（约第 400–406 行），改为以低优先级存储
+- [x] 3.3 更新缓存 AddOrUpdate 逻辑，在增加次数时保留颜色信息
 
-## 4. Selection Logic Updates
-- [x] 4.1 Update `GetMostFrequentPlateNumber()` to implement priority-based selection
-- [x] 4.2 First attempt to find most frequent high-priority plate
-- [x] 4.3 Fall back to most frequent low-priority plate only if no high-priority plates exist
-- [x] 4.4 Add logging to indicate when low-priority plates are selected
+## 4. 选择逻辑更新
+- [x] 4.1 更新 `GetMostFrequentPlateNumber()`，实现基于优先级的选择
+- [x] 4.2 优先尝试找最频高优先级车牌
+- [x] 4.3 仅当不存在高优先级车牌时，回退到最频低优先级车牌
+- [x] 4.4 在选中低优先级车牌时增加日志
 
-## 5. Configuration Migration
-- [x] 5.1 Update appsettings.json to use `LowPriorityPlateColors` key
-- [x] 5.2 ~~Add backward compatibility check for old `FilteredPlateColors` key (optional)~~ (Decided not to support backward compat)
-- [x] 5.3 Document migration steps in release notes (documented in design.md)
+## 5. 配置迁移
+- [x] 5.1 在 appsettings.json 中改用 `LowPriorityPlateColors` 键
+- [x] 5.2 ~~为旧键 `FilteredPlateColors` 增加向后兼容检查（可选）~~（决定不兼容）
+- [x] 5.3 在发布说明中记录迁移步骤（已在 design.md 中说明）
 
-## 6. Testing
-- [x] 6.1 Add test for high-priority plate overrides low-priority plate
-- [x] 6.2 Add test for low-priority plate used when no high-priority exists
-- [x] 6.3 Add test for low-priority plate cannot override existing high-priority plate
-- [x] 6.4 ~~Update existing plate filtering tests to reflect priority behavior~~ (Existing tests pass with new behavior)
-- [x] 6.5 Add test for color information persistence in cache
-- [x] 6.6 Test configuration loading with new key name
+## 6. 测试
+- [x] 6.1 增加高优先级覆盖低优先级的测试
+- [x] 6.2 增加无高优先级时使用低优先级的测试
+- [x] 6.3 增加低优先级不能覆盖已有高优先级的测试
+- [x] 6.4 ~~将现有车牌过滤测试改为反映优先级行为~~（现有测试在新行为下仍通过）
+- [x] 6.5 增加缓存中颜色信息持久化测试
+- [x] 6.6 测试新键名下的配置加载
 
-## 7. Validation
-- [x] 7.1 Run existing tests to ensure no regression (36/38 tests pass; 2 pre-existing failures unrelated to this change)
-- [ ] 7.2 Test with real hardware configuration (if available) - **Requires physical hardware testing**
-- [x] 7.3 Verify logging provides clear indication of priority selection
-- [x] 7.4 Verify configuration migration works correctly
+## 7. 验证
+- [x] 7.1 运行现有测试确保无回归（36/38 通过；2 个与本次变更无关的既有失败）
+- [ ] 7.2 在真实硬件配置下测试（若具备）——**需实体硬件**
+- [x] 7.3 确认日志能清晰体现优先级选择
+- [x] 7.4 确认配置迁移正确

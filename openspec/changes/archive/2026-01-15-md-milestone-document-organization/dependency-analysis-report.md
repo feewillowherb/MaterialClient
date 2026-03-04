@@ -1,265 +1,265 @@
-# Dependency Analysis Report
+# 依赖分析报告
 
-**Change ID**: md-milestone-document-organization
-**Analysis Date**: 2026-01-15
-**Analysis Scope**: Codebase dependencies on legacy documentation directories
-
----
-
-## Executive Summary
-
-A comprehensive dependency analysis was conducted to identify any references to legacy documentation directories (`specs/`, `ReadOnlyMd/`, `ReadonlyMd/`, `docs/`) within the codebase. The analysis searched across source code, build scripts, CI/CD configurations, and project files.
-
-### Key Findings
-
-✅ **No Explicit Dependencies Found**: No references to legacy documentation paths were discovered in:
-- C# source files (*.cs)
-- Project files (*.csproj)
-- Build scripts (*.sh, *.cmd, *.bat)
-- CI/CD configurations (*.yml, *.yaml)
-- GitHub workflows
-- Git ignore patterns
-
-### Risk Assessment
-
-**Risk Level**: **LOW**
-- No code dependencies on legacy documentation
-- No build process dependencies
-- No CI/CD pipeline dependencies
-- Safe to proceed with archival and migration
+**变更 ID**：md-milestone-document-organization
+**分析日期**：2026-01-15
+**分析范围**：代码库对遗留文档目录的依赖
 
 ---
 
-## Analysis Methodology
+## 执行摘要
 
-### Search Scope
+对代码库中是否存在对遗留文档目录（`specs/`、`ReadOnlyMd/`、`ReadonlyMd/`、`docs/`）的引用进行了全面依赖分析。分析覆盖源代码、构建脚本、CI/CD 配置与项目文件。
 
-The following locations were searched for references to legacy documentation directories:
+### 主要结论
 
-1. **Source Code Files**
-   - Pattern: `specs/`, `ReadOnlyMd/`, `ReadonlyMd/`, `docs/`
-   - Extensions: `.cs`, `.csproj`
-   - Result: **0 matches**
+✅ **未发现显式依赖**：在以下位置未发现对遗留文档路径的引用：
+- C# 源文件 (*.cs)
+- 项目文件 (*.csproj)
+- 构建脚本 (*.sh、*.cmd、*.bat)
+- CI/CD 配置 (*.yml、*.yaml)
+- GitHub 工作流
+- Git 忽略规则
 
-2. **Build Scripts**
-   - Files: `*.sh`, `*.cmd`, `*.bat`
-   - Result: **No build scripts found in root**
+### 风险评估
 
-3. **CI/CD Configurations**
-   - Files: `*.yml`, `*.yaml`
-   - Locations: Root directory, `.github/workflows/`
-   - Result: **0 matches**
-
-4. **Git Configuration**
-   - File: `.gitignore`
-   - Patterns: `specs`, `readonlymd`, `docs/`
-   - Result: **No matches**
-
-5. **Documentation References**
-   - README files: **None found in root**
-   - Other markdown files: Searched recursively
-   - Result: **0 matches in non-legacy files**
+**风险等级**：**低**
+- 代码不依赖遗留文档
+- 构建流程不依赖遗留文档
+- CI/CD 流水线不依赖遗留文档
+- 可安全进行归档与迁移
 
 ---
 
-## Detailed Search Results
+## 分析方法
 
-### 1. `specs/` Directory References
+### 搜索范围
 
-**Search Command**:
+对以下位置进行了遗留文档目录引用搜索：
+
+1. **源代码文件**
+   - 模式：`specs/`、`ReadOnlyMd/`、`ReadonlyMd/`、`docs/`
+   - 扩展名：`.cs`、`.csproj`
+   - 结果：**0 处匹配**
+
+2. **构建脚本**
+   - 文件：`*.sh`、`*.cmd`、`*.bat`
+   - 结果：**根目录未发现构建脚本**
+
+3. **CI/CD 配置**
+   - 文件：`*.yml`、`*.yaml`
+   - 位置：根目录、`.github/workflows/`
+   - 结果：**0 处匹配**
+
+4. **Git 配置**
+   - 文件：`.gitignore`
+   - 模式：`specs`、`readonlymd`、`docs/`
+   - 结果：**无匹配**
+
+5. **文档引用**
+   - README 文件：**根目录未发现**
+   - 其他 Markdown 文件：递归搜索
+   - 结果：**非遗留文件中 0 处匹配**
+
+---
+
+## 详细搜索结果
+
+### 1. `specs/` 目录引用
+
+**搜索命令**：
 ```bash
 grep -r "specs/" --include="*.cs" --include="*.csproj" --include="*.md" .
 ```
 
-**Results**: **0 matches**
+**结果**：**0 处匹配**
 
-**Conclusion**: No source code or project files reference the `specs/` directory.
+**结论**：源代码与项目文件均未引用 `specs/` 目录。
 
-### 2. `ReadOnlyMd/` and `ReadonlyMd/` Directory References
+### 2. `ReadOnlyMd/` 与 `ReadonlyMd/` 目录引用
 
-**Search Command**:
+**搜索命令**：
 ```bash
 grep -r "ReadOnlyMd\|ReadonlyMd" --include="*.cs" --include="*.csproj" --include="*.md" .
 ```
 
-**Results**: **0 matches**
+**结果**：**0 处匹配**
 
-**Conclusion**: No source code or project files reference the ReadOnlyMd/ReadonlyMd directories.
+**结论**：源代码与项目文件均未引用 ReadOnlyMd/ReadonlyMd 目录。
 
-**Note**: Two similarly-named directories exist (`ReadOnlyMd` and `ReadonlyMd`), neither are referenced in code.
+**说明**：存在两个名称相近的目录（`ReadOnlyMd` 与 `ReadonlyMd`），代码中均未引用。
 
-### 3. `docs/` Directory References
+### 3. `docs/` 目录引用
 
-**Search Command**:
+**搜索命令**：
 ```bash
 grep -r "docs/" --include="*.cs" --include="*.csproj" --include="*.md" .
 ```
 
-**Results**: **0 matches** (excluding self-references within docs/ directory itself)
+**结果**：**0 处匹配**（排除 docs/ 目录内部自引用）
 
-**Conclusion**: No source code or project files reference the `docs/` directory.
+**结论**：源代码与项目文件均未引用 `docs/` 目录。
 
-### 4. Build Script Analysis
+### 4. 构建脚本分析
 
-**Scanned Files**:
-- Root directory: `*.sh`, `*.cmd`, `*.bat`, `*.yml`, `*.yaml`
-- GitHub workflows: `.github/workflows/*`
+**扫描文件**：
+- 根目录：`*.sh`、`*.cmd`、`*.bat`、`*.yml`、`*.yaml`
+- GitHub 工作流：`.github/workflows/*`
 
-**Results**: No build scripts found in root directory; GitHub workflows contain no documentation references.
+**结果**：根目录未发现构建脚本；GitHub 工作流中无文档引用。
 
-**Conclusion**: No build process dependencies on legacy documentation.
+**结论**：构建流程不依赖遗留文档。
 
-### 5. Git Configuration Analysis
+### 5. Git 配置分析
 
-**Scanned File**: `.gitignore`
+**扫描文件**：`.gitignore`
 
-**Searched Patterns**:
+**搜索模式**：
 - `specs`
 - `readonlymd`
 - `docs/`
 
-**Results**: No matches found.
+**结果**：无匹配。
 
-**Conclusion**: No git ignore patterns related to legacy documentation.
-
----
-
-## Implicit Dependencies
-
-### Potential Implicit Dependencies
-
-While no explicit references were found, the following implicit dependencies should be considered:
-
-#### 1. Team Knowledge and Memory
-
-**Dependency Type**: Human knowledge
-**Risk Level**: LOW
-**Description**: Team members may mentally reference document locations
-**Mitigation**: Team training and communication (Task 3.3)
-
-#### 2. External Documentation
-
-**Dependency Type**: External wikis, Confluence, README files outside repository
-**Risk Level**: LOW
-**Description**: External documentation may reference legacy paths
-**Mitigation**: Search external documentation and update references (Task 2.5)
-
-#### 3. Bookmarks and Browser History
-
-**Dependency Type**: Individual developer bookmarks
-**Risk Level**: VERY LOW
-**Description**: Developers may have bookmarks to legacy documentation files
-**Mitigation**: Team communication about new documentation locations
-
-#### 4. Development Environment Configurations
-
-**Dependency Type**: IDE configurations, editor settings
-**Risk Level**: VERY LOW
-**Description**: IDEs may have file bookmarks or favorites pointing to legacy docs
-**Mitigation**: No action needed; developers can update bookmarks manually
+**结论**：无与遗留文档相关的 git 忽略规则。
 
 ---
 
-## Impact Assessment
+## 隐性依赖
 
-### Migration Impact
+### 可能的隐性依赖
 
-| Impact Category | Risk Level | Details |
-|----------------|------------|---------|
-| **Build Process** | NONE | No build scripts reference documentation |
-| **CI/CD Pipeline** | NONE | No workflow configurations reference documentation |
-| **Source Code** | NONE | No code references documentation paths |
-| **Project Compilation** | NONE | No project files include documentation |
-| **Runtime Behavior** | NONE | Documentation not accessed at runtime |
-| **Developer Workflow** | LOW | Team needs to learn new documentation locations |
+虽未发现显式引用，但需考虑以下隐性依赖：
 
-### Deletion Safety
+#### 1. 团队知识与记忆
 
-**Safe to Delete**:
-- ✅ All files marked `DEPRECATED`
-- ✅ All files marked `ARCHIVED` (after creating archive package)
-- ✅ All files marked `SUPERSEDED` (after migration to OpenSpec archive)
+**依赖类型**：人员知识
+**风险等级**：低
+**描述**：团队成员可能习惯性引用文档位置
+**缓解**：团队培训与沟通（任务 3.3）
 
-**Requires Verification**:
-- ⚠️ Files marked `VALID` should be migrated before deletion
-- ⚠️ External documentation references (if any) should be updated
+#### 2. 外部文档
 
----
+**依赖类型**：外部 Wiki、Confluence、仓库外 README
+**风险等级**：低
+**描述**：外部文档可能引用遗留路径
+**缓解**：搜索外部文档并更新引用（任务 2.5）
 
-## Recommendations
+#### 3. 书签与浏览器历史
 
-### Immediate Actions
+**依赖类型**：个人开发者书签
+**风险等级**：极低
+**描述**：开发者可能保存了指向遗留文档的书签
+**缓解**：通过团队沟通告知新文档位置
 
-1. **Proceed with Archive Creation (Task 2.2)**
-   - No code dependencies found
-   - Safe to create archive package
-   - Include all ARCHIVED and DEPRECATED documents
+#### 4. 开发环境配置
 
-2. **Proceed with Migration (Task 2.4)**
-   - No build dependencies
-   - Safe to migrate SUPERSEDED specs to OpenSpec archive
-   - Safe to migrate VALID documents to OpenSpec structure
-
-3. **Update External References (Task 2.5)**
-   - Check external wikis and documentation
-   - Update any references to legacy paths
-   - Communicate new documentation locations to team
-
-### Team Communication
-
-**Key Message to Team**:
-> "No code or build dependencies on legacy documentation were found. It is safe to proceed with archival and migration. Please update any personal bookmarks or external documentation references."
-
-### Verification Steps
-
-Before proceeding with deletion (Task 2.3):
-
-1. ✅ **Dependency Analysis**: Complete (this report)
-2. ⏳ **Team Review**: Pending (Task 1.7)
-3. ⏳ **Archive Creation**: Pending (Task 2.2)
-4. ⏳ **External Reference Check**: Pending (Task 2.5)
+**依赖类型**：IDE 配置、编辑器设置
+**风险等级**：极低
+**描述**：IDE 可能包含指向遗留文档的书签或收藏
+**缓解**：无需特别处理；开发者可自行更新书签
 
 ---
 
-## Conclusion
+## 影响评估
 
-The dependency analysis confirms **zero explicit dependencies** on legacy documentation directories in the codebase. This is a positive finding that indicates:
+### 迁移影响
 
-1. **Clean Separation**: Documentation is properly separated from code
-2. **Safe Migration**: Archival and migration can proceed without breaking builds
-3. **Minimal Risk**: Only human workflow changes needed (bookmarks, mental references)
+| 影响类别       | 风险等级 | 说明                         |
+|----------------|----------|------------------------------|
+| **构建流程**   | 无       | 无构建脚本引用文档           |
+| **CI/CD 流水线** | 无     | 无工作流配置引用文档         |
+| **源代码**     | 无       | 无代码引用文档路径           |
+| **项目编译**   | 无       | 无项目文件包含文档           |
+| **运行时行为** | 无       | 运行时不访问文档             |
+| **开发工作流** | 低       | 团队需了解新文档位置         |
 
-**Recommendation**: Proceed to Task 2.2 (Create Archive Package) after team review completion.
+### 删除安全性
+
+**可安全删除**：
+- ✅ 所有标为 `DEPRECATED` 的文件
+- ✅ 所有标为 `ARCHIVED` 的文件（在创建归档包之后）
+- ✅ 所有标为 `SUPERSEDED` 的文件（在迁移至 OpenSpec 归档之后）
+
+**需核实**：
+- ⚠️ 标为 `VALID` 的文件应在删除前完成迁移
+- ⚠️ 若有外部文档引用，应更新
 
 ---
 
-## Appendix: Search Commands
+## 建议
 
-For reproducibility, the following commands were used:
+### 立即行动
+
+1. **进行归档创建（任务 2.2）**
+   - 未发现代码依赖
+   - 可安全创建归档包
+   - 包含所有 ARCHIVED 与 DEPRECATED 文档
+
+2. **进行迁移（任务 2.4）**
+   - 无构建依赖
+   - 可安全将 SUPERSEDED 规范迁移至 OpenSpec 归档
+   - 可安全将 VALID 文档迁移至 OpenSpec 结构
+
+3. **更新外部引用（任务 2.5）**
+   - 检查外部 Wiki 与文档
+   - 更新对遗留路径的引用
+   - 向团队通报新文档位置
+
+### 团队沟通
+
+**向团队传达的核心信息**：
+> 「未发现代码或构建对遗留文档的依赖。可安全进行归档与迁移。请更新个人书签或外部文档中的引用。」
+
+### 验证步骤
+
+在执行删除（任务 2.3）前：
+
+1. ✅ **依赖分析**：已完成（本报告）
+2. ⏳ **团队审阅**：待办（任务 1.7）
+3. ⏳ **归档创建**：待办（任务 2.2）
+4. ⏳ **外部引用检查**：待办（任务 2.5）
+
+---
+
+## 结论
+
+依赖分析确认代码库对遗留文档目录**无任何显式依赖**。这表明：
+
+1. **分离清晰**：文档与代码已正确分离
+2. **迁移安全**：归档与迁移不会破坏构建
+3. **风险可控**：仅需调整人员工作流（书签、习惯性引用）
+
+**建议**：在完成团队审阅后执行任务 2.2（创建归档包）。
+
+---
+
+## 附录：搜索命令
+
+为便于复现，使用的命令如下：
 
 ```bash
-# Search for specs/ references
+# 搜索 specs/ 引用
 grep -r "specs/" --include="*.cs" --include="*.csproj" --include="*.md" .
 
-# Search for ReadOnlyMd/ references
+# 搜索 ReadOnlyMd/ 引用
 grep -r "ReadOnlyMd\|ReadonlyMd" --include="*.cs" --include="*.csproj" --include="*.md" .
 
-# Search for docs/ references
+# 搜索 docs/ 引用
 grep -r "docs/" --include="*.cs" --include="*.csproj" --include="*.md" .
 
-# Check build scripts
+# 检查构建脚本
 ls *.sh *.cmd *.bat *.yml *.yaml 2>/dev/null
 
-# Check GitHub workflows
+# 检查 GitHub 工作流
 grep -r "specs\|readonlymd\|docs/" .github/workflows/
 
-# Check .gitignore
+# 检查 .gitignore
 grep -i "specs\|readonlymd\|docs/" .gitignore
 ```
 
 ---
 
-**Report Generated**: 2026-01-15
-**Generated By**: Claude (OpenSpec Migration Agent)
-**Analysis Status**: COMPLETE
-**Next Task**: Task 2.2 - Create Archive Package
+**报告生成时间**：2026-01-15
+**生成方**：Claude（OpenSpec 迁移 Agent）
+**分析状态**：已完成
+**下一任务**：任务 2.2 - 创建归档包

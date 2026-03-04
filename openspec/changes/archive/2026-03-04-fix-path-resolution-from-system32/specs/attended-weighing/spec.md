@@ -1,67 +1,67 @@
-# Spec Delta: Attended Weighing - Path Resolution Fix
+# 规格增量：有人值守称重 - 路径解析修复
 
-## MODIFIED Requirements
+## 修改的需求
 
-### Requirement: Vehicle Photo Storage
-The system SHALL capture and store vehicle photos during weighing operations using absolute file paths resolved from the application executable directory.
+### 需求：车辆照片存储
+系统应在称重过程中使用基于应用程序可执行文件目录解析的绝对文件路径，采集并存储车辆照片。
 
-**Context**: When the application starts from any working directory (including `C:\Windows\System32` via Task Scheduler or Registry auto-start), photo paths must resolve correctly to the application's storage directories, not the current working directory.
+**背景**：当应用从任意工作目录（包括通过任务计划程序或注册表自启的 `C:\Windows\System32`）启动时，照片路径必须正确解析到应用的存储目录，而非当前工作目录。
 
-#### Scenario: Photo capture when started from System32
-- **GIVEN** MaterialClient is launched via Task Scheduler with working directory `C:\Windows\System32`
-- **AND** a vehicle enters the scale
-- **WHEN** the system captures a vehicle photo
-- **THEN** the photo SHALL be saved to `{AppContext.BaseDirectory}\PhotoJianKong\{year}\{MM}\{dd}\{filename}.jpg`
-- **AND** the database SHALL store the absolute path to the photo
-- **AND** the photo file SHALL be accessible for viewing
+#### 场景：从 System32 启动时的拍照
+- **给定** MaterialClient 由任务计划程序以工作目录 `C:\Windows\System32` 启动
+- **且** 车辆驶入地磅
+- **当** 系统采集车辆照片
+- **则** 照片应保存到 `{AppContext.BaseDirectory}\PhotoJianKong\{year}\{MM}\{dd}\{filename}.jpg`
+- **且** 数据库应存储照片的绝对路径
+- **且** 照片文件应可被查看
 
-#### Scenario: Bill photo capture when started from System32
-- **GIVEN** MaterialClient is launched via Task Scheduler with working directory `C:\Windows\System32`
-- **AND** a user manually captures a bill photo
-- **WHEN** the system saves the bill photo
-- **THEN** the photo SHALL be saved to `{AppContext.BaseDirectory}\PhotoPiaoJu\{year}\{MM}\{dd}\bill_{timestamp}.jpg`
-- **AND** the database SHALL store the absolute path to the photo
-- **AND** the photo file SHALL be accessible for printing and viewing
+#### 场景：从 System32 启动时的磅单拍照
+- **给定** MaterialClient 由任务计划程序以工作目录 `C:\Windows\System32` 启动
+- **且** 用户手动采集磅单照片
+- **当** 系统保存磅单照片
+- **则** 照片应保存到 `{AppContext.BaseDirectory}\PhotoPiaoJu\{year}\{MM}\{dd}\bill_{timestamp}.jpg`
+- **且** 数据库应存储照片的绝对路径
+- **且** 照片文件应可被打印和查看
 
-#### Scenario: Loading historical photos when started from System32
-- **GIVEN** MaterialClient is launched via Task Scheduler with working directory `C:\Windows\System32`
-- **AND** photos were previously captured and stored with absolute paths
-- **WHEN** the user views historical weighing records
-- **THEN** the system SHALL successfully load and display all associated photos
-- **AND** no photo access errors SHALL occur
+#### 场景：从 System32 启动时加载历史照片
+- **给定** MaterialClient 由任务计划程序以工作目录 `C:\Windows\System32` 启动
+- **且** 照片此前已以绝对路径采集并存储
+- **当** 用户查看历史称重记录
+- **则** 系统应成功加载并展示所有关联照片
+- **且** 不得出现照片访问错误
 
-#### Scenario: Photo storage during normal startup
-- **GIVEN** MaterialClient is launched normally from its installation directory
-- **WHEN** the system captures any photo type
-- **THEN** photos SHALL be stored using absolute paths based on `AppContext.BaseDirectory`
-- **AND** behavior SHALL be identical to Task Scheduler launch scenario
-- **AND** no regression in existing functionality SHALL occur
+#### 场景：正常启动时的照片存储
+- **给定** MaterialClient 从其安装目录正常启动
+- **当** 系统采集任意类型照片
+- **则** 照片应使用基于 `AppContext.BaseDirectory` 的绝对路径存储
+- **且** 行为应与任务计划程序启动场景一致
+- **且** 不得出现现有功能回归
 
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Database Access from Any Working Directory
-The system SHALL access the SQLite database file using an absolute path resolved from the application executable directory, regardless of the process working directory.
+### 需求：从任意工作目录访问数据库
+系统应使用基于应用程序可执行文件目录解析的绝对路径访问 SQLite 数据库文件，与进程工作目录无关。
 
-**Context**: When launched via Windows Task Scheduler or Registry auto-start, the application may start with `C:\Windows\System32` as the working directory. The database file must be accessed from the application directory, not the working directory.
+**背景**：通过 Windows 任务计划程序或注册表自启时，应用可能以 `C:\Windows\System32` 为工作目录启动。数据库文件必须从应用目录访问，而非工作目录。
 
-#### Scenario: Database initialization when started from System32
-- **GIVEN** MaterialClient is launched via Task Scheduler with working directory `C:\Windows\System32`
-- **AND** the connection string in `appsettings.json` is `"Data Source=MaterialClient.db"`
-- **WHEN** the application initializes the database connection
-- **THEN** the connection string SHALL be converted to `"Data Source={AppContext.BaseDirectory}\MaterialClient.db"`
-- **AND** the database file SHALL be successfully opened
-- **AND** database migrations SHALL complete successfully
+#### 场景：从 System32 启动时的数据库初始化
+- **给定** MaterialClient 由任务计划程序以工作目录 `C:\Windows\System32` 启动
+- **且** `appsettings.json` 中的连接字符串为 `"Data Source=MaterialClient.db"`
+- **当** 应用初始化数据库连接
+- **则** 连接字符串应被转换为 `"Data Source={AppContext.BaseDirectory}\MaterialClient.db"`
+- **且** 数据库文件应被成功打开
+- **且** 数据库迁移应成功完成
 
-#### Scenario: Database access with pre-existing absolute path
-- **GIVEN** the connection string in `appsettings.json` contains an absolute path like `"Data Source=C:\CustomPath\MaterialClient.db"`
-- **WHEN** the application initializes the database connection
-- **THEN** the absolute path SHALL be preserved unchanged
-- **AND** the database file SHALL be accessed at the specified absolute path
-- **AND** no path conversion SHALL occur
+#### 场景：使用已有绝对路径的数据库访问
+- **给定** `appsettings.json` 中的连接字符串包含绝对路径，如 `"Data Source=C:\CustomPath\MaterialClient.db"`
+- **当** 应用初始化数据库连接
+- **则** 绝对路径应原样保留
+- **且** 数据库文件应在该绝对路径访问
+- **且** 不进行路径转换
 
-#### Scenario: Settings service initialization when started from System32
-- **GIVEN** MaterialClient is launched via Task Scheduler with working directory `C:\Windows\System32`
-- **WHEN** the settings service initializes its cache
-- **THEN** the database SHALL be accessible
-- **AND** settings SHALL be loaded successfully
-- **AND** no `SQLite Error 14: 'unable to open database file'` SHALL occur
+#### 场景：从 System32 启动时的设置服务初始化
+- **给定** MaterialClient 由任务计划程序以工作目录 `C:\Windows\System32` 启动
+- **当** 设置服务初始化其缓存
+- **则** 数据库应可访问
+- **且** 设置应成功加载
+- **且** 不得出现 `SQLite Error 14: 'unable to open database file'`

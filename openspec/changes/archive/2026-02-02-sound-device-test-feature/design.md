@@ -1,14 +1,14 @@
-# Design Document: Sound Device Test Feature
+# 设计文档：音响设备测试功能
 
-## Overview
+## 概览
 
-This document describes the technical design and architectural decisions for implementing the sound device test feature in MaterialClient.
+本文说明在 MaterialClient 中实现音响设备测试功能的技术设计与架构决策。
 
-## Architecture Context
+## 架构上下文
 
-### Existing Sound Device Architecture
+### 现有音响设备架构
 
-The current sound device implementation follows this architecture:
+当前音响设备实现采用以下架构：
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -44,9 +44,9 @@ The current sound device implementation follows this architecture:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### New Components
+### 新增组件
 
-This proposal adds the following components (highlighted in bold):
+本提案增加以下组件（以粗体标出）：
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -86,29 +86,29 @@ This proposal adds the following components (highlighted in bold):
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Design Decisions
+## 设计决策
 
-### Decision 1: Dedicated Test Method vs. Reusing PlayTextV2Async
+### 决策 1：专用测试方法 vs 复用 PlayTextV2Async
 
-**Problem**: Should we create a dedicated `PlayTextV2TestAsync` method or call `PlayTextV2Async("音柱测试")` directly from the ViewModel?
+**问题**：应新增专用方法 `PlayTextV2TestAsync`，还是在 ViewModel 中直接调用 `PlayTextV2Async("音柱测试")`？
 
-**Options**:
+**选项**：
 
-| Option | Pros | Cons |
+| 选项 | 优点 | 缺点 |
 |--------|------|------|
-| A) Create dedicated test method | • Clear semantic separation<br>• Easier to add test-specific logic later<br>• Better testability<br>• Consistent with service-oriented architecture | • Slightly more code |
-| B) Call PlayTextV2Async from ViewModel | • Less code<br>• No interface changes | • Tight coupling<br>• Harder to extend<br>• Mixes concerns |
+| A) 新增专用测试方法 | • 语义清晰分离<br>• 便于后续增加测试专用逻辑<br>• 更易测试<br>• 符合面向服务架构 | • 代码略多 |
+| B) 在 ViewModel 中调用 PlayTextV2Async | • 代码少<br>• 无需改接口 | • 紧耦合<br>• 难以扩展<br>• 职责混合 |
 
-**Decision**: **Option A** - Create dedicated `PlayTextV2TestAsync` method
+**决策**：**选项 A** - 新增专用方法 `PlayTextV2TestAsync`
 
-**Rationale**:
-1. **Separation of Concerns**: ViewModel should not know about test-specific implementation details
-2. **Future Extensibility**: May need test-specific behavior (different timeout, logging, diagnostics)
-3. **Testability**: Easier to mock and test in isolation
-4. **Semantic Clarity**: "Test" has different meaning than "Play" in business logic
-5. **Consistency**: Follows existing service-oriented pattern
+**理由**：
+1. **职责分离**：ViewModel 不应知晓测试专用实现细节
+2. **可扩展性**：未来可能需要测试专用行为（不同超时、日志、诊断）
+3. **可测试性**：更易 mock 与独立测试
+4. **语义清晰**：业务上「测试」与「播放」含义不同
+5. **一致性**：符合现有面向服务模式
 
-**Implementation**:
+**实现**：
 ```csharp
 // In SoundDeviceService
 public async Task PlayTextV2TestAsync(CancellationToken cancellationToken = default)
@@ -131,53 +131,53 @@ public async Task PlayTextV2TestAsync(CancellationToken cancellationToken = defa
 
 ---
 
-### Decision 2: Test Text Content
+### 决策 2：测试文本内容
 
-**Problem**: What text should be used for the sound device test?
+**问题**：音响设备测试应使用什么文本？
 
-**Options**:
+**选项**：
 
-| Option | Pros | Cons |
+| 选项 | 优点 | 缺点 |
 |--------|------|------|
-| A) Fixed text: "音柱测试" | • Simple and clear<br>• Self-documenting<br>• Short (reduces test time) | • Less informative than full sentence |
-| B) Fixed text: "音响设备测试中" | • More descriptive | • Longer (increases test time) |
-| C) Configurable test text | • Maximum flexibility | • Adds complexity (UI, settings)<br>• Overkill for this use case |
-| D) Random test phrase | • Tests variety | • Confusing for users<br>• Hard to document |
+| A) 固定文本："音柱测试" | • 简单清晰<br>• 自解释<br>• 简短（缩短测试时间） | • 不如完整句子信息多 |
+| B) 固定文本："音响设备测试中" | • 更描述性 | • 更长（增加测试时间） |
+| C) 可配置测试文本 | • 最大灵活性 | • 增加复杂度（UI、设置）<br>• 对本用例过度 |
+| D) 随机测试短语 | • 测试多样性 | • 用户困惑<br>• 难以文档化 |
 
-**Decision**: **Option A** - Fixed text: "音柱测试"
+**决策**：**选项 A** - 固定文本「音柱测试」
 
-**Rationale**:
-1. **Simplicity**: No additional UI or configuration needed
-2. **Clarity**: Users immediately understand what's being tested
-3. **Efficiency**: Short text minimizes test duration
-4. **Consistency**: Same test every time makes troubleshooting easier
-5. **Self-Documenting**: Text name matches feature name
+**理由**：
+1. **简单性**：无需额外 UI 或配置
+2. **清晰度**：用户立即理解正在测试什么
+3. **效率**：短文本最小化测试时长
+4. **一致性**：每次相同测试便于排障
+5. **自解释**：文本名称与功能名称一致
 
 ---
 
-### Decision 3: Test Status Feedback Mechanism
+### 决策 3：测试状态反馈机制
 
-**Problem**: How should test status be communicated to the user?
+**问题**：测试状态应如何传达给用户？
 
-**Options**:
+**选项**：
 
-| Option | Pros | Cons |
+| 选项 | 优点 | 缺点 |
 |--------|------|------|
-| A) TextBlock with status message | • Simple to implement<br>• Clear feedback | • Uses additional screen space |
-| B) Button text change during test | • No extra space needed | • Less informative<br>• Harder to show error details |
-| C) Progress dialog | • Very explicit | • Overkill for quick test<br>• Blocks UI |
-| D) Toast notification | • Non-blocking<br>• Modern UX | • May be missed<br>• Requires toast infrastructure |
+| A) 带状态消息的 TextBlock | • 实现简单<br>• 反馈清晰 | • 占用额外屏幕空间 |
+| B) 测试期间按钮文字变化 | • 不占额外空间 | • 信息较少<br>• 难以展示错误详情 |
+| C) 进度对话框 | • 非常明确 | • 对快速测试过度<br>• 阻塞 UI |
+| D) Toast 通知 | • 非阻塞<br>• 现代 UX | • 可能被忽略<br>• 需 Toast 基础设施 |
 
-**Decision**: **Option A** - TextBlock with status message
+**决策**：**选项 A** - 带状态消息的 TextBlock
 
-**Rationale**:
-1. **Simplicity**: Fits existing Avalonia UI patterns
-2. **Information Density**: Can show detailed error messages
-3. **Visibility**: Always visible during and after test
-4. **Consistency**: Similar patterns exist elsewhere in SettingsWindow
-5. **No New Infrastructure**: Leverages existing binding mechanisms
+**理由**：
+1. **简单性**：符合现有 Avalonia UI 模式
+2. **信息密度**：可展示详细错误消息
+3. **可见性**：测试期间及之后始终可见
+4. **一致性**：SettingsWindow 中已有类似模式
+5. **无新基础设施**：利用现有绑定机制
 
-**Implementation**:
+**实现**：
 ```csharp
 // ViewModel properties
 [Reactive] private bool _isSoundDeviceTestRunning = false;
@@ -219,27 +219,27 @@ private async Task TestSoundDeviceAsync()
 
 ---
 
-### Decision 4: Command Enablement Logic
+### 决策 4：命令启用逻辑
 
-**Problem**: When should the test button be enabled?
+**问题**：测试按钮何时应启用？
 
-**Options**:
+**选项**：
 
-| Option | Pros | Cons |
+| 选项 | 优点 | 缺点 |
 |--------|------|------|
-| A) Enable only when SoundDeviceEnabled is true | • Clear logic<br>• Prevents invalid calls | • May try to test with incomplete config |
-| B) Enable when SoundDeviceEnabled AND config is valid | • More defensive | • Requires reactive validation<br>• More complex |
-| C) Always enable, show error on test | • Simplest | • Poor UX<br>• Wastes user time |
+| A) 仅当 SoundDeviceEnabled 为 true 时启用 | • 逻辑清晰<br>• 避免无效调用 | • 可能用不完整配置尝试测试 |
+| B) SoundDeviceEnabled 且配置有效时启用 | • 更防御性 | • 需响应式校验<br>• 更复杂 |
+| C) 始终启用，测试时显示错误 | • 最简单 | • 体验差<br>• 浪费用户时间 |
 
-**Decision**: **Option A** - Enable only when `SoundDeviceEnabled` is true
+**决策**：**选项 A** - 仅当 `SoundDeviceEnabled` 为 true 时启用
 
-**Rationale**:
-1. **Simplicity**: Straightforward reactive binding
-2. **Consistency**: Matches existing patterns (e.g., other features use enable/disable toggles)
-3. **Good Enough**: Existing `PlayTextV2Async` already validates config and returns gracefully
-4. **Performance**: Avoids reactive validation overhead
+**理由**：
+1. **简单性**：直接的响应式绑定
+2. **一致性**：与现有模式一致（如其他功能用启用/禁用开关）
+3. **足够好**：现有 `PlayTextV2Async` 已校验配置并优雅返回
+4. **性能**：避免响应式校验开销
 
-**Implementation**:
+**实现**：
 ```csharp
 // In ViewModel constructor
 TestSoundDevice = ReactiveCommand.CreateFromTask(
@@ -248,406 +248,161 @@ TestSoundDevice = ReactiveCommand.CreateFromTask(
 );
 ```
 
-**Note**: If validation issues arise, we can enhance to Option B later without breaking changes.
+**说明**：若出现校验问题，可后续无破坏性增强为选项 B。
 
 ---
 
-### Decision 5: Cancellation Token Handling
+### 决策 5：取消令牌处理
 
-**Problem**: Should the test command support cancellation? If so, how?
+**问题**：测试命令是否支持取消？若支持，如何实现？
 
-**Options**:
+**选项**：
 
-| Option | Pros | Cons |
+| 选项 | 优点 | 缺点 |
 |--------|------|------|
-| A) Use CancellationToken.None | • Simple<br>- Predictable 30s timeout | • Can't cancel long-running test |
-| B) Use CancellationToken from command | • Allows cancellation | • More complex<br>• Need cancellation token source |
-| C) Add Cancel button pair | • Very explicit | • Clutters UI<br>• Overkill for 30s operation |
+| A) 使用 CancellationToken.None | • 简单<br>• 可预期的 30s 超时 | • 无法取消长时间测试 |
+| B) 使用命令的 CancellationToken | • 支持取消 | • 更复杂<br>• 需取消令牌源 |
+| C) 增加取消按钮对 | • 非常明确 | • 使 UI 杂乱<br>• 对 30s 操作过度 |
 
-**Decision**: **Option A** - Use `CancellationToken.None` initially, document for future enhancement
+**决策**：**选项 A** - 先使用 `CancellationToken.None`，在文档中说明可后续增强
 
-**Rationale**:
-1. **Simplicity**: 30-second timeout is reasonable for test operation
-2. **No UI Clutter**: No need for cancel button
-3. **Sufficient**: Users can close Settings window to "cancel" if needed
-4. **Future Extensibility**: Can add cancellation token support later without breaking changes
+**理由**：
+1. **简单性**：30 秒超时对测试操作合理
+2. **无 UI 杂乱**：无需取消按钮
+3. **足够**：用户可关闭设置窗口以「取消」
+4. **可扩展性**：后续可无破坏性增加取消令牌支持
 
-**Future Enhancement Path**:
-If cancellation becomes important:
-1. Add `CancellationTokenSource` field to ViewModel
-2. Create cancel command that calls `cts.Cancel()`
-3. Pass `cts.Token` to `PlayTextV2TestAsync`
-4. Ensure proper disposal in `Dispose()` pattern
+**未来增强路径**：
+若取消变得重要：在 ViewModel 增加 `CancellationTokenSource` 字段；增加调用 `cts.Cancel()` 的取消命令；将 `cts.Token` 传入 `PlayTextV2TestAsync`；在 `Dispose()` 模式中确保正确释放。
 
 ---
 
-### Decision 6: Error Handling Strategy
+### 决策 6：错误处理策略
 
-**Problem**: How should test errors be handled and communicated?
+**问题**：测试错误应如何处置并传达？
 
-**Options**:
+**选项**：
 
-| Option | Pros | Cons |
+| 选项 | 优点 | 缺点 |
 |--------|------|------|
-| A) Catch all exceptions, show in UI | • User-friendly<br>• No crashes | • May hide programming errors |
-| B) Let exceptions propagate | • Fail-fast<br>• Easier debugging | • Poor UX<br>• May crash app |
-| C) Log and rethrow | • Best of both worlds | • Requires global error handler |
+| A) 捕获所有异常，在 UI 中展示 | • 用户友好<br>• 不崩溃 | • 可能掩盖编程错误 |
+| B) 让异常传播 | • 快速失败<br>• 易调试 | • 体验差<br>• 可能崩溃应用 |
+| C) 记录并重新抛出 | • 两全其美 | • 需全局错误处理 |
 
-**Decision**: **Option A** - Catch all exceptions, show in UI + log
+**决策**：**选项 A** - 捕获所有异常，在 UI 中展示并记录日志
 
-**Rationale**:
-1. **User Experience**: Test operation is non-critical, should never crash
-2. **Debugging**: Serilog captures full exception details
-3. **Consistency**: Matches existing `PlayTextV2Async` error handling pattern
-4. **Safety**: Network errors, timeouts, device offline are expected scenarios
+**理由**：
+1. **用户体验**：测试操作非关键，不应导致崩溃
+2. **调试**：Serilog 记录完整异常详情
+3. **一致性**：与现有 `PlayTextV2Async` 错误处理一致
+4. **安全**：网络错误、超时、设备离线为预期场景
 
-**Implementation**:
-```csharp
-[ReactiveCommand]
-private async Task TestSoundDeviceAsync()
-{
-    try
-    {
-        IsSoundDeviceTestRunning = true;
-        SoundDeviceTestResult = null;
-
-        await _soundDeviceService.PlayTextV2TestAsync(CancellationToken.None);
-
-        SoundDeviceTestResult = "测试成功";
-        _logger.LogInformation("Sound device test succeeded");
-    }
-    catch (HttpRequestException ex)
-    {
-        SoundDeviceTestResult = "测试失败: 网络错误，请检查音响设备IP地址";
-        _logger.LogError(ex, "Sound device test failed: Network error");
-    }
-    catch (TaskCanceledException ex)
-    {
-        SoundDeviceTestResult = "测试失败: 请求超时，请检查音响设备是否在线";
-        _logger.LogError(ex, "Sound device test failed: Timeout");
-    }
-    catch (Exception ex)
-    {
-        SoundDeviceTestResult = $"测试失败: {ex.Message}";
-        _logger.LogError(ex, "Sound device test failed");
-    }
-    finally
-    {
-        IsSoundDeviceTestRunning = false;
-    }
-}
-```
+**实现**：（见原文完整 catch 块，含 HttpRequestException、TaskCanceledException 等）
 
 ---
 
-### Decision 7: UI Button Placement
+### 决策 7：UI 按钮位置
 
-**Problem**: Where should the test button be placed in the Settings window?
+**问题**：测试按钮应放在设置窗口何处？
 
-**Options**:
+**选项**：
 
-| Option | Pros | Cons |
+| 选项 | 优点 | 缺点 |
 |--------|------|------|
-| A) After volume TextBox, before next section | • Logical grouping<br>• Easy to find | • May clutter section |
-| B) In a separate "Test" section | • Very organized | • Overkill for single button |
-| C) In a toolbar at bottom of window | • Global test area | • Less context<br>• Harder to find |
+| A) 音量 TextBox 之后、下一节之前 | • 逻辑分组<br>• 易找到 | • 可能使区块拥挤 |
+| B) 单独「测试」区块 | • 非常规整 | • 对单个按钮过度 |
+| C) 窗口底部工具栏 | • 全局测试区 | • 上下文少<br>• 难找到 |
 
-**Decision**: **Option A** - After volume TextBox, before next section
+**决策**：**选项 A** - 音量 TextBox 之后、下一节之前
 
-**Rationale**:
-1. **Logical Grouping**: Test is part of sound device configuration
-2. **Discoverability**: Users enabling device will immediately see test option
-3. **Consistency**: Similar to how "Test Capture" is placed in camera section
-4. **Minimal Disruption**: Doesn't require major UI restructuring
+**理由**：
+1. **逻辑分组**：测试属于音响设备配置
+2. **可发现性**：启用设备的用户会立即看到测试选项
+3. **一致性**：与相机区块「测试抓拍」放置方式类似
+4. **最小改动**：无需大改 UI 结构
 
-**UI Layout**:
-```
-┌─────────────────────────────────────────────┐
-│ 音响设备设置                                 │
-├─────────────────────────────────────────────┤
-│ ☑ 启用音响设备                              │
-│                                             │
-│ 本机IP:     [192.168.1.100        ]         │
-│ 音响设备IP: [192.168.1.200        ]         │
-│ 音响序列号: [1234567890ABC      ]         │
-│ 音量:       [0          ]                   │
-│                                             │
-│ [ 测试音响 ]                                │
-│ 测试成功                                    │
-└─────────────────────────────────────────────┘
-```
+**UI 布局**：（见原文 ASCII 布局图）
 
 ---
 
-## Data Flow
+## 数据流
 
-### Normal Test Flow (Success)
+### 正常测试流（成功）
 
-```
-User clicks "测试音响" button
-    │
-    ▼
-TestSoundDevice command executes
-    │
-    ▼
-IsSoundDeviceTestRunning = true
-    │
-    ▼
-Button becomes disabled (via binding)
-    │
-    ▼
-await _soundDeviceService.PlayTextV2TestAsync()
-    │
-    ▼
-SoundDeviceService.PlayTextV2TestAsync()
-    │
-    ├─ Log: "Starting sound device test..."
-    │
-    ├─ Call PlayTextV2Async("音柱测试")
-    │   │
-    │   ├─ Get settings from ISettingsService
-    │   │
-    │   ├─ Validate device enabled and config valid
-    │   │
-    │   ├─ Build TTS URI
-    │   │
-    │   ├─ Create HttpClient
-    │   │
-    │   ├─ Post play request (8 retry attempts)
-    │   │   │
-    │   │   └─ Success response received
-    │   │
-    │   └─ Return completed task
-    │
-    ├─ Log: "Sound device test completed successfully"
-    │
-    └─ Return completed task
-    │
-    ▼
-SoundDeviceTestResult = "测试成功"
-    │
-    ▼
-IsSoundDeviceTestRunning = false
-    │
-    ▼
-Button becomes enabled (via binding)
-    │
-    ▼
-Status text displays "测试成功"
-```
+用户点击「测试音响」→ TestSoundDevice 执行 → IsSoundDeviceTestRunning = true → 按钮禁用 → await PlayTextV2TestAsync → 服务内 PlayTextV2Async("音柱测试") → 成功 → SoundDeviceTestResult = "测试成功" → IsSoundDeviceTestRunning = false → 按钮启用 → 状态显示「测试成功」。
 
-### Error Flow
+### 错误流
 
-```
-User clicks "测试音响" button
-    │
-    ▼
-TestSoundDevice command executes
-    │
-    ▼
-await _soundDeviceService.PlayTextV2TestAsync()
-    │
-    ▼
-SoundDeviceService.PlayTextV2TestAsync()
-    │
-    ├─ Call PlayTextV2Async("音柱测试")
-    │   │
-    │   ├─ Get settings
-    │   │
-    │   ├─ Validate config → VALID
-    │   │
-    │   ├─ Create HttpClient
-    │   │
-    │   ├─ Post play request (8 attempts)
-    │   │   │
-    │   │   ├─ Attempt 1: Exception (network error)
-    │   │   ├─ Attempt 2: Exception (timeout)
-    │   │   ├─ ...
-    │   │   └─ Attempt 8: Exception (no response)
-    │   │
-    │   └─ Log error and throw exception
-    │
-    └─ Catch exception, log, rethrow
-        │
-        ▼
-Exception propagates to ViewModel
-    │
-    ▼
-catch (Exception ex) block in TestSoundDeviceAsync
-    │
-    ├─ Log error details
-    │
-    ├─ SoundDeviceTestResult = "测试失败: [error message]"
-    │
-    └─ finally block executes
-        │
-        ▼
-IsSoundDeviceTestRunning = false
-    │
-    ▼
-Status text displays error message
-```
+请求失败/超时 → 服务记录并抛出 → ViewModel catch 设置 SoundDeviceTestResult → finally 中 IsSoundDeviceTestRunning = false → 状态显示错误信息。
 
-## Memory Management
+---
 
-### Rx Subscription Disposal
+## 内存管理
 
-**Concern**: ReactiveUI command subscriptions can cause memory leaks if not properly disposed.
+### Rx 订阅释放
 
-**Mitigation**:
-1. `ReactiveCommand` uses `CreateFromTask` factory which manages subscriptions properly
-2. ViewModel follows transient dependency lifecycle (`ITransientDependency`)
-3. SettingsWindow is short-lived (opened/closed frequently)
-4. No long-lived subscriptions in test command
+**关注点**：ReactiveUI 命令订阅若未正确释放可能导致内存泄漏。
 
-**Verification Plan**:
-- Create memory leak test following `AttendedWeighingServiceMemoryLeakTests` pattern
-- Run 1000 iterations of test command
-- Verify memory usage remains stable
+**缓解**：ReactiveCommand 使用 CreateFromTask 正确管理订阅；ViewModel 为瞬时生命周期；SettingsWindow 短生命周期；测试命令无长生命周期订阅。
 
-### HttpClient Disposal
+**验证计划**：按 AttendedWeighingServiceMemoryLeakTests 模式做内存泄漏测试；执行 1000 次测试命令；验证内存使用稳定。
 
-**Concern**: `PlayTextV2Async` creates HttpClient instances directly (not using factory), must be properly disposed.
+### HttpClient 释放
 
-**Current Implementation Analysis**:
-```csharp
-// In PlayTextV2Async
-var httpClient = new HttpClient { ... };
-try
-{
-    // ... use httpClient
-}
-finally
-{
-    httpClient.Dispose(); // ✅ Already properly disposed
-}
-```
+**现状**：PlayTextV2Async 中 HttpClient 已在 try-finally 的 finally 中 Dispose，已正确处置。
 
-**Status**: ✅ Already handled correctly in existing code.
+---
 
-## Security Considerations
+## 安全考虑
 
-### Input Validation
+### 输入验证
 
-- Test text is fixed constant ("音柱测试") - no user input
-- No SQL injection risk (SQLite with parameterized queries)
-- No XSS risk (desktop app, not web)
+测试文本为固定常量，无用户输入；无 SQL 注入风险；桌面应用无 XSS 风险。
 
-### Network Security
+### 网络安全
 
-- Uses existing HTTP client infrastructure
-- No new network endpoints exposed
-- TLS/SSL follows existing sound device API configuration
+使用现有 HTTP 客户端基础设施；无新网络端点暴露；TLS/SSL 遵循现有音响设备 API 配置。
 
-### Logging Security
+### 日志安全
 
-- Test text is logged ("音柱测试") - no sensitive data
-- Error messages may contain device IP/SN - already logged in existing code
-- No user credentials or secrets involved
+测试文本会记录，无敏感数据；错误信息可能含设备 IP/SN，与现有代码一致；不涉及用户凭据或密钥。
 
-## Performance Considerations
+---
 
-### Async Operation
+## 性能考虑
 
-- Test operation is fully async (non-blocking UI)
-- 30-second timeout prevents indefinite blocking
-- HttpClient timeout configured appropriately
+### 异步操作
 
-### Memory Footprint
+测试全异步，不阻塞 UI；30 秒超时防止无限阻塞；HttpClient 超时已适当配置。
 
-- Minimal additional memory (two string properties, one command)
-- No large buffers or collections
-- No background timers or scheduled tasks
+### 内存与 CPU
 
-### CPU Usage
+仅增加少量内存（两个字符串属性、一个命令）；无大缓冲或集合；无后台定时器或计划任务；主要为 I/O 等待。
 
-- Test operation is I/O bound (HTTP request)
-- Minimal CPU usage during async wait
-- No tight loops or computational overhead
+---
 
-## Testing Strategy
+## 测试策略
 
-### Unit Testing
+### 单元测试
 
-**What to Test**:
-1. `PlayTextV2TestAsync` uses fixed test text
-2. Logging is called appropriately
-3. Exceptions are caught and rethrown
-4. Cancellation token is passed through
+验证：PlayTextV2TestAsync 使用固定测试文本；日志调用适当；异常被捕获并重新抛出；取消令牌传递。使用 ISettingsService mock 与内存测试替身。
 
-**How to Test**:
-- Mock `ISettingsService` to return valid configuration
-- Use in-memory test doubles for HTTP calls
-- Verify method calls and logging
+### 集成测试
 
-### Integration Testing
+端到端与真实音响设备；UI 按钮启用/禁用正确；状态更新传递到 UI；设备离线时的错误处理。
 
-**What to Test**:
-1. End-to-end flow with real sound device
-2. UI button enables/disables correctly
-3. Status updates propagate to UI
-4. Error handling with device offline
+### 内存泄漏测试
 
-**How to Test**:
-- Manual testing with physical hardware
-- Automated UI tests (if UI testing framework exists)
+重复执行后无内存泄漏；Rx 订阅正确释放；HttpClient 正确释放。按现有模式做 1000+ 次迭代，用 dotMemory 或 VS Profiler 监控。
 
-### Memory Leak Testing
+---
 
-**What to Test**:
-1. No memory leaks after repeated test executions
-2. Rx subscriptions are properly disposed
-3. HttpClient instances are properly released
+## 未来增强
 
-**How to Test**:
-- Create memory leak test following existing patterns
-- Run 1000+ iterations
-- Monitor memory usage with dotMemory or Visual Studio Profiler
+可考虑：高级诊断（网络连通、设备状态、音量校准）；可配置测试文本；测试历史；批量测试；增强取消（取消按钮 + CancellationTokenSource）。当前设计支持在不破坏变更的前提下增加上述能力。
 
-## Future Enhancements
+---
 
-### Potential Improvements
+## 结论
 
-1. **Advanced Diagnostics**:
-   - Network connectivity test (ping device IP)
-   - Device status query before playing audio
-   - Volume calibration test
-
-2. **Customizable Test Text**:
-   - Allow users to configure test phrase
-   - Support multiple test phrases (random selection)
-
-3. **Test History**:
-   - Log test results with timestamps
-   - Show success/failure statistics
-   - Export test history for debugging
-
-4. **Batch Testing**:
-   - Test all configured sound devices in sequence
-   - Support for multi-device setups
-
-5. **Enhanced Cancellation**:
-   - Add cancel button for long-running tests
-   - Use `CancellationTokenSource` for proper cancellation
-
-### Extensibility Points
-
-The current design supports these enhancements without breaking changes:
-
-- **Test Text**: Can be added as parameter or configuration setting
-- **Cancellation**: Can add `CancellationTokenSource` to ViewModel
-- **Diagnostics**: Can add additional methods to `ISoundDeviceService`
-- **History**: Can add new entity and repository for test results
-
-## Conclusion
-
-This design document outlines a simple, maintainable implementation of sound device testing that:
-
-- Follows existing MVVM and ReactiveUI patterns
-- Maintains separation of concerns
-- Provides clear user feedback
-- Handles errors gracefully
-- Avoids memory leaks
-- Supports future enhancements
-
-The implementation is straightforward, low-risk, and delivers immediate value to users by enabling quick validation of sound device configuration.
+本设计文档描述了一种简单、可维护的音响设备测试实现：遵循现有 MVVM 与 ReactiveUI 模式、保持职责分离、提供清晰反馈、优雅处理错误、避免内存泄漏并支持后续增强。实现直接、风险低，能立即让用户快速验证音响设备配置。

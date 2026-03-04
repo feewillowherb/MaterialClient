@@ -1,22 +1,22 @@
-# Change: Hikvision LPR Service Implementation
+# 变更：海康威视 LPR 服务实现
 
-**Change ID**: `hikvision-lpr-implementation`
-**Status**: ExecutionCompleted
-**Created**: 2025-01-29
-**Completed**: 2025-01-29
-**Type**: Feature
+**变更 ID**：`hikvision-lpr-implementation`
+**状态**：执行完成
+**创建日期**：2025-01-29
+**完成日期**：2025-01-29
+**类型**：功能
 
 ---
 
-## Why
+## 背景与动机
 
-### Background
+### 背景
 
-MaterialClient is a Windows desktop application for material weighing management in industrial settings. The current system has integrated license plate recognition functionality. The Hikvision LPR service interface `IHikvisionLprService` has been defined but is not yet implemented. This interface is used to support the system in using Hikvision devices for license plate recognition, including both active capture and passive capture modes.
+MaterialClient 是用于工业场景物料称重管理的 Windows 桌面应用。当前系统已集成车牌识别功能。海康威视 LPR 服务接口 `IHikvisionLprService` 已定义但尚未实现。该接口用于支持系统使用海康威视设备进行车牌识别，包括主动抓拍与被动抓拍两种模式。
 
-The reference document `HikLpr_OpenSpec_Proposal.md` provides detailed technical migration and implementation guidance, covering HCNetSDK integration, lifecycle management, callback handling, and other key implementation details.
+参考文档 `HikLpr_OpenSpec_Proposal.md` 提供了详细的技术迁移与实现指引，涵盖 HCNetSDK 集成、生命周期管理、回调处理等关键实现细节。
 
-### Problems
+### 问题
 
 The following issues need to be resolved:
 
@@ -32,13 +32,13 @@ The following issues need to be resolved:
 
 ---
 
-## What Changes
+## 变更内容
 
-### Overview
+### 概览
 
 Implement the `IHikvisionLprService` interface to provide complete Hikvision LPR service functionality. The service will communicate with Hikvision devices through HCNetSDK, supporting both passive capture (device pushes license plate recognition results) and active capture (application triggers photo capture).
 
-### Detailed Changes
+### 详细变更
 
 #### 1. Interface Optimization (MODIFIED)
 
@@ -141,9 +141,9 @@ Provide test-friendly design:
 
 ---
 
-## Impact
+## 影响
 
-### Expected Benefits
+### 预期收益
 
 1. **Complete Hikvision LPR Functionality**: The system will have both passive and active capture capabilities, meeting license plate recognition requirements in industrial weighing scenarios
 
@@ -155,7 +155,7 @@ Provide test-friendly design:
 
 5. **Testability**: Interface-based design and Mock implementation support unit and integration testing
 
-### Risks and Mitigations
+### 风险与缓解
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -168,7 +168,7 @@ Provide test-friendly design:
 
 ---
 
-## Success Criteria
+## 成功标准
 
 - [x] `HikvisionLprService` class implements `IHikvisionLprService` interface
 - [x] `HikvisionSdk.cs` module contains all required P/Invoke declarations and structure definitions
@@ -187,7 +187,7 @@ Provide test-friendly design:
 
 ---
 
-## Next Steps
+## 后续步骤
 
 1. **Review and Approve Proposal**: Review this proposal with the team, confirm technical approach and scope
 2. **Create Design Document**: If needed, create detailed design document (`design.md`) explaining architectural decisions and implementation details
@@ -199,7 +199,7 @@ Provide test-friendly design:
 
 ---
 
-## References
+## 参考
 
 - **OpenSpec Proposal**: `HikLpr_OpenSpec_Proposal.md` - Hikvision capture device migration evaluation document
 - **Specification**: `license-plate-recognition` - License plate recognition functionality specification

@@ -1,148 +1,80 @@
-# Change: Fix WeighingMatchingService Integration Test Issues
+# 变更：修复 WeighingMatchingService 集成测试问题
 
-**Change ID**: `fix-weighing-matching-integration-test`
-**Status**: Draft
-**Created**: 2026-01-22
-**Type**: Refactoring
-
----
-
-## Why
-
-### Problems
-
-The current `WeighingMatchingServiceSteps.cs` integration test has several critical issues:
-
-1. **Prohibited EF Core Property Manipulation**: The test uses `entry.Property("CreationTime").CurrentValue = creationTimeValue;` which is strictly prohibited. This approach bypasses entity encapsulation and can lead to data inconsistencies.
-
-2. **Inconsistent Table Format**: While the test partially uses table format for input (`Given Weighing records as below`), verification steps use individual assertions instead of table-based verification, making tests verbose and harder to maintain.
-
-3. **Incomplete Business Code Coverage**: The integration test may not properly cover business logic in `AttendedWeighingService.cs` and `WeighingMatchingService.cs`, particularly around matching logic and waybill creation.
-
-4. **Mixed Test Patterns**: The test mixes table-based setup with individual parameter-based steps, creating inconsistency and reducing readability.
-
-### Impact
-
-- **Code Quality**: Prohibited patterns violate coding standards
-- **Maintainability**: Inconsistent patterns make tests harder to understand and extend
-- **Test Coverage**: Potential gaps in business logic coverage
-- **Readability**: Mixed patterns reduce test clarity
+**变更 ID**：`fix-weighing-matching-integration-test`
+**状态**：Draft
+**创建日期**：2026-01-22
+**类型**：Refactoring
 
 ---
 
-## What Changes
+## 原因
 
-### Overview
+### 问题
 
-Refactor `WeighingMatchingServiceSteps.cs` and `WeighingMatchingService.feature` to:
-1. Remove all `Property()` usage and use proper entity properties (`AddDate` instead of manipulating `CreationTime`)
-2. Standardize on table format for both input setup and verification
-3. Ensure comprehensive coverage of business logic
-4. Follow integration test standard template with table-based patterns
+当前 `WeighingMatchingServiceSteps.cs` 集成测试存在若干关键问题：
 
-### Detailed Changes
+1. **禁止的 EF Core 属性操作**：测试使用 `entry.Property("CreationTime").CurrentValue = creationTimeValue;`，此方式被明确禁止，会绕过实体封装并可能导致数据不一致。
+2. **表格式不统一**：输入部分使用表格式（Given Weighing records as below），但验证步骤使用单独断言而非基于表的验证，导致测试冗长难维护。
+3. **业务代码覆盖不全**：集成测试可能未充分覆盖 `AttendedWeighingService.cs` 与 `WeighingMatchingService.cs` 中的业务逻辑，尤其是匹配逻辑与运单创建。
+4. **测试模式混杂**：表格式准备与基于单参数的步骤混用，不一致且可读性差。
 
-#### 1. Fix Entity Property Access
+### 影响
 
-**Current (Prohibited)**:
-```csharp
-entry.Property("CreationTime").CurrentValue = creationTimeValue;
-```
-
-**Fixed**:
-```csharp
-record.AddDate = creationTimeValue;
-```
-
-Replace all instances where `Property("CreationTime")` is used with direct assignment to `AddDate` property, which is the correct property on `WeighingRecord` entity.
-
-#### 2. Standardize Table Format for Verification
-
-**Current**: Individual assertions for each waybill property
-```csharp
-[Then(@"the waybill should have OrderTruckWeight (.*) kg")]
-public void ThenTheWaybillShouldHaveOrderTruckWeight(decimal expectedWeight)
-{
-    // Individual assertion
-}
-```
-
-**Fixed**: Table-based verification
-```gherkin
-Then Waybills as below
-  | PlateNumber | OrderTruckWeight | OrderTotalWeight | OrderGoodsWeight |
-  | 京A12345    | 10.0             | 15.0             | 5.0              |
-```
-
-The `ThenWaybillsAsBelow` method already exists but needs to be used consistently across all scenarios.
-
-#### 3. Consolidate Step Definitions
-
-Remove individual parameter-based steps in favor of table-based steps:
-- Remove `Given record (.*) has plate number...` steps
-- Use only `Given Weighing records as below` with table format
-- Remove individual `Then the waybill should have...` steps
-- Use only `Then Waybills as below` with table format
-
-#### 4. Enhance Business Logic Coverage
-
-Ensure integration tests cover:
-- `WeighingMatchingService.AutoMatchAsync()` - automatic matching logic
-- `WeighingMatchingService.CreateWaybillAsync()` - waybill creation
-- `WeighingRecord.TryMatch()` - matching validation logic
-- Edge cases: multiple candidates, time window validation, weight relationship validation
-
-Note: Integration tests do not strictly require covering query business code (e.g., `GetListItemsAsync`).
-
-#### 5. Update Feature File
-
-Convert all scenarios to use table format consistently:
-- Input: Always use `Given Weighing records as below` with table
-- Verification: Always use `Then Waybills as below` with table
-- Remove individual property verification steps
+- **代码质量**：禁止用法违反编码标准
+- **可维护性**：模式不统一使测试难以理解与扩展
+- **测试覆盖**：业务逻辑可能存在缺口
+- **可读性**：混合模式降低测试清晰度
 
 ---
 
-## Impact
+## 变更内容
 
-### Affected Files
+### 概览
 
-- `MaterialClient.Common.Tests/Steps/WeighingMatchingServiceSteps.cs` - Refactor step definitions
-- `MaterialClient.Common.Tests/Features/WeighingMatchingService.feature` - Update scenarios to use table format
+重构 `WeighingMatchingServiceSteps.cs` 与 `WeighingMatchingService.feature`：  
+1. 移除所有 `Property()` 用法，改用正确实体属性（用 `AddDate` 替代操作 `CreationTime`）  
+2. 输入准备与验证均统一为表格式  
+3. 确保业务逻辑覆盖完整  
+4. 遵循集成测试标准模板与基于表的模式  
 
-### Expected Benefits
+### 详细变更
 
-- **Code Quality**: Removes prohibited patterns, follows coding standards
-- **Maintainability**: Consistent table-based patterns make tests easier to maintain
-- **Readability**: Table format is more readable than individual assertions
-- **Coverage**: Better coverage of business logic through comprehensive scenarios
+#### 1. 修正实体属性访问  
+将 `entry.Property("CreationTime").CurrentValue = creationTimeValue;` 改为 `record.AddDate = creationTimeValue;`，并在所有使用处用 `AddDate` 替代对 `Property("CreationTime")` 的访问。
 
-### Risks and Mitigations
+#### 2. 验证步骤统一为表格式  
+用基于表的验证（如 `Then Waybills as below` 与表）替代对单个运单属性的逐项断言；统一使用已有的 `ThenWaybillsAsBelow` 等方法。
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing tests | High | Ensure all scenarios are converted correctly, run full test suite |
-| Missing edge cases | Medium | Review business logic coverage, add scenarios for edge cases |
-| Test data complexity | Low | Use clear table structure, document DTOs |
+#### 3. 合并步骤定义  
+移除基于单参数的 Given/Then 步骤，仅保留基于表的 `Given Weighing records as below` 与 `Then Waybills as below`。
 
----
+#### 4. 增强业务逻辑覆盖  
+确保覆盖：`WeighingMatchingService.AutoMatchAsync()`、`CreateWaybillAsync()`、`WeighingRecord.TryMatch()` 及多候选、时间窗口、重量关系等边界情况。注：集成测试不强制覆盖查询类业务代码（如 `GetListItemsAsync`）。
 
-## Success Criteria
-
-- [ ] All `Property()` usage removed from test code
-- [ ] All scenarios use table format for both input and verification
-- [ ] All existing test scenarios pass after refactoring
-- [ ] Business logic in `WeighingMatchingService` and `AttendedWeighingService` is properly covered
-- [ ] No individual parameter-based steps remain (except where table format is not applicable)
-- [ ] Feature file is consistent and readable
+#### 5. 更新 Feature 文件  
+所有场景统一为：输入使用 `Given Weighing records as below` 表；验证使用 `Then Waybills as below` 表；移除单属性验证步骤。
 
 ---
 
-## References
+## 影响
 
-- Current implementation: `MaterialClient.Common.Tests/Steps/WeighingMatchingServiceSteps.cs`
-- Current feature: `MaterialClient.Common.Tests/Features/WeighingMatchingService.feature`
-- Business code: 
-  - `MaterialClient.Common/Services/WeighingMatchingService.cs`
-  - `MaterialClient.Common/Services/AttendedWeighingService.cs`
-- Entity: `MaterialClient.Common/Entities/WeighingRecord.cs`
+**受影响文件**：WeighingMatchingServiceSteps.cs（重构步骤定义）、WeighingMatchingService.feature（改为表格式场景）。  
+**预期收益**：消除禁止用法、符合编码标准；表格式一致便于维护与阅读；场景更全面，业务逻辑覆盖更好。  
+**风险与缓解**：破坏现有测试（高）→ 正确转换所有场景并运行完整套件；遗漏边界（中）→ 审阅业务覆盖并补充场景；测试数据复杂（低）→ 使用清晰表结构并文档化 DTO。
+
+---
+
+## 成功标准
+
+- [ ] 测试代码中已移除所有 `Property()` 用法
+- [ ] 所有场景的输入与验证均使用表格式
+- [ ] 重构后所有现有场景通过
+- [ ] WeighingMatchingService 与 AttendedWeighingService 业务逻辑得到适当覆盖
+- [ ] 无残留的基于单参数的步骤（表格式不适用处除外）
+- [ ] Feature 文件一致且可读
+
+---
+
+## 参考
+
+- 当前实现与 Feature、业务代码（WeighingMatchingService、AttendedWeighingService）、实体 WeighingRecord

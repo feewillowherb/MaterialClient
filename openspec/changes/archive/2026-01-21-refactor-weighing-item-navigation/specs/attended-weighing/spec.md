@@ -1,165 +1,165 @@
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Item Navigation After Operations
+### 需求：操作后条目导航
 
-The system SHALL provide consistent navigation to WeighingListItemDto objects after operations (Save, Complete, Match, Abolish) are performed.
+系统应在执行操作（保存、完成、匹配、作废）后，提供对 WeighingListItemDto 对象的一致导航。
 
-#### Scenario: Complete operation navigation
-- **WHEN** user completes a waybill (FirstWeight → Completed) in AttendedWeighingDetailView
-- **THEN** the system SHALL:
-  - Refresh the list data to reflect the completed state
-  - Select the newly completed waybill in the list
-  - Display the completed waybill in AttendedWeighingMainView (not DetailView)
-  - Navigate to the correct page if the item is not on the current page
-  - Switch to the appropriate tab only if necessary (respect IsShowAllRecords flag)
+#### 场景：完成操作后的导航
+- **当**用户在 AttendedWeighingDetailView 中完成运单（首磅 → 已完成）时
+- **则**系统应：
+  - 刷新列表数据以反映已完成状态
+  - 在列表中选中新完成的运单
+  - 在 AttendedWeighingMainView（而非详情视图）中显示该已完成运单
+  - 若条目不在当前页，则导航到正确页
+  - 仅在必要时切换到相应标签（尊重 IsShowAllRecords 标志）
 
-#### Scenario: Save operation navigation
-- **WHEN** user saves changes to a weighing record or waybill in AttendedWeighingDetailView
-- **THEN** the system SHALL:
-  - Refresh the list data to reflect the saved changes
-  - Keep the saved item selected in the list
-  - Remain in AttendedWeighingDetailView (allow continued editing)
-  - Stay on the current tab (item state hasn't changed)
-  - Navigate to the correct page if the item moved due to sorting
+#### 场景：保存操作后的导航
+- **当**用户在 AttendedWeighingDetailView 中保存称重记录或运单的修改时
+- **则**系统应：
+  - 刷新列表数据以反映保存后的变更
+  - 在列表中保持已保存条目为选中状态
+  - 保持在 AttendedWeighingDetailView（允许继续编辑）
+  - 保持当前标签（条目状态未变）
+  - 若因排序导致条目移动，则导航到正确页
 
-#### Scenario: Match operation navigation
-- **WHEN** user manually matches a weighing record with another record
-- **THEN** the system SHALL:
-  - Refresh the list data to show the newly created waybill
-  - Select the next unmatched item in the list
-  - Display the next unmatched item in AttendedWeighingDetailView
-  - Switch to unmatched tab if currently on completed tab and not showing all records
-  - Navigate to the correct page for the next item
+#### 场景：匹配操作后的导航
+- **当**用户手动将一条称重记录与另一条匹配时
+- **则**系统应：
+  - 刷新列表数据以显示新生成的运单
+  - 在列表中选中下一未匹配条目
+  - 在 AttendedWeighingDetailView 中显示下一未匹配条目
+  - 若当前在已完成标签且未显示全部记录，则切换到未匹配标签
+  - 为下一条目导航到正确页
 
-#### Scenario: Abolish operation navigation
-- **WHEN** user abolishes (deletes) a weighing record
-- **THEN** the system SHALL:
-  - Refresh the list data to remove the abolished record
-  - Select the next unmatched item in the list
-  - Display the next unmatched item in AttendedWeighingDetailView
-  - Stay on the current tab (item was removed, not moved)
-  - Navigate to the correct page for the next item
+#### 场景：作废操作后的导航
+- **当**用户作废（删除）一条称重记录时
+- **则**系统应：
+  - 刷新列表数据以移除已作废记录
+  - 在列表中选中下一未匹配条目
+  - 在 AttendedWeighingDetailView 中显示下一未匹配条目
+  - 保持当前标签（条目被移除而非移动）
+  - 为下一条目导航到正确页
 
-### Requirement: Tab Switching Rules
+### 需求：标签切换规则
 
-The system SHALL implement intelligent tab switching that respects user context and only switches when necessary.
+系统应实现尊重用户上下文、仅在必要时切换的智能标签逻辑。
 
-#### Scenario: Tab switching respects "All Records" mode
-- **WHEN** IsShowAllRecords flag is true (user selected "All Records" tab)
-- **THEN** the system SHALL NOT automatically switch tabs after any operation
-- **BECAUSE** all items are visible on this tab regardless of completion status
+#### 场景：标签切换尊重「全部记录」模式
+- **当** IsShowAllRecords 标志为 true（用户选择了「全部记录」标签）时
+- **则**系统在任何操作后均不得自动切换标签
+- **原因**：该标签下所有条目均可见，与完成状态无关
 
-#### Scenario: Tab switching when item moves to completed state
-- **WHEN** an item becomes completed (OrderType changes to Completed)
-- **AND** IsShowUnmatched is true (user is on "Unmatched" tab)
-- **AND** IsShowAllRecords is false
-- **THEN** the system SHALL switch to IsShowCompleted = true ("Completed" tab)
+#### 场景：条目变为已完成时的标签切换
+- **当**条目变为已完成（OrderType 变为 Completed）
+- **且** IsShowUnmatched 为 true（用户在「未匹配」标签）
+- **且** IsShowAllRecords 为 false
+- **则**系统应切换到 IsShowCompleted = true（「已完成」标签）
 
-#### Scenario: Tab switching when item moves to unmatched state
-- **WHEN** an item becomes unmatched (OrderType changes to FirstWeight or Unmatch)
-- **AND** IsShowCompleted is true (user is on "Completed" tab)
-- **AND** IsShowAllRecords is false
-- **THEN** the system SHALL switch to IsShowUnmatched = true ("Unmatched" tab)
+#### 场景：条目变为未匹配时的标签切换
+- **当**条目变为未匹配（OrderType 变为 FirstWeight 或 Unmatch）
+- **且** IsShowCompleted 为 true（用户在「已完成」标签）
+- **且** IsShowAllRecords 为 false
+- **则**系统应切换到 IsShowUnmatched = true（「未匹配」标签）
 
-#### Scenario: No tab switching when current tab contains target item
-- **WHEN** an operation completes and the resulting item's state matches the current tab filter
-- **THEN** the system SHALL NOT switch tabs
-- **EXAMPLE**: User on "Completed" tab saves a completed waybill → stay on "Completed" tab
+#### 场景：当前标签已包含目标条目时不切换
+- **当**操作完成且结果条目的状态与当前标签筛选一致时
+- **则**系统不得切换标签
+- **示例**：用户在「已完成」标签下保存一条已完成运单 → 保持「已完成」标签
 
-### Requirement: Cross-Page Item Navigation
+### 需求：跨页条目导航
 
-The system SHALL find and navigate to items across pagination boundaries.
+系统应能跨分页边界查找并导航到条目。
 
-#### Scenario: Item found on current page
-- **WHEN** navigating to a target item after an operation
-- **AND** the target item is present on the current page
-- **THEN** the system SHALL:
-  - Select the item immediately without changing pages
-  - Complete navigation in O(1) time
+#### 场景：条目在当前页
+- **当**操作后导航到目标条目
+- **且**目标条目在当前页
+- **则**系统应：
+  - 立即选中该条目且不翻页
+  - 在 O(1) 时间内完成导航
 
-#### Scenario: Item found on different page
-- **WHEN** navigating to a target item after an operation
-- **AND** the target item is NOT present on the current page
-- **THEN** the system SHALL:
-  - Search across pages starting from page 1
-  - Navigate to the page containing the target item
-  - Select the item once found
-  - Limit search to a maximum of 10 pages to prevent excessive loading
+#### 场景：条目在其他页
+- **当**操作后导航到目标条目
+- **且**目标条目不在当前页
+- **则**系统应：
+  - 从第 1 页起跨页搜索
+  - 导航到包含目标条目的页
+  - 找到后选中该条目
+  - 将搜索限制在最多 10 页以防过度加载
 
-#### Scenario: Item not found after search
-- **WHEN** navigating to a target item after an operation
-- **AND** the target item cannot be found after searching available pages
-- **THEN** the system SHALL:
-  - Fall back to selecting the first item in the current list
-  - Log a warning about the missing item
-  - Not display an error to the user (graceful degradation)
+#### 场景：搜索后未找到条目
+- **当**操作后导航到目标条目
+- **且**在可用页中搜索后仍无法找到目标条目
+- **则**系统应：
+  - 回退为选中当前列表第一项
+  - 记录关于缺失条目的警告日志
+  - 不向用户显示错误（优雅降级）
 
-### Requirement: View Selection Based on Item State
+### 需求：按条目状态的视图选择
 
-The system SHALL automatically select the appropriate view (MainView or DetailView) based on the item's type and completion status.
+系统应根据条目的类型与完成状态自动选择主视图或详情视图。
 
-#### Scenario: Completed waybill displays in MainView
-- **WHEN** navigating to an item that is a Waybill
-- **AND** the waybill's OrderType is Completed
-- **THEN** the system SHALL display AttendedWeighingMainView (read-only summary view)
+#### 场景：已完成运单在主视图中显示
+- **当**导航到的条目为 Waybill
+- **且**该运单的 OrderType 为 Completed
+- **则**系统应显示 AttendedWeighingMainView（只读摘要视图）
 
-#### Scenario: Editable items display in DetailView
-- **WHEN** navigating to an item that is NOT a completed waybill
-- **EXAMPLES**: WeighingRecord (unmatched), Waybill with OrderType = FirstWeight
-- **THEN** the system SHALL display AttendedWeighingDetailView (editable form view)
+#### 场景：可编辑条目在详情视图中显示
+- **当**导航到的条目不是已完成运单时
+- **示例**：WeighingRecord（未匹配）、OrderType = FirstWeight 的 Waybill
+- **则**系统应显示 AttendedWeighingDetailView（可编辑表单视图）
 
-#### Scenario: View selection after Complete operation
-- **WHEN** user completes a waybill (changes OrderType from FirstWeight to Completed)
-- **THEN** the system SHALL switch from AttendedWeighingDetailView to AttendedWeighingMainView
-- **BECAUSE** the item is now read-only and optimized for viewing in MainView
+#### 场景：完成操作后的视图选择
+- **当**用户完成运单（将 OrderType 从 FirstWeight 改为 Completed）时
+- **则**系统应从 AttendedWeighingDetailView 切换到 AttendedWeighingMainView
+- **原因**：条目现已只读，主视图更适合查看
 
-### Requirement: Operation Event Context
+### 需求：操作事件上下文
 
-The system SHALL provide complete context information in operation events to enable proper navigation.
+系统应在操作事件中提供完整上下文信息，以支持正确导航。
 
-#### Scenario: Event arguments include operation context
-- **WHEN** an operation (Save, Complete, Match, Abolish) completes in AttendedWeighingDetailView
-- **THEN** the raised event SHALL include:
-  - ItemId: The ID of the resulting item
-  - ItemType: Whether the item is a WeighingRecord or Waybill
-  - OrderType: The current order type (Unmatch, FirstWeight, Completed)
-  - IsCompleted: Boolean flag for quick completion status check
-  - OperationType: String identifying which operation was performed
+#### 场景：事件参数包含操作上下文
+- **当**在 AttendedWeighingDetailView 中完成操作（保存、完成、匹配、作废）时
+- **则**触发的事件应包含：
+  - ItemId：结果条目的 ID
+  - ItemType：条目是 WeighingRecord 还是 Waybill
+  - OrderType：当前订单类型（Unmatch、FirstWeight、Completed）
+  - IsCompleted：用于快速判断完成状态的布尔标志
+  - OperationType：标识所执行操作的字符串
 
-#### Scenario: Complete operation event
-- **WHEN** user completes a waybill successfully
-- **THEN** CompleteCompleted event SHALL be raised with:
-  - ItemId = the waybill ID
+#### 场景：完成操作事件
+- **当**用户成功完成运单时
+- **则**应触发 CompleteCompleted 事件，且：
+  - ItemId = 运单 ID
   - ItemType = Waybill
   - OrderType = Completed
   - IsCompleted = true
   - OperationType = "Complete"
 
-#### Scenario: Save operation event
-- **WHEN** user saves changes to a record or waybill
-- **THEN** SaveCompleted event SHALL be raised with:
-  - ItemId = the saved item's ID
-  - ItemType = the item's current type
-  - OrderType = the item's current order type
-  - IsCompleted = based on OrderType
+#### 场景：保存操作事件
+- **当**用户保存对记录或运单的修改时
+- **则**应触发 SaveCompleted 事件，且：
+  - ItemId = 已保存条目的 ID
+  - ItemType = 条目当前类型
+  - OrderType = 条目当前订单类型
+  - IsCompleted = 根据 OrderType
   - OperationType = "Save"
 
-### Requirement: Unified Navigation Logic
+### 需求：统一导航逻辑
 
-The system SHALL use a single unified method for all post-operation navigation to ensure consistency.
+系统应使用单一统一方法处理所有操作后导航，以保证一致性。
 
-#### Scenario: All operations use NavigateToItemAsync
-- **WHEN** any operation event handler is triggered (Save, Complete, Match, Abolish, ManualMatch)
-- **THEN** the handler SHALL call the unified NavigateToItemAsync method
-- **AND** NavigateToItemAsync SHALL handle:
-  - Data refresh
-  - Tab switching decision
-  - Page navigation
-  - Item selection
-  - View selection
+#### 场景：所有操作均使用 NavigateToItemAsync
+- **当**任一操作事件处理被触发（保存、完成、匹配、作废、手动匹配）时
+- **则**处理方应调用统一的 NavigateToItemAsync 方法
+- **且** NavigateToItemAsync 应负责：
+  - 数据刷新
+  - 标签切换决策
+  - 页导航
+  - 条目选中
+  - 视图选择
 
-#### Scenario: Navigation logic is predictable and testable
-- **WHEN** testing navigation behavior
-- **THEN** all navigation paths SHALL go through NavigateToItemAsync
-- **ALLOWING** single point of testing and maintenance
-- **ENSURING** consistent behavior across all operations
+#### 场景：导航逻辑可预测且可测
+- **当**测试导航行为时
+- **则**所有导航路径均应经过 NavigateToItemAsync
+- **从而**实现单点测试与维护
+- **并保证**所有操作行为一致

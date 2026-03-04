@@ -1,97 +1,86 @@
-# Translation Inventory
+# 翻译清单
 
-This document provides a comprehensive inventory of all files requiring translation for the Chinese Language Localization change.
+本文提供中文本地化变更所需的全部待翻译文件清单。
 
-## Files Requiring Translation
+## 待翻译文件
 
-### Markdown Documentation Files (12 files)
+### Markdown 文档（12 个文件）
 
-#### Documentation in `docs/` directory (10 files)
-- `docs/SDD.md` - Software Design Document
-- `docs/existing-docs-inventory.md` - Documentation inventory
-- `docs/design-creatable-pageable-searchable-selection.md` - Design document
-- `docs/evaluation-generic-selection-popup-merge-search-and-trigger.md` - Evaluation document
-- `docs/evaluation-photo-grid-image-loading-performance.md` - Evaluation document
-- `docs/evaluation-remove-defaultweighingmode-bootstrap.md` - Evaluation document
-- `docs/popup-selection-analysis.md` - Analysis document
-- `docs/proposal-creatable-pageable-searchable-selection.md` - Proposal document
-- `docs/sdd-creation-summary.md` - Creation summary
-- `docs/sdd-gap-analysis.md` - Gap analysis
-- `docs/sdd-maintenance-guide.md` - Maintenance guide
-- `docs/sdd-quality-assessment.md` - Quality assessment
+#### `docs/` 目录下的文档（10 个）
+- `docs/SDD.md` - 软件设计文档
+- `docs/existing-docs-inventory.md` - 文档清单
+- `docs/design-creatable-pageable-searchable-selection.md` - 设计文档
+- `docs/evaluation-generic-selection-popup-merge-search-and-trigger.md` - 评估文档
+- `docs/evaluation-photo-grid-image-loading-performance.md` - 评估文档
+- `docs/evaluation-remove-defaultweighingmode-bootstrap.md` - 评估文档
+- `docs/popup-selection-analysis.md` - 分析文档
+- `docs/proposal-creatable-pageable-searchable-selection.md` - 提案文档
+- `docs/sdd-creation-summary.md` - 创建总结
+- `docs/sdd-gap-analysis.md` - 差距分析
+- `docs/sdd-maintenance-guide.md` - 维护指南
+- `docs/sdd-quality-assessment.md` - 质量评估
 
-#### Root-level Markdown files (1 file)
-- `HikLpr_OpenSpec_Proposal.md` - OpenSpec proposal document
-- Note: `CLAUDE.md` should remain in English as it contains system instructions
+#### 根目录 Markdown 文件（1 个）
+- `HikLpr_OpenSpec_Proposal.md` - OpenSpec 提案文档
+- 说明：`CLAUDE.md` 应保持英文，因其包含系统指令
 
-### C# Source Files (256 files)
+### C# 源文件（256 个）
 
-#### MaterialClient project (160 files)
-- Located in `MaterialClient/` directory
-- Requires comment translation to Chinese
+#### MaterialClient 项目（160 个）
+- 位于 `MaterialClient/` 目录
+- 需将注释翻译为中文
 
-#### MaterialClient.Common project (72 files)
-- Located in `MaterialClient.Common/` directory
-- Requires comment translation to Chinese
+#### MaterialClient.Common 项目（72 个）
+- 位于 `MaterialClient.Common/` 目录
+- 需将注释翻译为中文
 
-#### MaterialClient.Toolkit project (24 files)
-- Located in `MaterialClient.Toolkit/` directory
-- Requires comment translation to Chinese
+#### MaterialClient.Toolkit 项目（24 个）
+- 位于 `MaterialClient.Toolkit/` 目录
+- 需将注释翻译为中文
 
-### Project Files (3 files)
+### 项目文件（3 个）
 
-#### .csproj files requiring metadata updates
-- `MaterialClient/MaterialClient.csproj` - Update description to Chinese
-- `MaterialClient.Common/MaterialClient.Common.csproj` - Update description to Chinese
-- `MaterialClient.Toolkit/MaterialClient.Toolkit.csproj` - Update description to Chinese
+#### 需更新元数据的 .csproj
+- `MaterialClient/MaterialClient.csproj` - 将描述更新为中文
+- `MaterialClient.Common/MaterialClient.Common.csproj` - 将描述更新为中文
+- `MaterialClient.Toolkit/MaterialClient.Toolkit.csproj` - 将描述更新为中文
 
-## Excluded Files
+## 排除文件
 
-The following files are **EXCLUDED** from translation:
+以下文件**不**参与翻译：
 
-### OpenSpec System Files (MUST remain in English)
-- `openspec/specs/**/*.md` - All specification documents
-- `openspec/changes/**/*.md` - All change documents (proposal.md, tasks.md, design.md)
-- `CLAUDE.md` - System instructions file
+### OpenSpec 系统文件（必须保持英文）
+- `openspec/specs/**/*.md` - 所有规范文档
+- `openspec/changes/**/*.md` - 所有变更文档（proposal.md、tasks.md、design.md）
+- `CLAUDE.md` - 系统指令文件
 
-### Third-Party Files
-- `.cursor/` directory - IDE-specific configurations
-- `.specify/` directory - AI assistant templates
-- `archive/` directory - Archived legacy documentation
+### 第三方与构建
+- `.cursor/` 目录 - IDE 配置
+- `.specify/` 目录 - AI 助手模板
+- `archive/` 目录 - 归档旧文档
+- 所有 `.json`、`.xml`、`.config`、`.editorconfig`、`.gitignore` 及 `.axaml`、`.axaml.cs` 等（本变更范围外）
 
-### Build and Configuration Files
-- All `.json`, `.xml`, `.config`, `.editorconfig`, `.gitignore` files
-- All `.axaml` and `.axaml.cs` UI files (not in scope for this change)
+## 翻译统计
 
-## Translation Statistics
+- **待翻译文件总数**：271 个（Markdown 12、C# 256、项目 3）
+- **待翻译注释行数**：约 15,000+ 行
+- **预估工作量**：20–30 小时人工翻译
 
-- **Total Files Requiring Translation:** 271 files
-  - Markdown files: 12 files
-  - C# files: 256 files
-  - Project files: 3 files
-- **Total Lines of Code**: Estimated 15,000+ lines of comments to translate
-- **Estimated Effort**: 20-30 hours of manual translation work
+## 优先级
 
-## Priority Classification
+### 高优先级（关键）
+- `docs/SDD.md`、`docs/existing-docs-inventory.md`、各 .csproj 项目元数据
 
-### High Priority (Critical)
-- `docs/SDD.md` - Primary design document
-- `docs/existing-docs-inventory.md` - Documentation reference
-- Project metadata files (.csproj)
+### 中优先级（重要）
+- `docs/` 下所有文档、根目录 Markdown、MaterialClient 与 MaterialClient.Common 的代码注释
 
-### Medium Priority (Important)
-- All documentation files in `docs/`
-- Root-level Markdown files
-- Code comments in MaterialClient and MaterialClient.Common projects
+### 低优先级（可选）
+- MaterialClient.Toolkit 代码注释、评估与分析类文档
 
-### Low Priority (Optional)
-- Code comments in MaterialClient.Toolkit project
-- Evaluation and analysis documents
+## 说明
 
-## Notes
-
-1. Code content itself (variable names, method names, class names) must remain in English
-2. Technical and professional terminology should retain English notes (e.g., API, HTTP, REST, JSON, XML)
-3. All OpenSpec specification documents must remain in English per system requirements
-4. Translation should maintain original meaning and technical accuracy
-5. Code comments should provide clear guidance to Chinese-speaking developers
+1. 代码本身（变量名、方法名、类名）必须保持英文
+2. 技术与专业术语应保留英文备注（如 API、HTTP、REST、JSON、XML）
+3. 所有 OpenSpec 规范文档按系统要求保持英文
+4. 翻译须保持原意与技术准确性
+5. 代码注释应为中文开发者提供清晰指导

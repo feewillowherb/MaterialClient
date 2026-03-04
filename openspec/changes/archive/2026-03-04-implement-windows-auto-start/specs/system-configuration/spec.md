@@ -1,106 +1,106 @@
-# system-configuration Specification
+# system-configuration 规格
 
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Windows Auto-Start Configuration
+### 需求：Windows 开机自启配置
 
-The system SHALL provide functionality to enable or disable automatic application startup on Windows boot, with synchronization between database settings and Windows registry.
+系统应提供在 Windows 开机时启用或禁用应用自动启动的能力，并保持数据库设置与 Windows 注册表同步。
 
-#### Scenario: Enable auto-start from settings
-- **WHEN** user enables "开机自动启动" checkbox in SettingsWindow
-- **AND** user clicks "保存" (Save) button
-- **THEN** the system SHALL:
-  - Save `EnableAutoStart = true` to database
-  - Create registry entry in `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
-  - Registry value name: Application name (e.g., "MaterialClient")
-  - Registry value data: Full path to executable
-  - Log successful registry operation
+#### 场景：从设置中启用开机自启
+- **当** 用户在设置窗口中勾选“开机自动启动”
+- **且** 用户点击“保存”按钮
+- **则** 系统应：
+  - 将 `EnableAutoStart = true` 保存到数据库
+  - 在 `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` 中创建注册表项
+  - 注册表值名称：应用名称（如 "MaterialClient"）
+  - 注册表值数据：可执行文件完整路径
+  - 记录注册表操作成功日志
 
-#### Scenario: Disable auto-start from settings
-- **WHEN** user disables "开机自动启动" checkbox in SettingsWindow
-- **AND** user clicks "保存" (Save) button
-- **THEN** the system SHALL:
-  - Save `EnableAutoStart = false` to database
-  - Remove registry entry from `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
-  - Log successful registry operation
+#### 场景：从设置中禁用开机自启
+- **当** 用户在设置窗口中取消勾选“开机自动启动”
+- **且** 用户点击“保存”按钮
+- **则** 系统应：
+  - 将 `EnableAutoStart = false` 保存到数据库
+  - 从 `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` 中删除注册表项
+  - 记录注册表操作成功日志
 
-#### Scenario: Check auto-start status
-- **WHEN** system needs to verify current auto-start state
-- **THEN** the system SHALL:
-  - Read registry entry from `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
-  - Return `true` if entry exists and matches executable path
-  - Return `false` if entry does not exist or path mismatch
+#### 场景：检查开机自启状态
+- **当** 系统需要确认当前开机自启状态
+- **则** 系统应：
+  - 从 `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` 读取注册表项
+  - 若项存在且与可执行路径一致则返回 `true`
+  - 若项不存在或路径不一致则返回 `false`
 
-### Requirement: Settings-Registry Synchronization
+### 需求：设置与注册表同步
 
-The system SHALL maintain consistency between database settings and Windows registry state, automatically repairing inconsistencies when detected.
+系统应保持数据库设置与 Windows 注册表状态一致，在检测到不一致时自动修复。
 
-#### Scenario: Synchronize on settings save
-- **WHEN** settings are saved via `SettingsService.SaveSettingsAsync()`
-- **THEN** the system SHALL:
-  - Save settings to database first
-  - If `EnableAutoStart = true`, call `WindowsAutoStartService.EnableAutoStartAsync()`
-  - If `EnableAutoStart = false`, call `WindowsAutoStartService.DisableAutoStartAsync()`
-  - Ensure database and registry states match after save operation
+#### 场景：保存设置时同步
+- **当** 通过 `SettingsService.SaveSettingsAsync()` 保存设置
+- **则** 系统应：
+  - 先将设置写入数据库
+  - 若 `EnableAutoStart = true`，调用 `WindowsAutoStartService.EnableAutoStartAsync()`
+  - 若 `EnableAutoStart = false`，调用 `WindowsAutoStartService.DisableAutoStartAsync()`
+  - 确保保存完成后数据库与注册表状态一致
 
-#### Scenario: Repair inconsistency on startup
-- **WHEN** application starts up
-- **AND** database setting `EnableAutoStart` does not match registry state
-- **THEN** the system SHALL:
-  - Detect inconsistency by comparing database setting with registry state
-  - Apply database setting to registry (repair inconsistency)
-  - Log repair operation for troubleshooting
-  - Continue application startup normally (do not block on sync failure)
+#### 场景：启动时修复不一致
+- **当** 应用启动
+- **且** 数据库中的 `EnableAutoStart` 与注册表状态不一致
+- **则** 系统应：
+  - 通过比较数据库设置与注册表状态检测不一致
+  - 按数据库设置写回注册表（修复不一致）
+  - 记录修复操作便于排查
+  - 正常继续启动（同步失败不阻断启动）
 
-#### Scenario: Consistent state on startup
-- **WHEN** application starts up
-- **AND** database setting `EnableAutoStart` matches registry state
-- **THEN** the system SHALL:
-  - Log that state is consistent
-  - Continue startup without registry modifications
+#### 场景：启动时状态一致
+- **当** 应用启动
+- **且** 数据库中的 `EnableAutoStart` 与注册表状态一致
+- **则** 系统应：
+  - 记录状态一致
+  - 不修改注册表并继续启动
 
-### Requirement: Error Handling for Registry Operations
+### 需求：注册表操作的错误处理
 
-The system SHALL handle registry operation failures gracefully without blocking application functionality.
+系统应对注册表操作失败进行妥善处理，不阻断应用功能。
 
-#### Scenario: Registry permission denied
-- **WHEN** registry write operation fails due to insufficient permissions
-- **THEN** the system SHALL:
-  - Catch `UnauthorizedAccessException` or `SecurityException`
-  - Log warning message with exception details
-  - Continue application flow without throwing exception
-  - Allow settings save to complete (database update succeeds even if registry fails)
+#### 场景：注册表权限拒绝
+- **当** 因权限不足导致注册表写入失败
+- **则** 系统应：
+  - 捕获 `UnauthorizedAccessException` 或 `SecurityException`
+  - 记录包含异常详情的警告
+  - 不抛出异常，继续应用流程
+  - 允许设置保存完成（即使注册表失败，数据库更新仍成功）
 
-#### Scenario: Registry unavailable
-- **WHEN** registry is unavailable or corrupted
-- **THEN** the system SHALL:
-  - Catch registry-related exceptions (`IOException`, `ArgumentException`, etc.)
-  - Log error message with exception details
-  - Continue application flow without throwing exception
-  - Allow application to start and function normally
+#### 场景：注册表不可用
+- **当** 注册表不可用或损坏
+- **则** 系统应：
+  - 捕获与注册表相关的异常（`IOException`、`ArgumentException` 等）
+  - 记录包含异常详情的错误
+  - 不抛出异常，继续应用流程
+  - 允许应用正常启动和运行
 
-#### Scenario: Registry read failure
-- **WHEN** reading registry entry fails during status check
-- **THEN** the system SHALL:
-  - Catch exception and log warning
-  - Return `false` as conservative default (assume auto-start disabled)
-  - Continue application flow without throwing exception
+#### 场景：注册表读取失败
+- **当** 在状态检查时读取注册表项失败
+- **则** 系统应：
+  - 捕获异常并记录警告
+  - 保守地返回 `false`（视为开机自启未启用）
+  - 不抛出异常，继续应用流程
 
-### Requirement: Windows Auto-Start Service Interface
+### 需求：Windows 开机自启服务接口
 
-The system SHALL provide `IWindowsAutoStartService` interface for managing Windows auto-start functionality.
+系统应提供 `IWindowsAutoStartService` 接口，用于管理 Windows 开机自启。
 
-#### Scenario: Service registration
-- **WHEN** application initializes dependency injection container
-- **THEN** the system SHALL:
-  - Register `WindowsAutoStartService` as implementation of `IWindowsAutoStartService`
-  - Make service available for injection into other services
+#### 场景：服务注册
+- **当** 应用初始化依赖注入容器
+- **则** 系统应：
+  - 将 `WindowsAutoStartService` 注册为 `IWindowsAutoStartService` 的实现
+  - 使该服务可被注入到其他服务中
 
-#### Scenario: Service methods
-- **WHEN** `IWindowsAutoStartService` is used
-- **THEN** the system SHALL provide:
-  - `Task EnableAutoStartAsync()` - Enable auto-start in registry
-  - `Task DisableAutoStartAsync()` - Disable auto-start in registry
-  - `Task<bool> IsAutoStartEnabledAsync()` - Check current registry state
-  - All methods SHALL be async and return appropriate types
-  - All methods SHALL handle exceptions internally (don't throw to caller)
+#### 场景：服务方法
+- **当** 使用 `IWindowsAutoStartService`
+- **则** 系统应提供：
+  - `Task EnableAutoStartAsync()` —— 在注册表中启用开机自启
+  - `Task DisableAutoStartAsync()` —— 在注册表中禁用开机自启
+  - `Task<bool> IsAutoStartEnabledAsync()` —— 查询当前注册表状态
+  - 所有方法应为异步并返回相应类型
+  - 所有方法应在内部处理异常（不向调用方抛出）

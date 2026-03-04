@@ -1,65 +1,65 @@
-# Change: Implement Windows Auto-Start Functionality
+# 变更：实现 Windows 开机自启功能
 
-**Change ID**: `implement-windows-auto-start`
-**Status**: Draft
-**Created**: 2026-01-23
-**Type**: Feature
-
----
-
-## Why
-
-### Background
-
-The application currently has a UI checkbox for "开机自动启动" (Auto-start on boot) in the settings window, and the `EnableAutoStart` setting is persisted to the database. However, the actual Windows auto-start functionality is not implemented. When users enable this setting, nothing happens at the system level - the application is not added to Windows startup registry entries.
-
-### Problems
-
-1. **Incomplete Feature**: The UI and data model exist, but the core functionality is missing. Users can toggle the setting, but it has no effect on system behavior.
-
-2. **Data Inconsistency Risk**: If the database setting is enabled but the Windows registry entry doesn't exist (or vice versa), the application state becomes inconsistent. This can happen if:
-   - Users manually delete registry entries
-   - Settings are migrated from another machine
-   - Registry permissions prevent writes
-   - Application is uninstalled/reinstalled
-
-3. **User Expectation Gap**: Users expect the checkbox to actually control auto-start behavior, but currently it only saves a preference that is never applied.
+**变更 ID**：`implement-windows-auto-start`
+**状态**：草稿
+**创建日期**：2026-01-23
+**类型**：功能
 
 ---
 
-## What Changes
+## 原因
 
-### Overview
+### 背景
 
-Implement complete Windows auto-start functionality with dual synchronization mechanism:
-1. **Primary sync**: Apply registry changes when settings are saved
-2. **Fallback sync**: Check and repair inconsistencies on application startup
+当前应用在设置窗口中有“开机自动启动”勾选项，且 `EnableAutoStart` 设置会持久化到数据库，但实际的 Windows 开机自启并未实现。用户勾选该设置后，系统层面没有任何变化——应用不会被加入 Windows 启动注册表项。
 
-### Detailed Changes
+### 问题
 
-1. **Create `WindowsAutoStartService`**:
-   - Service to manage Windows registry entries for auto-start
-   - Methods: `EnableAutoStartAsync()`, `DisableAutoStartAsync()`, `IsAutoStartEnabledAsync()`
-   - Registry location: `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
-   - Registry value name: Application name (e.g., "MaterialClient")
+1. **功能不完整**：界面与数据模型已有，核心逻辑缺失。用户可切换设置，但对系统行为无影响。
 
-2. **Integrate with `SettingsService`**:
-   - After saving settings, call `WindowsAutoStartService` to sync registry state
-   - Ensure database setting and Windows registry are always in sync
+2. **数据不一致风险**：若数据库里为“启用”而 Windows 注册表无对应项（或反之），应用状态会不一致。可能出现在：
+   - 用户手动删除注册表项
+   - 从其他机器迁移设置
+   - 注册表权限导致无法写入
+   - 卸载/重装应用
 
-3. **Add startup synchronization**:
-   - On application startup, check if database setting matches registry state
-   - If inconsistent, repair by applying database setting to registry
-   - Log inconsistencies for troubleshooting
-
-4. **Error handling**:
-   - Handle registry permission errors gracefully
-   - Log warnings when registry operations fail
-   - Do not block application startup if registry sync fails
+3. **与用户预期不符**：用户认为勾选即会控制开机自启，目前只是保存了一个从未被应用的偏好。
 
 ---
 
-## Code Flow Changes
+## 变更内容
+
+### 概述
+
+实现完整的 Windows 开机自启，并采用双重同步机制：
+1. **主同步**：保存设置时写入/删除注册表
+2. **兜底同步**：应用启动时检查并修复不一致
+
+### 具体变更
+
+1. **新增 `WindowsAutoStartService`**：
+   - 负责管理开机自启相关的 Windows 注册表项
+   - 方法：`EnableAutoStartAsync()`、`DisableAutoStartAsync()`、`IsAutoStartEnabledAsync()`
+   - 注册表位置：`HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
+   - 注册表值名称：应用名称（如 "MaterialClient"）
+
+2. **与 `SettingsService` 集成**：
+   - 保存设置后调用 `WindowsAutoStartService` 同步注册表
+   - 保证数据库设置与 Windows 注册表始终一致
+
+3. **增加启动时同步**：
+   - 应用启动时比较数据库设置与注册表状态
+   - 若不一致，按数据库设置修正注册表
+   - 记录不一致日志便于排查
+
+4. **错误处理**：
+   - 妥善处理注册表权限错误
+   - 注册表操作失败时记录警告
+   - 注册表同步失败不阻止应用启动
+
+---
+
+## 代码流变更
 
 ```mermaid
 sequenceDiagram
@@ -108,68 +108,68 @@ sequenceDiagram
 
 ---
 
-## Impact
+## 影响
 
-### Expected Benefits
+### 预期收益
 
-- **Complete Feature**: Auto-start functionality works as users expect
-- **Data Consistency**: Database and Windows registry stay synchronized
-- **Resilience**: Automatic repair of inconsistencies on startup
-- **User Trust**: Settings actually control system behavior
+- **功能完整**：开机自启按用户预期工作
+- **数据一致**：数据库与 Windows 注册表保持同步
+- **健壮性**：启动时自动修复不一致
+- **用户信任**：设置真实控制系统行为
 
-### Risks and Mitigations
+### 风险与缓解
 
-| Risk | Impact | Mitigation |
+| 风险 | 影响 | 缓解 |
 |------|--------|------------|
-| Registry permission errors | High | Catch exceptions, log warnings, don't block startup |
-| Registry corruption | Medium | Validate registry operations, handle gracefully |
-| Inconsistent state on startup | Medium | Automatic repair mechanism on startup |
-| Performance impact | Low | Registry operations are fast (<10ms) |
-| Cross-platform compatibility | N/A | Windows-only application (per project constraints) |
+| 注册表权限错误 | 高 | 捕获异常、记录警告、不阻断启动 |
+| 注册表损坏 | 中 | 校验注册表操作并妥善处理 |
+| 启动时状态不一致 | 中 | 启动时自动修复机制 |
+| 性能影响 | 低 | 注册表操作很快（<10ms） |
+| 跨平台兼容 | 不适用 | 按项目约束仅 Windows |
 
-### Affected Specs
+### 涉及规格
 
-- **New capability**: `system-configuration` - System configuration management including auto-start
+- **新能力**：`system-configuration` —— 系统配置管理（含开机自启）
 
-### Affected Code
+### 涉及代码
 
-- **New service**: `MaterialClient.Common/Services/WindowsAutoStartService.cs`
-- **Modified**: `MaterialClient.Common/Services/SettingsService.cs` (add registry sync after save)
-- **Modified**: `MaterialClient/App.axaml.cs` or `MaterialClient/Services/StartupService.cs` (add startup sync check)
-- **Dependencies**: `Microsoft.Win32.Registry` (built-in .NET library)
+- **新服务**：`MaterialClient.Common/Services/WindowsAutoStartService.cs`
+- **修改**：`MaterialClient.Common/Services/SettingsService.cs`（保存后增加注册表同步）
+- **修改**：`MaterialClient/App.axaml.cs` 或 `MaterialClient/Services/StartupService.cs`（增加启动时同步检查）
+- **依赖**：`Microsoft.Win32.Registry`（.NET 内置库）
 
-### Breaking Changes
+### 破坏性变更
 
-None - this is a new feature addition.
-
----
-
-## Success Criteria
-
-- [ ] `WindowsAutoStartService` can enable/disable auto-start in Windows registry
-- [ ] Settings save operation synchronizes registry state
-- [ ] Application startup detects and repairs inconsistencies
-- [ ] Registry permission errors are handled gracefully
-- [ ] Unit tests cover registry operations (with mocking)
-- [ ] Integration test verifies end-to-end flow
-- [ ] UI checkbox correctly reflects actual system state
+无——此为新增功能。
 
 ---
 
-## Next Steps
+## 成功标准
 
-1. Review and approve this proposal
-2. Implement `WindowsAutoStartService`
-3. Integrate with `SettingsService`
-4. Add startup synchronization
-5. Write tests
-6. Validate on Windows system
+- [ ] `WindowsAutoStartService` 能在 Windows 注册表中启用/禁用开机自启
+- [ ] 保存设置时同步注册表状态
+- [ ] 应用启动时能检测并修复不一致
+- [ ] 注册表权限错误被妥善处理
+- [ ] 单元测试覆盖注册表操作（使用 Mock）
+- [ ] 集成测试验证端到端流程
+- [ ] 界面勾选正确反映实际系统状态
 
 ---
 
-## References
+## 后续步骤
 
-- `MaterialClient/Views/SettingsWindow.axaml` (lines 397-398) - UI checkbox
-- `MaterialClient.Common/Configuration/SystemSettings.cs` - EnableAutoStart property
-- `MaterialClient.Common/Services/SettingsService.cs` - Settings persistence
-- `MaterialClient/App.axaml.cs` - Application startup flow
+1. 评审并批准本提案
+2. 实现 `WindowsAutoStartService`
+3. 与 `SettingsService` 集成
+4. 增加启动时同步
+5. 编写测试
+6. 在 Windows 上验证
+
+---
+
+## 参考
+
+- `MaterialClient/Views/SettingsWindow.axaml`（第 397–398 行）—— 界面勾选
+- `MaterialClient.Common/Configuration/SystemSettings.cs` —— EnableAutoStart 属性
+- `MaterialClient.Common/Services/SettingsService.cs` —— 设置持久化
+- `MaterialClient/App.axaml.cs` —— 应用启动流程

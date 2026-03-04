@@ -6,9 +6,9 @@
 
 ---
 
-## Task Overview
+## 任务概览
 
-本变更分三个阶段实施:
+本变更分四个阶段实施：
 1. **阶段1: 配置模型扩展** - 修改 `LicensePlateRecognitionConfig` 实体类
 2. **阶段2: 动态UI实现** - 修改 `SettingsWindowViewModel`、`AddLprDialogViewModel` 和相关视图
 3. **阶段3: 测试和验证** - 编写单元测试、集成测试和UI测试

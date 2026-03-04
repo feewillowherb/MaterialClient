@@ -1,38 +1,38 @@
-# Change Proposal Template
+# 变更提案模板
 
-This directory contains templates for creating new OpenSpec change proposals.
+本目录包含用于创建新 OpenSpec 变更提案的模板。
 
-## Usage
+## 使用方式
 
-1. Copy the entire `_template` directory
-2. Rename to your change ID (e.g., `my-change-2025-01-15`)
-3. Fill in the template files
-4. Delete this instruction README
+1. 复制整个 `_template` 目录
+2. 重命名为你的变更 ID（例如 `my-change-2025-01-15`）
+3. 填写模板文件
+4. 删除本说明 README
 
-## Template Files
+## 模板文件
 
-- `proposal.md` - Change proposal template (REQUIRED)
-- `design.md` - Design document template (OPTIONAL - create if needed)
-- `tasks.md` - Implementation tasks template (REQUIRED)
+- `proposal.md` - 变更提案模板（必填）
+- `design.md` - 设计文档模板（可选，需要时创建）
+- `tasks.md` - 实施任务模板（必填）
 
-## Change ID Convention
+## 变更 ID 命名约定
 
-Use descriptive kebab-case identifiers:
+使用描述性 kebab-case 标识符，例如：
 - `feature-user-authentication-2025-01-15`
 - `fix-crash-video-streaming`
 - `refactor-data-layer`
 - `process-documentation-organization`
 
-## Next Steps
+## 后续步骤
 
-After creating your change proposal:
+创建变更提案后：
 
-1. Submit for review
-2. Get approval
-3. Execute tasks from tasks.md
-4. Move to `archive/` when completed
+1. 提交审阅
+2. 获得批准
+3. 按 tasks.md 执行任务
+4. 完成后移至 `archive/`
 
 ---
 
-**Template Version**: 1.0
-**Last Updated**: 2026-01-15
+**模板版本**：1.0
+**最后更新**：2026-01-15

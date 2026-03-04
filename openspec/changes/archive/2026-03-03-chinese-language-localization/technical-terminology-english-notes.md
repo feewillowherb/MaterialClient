@@ -1,10 +1,10 @@
-# Technical Terminology English Notes Guide
+# 技术术语英文备注指南
 
-This document defines which technical and professional terminology should retain English notes in translations.
+本文定义在翻译中应保留英文备注的技术与专业术语。
 
-## Core Technology Terms (Always Keep in English)
+## 核心技术术语（始终保留英文）
 
-### Programming Languages & Frameworks
+### 编程语言与框架
 - **C#** (C Sharp)
 - **.NET**
 - **.NET Core**
@@ -12,7 +12,7 @@ This document defines which technical and professional terminology should retain
 - **ReactiveUI**
 - **Entity Framework** / **EF Core**
 
-### Web & Network Protocols
+### 网络与 Web 协议
 - **HTTP**
 - **HTTPS**
 - **REST** / **RESTful**
@@ -23,7 +23,7 @@ This document defines which technical and professional terminology should retain
 - **TCP/IP**
 - **UDP**
 
-### Data Formats & Standards
+### 数据格式与标准
 - **JSON**
 - **XML**
 - **YAML**
@@ -32,7 +32,7 @@ This document defines which technical and professional terminology should retain
 - **ASCII**
 - **ISO**
 
-### Database Terms
+### 数据库术语
 - **SQL**
 - **ORM**
 - **LINQ**
@@ -43,7 +43,7 @@ This document defines which technical and professional terminology should retain
 - **Query**
 - **Stored Procedure**
 
-### Design Patterns & Architecture
+### 设计模式与架构
 - **MVC** (Model-View-Controller)
 - **MVVM** (Model-View-ViewModel)
 - **MVP** (Model-View-Presenter)
@@ -56,7 +56,7 @@ This document defines which technical and professional terminology should retain
 - **Command**
 - **Strategy**
 
-### Development Tools & Concepts
+### 开发工具与概念
 - **Git**
 - **CI/CD**
 - **Build**
@@ -68,9 +68,9 @@ This document defines which technical and professional terminology should retain
 - **Mock**
 - **Stub**
 
-## Domain-Specific Terms (Keep English Notes)
+## 领域专用术语（保留英文备注）
 
-### MaterialClient Domain
+### MaterialClient 领域
 - **License Plate Recognition** (LPR)
 - **OCR** (Optical Character Recognition)
 - **IP Camera**
@@ -78,7 +78,7 @@ This document defines which technical and professional terminology should retain
 - **ONVIF** (Open Network Video Interface Forum)
 - **SDK** (Software Development Kit)
 
-### Weighing & Measurement
+### 称重与测量
 - **Scale** / **Balance**
 - **Sensor**
 - **ADC** (Analog-to-Digital Converter)
@@ -87,10 +87,10 @@ This document defines which technical and professional terminology should retain
 - **RS-485**
 - **TCP/IP**
 
-## Translation Format Guidelines
+## 翻译格式指南
 
-### Format 1: English Term Only (for very common terms)
-For extremely common technical terms that are widely recognized in Chinese technical contexts:
+### 格式 1：仅英文术语（适用于极常用术语）
+适用于在中文技术语境中广泛认可的极常用技术术语：
 
 ```
 API
@@ -98,8 +98,8 @@ HTTP
 JSON
 ```
 
-### Format 2: Chinese Translation + English (for less common terms)
-For technical terms that may need clarification:
+### 格式 2：中文译名 + 英文（适用于较不常见术语）
+适用于可能需要说明的技术术语：
 
 ```
 应用程序接口 (API)
@@ -107,8 +107,8 @@ For technical terms that may need clarification:
 JavaScript 对象表示法 (JSON)
 ```
 
-### Format 3: English Term + Chinese Translation (for explanations)
-When explaining a term in a document:
+### 格式 3：英文术语 + 中文译名（适用于解释）
+在文档中解释术语时：
 
 ```
 API (Application Programming Interface) - 应用程序接口
@@ -116,10 +116,10 @@ HTTP (HyperText Transfer Protocol) - 超文本传输协议
 JSON (JavaScript Object Notation) - JavaScript 对象表示法
 ```
 
-## Terminology Classification by Usage Frequency
+## 按使用频率的术语分类
 
-### Tier 1: Universal Terms (Keep in English only)
-These terms are universally recognized and should never be translated:
+### 第一类：通用术语（仅保留英文）
+这些术语普遍认可，不应翻译：
 
 ```
 API
@@ -134,8 +134,8 @@ C#
 Git
 ```
 
-### Tier 2: Common Technical Terms (Chinese + English note)
-These terms are well-known but benefit from Chinese translation:
+### 第二类：常见技术术语（中文 + 英文备注）
+这些术语较常见，但附中文译名更清晰：
 
 ```
 应用程序接口 (API)
@@ -146,8 +146,8 @@ These terms are well-known but benefit from Chinese translation:
 控制反转 (IoC)
 ```
 
-### Tier 3: Domain-Specific Terms (Chinese + English note)
-These terms are specific to the MaterialClient domain:
+### 第三类：领域专用术语（中文 + 英文备注）
+这些术语为 MaterialClient 领域专用：
 
 ```
 车牌识别 (LPR)
@@ -157,10 +157,10 @@ These terms are specific to the MaterialClient domain:
 实时流传输协议 (RTSP)
 ```
 
-## Code Comment Guidelines
+## 代码注释指南
 
-### In Code Comments
-When translating code comments, maintain English terminology for:
+### 在代码注释中
+翻译代码注释时，下列内容保留英文术语：
 
 ```csharp
 // 使用 HTTP API 获取车牌识别数据
@@ -170,8 +170,8 @@ When translating code comments, maintain English terminology for:
 // 应用 MVVM 架构
 ```
 
-### In Documentation
-When translating documentation, follow these rules:
+### 在文档中
+翻译文档时遵循以下规则：
 
 ```markdown
 ## API 接口设计
@@ -183,9 +183,9 @@ When translating documentation, follow these rules:
 所有 API 端点遵循 REST 架构风格，使用 JSON 格式进行数据交换。
 ```
 
-## Specific Examples by Category
+## 按类别的具体示例
 
-### Programming Terms
+### 编程术语
 ```
 变量
 方法
@@ -199,7 +199,7 @@ When translating documentation, follow these rules:
 程序集
 ```
 
-### UI Framework Terms
+### UI 框架术语
 ```
 窗口
 控件
@@ -213,7 +213,7 @@ When translating documentation, follow these rules:
 触发器
 ```
 
-### Data Access Terms
+### 数据访问术语
 ```
 实体
 仓储
@@ -228,7 +228,7 @@ When translating documentation, follow these rules:
 主键
 ```
 
-### Build & Deployment Terms
+### 构建与部署术语
 ```
 构建
 配置
@@ -241,16 +241,16 @@ When translating documentation, follow these rules:
 运行时
 ```
 
-## Consistency Rules
+## 一致性规则
 
-1. **First Use**: When a technical term first appears in a document, provide both Chinese and English
-2. **Subsequent Uses**: After the first mention, use the format established
-3. **Cross-Document**: Maintain consistency across all documents in the project
-4. **Glossary Reference**: Always refer to the translation glossary for standard terms
+1. **首次出现**：技术术语在文档中首次出现时，同时给出中文与英文
+2. **后续使用**：首次出现后，沿用已确定的格式
+3. **跨文档**：在项目所有文档中保持一致
+4. **词汇表参考**：标准术语始终参照翻译词汇表
 
-## Examples in Context
+## 上下文示例
 
-### Documentation Example
+### 文档示例
 ```markdown
 # 称重记录 API 文档
 
@@ -271,7 +271,7 @@ When translating documentation, follow these rules:
 返回包含称重记录数组的 JSON 对象。
 ```
 
-### Code Comment Example
+### 代码注释示例
 ```csharp
 /// <summary>
 /// 调用 HTTP API 获取车牌识别结果
@@ -299,24 +299,24 @@ public async Task<LprResult> GetLicensePlateRecognitionAsync(string imageUrl)
 }
 ```
 
-## Review Checklist
+## 审校清单
 
-Before finalizing any translation, verify:
+在定稿任何翻译前，请确认：
 
-- [ ] All Tier 1 terms (API, HTTP, etc.) are kept in English only
-- [ ] Tier 2 and Tier 3 terms include both Chinese and English
-- [ ] Code comments maintain English terminology for technical concepts
-- [ ] First occurrence of terms includes full translation
-- [ ] Consistent format is maintained throughout the document
-- [ ] No arbitrary translations of standard technical terms
-- [ ] Formatting follows the established guidelines
+- [ ] 第一类术语（API、HTTP 等）仅保留英文
+- [ ] 第二、三类术语同时包含中文与英文
+- [ ] 代码注释对技术概念保留英文术语
+- [ ] 术语首次出现时包含完整译名
+- [ ] 全文档格式一致
+- [ ] 未随意翻译标准技术术语
+- [ ] 格式符合既定指南
 
-## Conclusion
+## 结论
 
-Maintaining English notes for technical and professional terminology ensures:
-- Clarity and precision in technical communication
-- Consistency with industry standards
-- Easy understanding by developers familiar with English terminology
-- Professional presentation of technical content
+为技术与专业术语保留英文备注可确保：
+- 技术沟通清晰准确
+- 与行业标准一致
+- 熟悉英文术语的开发者易于理解
+- 技术内容呈现专业
 
-These guidelines should be followed consistently across all translations in the MaterialClient project.
+MaterialClient 项目中的所有翻译应一致遵循本指南。

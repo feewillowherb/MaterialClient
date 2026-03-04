@@ -1,30 +1,30 @@
-# Specification Template
+# 规范模板
 
-This directory contains templates for creating new OpenSpec specifications.
+本目录包含创建新 OpenSpec 规范时使用的模板。
 
-## Usage
+## 使用方式
 
-1. Copy the entire `_template` directory
-2. Rename to your capability name
-3. Fill in the template files
-4. Delete this instruction README
+1. 复制整个 `_template` 目录
+2. 重命名为你的能力名称
+3. 填写模板文件
+4. 删除本说明 README
 
-## Template Files
+## 模板文件
 
-- `spec.md` - Capability specification template
-- `tasks.md` - Implementation tasks template
-- `design.md` - Design document template (optional, create if needed)
+- `spec.md` - 能力规范模板
+- `tasks.md` - 实现任务模板
+- `design.md` - 设计文档模板（可选，需要时创建）
 
-## Next Steps
+## 后续步骤
 
-After creating your specification:
+创建规范后：
 
-1. Review with team
-2. Get approval
-3. Execute tasks from tasks.md
-4. Mark specification as Implemented
+1. 与团队评审
+2. 获得批准
+3. 按 tasks.md 执行任务
+4. 将规范标记为已实现
 
 ---
 
-**Template Version**: 1.0
-**Last Updated**: 2026-01-15
+**模板版本**：1.0  
+**最后更新**：2026-01-15

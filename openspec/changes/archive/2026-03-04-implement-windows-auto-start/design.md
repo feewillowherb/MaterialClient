@@ -1,106 +1,106 @@
-# Design: Windows Auto-Start Implementation
+# 设计：Windows 开机自启实现
 
-## Context
+## 背景
 
-The application has a UI checkbox for auto-start functionality, and the setting is persisted to the database. However, the actual Windows registry operations to enable/disable auto-start are not implemented. This creates a gap between user expectations and actual behavior.
+应用界面上有开机自启的勾选项，且该设置会持久化到数据库，但实际用于启用/禁用自启的 Windows 注册表操作尚未实现，导致用户预期与实际行为不一致。
 
-Windows auto-start is typically managed via the registry key:
-- `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` (user-level)
-- Or `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run` (system-level, requires admin)
+Windows 开机自启通常通过以下注册表项管理：
+- `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`（用户级）
+- 或 `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run`（系统级，需管理员权限）
 
-Since this is a desktop application that may not always run with admin privileges, we use the user-level registry key.
+因本桌面应用不一定始终以管理员运行，采用用户级注册表项。
 
-## Goals / Non-Goals
+## 目标 / 非目标
 
-**Goals:**
-- Implement complete auto-start functionality that actually controls Windows behavior
-- Ensure database setting and Windows registry stay synchronized
-- Automatically repair inconsistencies on application startup
-- Handle registry permission errors gracefully
-- Maintain backward compatibility (no breaking changes)
+**目标：**
+- 实现完整的开机自启功能，真正控制 Windows 行为
+- 保证数据库设置与 Windows 注册表保持一致
+- 在应用启动时自动修复不一致
+- 妥善处理注册表权限错误
+- 保持向后兼容（无破坏性变更）
 
-**Non-Goals:**
-- Supporting system-level auto-start (requires admin, not needed)
-- Supporting task scheduler as alternative (registry is simpler and sufficient)
-- Supporting startup folder method (registry is more reliable)
-- Cross-platform support (Windows-only application per project constraints)
-- Auto-start for other users (only current user)
+**非目标：**
+- 支持系统级自启（需管理员，且非必需）
+- 支持以任务计划程序作为替代（注册表更简单且足够）
+- 支持启动文件夹方式（注册表更可靠）
+- 跨平台支持（按项目约束仅 Windows）
+- 为其他用户配置自启（仅当前用户）
 
-## Decisions
+## 决策
 
-### Decision 1: Registry Location
+### 决策 1：注册表位置
 
-**Decision:** Use `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` for auto-start entries.
+**决策**：使用 `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` 作为自启项。
 
-**Rationale:**
-- No admin privileges required
-- User-specific (each user controls their own auto-start)
-- Standard Windows location for user-level auto-start
-- Works reliably across Windows versions
+**理由**：
+- 无需管理员权限
+- 按用户生效（每个用户控制自己的自启）
+- Windows 用户级自启的标准位置
+- 在各版本 Windows 上可靠
 
-**Alternatives considered:**
-- `HKEY_LOCAL_MACHINE`: Requires admin privileges, affects all users
-- Task Scheduler: More complex, requires COM interop
-- Startup folder: Less reliable, can be disabled by group policy
+**已考虑替代**：
+- `HKEY_LOCAL_MACHINE`：需管理员，影响所有用户
+- 任务计划程序：更复杂，需 COM 互操作
+- 启动文件夹：可靠性较差，可能被组策略禁用
 
-### Decision 2: Registry Value Name
+### 决策 2：注册表值名称
 
-**Decision:** Use application executable name (e.g., "MaterialClient") as registry value name.
+**决策**：使用应用程序可执行文件名（如 "MaterialClient"）作为注册表值名。
 
-**Rationale:**
-- Simple and descriptive
-- Easy to identify in registry editor
-- Unique per application
-- Matches common Windows convention
+**理由**：
+- 简单且易识别
+- 在注册表编辑器中容易辨认
+- 每个应用唯一
+- 符合常见 Windows 习惯
 
-**Alternatives considered:**
-- GUID: Too cryptic, hard to identify
-- Full path: Too long, unnecessary
-- Custom name: Less standard
+**已考虑替代**：
+- GUID：过于晦涩，难以识别
+- 完整路径：过长且不必要
+- 自定义名称：不够标准
 
-### Decision 3: Registry Value Data
+### 决策 3：注册表值数据
 
-**Decision:** Store full path to executable (e.g., `C:\Program Files\MaterialClient\MaterialClient.exe`).
+**决策**：存储可执行文件的完整路径（如 `C:\Program Files\MaterialClient\MaterialClient.exe`）。
 
-**Rationale:**
-- Windows requires full path for auto-start entries
-- Works regardless of current working directory
-- Standard practice for registry auto-start entries
+**理由**：
+- Windows 自启项要求完整路径
+- 与当前工作目录无关即可运行
+- 注册表自启的常见做法
 
-**Implementation:**
+**实现**：
 ```csharp
 var executablePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
 // Or: Environment.ProcessPath (available in .NET 6+)
 ```
 
-### Decision 4: Dual Synchronization Mechanism
+### 决策 4：双重同步机制
 
-**Decision:** Implement two synchronization points:
-1. **Primary**: When settings are saved (immediate sync)
-2. **Fallback**: On application startup (repair inconsistencies)
+**决策**：在两个时点进行同步：
+1. **主同步**：保存设置时（立即同步）
+2. **兜底同步**：应用启动时（修复不一致）
 
-**Rationale:**
-- Primary sync ensures immediate consistency when user changes setting
-- Fallback sync repairs any inconsistencies that may occur (manual registry edits, migration, etc.)
-- Provides resilience against external changes
-- Minimal performance impact (startup check is fast)
+**理由**：
+- 主同步保证用户修改设置后立即一致
+- 兜底同步修复可能发生的不一致（手动改注册表、迁移等）
+- 提高对外部修改的抵抗力
+- 对性能影响很小（启动时检查很快）
 
-**Alternatives considered:**
-- Only sync on save: Leaves inconsistencies if registry is manually modified
-- Only sync on startup: Delayed consistency, user doesn't see immediate effect
-- Sync on both: Best of both worlds, minimal overhead
+**已考虑替代**：
+- 仅在保存时同步：注册表被手动修改后会长期不一致
+- 仅在启动时同步：一致性滞后，用户看不到即时效果
+- 两处都同步：兼顾一致性与开销
 
-### Decision 5: Error Handling Strategy
+### 决策 5：错误处理策略
 
-**Decision:** Catch registry exceptions, log warnings, but don't block application flow.
+**决策**：捕获注册表异常、记录警告，但不阻断应用流程。
 
-**Rationale:**
-- Registry operations can fail due to permissions, corruption, etc.
-- Application should continue to function even if auto-start sync fails
-- Logging provides troubleshooting information
-- User can still use application normally
+**理由**：
+- 注册表可能因权限、损坏等失败
+- 即使自启同步失败，应用仍应继续运行
+- 日志便于排查
+- 用户仍可正常使用应用
 
-**Implementation:**
+**实现**：
 ```csharp
 try
 {
@@ -118,32 +118,32 @@ catch (Exception ex)
 }
 ```
 
-**Alternatives considered:**
-- Fail fast: Too disruptive, breaks user experience
-- Silent failure: No visibility for troubleshooting
-- Retry mechanism: Over-engineering for rare failures
+**已考虑替代**：
+- 快速失败：影响过大，破坏用户体验
+- 静默失败：不利于排查
+- 重试机制：对这种少见失败过度设计
 
-### Decision 6: Service Interface Design
+### 决策 6：服务接口设计
 
-**Decision:** Create `IWindowsAutoStartService` with async methods:
+**决策**：定义 `IWindowsAutoStartService`，提供异步方法：
 - `Task EnableAutoStartAsync()`
 - `Task DisableAutoStartAsync()`
 - `Task<bool> IsAutoStartEnabledAsync()`
 
-**Rationale:**
-- Async pattern matches rest of codebase
-- Clear separation of concerns
-- Easy to mock for testing
-- Follows dependency injection pattern
+**理由**：
+- 异步风格与代码库其余部分一致
+- 职责清晰
+- 便于测试时 Mock
+- 符合依赖注入用法
 
-**Alternatives considered:**
-- Synchronous methods: Doesn't match codebase patterns
-- Single method with boolean parameter: Less clear intent
-- Event-based: Over-complicated for simple operations
+**已考虑替代**：
+- 同步方法：与代码库风格不符
+- 单方法加布尔参数：意图不够清晰
+- 基于事件：对简单操作过于复杂
 
-## Technical Design
+## 技术设计
 
-### Service Implementation
+### 服务实现
 
 ```csharp
 public interface IWindowsAutoStartService
@@ -224,7 +224,7 @@ public class WindowsAutoStartService : IWindowsAutoStartService
 }
 ```
 
-### Integration with SettingsService
+### 与 SettingsService 的集成
 
 ```mermaid
 flowchart TD
@@ -243,7 +243,7 @@ flowchart TD
     style F fill:#ffcccc
 ```
 
-### Startup Synchronization Flow
+### 启动时同步流程
 
 ```mermaid
 sequenceDiagram
@@ -277,7 +277,7 @@ sequenceDiagram
     end
 ```
 
-### Error Handling Flow
+### 错误处理流程
 
 ```mermaid
 flowchart TD
@@ -299,59 +299,59 @@ flowchart TD
     style H fill:#ccffcc
 ```
 
-## Risks / Trade-offs
+## 风险 / 权衡
 
-### Risk: Registry Permission Errors
+### 风险：注册表权限错误
 
-**Risk:** User may not have write permissions to registry (rare but possible).
+**风险**：用户可能对注册表无写权限（少见但可能）。
 
-**Mitigation:**
-- Use `HKEY_CURRENT_USER` (user-level, typically has write access)
-- Catch `UnauthorizedAccessException` and log warning
-- Don't block application startup or settings save
-- Document troubleshooting steps
+**缓解**：
+- 使用 `HKEY_CURRENT_USER`（用户级，通常有写权限）
+- 捕获 `UnauthorizedAccessException` 并记录警告
+- 不阻断应用启动或设置保存
+- 在文档中说明排查步骤
 
-**Acceptance:** Low probability, graceful degradation acceptable.
+**接受**：概率低，可接受优雅降级。
 
-### Risk: Registry Corruption
+### 风险：注册表损坏
 
-**Risk:** Windows registry could be corrupted or unavailable.
+**风险**：Windows 注册表可能损坏或不可用。
 
-**Mitigation:**
-- Catch all exceptions from registry operations
-- Log errors for troubleshooting
-- Application continues to function normally
-- User can manually fix registry if needed
+**缓解**：
+- 捕获注册表相关所有异常
+- 记录错误便于排查
+- 应用继续正常运行
+- 用户可自行修复注册表
 
-**Acceptance:** Very rare, graceful handling sufficient.
+**接受**：极少见，当前处理足够。
 
-### Trade-off: Performance vs Consistency
+### 权衡：性能与一致性
 
-**Trade-off:** Startup sync adds small delay (<10ms) but ensures consistency.
+**权衡**：启动时同步带来很小延迟（<10ms），但保证一致性。
 
-**Acceptance:** Minimal performance impact, significant consistency benefit.
+**接受**：性能影响可忽略，一致性收益明显。
 
-### Trade-off: Complexity vs Resilience
+### 权衡：复杂度与健壮性
 
-**Trade-off:** Dual sync mechanism adds code complexity but provides resilience.
+**权衡**：双重同步增加少量代码复杂度，但提高健壮性。
 
-**Acceptance:** Complexity is minimal, resilience is valuable.
+**接受**：复杂度有限，健壮性有价值。
 
-## Migration Plan
+## 迁移计划
 
-**No migration required** - this is a new feature addition, not a change to existing functionality.
+**无需迁移**——此为新增功能，不改变现有行为。
 
-**Deployment:**
-1. Deploy code with new `WindowsAutoStartService`
-2. Register service in DI container
-3. Existing database settings will be respected on first startup
-4. Registry entries will be created/removed based on database state
+**部署**：
+1. 部署包含新 `WindowsAutoStartService` 的代码
+2. 在 DI 容器中注册服务
+3. 首次启动时沿用已有数据库设置
+4. 根据数据库状态创建或删除注册表项
 
-**Rollback:**
-- Revert code changes
-- No data cleanup needed (registry entries can remain, won't cause issues)
-- Database settings remain unchanged
+**回滚**：
+- 回退代码变更
+- 无需清理数据（注册表项可保留，不会造成问题）
+- 数据库设置保持不变
 
-## Open Questions
+## 待决问题
 
-None - requirements are clear from user request and codebase analysis.
+无——需求来自用户与代码库分析，已明确。

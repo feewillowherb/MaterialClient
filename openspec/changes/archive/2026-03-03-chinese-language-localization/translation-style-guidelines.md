@@ -1,218 +1,218 @@
-# Translation Style Guidelines
+# 翻译风格指南
 
-This document provides comprehensive style guidelines for translating technical documentation and code comments in the MaterialClient project.
+本文为 MaterialClient 项目中技术文档与代码注释的翻译提供风格指南。
 
-## General Principles
+## 总体原则
 
-### Accuracy First
-- Translate the intended meaning, not just the words
-- Maintain technical accuracy over literal translation
-- Consult technical references when uncertain about terminology
-- Ensure code comments accurately describe what the code does
+### 准确优先
+- 翻译意图与含义，而非仅字面
+- 优先保持技术准确性而非逐字翻译
+- 术语不确定时查阅技术参考
+- 确保代码注释准确描述代码行为
 
-### Consistency
-- Use consistent terminology throughout all translations
-- Follow the translation glossary for standard terms
-- Maintain consistent formatting and structure
-- Use the same style for similar types of content
+### 一致性
+- 所有译文中术语一致
+- 标准术语遵循翻译词汇表
+- 保持格式与结构一致
+- 同类内容使用相同风格
 
-### Clarity
-- Write in clear, natural Chinese
-- Avoid overly complex sentence structures
-- Use simple, direct language when possible
-- Ensure translations are easy to understand
+### 清晰
+- 使用清晰自然的中文
+- 避免过于复杂的句式
+- 尽量简洁直接
+- 确保译文易于理解
 
-## Technical Documentation Guidelines
+## 技术文档指南
 
-### Markdown Document Structure
-- Preserve all Markdown formatting (headings, lists, code blocks, links, etc.)
-- Maintain the original document hierarchy
-- Keep code blocks in their original form (English code comments within blocks may be translated)
-- Preserve all links and references
+### Markdown 文档结构
+- 保留所有 Markdown 格式（标题、列表、代码块、链接等）
+- 保持原文档层级
+- 代码块保持原样（块内英文注释可翻译）
+- 保留所有链接与引用
 
-### Headings
-- Translate heading content to Chinese
-- Maintain the same heading level (H1, H2, H3, etc.)
-- Keep heading formatting consistent
-- Do not translate technical acronyms used as headings (e.g., API, HTTP, JSON)
+### 标题
+- 将标题内容译为中文
+- 保持标题级别（H1、H2、H3 等）
+- 标题格式一致
+- 用作标题的技术缩写不翻译（如 API、HTTP、JSON）
 
-### Lists
-- Translate list items to Chinese
-- Maintain list type (ordered, unordered, nested)
-- Preserve list indentation
-- Keep list markers consistent
+### 列表
+- 将列表项译为中文
+- 保持列表类型（有序、无序、嵌套）
+- 保留缩进
+- 列表标记一致
 
-### Code Blocks
-- Translate comments within code blocks
-- Do not translate code itself (variables, methods, classes, etc.)
-- Preserve code formatting and indentation
-- Keep error messages and log output in their original language
+### 代码块
+- 可翻译代码块内的注释
+- 不翻译代码本身（变量、方法、类等）
+- 保留代码格式与缩进
+- 错误信息与日志输出保持原语言
 
-### Links and References
-- Translate link text to Chinese
-- Preserve all URLs and file paths
-- Keep internal reference links functional
-- Maintain external link destinations
+### 链接与引用
+- 链接文字译为中文
+- 保留所有 URL 与文件路径
+- 内部引用链接保持可用
+- 保持外部链接目标
 
-### Tables
-- Translate table content to Chinese
-- Preserve table structure and formatting
-- Keep table headers consistent
-- Maintain column alignment
+### 表格
+- 表格内容译为中文
+- 保留表格结构与格式
+- 表头一致
+- 保持列对齐
 
-### Emphasis
-- Preserve bold, italic, and other emphasis formatting
-- Maintain the same emphasis points
-- Do not add or remove emphasis without reason
+### 强调
+- 保留粗体、斜体等强调格式
+- 保持相同的强调点
+- 不无故增加或删除强调
 
-## Code Comment Guidelines
+## 代码注释指南
 
-### Comment Purpose
-- Code comments should explain WHY code exists, not WHAT it does
-- Describe the purpose and context of the code
-- Explain non-obvious logic or algorithms
-- Document design decisions and trade-offs
+### 注释目的
+- 代码注释应说明代码为何存在，而非在做什么
+- 描述代码的目的与上下文
+- 解释不直观的逻辑或算法
+- 记录设计决策与权衡
 
-### Comment Style
-- Write comments in clear, natural Chinese
-- Use concise language
-- Keep comments up-to-date with code changes
-- Avoid redundant comments that simply restate the code
+### 注释风格
+- 使用清晰自然的中文
+- 语言简洁
+- 随代码变更及时更新注释
+- 避免仅复述代码的冗余注释
 
-### Comment Placement
-- Place comments before the code they describe
-- Keep comments close to the relevant code
-- Use inline comments sparingly
-- Group related comments together
+### 注释位置
+- 注释放在所描述代码之前
+- 注释紧贴相关代码
+- 少用行内注释
+- 将相关注释分组
 
-### Special Comment Types
+### 特殊注释类型
 
-#### TODO Comments
+#### TODO 注释
 ```csharp
 // TODO: 实现新的称重模式处理逻辑
 ```
 
-#### FIXME Comments
+#### FIXME 注释
 ```csharp
 // FIXME: 修复车牌识别超时问题
 ```
 
-#### HACK Comments
+#### HACK 注释
 ```csharp
 // HACK: 临时解决方案，等待硬件更新后移除
 ```
 
-#### NOTE Comments
+#### NOTE 注释
 ```csharp
 // NOTE: 这个方法需要异步执行以避免阻塞 UI
 ```
 
-#### WARNING Comments
+#### WARNING 注释
 ```csharp
 // WARNING: 不要在 UI 线程调用此方法
 ```
 
-## Technical Terminology Guidelines
+## 技术术语指南
 
-### Acronyms and Abbreviations
-- Keep common technical acronyms in English: API, HTTP, REST, JSON, XML, etc.
-- Use full Chinese translation followed by English in parentheses for less common terms
-- Maintain consistency in acronym usage
+### 缩写与简称
+- 常用技术缩写保留英文：API、HTTP、REST、JSON、XML 等
+- 较不常见术语使用完整中文译名并在括号中附英文
+- 缩写用法保持一致
 
-### Brand and Product Names
-- Keep brand names in English: Microsoft, Windows, Avalonia, etc.
-- Keep product names in English: Entity Framework, .NET, etc.
-- Use Chinese translation when appropriate for the audience
+### 品牌与产品名
+- 品牌名保留英文：Microsoft、Windows、Avalonia 等
+- 产品名保留英文：Entity Framework、.NET 等
+- 视受众需要可使用中文译名
 
-### Code Elements
-- Do not translate: variable names, method names, class names, property names, etc.
-- Translate comments that describe code elements
-- Use Chinese descriptions for what the code does
+### 代码元素
+- 不翻译：变量名、方法名、类名、属性名等
+- 翻译描述代码元素的注释
+- 用中文描述代码在做什么
 
-### File and Path Names
-- Keep file names in English (unless they are user-facing)
-- Keep directory names in English
-- Translate descriptions of file paths
-- Maintain full paths in their original form
+### 文件名与路径
+- 文件名保留英文（面向用户的除外）
+- 目录名保留英文
+- 翻译对文件路径的描述
+- 完整路径保持原样
 
-## Formatting Guidelines
+## 格式指南
 
-### Punctuation
-- Use Chinese punctuation (full-width) for Chinese text
-- Use English punctuation for code and technical content
-- Be consistent with punctuation usage
-- Space between English and Chinese text when appropriate
+### 标点
+- 中文内容使用中文标点（全角）
+- 代码与技术内容使用英文标点
+- 标点用法一致
+- 中英文之间酌情加空格
 
-### Numbers and Dates
-- Use Western numerals (0-9)
-- Format dates consistently (YYYY-MM-DD recommended)
-- Use appropriate number formatting for the audience
-- Keep version numbers in standard format
+### 数字与日期
+- 使用西式数字（0-9）
+- 日期格式一致（建议 YYYY-MM-DD）
+- 数字格式符合受众
+- 版本号保持标准格式
 
-### Whitespace
-- Preserve original line breaks
-- Maintain paragraph spacing
-- Keep indentation consistent
-- Use appropriate spacing around punctuation
+### 空白
+- 保留原有换行
+- 保持段落间距
+- 缩进一致
+- 标点周围空格适当
 
-## Localization Considerations
+## 本地化考虑
 
-### Date and Time
-- Use 24-hour format for time
-- Format dates according to Chinese conventions (年-月-日)
-- Consider time zone when displaying timestamps
-- Use relative time expressions when appropriate
+### 日期与时间
+- 时间使用 24 小时制
+- 日期按中文习惯（年-月-日）
+- 显示时间戳时考虑时区
+- 适当使用相对时间表达
 
-### Numbers and Units
-- Use metric units where appropriate
-- Format numbers according to Chinese conventions
-- Include units of measurement when relevant
-- Be consistent with decimal separators
+### 数字与单位
+- 适当使用公制单位
+- 数字格式符合中文习惯
+- 涉及计量时注明单位
+- 小数分隔符一致
 
-### Addresses and Contact Information
-- Format addresses according to Chinese conventions
-- Keep country names in their official form
-- Use appropriate formatting for phone numbers
-- Maintain postal codes in standard format
+### 地址与联系信息
+- 地址按中文习惯排版
+- 国家名使用正式名称
+- 电话号码格式适当
+- 邮政编码保持标准格式
 
-## Quality Assurance Guidelines
+## 质量保证指南
 
-### Review Process
-- Review all translations for accuracy
-- Check for consistency with the glossary
-- Verify that technical terms are handled correctly
-- Ensure formatting is preserved
+### 审校流程
+- 审校所有译文的准确性
+- 对照词汇表检查一致性
+- 确认技术术语处理正确
+- 确保格式保留
 
-### Testing
-- Test translated documents for readability
-- Verify that code comments are accurate
-- Check that links and references work
-- Ensure UI elements display correctly
+### 测试
+- 测试已译文档的可读性
+- 验证代码注释准确
+- 检查链接与引用有效
+- 确保 UI 元素正确显示
 
-### Common Issues to Avoid
-- Machine translation that produces unnatural Chinese
-- Translating code elements that should remain in English
-- Inconsistent terminology usage
-- Loss of technical accuracy
-- Formatting errors that break document structure
+### 常见问题避免
+- 机翻产生不自然中文
+- 翻译应保留英文的代码元素
+- 术语使用不一致
+- 技术准确性丢失
+- 破坏文档结构的格式错误
 
-## Tools and Resources
+## 工具与资源
 
-### Recommended Tools
-- Professional human translators for complex technical content
-- AI translation tools with human review for speed
-- Terminology management systems for consistency
-- Translation memory tools for reuse
+### 推荐工具
+- 复杂技术内容由专业人工翻译
+- 追求速度时可用 AI 翻译并人工审校
+- 使用术语管理系统保证一致性
+- 使用翻译记忆工具复用
 
-### References
-- Microsoft Chinese technical documentation
-- Avalonia Chinese documentation
-- .NET Chinese documentation
-- Industry-standard technical Chinese resources
+### 参考
+- Microsoft 中文技术文档
+- Avalonia 中文文档
+- .NET 中文文档
+- 行业标准中文技术资源
 
-## Examples
+## 示例
 
-### Good Translation
+### 良好翻译
 ```csharp
 /// <summary>
 /// 获取指定车牌号的所有称重记录
@@ -227,7 +227,7 @@ public async Task<List<WeighingRecord>> GetRecordsByPlateNumber(string plateNumb
 }
 ```
 
-### Poor Translation
+### 不佳翻译
 ```csharp
 /// <summary>
 /// 获取指定车牌号的全部称重记录
@@ -242,17 +242,17 @@ public async Task<List<WeighingRecord>> GetRecordsByPlateNumber(string plateNumb
 }
 ```
 
-**Notes:**
-- "所有" vs "全部" - both acceptable, be consistent
-- "车牌号" vs "车牌号码" - "车牌号" is more concise and commonly used
-- "称重记录列表" vs "称重记录的列表" - "称重记录列表" is more concise
+**说明**：
+- 「所有」与「全部」均可，保持一致即可
+- 「车牌号」较「车牌号码」更简洁常用
+- 「称重记录列表」较「称重记录的列表」更简洁
 
-## Conclusion
+## 结论
 
-Following these guidelines will ensure that all translations in the MaterialClient project are:
-- Accurate and technically correct
-- Consistent across all documents and code
-- Clear and easy to understand
-- Professional and well-formatted
+遵循本指南可确保 MaterialClient 项目中的翻译：
+- 准确且技术正确
+- 在文档与代码中一致
+- 清晰易懂
+- 专业且格式规范
 
-Regular reviews and updates of these guidelines will help maintain translation quality as the project evolves.
+定期审阅与更新本指南有助于在项目演进中保持翻译质量。

@@ -1,21 +1,21 @@
-# Design: Unify LPR Events with MessageBus
+# 设计：使用 MessageBus 统一 LPR 事件
 
-**Change ID**: `unify-lpr-events-with-messagebus`
-**Author**: Claude (AI Assistant)
-**Date**: 2026-01-29
-**Status**: Draft
-
----
-
-## Overview
-
-This document describes the architectural design for refactoring License Plate Recognition (LPR) event delivery from direct method calls to ReactiveUI MessageBus. The refactoring improves decoupling, testability, and consistency with existing architecture patterns.
+**变更 ID**：`unify-lpr-events-with-messagebus`
+**作者**：Claude (AI Assistant)
+**日期**：2026-01-29
+**状态**：草稿
 
 ---
 
-## Current Architecture
+## 概述
 
-### Event Flow (Before)
+本文档描述将车牌识别（LPR）事件从直接方法调用重构为 ReactiveUI MessageBus 的架构设计。该重构旨在提高解耦、可测试性，并与现有架构模式保持一致。
+
+---
+
+## 当前架构
+
+### 事件流（重构前）
 
 ```
 ┌─────────────────────────┐
@@ -46,18 +46,18 @@ This document describes the architectural design for refactoring License Plate R
 └─────────────────────────┘
 ```
 
-### Problems
+### 问题
 
-1. **Tight Coupling**: `MinimalWebHostService` (hardware layer) directly depends on `IAttendedWeighingService` (business layer)
-2. **Hard to Test**: Cannot test hardware callback logic independently from business logic
-3. **Limited Extensibility**: Adding new subscribers (logging, monitoring) requires modifying callback handlers
-4. **Architectural Inconsistency**: Rest of system uses MessageBus for cross-component communication (ADR-009)
+1. **紧耦合**：`MinimalWebHostService`（硬件层）直接依赖 `IAttendedWeighingService`（业务层）
+2. **难以测试**：无法在脱离业务逻辑的情况下单独测试硬件回调逻辑
+3. **扩展性有限**：新增订阅方（日志、监控）需修改回调处理代码
+4. **架构不一致**：系统其余部分使用 MessageBus 做跨组件通信（ADR-009）
 
 ---
 
-## Proposed Architecture
+## 拟议架构
 
-### Event Flow (After)
+### 事件流（重构后）
 
 ```
 ┌─────────────────────────┐
@@ -95,24 +95,24 @@ This document describes the architectural design for refactoring License Plate R
 └─────────────────────────┘
 ```
 
-### Benefits
+### 收益
 
-1. **Loose Coupling**: Hardware layer only knows about MessageBus messages, not business services
-2. **Easy Testing**: Can test callback handlers by verifying MessageBus messages
-3. **Extensible**: Add new subscribers without modifying publishers
-4. **Consistent**: Aligns with ADR-009 and reactive programming patterns
+1. **松耦合**：硬件层仅依赖 MessageBus 消息，不依赖业务服务
+2. **易测试**：可通过验证 MessageBus 消息来测试回调处理逻辑
+3. **可扩展**：新增订阅方无需修改发布方
+4. **一致**：与 ADR-009 及响应式编程模式一致
 
 ---
 
-## Component Design
+## 组件设计
 
 ### 1. LicensePlateRecognizedMessage
 
-**Purpose**: Unified message class for all LPR device types
+**用途**：统一承载所有 LPR 设备类型的识别数据
 
-**Location**: `MaterialClient.Common/Events/LicensePlateRecognizedMessage.cs`
+**位置**：`MaterialClient.Common/Events/LicensePlateRecognizedMessage.cs`
 
-**Design**:
+**设计**：
 ```csharp
 namespace MaterialClient.Common.Events;
 
@@ -149,17 +149,17 @@ public class LicensePlateRecognizedMessage
 }
 ```
 
-**Rationale**:
-- Includes all relevant data from hardware callback
-- Device type and name for logging and diagnostics
-- Timestamp for accurate event ordering
-- Optional color type (not all devices support it)
+**理由**：
+- 包含硬件回调中的全部相关数据
+- 设备类型与名称便于日志与诊断
+- 时间戳保证事件顺序
+- 颜色类型可选（非所有设备都支持）
 
 ---
 
-### 2. Callback Handler Refactoring
+### 2. 回调处理重构
 
-**Before** (Hikvision example):
+**重构前**（海康示例）：
 ```csharp
 // MaterialClient/Services/MinimalWebHostService.cs:188-200
 private IActionResult HandleHikvisionLprCallback(LprCallbackData callback)
@@ -179,7 +179,7 @@ private IActionResult HandleHikvisionLprCallback(LprCallbackData callback)
 }
 ```
 
-**After**:
+**重构后**：
 ```csharp
 private IActionResult HandleHikvisionLprCallback(LprCallbackData callback)
 {
@@ -210,17 +210,17 @@ private IActionResult HandleHikvisionLprCallback(LprCallbackData callback)
 }
 ```
 
-**Changes**:
-- Remove `IAttendedWeighingService` dependency
-- Create and populate `LicensePlateRecognizedMessage`
-- Publish via `MessageBus.Current.SendMessage()`
-- Keep logging for diagnostics
+**变更要点**：
+- 移除对 `IAttendedWeighingService` 的依赖
+- 构造并填充 `LicensePlateRecognizedMessage`
+- 通过 `MessageBus.Current.SendMessage()` 发布
+- 保留诊断用日志
 
 ---
 
-### 3. Service Subscription Pattern
+### 3. 服务订阅模式
 
-**Design**:
+**设计**：
 ```csharp
 public partial class AttendedWeighingService : IAttendedWeighingService, ISingletonDependency
 {
@@ -259,22 +259,22 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 }
 ```
 
-**Key Points**:
-- Subscription created in constructor (singleton service)
-- Existing `OnPlateNumberRecognized()` logic reused
-- Method visibility changed from `public` to `private`
-- Subscription disposed in `DisposeAsync()` to prevent memory leaks
-- Logging added for diagnostics
+**要点**：
+- 在构造函数中创建订阅（单例服务）
+- 复用现有 `OnPlateNumberRecognized()` 逻辑
+- 方法可见性由 `public` 改为 `private`
+- 在 `DisposeAsync()` 中释放订阅以防内存泄漏
+- 增加诊断用日志
 
 ---
 
-## Memory Management
+## 内存管理
 
-### Subscription Disposal
+### 订阅释放
 
-**Critical**: All MessageBus subscriptions must be disposed to prevent memory leaks.
+**关键**：所有 MessageBus 订阅必须被释放，以防内存泄漏。
 
-**Pattern**:
+**模式**：
 ```csharp
 public class AttendedWeighingService : IAsyncDisposable
 {
@@ -295,19 +295,19 @@ public class AttendedWeighingService : IAsyncDisposable
 }
 ```
 
-**Memory Leak Prevention**:
-1. Store subscription reference in field
-2. Dispose in `DisposeAsync()` or `Dispose()`
-3. Use `DisposeWith()` pattern for ViewModel subscriptions
-4. Test with long-running scenarios (1000+ cycles)
+**防内存泄漏**：
+1. 将订阅引用保存在字段中
+2. 在 `DisposeAsync()` 或 `Dispose()` 中释放
+3. ViewModel 订阅使用 `DisposeWith()` 模式
+4. 在长运行场景（1000+ 次循环）下测试
 
 ---
 
-## Error Handling
+## 错误处理
 
-### Callback Handler Errors
+### 回调处理错误
 
-**Strategy**: Log and continue, don't let one bad message break the system
+**策略**：记录日志并继续，不让单条错误消息影响整体
 
 ```csharp
 try
@@ -323,9 +323,9 @@ catch (Exception ex)
 }
 ```
 
-### Subscription Errors
+### 订阅端错误
 
-**Strategy**: Log but don't throw in subscription handler
+**策略**：在订阅处理中记录日志但不抛出
 
 ```csharp
 MessageBus.Current
@@ -347,11 +347,11 @@ MessageBus.Current
 
 ---
 
-## Testing Strategy
+## 测试策略
 
-### Unit Tests
+### 单元测试
 
-**1. Message Publishing**:
+**1. 消息发布**：
 ```csharp
 [Fact]
 public void HandleHikvisionLprCallback_ShouldPublishCorrectMessage()
@@ -381,7 +381,7 @@ public void HandleHikvisionLprCallback_ShouldPublishCorrectMessage()
 }
 ```
 
-**2. Message Subscription**:
+**2. 消息订阅**：
 ```csharp
 [Fact]
 public void AttendedWeighingService_ShouldSubscribeToLprMessages()
@@ -403,9 +403,9 @@ public void AttendedWeighingService_ShouldSubscribeToLprMessages()
 }
 ```
 
-### Integration Tests
+### 集成测试
 
-**End-to-End Flow**:
+**端到端流程**：
 ```csharp
 [Fact]
 public async Task LprEventFlow_ShouldUpdateUiCorrectly()
@@ -424,9 +424,9 @@ public async Task LprEventFlow_ShouldUpdateUiCorrectly()
 }
 ```
 
-### Memory Leak Tests
+### 内存泄漏测试
 
-**Long-Running Scenario**:
+**长运行场景**：
 ```csharp
 [Fact]
 public void RepeatedLprMessages_ShouldNotLeakMemory()
@@ -459,111 +459,111 @@ public void RepeatedLprMessages_ShouldNotLeakMemory()
 
 ---
 
-## Migration Strategy
+## 迁移策略
 
-### Phase 1: Prepare (No Breaking Changes)
-1. Create `LicensePlateRecognizedMessage` class
-2. Add MessageBus subscription in `AttendedWeighingService` alongside existing method
-3. Keep `OnPlateNumberRecognized()` in interface (dual mode)
+### 阶段 1：准备（无破坏性变更）
+1. 创建 `LicensePlateRecognizedMessage` 类
+2. 在 `AttendedWeighingService` 中增加 MessageBus 订阅，与现有方法并存
+3. 保留接口中的 `OnPlateNumberRecognized()`（双模式）
 
-### Phase 2: Migrate Publishers
-4. Refactor `MinimalWebHostService` callback handlers to use MessageBus
-5. Add feature flag to switch between direct calls and MessageBus (optional)
-6. Test both modes in parallel
+### 阶段 2：迁移发布方
+4. 将 `MinimalWebHostService` 的回调处理重构为使用 MessageBus
+5. 可选：增加特性开关在直接调用与 MessageBus 间切换
+6. 并行测试两种模式
 
-### Phase 3: Remove Old Path
-7. Remove direct service calls from callback handlers
-8. Remove `OnPlateNumberRecognized()` from public interface
-9. Make method private in implementation
-10. Update tests and documentation
+### 阶段 3：移除旧路径
+7. 从回调处理中移除直接服务调用
+8. 从公开接口中移除 `OnPlateNumberRecognized()`
+9. 在实现中将该方法改为 private
+10. 更新测试与文档
 
-### Rollback Plan
+### 回滚计划
 
-If issues arise:
-1. Revert callback handlers to direct calls
-2. Keep MessageBus subscription as additional listener (no harm)
-3. Investigate and fix issues
-4. Retry migration
-
----
-
-## Trade-offs and Alternatives
-
-### Alternative 1: Use ABP LocalEventBus
-
-**Rejected Because**:
-- Adds 5-10ms latency vs <1ms for MessageBus
-- Overkill for simple UI notifications
-- Requires additional `IEventHandler` classes
-- Less suitable for high-frequency events (10-20 LPR/minute)
-
-**Use Case**: Better for async domain events like `TryMatchEvent` (database operations)
-
-### Alternative 2: Keep Direct Calls
-
-**Rejected Because**:
-- Tight coupling between layers
-- Hard to test in isolation
-- Inconsistent with rest of architecture
-- Cannot support multiple subscribers
-
-### Alternative 3: Use Rx Observable in Services
-
-**Rejected Because**:
-- `IHikvisionLprService` already has `IObservable<LicensePlateRecognizedEvent>`
-- But `MinimalWebHostService` sits between SDK and service
-- Would require `MinimalWebHostService` to implement observable pattern
-- MessageBus is simpler for this use case
+若出现问题：
+1. 将回调处理回退为直接调用
+2. 保留 MessageBus 订阅作为额外监听（无害）
+3. 排查并修复
+4. 再次尝试迁移
 
 ---
 
-## Impact Analysis
+## 权衡与替代方案
 
-### Breaking Changes
+### 替代 1：使用 ABP LocalEventBus
 
-**Public Interface**:
-- `IAttendedWeighingService.OnPlateNumberRecognized()` removed
-- Impact: Low (likely no external callers)
+**未采用原因**：
+- 相比 MessageBus 增加 5–10ms 延迟（MessageBus <1ms）
+- 对简单 UI 通知过重
+- 需要额外 `IEventHandler` 类
+- 对高频事件（10–20 次/分钟 LPR）不如 MessageBus 合适
 
-**Internal Implementation**:
-- Callback handler signatures unchanged
-- `OnPlateNumberRecognized()` logic unchanged
-- Impact: None
+**适用场景**：更适合异步领域事件（如涉及数据库的 `TryMatchEvent`）
 
-### Performance
+### 替代 2：保留直接调用
 
-- **Before**: Direct method call (~0.1ms)
-- **After**: MessageBus publish + subscribe (~0.5ms)
-- **Impact**: Negligible for LPR frequency (10-20 events/minute)
+**未采用原因**：
+- 层间紧耦合
+- 难以单独测试
+- 与其余架构不一致
+- 无法支持多订阅方
 
-### Compatibility
+### 替代 3：在服务中使用 Rx Observable
 
-- Backward compatible if `OnPlateNumberRecognized()` kept temporarily
-- Forward compatible with new subscriber patterns
-- No database or API changes required
-
----
-
-## Open Questions
-
-1. **Should we deprecate `LicensePlateRecognizedEvent` (ABP event)?**
-   - It's currently unused
-   - Recommendation: Mark `[Obsolete]` and remove in future cleanup
-
-2. **Should we support both MessageBus and direct calls during transition?**
-   - Depends on deployment risk tolerance
-   - Recommendation: Do full switch with thorough testing (simpler)
-
-3. **Should we add device-specific message classes?**
-   - Current design: Single `LicensePlateRecognizedMessage` with `DeviceType` property
-   - Alternative: `HikvisionLprMessage`, `LprAllInOneMessage`, etc.
-   - Recommendation: Single message is sufficient, reduces duplication
+**未采用原因**：
+- `IHikvisionLprService` 已有 `IObservable<LicensePlateRecognizedEvent>`
+- 但 `MinimalWebHostService` 位于 SDK 与服务之间
+- 需让 `MinimalWebHostService` 实现 Observable 模式
+- 对本用例 MessageBus 更简单
 
 ---
 
-## References
+## 影响分析
 
-- **ADR-009**: MessageBus for cross-component communication
-- **Reactive Pattern**: `openspec/docs/timer-to-rx-pattern.md`
-- **Related Changes**: `hikvision-lpr-implementation`, `hikvision-lpr-integration`
-- **Specification**: `openspec/specs/license-plate-recognition`
+### 破坏性变更
+
+**公开接口**：
+- 移除 `IAttendedWeighingService.OnPlateNumberRecognized()`
+- 影响：低（预计无外部调用方）
+
+**内部实现**：
+- 回调处理签名不变
+- `OnPlateNumberRecognized()` 逻辑不变
+- 影响：无
+
+### 性能
+
+- **重构前**：直接方法调用（约 0.1ms）
+- **重构后**：MessageBus 发布 + 订阅（约 0.5ms）
+- **影响**：对 LPR 频率（10–20 次/分钟）可忽略
+
+### 兼容性
+
+- 若暂时保留 `OnPlateNumberRecognized()` 则向后兼容
+- 与新的订阅方模式向前兼容
+- 无需数据库或 API 变更
+
+---
+
+## 待决问题
+
+1. **是否弃用 `LicensePlateRecognizedEvent`（ABP 事件）？**
+   - 当前未使用
+   - 建议：标记 `[Obsolete]`，后续清理时移除
+
+2. **过渡期是否同时支持 MessageBus 与直接调用？**
+   - 取决于部署风险偏好
+   - 建议：充分测试后一次性切换（更简单）
+
+3. **是否增加按设备区分的消息类？**
+   - 当前设计：单一 `LicensePlateRecognizedMessage`，用 `DeviceType` 区分
+   - 替代：`HikvisionLprMessage`、`LprAllInOneMessage` 等
+   - 建议：单一消息即可，减少重复
+
+---
+
+## 参考
+
+- **ADR-009**：跨组件通信使用 MessageBus
+- **响应式模式**：`openspec/docs/timer-to-rx-pattern.md`
+- **相关变更**：`hikvision-lpr-implementation`、`hikvision-lpr-integration`
+- **规格**：`openspec/specs/license-plate-recognition`

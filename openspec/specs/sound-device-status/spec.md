@@ -1,184 +1,185 @@
-# sound-device-status Specification
+# 音响设备状态 规范
 
-## Purpose
-TBD - created by archiving change sound-column-status-monitoring. Update Purpose after archive.
-## Requirements
-### Requirement: Device Status Polling
+## 目的
+待定 - 由变更 sound-column-status-monitoring 归档后创建。归档后更新目的。
 
-The system SHALL periodically poll sound column device online status and update status bar display.
+## 需求
 
-#### Scenario: Normal polling status update
-- **GIVEN** Sound column device is enabled and configuration is valid
-- **AND** System has started and entered attended weighing window
-- **THEN** System SHALL start periodic timer with interval of 8 seconds (configurable)
-- **AND** Every 8 seconds, call `ISoundDeviceService.IsOnlineAsync()` to query device status
-- **AND** Update status bar display based on response status code
+### 需求：设备状态轮询
 
-#### Scenario: Do not start polling when device is disabled
-- **GIVEN** Sound column device is not enabled (`SoundDeviceSettings.Enabled = false`)
-- **WHEN** System starts attended weighing window
-- **THEN** System SHALL NOT start timer
-- **AND** Status bar does not show sound column device status indicator
+系统应定期轮询音柱设备在线状态，并更新状态栏显示。
 
-#### Scenario: Return offline status when configuration is invalid
-- **GIVEN** Sound column device is enabled but configuration is invalid (missing `SoundSN`, `SoundIP`, or `LocalIP`)
-- **WHEN** Timer calls `IsOnlineAsync()`
-- **THEN** System SHALL return `false` (offline)
-- **AND** Log warning
-- **AND** Status bar displays "Offline" status
+#### 场景：正常轮询更新状态
+- **假设** 音柱设备已启用且配置有效
+- **且** 系统已启动并进入有人值守称重窗口
+- **则** 系统应启动周期定时器，间隔 8 秒（可配置）
+- **且** 每 8 秒调用 `ISoundDeviceService.IsOnlineAsync()` 查询设备状态
+- **且** 根据响应状态码更新状态栏显示
 
-#### Scenario: Retry and show offline when network exception occurs
-- **GIVEN** Sound column device network connection is interrupted
-- **WHEN** Timer calls `IsOnlineAsync()`
-- **THEN** System SHALL catch `HttpRequestException` or `TaskCanceledException`
-- **AND** Return `false` (offline)
-- **AND** Log error
-- **AND** Use Rx `Retry()` to retry up to 3 times
-- **AND** Status bar displays "Offline" status
+#### 场景：设备未启用时不启动轮询
+- **假设** 音柱设备未启用（`SoundDeviceSettings.Enabled = false`）
+- **当** 系统启动有人值守称重窗口
+- **则** 系统不应启动定时器
+- **且** 状态栏不显示音柱设备状态指示
 
-#### Scenario: Stop polling when window is closed
-- **GIVEN** Timer is running
-- **WHEN** User closes attended weighing window
-- **THEN** System SHALL release polling subscription (`Dispose()`)
-- **AND** Stop all timers
-- **AND** Release `BehaviorSubject` resources
-- **AND** No memory leaks occur
+#### 场景：配置无效时返回离线状态
+- **假设** 音柱设备已启用但配置无效（缺少 `SoundSN`、`SoundIP` 或 `LocalIP`）
+- **当** 定时器调用 `IsOnlineAsync()`
+- **则** 系统应返回 `false`（离线）
+- **且** 记录警告
+- **且** 状态栏显示“离线”状态
 
-### Requirement: Device Status API Integration
+#### 场景：网络异常时重试并显示离线
+- **假设** 音柱设备网络连接中断
+- **当** 定时器调用 `IsOnlineAsync()`
+- **则** 系统应捕获 `HttpRequestException` 或 `TaskCanceledException`
+- **且** 返回 `false`（离线）
+- **且** 记录错误
+- **且** 使用 Rx 的 `Retry()` 最多重试 3 次
+- **且** 状态栏显示“离线”状态
 
-The system SHALL query sound column device status through remote API and map response to device online status.
+#### 场景：窗口关闭时停止轮询
+- **假设** 定时器正在运行
+- **当** 用户关闭有人值守称重窗口
+- **则** 系统应释放轮询订阅（`Dispose()`）
+- **且** 停止所有定时器
+- **且** 释放 `BehaviorSubject` 资源
+- **且** 不发生内存泄漏
 
-#### Scenario: Call remote API to query device status
-- **GIVEN** Sound column device serial number is `"020021EA63AC"`
-- **AND** Device IP address is `"192.168.1.100"`
-- **WHEN** `SoundDeviceService.IsOnlineAsync()` is called
-- **THEN** System SHALL build device serial number format as `"ls20://020021EA63AC"`
-- **AND** Create HTTP client, BaseURL is `"http://192.168.1.100:8888"`
-- **AND** Call `GET /api/devices/getDeviceBySN?type=req&app=ls20&sn=ls20://020021EA63AC`
-- **AND** Set timeout to 5 seconds
+### 需求：设备状态 API 集成
 
-#### Scenario: Parse online status response
-- **GIVEN** Remote API returns response: `{ "status": 1, "tasks": [] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status == 1 || status == 2` as online
-- **AND** Return `true`
+系统应通过远程 API 查询音柱设备状态，并将响应映射为设备在线状态。
 
-#### Scenario: Parse offline status response
-- **GIVEN** Remote API returns response: `{ "status": 0, "tasks": [] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status != 1 && status != 2` as offline
-- **AND** Return `false`
+#### 场景：调用远程 API 查询设备状态
+- **假设** 音柱设备序列号为 `"020021EA63AC"`
+- **且** 设备 IP 为 `"192.168.1.100"`
+- **当** 调用 `SoundDeviceService.IsOnlineAsync()` 时
+- **则** 系统应将设备序列号格式化为 `"ls20://020021EA63AC"`
+- **且** 创建 HTTP 客户端，BaseURL 为 `"http://192.168.1.100:8888"`
+- **且** 调用 `GET /api/devices/getDeviceBySN?type=req&app=ls20&sn=ls20://020021EA63AC`
+- **且** 超时设为 5 秒
 
-#### Scenario: Parse in-task status response
-- **GIVEN** Remote API returns response: `{ "status": 2, "tasks": [...] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status == 2` as online (in-task still considered online)
-- **AND** Return `true`
-- **AND** Log debug: "Device is busy with tasks"
+#### 场景：解析在线状态响应
+- **假设** 远程 API 返回：`{ "status": 1, "tasks": [] }`
+- **当** `IsOnlineAsync()` 收到响应
+- **则** 系统应将 JSON 解析为 `SoundDeviceStatusDto`
+- **且** 将 `status == 1 || status == 2` 判定为在线
+- **且** 返回 `true`
 
-#### Scenario: Parse power-off status response
-- **GIVEN** Remote API returns response: `{ "status": 3, "tasks": [] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status == 3` as offline (power-off considered offline)
-- **AND** Return `false`
-- **AND** Log warning: "Device is powered off"
+#### 场景：解析离线状态响应
+- **假设** 远程 API 返回：`{ "status": 0, "tasks": [] }`
+- **当** `IsOnlineAsync()` 收到响应
+- **则** 系统应将 JSON 解析为 `SoundDeviceStatusDto`
+- **且** 将 `status != 1 && status != 2` 判定为离线
+- **且** 返回 `false`
 
-### Requirement: Status Bar UI Display
+#### 场景：解析任务中状态响应
+- **假设** 远程 API 返回：`{ "status": 2, "tasks": [...] }`
+- **当** `IsOnlineAsync()` 收到响应
+- **则** 系统应将 JSON 解析为 `SoundDeviceStatusDto`
+- **且** 将 `status == 2` 判定为在线（任务中仍视为在线）
+- **且** 返回 `true`
+- **且** 记录调试日志：“Device is busy with tasks”
 
-The system SHALL display sound column device status indicator in the attended weighing window status bar, using colors and text to identify device status.
+#### 场景：解析关机状态响应
+- **假设** 远程 API 返回：`{ "status": 3, "tasks": [] }`
+- **当** `IsOnlineAsync()` 收到响应
+- **则** 系统应将 JSON 解析为 `SoundDeviceStatusDto`
+- **且** 将 `status == 3` 判定为离线（关机视为离线）
+- **且** 返回 `false`
+- **且** 记录警告：“Device is powered off”
 
-#### Scenario: Display online status
-- **GIVEN** Sound column device is online (status code 1)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display green dot (`#10B981`)
-- **AND** Display text "Sound"
-- **AND** Display status text "Online" (green font)
+### 需求：状态栏 UI 显示
 
-#### Scenario: Display offline status
-- **GIVEN** Sound column device is offline (status code 0)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display gray dot (`#9CA3AF`)
-- **AND** Display text "Sound"
-- **AND** Display status text "Offline" (gray font)
+系统应在有人值守称重窗口的状态栏中显示音柱设备状态指示，用颜色和文字区分设备状态。
 
-#### Scenario: Display in-task status
-- **GIVEN** Sound column device is in-task (status code 2)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display yellow dot (`#F59E0B`)
-- **AND** Display text "Sound"
-- **AND** Display status text "In Task" (yellow font)
+#### 场景：显示在线状态
+- **假设** 音柱设备在线（状态码 1）
+- **当** 状态栏渲染设备状态指示
+- **则** 系统应显示绿点（`#10B981`）
+- **且** 显示文字“Sound”
+- **且** 显示状态文字“在线”（绿色字体）
 
-#### Scenario: Display power-off status
-- **GIVEN** Sound column device is powered off (status code 3)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display red dot (`#EF4444`)
-- **AND** Display text "Sound"
-- **AND** Display status text "Power Off" (red font)
+#### 场景：显示离线状态
+- **假设** 音柱设备离线（状态码 0）
+- **当** 状态栏渲染设备状态指示
+- **则** 系统应显示灰点（`#9CA3AF`）
+- **且** 显示文字“Sound”
+- **且** 显示状态文字“离线”（灰色字体）
 
-#### Scenario: Hide status indicator when device is disabled
-- **GIVEN** Sound column device is not enabled
-- **WHEN** Status bar renders
-- **THEN** System SHALL NOT display sound column device status indicator
-- **AND** Other device status indicators display normally
+#### 场景：显示任务中状态
+- **假设** 音柱设备任务中（状态码 2）
+- **当** 状态栏渲染设备状态指示
+- **则** 系统应显示黄点（`#F59E0B`）
+- **且** 显示文字“Sound”
+- **且** 显示状态文字“任务中”（黄色字体）
 
-#### Scenario: Automatically refresh UI when status updates
-- **GIVEN** Status bar currently displays sound column device "Offline" status
-- **WHEN** Timer receives new device status (online)
-- **THEN** System SHALL update UI on main thread
-- **AND** Change dot color from gray to green
-- **AND** Change status text from "Offline" to "Online"
-- **AND** Trigger `RaisePropertyChanged` notification
+#### 场景：显示关机状态
+- **假设** 音柱设备已关机（状态码 3）
+- **当** 状态栏渲染设备状态指示
+- **则** 系统应显示红点（`#EF4444`）
+- **且** 显示文字“Sound”
+- **且** 显示状态文字“已关机”（红色字体）
 
-### Requirement: Memory Leak Prevention
+#### 场景：设备未启用时隐藏状态指示
+- **假设** 音柱设备未启用
+- **当** 状态栏渲染
+- **则** 系统不应显示音柱设备状态指示
+- **且** 其他设备状态指示正常显示
 
-The system SHALL properly manage Rx subscription lifecycle to prevent memory leaks.
+#### 场景：状态更新时自动刷新 UI
+- **假设** 状态栏当前显示音柱设备“离线”
+- **当** 定时器收到新设备状态（在线）
+- **则** 系统应在主线程更新 UI
+- **且** 将点颜色从灰改为绿
+- **且** 将状态文字从“离线”改为“在线”
+- **且** 触发 `RaisePropertyChanged` 通知
 
-#### Scenario: Polling subscription properly released
-- **GIVEN** `AttendedWeighingViewModel` created and polling subscription started
-- **WHEN** `ViewModel.Dispose()` is called
-- **THEN** System SHALL call `_statusPollingDisposable.Dispose()`
-- **AND** Call `_soundDeviceStatus.Dispose()`
-- **AND** All timers stop running
-- **AND** No event handler leaks
+### 需求：防止内存泄漏
 
-#### Scenario: No memory leaks after multiple open/close cycles
-- **GIVEN** User opens attended weighing window
-- **AND** Wait 80 seconds (simulate 10 polling cycles)
-- **WHEN** User closes window
-- **THEN** System SHALL release all resources
-- **AND** Repeat above operation 100 times
-- **AND** Memory usage shows no significant growth (< 50MB)
-- **AND** Verified using `dotMemory` or `Visual Studio Profiler`
+系统应正确管理 Rx 订阅生命周期，防止内存泄漏。
 
-#### Scenario: Subscription still releasable when exception occurs
-- **GIVEN** Timer is running and uncaught exception occurs
-- **WHEN** Exception is caught by Rx `Catch` operator
-- **THEN** System SHALL log error
-- **AND** Subscription remains active (not terminated by single exception)
-- **AND** `Dispose()` method can properly release subscription
+#### 场景：正确释放轮询订阅
+- **假设** 已创建 `AttendedWeighingViewModel` 并启动轮询订阅
+- **当** 调用 `ViewModel.Dispose()`
+- **则** 系统应调用 `_statusPollingDisposable.Dispose()`
+- **且** 调用 `_soundDeviceStatus.Dispose()`
+- **且** 所有定时器停止
+- **且** 无事件处理程序泄漏
 
-### Requirement: Polling Configuration
+#### 场景：多次打开/关闭后无内存泄漏
+- **假设** 用户打开有人值守称重窗口
+- **且** 等待 80 秒（模拟 10 次轮询）
+- **当** 用户关闭窗口
+- **则** 系统应释放所有资源
+- **且** 重复上述操作 100 次
+- **且** 内存使用无显著增长（< 50MB）
+- **且** 使用 `dotMemory` 或 Visual Studio Profiler 验证
 
-The system SHALL support adjusting polling parameters through configuration file.
+#### 场景：发生异常时订阅仍可释放
+- **假设** 定时器运行中发生未捕获异常
+- **当** 异常被 Rx `Catch` 操作符捕获
+- **则** 系统应记录错误
+- **且** 订阅保持活跃（单次异常不终止）
+- **且** `Dispose()` 能正确释放订阅
 
-#### Scenario: Use default polling interval
-- **GIVEN** `appsettings.json` does not configure polling interval
-- **WHEN** System starts timer
-- **THEN** System SHALL use default value 8 seconds
+### 需求：轮询配置
 
-#### Scenario: Use custom polling interval
-- **GIVEN** `appsettings.json` configures `"SoundDevice:StatusPollingIntervalSeconds": 10`
-- **WHEN** System starts timer
-- **THEN** System SHALL use configured value 10 seconds
+系统应支持通过配置文件调整轮询参数。
 
-#### Scenario: Use minimum value when polling interval is less than minimum
-- **GIVEN** `appsettings.json` configures `"SoundDevice:StatusPollingIntervalSeconds": 2`
-- **AND** Minimum allowed value is 5 seconds
-- **WHEN** System starts timer
-- **THEN** System SHALL use minimum value 5 seconds
-- **AND** Log warning: "Polling interval too low, using minimum value"
+#### 场景：使用默认轮询间隔
+- **假设** `appsettings.json` 未配置轮询间隔
+- **当** 系统启动定时器
+- **则** 系统应使用默认值 8 秒
 
+#### 场景：使用自定义轮询间隔
+- **假设** `appsettings.json` 配置了 `"SoundDevice:StatusPollingIntervalSeconds": 10`
+- **当** 系统启动定时器
+- **则** 系统应使用配置值 10 秒
+
+#### 场景：轮询间隔低于最小值时使用最小值
+- **假设** `appsettings.json` 配置了 `"SoundDevice:StatusPollingIntervalSeconds": 2`
+- **且** 允许最小值为 5 秒
+- **当** 系统启动定时器
+- **则** 系统应使用最小值 5 秒
+- **且** 记录警告：“Polling interval too low, using minimum value”

@@ -1,106 +1,103 @@
-# Change: Centralize Build Configuration and Package Management
+# 变更：集中构建配置与包管理
 
-**Change ID**: `centralize-build-configuration`
-**Status**: Draft
-**Created**: 2026-01-23
-**Type**: Refactoring
-
----
-
-## Why
-
-### Background
-
-Currently, package references and build settings are scattered across individual `.csproj` files. The AutoConstructor package reference is only in `MaterialClient.Common.csproj`, but it should be available to all projects. Package versions are duplicated across multiple project files, making version management and updates cumbersome.
-
-### Problems
-
-1. **Inconsistent package availability**: AutoConstructor is only referenced in one project, but other projects may need it
-2. **Version management overhead**: Package versions are duplicated across multiple `.csproj` files, requiring manual updates in multiple places
-3. **Maintenance burden**: Adding common packages or updating versions requires editing multiple files
-4. **Risk of version drift**: Different projects may accidentally use different versions of the same package
+**变更 ID**：`centralize-build-configuration`
+**状态**：Draft
+**创建日期**：2026-01-23
+**类型**：Refactoring
 
 ---
 
-## What Changes
+## 原因
 
-### Overview
+### 背景
 
-This change centralizes common build configuration and package version management using MSBuild directory-level props files:
-- `Directory.Build.props` for common settings and package references (e.g., AutoConstructor)
-- `Directory.Packages.props` for centralized package version management using Central Package Management (CPM)
+当前包引用与构建设置分散在各 `.csproj` 中。AutoConstructor 仅在 `MaterialClient.Common.csproj` 中引用，但应对所有项目可用。包版本在多个项目文件中重复，导致版本管理与更新繁琐。
 
-### Detailed Changes
+### 问题
 
-1. **Create `Directory.Build.props`** at solution root:
-   - Add AutoConstructor package reference with proper metadata:
-     - `PrivateAssets` set to `all`
-     - `IncludeAssets` set to `runtime; build; native; contentfiles; analyzers`
-   - This makes AutoConstructor available to all projects automatically
-
-2. **Create `Directory.Packages.props`** at solution root:
-   - Enable Central Package Management (`ManagePackageVersionsCentrally=true`)
-   - Define all package versions in one location
-   - Projects reference packages without version numbers (versions come from Directory.Packages.props)
-
-3. **Update all `.csproj` files**:
-   - Remove AutoConstructor package reference from `MaterialClient.Common.csproj` (moved to Directory.Build.props)
-   - Remove version numbers from PackageReference elements (versions come from Directory.Packages.props)
-   - Keep project-specific package references but without versions
+1. **包可用性不一致**：AutoConstructor 仅在一个项目中引用，其他项目可能也需要
+2. **版本管理开销**：包版本在多个 `.csproj` 中重复，需在多处手动更新
+3. **维护负担**：添加公共包或更新版本需编辑多个文件
+4. **版本漂移风险**：不同项目可能误用同包的不同版本
 
 ---
 
-## Impact
+## 变更内容
 
-### Expected Benefits
+### 概览
 
-- **Consistency**: All projects automatically get common packages like AutoConstructor
-- **Maintainability**: Single source of truth for package versions
-- **Efficiency**: Update package versions in one place instead of multiple files
-- **Reduced errors**: Eliminates risk of version mismatches across projects
-- **Standard practice**: Aligns with modern .NET project management best practices
+本变更通过 MSBuild 目录级 props 文件集中通用构建配置与包版本管理：
+- `Directory.Build.props`：通用设置与包引用（如 AutoConstructor）
+- `Directory.Packages.props`：通过 Central Package Management (CPM) 集中管理包版本
 
-### Risks and Mitigations
+### 详细变更
 
-| Risk | Impact | Mitigation |
+1. **在解决方案根目录创建 `Directory.Build.props`**：
+   - 添加 AutoConstructor 包引用及合适元数据（如 `PrivateAssets` 设为 `all`，`IncludeAssets` 设为 `runtime; build; native; contentfiles; analyzers`），使 AutoConstructor 自动对所有项目可用
+
+2. **在解决方案根目录创建 `Directory.Packages.props`**：
+   - 启用集中包管理（`ManagePackageVersionsCentrally=true`）
+   - 在一处定义所有包版本
+   - 项目引用包时不写版本号（版本来自 Directory.Packages.props）
+
+3. **更新所有 `.csproj`**：
+   - 从 `MaterialClient.Common.csproj` 移除 AutoConstructor 包引用（已移至 Directory.Build.props）
+   - 从 PackageReference 元素中移除版本号（版本来自 Directory.Packages.props）
+   - 保留项目特有包引用但不写版本号
+
+---
+
+## 影响
+
+### 预期收益
+
+- **一致性**：所有项目自动获得 AutoConstructor 等公共包
+- **可维护性**：包版本单一事实来源
+- **效率**：在一处更新包版本而非多文件
+- **减少错误**：消除项目间版本不一致风险
+- **标准实践**：符合现代 .NET 项目管理最佳实践
+
+### 风险与缓解
+
+| 风险 | 影响 | 缓解 |
 |------|--------|------------|
-| Build failures if Directory.Packages.props not recognized | High | Verify .NET SDK version supports CPM (requires .NET SDK 6.0+), test build after changes |
-| Projects may have different package needs | Low | Directory.Build.props only adds common packages; project-specific packages remain in .csproj files |
-| Migration complexity | Medium | Update one project at a time, test builds incrementally |
+| 若未识别 Directory.Packages.props 可能导致构建失败 | 高 | 确认 .NET SDK 支持 CPM（需 .NET SDK 6.0+），变更后测试构建 |
+| 各项目包需求可能不同 | 低 | Directory.Build.props 仅添加公共包；项目特有包仍在 .csproj |
+| 迁移复杂度 | 中 | 逐项目更新，增量测试构建 |
 
-### Affected Files
+### 受影响文件
 
-- `Directory.Build.props` (new)
-- `Directory.Packages.props` (new)
+- `Directory.Build.props`（新建）
+- `Directory.Packages.props`（新建）
 - `MaterialClient.Common/MaterialClient.Common.csproj`
 - `MaterialClient.Common.Tests/MaterialClient.Common.Tests.csproj`
 - `MaterialClient/MaterialClient.csproj`
-- `MaterialClientToolkit/MaterialClientToolkit.csproj` (if exists)
+- `MaterialClientToolkit/MaterialClientToolkit.csproj`（若存在）
 
 ---
 
-## Success Criteria
+## 成功标准
 
-- [ ] `Directory.Build.props` created with AutoConstructor reference
-- [ ] `Directory.Packages.props` created with all package versions
-- [ ] All `.csproj` files updated to remove versions from PackageReference
-- [ ] AutoConstructor removed from individual project files
-- [ ] Solution builds successfully
-- [ ] All projects can use AutoConstructor attributes
-- [ ] Package versions are managed centrally
-
----
-
-## Next Steps
-
-1. Review and approve this proposal
-2. Implement changes according to tasks.md
-3. Test build and verify AutoConstructor works in all projects
-4. Validate package version management
+- [ ] 已创建含 AutoConstructor 引用的 `Directory.Build.props`
+- [ ] 已创建含所有包版本的 `Directory.Packages.props`
+- [ ] 所有 `.csproj` 已更新，从 PackageReference 移除版本号
+- [ ] 已从各项目文件中移除 AutoConstructor
+- [ ] 解决方案构建成功
+- [ ] 所有项目可使用 AutoConstructor 特性
+- [ ] 包版本已集中管理
 
 ---
 
-## References
+## 后续步骤
 
-- [MSBuild Directory.Build.props documentation](https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-your-build)
-- [Central Package Management (CPM) documentation](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management)
+1. 审阅并批准本提案
+2. 按 tasks.md 实施变更
+3. 测试构建并验证 AutoConstructor 在所有项目中可用
+4. 验证包版本管理
+
+---
+
+## 参考
+
+- [MSBuild Directory.Build.props 文档](https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-your-build)
+- [Central Package Management (CPM) 文档](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management)

@@ -1,415 +1,390 @@
-# attended-weighing Specification
+# 有人值守称重 规范
 
-## Purpose
-TBD - created by archiving change refactor-weighing-item-navigation. Update Purpose after archive.
-## Requirements
-### Requirement: Item Navigation After Operations
+## 目的
+待定 - 由变更 refactor-weighing-item-navigation 归档后创建。归档后更新目的。
 
-The system SHALL provide consistent navigation to WeighingListItemDto objects after operations (Save, Complete, Match, Abolish) are performed.
+## 需求
 
-#### Scenario: Complete operation navigation
-- **WHEN** user completes a waybill (FirstWeight → Completed) in AttendedWeighingDetailView
-- **THEN** the system SHALL:
-  - Refresh the list data to reflect the completed state
-  - Select the newly completed waybill in the list
-  - Display the completed waybill in AttendedWeighingMainView (not DetailView)
-  - Navigate to the correct page if the item is not on the current page
-  - Switch to the appropriate tab only if necessary (respect IsShowAllRecords flag)
+### 需求：操作后的条目导航
 
-#### Scenario: Save operation navigation
-- **WHEN** user saves changes to a weighing record or waybill in AttendedWeighingDetailView
-- **THEN** the system SHALL:
-  - Refresh the list data to reflect the saved changes
-  - Keep the saved item selected in the list
-  - Remain in AttendedWeighingDetailView (allow continued editing)
-  - Stay on the current tab (item state hasn't changed)
-  - Navigate to the correct page if the item moved due to sorting
+系统应在执行操作（保存、完成、匹配、作废）后，提供一致的、指向 WeighingListItemDto 的导航。
 
-#### Scenario: Match operation navigation
-- **WHEN** user manually matches a weighing record with another record
-- **THEN** the system SHALL:
-  - Refresh the list data to show the newly created waybill
-  - Select the next unmatched item in the list
-  - Display the next unmatched item in AttendedWeighingDetailView
-  - Switch to unmatched tab if currently on completed tab and not showing all records
-  - Navigate to the correct page for the next item
+#### 场景：完成操作后的导航
+- **当** 用户在 AttendedWeighingDetailView 中将运单完成（首磅 → 已完成）
+- **则** 系统应：
+  - 刷新列表数据以反映已完成状态
+  - 在列表中选中新完成的运单
+  - 在 AttendedWeighingMainView（而非 DetailView）中显示已完成的运单
+  - 若该条目不在当前页，则导航到正确页码
+  - 仅在必要时切换标签页（遵循 IsShowAllRecords 标志）
 
-#### Scenario: Abolish operation navigation
-- **WHEN** user abolishes (deletes) a weighing record
-- **THEN** the system SHALL:
-  - Refresh the list data to remove the abolished record
-  - Select the next unmatched item in the list
-  - Display the next unmatched item in AttendedWeighingDetailView
-  - Stay on the current tab (item was removed, not moved)
-  - Navigate to the correct page for the next item
+#### 场景：保存操作后的导航
+- **当** 用户在 AttendedWeighingDetailView 中保存称重记录或运单的修改
+- **则** 系统应：
+  - 刷新列表数据以反映保存后的变更
+  - 在列表中保持已保存条目为选中状态
+  - 保持在 AttendedWeighingDetailView（允许继续编辑）
+  - 保持当前标签页（条目状态未变）
+  - 若因排序导致条目移动，则导航到正确页码
 
-### Requirement: Tab Switching Rules
+#### 场景：匹配操作后的导航
+- **当** 用户手动将一条称重记录与另一条记录匹配
+- **则** 系统应：
+  - 刷新列表数据以显示新生成的运单
+  - 在列表中选中下一个未匹配条目
+  - 在 AttendedWeighingDetailView 中显示下一个未匹配条目
+  - 若当前在“已完成”标签且未显示全部记录，则切换到“未匹配”标签
+  - 导航到下一个条目所在页
 
-The system SHALL implement intelligent tab switching that respects user context and only switches when necessary.
+#### 场景：作废操作后的导航
+- **当** 用户作废（删除）一条称重记录
+- **则** 系统应：
+  - 刷新列表数据以移除已作废记录
+  - 在列表中选中下一个未匹配条目
+  - 在 AttendedWeighingDetailView 中显示下一个未匹配条目
+  - 保持当前标签页（条目被移除，未移动）
+  - 导航到下一个条目所在页
 
-#### Scenario: Tab switching respects "All Records" mode
-- **WHEN** IsShowAllRecords flag is true (user selected "All Records" tab)
-- **THEN** the system SHALL NOT automatically switch tabs after any operation
-- **BECAUSE** all items are visible on this tab regardless of completion status
+### 需求：标签页切换规则
 
-#### Scenario: Tab switching when item moves to completed state
-- **WHEN** an item becomes completed (OrderType changes to Completed)
-- **AND** IsShowUnmatched is true (user is on "Unmatched" tab)
-- **AND** IsShowAllRecords is false
-- **THEN** the system SHALL switch to IsShowCompleted = true ("Completed" tab)
+系统应实现尊重用户上下文的智能标签页切换，仅在必要时切换。
 
-#### Scenario: Tab switching when item moves to unmatched state
-- **WHEN** an item becomes unmatched (OrderType changes to FirstWeight or Unmatch)
-- **AND** IsShowCompleted is true (user is on "Completed" tab)
-- **AND** IsShowAllRecords is false
-- **THEN** the system SHALL switch to IsShowUnmatched = true ("Unmatched" tab)
+#### 场景：标签切换尊重“全部记录”模式
+- **当** IsShowAllRecords 为 true（用户选择了“全部记录”标签）
+- **则** 系统在任何操作后均不得自动切换标签
+- **因为** 该标签下所有条目均可见，与完成状态无关
 
-#### Scenario: No tab switching when current tab contains target item
-- **WHEN** an operation completes and the resulting item's state matches the current tab filter
-- **THEN** the system SHALL NOT switch tabs
-- **EXAMPLE**: User on "Completed" tab saves a completed waybill → stay on "Completed" tab
+#### 场景：条目变为已完成时的标签切换
+- **当** 某条目变为已完成（OrderType 变为 Completed）
+- **且** IsShowUnmatched 为 true（用户在“未匹配”标签）
+- **且** IsShowAllRecords 为 false
+- **则** 系统应切换到 IsShowCompleted = true（“已完成”标签）
 
-### Requirement: Cross-Page Item Navigation
+#### 场景：条目变为未匹配时的标签切换
+- **当** 某条目变为未匹配（OrderType 变为 FirstWeight 或 Unmatch）
+- **且** IsShowCompleted 为 true（用户在“已完成”标签）
+- **且** IsShowAllRecords 为 false
+- **则** 系统应切换到 IsShowUnmatched = true（“未匹配”标签）
 
-The system SHALL find and navigate to items across pagination boundaries.
+#### 场景：当前标签已包含目标条目时不切换标签
+- **当** 操作完成且结果条目的状态与当前标签筛选一致
+- **则** 系统不得切换标签
+- **示例**：用户在“已完成”标签下保存已完成的运单 → 保持在“已完成”标签
 
-#### Scenario: Item found on current page
-- **WHEN** navigating to a target item after an operation
-- **AND** the target item is present on the current page
-- **THEN** the system SHALL:
-  - Select the item immediately without changing pages
-  - Complete navigation in O(1) time
+### 需求：跨页条目导航
 
-#### Scenario: Item found on different page
-- **WHEN** navigating to a target item after an operation
-- **AND** the target item is NOT present on the current page
-- **THEN** the system SHALL:
-  - Search across pages starting from page 1
-  - Navigate to the page containing the target item
-  - Select the item once found
-  - Limit search to a maximum of 10 pages to prevent excessive loading
+系统应能查找并导航到分页边界之外的条目。
 
-#### Scenario: Item not found after search
-- **WHEN** navigating to a target item after an operation
-- **AND** the target item cannot be found after searching available pages
-- **THEN** the system SHALL:
-  - Fall back to selecting the first item in the current list
-  - Log a warning about the missing item
-  - Not display an error to the user (graceful degradation)
+#### 场景：目标条目在当前页
+- **当** 操作后导航到目标条目
+- **且** 目标条目在当前页
+- **则** 系统应：
+  - 不翻页即选中该条目
+  - 在 O(1) 时间内完成导航
 
-### Requirement: View Selection Based on Item State
+#### 场景：目标条目在其他页
+- **当** 操作后导航到目标条目
+- **且** 目标条目不在当前页
+- **则** 系统应：
+  - 从第 1 页起跨页搜索
+  - 导航到包含目标条目的页
+  - 找到后选中该条目
+  - 最多搜索 10 页，避免过度加载
 
-The system SHALL automatically select the appropriate view (MainView or DetailView) based on the item's type and completion status.
+#### 场景：搜索后未找到条目
+- **当** 操作后导航到目标条目
+- **且** 在可用页中搜索后仍无法找到目标条目
+- **则** 系统应：
+  - 回退为选中当前列表的第一条
+  - 记录关于缺失条目的警告日志
+  - 不向用户显示错误（优雅降级）
 
-#### Scenario: Completed waybill displays in MainView
-- **WHEN** navigating to an item that is a Waybill
-- **AND** the waybill's OrderType is Completed
-- **THEN** the system SHALL display AttendedWeighingMainView (read-only summary view)
+### 需求：按条目状态选择视图
 
-#### Scenario: Editable items display in DetailView
-- **WHEN** navigating to an item that is NOT a completed waybill
-- **EXAMPLES**: WeighingRecord (unmatched), Waybill with OrderType = FirstWeight
-- **THEN** the system SHALL display AttendedWeighingDetailView (editable form view)
+系统应根据条目的类型与完成状态自动选择合适视图（MainView 或 DetailView）。
 
-#### Scenario: View selection after Complete operation
-- **WHEN** user completes a waybill (changes OrderType from FirstWeight to Completed)
-- **THEN** the system SHALL switch from AttendedWeighingDetailView to AttendedWeighingMainView
-- **BECAUSE** the item is now read-only and optimized for viewing in MainView
+#### 场景：已完成运单在 MainView 中显示
+- **当** 导航到的条目为运单（Waybill）
+- **且** 运单的 OrderType 为 Completed
+- **则** 系统应显示 AttendedWeighingMainView（只读摘要视图）
 
-### Requirement: Operation Event Context
+#### 场景：可编辑条目在 DetailView 中显示
+- **当** 导航到的条目不是已完成的运单
+- **示例**：未匹配的 WeighingRecord、OrderType = FirstWeight 的运单
+- **则** 系统应显示 AttendedWeighingDetailView（可编辑表单视图）
 
-The system SHALL provide complete context information in operation events to enable proper navigation.
+#### 场景：完成操作后的视图选择
+- **当** 用户完成运单（将 OrderType 从 FirstWeight 改为 Completed）
+- **则** 系统应从 AttendedWeighingDetailView 切换到 AttendedWeighingMainView
+- **因为** 条目已变为只读，适合在 MainView 中查看
 
-#### Scenario: Event arguments include operation context
-- **WHEN** an operation (Save, Complete, Match, Abolish) completes in AttendedWeighingDetailView
-- **THEN** the raised event SHALL include:
-  - ItemId: The ID of the resulting item
-  - ItemType: Whether the item is a WeighingRecord or Waybill
-  - OrderType: The current order type (Unmatch, FirstWeight, Completed)
-  - IsCompleted: Boolean flag for quick completion status check
-  - OperationType: String identifying which operation was performed
+### 需求：操作事件上下文
 
-#### Scenario: Complete operation event
-- **WHEN** user completes a waybill successfully
-- **THEN** CompleteCompleted event SHALL be raised with:
-  - ItemId = the waybill ID
+系统应在操作事件中提供完整上下文信息，以支持正确导航。
+
+#### 场景：事件参数包含操作上下文
+- **当** 在 AttendedWeighingDetailView 中完成某操作（保存、完成、匹配、作废）
+- **则** 触发的事件应包含：
+  - ItemId：结果条目的 ID
+  - ItemType：条目是 WeighingRecord 还是 Waybill
+  - OrderType：当前订单类型（Unmatch、FirstWeight、Completed）
+  - IsCompleted：用于快速判断完成状态的布尔标志
+  - OperationType：标识所执行操作的字符串
+
+#### 场景：完成操作事件
+- **当** 用户成功完成运单
+- **则** 应触发 CompleteCompleted 事件，且包含：
+  - ItemId = 运单 ID
   - ItemType = Waybill
   - OrderType = Completed
   - IsCompleted = true
   - OperationType = "Complete"
 
-#### Scenario: Save operation event
-- **WHEN** user saves changes to a record or waybill
-- **THEN** SaveCompleted event SHALL be raised with:
-  - ItemId = the saved item's ID
-  - ItemType = the item's current type
-  - OrderType = the item's current order type
-  - IsCompleted = based on OrderType
+#### 场景：保存操作事件
+- **当** 用户保存对记录或运单的修改
+- **则** 应触发 SaveCompleted 事件，且包含：
+  - ItemId = 已保存条目的 ID
+  - ItemType = 条目当前类型
+  - OrderType = 条目当前订单类型
+  - IsCompleted = 根据 OrderType 得出
   - OperationType = "Save"
 
-### Requirement: Unified Navigation Logic
+### 需求：统一导航逻辑
 
-The system SHALL use a single unified method for all post-operation navigation to ensure consistency.
+系统应使用单一统一方法处理所有操作后导航，以保证一致性。
 
-#### Scenario: All operations use NavigateToItemAsync
-- **WHEN** any operation event handler is triggered (Save, Complete, Match, Abolish, ManualMatch)
-- **THEN** the handler SHALL call the unified NavigateToItemAsync method
-- **AND** NavigateToItemAsync SHALL handle:
-  - Data refresh
-  - Tab switching decision
-  - Page navigation
-  - Item selection
-  - View selection
+#### 场景：所有操作均使用 NavigateToItemAsync
+- **当** 任一操作事件处理被触发（保存、完成、匹配、作废、手动匹配）
+- **则** 处理程序应调用统一的 NavigateToItemAsync 方法
+- **且** NavigateToItemAsync 应负责：
+  - 数据刷新
+  - 是否切换标签的决策
+  - 页码导航
+  - 条目选中
+  - 视图选择
 
-#### Scenario: Navigation logic is predictable and testable
-- **WHEN** testing navigation behavior
-- **THEN** all navigation paths SHALL go through NavigateToItemAsync
-- **ALLOWING** single point of testing and maintenance
-- **ENSURING** consistent behavior across all operations
+#### 场景：导航逻辑可预测且可测
+- **当** 测试导航行为时
+- **则** 所有导航路径均应经过 NavigateToItemAsync
+- **从而** 实现单点测试与维护
+- **并** 保证各操作行为一致
 
-### Requirement: Plate Color Priority Matching
+### 需求：车牌颜色优先级匹配
 
-The system SHALL implement a priority-based plate number selection mechanism where filtered plate colors are treated as lowest priority rather than being rejected.
+系统应实现基于优先级的车牌号选择机制：被筛选的车牌颜色视为最低优先级，而非直接拒绝。
 
-#### Scenario: High-priority plate overrides low-priority plate
+#### 场景：高优先级车牌覆盖低优先级车牌
+- **假设** 地磅上为黄牌（低优先级颜色）车辆
+- **且** 该车牌已被识别 10 次（缓存中 count=10）
+- **当** 同时检测到蓝牌（高优先级颜色）车辆一次
+- **则** 系统应选择蓝牌为最常出现车牌号
+- **且** 黄牌保留在缓存中但不被选中
 
-- **GIVEN** a vehicle with yellow plate (low-priority color) is on scale
-- **AND** the plate has been recognized 10 times (cached with count=10)
-- **WHEN** a vehicle with blue plate (high-priority color) is also detected once
-- **THEN** the system SHALL select the blue plate as most frequent plate number
-- **AND** the yellow plate SHALL remain in cache but not be selected
+#### 场景：无高优先级时使用低优先级车牌
+- **假设** 地磅上为黄牌（低优先级颜色）车辆
+- **且** 未检测到其他车牌
+- **当** 系统选择最常出现车牌号
+- **则** 系统应返回该黄牌
+- **且** 记录说明正在使用低优先级车牌的日志
 
-#### Scenario: Low-priority plate used when no high-priority exists
+#### 场景：低优先级车牌不能覆盖已有高优先级车牌
+- **假设** 蓝牌（高优先级颜色）车辆已缓存且 count=1
+- **当** 黄牌（低优先级颜色）被识别 100 次
+- **则** 系统应继续返回蓝牌
+- **且** 黄牌在缓存中累加 count 但不被选中
 
-- **GIVEN** a vehicle with yellow plate (low-priority color) is on scale
-- **AND** no other plates have been detected
-- **WHEN** the system selects the most frequent plate number
-- **THEN** the system SHALL return the yellow plate
-- **AND** log a message indicating low-priority plate is being used
+#### 场景：无颜色信息的车牌视为高优先级
+- **假设** 识别的车牌无颜色信息（colorType 为 null）
+- **当** 该车牌被缓存
+- **则** 系统应默认将其视为高优先级
+- **且** 其应能覆盖低优先级车牌
 
-#### Scenario: Low-priority plate cannot override existing high-priority plate
+### 需求：车牌号缓存颜色跟踪
 
-- **GIVEN** a vehicle with blue plate (high-priority color) is cached with count=1
-- **WHEN** a yellow plate (low-priority color) is recognized 100 times
-- **THEN** the system SHALL continue to return the blue plate
-- **AND** the yellow plate SHALL accumulate count in cache but not be selected
+系统应在缓存中随车牌号存储颜色信息，以支持按优先级选择。
 
-#### Scenario: Plate without color information treated as high-priority
+#### 场景：缓存中持久化颜色信息
+- **假设** 某车牌被识别且颜色类型为 YELLOW
+- **当** 该车牌加入缓存
+- **则** 缓存记录应包含：
+  - Count：识别次数
+  - LastUpdateTime：最近一次识别时间戳
+  - ColorType：YELLOW（检测到的颜色）
 
-- **GIVEN** a plate number is recognized without color information (colorType is null)
-- **WHEN** the plate is cached
-- **THEN** the system SHALL treat it as high-priority by default
-- **AND** it SHALL be able to override low-priority plates
+#### 场景：增加 count 时保留颜色信息
+- **假设** 车牌“京A12345”颜色为 BLUE，已缓存且 count=1
+- **当** 同一车牌再次以 BLUE 被识别
+- **则** 缓存记录应更新为：
+  - Count：2（递增）
+  - LastUpdateTime：（更新为当前时间）
+  - ColorType：BLUE（与首次识别一致）
 
-### Requirement: Plate Number Cache Color Tracking
+#### 场景：缓存处理缺失的颜色信息
+- **假设** 某车牌被识别但无颜色信息（colorType 为 null）
+- **当** 该车牌加入缓存
+- **则** 缓存记录应将 ColorType 存为 null
+- **且** 该车牌应被视为高优先级
 
-The system SHALL store color information alongside plate numbers in the cache to support priority-based selection.
+### 需求：车牌颜色优先级配置
 
-#### Scenario: Color information persisted in cache
+系统应支持将特定车牌颜色配置为低优先级，将其视为备选而非完全拒绝。
 
-- **GIVEN** a plate is recognized with color type YELLOW
-- **WHEN** the plate is added to cache
-- **THEN** the cache record SHALL include:
-  - Count: number of recognitions
-  - LastUpdateTime: timestamp of last recognition
-  - ColorType: YELLOW (the detected color)
+#### 场景：低优先级颜色带标志存储
+- **假设** 配置在 LowPriorityPlateColors 数组中指定了 YELLOW
+- **当** 通过 OnPlateNumberRecognized 识别到黄牌
+- **则** 系统不得拒绝该车牌
+- **且** 应将其以 ColorType=YELLOW 存入缓存
+- **且** 应在选择逻辑中将其标记为低优先级
+- **且** 记录检测到低优先级颜色的日志
 
-#### Scenario: Color information preserved when incrementing count
+#### 场景：普通颜色按高优先级存储
+- **假设** 配置在 LowPriorityPlateColors 数组中指定了 YELLOW
+- **当** 通过 OnPlateNumberRecognized 识别到蓝牌
+- **则** 系统应将其以 ColorType=BLUE 存入缓存
+- **且** 在选择逻辑中标记为高优先级
+- **且** 不记录与优先级相关的日志
 
-- **GIVEN** a plate "京A12345" with color BLUE is cached with count=1
-- **WHEN** the same plate is recognized again with color BLUE
-- **THEN** the cache record SHALL update to:
-  - Count: 2 (incremented)
-  - LastUpdateTime: (updated to current time)
-  - ColorType: BLUE (preserved from first recognition)
+#### 场景：配置加载使用新键名
+- **假设** appsettings.json 包含 LowPriorityPlateColors 数组
+- **当** AttendedWeighingService 启动
+- **则** 系统应从配置键 LowPriorityPlateColors 加载颜色
+- **且** 存入 _lowPriorityPlateColors HashSet
+- **且** 用于区分低优先级与高优先级车牌
+- **且** 在初始化时记录低优先级颜色日志
 
-#### Scenario: Cache handles missing color information
+### 需求：配置键重命名
 
-- **GIVEN** a plate is recognized without color information (colorType is null)
-- **WHEN** the plate is added to cache
-- **THEN** the cache record SHALL store ColorType as null
-- **AND** the plate SHALL be treated as high-priority
+系统应使用 LowPriorityPlateColors 作为配置键名，以体现基于优先级的语义，而非基于拒绝的筛选。
 
-### Requirement: Plate Color Priority Configuration
+#### 场景：使用新配置键加载
+- **假设** 配置文件包含 LowPriorityPlateColors 键
+- **当** AttendedWeighingService 初始化
+- **则** 系统应从 LowPriorityPlateColors 键读取车牌颜色
+- **且** 不得从旧键 FilteredPlateColors 读取
+- **且** 在初始化时记录“低优先级车牌颜色：[列表]”
 
-The system SHALL support configuring certain plate colors as low-priority, treating them as fallback options rather than rejecting them entirely.
+#### 场景：变量命名体现优先级语义
+- **假设** 服务代码使用内部变量表示车牌颜色优先级
+- **则** 变量应命名为 _lowPriorityPlateColors（而非 _filteredPlateColors）
+- **且** 所有日志应使用“低优先级”术语
+- **且** 代码注释应引用基于优先级的行为
 
-#### Scenario: Low-priority color stored with flag
+### 需求：系统必须将文件路径以相对路径存储以实现数据库可移植性
 
-- **GIVEN** configuration specifies YELLOW in LowPriorityPlateColors array
-- **WHEN** a yellow plate is recognized via OnPlateNumberRecognized
-- **THEN** the system SHALL NOT reject the plate
-- **AND** SHALL store it in cache with ColorType=YELLOW
-- **AND** SHALL mark it as low-priority for selection purposes
-- **AND** log message indicating low-priority color detected
+系统应在数据库中使用相对路径（相对于应用程序根目录）存储文件路径，以便在不同服务器或目录间迁移数据库时不破坏文件引用。
 
-#### Scenario: Normal color stored as high-priority
+**上下文**：当数据库文件迁移到新服务器或目录（例如从 `D:\MaterialClient\` 到 `E:\Apps\MaterialClient\`）时，绝对路径如 `D:\MaterialClient\Photos\car.jpg` 会失效。相对路径如 `Photos/car.jpg` 在迁移后仍然有效。
 
-- **GIVEN** configuration specifies YELLOW in LowPriorityPlateColors array
-- **WHEN** a blue plate is recognized via OnPlateNumberRecognized
-- **THEN** the system SHALL store it in cache with ColorType=BLUE
-- **AND** SHALL mark it as high-priority for selection purposes
-- **AND** NOT log any priority-related message
+**实现约束**：适用于数据库中存储的所有 `AttachmentFile.LocalPath` 值。
 
-#### Scenario: Configuration loading uses new key name
+#### 场景：照片路径以相对路径存储
+**假设** 应用程序运行目录为 `D:\MaterialClient\`  
+**当** 拍摄并保存照片到 `D:\MaterialClient\Photos\2026\01\23\bill.jpg`  
+**则** 数据库中 `AttachmentFile.LocalPath` 必须存储 `"Photos/2026/01/23/bill.jpg"`（相对路径）  
+**且** 不得存储 `"D:\MaterialClient\Photos\2026\01\23\bill.jpg"`（绝对路径）
 
-- **GIVEN** appsettings.json contains LowPriorityPlateColors array
-- **WHEN** AttendedWeighingService starts
-- **THEN** the system SHALL load the colors from LowPriorityPlateColors configuration key
-- **AND** store them in _lowPriorityPlateColors HashSet
-- **AND** use them to determine low-priority vs high-priority plates
-- **AND** log the low-priority colors during initialization
+#### 场景：数据库迁移到新位置
+**假设** 数据库中存在 `AttachmentFile`，且 `LocalPath = "Photos/2026/01/23/car.jpg"`  
+**且** 数据库文件从 `D:\MaterialClient\` 复制到 `E:\NewLocation\`  
+**且** `Photos` 文件夹也复制到 `E:\NewLocation\Photos\`  
+**当** 应用程序从 `E:\NewLocation\` 运行  
+**则** `E:\NewLocation\Photos\2026/01/23/car.jpg` 处的照片必须能成功加载  
+**且** 无需在数据库中更新路径
 
-### Requirement: Configuration Key Renaming
-
-The system SHALL use LowPriorityPlateColors as the configuration key name to reflect priority-based semantics rather than rejection-based filtering.
-
-#### Scenario: New configuration key used for loading
-
-- **GIVEN** configuration file contains LowPriorityPlateColors key
-- **WHEN** AttendedWeighingService initializes
-- **THEN** the system SHALL read plate colors from LowPriorityPlateColors key
-- **AND** SHALL NOT attempt to read from old FilteredPlateColors key
-- **AND** log "Low-priority plate colors: [list]" during initialization
-
-#### Scenario: Variable naming reflects priority semantics
-
-- **GIVEN** the service code uses internal variables for plate color priority
-- **THEN** the variable SHALL be named _lowPriorityPlateColors (not _filteredPlateColors)
-- **AND** all log messages SHALL use "low-priority" terminology
-- **AND** code comments SHALL reference priority-based behavior
-
-### Requirement: System MUST Store File Paths as Relative Paths for Database Portability
-
-The system SHALL store file paths in the database using relative paths (relative to application base directory) to enable database migration between different servers or directories without breaking file references.
-
-**Context**: When database files are migrated to a new server or directory (e.g., from `D:\MaterialClient\` to `E:\Apps\MaterialClient\`), absolute paths like `D:\MaterialClient\Photos\car.jpg` would break. Relative paths like `Photos/car.jpg` remain valid after migration.
-
-**Implementation Constraint**: This applies to all `AttachmentFile.LocalPath` values stored in the database.
-
-#### Scenario: Photo path stored as relative path
-
-**Given** the application is running from `D:\MaterialClient\`  
-**When** a photo is captured and saved to `D:\MaterialClient\Photos\2026\01\23\bill.jpg`  
-**Then** the database `AttachmentFile.LocalPath` must store `"Photos/2026/01/23/bill.jpg"` (relative path)  
-**And** not store `"D:\MaterialClient\Photos\2026\01\23\bill.jpg"` (absolute path)
-
-#### Scenario: Database migrated to new location
-
-**Given** a database contains `AttachmentFile` with `LocalPath = "Photos/2026/01/23/car.jpg"`  
-**And** the database file is copied from `D:\MaterialClient\` to `E:\NewLocation\`  
-**And** the `Photos` folder is also copied to `E:\NewLocation\Photos\`  
-**When** the application runs from `E:\NewLocation\`  
-**Then** the photo at `E:\NewLocation\Photos\2026/01/23/car.jpg` must load successfully  
-**And** no path updates are required in the database
-
-#### Scenario: Existing absolute paths remain functional
-
-**Given** a database contains legacy `AttachmentFile` with `LocalPath = "D:\MaterialClient\Photos\car.jpg"` (absolute path from old version)  
-**When** the application runs from `D:\MaterialClient\`  
-**Then** the photo must still load successfully  
-**And** new photo captures must use relative paths going forward
+#### 场景：已有绝对路径仍可用
+**假设** 数据库中存在旧版 `AttachmentFile`，且 `LocalPath = "D:\MaterialClient\Photos\car.jpg"`（绝对路径）  
+**当** 应用程序从 `D:\MaterialClient\` 运行  
+**则** 该照片仍须能成功加载  
+**且** 之后新拍摄的照片必须使用相对路径
 
 ---
 
-### Requirement: Image Converters MUST Normalize Paths Before Loading
+### 需求：图片转换器必须在加载前规范化路径
 
-Image converters SHALL normalize relative paths to absolute paths before file existence checks and image loading operations, ensuring images render correctly regardless of the application's working directory at launch.
+图片转换器在检查文件存在及加载图片前，应将相对路径规范化为绝对路径，以确保无论应用程序启动时的工作目录如何，图片都能正确显示。
 
-**Context**: When the application is launched from `C:\Windows\System32` (e.g., via Task Scheduler), relative paths from the database would incorrectly resolve to `C:\Windows\System32\Photos\...` without normalization.
+**上下文**：当应用程序从 `C:\Windows\System32` 启动（例如通过任务计划程序）时，未规范化的数据库相对路径会错误地解析为 `C:\Windows\System32\Photos\...`。
 
-**Implementation Constraint**: This applies to `CarNullOrEmptyImageConverter` and `NullOrEmptyImageConverter` used throughout the UI.
+**实现约束**：适用于整个 UI 中使用的 `CarNullOrEmptyImageConverter` 与 `NullOrEmptyImageConverter`。
 
-#### Scenario: Image loads from relative path when launched from System32
+#### 场景：从 System32 启动时从相对路径加载图片
+**假设** 应用程序从 `C:\Windows\System32\` 启动  
+**且** 数据库中存在 `AttachmentFile`，且 `LocalPath = "Photos/2026/01/23/car.jpg"`  
+**当** UI 使用 `CarNullOrEmptyImageConverter` 显示图片  
+**则** 转换器必须将路径规范化为 `{AppContext.BaseDirectory}\Photos\2026\01\23\car.jpg`  
+**且** 图片必须成功显示  
+**且** 不得尝试从 `C:\Windows\System32\Photos\2026\01\23\car.jpg` 加载
 
-**Given** the application is launched from `C:\Windows\System32\`  
-**And** the database contains `AttachmentFile` with `LocalPath = "Photos/2026/01/23/car.jpg"`  
-**When** the UI attempts to display the image using `CarNullOrEmptyImageConverter`  
-**Then** the converter must normalize the path to `{AppContext.BaseDirectory}\Photos\2026\01\23\car.jpg`  
-**And** the image must render successfully  
-**And** not attempt to load from `C:\Windows\System32\Photos\2026\01\23\car.jpg`
+#### 场景：从绝对路径加载图片（向后兼容）
+**假设** 数据库中存在旧版 `AttachmentFile`，且 `LocalPath = "D:\MaterialClient\Photos\car.jpg"`（绝对路径）  
+**当** UI 尝试显示该图片  
+**则** 转换器必须识别路径已是绝对路径  
+**且** 直接使用、不做修改  
+**且** 图片必须成功显示
 
-#### Scenario: Image loads from absolute path (backward compatibility)
+#### 场景：文件缺失时显示默认图
+**假设** 数据库中存在 `AttachmentFile`，且 `LocalPath = "Photos/missing.jpg"`  
+**且** `{AppContext.BaseDirectory}\Photos\missing.jpg` 处不存在该文件  
+**当** UI 尝试显示该图片  
+**则** 转换器必须显示默认车辆图片占位符  
+**且** 不得抛出异常
 
-**Given** the database contains legacy `AttachmentFile` with `LocalPath = "D:\MaterialClient\Photos\car.jpg"` (absolute path)  
-**When** the UI attempts to display the image  
-**Then** the converter must detect the path is already absolute  
-**And** use it directly without modification  
-**And** the image must render successfully
-
-#### Scenario: Default image shown for missing files
-
-**Given** the database contains `AttachmentFile` with `LocalPath = "Photos/missing.jpg"`  
-**And** the file does not exist at `{AppContext.BaseDirectory}\Photos\missing.jpg`  
-**When** the UI attempts to display the image  
-**Then** the converter must show the default car image placeholder  
-**And** not throw an exception
-
-#### Scenario: Asset paths handled separately
-
-**Given** a ViewModel provides an asset path `"avares://MaterialClient/Assets/Car_Default.png"`  
-**When** the UI attempts to display the image using `CarNullOrEmptyImageConverter`  
-**Then** the converter must recognize it as an asset path  
-**And** load it from embedded resources  
-**And** not apply file path normalization
+#### 场景：资源路径单独处理
+**假设** ViewModel 提供资源路径 `"avares://MaterialClient/Assets/Car_Default.png"`  
+**当** UI 使用 `CarNullOrEmptyImageConverter` 显示图片  
+**则** 转换器必须识别为资源路径  
+**且** 从嵌入资源加载  
+**且** 不进行文件路径规范化
 
 ---
 
-### Requirement: System MUST Provide Unified PathManager Utility
+### 需求：系统必须提供统一的 PathManager 工具
 
-The system SHALL provide a centralized `PathManager` utility with bidirectional path conversion methods (`ToAbsolutePath`, `ToRelativePath`) and file operation helpers, ensuring consistent path handling across all services.
+系统应提供集中的 `PathManager` 工具，包含双向路径转换方法（`ToAbsolutePath`、`ToRelativePath`）及文件操作辅助方法，确保各服务中的路径处理一致。
 
-**Context**: Path conversion logic was previously scattered across `DatabaseConnectionStringFactory`, `AttachmentPathUtils`, and service code. Centralizing this logic reduces duplication and ensures consistency.
+**上下文**：路径转换逻辑曾分散在 `DatabaseConnectionStringFactory`、`AttachmentPathUtils` 及服务代码中。集中该逻辑可减少重复并保证一致性。
 
-**Implementation Constraint**: `PathManager` must be a static utility class in `MaterialClient.Common/Utils/` namespace, following project conventions for configuration-unrelated utility logic.
+**实现约束**：`PathManager` 须为 `MaterialClient.Common/Utils/` 命名空间下的静态工具类，遵循项目中与配置无关的工具逻辑约定。
 
-#### Scenario: Convert relative path to absolute for file operations
+#### 场景：为文件操作将相对路径转为绝对路径
+**假设** 应用程序根目录为 `D:\MaterialClient\`  
+**当** 调用 `PathManager.ToAbsolutePath("Photos/2026/01/23/car.jpg")`  
+**则** 必须返回 `"D:\MaterialClient\Photos\2026\01\23\car.jpg"`  
+**且** 路径必须完全规范化（无 `..` 或多余斜杠）
 
-**Given** the application base directory is `D:\MaterialClient\`  
-**When** `PathManager.ToAbsolutePath("Photos/2026/01/23/car.jpg")` is called  
-**Then** it must return `"D:\MaterialClient\Photos\2026\01\23\car.jpg"`  
-**And** the path must be fully normalized (no `..` or extra slashes)
+#### 场景：为数据库存储将绝对路径转为相对路径
+**假设** 应用程序根目录为 `D:\MaterialClient\`  
+**当** 调用 `PathManager.ToRelativePath("D:\MaterialClient\Photos\2026\01\23\car.jpg")`  
+**则** 必须返回 `"Photos\2026\01\23\car.jpg"`
 
-#### Scenario: Convert absolute path to relative for database storage
+#### 场景：幂等转换（已是绝对路径）
+**假设** 绝对路径为 `"D:\MaterialClient\Photos\car.jpg"`  
+**当** 调用 `PathManager.ToAbsolutePath("D:\MaterialClient\Photos\car.jpg")`  
+**则** 必须原样返回输入：`"D:\MaterialClient\Photos\car.jpg"`
 
-**Given** the application base directory is `D:\MaterialClient\`  
-**When** `PathManager.ToRelativePath("D:\MaterialClient\Photos\2026\01\23\car.jpg")` is called  
-**Then** it must return `"Photos\2026\01\23\car.jpg"`
+#### 场景：幂等转换（已是相对路径）
+**假设** 相对路径为 `"Photos/car.jpg"`  
+**当** 调用 `PathManager.ToRelativePath("Photos/car.jpg")`  
+**则** 必须原样返回输入：`"Photos/car.jpg"`
 
-#### Scenario: Idempotent conversion (already absolute)
+#### 场景：应用程序目录外的路径保持为绝对路径
+**假设** 绝对路径为 `"C:\Users\Admin\Desktop\export.pdf"`（在应用程序目录外）  
+**当** 调用 `PathManager.ToRelativePath("C:\Users\Admin\Desktop\export.pdf")`  
+**则** 必须原样返回输入（无法转为相对路径）  
+**且** 返回 `"C:\Users\Admin\Desktop\export.pdf"`
 
-**Given** an absolute path `"D:\MaterialClient\Photos\car.jpg"`  
-**When** `PathManager.ToAbsolutePath("D:\MaterialClient\Photos\car.jpg")` is called  
-**Then** it must return the input unchanged: `"D:\MaterialClient\Photos\car.jpg"`
+#### 场景：带路径规范化的文件存在检查
+**假设** 应用程序根目录为 `D:\MaterialClient\`  
+**且** 文件存在于 `D:\MaterialClient\Photos\car.jpg`  
+**当** 调用 `PathManager.FileExists("Photos/car.jpg")`  
+**则** 必须在内部规范化为绝对路径  
+**且** 返回 `true`
 
-#### Scenario: Idempotent conversion (already relative)
-
-**Given** a relative path `"Photos/car.jpg"`  
-**When** `PathManager.ToRelativePath("Photos/car.jpg")` is called  
-**Then** it must return the input unchanged: `"Photos/car.jpg"`
-
-#### Scenario: Path outside application directory remains absolute
-
-**Given** an absolute path `"C:\Users\Admin\Desktop\export.pdf"` (outside app directory)  
-**When** `PathManager.ToRelativePath("C:\Users\Admin\Desktop\export.pdf")` is called  
-**Then** it must return the input unchanged (cannot be made relative)  
-**And** return `"C:\Users\Admin\Desktop\export.pdf"`
-
-#### Scenario: File existence check with path normalization
-
-**Given** the application base directory is `D:\MaterialClient\`  
-**And** a file exists at `D:\MaterialClient\Photos\car.jpg`  
-**When** `PathManager.FileExists("Photos/car.jpg")` is called  
-**Then** it must normalize to absolute path internally  
-**And** return `true`
-
-#### Scenario: Directory creation with path normalization
-
-**Given** the application base directory is `D:\MaterialClient\`  
-**When** `PathManager.EnsureDirectoryExists("Photos/2026/01/23")` is called  
-**Then** it must create the directory at `D:\MaterialClient\Photos\2026\01\23\`  
-**And** return the absolute path `"D:\MaterialClient\Photos\2026\01\23"`  
-**And** create any missing parent directories
+#### 场景：带路径规范化的目录创建
+**假设** 应用程序根目录为 `D:\MaterialClient\`  
+**当** 调用 `PathManager.EnsureDirectoryExists("Photos/2026/01/23")`  
+**则** 必须在 `D:\MaterialClient\Photos\2026\01\23\` 创建目录  
+**且** 返回绝对路径 `"D:\MaterialClient\Photos\2026\01\23"`  
+**且** 创建所有缺失的父目录
 
 ---
-

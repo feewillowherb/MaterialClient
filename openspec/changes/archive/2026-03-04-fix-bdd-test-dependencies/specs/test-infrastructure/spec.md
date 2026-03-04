@@ -1,48 +1,50 @@
-## ADDED Requirements
+## ADDED 需求
 
-### Requirement: Test Module API Mock Registration
-The test infrastructure SHALL provide mock implementations for all external API dependencies to enable BDD scenario execution without external service dependencies.
+### 需求：测试模块 API Mock 注册
 
-#### Scenario: Register MaterialPlatformApi mock for authentication tests
-- **GIVEN** the test module is being configured
-- **WHEN** `ConfigureServices` method is invoked
-- **THEN** `IMaterialPlatformApi` SHALL be registered as a singleton mock
-- **AND** the mock SHALL provide a default successful login response
-- **AND** the login response SHALL include a valid `LoginUserDto` with UserId, UserName, Token, and AuthEndTime
+测试基础设施应为所有外部 API 依赖提供 mock 实现，以便在无外部服务依赖的情况下执行 BDD 场景。
 
-#### Scenario: Register SoundDeviceApi mock for integration tests
-- **GIVEN** the test module is being configured
-- **WHEN** `ConfigureServices` method is invoked
-- **THEN** `ISoundDeviceApi` SHALL be registered as a singleton mock
-- **AND** the mock SHALL provide a stub implementation for `PlayAudioAsync`
-- **AND** the stub SHALL return a successful JSON response without requiring external HTTP service
+#### 场景：为认证测试注册 MaterialPlatformApi mock
+- **给定** 正在配置测试模块
+- **当** 调用 `ConfigureServices` 方法
+- **则** 应将 `IMaterialPlatformApi` 注册为单例 mock
+- **且** mock 应提供默认登录成功响应
+- **且** 登录响应应包含有效的 `LoginUserDto`（含 UserId、UserName、Token、AuthEndTime）
 
-#### Scenario: Authentication steps can resolve IMaterialPlatformApi
-- **GIVEN** `MaterialClientEntityFrameworkCoreTestModule` has been initialized
-- **WHEN** `AuthenticationSteps` constructor attempts to resolve `IMaterialPlatformApi`
-- **THEN** the DI container SHALL successfully resolve the mock instance
-- **AND** no `InvalidOperationException` SHALL be thrown
+#### 场景：为集成测试注册 SoundDeviceApi mock
+- **给定** 正在配置测试模块
+- **当** 调用 `ConfigureServices` 方法
+- **则** 应将 `ISoundDeviceApi` 注册为单例 mock
+- **且** mock 应为 `PlayAudioAsync` 提供桩实现
+- **且** 桩应返回成功 JSON 响应且无需外部 HTTP 服务
 
-#### Scenario: BDD scenarios execute without external service dependencies
-- **GIVEN** all API mocks are registered in the test module
-- **WHEN** BDD scenarios in `Authentication.feature`, `Authorization.feature`, `WeighingService.feature`, and `WeighingMatchingService.feature` are executed
-- **THEN** all scenarios SHALL initialize without DI resolution errors
-- **AND** scenarios SHALL be able to configure mock behavior per test case
-- **AND** no external HTTP services SHALL be required for test execution
+#### 场景：AuthenticationSteps 可解析 IMaterialPlatformApi
+- **给定** `MaterialClientEntityFrameworkCoreTestModule` 已初始化
+- **当** `AuthenticationSteps` 构造函数尝试解析 `IMaterialPlatformApi`
+- **则** DI 容器应成功解析 mock 实例
+- **且** 不应抛出 `InvalidOperationException`
 
-### Requirement: Test Isolation and Mock Reset
-The test infrastructure SHALL ensure proper isolation between test scenarios by resetting mock state before each scenario execution.
+#### 场景：BDD 场景在无外部服务依赖下执行
+- **给定** 测试模块中已注册所有 API mock
+- **当** 执行 `Authentication.feature`、`Authorization.feature`、`WeighingService.feature`、`WeighingMatchingService.feature` 中的 BDD 场景
+- **则** 所有场景应能初始化且无 DI 解析错误
+- **且** 场景应能按用例配置 mock 行为
+- **且** 测试执行无需外部 HTTP 服务
 
-#### Scenario: Mock state is reset before each BDD scenario
-- **GIVEN** a BDD test step class has a `[BeforeScenario]` method
-- **WHEN** the scenario starts execution
-- **THEN** all registered mocks SHALL have their received calls cleared
-- **AND** mock behavior SHALL be reset to default configuration
-- **AND** subsequent scenarios SHALL not be affected by previous scenario mock interactions
+### 需求：测试隔离与 Mock 重置
 
-#### Scenario: Test-specific mock behavior can be configured
-- **GIVEN** the default mock behavior is registered in test module
-- **WHEN** a test step configures specific mock behavior (e.g., login failure response)
-- **THEN** the test-specific behavior SHALL override the default behavior for that test
-- **AND** the mock SHALL return the configured response
-- **AND** other tests SHALL not be affected by the test-specific configuration
+测试基础设施应在每个场景执行前重置 mock 状态，确保场景间隔离。
+
+#### 场景：每个 BDD 场景前重置 mock 状态
+- **给定** BDD 测试步骤类具有 `[BeforeScenario]` 方法
+- **当** 场景开始执行
+- **则** 所有已注册 mock 的已接收调用应被清空
+- **且** mock 行为应重置为默认配置
+- **且** 后续场景不应受前一场景 mock 交互影响
+
+#### 场景：可配置测试专用 mock 行为
+- **给定** 测试模块中已注册默认 mock 行为
+- **当** 某测试步骤配置特定 mock 行为（如登录失败响应）
+- **则** 该测试的专用行为应覆盖默认行为
+- **且** mock 应返回所配置的响应
+- **且** 其他测试不应受该专用配置影响

@@ -1,44 +1,44 @@
-# OpenSpec Changes
+# OpenSpec 变更
 
-This directory contains change proposals for the MaterialClient project.
+本目录存放 MaterialClient 项目的变更提案。
 
-## Purpose
+## 目的
 
-Change proposals document planned modifications to the system, including new features, bug fixes, refactorings, and process improvements.
+变更提案用于记录对系统的计划修改，包括新功能、缺陷修复、重构与流程改进。
 
-## Directory Structure
+## 目录结构
 
 ```
 changes/
 ├── <change-id>/
-│   ├── proposal.md     # Change proposal (required)
-│   ├── design.md       # Design documentation (optional)
-│   └── tasks.md        # Implementation tasks
-├── archive/            # Completed changes
-└── _template/          # Change proposal template
+│   ├── proposal.md     # 变更提案（必填）
+│   ├── design.md       # 设计文档（可选）
+│   └── tasks.md        # 实施任务
+├── archive/            # 已完成的变更
+└── _template/          # 变更提案模板
 ```
 
-## Change Proposal Process
+## 变更提案流程
 
-1. **Create**: Use template to create new proposal in `<change-id>/` directory
-2. **Design**: Add design.md if technical design needed
-3. **Tasks**: Break down into tasks.md
-4. **Review**: Team review and approval
-5. **Implement**: Execute tasks from tasks.md
-6. **Archive**: Move to `archive/` when completed
+1. **创建**：使用模板在 `<change-id>/` 目录下创建新提案
+2. **设计**：如需技术设计则添加 design.md
+3. **任务**：在 tasks.md 中拆解任务
+4. **评审**：团队评审与批准
+5. **实施**：按 tasks.md 执行任务
+6. **归档**：完成后移入 `archive/`
 
-## Status Categories
+## 状态分类
 
-- **Draft**: Initial proposal, under discussion
-- **Approved**: Ready for implementation
-- **In Progress**: Implementation in progress
-- **Completed**: Change implemented, moved to archive
+- **草稿**：初始提案，讨论中
+- **已批准**：可开始实施
+- **进行中**：实施中
+- **已完成**：变更已实施并已移入归档
 
-## Template
+## 模板
 
-Use the template in `_template/` to ensure consistency.
+使用 `_template/` 中的模板以保持格式一致。
 
 ---
 
-**Last Updated**: 2026-01-15
-**Maintainer**: Tech Lead
+**最后更新**：2026-01-15  
+**维护人**：技术负责人

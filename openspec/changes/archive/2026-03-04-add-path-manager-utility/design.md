@@ -1,8 +1,8 @@
-# Design: Add PathManager Utility
+# 设计：新增 PathManager 工具
 
-## Context
+## 上下文
 
-MaterialClient uses file paths in three distinct contexts:
+MaterialClient 在三种场景下使用文件路径：
 1. **Configuration files** (e.g., `appsettings.json`): Relative paths for portability
 2. **Database storage** (`AttachmentFile.LocalPath`): Should be relative for migration/portability
 3. **File system operations** (`File.*`, `Directory.*`, `Bitmap`): Must be absolute to avoid working directory dependency
@@ -19,26 +19,26 @@ MaterialClient uses file paths in three distinct contexts:
 - ❌ UI image converters don't normalize paths before `File.Exists()` and `Bitmap()` loading
 - ❌ File existence checks scattered across codebase without path normalization
 
-## Goals / Non-Goals
+## 目标 / 非目标
 
-**Goals**:
+**目标**：
 - Provide unified API for bidirectional path conversion (relative ↔ absolute)
 - Fix UI image rendering when app starts from System32
 - Ensure database stores relative paths for portability
 - Create reusable helpers for common file operations (exists, ensure directory)
 - Follow VS Code's path management pattern (proven enterprise approach)
 
-**Non-Goals**:
+**非目标**：
 - Modifying `DatabaseConnectionStringFactory` or `AttachmentPathUtils` (they work correctly)
 - Supporting custom base directories (always use `AppContext.BaseDirectory`)
 - Implementing working directory modification (explicitly avoided)
 - Migrating entire codebase in one change (gradual adoption via optional enhancements)
 
-## Decisions
+## 决策
 
-### Decision 1: Simple Binary Strategy
+### 决策 1：简单二元策略
 
-**Choice**: Two-tier path management:
+**选择**： Two-tier path management:
 - **Storage Tier** (database, config): Relative paths
 - **Runtime Tier** (file I/O): Absolute paths
 
@@ -54,9 +54,9 @@ MaterialClient uses file paths in three distinct contexts:
 3. ❌ Complex URI scheme (`app://`, `user://`) → Overkill for MaterialClient's scale
 4. ✅ **Binary strategy** → Right balance of simplicity and robustness
 
-### Decision 2: Centralized Utility Class
+### 决策 2：集中工具类
 
-**Choice**: Create static `PathManager` class in `MaterialClient.Common/Utils/`
+**选择**： Create static `PathManager` class in `MaterialClient.Common/Utils/`
 
 **Rationale**:
 - Follows project convention: "Static factory methods in `Utils/`" (per `openspec/project.md`)
@@ -69,9 +69,9 @@ MaterialClient uses file paths in three distinct contexts:
 2. ❌ Extension methods on `string` → Less discoverable, harder to document
 3. ✅ **Static utility class** → Matches project patterns
 
-### Decision 3: Path Conversion Logic
+### 决策 3：路径转换逻辑
 
-**Choice**: Use `Path.GetRelativePath()` and `Path.Combine()` from .NET BCL
+**选择**： Use `Path.GetRelativePath()` and `Path.Combine()` from .NET BCL
 
 **Implementation**:
 ```csharp
@@ -108,9 +108,9 @@ public static string ToRelativePath(string absolutePath)
 3. Absolute paths outside app directory → Keep absolute (e.g., user-selected export path)
 4. Paths with `..\` or `//` → Normalized by `Path.GetFullPath()`
 
-### Decision 4: UI Converter Fix Strategy
+### 决策 4：UI 转换器修复策略
 
-**Choice**: Update converters to call `PathManager.ToAbsolutePath()` before `File.Exists()` and `Bitmap()` loading
+**选择**： Update converters to call `PathManager.ToAbsolutePath()` before `File.Exists()` and `Bitmap()` loading
 
 **Before**:
 ```csharp
@@ -134,9 +134,9 @@ if (File.Exists(absolutePath)) return new Bitmap(absolutePath);
 2. ❌ Add path normalization in ViewModel → Violates separation of concerns (converters should be self-contained)
 3. ✅ **Fix in converter** → Right place for presentation-layer logic
 
-### Decision 5: Database Storage Validation (Not Modification)
+### 决策 5：数据库存储校验（不修改逻辑）
 
-**Choice**: Add inline comments and validation, don't change storage logic
+**选择**： Add inline comments and validation, don't change storage logic
 
 **Rationale**:
 - Current implementation in `AttendedWeighingService` and `AttendedWeighingViewModel` uses `AttachmentPathUtils.GetLocalStoragePath()` (returns relative paths) ✅
@@ -153,7 +153,7 @@ if (File.Exists(absolutePath)) return new Bitmap(absolutePath);
 var attachment = new AttachmentFile(fileName, relativePath, AttachType.EntryPhoto);
 ```
 
-## Technical Design
+## 技术设计
 
 ### PathManager API
 
@@ -264,7 +264,7 @@ sequenceDiagram
 
 **Total LOC**: ~150 lines added (100 in PathManager + 50 in tests), 4 lines modified in converters
 
-## Risks / Trade-offs
+## 风险与权衡
 
 ### Risk 1: Existing Absolute Paths in Database
 

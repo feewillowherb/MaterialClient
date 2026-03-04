@@ -1,14 +1,14 @@
-# Proposal: Add Sound Column Device Status Monitoring to Status Bar
+# 提案：在状态栏增加音柱设备状态监控
 
-## Change ID
+## 变更 ID
 `sound-column-status-monitoring`
 
-## Status
-**EXECUTION_COMPLETED** - Implementation completed
+## 状态
+**执行完成** - 实现已完成
 
-## Implementation Summary
+## 实施摘要
 
-### Completed Tasks (Phase 1-3):
+### 已完成任务（阶段 1–3）：
 - ✅ Task 1.1: Created SoundDeviceStatusDto.cs
 - ✅ Task 1.2: Extended ISoundDeviceApi interface with GetDeviceStatusAsync()
 - ✅ Task 1.3: Implemented SoundDeviceService.IsOnlineAsync()
@@ -17,14 +17,14 @@
 - ✅ Task 2.3: Implemented resource disposal in Dispose() method
 - ✅ Task 3.1: Modified AttendedWeighingWindow.axaml status bar UI
 
-### Files Modified:
+### 已修改文件：
 1. `MaterialClient.Common/Api/Dtos/SoundDeviceStatusDto.cs` (NEW)
 2. `MaterialClient.Common/Api/ISoundDeviceApi.cs` (MODIFIED)
 3. `MaterialClient.Common/Services/SoundDeviceService.cs` (MODIFIED)
 4. `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` (MODIFIED)
 5. `MaterialClient/Views/AttendedWeighing/AttendedWeighingWindow.axaml` (MODIFIED)
 
-### Pending Tasks (Optional/Testing):
+### 待办任务（可选/测试）：
 - Task 1.4: Write unit tests for SoundDeviceService.IsOnlineAsync()
 - Task 2.4: Write memory leak tests
 - Task 3.2: Integration testing (manual testing)
@@ -32,13 +32,13 @@
 - Task 4.1: Add configuration items to appsettings.json
 - Task 4.2: Update documentation
 
-## Overview
+## 概览
 
-Add sound column device online status monitoring functionality to the status bar of `AttendedWeighingWindow`, enabling operators to monitor the working status of sound column devices in real-time.
+在 `AttendedWeighingWindow` 的状态栏中增加音柱设备在线状态监控功能，使操作员能实时监控音柱设备工作状态。
 
-## Problem Statement
+## 问题陈述
 
-### Current Issues
+### 当前问题
 
 1. **Status bar missing sound column device status display**
    - Operators cannot visually see whether the sound column device is online on the main interface
@@ -56,15 +56,15 @@ Add sound column device online status monitoring functionality to the status bar
    - When the sound column device goes offline, loses power, or experiences network interruption, the system cannot proactively alert
    - Affects the timeliness of voice broadcasting in production workflows
 
-### Impact Scope
+### 影响范围
 
 - **User Experience**: Operators cannot discover sound column device failures in time
 - **Operations Efficiency**: Device troubleshooting requires manual inspection, increasing maintenance costs
 - **Production Workflow**: Sound column device failures affect the normal use of voice broadcasting functionality
 
-## Proposed Solution
+## 提议方案
 
-### Core Features
+### 核心功能
 
 1. **Add device online status detection service**
    - Add `Task<bool> IsOnlineAsync()` method to `ISoundDeviceService`
@@ -86,16 +86,16 @@ Add sound column device online status monitoring functionality to the status bar
    - Use Rx Observable for periodic status polling
    - Ensure proper subscription disposal to avoid memory leaks
 
-### Technical Implementation Details
+### 技术实现要点
 
-#### API Specification
+#### API 规范
 
-**Request Format:**
+**请求格式：**
 ```http
 GET /api/devices/getDeviceBySN?type=req&app=ls20&sn=ls20://020021EA63AC
 ```
 
-**Response Format:**
+**响应格式：**
 ```json
 {
   "status": 1,
@@ -103,13 +103,13 @@ GET /api/devices/getDeviceBySN?type=req&app=ls20&sn=ls20://020021EA63AC
 }
 ```
 
-**Status Code Definitions:**
+**状态码定义：**
 - `0` - Offline
 - `1` - Online
 - `2` - In Task
 - `3` - Power Off
 
-#### Service Layer Design
+#### 服务层设计
 
 **ISoundDeviceService Interface Extension:**
 ```csharp
@@ -142,7 +142,7 @@ public record SoundDeviceStatusDto
 }
 ```
 
-#### UI State Management
+#### UI 状态管理
 
 **AttendedWeighingViewModel Extension:**
 ```csharp
@@ -167,7 +167,7 @@ private readonly IDisposable _statusPollingDisposable;
 </StackPanel>
 ```
 
-#### Polling Mechanism
+#### 轮询机制
 
 - Use `Observable.Interval()` to create timer
 - Polling interval: 5-10 seconds (configurable in `appsettings.json`)
@@ -175,65 +175,65 @@ private readonly IDisposable _statusPollingDisposable;
 - Use `Retry()` for enhanced fault tolerance
 - Use `ObserveOn(RxApp.MainThreadScheduler)` to ensure UI updates on main thread
 
-#### Memory Leak Prevention
+#### 内存泄漏预防
 
 - Dispose polling subscription in `AttendedWeighingViewModel` destructor or `Dispose()` method
 - Use `DisposeWith()` for subscription lifecycle management
 - Follow project Rx memory management guidelines (see `project.md`)
 
-## Impact Analysis
+## 影响分析
 
-### Functional Impact
+### 功能影响
 
-#### Positive Impact
+#### 正面影响
 - **Improved User Experience**: Operators can monitor sound column device status in real-time
 - **Enhanced Operations Efficiency**: Reduce device troubleshooting time
 - **Better System Observability**: Unified status bar displays all critical device statuses
 
-#### Potential Risks
+#### 潜在风险
 - **Network Dependency**: Status queries depend on network connectivity; network failures may cause false negatives
 - **Polling Overhead**: Periodic polling increases API request frequency; polling interval needs to be controlled
 - **Performance Impact**: Frequent HTTP requests may affect system performance
 
-### Technical Impact
+### 技术影响
 
-#### Code Changes
+#### 代码变更
 
-**New Files:**
+**新文件：**
 - `MaterialClient.Common/Api/Dtos/SoundDeviceStatusDto.cs`
 
-**Modified Files:**
+**已修改文件：**
 - `MaterialClient.Common/Api/ISoundDeviceApi.cs` - Add status query interface
 - `MaterialClient.Common/Services/SoundDeviceService.cs` - Add online detection method
 - `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` - Add device status properties and polling logic
 - `MaterialClient/Views/AttendedWeighing/AttendedWeighingWindow.axaml` - Add status bar UI elements
 
-#### Compatibility
+#### 兼容性
 - **Backward Compatible**: New interfaces do not affect existing `PlayTextAsync()` and `PlayTextV2Async()` functionality
 - **Optional Feature**: Sound column device status query failure does not affect other business workflows
 - **Configuration Compatible**: Add polling interval configuration item with default value (8 seconds)
 
-#### Performance Impact
+#### 性能影响
 - **Network Overhead**: Each polling generates 1 HTTP GET request
 - **Memory Overhead**: Add `BehaviorSubject<int>` and `IDisposable` subscription objects
 - **CPU Overhead**: Rx timer scheduling and JSON parsing overhead
 
-**Optimization Recommendations:**
+**优化建议：**
 - Polling interval configurable, default 8 seconds
 - Use Polly retry policy for enhanced fault tolerance
 - Consider adding response cache to avoid repeated queries within short timeframes
 
-### Dependency Impact
+### 依赖影响
 
-#### External Dependencies
+#### 外部依赖
 - **Remote API**: Depends on availability of sound column device `/api/devices/getDeviceBySN` endpoint
 - **Network Connection**: Depends on stable network connection to sound column device
 
-#### Internal Dependencies
+#### 内部依赖
 - **ISettingsService**: Needs to retrieve sound column device serial number (`SoundSN`)
 - **ISoundDeviceApi**: Needs to encapsulate HTTP client calls
 
-## Alternatives Considered
+## 考虑的替代方案
 
 ### Alternative 1: WebSocket Real-time Push (Not Adopted)
 **Pros:**
@@ -270,9 +270,9 @@ private readonly IDisposable _statusPollingDisposable;
 
 **Conclusion**: Does not meet "real-time monitoring" requirement
 
-## Success Criteria
+## 成功标准
 
-### Functional Acceptance Criteria
+### 功能验收标准
 
 1. **Service Layer**
    - [ ] `ISoundDeviceService.IsOnlineAsync()` correctly calls remote API
@@ -300,7 +300,7 @@ private readonly IDisposable _statusPollingDisposable;
    - [ ] API timeout triggers automatic retry
    - [ ] Logs record key operations and errors
 
-### Performance Acceptance Criteria
+### 性能验收标准
 
 1. **Memory Leak Testing**
    - [ ] Memory usage shows no significant growth after 24 hours of operation
@@ -315,14 +315,14 @@ private readonly IDisposable _statusPollingDisposable;
    - [ ] Polling interval >= 5 seconds to avoid excessive requests
    - [ ] Single request response size < 1KB
 
-### Regression Testing
+### 回归测试
 
 1. **Existing Features Unaffected**
    - [ ] Voice playback functionality works normally
    - [ ] Other device status displays work normally
    - [ ] Window loading performance shows no significant degradation
 
-## Timeline Estimate
+## 工期估算
 
 **Total Estimated Effort**: 2-3 working days
 
@@ -345,27 +345,27 @@ private readonly IDisposable _statusPollingDisposable;
 - Integration testing and regression testing
 - Documentation updates
 
-## Related Specifications
+## 相关规范
 
-### Related Capabilities
+### 相关能力
 
 - `attended-weighing` - Attended weighing functionality
 - `sound-device-broadcast` - Sound column voice broadcasting functionality (to be created)
 
-### Related Documentation
+### 相关文档
 
 - `openspec/project.md` - Project context and tech stack
 - `docs/AttendedWeighingService-MemoryLeak-Testing-Guide.md` - Memory leak testing guide
 - `MaterialClient.Common/Configuration/SoundDeviceSettings.cs` - Sound column device configuration
 
-## Open Questions
+## 待决问题
 
 1. **API Format Confirmation**: Does the remote API strictly follow the described format? Needs actual testing verification
 2. **Polling Interval**: Is 5-10 seconds polling interval reasonable? Should it be configurable?
 3. **Task Information**: What is the complete structure of the `tasks` field? Is it necessary to display task details?
 4. **Error Handling**: When device status query fails, should we display an error message or maintain the last known status?
 
-## References
+## 参考
 
 - Existing status bar implementation: `MaterialClient/Views/AttendedWeighing/AttendedWeighingWindow.axaml:400-500`
 - Sound column service implementation: `MaterialClient.Common/Services/SoundDeviceService.cs`

@@ -1,118 +1,61 @@
-# Change: Refactor WeighingMatchingService BDD Tests to Follow StoreSample Pattern
+# 变更：按 StoreSample 模式重构 WeighingMatchingService BDD 测试
 
-**Change ID**: `refactor-weighing-matching-bdd-tests`
-**Status**: Draft
-**Created**: 2026-01-22
-**Type**: Refactoring
-
----
-
-## Why
-
-### Background
-
-The MaterialClient project's BDD tests for `WeighingMatchingService` currently follow a verbose, ad-hoc pattern with:
-- Separate step definition file (`WeighingMatchingServiceSteps.cs`) with direct repository access
-- Verbose step definitions with complex parameter parsing
-- Mixed Chinese and English in feature files
-- Inconsistent patterns compared to the StoreSample reference implementation
-
-The StoreSample project demonstrates a cleaner, more maintainable BDD test pattern:
-- Unified `Steps.cs` with table-based data setup using DTOs
-- `TestManager` class for centralized repository/service access via dependency injection
-- Cleaner, more readable feature files with table-driven scenarios
-- Consistent exception handling patterns
-
-### Problems
-
-1. **Maintainability**: Current step definitions are verbose and hard to maintain
-2. **Consistency**: Different patterns across test files make it harder to understand and extend
-3. **Readability**: Feature files mix languages and lack table-based data setup
-4. **Testability**: Direct repository access in steps makes it harder to mock or extend
-5. **Code Duplication**: Similar patterns repeated across different step definitions
+**变更 ID**：`refactor-weighing-matching-bdd-tests`
+**状态**：Draft
+**创建日期**：2026-01-22
+**类型**：Refactoring
 
 ---
 
-## What Changes
+## 原因
 
-### Overview
+### 背景
 
-Refactor `WeighingMatchingService.feature` and `WeighingMatchingServiceSteps.cs` to follow the StoreSample BDD test pattern:
-- Create `TestManager` class for centralized test dependencies
-- Refactor step definitions to use table-based data setup with DTOs
-- Consolidate common steps into main `Steps.cs` file
-- Update feature file to use table-based scenarios
-- Simplify step definitions by leveraging TestManager pattern
+MaterialClient 项目中针对 `WeighingMatchingService` 的 BDD 测试当前采用冗长、临时性的模式：独立步骤定义文件、直接访问仓储、复杂参数解析、Feature 文件中中英混用，与 StoreSample 参考实现不一致。StoreSample 采用更清晰、可维护的模式：统一的 Steps.cs、基于表的 DTO 数据准备、通过依赖注入集中访问的 TestManager、表驱动的可读 Feature 与一致的异常处理。
 
-### Detailed Changes
+### 问题
 
-1. **Create TestManager class** in `MaterialClient.Common.Tests`:
-   - Inject repositories (`IRepository<WeighingRecord, long>`, `IRepository<Waybill, long>`)
-   - Inject `WeighingMatchingService`
-   - Provide centralized access to test dependencies
-
-2. **Refactor WeighingMatchingServiceSteps.cs**:
-   - Use `TestManager` instead of direct repository access
-   - Create DTOs for table-based data setup (`WeighingRecordDto`, `WaybillVerifyDto`)
-   - Simplify step definitions using table parsing
-   - Remove verbose parameter parsing logic
-
-3. **Update WeighingMatchingService.feature**:
-   - Convert verbose step definitions to table-based format
-   - Standardize on English for consistency
-   - Use table format for record setup and verification
-
-4. **Enhance main Steps.cs**:
-   - Add common steps that can be reused (if applicable)
-   - Ensure consistency with StoreSample pattern
+1. **可维护性**：步骤定义冗长难维护  
+2. **一致性**：不同测试文件模式不一，理解与扩展困难  
+3. **可读性**：Feature 混用语言且缺少基于表的数据准备  
+4. **可测性**：步骤中直接访问仓储不利于 mock 与扩展  
+5. **重复**：类似模式在多个步骤定义中重复  
 
 ---
 
-## Impact
+## 变更内容
 
-### Expected Benefits
+### 概览
 
-- **Improved Maintainability**: Centralized test dependencies make tests easier to maintain
-- **Better Readability**: Table-based scenarios are more readable and maintainable
-- **Consistency**: Aligns with proven StoreSample pattern
-- **Easier Extension**: TestManager pattern makes it easier to add new test dependencies
-- **Reduced Duplication**: Common patterns consolidated in TestManager
+将 `WeighingMatchingService.feature` 与 `WeighingMatchingServiceSteps.cs` 重构为遵循 StoreSample BDD 模式：创建 TestManager 集中测试依赖；用基于表的 DTO 数据准备重构步骤；将公共步骤合并到主 Steps.cs；更新 Feature 为基于表场景；通过 TestManager 简化步骤定义。
 
-### Risks and Mitigations
+### 详细变更
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing tests | High | Run all tests after refactoring, ensure feature file scenarios remain equivalent |
-| Learning curve for team | Medium | Document the pattern in test files, reference StoreSample as example |
-| Over-engineering for simple tests | Low | Keep TestManager simple, only add what's needed |
+1. **创建 TestManager 类**（在 MaterialClient.Common.Tests）：注入仓储与 WeighingMatchingService，提供集中访问。  
+2. **重构 WeighingMatchingServiceSteps.cs**：用 TestManager 替代直接仓储访问；为表格式准备创建 DTO（WeighingRecordDto、WaybillVerifyDto）；用表解析简化步骤；移除冗长参数解析。  
+3. **更新 WeighingMatchingService.feature**：将冗长步骤改为基于表格式；统一使用英文；记录准备与验证均用表。  
+4. **增强主 Steps.cs**：补充可复用公共步骤（如适用）；与 StoreSample 模式保持一致。
 
 ---
 
-## Success Criteria
+## 影响
 
-- [ ] All existing test scenarios pass after refactoring
-- [ ] Feature file uses table-based data setup
-- [ ] TestManager pattern implemented and used consistently
-- [ ] Step definitions simplified and more maintainable
-- [ ] Code follows StoreSample pattern structure
-- [ ] No regression in test coverage
+**预期收益**：可维护性提升（集中依赖）；可读性更好（表驱动场景）；与 StoreSample 一致；更易扩展（TestManager）；减少重复。  
+**风险与缓解**：破坏现有测试（高）→ 重构后运行全部测试并保持场景等价；团队学习成本（中）→ 在测试文件中文档化模式并参考 StoreSample；对简单测试过度设计（低）→ TestManager 保持简单、按需添加。
 
 ---
 
-## Next Steps
+## 成功标准
 
-1. Review proposal and get approval
-2. Implement TestManager class
-3. Refactor step definitions
-4. Update feature file
-5. Run tests and verify all scenarios pass
-6. Update documentation if needed
+- [ ] 重构后所有现有场景通过  
+- [ ] Feature 使用基于表的数据准备  
+- [ ] TestManager 模式已实现并一致使用  
+- [ ] 步骤定义简化且更易维护  
+- [ ] 代码结构符合 StoreSample 模式  
+- [ ] 测试覆盖无回归  
 
 ---
 
-## References
+## 后续步骤与参考
 
-- StoreSample reference: `StoreSample/test/StoreSample.Domain.Tests/Steps.cs`
-- StoreSample feature: `StoreSample/test/StoreSample.Domain.Tests/Orders/OrderManagerTest.feature`
-- Current implementation: `MaterialClient/MaterialClient.Common.Tests/Steps/WeighingMatchingServiceSteps.cs`
-- Current feature: `MaterialClient/MaterialClient.Common.Tests/Features/WeighingMatchingService.feature`
+审阅并批准提案 → 实现 TestManager → 重构步骤定义 → 更新 Feature → 运行测试并验证 → 必要时更新文档。参考：StoreSample 的 Steps.cs 与 OrderManagerTest.feature；当前实现与 Feature 路径。

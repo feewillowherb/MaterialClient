@@ -49,291 +49,288 @@ MaterialClient 是一个 Windows 桌面应用程序，用于卡车称重管理�
 
 ---
 
-## Decisions
+## 决策
 
-### Decision 1: Translation Scope - Selective vs. Comprehensive
+### 决策 1：翻译范围 - 选择性 vs 全面
 
-**Choice**: Selective translation with clear exclusion criteria
+**选择**：选择性翻译，并明确排除标准
 
-**Rationale**:
-- **Comprehensive translation** would translate everything including OpenSpec specs, but this violates the OpenSpec system's non-negotiable English requirement
-- **Selective translation** focuses on user-facing and developer-facing content while respecting system constraints
+**理由**：
+- **全面翻译**会包含 OpenSpec 规范，但违反 OpenSpec 系统不可协商的英文要求
+- **选择性翻译**聚焦于面向用户和开发者的内容，同时遵守系统约束
 
-**Alternatives Considered**:
-- **Alternative 1 - Comprehensive translation**: Translate everything including OpenSpec docs
-  - *Pros*: Complete language unification
-  - *Cons*: Violates OpenSpec system requirements, breaks OpenSpec validation
-- **Alternative 2 - Bilingual maintenance**: Keep both Chinese and English versions
-  - *Pros*: No loss of information
-  - *Cons*: High maintenance cost, potential inconsistency between versions
+**备选方案**：
+- **备选 1 - 全面翻译**：翻译所有内容（含 OpenSpec 文档）
+  - *优点*：语言完全统一
+  - *缺点*：违反 OpenSpec 要求、破坏 OpenSpec 校验
+- **备选 2 - 双语维护**：同时保留中英文版本
+  - *优点*：不丢失信息
+  - *缺点*：维护成本高、版本间可能不一致
 
-**Decision**: Use selective translation with clear exclusion criteria for OpenSpec documents
-
----
-
-### Decision 2: Translation Approach - Manual vs. Automated
-
-**Choice**: Manual translation with quality control
-
-**Rationale**:
-- **Automated translation** is faster but may produce inaccurate technical translations
-- **Manual translation** ensures accuracy and context-appropriate terminology
-
-**Alternatives Considered**:
-- **Alternative 1 - Fully automated**: Use AI translation tools for all content
-  - *Pros*: Fast, cost-effective
-  - *Cons*: May produce inaccurate technical translations, loss of nuance
-- **Alternative 2 - Hybrid approach**: Automated first pass, manual review
-  - *Pros*: Balances speed and quality
-  - *Cons*: Still requires significant manual review effort
-
-**Decision**: Manual translation for accuracy, especially for technical documentation and code comments
+**决策**：采用选择性翻译，对 OpenSpec 文档采用明确的排除标准
 
 ---
 
-### Decision 3: Project Description Update - .csproj vs. Separate Metadata File
+### 决策 2：翻译方式 - 人工 vs 自动化
 
-**Choice**: Update .csproj files directly
+**选择**：人工翻译并做质量控制
 
-**Rationale**:
-- **.csproj update** is the standard location for project metadata in .NET
-- **Separate metadata file** would add complexity without clear benefit
+**理由**：
+- **自动化翻译**更快但技术译文可能不准确
+- **人工翻译**能保证准确性和贴合上下文的术语
 
-**Alternatives Considered**:
-- **Alternative 1 - Separate metadata file**: Store project descriptions in a separate configuration file
-  - *Pros*: Centralized management, easier to update
-  - *Cons*: Non-standard approach, requires additional build configuration
-- **Alternative 2 - Runtime metadata**: Load descriptions from external source
-  - *Pros*: Dynamic updates without recompilation
-  - *Cons*: Adds runtime complexity, external dependency
+**备选方案**：
+- **备选 1 - 全自动**：所有内容用 AI 翻译
+  - *优点*：快速、成本低
+  - *缺点*：技术翻译可能不准、丢失细微含义
+- **备选 2 - 混合**：先自动一稿再人工审校
+  - *优点*：兼顾速度与质量
+  - *缺点*：仍需大量人工审校
 
-**Decision**: Update .csproj files directly using standard .NET project metadata
-
----
-
-### Decision 4: Code Comment Translation - Inline vs. External Documentation
-
-**Choice**: Inline translation in code files
-
-**Rationale**:
-- **Inline comments** are immediately visible to developers working on the code
-- **External documentation** would require developers to reference multiple sources
-
-**Alternatives Considered**:
-- **Alternative 1 - External documentation**: Move all comments to separate documentation files
-  - *Pros*: Centralized, easier to maintain
-  - *Cons*: Developers lose context when reading code
-- **Alternative 2 - Bilingual comments**: Keep both English and Chinese comments
-  - *Pros*: No information loss
-  - *Cons*: Increases file size, potential confusion
-
-**Decision**: Translate inline comments directly in code files
+**决策**：为准确起见采用人工翻译，尤其对技术文档和代码注释
 
 ---
 
-## Risks / Trade-offs
+### 决策 3：项目描述更新 - .csproj vs 独立元数据文件
 
-### Risk 1: Translation Quality Inconsistency
+**选择**：直接更新 .csproj 文件
 
-**Risk**: Different translators or translation tools may produce inconsistent terminology and style.
+**理由**：
+- **.csproj 更新**是 .NET 中项目元数据的标准位置
+- **独立元数据文件**会增加复杂度且无明显收益
 
-**Mitigation**:
-- Create a translation glossary for common technical terms
-- Establish style guidelines for technical documentation
-- Review translations for consistency across documents
+**备选方案**：
+- **备选 1 - 独立元数据文件**：在单独配置文件中存项目描述
+  - *优点*：集中管理、易更新
+  - *缺点*：非标准做法、需额外构建配置
+- **备选 2 - 运行时元数据**：从外部加载描述
+  - *优点*：无需重新编译即可动态更新
+  - *缺点*：增加运行时复杂度和外部依赖
 
----
-
-### Risk 2: Loss of Context in Code Comments
-
-**Risk**: Translated comments may lose some technical nuance or context.
-
-**Mitigation**:
-- Preserve technical accuracy over literal translation
-- Review code comments in context of surrounding code
-- Use technical terminology appropriate for the domain
+**决策**：直接更新 .csproj，使用标准 .NET 项目元数据
 
 ---
 
-### Risk 3: Breaking OpenSpec Validation
+### 决策 4：代码注释翻译 - 行内 vs 外部文档
 
-**Risk**: Accidentally translating OpenSpec specification documents could break validation.
+**选择**：在代码文件中行内翻译
 
-**Mitigation**:
-- Clear documentation of exclusion criteria
-- Automated validation step to check OpenSpec documents remain in English
-- Manual review before commit
+**理由**：
+- **行内注释**对正在编写代码的开发者立即可见
+- **外部文档**会迫使开发者查阅多处来源
 
----
+**备选方案**：
+- **备选 1 - 外部文档**：把所有注释移到单独文档
+  - *优点*：集中、易维护
+  - *缺点*：阅读代码时失去上下文
+- **备选 2 - 双语注释**：同时保留中英文注释
+  - *优点*：不丢失信息
+  - *缺点*：文件变大、可能造成混淆
 
-### Risk 4: Incomplete Translation
-
-**Risk**: Some documents or comments may be missed during translation effort.
-
-**Mitigation**:
-- Systematic inventory of all files requiring translation
-- Checklist-based translation process
-- Automated detection of English comments in critical files
+**决策**：在代码文件中直接翻译行内注释
 
 ---
 
-### Trade-off: Translation Time vs. Quality
+## 风险与权衡
 
-**Trade-off**: Faster translation may reduce quality; thorough quality assurance takes more time.
+### 风险 1：翻译质量不一致
 
-**Mitigation**:
-- Prioritize critical documentation and frequently accessed code
-- Use phased approach for translation (high priority first)
-- Accept that translation is an ongoing process, not one-time effort
+**风险**：不同译者或工具可能导致术语和风格不一致。
 
----
-
-## Migration Plan
-
-### Phase 1: Preparation
-1. Create inventory of all files requiring translation
-2. Establish translation glossary and style guidelines
-3. Set up validation rules for OpenSpec documents
-
-### Phase 2: Documentation Translation
-1. Translate `docs/` directory Markdown files
-2. Translate root-level Markdown files (excluding OpenSpec instructions)
-3. Review and validate translations
-
-### Phase 3: Code Comment Translation
-1. Translate code comments in MaterialClient project
-2. Translate code comments in MaterialClient.Common project
-3. Translate code comments in MaterialClient.Toolkit project
-4. Validate that code functionality remains unchanged
-
-### Phase 4: Project Metadata Update
-1. Update MaterialClient.csproj description
-2. Update MaterialClient.Common.csproj description
-3. Update MaterialClient.Toolkit.csproj description
-
-### Phase 5: Validation and Review
-1. Validate OpenSpec documents remain in English
-2. Verify translations are accurate
-3. Test application functionality
-4. Review for any missed translations
-
-### Rollback Strategy
-
-If translation causes issues:
-1. Revert changes file by file to identify problematic translations
-2. Use git to selectively revert specific commits
-3. Keep translation inventory to track progress
+**缓解**：
+- 建立常用技术术语的翻译词汇表
+- 制定技术文档的风格指南
+- 跨文档审校翻译一致性
 
 ---
 
-## Open Questions
+### 风险 2：代码注释丢失上下文
 
-1. **Should we create a translation glossary?** - Consider creating a standardized glossary for common technical terms used in translations
+**风险**：翻译后的注释可能丢失技术细微含义或上下文。
 
-2. **How do we handle mixed-language comments?** - Some files may have both English and Chinese comments; need strategy for consistent handling
-
-3. **Should we translate test code comments?** - Test files often have technical comments; determine if these need translation priority
-
-4. **How do we validate translation quality?** - Need process for ensuring translations are accurate and maintain technical integrity
+**缓解**：
+- 优先保证技术准确而非字面翻译
+- 结合周边代码审校注释
+- 使用符合领域的技术术语
 
 ---
 
-## Detailed Code Change Inventory
+### 风险 3：破坏 OpenSpec 校验
 
-| File Path | Change Type | Change Description | Affected Module | Priority |
+**风险**：误译 OpenSpec 规范文档可能导致校验失败。
+
+**缓解**：
+- 明确文档化排除标准
+- 增加自动化校验步骤，确保 OpenSpec 文档保持英文
+- 提交前人工审校
+
+---
+
+### 风险 4：翻译遗漏
+
+**风险**：部分文档或注释在翻译过程中被遗漏。
+
+**缓解**：
+- 系统化列出所有待翻译文件
+- 按清单执行翻译
+- 对关键文件中的英文注释做自动检测
+
+---
+
+### 权衡：翻译时间 vs 质量
+
+**权衡**：加快翻译可能降低质量；充分的质量保证需要更多时间。
+
+**缓解**：
+- 优先处理关键文档和常用代码
+- 分阶段翻译（高优先级先行）
+- 将翻译视为持续过程而非一次性工作
+
+---
+
+## 迁移计划
+
+### 阶段 1：准备
+1. 建立待翻译文件清单
+2. 建立翻译词汇表与风格指南
+3. 配置 OpenSpec 文档的验证规则
+
+### 阶段 2：文档翻译
+1. 翻译 `docs/` 目录下的 Markdown 文件
+2. 翻译根目录 Markdown 文件（排除 OpenSpec 指令）
+3. 审校并验证译文
+
+### 阶段 3：代码注释翻译
+1. 翻译 MaterialClient 项目中的代码注释
+2. 翻译 MaterialClient.Common 项目中的代码注释
+3. 翻译 MaterialClient.Toolkit 项目中的代码注释
+4. 验证代码功能未改变
+
+### 阶段 4：项目元数据更新
+1. 更新 MaterialClient.csproj 描述
+2. 更新 MaterialClient.Common.csproj 描述
+3. 更新 MaterialClient.Toolkit.csproj 描述
+
+### 阶段 5：验证与审校
+1. 验证 OpenSpec 文档保持英文
+2. 验证译文准确
+3. 测试应用功能
+4. 审校是否有遗漏翻译
+
+### 回滚策略
+
+若翻译引发问题：
+1. 按文件回滚以定位问题译文
+2. 用 git 选择性回滚具体提交
+3. 保留翻译清单以跟踪进度
+
+---
+
+## 待决问题
+
+1. **是否建立翻译词汇表？** - 考虑为翻译中常用技术术语建立标准词汇表
+2. **混合语言注释如何处理？** - 部分文件可能同时有中英文注释，需统一处理策略
+3. **是否翻译测试代码注释？** - 测试文件常有技术注释，需决定是否优先翻译
+4. **如何验证翻译质量？** - 需建立流程确保译文准确并保持技术完整性
+
+---
+
+## 详细代码变更清单
+
+| 文件路径 | 变更类型 | 变更说明 | 影响模块 | 优先级 |
 |-----------|-------------|-------------------|-----------------|-----------|
-| `docs/SDD.md` | Translate content | Translate Software Design Document to Chinese | Documentation | High |
-| `docs/existing-docs-inventory.md` | Translate content | Translate documentation inventory to Chinese | Documentation | Medium |
-| `docs/sdd-*.md` | Translate content | Translate SDD-related documents to Chinese | Documentation | High |
-| `MaterialClient/**/*.cs` | Update comments | Translate English comments to Chinese | MaterialClient | High |
-| `MaterialClient.Common/**/*.cs` | Update comments | Translate English comments to Chinese | MaterialClient.Common | High |
-| `MaterialClient.Toolkit/**/*.cs` | Update comments | Translate English comments to Chinese | MaterialClient.Toolkit | Medium |
-| `MaterialClient/MaterialClient.csproj` | Update metadata | Change project description to Chinese | Project Metadata | High |
-| `MaterialClient.Common/MaterialClient.Common.csproj` | Update metadata | Change project description to Chinese | Project Metadata | High |
-| `MaterialClient.Toolkit/MaterialClient.Toolkit.csproj` | Update metadata | Change project description to Chinese | Project Metadata | High |
+| `docs/SDD.md` | 翻译内容 | 将软件设计文档翻译为中文 | 文档 | 高 |
+| `docs/existing-docs-inventory.md` | 翻译内容 | 将文档清单翻译为中文 | 文档 | 中 |
+| `docs/sdd-*.md` | 翻译内容 | 将 SDD 相关文档翻译为中文 | 文档 | 高 |
+| `MaterialClient/**/*.cs` | 更新注释 | 将英文注释翻译为中文 | MaterialClient | 高 |
+| `MaterialClient.Common/**/*.cs` | 更新注释 | 将英文注释翻译为中文 | MaterialClient.Common | 高 |
+| `MaterialClient.Toolkit/**/*.cs` | 更新注释 | 将英文注释翻译为中文 | MaterialClient.Toolkit | 中 |
+| `MaterialClient/MaterialClient.csproj` | 更新元数据 | 将项目描述改为中文 | 项目元数据 | 高 |
+| `MaterialClient.Common/MaterialClient.Common.csproj` | 更新元数据 | 将项目描述改为中文 | 项目元数据 | 高 |
+| `MaterialClient.Toolkit/MaterialClient.Toolkit.csproj` | 更新元数据 | 将项目描述改为中文 | 项目元数据 | 高 |
 
 ---
 
-## Component Architecture
+## 组件架构
 
 ```
-Localization Workflow
-├── Preparation Phase
-│   ├── File Inventory
-│   ├── Glossary Creation
-│   └── Validation Rules Setup
+本地化工作流
+├── 准备阶段
+│   ├── 文件清单
+│   ├── 词汇表创建
+│   └── 验证规则配置
 │
-├── Documentation Phase
-│   ├── docs/ Directory Translation
-│   ├── Root MD Files Translation
-│   └── Quality Review
+├── 文档阶段
+│   ├── docs/ 目录翻译
+│   ├── 根目录 MD 文件翻译
+│   └── 质量审校
 │
-├── Code Phase
-│   ├── MaterialClient Comments
-│   ├── MaterialClient.Common Comments
-│   └── MaterialClient.Toolkit Comments
+├── 代码阶段
+│   ├── MaterialClient 注释
+│   ├── MaterialClient.Common 注释
+│   └── MaterialClient.Toolkit 注释
 │
-├── Metadata Phase
-│   ├── .csproj File Updates
-│   └── Project Description Changes
+├── 元数据阶段
+│   ├── .csproj 文件更新
+│   └── 项目描述变更
 │
-└── Validation Phase
-    ├── OpenSpec Document Validation
-    ├── Translation Quality Review
-    ├── Functionality Testing
-    └── Final Review
+└── 验证阶段
+    ├── OpenSpec 文档验证
+    ├── 翻译质量审校
+    ├── 功能测试
+    └── 最终审校
 ```
 
 ---
 
-## Data Flow Diagram
+## 数据流图
 
 ```mermaid
 flowchart TD
-    A[Start Localization] --> B[Create File Inventory]
-    B --> C{Document Type?}
-    C -->|Markdown| D[Translate MD Files]
-    C -->|Code| E[Translate Code Comments]
-    C -->|Project File| F[Update .csproj Metadata]
-    D --> G[Quality Review]
+    A[开始本地化] --> B[创建文件清单]
+    B --> C{文档类型?}
+    C -->|Markdown| D[翻译 MD 文件]
+    C -->|代码| E[翻译代码注释]
+    C -->|项目文件| F[更新 .csproj 元数据]
+    D --> G[质量审校]
     E --> G
     F --> G
-    G --> H{OpenSpec Document?}
-    H -->|Yes| I[Keep in English]
-    H -->|No| J[Accept Translation]
-    I --> K[Validation Check]
+    G --> H{OpenSpec 文档?}
+    H -->|是| I[保持英文]
+    H -->|否| J[接受翻译]
+    I --> K[验证检查]
     J --> K
-    K --> L[Application Testing]
-    L --> M{All Tests Pass?}
-    M -->|Yes| N[Localization Complete]
-    M -->|No| O[Fix Issues]
+    K --> L[应用测试]
+    L --> M{全部通过?}
+    M -->|是| N[本地化完成]
+    M -->|否| O[修复问题]
     O --> G
 ```
 
 ---
 
-## API Call Sequence Diagram
+## API 调用时序图
 
 ```mermaid
 sequenceDiagram
-    participant Dev as Developer
-    participant Inv as File Inventory
-    participant Trans as Translation Process
-    participant Val as Validation
-    participant App as Application
+    participant Dev as 开发者
+    participant Inv as 文件清单
+    participant Trans as 翻译流程
+    participant Val as 验证
+    participant App as 应用
 
-    Dev->>Inv: Generate file inventory
-    Inv-->>Dev: Return file list
-    loop For each file
-        Dev->>Trans: Request translation
-        Trans->>Trans: Perform translation
-        Trans-->>Dev: Return translated content
-        Dev->>Val: Submit for validation
-        Val->>Val: Check OpenSpec rules
-        Val->>Val: Verify accuracy
-        Val-->>Dev: Return validation result
+    Dev->>Inv: 生成文件清单
+    Inv-->>Dev: 返回文件列表
+    loop 对每个文件
+        Dev->>Trans: 请求翻译
+        Trans->>Trans: 执行翻译
+        Trans-->>Dev: 返回译文
+        Dev->>Val: 提交验证
+        Val->>Val: 检查 OpenSpec 规则
+        Val->>Val: 验证准确性
+        Val-->>Dev: 返回验证结果
     end
-    Dev->>App: Deploy translated code
-    App->>App: Run tests
-    App-->>Dev: Return test results
+    Dev->>App: 部署翻译后代码
+    App->>App: 运行测试
+    App-->>Dev: 返回测试结果
 ```

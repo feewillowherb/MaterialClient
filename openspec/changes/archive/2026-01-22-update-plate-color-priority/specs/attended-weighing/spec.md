@@ -1,113 +1,113 @@
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Plate Color Priority Matching
+### 需求：车牌颜色优先级匹配
 
-The system SHALL implement a priority-based plate number selection mechanism where filtered plate colors are treated as lowest priority rather than being rejected.
+系统应实现基于优先级的车牌号选择机制：被过滤的车牌颜色作为最低优先级处理，而非直接拒绝。
 
-#### Scenario: High-priority plate overrides low-priority plate
+#### 场景：高优先级覆盖低优先级
 
-- **GIVEN** a vehicle with yellow plate (low-priority color) is on scale
-- **AND** the plate has been recognized 10 times (cached with count=10)
-- **WHEN** a vehicle with blue plate (high-priority color) is also detected once
-- **THEN** the system SHALL select the blue plate as most frequent plate number
-- **AND** the yellow plate SHALL remain in cache but not be selected
+- **给定**地磅上为黄牌（低优先级颜色）车辆
+- **且**该车牌已被识别 10 次（缓存次数=10）
+- **当**同时检测到一次蓝牌（高优先级颜色）车辆时
+- **则**系统应选择蓝牌为最频车牌号
+- **且**黄牌应保留在缓存中但不被选中
 
-#### Scenario: Low-priority plate used when no high-priority exists
+#### 场景：无高优先级时使用低优先级
 
-- **GIVEN** a vehicle with yellow plate (low-priority color) is on scale
-- **AND** no other plates have been detected
-- **WHEN** the system selects the most frequent plate number
-- **THEN** the system SHALL return the yellow plate
-- **AND** log a message indicating low-priority plate is being used
+- **给定**地磅上为黄牌（低优先级颜色）车辆
+- **且**未检测到其他车牌
+- **当**系统选择最频车牌号时
+- **则**系统应返回该黄牌
+- **且**记录表明正在使用低优先级车牌的日志
 
-#### Scenario: Low-priority plate cannot override existing high-priority plate
+#### 场景：低优先级不能覆盖已有高优先级
 
-- **GIVEN** a vehicle with blue plate (high-priority color) is cached with count=1
-- **WHEN** a yellow plate (low-priority color) is recognized 100 times
-- **THEN** the system SHALL continue to return the blue plate
-- **AND** the yellow plate SHALL accumulate count in cache but not be selected
+- **给定**蓝牌（高优先级颜色）车辆已缓存且次数=1
+- **当**黄牌（低优先级颜色）被识别 100 次时
+- **则**系统应继续返回蓝牌
+- **且**黄牌在缓存中累加次数但不被选中
 
-#### Scenario: Plate without color information treated as high-priority
+#### 场景：无颜色信息时按高优先级处理
 
-- **GIVEN** a plate number is recognized without color information (colorType is null)
-- **WHEN** the plate is cached
-- **THEN** the system SHALL treat it as high-priority by default
-- **AND** it SHALL be able to override low-priority plates
+- **给定**识别到车牌号但无颜色信息（colorType 为 null）
+- **当**该车牌被缓存时
+- **则**系统应默认按高优先级处理
+- **且**其应能覆盖低优先级车牌
 
-### Requirement: Plate Number Cache Color Tracking
+### 需求：车牌号缓存颜色跟踪
 
-The system SHALL store color information alongside plate numbers in the cache to support priority-based selection.
+系统应在缓存中随车牌号存储颜色信息，以支持基于优先级的选择。
 
-#### Scenario: Color information persisted in cache
+#### 场景：缓存的颜色信息持久化
 
-- **GIVEN** a plate is recognized with color type YELLOW
-- **WHEN** the plate is added to cache
-- **THEN** the cache record SHALL include:
-  - Count: number of recognitions
-  - LastUpdateTime: timestamp of last recognition
-  - ColorType: YELLOW (the detected color)
+- **给定**识别到颜色类型为 YELLOW 的车牌
+- **当**该车牌加入缓存时
+- **则**缓存记录应包含：
+  - Count：识别次数
+  - LastUpdateTime：最近识别时间戳
+  - ColorType：YELLOW（识别到的颜色）
 
-#### Scenario: Color information preserved when incrementing count
+#### 场景：增加次数时保留颜色信息
 
-- **GIVEN** a plate "京A12345" with color BLUE is cached with count=1
-- **WHEN** the same plate is recognized again with color BLUE
-- **THEN** the cache record SHALL update to:
-  - Count: 2 (incremented)
-  - LastUpdateTime: (updated to current time)
-  - ColorType: BLUE (preserved from first recognition)
+- **给定**车牌「京A12345」颜色 BLUE 已缓存且次数=1
+- **当**再次以 BLUE 识别到同一车牌时
+- **则**缓存记录应更新为：
+  - Count：2（递增）
+  - LastUpdateTime：（更新为当前时间）
+  - ColorType：BLUE（与首次识别一致）
 
-#### Scenario: Cache handles missing color information
+#### 场景：缓存处理缺失颜色信息
 
-- **GIVEN** a plate is recognized without color information (colorType is null)
-- **WHEN** the plate is added to cache
-- **THEN** the cache record SHALL store ColorType as null
-- **AND** the plate SHALL be treated as high-priority
+- **给定**识别到车牌但无颜色信息（colorType 为 null）
+- **当**该车牌加入缓存时
+- **则**缓存记录应将 ColorType 存为 null
+- **且**该车牌应按高优先级处理
 
-### Requirement: Plate Color Priority Configuration
+### 需求：车牌颜色优先级配置
 
-The system SHALL support configuring certain plate colors as low-priority, treating them as fallback options rather than rejecting them entirely.
+系统应支持将特定车牌颜色配置为低优先级，作为回退选项而非完全拒绝。
 
-#### Scenario: Low-priority color stored with flag
+#### 场景：低优先级颜色带标志存储
 
-- **GIVEN** configuration specifies YELLOW in LowPriorityPlateColors array
-- **WHEN** a yellow plate is recognized via OnPlateNumberRecognized
-- **THEN** the system SHALL NOT reject the plate
-- **AND** SHALL store it in cache with ColorType=YELLOW
-- **AND** SHALL mark it as low-priority for selection purposes
-- **AND** log message indicating low-priority color detected
+- **给定**配置在 LowPriorityPlateColors 数组中指定 YELLOW
+- **当**通过 OnPlateNumberRecognized 识别到黄牌时
+- **则**系统不得拒绝该车牌
+- **且**应将其以 ColorType=YELLOW 存入缓存
+- **且**在选择时标记为低优先级
+- **且**记录表明检测到低优先级颜色的日志
 
-#### Scenario: Normal color stored as high-priority
+#### 场景：普通颜色按高优先级存储
 
-- **GIVEN** configuration specifies YELLOW in LowPriorityPlateColors array
-- **WHEN** a blue plate is recognized via OnPlateNumberRecognized
-- **THEN** the system SHALL store it in cache with ColorType=BLUE
-- **AND** SHALL mark it as high-priority for selection purposes
-- **AND** NOT log any priority-related message
+- **给定**配置在 LowPriorityPlateColors 数组中指定 YELLOW
+- **当**通过 OnPlateNumberRecognized 识别到蓝牌时
+- **则**系统应将其以 ColorType=BLUE 存入缓存
+- **且**在选择时标记为高优先级
+- **且**不记录与优先级相关的日志
 
-#### Scenario: Configuration loading uses new key name
+#### 场景：配置加载使用新键名
 
-- **GIVEN** appsettings.json contains LowPriorityPlateColors array
-- **WHEN** AttendedWeighingService starts
-- **THEN** the system SHALL load the colors from LowPriorityPlateColors configuration key
-- **AND** store them in _lowPriorityPlateColors HashSet
-- **AND** use them to determine low-priority vs high-priority plates
-- **AND** log the low-priority colors during initialization
+- **给定** appsettings.json 中包含 LowPriorityPlateColors 数组
+- **当** AttendedWeighingService 启动时
+- **则**系统应从配置键 LowPriorityPlateColors 加载颜色
+- **且**存入 _lowPriorityPlateColors HashSet
+- **且**用于区分低优先级与高优先级车牌
+- **且**在初始化时记录低优先级颜色
 
-### Requirement: Configuration Key Renaming
+### 需求：配置键重命名
 
-The system SHALL use LowPriorityPlateColors as the configuration key name to reflect priority-based semantics rather than rejection-based filtering.
+系统应使用 LowPriorityPlateColors 作为配置键名，以体现基于优先级的语义而非基于拒绝的过滤。
 
-#### Scenario: New configuration key used for loading
+#### 场景：使用新配置键加载
 
-- **GIVEN** configuration file contains LowPriorityPlateColors key
-- **WHEN** AttendedWeighingService initializes
-- **THEN** the system SHALL read plate colors from LowPriorityPlateColors key
-- **AND** SHALL NOT attempt to read from old FilteredPlateColors key
-- **AND** log "Low-priority plate colors: [list]" during initialization
+- **给定**配置文件包含 LowPriorityPlateColors 键
+- **当** AttendedWeighingService 初始化时
+- **则**系统应从 LowPriorityPlateColors 键读取车牌颜色
+- **且**不得尝试从旧键 FilteredPlateColors 读取
+- **且**在初始化时记录「低优先级车牌颜色：[列表]」
 
-#### Scenario: Variable naming reflects priority semantics
+#### 场景：变量命名体现优先级语义
 
-- **GIVEN** the service code uses internal variables for plate color priority
-- **THEN** the variable SHALL be named _lowPriorityPlateColors (not _filteredPlateColors)
-- **AND** all log messages SHALL use "low-priority" terminology
-- **AND** code comments SHALL reference priority-based behavior
+- **给定**服务代码中使用内部变量表示车牌颜色优先级
+- **则**变量名应为 _lowPriorityPlateColors（而非 _filteredPlateColors）
+- **且**所有日志应使用「低优先级」措辞
+- **且**代码注释应引用基于优先级的行为

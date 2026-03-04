@@ -1,29 +1,29 @@
-# Tasks: Hikvision LPR Service Implementation
+# 任务：海康威视 LPR 服务实现
 
-**Change ID**: `hikvision-lpr-implementation`
-**Total Tasks**: 12
-**Estimated Duration**: 5-7 days
-
----
-
-## Task Overview
-
-This implementation will complete the development of the Hikvision LPR service in phases. First establish the SDK integration foundation, then implement core service functionality, and finally perform testing and integration. During implementation, pay special attention to callback delegate lifecycle management to avoid memory leaks and crashes.
+**变更 ID**：`hikvision-lpr-implementation`
+**总任务数**：12
+**预估工期**：5–7 天
 
 ---
 
-## Phase 1: SDK Integration Foundation
+## 任务概览
 
-### Task 1.1: Create HikvisionSdk.cs Module
+本实现将分阶段完成海康威视 LPR 服务的开发。 First establish the SDK integration foundation, then implement core service functionality, and finally perform testing and integration. During implementation, pay special attention to callback delegate lifecycle management to avoid memory leaks and crashes.
 
-**Status**: Completed
-**Priority**: High
-**Estimated**: 4 hours
+---
 
-**Description**:
-Create a centralized HCNetSDK P/Invoke declaration module that defines all required native SDK calls and data structures.
+## 阶段 1：SDK 集成基础
 
-**Steps**:
+### 任务 1.1：创建 HikvisionSdk.cs 模块
+
+**状态**：已完成
+**优先级**：高
+**预估**：4 小时
+
+**描述**：
+创建集中的 HCNetSDK P/Invoke 声明模块，定义所有需要的原生 SDK 调用与数据结构。
+
+**步骤**：
 1. Create `HikvisionSdk.cs` file in `MaterialClient.Common/Services/Hikvision/` directory
 2. Add `System.Runtime.InteropServices` namespace reference
 3. Define `MSGCallBack` delegate type:
@@ -49,25 +49,25 @@ Create a centralized HCNetSDK P/Invoke declaration module that defines all requi
    - `COMM_ITS_PLATE_RESULT = 0x3050`
 7. Reference `NET_DVR` static class in `HikvisionService` to ensure correct structure layout
 
-**Validation**:
+**验收**：
 - [x] All P/Invoke declarations compile successfully
 - [x] Structure fields match HCNetSDK.h header file
 - [x] Delegate and function signatures are correct
 
-**Output**: `MaterialClient.Common/Services/Hikvision/HikvisionSdk.cs`
+**产出**： `MaterialClient.Common/Services/Hikvision/HikvisionSdk.cs`
 
 ---
 
-### Task 1.2: Create Encoding Helper Utility Class
+### 任务 1.2：创建编码辅助工具类
 
-**Status**: Completed
-**Priority**: Medium
-**Estimated**: 1 hour
+**状态**：已完成
+**优先级**：中
+**预估**：1 小时
 
-**Description**:
-Create a unified encoding handling utility class for processing Chinese characters in license plate text.
+**描述**：
+创建统一的编码处理工具类，用于处理车牌文本中的中文字符。
 
-**Steps**:
+**步骤**：
 1. Create `HikvisionEncodingHelper.cs` file in `MaterialClient.Common/Utils/` directory
 2. Implement static methods:
    - `string GetStringFromPtr(IntPtr ptr, int maxLength)` - Read GBK-encoded string from unmanaged pointer
@@ -76,26 +76,26 @@ Create a unified encoding handling utility class for processing Chinese characte
    - Try to get GBK encoding (`Encoding.GetEncoding("GBK")`)
    - If failed, use UTF-8 encoding and log warning
 
-**Validation**:
+**验收**：
 - [x] Can correctly handle license plates containing Chinese
 - [x] Graceful fallback when encoding is unavailable
 
-**Output**: `MaterialClient.Common/Utils/HikvisionEncodingHelper.cs`
+**产出**： `MaterialClient.Common/Utils/HikvisionEncodingHelper.cs`
 
 ---
 
-## Phase 2: Core Service Implementation
+## 阶段 2：核心服务实现
 
-### Task 2.1: Implement HikvisionLprService Basic Structure
+### 任务 2.1：实现 HikvisionLprService 基础结构
 
-**Status**: Completed
-**Priority**: High
-**Estimated**: 2 hours
+**状态**：已完成
+**优先级**：高
+**预估**：2 小时
 
-**Description**:
-Create the `HikvisionLprService` class, implementing basic class structure, dependency injection, and state management.
+**描述**：
+创建 `HikvisionLprService` 类，实现基础类结构、依赖注入与状态管理。
 
-**Steps**:
+**步骤**：
 1. Create `HikvisionLprService.cs` file in `MaterialClient.Common/Services/Hikvision/` directory
 2. Use AutoConstructor attribute to generate constructor injection:
    - `ILogger<HikvisionLprService>? logger`
@@ -110,12 +110,12 @@ Create the `HikvisionLprService` class, implementing basic class structure, depe
 5. Implement `PlateRecognized` property: return `_plateRecognizedSubject.AsObservable()`
 6. Add `Dispose` pattern (optional, or use `IDisposable`)
 
-**Validation**:
+**验收**：
 - [x] Class compiles successfully
 - [x] Dependency injection works properly
 - [x] Event stream can be subscribed to
 
-**Output**: `MaterialClient.Common/Services/Hikvision/HikvisionLprService.cs` (basic structure)
+**产出**： `MaterialClient.Common/Services/Hikvision/HikvisionLprService.cs` (basic structure)
 
 ---
 
@@ -142,12 +142,12 @@ Implement HCNetSDK initialization and cleanup logic.
 4. Call `Cleanup()` at the end of `StopAsync`
 5. Add logging for all critical operations
 
-**Validation**:
+**验收**：
 - [x] SDK can be initialized successfully
 - [x] Cleanup is called correctly on process exit
 - [x] Clear error messages on initialization failure
 
-**Output**: Update `HikvisionLprService.cs`
+**产出**： Update `HikvisionLprService.cs`
 
 ---
 
@@ -177,13 +177,13 @@ Implement add, update, and online check functionality for devices.
    - Return `userId` if successful, otherwise return `-1`
    - On failure, log error code and error description
 
-**Validation**:
+**验收**：
 - [x] Can successfully add device configuration
 - [x] Can update existing device configuration
 - [x] `IsOnline` can correctly detect device status
 - [x] Error handling and logging work properly
 
-**Output**: Update `HikvisionLprService.cs`
+**产出**： Update `HikvisionLprService.cs`
 
 ---
 
@@ -219,14 +219,14 @@ Implement listen service start and stop logic, including callback delegate lifec
    // The unmanaged SDK only stores a function pointer; the GC cannot know it is still in use.
    ```
 
-**Validation**:
+**验收**：
 - [x] Can successfully start listen service
 - [x] Can successfully stop listen service
 - [x] Duplicate listen startup is detected and rejected
 - [x] Callback delegate is not garbage collected during listening
 - [x] All resources are correctly released on stop
 
-**Output**: Update `HikvisionLprService.cs`
+**产出**： Update `HikvisionLprService.cs`
 
 ---
 
@@ -267,7 +267,7 @@ Implement SDK callback delegate to handle license plate recognition results and 
    - Do not perform time-consuming operations
 5. Add image saving logic (optional, if saving license plate images is needed)
 
-**Validation**:
+**验收**：
 - [x] Callback can correctly receive license plate recognition results
 - [x] Can distinguish results from different devices
 - [x] Event stream receives correct events
@@ -275,7 +275,7 @@ Implement SDK callback delegate to handle license plate recognition results and 
 - [x] Callback exceptions do not crash the process
 - [x] Detailed logging is present
 
-**Output**: Update `HikvisionLprService.cs`
+**产出**： Update `HikvisionLprService.cs`
 
 ---
 
@@ -307,16 +307,16 @@ Complete error handling and logging for all methods.
    - All catch blocks must log exceptions
    - Consider whether exceptions need to be propagated
 
-**Validation**:
+**验收**：
 - [x] All errors are caught and logged
 - [x] Logs provide sufficient debugging information
 - [x] No empty catch blocks
 
-**Output**: Update `HikvisionLprService.cs`
+**产出**： Update `HikvisionLprService.cs`
 
 ---
 
-## Phase 3: Testing and Integration
+## 阶段 3： Testing and Integration
 
 ### Task 3.1: Create Mock Implementation
 
@@ -337,12 +337,12 @@ Create `MockHikvisionLprService` for unit testing.
    - `void SimulatePlateRecognition(LicensePlateRecognizedEvent event)` - Simulate license plate recognition
 4. Implement simple interface methods (mainly for test verification)
 
-**Validation**:
+**验收**：
 - [x] Mock class compiles successfully
 - [x] Can be used for unit testing
 - [x] Can simulate license plate recognition events
 
-**Output**: `MaterialClient.Common.Tests/Mocks/MockHikvisionLprService.cs`
+**产出**： `MaterialClient.Common.Tests/Mocks/MockHikvisionLprService.cs`
 
 ---
 
@@ -367,12 +367,12 @@ Write unit tests for `HikvisionLprService` to verify core functionality.
 3. Use Moq or similar Mock framework to simulate SDK calls (may need to wrap SDK as interface)
 4. Verify event stream receives correct events
 
-**Validation**:
+**验收**：
 - [x] All tests pass
 - [x] Tests cover major functionality paths
 - [x] Tests cover error scenarios
 
-**Output**: `MaterialClient.Common.Tests/Services/Hikvision/HikvisionLprServiceTests.cs`
+**产出**： `MaterialClient.Common.Tests/Services/Hikvision/HikvisionLprServiceTests.cs`
 
 ---
 
@@ -397,13 +397,13 @@ Write long-running tests to verify the service's memory management is correct.
    - Listen handle
    - Rx subscriptions
 
-**Validation**:
+**验收**：
 - [x] No continuous memory growth after repeated start/stop
 - [x] Memory is stable after long runs
 - [x] Memory is stable after processing many events
 - [x] All resources are correctly released
 
-**Output**: `MaterialClient.Common.Tests/Services/Hikvision/HikvisionLprServiceMemoryLeakTests.cs`
+**产出**： `MaterialClient.Common.Tests/Services/Hikvision/HikvisionLprServiceMemoryLeakTests.cs`
 
 ---
 
@@ -425,16 +425,16 @@ Write integration tests to verify interaction with real Hikvision devices (requi
    - `MultipleDevices_ShouldReceiveEventsFromAll` - Verify multi-device support
 4. Add test configuration file (not committed to version control)
 
-**Validation**:
+**验收**：
 - [x] Can connect to real device
 - [x] Can receive license plate recognition results
 - [x] Multi-device scenarios work properly
 
-**Output**: `MaterialClient.Common.Tests/IntegrationTests/HikvisionLprIntegrationTests.cs`
+**产出**： `MaterialClient.Common.Tests/IntegrationTests/HikvisionLprIntegrationTests.cs`
 
 ---
 
-## Phase 4: Documentation and Delivery
+## 阶段 4： Documentation and Delivery
 
 ### Task 4.1: Update User Documentation
 
@@ -452,12 +452,12 @@ Update user documentation to explain how to configure and use Hikvision LPR func
 4. Provide troubleshooting guide (common errors and solutions)
 5. List required DLL files (HCNetSDK.dll, HCNetSDKCom.dll, etc.)
 
-**Validation**:
+**验收**：
 - [x] Documentation is clear and easy to understand
 - [x] Contains all necessary configuration information
 - [x] Provides troubleshooting guide
 
-**Output**: Update project documentation
+**产出**： Update project documentation
 
 ---
 
@@ -480,17 +480,17 @@ Perform code review, optimize implementation, and fix issues.
 3. Fix discovered issues
 4. Prepare code review checklist
 
-**Validation**:
+**验收**：
 - [x] Code follows project conventions
 - [x] No obvious performance issues
 - [x] No security risks
 - [x] Comments are clear
 
-**Output**: Optimized code
+**产出**： Optimized code
 
 ---
 
-## Progress Tracking
+## 进度跟踪
 
 **Phase 1 Progress**: 2/2 tasks completed (100%)
 **Phase 2 Progress**: 6/6 tasks completed (100%)

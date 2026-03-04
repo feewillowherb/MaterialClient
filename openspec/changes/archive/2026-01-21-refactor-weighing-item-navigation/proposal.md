@@ -1,43 +1,43 @@
-# Change: Refactor Weighing Item Navigation and Tracking
+# 变更：重构称重条目导航与跟踪
 
-## Why
+## 为什么
 
-The current attended weighing workflow has inconsistent object tracking after operations (Save, Complete, Match, Abolish). Event handlers in `AttendedWeighingDetailViewModel` cannot properly finalize `WeighingListItemDto` objects, leading to:
+当前有人值守称重流程在操作（保存、完成、匹配、作废）后存在不一致的对象跟踪。`AttendedWeighingDetailViewModel` 中的事件处理程序无法正确收尾 `WeighingListItemDto` 对象，导致：
 
-1. **Lost context after operations**: User completes an order but the UI doesn't navigate to the correct item or view
-2. **Incorrect view display**: System doesn't properly switch between MainView (summary) and DetailView (editing) based on item state
-3. **Tab navigation confusion**: When items move between states (unmatched → completed), the tab selection doesn't follow the item
-4. **Pagination blindness**: If the target item is on a different page, the system cannot find or navigate to it
+1. **操作后上下文丢失**：用户完成一单后，界面未导航到正确条目或视图
+2. **视图显示错误**：系统未根据条目状态在 MainView（摘要）与 DetailView（编辑）间正确切换
+3. **标签页导航混乱**：条目在状态间移动（未匹配 → 已完成）时，标签选择未跟随条目
+4. **分页盲区**：若目标条目在另一页，系统无法找到或导航到该页
 
-This breaks the user's workflow and requires manual searching to continue working.
+这破坏了用户工作流，需要手动搜索才能继续操作。
 
-## What Changes
+## 变更内容
 
-- **Event infrastructure enhancement**: Add complete operation context to event arguments (item ID, type, completion status, operation type)
-- **Unified navigation logic**: Create centralized `NavigateToItemAsync` method that handles all post-operation navigation
-- **Intelligent tab switching**: Implement rules that respect `IsShowAllRecords` flag and only switch tabs when necessary
-- **Cross-page item search**: Add pagination navigation to find and select items across multiple pages
-- **View selection automation**: Automatically choose MainView vs DetailView based on item type and completion status
+- **事件基础设施增强**：在事件参数中提供完整操作上下文（条目 ID、类型、完成状态、操作类型）
+- **统一导航逻辑**：建立集中的 `NavigateToItemAsync` 方法，处理所有操作后导航
+- **智能标签切换**：实现尊重 `IsShowAllRecords` 标志的规则，仅在必要时切换标签
+- **跨页条目查找**：增加分页导航以在多页间查找并选中条目
+- **视图选择自动化**：根据条目类型与完成状态自动选择 MainView 或 DetailView
 
-## Impact
+## 影响
 
-### Affected specs
-- `attended-weighing` (new capability) - Defines requirements for item tracking and navigation behavior
+### 涉及的规范
+- `attended-weighing`（新能力）— 定义条目跟踪与导航行为的需求
 
-### Affected code
-- `MaterialClient/ViewModels/AttendedWeighingDetailViewModel.cs` - Event definitions and invocations
-- `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` - Navigation logic and event handlers
-- `MaterialClient.Common/Events/` - New event argument classes
+### 涉及的代码
+- `MaterialClient/ViewModels/AttendedWeighingDetailViewModel.cs` — 事件定义与触发
+- `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` — 导航逻辑与事件处理
+- `MaterialClient.Common/Events/` — 新事件参数类
 
-### Breaking changes
-None - This is an internal refactoring that improves existing behavior without changing public APIs.
+### 破坏性变更
+无 — 此为内部重构，在不变更对外 API 的前提下改进现有行为。
 
-### User-visible changes
-- After completing an order, user stays on the completed waybill in MainView (previously lost selection)
-- Tab automatically switches to show the updated item when needed (respects "All Records" mode)
-- System finds items across pages automatically (previously only searched current page)
-- Correct view (MainView/DetailView) displays based on item state
+### 用户可见变更
+- 完成一单后，用户停留在 MainView 中该已完成运单上（此前会丢失选中）
+- 在需要时自动切换到显示更新后条目的标签（尊重「全部记录」模式）
+- 系统自动跨页查找条目（此前仅搜索当前页）
+- 根据条目状态显示正确视图（MainView/DetailView）
 
-## Migration
+## 迁移
 
-No migration needed - this is a behavior improvement, not a breaking change.
+无需迁移 — 仅为行为改进，非破坏性变更。

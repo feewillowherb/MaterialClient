@@ -13,11 +13,11 @@
 
 ## Capabilities
 
-### New Capabilities
-None (localization work without new functional capabilities)
+### 新增能力
+无（本地化工作不增加新功能）
 
-### Modified Capabilities
-None (no specification-level behavior changes)
+### 修改的能力
+无（无规范层面的行为变更）
 
 ## Impact
 
@@ -36,12 +36,12 @@ None (no specification-level behavior changes)
 
 ---
 
-## Code Change Table
+## 代码变更表
 
-| File Path | Change Type | Change Reason | Impact Scope |
+| 文件路径 | 变更类型 | 变更原因 | 影响范围 |
 |-----------|-------------|---------------|--------------|
-| `**/*.cs` | Update comments | Translate English comments to Chinese | Code readability |
-| `docs/**/*.md` | Translate content | Translate Markdown documentation to Chinese | Documentation accessibility |
-| `MaterialClient.csproj` | Update metadata | Change project description to Chinese | Project metadata |
-| `MaterialClient.Common.csproj` | Update metadata | Change project description to Chinese | Project metadata |
-| `MaterialClient.Toolkit.csproj` | Update metadata | Change project description to Chinese | Project metadata |
+| `**/*.cs` | 更新注释 | 将英文注释翻译为中文 | 代码可读性 |
+| `docs/**/*.md` | 翻译内容 | 将 Markdown 文档翻译为中文 | 文档可访问性 |
+| `MaterialClient.csproj` | 更新元数据 | 将项目描述改为中文 | 项目元数据 |
+| `MaterialClient.Common.csproj` | 更新元数据 | 将项目描述改为中文 | 项目元数据 |
+| `MaterialClient.Toolkit.csproj` | 更新元数据 | 将项目描述改为中文 | 项目元数据 |

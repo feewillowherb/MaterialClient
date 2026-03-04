@@ -1,88 +1,88 @@
-# OpenSpec Validation Rules
+# OpenSpec 验证规则
 
-This document defines validation rules to ensure OpenSpec specification documents remain in English during the Chinese language localization process.
+本文定义验证规则，确保在中文本地化过程中 OpenSpec 规范文档保持英文。
 
-## OpenSpec English Language Requirement
+## OpenSpec 英文语言要求
 
-**CRITICAL REQUIREMENT:** All OpenSpec specification documents MUST remain in English. This is a non-negotiable requirement of the OpenSpec system.
+**关键要求**：所有 OpenSpec 规范文档必须保持英文。此为 OpenSpec 系统的不可协商要求。
 
-## Files That MUST Remain in English
+## 必须保持英文的文件
 
-### Core OpenSpec Files
-
-```
-openspec/specs/**/*.md           # All specification documents
-openspec/changes/**/proposal.md   # Change proposals
-openspec/changes/**/tasks.md      # Task lists
-openspec/changes/**/design.md     # Design documents
-openspec/changes/**/spec.md       # Change specifications
-```
-
-### System Configuration Files
+### 核心 OpenSpec 文件
 
 ```
-openspec/AGENTS.md               # Agent configuration
-openspec/README.md               # System documentation
-CLAUDE.md                        # System instructions
+openspec/specs/**/*.md           # 所有规范文档
+openspec/changes/**/proposal.md   # 变更提案
+openspec/changes/**/tasks.md      # 任务列表
+openspec/changes/**/design.md     # 设计文档
+openspec/changes/**/spec.md       # 变更规范
 ```
 
-## Validation Rules
+### 系统配置文件
 
-### Rule 1: No Chinese Characters in OpenSpec Files
+```
+openspec/AGENTS.md               # 代理配置
+openspec/README.md               # 系统文档
+CLAUDE.md                        # 系统指令
+```
 
-**Rule:** OpenSpec specification files (`.md` files in `openspec/` directory) must NOT contain Chinese characters.
+## 验证规则
 
-**Validation Check:**
+### 规则 1：OpenSpec 文件中不得出现中文字符
+
+**规则**：OpenSpec 规范文件（`openspec/` 目录下的 `.md` 文件）不得包含中文字符。
+
+**验证检查**：
 ```bash
-# Check for Chinese characters in OpenSpec files
+# 检查 OpenSpec 文件中的中文字符
 find openspec/ -name "*.md" -exec grep -l "[\u4e00-\u9fff]" {} \;
 ```
 
-**Expected Result:** No files should be returned.
+**预期结果**：不应返回任何文件。
 
-### Rule 2: File Path Validation
+### 规则 2：文件路径验证
 
-**Rule:** Ensure no OpenSpec files are accidentally translated or moved.
+**规则**：确保 OpenSpec 文件未被误译或移动。
 
-**Valid Paths:**
+**有效路径**：
 ```
 ✓ openspec/specs/**/spec.md
-✓ openspec/changes/{change-name}/proposal.md
-✓ openspec/changes/{change-name}/tasks.md
-✓ openspec/changes/{change-name}/design.md
+✓ openspec/changes/{变更名称}/proposal.md
+✓ openspec/changes/{变更名称}/tasks.md
+✓ openspec/changes/{变更名称}/design.md
 ```
 
-**Invalid Actions:**
+**无效操作**：
 ```
-✗ Moving OpenSpec files out of openspec/ directory
-✗ Creating Chinese versions (e.g., spec-zh.md)
-✗ Modifying OpenSpec file structure
-✗ Renaming OpenSpec files to indicate language
+✗ 将 OpenSpec 文件移出 openspec/ 目录
+✗ 创建中文版本（如 spec-zh.md）
+✗ 修改 OpenSpec 文件结构
+✗ 重命名 OpenSpec 文件以表示语言
 ```
 
-### Rule 3: Content Validation
+### 规则 3：内容验证
 
-**Rule:** OpenSpec document content must remain in English only.
+**规则**：OpenSpec 文档内容必须仅使用英文。
 
-**Valid Content Examples:**
+**有效内容示例**：
 ```
 ✓ This is the specification for the weighing module
 ✓ The API provides CRUD operations for records
 ✓ Implementation should follow the MVVM pattern
 ```
 
-**Invalid Content Examples:**
+**无效内容示例**：
 ```
 ✗ 这是称重模块的规范
 ✗ API 提供记录的 CRUD 操作
 ✗ 实现应该遵循 MVVM 模式
 ```
 
-## Validation Process
+## 验证流程
 
-### Pre-Commit Validation
+### 提交前验证
 
-Before committing any changes, run the following validation:
+在提交任何变更前，执行以下验证：
 
 ```bash
 #!/bin/bash
@@ -102,9 +102,9 @@ echo "✓ All OpenSpec files are in English"
 exit 0
 ```
 
-### Automated Validation Script
+### 自动化验证脚本
 
-Create a validation script in the project root:
+在项目根目录创建验证脚本：
 
 ```bash
 #!/bin/bash
@@ -150,177 +150,67 @@ echo "=== All OpenSpec files validated successfully ==="
 exit 0
 ```
 
-## Integration with Git Hooks
+## 与 Git 钩子集成
 
-### Pre-Commit Hook
+### 提交前钩子
 
-Create a `.git/hooks/pre-commit` file:
+创建 `.git/hooks/pre-commit` 文件，在提交前校验 OpenSpec 文件语言；若校验失败则中止提交并提示修复。
 
-```bash
-#!/bin/bash
+### 推送前钩子（额外保障）
 
-# Validate OpenSpec files before commit
-echo "Validating OpenSpec language requirement..."
+创建 `.git/hooks/pre-push` 文件，在推送前再次运行验证脚本；若失败则中止推送。
 
-# Run the validation script
-bash ./validate-openspec-english.sh
+## 人工验证清单
 
-# If validation fails, prevent the commit
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "COMMIT ABORTED: OpenSpec files must remain in English"
-    echo "Please fix the validation errors before committing."
-    exit 1
-fi
+在认为翻译完成前，请确认：
 
-exit 0
-```
+- [ ] `openspec/specs/**/*.md` 中无中文字符
+- [ ] `openspec/changes/**/proposal.md` 中无中文字符
+- [ ] `openspec/changes/**/tasks.md` 中无中文字符
+- [ ] `openspec/changes/**/design.md` 中无中文字符
+- [ ] `openspec/changes/**/spec.md` 中无中文字符
+- [ ] 未将 OpenSpec 文件移出 `openspec/` 目录
+- [ ] 未创建 OpenSpec 文件的中文版本
+- [ ] `CLAUDE.md` 保持英文
+- [ ] 所有 git 钩子已就位且可执行
 
-### Pre-Push Hook (Additional Safety)
+## CI/CD 集成
 
-Create a `.git/hooks/pre-push` file:
+可使用 GitHub Actions 或 Azure Pipelines 在拉取请求或推送时运行 OpenSpec 英文验证（仅检查 openspec 与 CLAUDE.md 变更）。工作流中执行：在 openspec 下查找 .md 并检测中文字符，若发现则报错并退出。
 
-```bash
-#!/bin/bash
+## 文档与培训
 
-# Final validation before push
-echo "Running final OpenSpec validation before push..."
+## 开发者指南
 
-bash ./validate-openspec-english.sh
+参与项目的开发者必须：
 
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "PUSH ABORTED: OpenSpec files must remain in English"
-    exit 1
-fi
+1. **理解要求**：OpenSpec 文件必须保持英文
+2. **运行验证**：在提交变更前始终运行验证
+3. **报告问题**：立即报告任何验证失败
+4. **遵循流程**：使用既定的翻译工作流
+5. **保持更新**：及时更新验证脚本与钩子
 
-exit 0
-```
+### 入职清单
 
-## Manual Validation Checklist
+新成员应：阅读本验证规则文档；理解 OpenSpec 英文要求；配置本地 git 钩子；成功运行验证脚本；完成一次无错误的测试提交。
 
-Before considering any translation complete, verify:
+## 故障排除
 
-- [ ] No Chinese characters in `openspec/specs/**/*.md`
-- [ ] No Chinese characters in `openspec/changes/**/proposal.md`
-- [ ] No Chinese characters in `openspec/changes/**/tasks.md`
-- [ ] No Chinese characters in `openspec/changes/**/design.md`
-- [ ] No Chinese characters in `openspec/changes/**/spec.md`
-- [ ] No OpenSpec files moved outside `openspec/` directory
-- [ ] No Chinese versions of OpenSpec files created
-- [ ] `CLAUDE.md` remains in English
-- [ ] All git hooks are in place and executable
+### 常见问题
 
-## CI/CD Integration
+**问题**：验证脚本误报  
+**解决**：更新字符范围或为特定模式添加例外
 
-### GitHub Actions Workflow
+**问题**：Git 钩子未执行  
+**解决**：确保钩子可执行（`chmod +x .git/hooks/*`）
 
-Create `.github/workflows/openspec-validation.yml`:
+**问题**：CI/CD 在本地失败而流水线中未失败  
+**解决**：检查环境差异（OS、编码等）
 
-```yaml
-name: OpenSpec Language Validation
+### 紧急处理
 
-on:
-  pull_request:
-    paths:
-      - 'openspec/**'
-      - 'CLAUDE.md'
+若验证失败且需紧急处理：定位问题文件 → 审阅触发失败的内容 → 将中文内容移至合适的非 OpenSpec 文件或回滚问题变更 → 重新运行验证 → 仅在验证通过后提交。
 
-jobs:
-  validate-openspec-english:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+## 结论
 
-      - name: Validate OpenSpec files
-        run: |
-          echo "Validating OpenSpec language requirement..."
-          find openspec/ -name "*.md" -exec sh -c 'grep -q "[\u4e00-\u9fff]" "$1" && echo "ERROR: Chinese found in $1" && exit 1' _ {} \;
-          echo "✓ All OpenSpec files are in English"
-```
-
-### Azure Pipelines
-
-Create `azure-pipelines-openspec-validation.yml`:
-
-```yaml
-trigger:
-  branches:
-    include:
-      - main
-      - develop
-  paths:
-    include:
-      - openspec/**
-      - CLAUDE.md
-
-pool:
-  vmImage: 'ubuntu-latest'
-
-steps:
-- script: |
-    echo "Validating OpenSpec language requirement..."
-    find openspec/ -name "*.md" | xargs grep -l "[\u4e00-\u9fff]" && exit 1 || echo "✓ All OpenSpec files are in English"
-  displayName: 'Validate OpenSpec English Language'
-```
-
-## Documentation and Training
-
-### Developer Guidelines
-
-All developers working on the project must:
-
-1. **Understand the Requirement:** OpenSpec files must remain in English
-2. **Run Validation:** Always run validation before committing changes
-3. **Report Issues:** Immediately report any validation failures
-4. **Follow Process:** Use the established translation workflow
-5. **Stay Updated:** Keep validation scripts and hooks up to date
-
-### Onboarding Checklist
-
-New team members should:
-
-- [ ] Read this validation rules document
-- [ ] Understand the OpenSpec English language requirement
-- [ ] Set up local git hooks
-- [ ] Run validation script successfully
-- [ ] Complete a test commit without errors
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue:** Validation script reports false positives
-
-**Solution:** Update the character range or add exceptions for specific patterns
-
-**Issue:** Git hooks not executing
-
-**Solution:** Ensure hooks are executable (`chmod +x .git/hooks/*`)
-
-**Issue:** CI/CD validation failing locally but not in pipeline
-
-**Solution:** Check for environment differences (OS, encoding, etc.)
-
-### Emergency Procedures
-
-If validation fails and needs urgent resolution:
-
-1. Identify the problematic file(s)
-2. Review the content that triggered the failure
-3. Either:
-   - Move Chinese content to the appropriate non-OpenSpec file
-   - Revert the problematic changes
-4. Re-run validation
-5. Commit only after validation passes
-
-## Conclusion
-
-These validation rules ensure that:
-- OpenSpec specification documents remain in English as required
-- The OpenSpec system continues to function correctly
-- Translation work does not compromise system integrity
-- All team members follow consistent practices
-
-Regular review and updates of these validation rules will maintain the effectiveness of the OpenSpec system while supporting the Chinese language localization goals of the MaterialClient project.
+这些验证规则确保：OpenSpec 规范文档按要求保持英文；OpenSpec 系统持续正常运行；翻译工作不损害系统完整性；全体成员遵循一致实践。定期审阅与更新本规则将维持 OpenSpec 系统有效性，同时支持 MaterialClient 项目的中文本地化目标。

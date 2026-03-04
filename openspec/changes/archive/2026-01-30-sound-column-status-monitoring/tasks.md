@@ -1,67 +1,67 @@
-# Implementation Tasks
+# 实施任务
 
-## Overview
+## 概览
 
-This document lists all tasks for implementing the "Add Sound Column Device Status Monitoring to Status Bar" feature, ordered by priority and dependencies.
+本文列出「在状态栏增加音柱设备状态监控」功能的所有任务，按优先级与依赖排序。
 
 ---
 
-## Phase 1: API and Data Layer (Day 1)
+## 阶段 1：API 与数据层（第 1 天）
 
-### Task 1.1: Create DTO Class
-**Priority**: High
-**Effort**: 30 minutes
-**Dependencies**: None
+### 任务 1.1：创建 DTO 类
+**优先级**：高
+**工作量**：30 分钟
+**依赖**：无
 
-**Description**:
-Create sound column device status response DTO.
+**描述**：
+创建音柱设备状态响应 DTO。
 
-**Acceptance Criteria**:
+**验收标准**：
 - [x] Create `MaterialClient.Common/Api/Dtos/SoundDeviceStatusDto.cs`
 - [x] Define `Status` property (`int`, JsonPropertyName "status")
 - [x] Define `Tasks` property (`IList<DeviceTaskInfo>`, JsonPropertyName "tasks")
 - [x] Create `DeviceTaskInfo` record (reserved field)
 
-**Files**:
+**文件**：
 - `MaterialClient.Common/Api/Dtos/SoundDeviceStatusDto.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Device Status API Integration
 
 ---
 
-### Task 1.2: Extend ISoundDeviceApi Interface
-**Priority**: High
-**Effort**: 30 minutes
-**Dependencies**: Task 1.1
+### 任务 1.2：扩展 ISoundDeviceApi 接口
+**优先级**：高
+**工作量**：30 分钟
+**依赖**：任务 1.1
 
-**Description**:
-Add device status query interface to `ISoundDeviceApi`.
+**描述**：
+在 `ISoundDeviceApi` 中增加设备状态查询接口。
 
-**Acceptance Criteria**:
+**验收标准**：
 - [x] Add `GetDeviceStatusAsync()` method to `ISoundDeviceApi`
 - [x] Use Refit `[Get("/api/devices/getDeviceBySN")]` attribute
 - [x] Define query parameters: `type`, `app`, `sn`
 - [x] Return type is `Task<SoundDeviceStatusDto>`
 - [x] Add XML comment documentation
 
-**Files**:
+**文件**：
 - `MaterialClient.Common/Api/ISoundDeviceApi.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Device Status API Integration
 
 ---
 
-### Task 1.3: Implement SoundDeviceService.IsOnlineAsync()
-**Priority**: High
-**Effort**: 2 hours
-**Dependencies**: Task 1.1, Task 1.2
+### 任务 1.3：实现 SoundDeviceService.IsOnlineAsync()
+**优先级**：高
+**工作量**：2 小时
+**依赖**：任务 1.1、1.2
 
-**Description**:
-Implement device online status detection method in `SoundDeviceService`.
+**描述**：
+在 `SoundDeviceService` 中实现设备在线状态检测方法。
 
-**Acceptance Criteria**:
+**验收标准**：
 - [x] Add `Task<bool> IsOnlineAsync()` method to `ISoundDeviceService` interface
 - [x] Implement the method in `SoundDeviceService`
 - [x] Retrieve `SoundDeviceSettings` from `ISettingsService`
@@ -74,24 +74,24 @@ Implement device online status detection method in `SoundDeviceService`.
 - [x] Exception handling: catch `HttpRequestException`, `TaskCanceledException`, return `false`
 - [x] Logging: Debug level for normal queries, Warning level for invalid configuration, Error level for exceptions
 
-**Files**:
+**文件**：
 - `MaterialClient.Common/Services/SoundDeviceService.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Device Status Polling
 - Device Status API Integration
 
 ---
 
-### Task 1.4: Write Unit Tests
-**Priority**: Medium
-**Effort**: 2 hours
-**Dependencies**: Task 1.3
+### 任务 1.4：编写单元测试
+**优先级**：中
+**工作量**：2 小时
+**依赖**：任务 1.3
 
-**Description**:
-Write unit tests for `SoundDeviceService.IsOnlineAsync()`.
+**描述**：
+为 `SoundDeviceService.IsOnlineAsync()` 编写单元测试。
 
-**Acceptance Criteria**:
+**验收标准**：
 - [ ] Create `SoundDeviceServiceTests.cs` (if not exists)
 - [ ] Test case: Returns `true` when device is online (mock API returns `status=1`)
 - [ ] Test case: Returns `true` when device is in-task (mock API returns `status=2`)
@@ -103,18 +103,18 @@ Write unit tests for `SoundDeviceService.IsOnlineAsync()`.
 - [ ] Use Moq or NSubstitute framework
 - [ ] All tests pass
 
-**Files**:
+**文件**：
 - `MaterialClient.Common.Tests/Services/SoundDeviceServiceTests.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Device Status Polling
 - Device Status API Integration
 
 ---
 
-## Phase 2: ViewModel and State Management (Day 2)
+## 阶段 2：ViewModel 与状态管理（第 2 天）
 
-### Task 2.1: Extend AttendedWeighingViewModel Fields
+### 任务 2.1：扩展 AttendedWeighingViewModel 字段
 **Priority**: High
 **Effort**: 1 hour
 **Dependencies**: Task 1.3
@@ -139,15 +139,15 @@ Add sound column device status management fields and properties to `AttendedWeig
   - `3` => "断电"
   - Other => "未知"
 
-**Files**:
+**文件**：
 - `MaterialClient/ViewModels/AttendedWeighingViewModel.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Status Bar UI Display
 
 ---
 
-### Task 2.2: Implement Polling Logic
+### 任务 2.2：实现轮询逻辑
 **Priority**: High
 **Effort**: 2 hours
 **Dependencies**: Task 2.1
@@ -167,16 +167,16 @@ Implement sound column device status polling logic in `AttendedWeighingViewModel
 - [x] Call `InitializeSoundDeviceStatusPolling()` in constructor
 - [x] Log errors at Error level in polling exception handler
 
-**Files**:
+**文件**：
 - `MaterialClient/ViewModels/AttendedWeighingViewModel.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Device Status Polling
 - Status Bar UI Display
 
 ---
 
-### Task 2.3: Implement Resource Disposal
+### 任务 2.3：实现资源释放
 **Priority**: High
 **Effort**: 30 minutes
 **Dependencies**: Task 2.2
@@ -190,15 +190,15 @@ Release polling subscriptions in `AttendedWeighingViewModel`'s `Dispose()` metho
 - [x] Ensure disposal order is correct (dispose subscriptions first, then Subjects)
 - [x] Ensure no exceptions thrown (use `?.` and `try-catch`)
 
-**Files**:
+**文件**：
 - `MaterialClient/ViewModels/AttendedWeighingViewModel.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Memory Leak Prevention
 
 ---
 
-### Task 2.4: Write Memory Leak Tests
+### 任务 2.4：编写内存泄漏测试
 **Priority**: Medium
 **Effort**: 2 hours
 **Dependencies**: Task 2.3
@@ -213,17 +213,17 @@ Write memory leak tests to verify polling subscriptions are properly released.
 - [ ] Use `dotMemory` or `Visual Studio Profiler` for verification
 - [ ] Tests pass
 
-**Files**:
+**文件**：
 - `MaterialClient.Common.Tests/ViewModels/AttendedWeighingViewModelMemoryLeakTests.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Memory Leak Prevention
 
 ---
 
-## Phase 3: UI Integration (Day 3)
+## 阶段 3：UI 集成（第 3 天）
 
-### Task 3.1: Modify AttendedWeighingWindow.axaml
+### 任务 3.1：修改 AttendedWeighingWindow.axaml
 **Priority**: High
 **Effort**: 1 hour
 **Dependencies**: Task 2.1
@@ -241,15 +241,15 @@ Add sound column device status indicator to `AttendedWeighingWindow` status bar.
 - [x] Add `ToolTip.Tip="音柱设备状态"`
 - [x] Style matches other device status indicators
 
-**Files**:
+**文件**：
 - `MaterialClient/Views/AttendedWeighing/AttendedWeighingWindow.axaml`
 
-**Related Requirements**:
+**相关需求**：
 - Status Bar UI Display
 
 ---
 
-### Task 3.2: Integration Testing
+### 任务 3.2：集成测试
 **Priority**: Medium
 **Effort**: 2 hours
 **Dependencies**: Task 3.1
@@ -267,16 +267,16 @@ Manual testing of end-to-end flow for sound column device status monitoring func
 - [ ] When device is disabled, status bar does not show sound column device status indicator
 - [ ] Other device status indicators work normally
 
-**Files**:
+**文件**：
 - Manual testing checklist
 
-**Related Requirements**:
+**相关需求**：
 - Device Status Polling
 - Status Bar UI Display
 
 ---
 
-### Task 3.3: Regression Testing
+### 任务 3.3：回归测试
 **Priority**: Medium
 **Effort**: 1 hour
 **Dependencies**: Task 3.2
@@ -292,17 +292,17 @@ Verify existing functionality is not affected.
 - [ ] Window loading performance shows no significant degradation
 - [ ] All existing unit tests pass
 
-**Files**:
+**文件**：
 - Regression testing checklist
 
-**Related Requirements**:
+**相关需求**：
 - All Requirements
 
 ---
 
-## Phase 4: Configuration and Documentation (Optional)
+## 阶段 4：配置与文档（可选）
 
-### Task 4.1: Add Configuration Items
+### 任务 4.1：添加配置项
 **Priority**: Low
 **Effort**: 30 minutes
 **Dependencies**: Task 2.2
@@ -318,16 +318,16 @@ Add polling configuration items to `appsettings.json`.
 - [ ] Read configuration items in code
 - [ ] Use minimum value when configuration item is below minimum (e.g., polling interval < 5 seconds, use 5 seconds)
 
-**Files**:
+**文件**：
 - `MaterialClient/appsettings.json`
 - `MaterialClient/ViewModels/AttendedWeighingViewModel.cs`
 
-**Related Requirements**:
+**相关需求**：
 - Polling Configuration
 
 ---
 
-### Task 4.2: Update Documentation
+### 任务 4.2：更新文档
 **Priority**: Low
 **Effort**: 1 hour
 **Dependencies**: All tasks
@@ -341,36 +341,36 @@ Update project documentation to record sound column device status monitoring fun
 - [ ] Add code comments (XML documentation)
 - [ ] Update README.md (if needed)
 
-**Files**:
+**文件**：
 - `openspec/specs/sound-device-status/spec.md`
 - `docs/SDD.md`
 - Related code files
 
-**Related Requirements**:
+**相关需求**：
 - All Requirements
 
 ---
 
-## Dependencies
+## 依赖
 
-### External Dependencies
+### 外部依赖
 - Sound column device remote API availability (`/api/devices/getDeviceBySN` endpoint)
 - Sound column device network connection stability
 
-### Internal Dependencies
+### 内部依赖
 - `ISettingsService` - Get sound column device configuration
 - `IHttpClientFactory` - Create HTTP client
 - `ISoundDeviceService` - Query device status
 - `ReactiveUI` - Rx polling logic
 
-### Technical Dependencies
+### 技术依赖
 - Refit 9.0.2 - HTTP client encapsulation
 - System.Reactive 7.0.0-preview.1 - Rx polling
 - System.Text.Json - JSON parsing
 
 ---
 
-## Risk Mitigation
+## 风险缓解
 
 ### Risk 1: API Format Does Not Match Expectations
 **Risk Level**: Medium
@@ -402,7 +402,7 @@ Update project documentation to record sound column device status monitoring fun
 
 ---
 
-## Timeline
+## 时间线
 
 **Total Effort**: 2-3 working days
 
@@ -420,9 +420,9 @@ Update project documentation to record sound column device status monitoring fun
 
 ---
 
-## Definition of Done
+## 完成定义
 
-**Task Completion Criteria**:
+**任务完成标准**：
 - [ ] All code reviews passed
 - [ ] All unit tests passed
 - [ ] All integration tests passed
@@ -431,7 +431,7 @@ Update project documentation to record sound column device status monitoring fun
 - [ ] Documentation updated
 - [ ] Code merged to main branch
 
-**Feature Completion Criteria**:
+**功能完成标准**：
 - [ ] Status bar displays sound column device status
 - [ ] Status updates automatically every 8 seconds
 - [ ] Colors and text correctly reflect device status

@@ -1,58 +1,58 @@
-## 1. Preparation Phase
+## 1. 准备阶段
 
-- [x] 1.1 Create comprehensive inventory of all files requiring translation (Markdown, C# files, project files)
-- [x] 1.2 Create translation glossary for common technical terms used in the project
-- [x] 1.3 Establish translation style guidelines for technical documentation
-- [x] 1.4 Define technical and professional terminology that should retain English notes (e.g., API, HTTP, REST, JSON, XML, etc.)
-- [x] 1.5 Set up validation rules to ensure OpenSpec documents remain in English
+- [x] 1.1 创建需翻译的所有文件的全面清单（Markdown、C# 文件、项目文件）
+- [x] 1.2 为项目中常用技术术语创建翻译词汇表
+- [x] 1.3 为技术文档建立翻译风格指南
+- [x] 1.4 定义应保留英文备注的技术与专业术语（如 API、HTTP、REST、JSON、XML 等）
+- [x] 1.5 设置验证规则，确保 OpenSpec 文档保持英文
 
-## 2. Documentation Translation Phase
+## 2. 文档翻译阶段
 
-- [x] 2.1 Translate `docs/SDD.md` (Software Design Document) to Chinese
-- [x] 2.2 Translate `docs/existing-docs-inventory.md` to Chinese
-- [x] 2.3 Translate all SDD-related Markdown files in `docs/` directory
-- [x] 2.4 Translate root-level Markdown files (excluding OpenSpec instruction files)
-- [x] 2.5 Review and validate all translated Markdown documents for accuracy
-- [x] 2.6 Ensure proper formatting and structure is maintained in translated documents
+- [x] 2.1 将 `docs/SDD.md`（软件设计文档）翻译为中文
+- [x] 2.2 将 `docs/existing-docs-inventory.md` 翻译为中文
+- [x] 2.3 翻译 `docs/` 目录下所有 SDD 相关 Markdown 文件
+- [x] 2.4 翻译根目录 Markdown 文件（排除 OpenSpec 指令文件）
+- [x] 2.5 审校并验证所有已译 Markdown 文档的准确性
+- [x] 2.6 确保翻译文档中格式与结构正确保留
 
-## 3. Code Comment Translation Phase
+## 3. 代码注释翻译阶段
 
-- [x] 3.1 Translate English code comments in MaterialClient project files (retain English for technical terms)
-- [x] 3.2 Translate English code comments in MaterialClient.Common project files (retain English for technical terms)
-- [x] 3.3 Translate English code comments in MaterialClient.Toolkit project files (retain English for technical terms)
-- [x] 3.4 Validate that translated comments maintain technical accuracy
-- [x] 3.5 Verify that technical and professional terminology retain English notes as defined in preparation phase
-- [x] 3.6 Review code comments in context of surrounding code
-- [x] 3.7 Verify that code functionality remains unchanged after comment translation
+- [x] 3.1 翻译 MaterialClient 项目中的英文代码注释（技术术语保留英文）
+- [x] 3.2 翻译 MaterialClient.Common 项目中的英文代码注释（技术术语保留英文）
+- [x] 3.3 翻译 MaterialClient.Toolkit 项目中的英文代码注释（技术术语保留英文）
+- [x] 3.4 验证翻译后的注释保持技术准确性
+- [x] 3.5 确认技术与专业术语按准备阶段定义保留英文备注
+- [x] 3.6 结合周边代码审校代码注释
+- [x] 3.7 验证注释翻译后代码功能未改变
 
-## 4. Project Metadata Update Phase
+## 4. 项目元数据更新阶段
 
-- [x] 4.1 Update description in `MaterialClient/MaterialClient.csproj` to Chinese
-- [x] 4.2 Update description in `MaterialClient.Common/MaterialClient.Common.csproj` to Chinese
-- [x] 4.3 Update description in `MaterialClient.Toolkit/MaterialClient.Toolkit.csproj` to Chinese
-- [x] 4.4 Verify all project metadata updates are correctly applied
+- [x] 4.1 将 `MaterialClient/MaterialClient.csproj` 中的描述更新为中文
+- [x] 4.2 将 `MaterialClient.Common/MaterialClient.Common.csproj` 中的描述更新为中文
+- [x] 4.3 将 `MaterialClient.Toolkit/MaterialClient.Toolkit.csproj` 中的描述更新为中文
+- [x] 4.4 验证所有项目元数据更新已正确应用
 
-## 5. Validation and Testing Phase
+## 5. 验证与测试阶段
 
-- [x] 5.1 Validate that all OpenSpec specification documents remain in English
-- [x] 5.2 Check that no OpenSpec files (spec.md, proposal.md, tasks.md, design.md) were translated
-- [x] 5.3 Verify translation consistency across all documents using established glossary
-- [x] 5.4 Test application functionality to ensure no behavioral changes
-- [x] 5.5 Review UI elements to confirm Chinese language support
-- [x] 5.6 Perform comprehensive review for any missed translations
+- [x] 5.1 验证所有 OpenSpec 规范文档保持英文
+- [x] 5.2 确认未翻译 OpenSpec 文件（spec.md、proposal.md、tasks.md、design.md）
+- [x] 5.3 使用已建立词汇表验证各文档翻译一致性
+- [x] 5.4 测试应用功能以确保无行为变更
+- [x] 5.5 审校 UI 元素以确认中文支持
+- [x] 5.6 全面审校是否有遗漏翻译
 
-## 6. Quality Assurance Phase
+## 6. 质量保证阶段
 
-- [x] 6.1 Review all translated content for technical accuracy
-- [x] 6.2 Verify terminology consistency with translation glossary
-- [x] 6.3 Validate that technical and professional terminology retain English notes as per preparation guidelines
-- [x] 6.4 Check for any remaining English content in critical files (except technical terms that should remain in English)
-- [x] 6.5 Validate that all translations maintain original meaning
-- [x] 6.6 Ensure code comments provide clear guidance to Chinese-speaking developers
+- [x] 6.1 审校所有翻译内容的技术准确性
+- [x] 6.2 对照翻译词汇表验证术语一致性
+- [x] 6.3 验证技术与专业术语按准备阶段指南保留英文备注
+- [x] 6.4 检查关键文件中是否仍有英文内容（应保留英文的技术术语除外）
+- [x] 6.5 验证所有翻译保持原意
+- [x] 6.6 确保代码注释为中文开发者提供清晰指导
 
-## 7. Documentation and Finalization
+## 7. 文档与收尾
 
-- [x] 7.1 Document translation approach and decisions made during the process
-- [x] 7.2 Update any project README files to reflect language changes
-- [x] 7.3 Create summary report of all files translated
-- [x] 7.4 Verify project build and deployment process works correctly with updated files
+- [x] 7.1 记录翻译方式及过程中的决策
+- [x] 7.2 更新项目 README 以反映语言变更
+- [x] 7.3 编写已翻译文件的总结报告
+- [x] 7.4 验证项目构建与部署流程在更新后仍正常

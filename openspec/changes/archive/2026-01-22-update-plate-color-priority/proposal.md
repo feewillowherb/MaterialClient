@@ -1,43 +1,43 @@
-# Change: Update Plate Color Filtering to Priority-Based Matching
+# 变更：将车牌颜色过滤改为基于优先级的匹配
 
-## Why
+## 背景与动机
 
-The current plate color filtering implementation immediately rejects plates with certain colors (configured in `_filteredPlateColors`), preventing them from being used entirely. However, in practice, these filtered plates should still be usable as a "fallback" when no higher-priority plates are available. This causes legitimate weighing operations to fail when only filtered-color plates are detected.
+当前车牌颜色过滤实现会直接拒绝某些颜色（由 `_filteredPlateColors` 配置）的车牌，导致这些车牌完全无法使用。实践中，这些被过滤的车牌应在没有更高优先级车牌时作为「回退」使用。当仅能识别到被过滤颜色车牌时，会导致合理的称重流程失败。
 
-## What Changes
+## 变更内容
 
-- Change plate color filtering from **rejection-based** (immediate discard) to **priority-based** (lowest priority)
-- **Rename variables** to better reflect priority-based semantics:
+- 将车牌颜色处理从**基于拒绝**（立即丢弃）改为**基于优先级**（最低优先级）
+- **变量重命名**以更好体现优先级语义：
   - `_filteredPlateColors` → `_lowPriorityPlateColors`
-  - Configuration key `FilteredPlateColors` → `LowPriorityPlateColors`
-- Add color information to `PlateNumberCacheRecord` to track the color of each cached plate
-- Modify `GetMostFrequentPlateNumber()` logic to implement priority-based selection:
-  - Plates NOT in `_lowPriorityPlateColors` are **high-priority**
-  - Plates in `_lowPriorityPlateColors` are **low-priority** (can only be selected when cache contains no high-priority plates)
-  - Low-priority plates cannot override existing high-priority plates
-- Update `OnPlateNumberRecognized()` to store color information alongside plate numbers
+  - 配置键 `FilteredPlateColors` → `LowPriorityPlateColors`
+- 在 `PlateNumberCacheRecord` 中增加颜色信息，记录每条缓存车牌的颜色
+- 修改 `GetMostFrequentPlateNumber()` 实现基于优先级的选择：
+  - 不在 `_lowPriorityPlateColors` 中的车牌为**高优先级**
+  - 在 `_lowPriorityPlateColors` 中的为**低优先级**（仅当缓存中无高优先级车牌时才可被选中）
+  - 低优先级车牌不能覆盖已有高优先级车牌
+- 更新 `OnPlateNumberRecognized()`，在写入缓存时同时保存颜色信息
 
-## Code Flow Changes
+## 代码流程变更
 
 ```mermaid
 flowchart TD
-    A[OnPlateNumberRecognized called] --> B{Plate color provided?}
-    B -->|Yes| C{Color in _lowPriorityPlateColors?}
-    B -->|No| D[Store with null color]
-    C -->|Yes| E[Store with low-priority flag]
-    C -->|No| F[Store with high-priority flag]
+    A[调用 OnPlateNumberRecognized] --> B{提供车牌颜色?}
+    B -->|是| C{颜色在 _lowPriorityPlateColors?}
+    B -->|否| D[以 null 颜色存储]
+    C -->|是| E[以低优先级标志存储]
+    C -->|否| F[以高优先级标志存储]
     
-    D --> G[Add/update cache with color info]
+    D --> G[带颜色信息添加/更新缓存]
     E --> G
     F --> G
     
     G --> H[GetMostFrequentPlateNumber]
     
-    H --> I{Cache has high-priority plates?}
-    I -->|Yes| J[Return most frequent high-priority plate]
-    I -->|No| K[Return most frequent low-priority plate]
+    H --> I{缓存中有高优先级车牌?}
+    I -->|是| J[返回最频高优先级车牌]
+    I -->|否| K[返回最频低优先级车牌]
     
-    J --> L[Send PlateNumberChangedMessage]
+    J --> L[发送 PlateNumberChangedMessage]
     K --> L
     
     style E fill:#ffcccc
@@ -46,22 +46,22 @@ flowchart TD
     style K fill:#ffcccc
 ```
 
-**Priority Selection Logic:**
-1. **High-Priority Plates** (green path): Plates whose color is NOT in `_lowPriorityPlateColors`
-2. **Low-Priority Plates** (red path): Plates whose color IS in `_lowPriorityPlateColors`
-3. Selection algorithm:
-   - If cache contains any high-priority plates → select most frequent high-priority plate
-   - If cache contains ONLY low-priority plates → select most frequent low-priority plate
-   - Low-priority plates cannot "replace" high-priority plates once cached
+**优先级选择逻辑**：
+1. **高优先级车牌**（绿色路径）：颜色不在 `_lowPriorityPlateColors` 中的车牌
+2. **低优先级车牌**（红色路径）：颜色在 `_lowPriorityPlateColors` 中的车牌
+3. 选择规则：
+   - 若缓存中存在任意高优先级车牌 → 选其中最频者
+   - 若缓存中仅有低优先级车牌 → 选其中最频者
+   - 低优先级车牌一旦高优先级已缓存则不能「替换」高优先级
 
-## Impact
+## 影响
 
-- **Affected specs**: `attended-weighing`
-- **Affected code**: 
-  - `MaterialClient.Common/Services/AttendedWeighingService.cs` (lines 29-40, 164, 198-212, 396-447, 452-461)
-  - `PlateNumberCacheRecord` structure (add `ColorType` property)
-  - `MaterialClient.Common/Configuration/PlateColorFilterConfig.cs` (rename property)
-  - Configuration files using `FilteredPlateColors` key (appsettings.json)
-- **Breaking changes**: **BREAKING** - Configuration key renamed from `FilteredPlateColors` to `LowPriorityPlateColors`
-- **Migration required**: Update configuration files to use new key name
-- **Tests to update**: Plate number caching tests in `AttendedWeighingServiceTests.cs`
+- **涉及规范**：`attended-weighing`
+- **涉及代码**：
+  - `MaterialClient.Common/Services/AttendedWeighingService.cs`（约第 29–40、164、198–212、396–447、452–461 行）
+  - `PlateNumberCacheRecord` 结构（增加 `ColorType` 属性）
+  - `MaterialClient.Common/Configuration/PlateColorFilterConfig.cs`（属性重命名）
+  - 使用 `FilteredPlateColors` 键的配置文件（appsettings.json）
+- **破坏性变更**：**是**——配置键由 `FilteredPlateColors` 重命名为 `LowPriorityPlateColors`
+- **迁移要求**：更新配置文件以使用新键名
+- **需更新测试**：`AttendedWeighingServiceTests.cs` 中的车牌缓存相关测试

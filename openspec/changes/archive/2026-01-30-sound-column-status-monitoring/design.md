@@ -1,12 +1,12 @@
-# Design: Add Sound Column Device Status Monitoring to Status Bar
+# 设计：在状态栏增加音柱设备状态监控
 
-## Overview
+## 概览
 
-This document details the technical design for the sound column device status monitoring feature, including architecture design, interface definitions, data flow, and implementation details.
+本文说明音柱设备状态监控功能的技术设计，包括架构设计、接口定义、数据流与实现要点。
 
-## Architecture Design
+## 架构设计
 
-### System Architecture Diagram
+### 系统架构图
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -73,20 +73,20 @@ This document details the technical design for the sound column device status mo
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Component Responsibilities
+### 组件职责
 
-#### UI Layer (AttendedWeighingWindow / ViewModel)
-- **Responsibilities**: Display device status, manage user interactions
-- **Dependencies**: `AttendedWeighingViewModel`
-- **Implementation**:
+#### UI 层（AttendedWeighingWindow / ViewModel）
+- **职责**：展示设备状态、管理用户交互
+- **依赖**：`AttendedWeighingViewModel`
+- **实现**：
   - XAML bindings to device status properties
   - Use data triggers to switch colors and text based on status code
   - Hide status indicator when device is disabled
 
-#### ViewModel Layer (AttendedWeighingViewModel)
-- **Responsibilities**: State management, polling scheduling, exception handling
-- **Dependencies**: `ISoundDeviceService`, `ISettingsService`
-- **Implementation**:
+#### ViewModel 层（AttendedWeighingViewModel）
+- **职责**：状态管理、轮询调度、异常处理
+- **依赖**：`ISoundDeviceService`、`ISettingsService`
+- **实现**：
   - `BehaviorSubject<int>` for device status code management
   - `Observable.Interval()` to create periodic polling
   - `SelectMany` to flatten async API calls
@@ -94,30 +94,30 @@ This document details the technical design for the sound column device status mo
   - `ObserveOn(RxApp.MainThreadScheduler)` to ensure UI thread updates
   - `Dispose()` to release subscriptions, prevent memory leaks
 
-#### Service Layer (SoundDeviceService)
-- **Responsibilities**: Business logic, API calls, data transformation
-- **Dependencies**: `ISoundDeviceApi`, `ISettingsService`, `ILogger`
-- **Implementation**:
+#### 服务层（SoundDeviceService）
+- **职责**：业务逻辑、API 调用、数据转换
+- **依赖**：`ISoundDeviceApi`、`ISettingsService`、`ILogger`
+- **实现**：
   - Retrieve device serial number from `ISettingsService`
   - Call `ISoundDeviceApi.GetDeviceStatusAsync()`
   - Parse response DTO, determine if device is online
   - Exception handling and logging
 
-#### API Layer (ISoundDeviceApi)
-- **Responsibilities**: Encapsulate HTTP client calls
-- **Dependencies**: Refit
-- **Implementation**:
+#### API 层（ISoundDeviceApi）
+- **职责**：封装 HTTP 客户端调用
+- **依赖**：Refit
+- **实现**：
   - Refit interface definition
   - Request parameter serialization
   - Response deserialization to DTO
 
-#### Data Layer (DTOs)
-- **Responsibilities**: Data transfer object definitions
-- **Implementation**:
+#### 数据层（DTOs）
+- **职责**：数据传输对象定义
+- **实现**：
   - `SoundDeviceStatusDto` - Device status response
   - `DeviceTaskInfo` - Task information (optional)
 
-## Interface Definitions
+## 接口定义
 
 ### ISoundDeviceService Extension
 

@@ -1,90 +1,90 @@
-## 1. Implementation
+## 1. 实现
 
-### 1.1 Create WindowsAutoStartService
+### 1.1 创建 WindowsAutoStartService
 
-- [x] Create `MaterialClient.Common/Services/WindowsAutoStartService.cs`
-- [x] Define interface `IWindowsAutoStartService` with methods:
+- [x] 创建 `MaterialClient.Common/Services/WindowsAutoStartService.cs`
+- [x] 定义接口 `IWindowsAutoStartService`，包含方法：
   - `Task EnableAutoStartAsync()`
   - `Task DisableAutoStartAsync()`
   - `Task<bool> IsAutoStartEnabledAsync()`
-- [x] Implement registry operations using `Microsoft.Win32.Registry`
-- [x] Registry path: `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
-- [x] Registry value name: Application executable name
-- [x] Registry value data: Full path to executable
-- [x] Add error handling for registry permission errors
-- [x] Add logging for registry operations
-- [x] Register service in DI container (via `ITransientDependency` - ABP auto-registration)
+- [x] 使用 `Microsoft.Win32.Registry` 实现注册表操作
+- [x] 注册表路径：`HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
+- [x] 注册表值名称：应用程序可执行文件名
+- [x] 注册表值数据：可执行文件完整路径
+- [x] 为注册表权限错误添加错误处理
+- [x] 为注册表操作添加日志
+- [x] 在 DI 容器中注册服务（通过 `ITransientDependency` - ABP 自动注册）
 
-### 1.2 Integrate with SettingsService
+### 1.2 与 SettingsService 集成
 
-- [x] Modify `SettingsService.SaveSettingsAsync()`:
-  - After saving settings to database, check `SystemSettings.EnableAutoStart`
-  - If `true`, call `IWindowsAutoStartService.EnableAutoStartAsync()`
-  - If `false`, call `IWindowsAutoStartService.DisableAutoStartAsync()`
-- [x] Handle exceptions gracefully (log warning, don't fail save operation)
-- [ ] Add unit tests for integration
+- [x] 修改 `SettingsService.SaveSettingsAsync()`：
+  - 保存设置到数据库后，检查 `SystemSettings.EnableAutoStart`
+  - 若为 `true`，调用 `IWindowsAutoStartService.EnableAutoStartAsync()`
+  - 若为 `false`，调用 `IWindowsAutoStartService.DisableAutoStartAsync()`
+- [x] 妥善处理异常（记录警告，不使保存失败）
+- [ ] 为集成添加单元测试
 
-### 1.3 Add Startup Synchronization
+### 1.3 增加启动时同步
 
-- [x] Create method `SyncAutoStartOnStartupAsync()` in `StartupService` or `App.axaml.cs`
-- [x] On application startup (after ABP initialization):
-  - Load settings from database via `ISettingsService.GetSettingsAsync()`
-  - Check registry state via `IWindowsAutoStartService.IsAutoStartEnabledAsync()`
-  - Compare database setting with registry state
-  - If inconsistent, repair by applying database setting to registry
-- [x] Log inconsistencies for troubleshooting
-- [x] Do not block application startup if sync fails
+- [x] 在 `StartupService` 或 `App.axaml.cs` 中创建方法 `SyncAutoStartOnStartupAsync()`
+- [x] 在应用启动时（ABP 初始化之后）：
+  - 通过 `ISettingsService.GetSettingsAsync()` 从数据库加载设置
+  - 通过 `IWindowsAutoStartService.IsAutoStartEnabledAsync()` 检查注册表状态
+  - 比较数据库设置与注册表状态
+  - 若不一致，按数据库设置写回注册表进行修复
+- [x] 记录不一致日志便于排查
+- [x] 同步失败不阻断应用启动
 
-### 1.4 Update SettingsWindowViewModel (Optional Enhancement)
+### 1.4 更新 SettingsWindowViewModel（可选增强）
 
-- [ ] In `LoadSettingsAsync()`, optionally verify registry state matches database
-- [ ] If mismatch detected, log warning (but don't auto-repair here - let startup sync handle it)
-- [ ] This ensures UI shows correct state
-- **Note**: Skipped for now - startup sync provides sufficient consistency. Can be added later if needed.
+- [ ] 在 `LoadSettingsAsync()` 中可选地校验注册表状态与数据库是否一致
+- [ ] 若发现不一致，记录警告（不在此处自动修复，由启动时同步负责）
+- [ ] 保证界面显示的状态正确
+- **说明**：当前跳过——启动时同步已能保证一致性，需要时可后续补充。
 
-## 2. Testing
+## 2. 测试
 
-### 2.1 Unit Tests
+### 2.1 单元测试
 
-- [ ] Create `WindowsAutoStartServiceTests.cs`
-- [ ] Mock `RegistryKey` for testing
-- [ ] Test `EnableAutoStartAsync()` - verifies registry write
-- [ ] Test `DisableAutoStartAsync()` - verifies registry deletion
-- [ ] Test `IsAutoStartEnabledAsync()` - verifies registry read
-- [ ] Test error handling (permission denied, registry unavailable)
-- [ ] Test with different executable paths
+- [ ] 创建 `WindowsAutoStartServiceTests.cs`
+- [ ] 对测试中的 `RegistryKey` 进行 Mock
+- [ ] 测试 `EnableAutoStartAsync()` —— 验证注册表写入
+- [ ] 测试 `DisableAutoStartAsync()` —— 验证注册表删除
+- [ ] 测试 `IsAutoStartEnabledAsync()` —— 验证注册表读取
+- [ ] 测试错误处理（权限拒绝、注册表不可用）
+- [ ] 使用不同可执行路径进行测试
 
-### 2.2 Integration Tests
+### 2.2 集成测试
 
-- [ ] Create integration test for full flow:
-  - Save settings with `EnableAutoStart = true`
-  - Verify registry entry created
-  - Save settings with `EnableAutoStart = false`
-  - Verify registry entry removed
-- [ ] Test startup synchronization:
-  - Set database to enabled, registry disabled
-  - Start application
-  - Verify registry entry created
-- [ ] Test on actual Windows system (not just mocked)
+- [ ] 编写完整流程的集成测试：
+  - 保存 `EnableAutoStart = true` 的设置
+  - 验证注册表项被创建
+  - 保存 `EnableAutoStart = false` 的设置
+  - 验证注册表项被删除
+- [ ] 测试启动时同步：
+  - 数据库设为启用，注册表设为禁用
+  - 启动应用
+  - 验证注册表项被创建
+- [ ] 在真实 Windows 环境测试（非仅 Mock）
 
-### 2.3 Manual Testing
+### 2.3 手工测试
 
-- [ ] Enable auto-start in settings, verify registry entry
-- [ ] Disable auto-start in settings, verify registry entry removed
-- [ ] Manually delete registry entry, restart app, verify repair
-- [ ] Test with insufficient registry permissions (if possible)
-- [ ] Verify application actually starts on Windows boot
+- [ ] 在设置中启用开机自启，验证注册表项
+- [ ] 在设置中禁用开机自启，验证注册表项被删除
+- [ ] 手动删除注册表项后重启应用，验证被修复
+- [ ] 若可行，在注册表权限不足环境下测试
+- [ ] 验证 Windows 开机后应用确实会启动
 
-## 3. Documentation
+## 3. 文档
 
-- [ ] Update `openspec/docs/system-configuration.md` with auto-start details
-- [ ] Add code comments explaining registry operations
-- [ ] Document error handling strategy
-- [ ] Add troubleshooting guide for registry permission issues
+- [ ] 在 `openspec/docs/system-configuration.md` 中补充开机自启说明
+- [ ] 添加说明注册表操作的代码注释
+- [ ] 记录错误处理策略
+- [ ] 编写注册表权限问题的排查指南
 
-## 4. Validation
+## 4. 验证
 
-- [ ] Run `openspec validate implement-windows-auto-start --strict`
-- [ ] Ensure all tests pass
-- [ ] Verify no breaking changes
-- [ ] Check code coverage for new service
+- [ ] 执行 `openspec validate implement-windows-auto-start --strict`
+- [ ] 确保所有测试通过
+- [ ] 确认无破坏性变更
+- [ ] 检查新服务的代码覆盖率

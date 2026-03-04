@@ -1,194 +1,194 @@
-# sound-device-status Capability Specification
+# sound-device-status 能力规范
 
-## Purpose
+## 目的
 
-Provide sound column device online status monitoring functionality, displaying real-time working status of sound column devices (online/offline/in-task/power-off) in the status bar of the attended weighing window, improving system observability and operational efficiency.
+提供音柱设备在线状态监控能力，在有人值守称重窗口的状态栏中展示音柱设备的实时工作状态（在线/离线/任务中/断电），提升系统可观测性与运维效率。
 
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Device Status Polling
+### 需求：设备状态轮询
 
 The system SHALL periodically poll sound column device online status and update status bar display.
 
-#### Scenario: Normal polling status update
-- **GIVEN** Sound column device is enabled and configuration is valid
-- **AND** System has started and entered attended weighing window
-- **THEN** System SHALL start periodic timer with interval of 8 seconds (configurable)
-- **AND** Every 8 seconds, call `ISoundDeviceService.IsOnlineAsync()` to query device status
-- **AND** Update status bar display based on response status code
+#### 场景：正常轮询状态更新
+- **给定** Sound column device is enabled and configuration is valid
+- **且** System has started and entered attended weighing window
+- **则**系统应： start periodic timer with interval of 8 seconds (configurable)
+- **且** Every 8 seconds, call `ISoundDeviceService.IsOnlineAsync()` to query device status
+- **且** Update status bar display based on response status code
 
 #### Scenario: Do not start polling when device is disabled
-- **GIVEN** Sound column device is not enabled (`SoundDeviceSettings.Enabled = false`)
-- **WHEN** System starts attended weighing window
-- **THEN** System SHALL NOT start timer
-- **AND** Status bar does not show sound column device status indicator
+- **给定** Sound column device is not enabled (`SoundDeviceSettings.Enabled = false`)
+- **当** System starts attended weighing window
+- **则**系统应： NOT start timer
+- **且** Status bar does not show sound column device status indicator
 
 #### Scenario: Return offline status when configuration is invalid
-- **GIVEN** Sound column device is enabled but configuration is invalid (missing `SoundSN`, `SoundIP`, or `LocalIP`)
-- **WHEN** Timer calls `IsOnlineAsync()`
-- **THEN** System SHALL return `false` (offline)
-- **AND** Log warning
-- **AND** Status bar displays "Offline" status
+- **给定** Sound column device is enabled but configuration is invalid (missing `SoundSN`, `SoundIP`, or `LocalIP`)
+- **当** Timer calls `IsOnlineAsync()`
+- **则**系统应： return `false` (offline)
+- **且** Log warning
+- **且** Status bar displays "Offline" status
 
 #### Scenario: Retry and show offline when network exception occurs
-- **GIVEN** Sound column device network connection is interrupted
-- **WHEN** Timer calls `IsOnlineAsync()`
-- **THEN** System SHALL catch `HttpRequestException` or `TaskCanceledException`
-- **AND** Return `false` (offline)
-- **AND** Log error
-- **AND** Use Rx `Retry()` to retry up to 3 times
-- **AND** Status bar displays "Offline" status
+- **给定** Sound column device network connection is interrupted
+- **当** Timer calls `IsOnlineAsync()`
+- **则**系统应： catch `HttpRequestException` or `TaskCanceledException`
+- **且** Return `false` (offline)
+- **且** Log error
+- **且** Use Rx `Retry()` to retry up to 3 times
+- **且** Status bar displays "Offline" status
 
 #### Scenario: Stop polling when window is closed
-- **GIVEN** Timer is running
-- **WHEN** User closes attended weighing window
-- **THEN** System SHALL release polling subscription (`Dispose()`)
-- **AND** Stop all timers
-- **AND** Release `BehaviorSubject` resources
-- **AND** No memory leaks occur
+- **给定** Timer is running
+- **当** User closes attended weighing window
+- **则**系统应： release polling subscription (`Dispose()`)
+- **且** Stop all timers
+- **且** Release `BehaviorSubject` resources
+- **且** No memory leaks occur
 
-### Requirement: Device Status API Integration
+### 需求：设备状态 API 集成
 
 The system SHALL query sound column device status through remote API and map response to device online status.
 
 #### Scenario: Call remote API to query device status
-- **GIVEN** Sound column device serial number is `"020021EA63AC"`
-- **AND** Device IP address is `"192.168.1.100"`
-- **WHEN** `SoundDeviceService.IsOnlineAsync()` is called
-- **THEN** System SHALL build device serial number format as `"ls20://020021EA63AC"`
-- **AND** Create HTTP client, BaseURL is `"http://192.168.1.100:8888"`
-- **AND** Call `GET /api/devices/getDeviceBySN?type=req&app=ls20&sn=ls20://020021EA63AC`
-- **AND** Set timeout to 5 seconds
+- **给定** Sound column device serial number is `"020021EA63AC"`
+- **且** Device IP address is `"192.168.1.100"`
+- **当** `SoundDeviceService.IsOnlineAsync()` is called
+- **则**系统应： build device serial number format as `"ls20://020021EA63AC"`
+- **且** Create HTTP client, BaseURL is `"http://192.168.1.100:8888"`
+- **且** Call `GET /api/devices/getDeviceBySN?type=req&app=ls20&sn=ls20://020021EA63AC`
+- **且** Set timeout to 5 seconds
 
 #### Scenario: Parse online status response
-- **GIVEN** Remote API returns response: `{ "status": 1, "tasks": [] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status == 1 || status == 2` as online
-- **AND** Return `true`
+- **给定** Remote API returns response: `{ "status": 1, "tasks": [] }`
+- **当** `IsOnlineAsync()` receives response
+- **则**系统应： parse JSON to `SoundDeviceStatusDto`
+- **且** Determine `status == 1 || status == 2` as online
+- **且** Return `true`
 
 #### Scenario: Parse offline status response
-- **GIVEN** Remote API returns response: `{ "status": 0, "tasks": [] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status != 1 && status != 2` as offline
-- **AND** Return `false`
+- **给定** Remote API returns response: `{ "status": 0, "tasks": [] }`
+- **当** `IsOnlineAsync()` receives response
+- **则**系统应： parse JSON to `SoundDeviceStatusDto`
+- **且** Determine `status != 1 && status != 2` as offline
+- **且** Return `false`
 
 #### Scenario: Parse in-task status response
-- **GIVEN** Remote API returns response: `{ "status": 2, "tasks": [...] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status == 2` as online (in-task still considered online)
-- **AND** Return `true`
-- **AND** Log debug: "Device is busy with tasks"
+- **给定** Remote API returns response: `{ "status": 2, "tasks": [...] }`
+- **当** `IsOnlineAsync()` receives response
+- **则**系统应： parse JSON to `SoundDeviceStatusDto`
+- **且** Determine `status == 2` as online (in-task still considered online)
+- **且** Return `true`
+- **且** Log debug: "Device is busy with tasks"
 
 #### Scenario: Parse power-off status response
-- **GIVEN** Remote API returns response: `{ "status": 3, "tasks": [] }`
-- **WHEN** `IsOnlineAsync()` receives response
-- **THEN** System SHALL parse JSON to `SoundDeviceStatusDto`
-- **AND** Determine `status == 3` as offline (power-off considered offline)
-- **AND** Return `false`
-- **AND** Log warning: "Device is powered off"
+- **给定** Remote API returns response: `{ "status": 3, "tasks": [] }`
+- **当** `IsOnlineAsync()` receives response
+- **则**系统应： parse JSON to `SoundDeviceStatusDto`
+- **且** Determine `status == 3` as offline (power-off considered offline)
+- **且** Return `false`
+- **且** Log warning: "Device is powered off"
 
-### Requirement: Status Bar UI Display
+### 需求：状态栏 UI 显示
 
 The system SHALL display sound column device status indicator in the attended weighing window status bar, using colors and text to identify device status.
 
 #### Scenario: Display online status
-- **GIVEN** Sound column device is online (status code 1)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display green dot (`#10B981`)
-- **AND** Display text "Sound"
-- **AND** Display status text "Online" (green font)
+- **给定** Sound column device is online (status code 1)
+- **当** Status bar renders device status indicator
+- **则**系统应： display green dot (`#10B981`)
+- **且** Display text "Sound"
+- **且** Display status text "Online" (green font)
 
 #### Scenario: Display offline status
-- **GIVEN** Sound column device is offline (status code 0)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display gray dot (`#9CA3AF`)
-- **AND** Display text "Sound"
-- **AND** Display status text "Offline" (gray font)
+- **给定** Sound column device is offline (status code 0)
+- **当** Status bar renders device status indicator
+- **则**系统应： display gray dot (`#9CA3AF`)
+- **且** Display text "Sound"
+- **且** Display status text "Offline" (gray font)
 
 #### Scenario: Display in-task status
-- **GIVEN** Sound column device is in-task (status code 2)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display yellow dot (`#F59E0B`)
-- **AND** Display text "Sound"
-- **AND** Display status text "In Task" (yellow font)
+- **给定** Sound column device is in-task (status code 2)
+- **当** Status bar renders device status indicator
+- **则**系统应： display yellow dot (`#F59E0B`)
+- **且** Display text "Sound"
+- **且** Display status text "In Task" (yellow font)
 
 #### Scenario: Display power-off status
-- **GIVEN** Sound column device is powered off (status code 3)
-- **WHEN** Status bar renders device status indicator
-- **THEN** System SHALL display red dot (`#EF4444`)
-- **AND** Display text "Sound"
-- **AND** Display status text "Power Off" (red font)
+- **给定** Sound column device is powered off (status code 3)
+- **当** Status bar renders device status indicator
+- **则**系统应： display red dot (`#EF4444`)
+- **且** Display text "Sound"
+- **且** Display status text "Power Off" (red font)
 
 #### Scenario: Hide status indicator when device is disabled
-- **GIVEN** Sound column device is not enabled
-- **WHEN** Status bar renders
-- **THEN** System SHALL NOT display sound column device status indicator
-- **AND** Other device status indicators display normally
+- **给定** Sound column device is not enabled
+- **当** Status bar renders
+- **则**系统应： NOT display sound column device status indicator
+- **且** Other device status indicators display normally
 
 #### Scenario: Automatically refresh UI when status updates
-- **GIVEN** Status bar currently displays sound column device "Offline" status
-- **WHEN** Timer receives new device status (online)
-- **THEN** System SHALL update UI on main thread
-- **AND** Change dot color from gray to green
-- **AND** Change status text from "Offline" to "Online"
-- **AND** Trigger `RaisePropertyChanged` notification
+- **给定** Status bar currently displays sound column device "Offline" status
+- **当** Timer receives new device status (online)
+- **则**系统应： update UI on main thread
+- **且** Change dot color from gray to green
+- **且** Change status text from "Offline" to "Online"
+- **且** Trigger `RaisePropertyChanged` notification
 
-### Requirement: Memory Leak Prevention
+### 需求：内存泄漏预防
 
 The system SHALL properly manage Rx subscription lifecycle to prevent memory leaks.
 
 #### Scenario: Polling subscription properly released
-- **GIVEN** `AttendedWeighingViewModel` created and polling subscription started
-- **WHEN** `ViewModel.Dispose()` is called
-- **THEN** System SHALL call `_statusPollingDisposable.Dispose()`
-- **AND** Call `_soundDeviceStatus.Dispose()`
-- **AND** All timers stop running
-- **AND** No event handler leaks
+- **给定** `AttendedWeighingViewModel` created and polling subscription started
+- **当** `ViewModel.Dispose()` is called
+- **则**系统应： call `_statusPollingDisposable.Dispose()`
+- **且** Call `_soundDeviceStatus.Dispose()`
+- **且** All timers stop running
+- **且** No event handler leaks
 
 #### Scenario: No memory leaks after multiple open/close cycles
-- **GIVEN** User opens attended weighing window
-- **AND** Wait 80 seconds (simulate 10 polling cycles)
-- **WHEN** User closes window
-- **THEN** System SHALL release all resources
-- **AND** Repeat above operation 100 times
-- **AND** Memory usage shows no significant growth (< 50MB)
-- **AND** Verified using `dotMemory` or `Visual Studio Profiler`
+- **给定** User opens attended weighing window
+- **且** Wait 80 seconds (simulate 10 polling cycles)
+- **当** User closes window
+- **则**系统应： release all resources
+- **且** Repeat above operation 100 times
+- **且** Memory usage shows no significant growth (< 50MB)
+- **且** Verified using `dotMemory` or `Visual Studio Profiler`
 
 #### Scenario: Subscription still releasable when exception occurs
-- **GIVEN** Timer is running and uncaught exception occurs
-- **WHEN** Exception is caught by Rx `Catch` operator
-- **THEN** System SHALL log error
-- **AND** Subscription remains active (not terminated by single exception)
-- **AND** `Dispose()` method can properly release subscription
+- **给定** Timer is running and uncaught exception occurs
+- **当** Exception is caught by Rx `Catch` operator
+- **则**系统应： log error
+- **且** Subscription remains active (not terminated by single exception)
+- **且** `Dispose()` method can properly release subscription
 
-### Requirement: Polling Configuration
+### 需求：轮询配置
 
 The system SHALL support adjusting polling parameters through configuration file.
 
 #### Scenario: Use default polling interval
-- **GIVEN** `appsettings.json` does not configure polling interval
-- **WHEN** System starts timer
-- **THEN** System SHALL use default value 8 seconds
+- **给定** `appsettings.json` does not configure polling interval
+- **当** System starts timer
+- **则**系统应： use default value 8 seconds
 
 #### Scenario: Use custom polling interval
-- **GIVEN** `appsettings.json` configures `"SoundDevice:StatusPollingIntervalSeconds": 10`
-- **WHEN** System starts timer
-- **THEN** System SHALL use configured value 10 seconds
+- **给定** `appsettings.json` configures `"SoundDevice:StatusPollingIntervalSeconds": 10`
+- **当** System starts timer
+- **则**系统应： use configured value 10 seconds
 
 #### Scenario: Use minimum value when polling interval is less than minimum
-- **GIVEN** `appsettings.json` configures `"SoundDevice:StatusPollingIntervalSeconds": 2`
-- **AND** Minimum allowed value is 5 seconds
-- **WHEN** System starts timer
-- **THEN** System SHALL use minimum value 5 seconds
-- **AND** Log warning: "Polling interval too low, using minimum value"
+- **给定** `appsettings.json` configures `"SoundDevice:StatusPollingIntervalSeconds": 2`
+- **且** Minimum allowed value is 5 seconds
+- **当** System starts timer
+- **则**系统应： use minimum value 5 seconds
+- **且** Log warning: "Polling interval too low, using minimum value"
 
-## MODIFIED Requirements
+## 修改的需求
 
 *This change does not involve modifying existing requirements, only adding sound column device status monitoring functionality.*
 
-## REMOVED Requirements
+## 已移除需求
 
 *This change does not involve deleting existing requirements.*

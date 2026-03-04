@@ -1,40 +1,40 @@
-# Implementation Tasks: <Capability Name>
+# 实现任务：<能力名称>
 
-**Capability**: <Capability Name>
-**Status**: Pending
-**Total Tasks**: X
-
----
-
-## Task Overview
-
-<Summary of implementation approach>
+**能力**：<能力名称>  
+**状态**：待处理  
+**任务总数**：X
 
 ---
 
-## Phase 1: <Phase Name>
+## 任务概述
 
-### Task 1.1: <Task Title>
-
-**Status**: Pending
-**Priority**: High/Medium/Low
-**Estimated**: X hours
-
-**Description**:
-<Task description>
-
-**Steps**:
-1. <Step 1>
-2. <Step 2>
-
-**Validation**:
-- [ ] <Validation criterion>
-
-**Output**: <Deliverable>
+<实现方式摘要>
 
 ---
 
-## Progress Tracking
+## 阶段 1：<阶段名称>
 
-**Phase 1 Progress**: 0/X tasks completed
-**Overall Progress**: 0/X tasks (0%)
+### 任务 1.1：<任务标题>
+
+**状态**：待处理  
+**优先级**：高/中/低  
+**预估**：X 小时
+
+**描述**：
+<任务描述>
+
+**步骤**：
+1. <步骤 1>
+2. <步骤 2>
+
+**验证**：
+- [ ] <验证标准>
+
+**产出**：<交付物>
+
+---
+
+## 进度跟踪
+
+**阶段 1 进度**：0/X 任务已完成  
+**总体进度**：0/X 任务（0%）

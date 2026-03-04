@@ -1,29 +1,30 @@
-## ADDED Requirements
+## ADDED 需求
 
-### Requirement: Integration Test Standards
-Integration tests SHALL follow standard patterns for maintainability and consistency.
+### 需求：集成测试标准
 
-#### Scenario: Table-based input setup
-- **GIVEN** integration test requires entity setup
-- **WHEN** test data is provided
-- **THEN** input data SHALL use table format with DTOs
-- **AND** individual parameter-based steps SHALL be avoided when table format is applicable
+集成测试应遵循标准模式以保证可维护性与一致性。
 
-#### Scenario: Table-based verification
-- **GIVEN** integration test requires result verification
-- **WHEN** test results are verified
-- **THEN** verification SHALL use table format with DTOs
-- **AND** individual property assertions SHALL be avoided when table format is applicable
+#### 场景：基于表的输入准备
+- **给定** 集成测试需要实体准备
+- **当** 提供测试数据
+- **则** 输入数据应使用带 DTO 的表格式
+- **且** 在表格式适用时应避免基于单参数的步骤
 
-#### Scenario: Entity property access
-- **GIVEN** integration test requires setting entity properties
-- **WHEN** entity properties are set
-- **THEN** properties SHALL be accessed directly through entity properties
-- **AND** EF Core `Property()` method SHALL NOT be used to manipulate entity properties
+#### 场景：基于表的验证
+- **给定** 集成测试需要结果验证
+- **当** 验证测试结果
+- **则** 验证应使用带 DTO 的表格式
+- **且** 在表格式适用时应避免单属性断言
 
-#### Scenario: Business logic coverage
-- **GIVEN** integration test for service methods
-- **WHEN** test scenarios are defined
-- **THEN** tests SHALL cover core business logic in service methods
-- **AND** tests SHALL cover edge cases and validation logic
-- **NOTE** Query business code coverage is not strictly required
+#### 场景：实体属性访问
+- **给定** 集成测试需要设置实体属性
+- **当** 设置实体属性
+- **则** 应通过实体属性直接访问
+- **且** 不得使用 EF Core 的 `Property()` 方法操作实体属性
+
+#### 场景：业务逻辑覆盖
+- **给定** 针对服务方法的集成测试
+- **当** 定义测试场景
+- **则** 测试应覆盖服务方法中的核心业务逻辑
+- **且** 测试应覆盖边界情况与校验逻辑
+- **说明**：查询类业务代码的覆盖非强制要求

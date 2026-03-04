@@ -1,48 +1,48 @@
-# Change: Unify LPR License Plate Recognition Events Using MessageBus
+# 变更：使用 MessageBus 统一 LPR 车牌识别事件
 
-**Change ID**: `unify-lpr-events-with-messagebus`
-**Status**: Draft
-**Created**: 2026-01-29
-**Type**: Refactoring
-
----
-
-## Why
-
-### Background
-
-MaterialClient integrates with multiple License Plate Recognition (LPR) hardware devices:
-- **Hikvision LPR devices** - Using HCNetSDK (implemented in `hikvision-lpr-implementation` change)
-- **LprAllInOne devices** - Using HTTP callback endpoints
-- **Huaxiazhixin devices** - Using HTTP callback endpoints
-
-Currently, when these devices recognize license plates, the callback handlers in `MinimalWebHostService` directly invoke the `IAttendedWeighingService.OnPlateNumberRecognized()` method. This creates tight coupling between the hardware integration layer and the business logic layer.
-
-### Problems
-
-1. **Tight Coupling**: Hardware callback handlers (`MinimalWebHostService`) directly depend on business service (`IAttendedWeighingService`), violating dependency inversion principle
-
-2. **Limited Extensibility**: Cannot support multiple subscribers for LPR events (e.g., logging, statistics, alerts) without modifying the calling code
-
-3. **Testing Difficulty**: Hard to test hardware callback logic independently from business logic
-
-4. **Inconsistent Architecture**: The rest of the application uses ReactiveUI MessageBus for cross-component communication (ADR-009), but LPR events use direct method calls
-
-5. **Mixed Event Patterns**: `LicensePlateRecognizedEvent` (ABP event) is defined but not used, while `PlateNumberChangedMessage` (MessageBus) is used internally, creating confusion
+**变更 ID**：`unify-lpr-events-with-messagebus`
+**状态**：草稿
+**创建日期**：2026-01-29
+**类型**：重构
 
 ---
 
-## What Changes
+## 原因
 
-### Overview
+### 背景
 
-Refactor LPR license plate recognition event delivery to use ReactiveUI MessageBus consistently. Hardware callback handlers will publish `LicensePlateRecognizedMessage` to the bus, and `AttendedWeighingService` will subscribe to receive and process these events. This decouples hardware integration from business logic and aligns with ADR-009 architecture.
+MaterialClient 与多种车牌识别（LPR）硬件集成：
+- **海康 LPR 设备** —— 使用 HCNetSDK（在变更 `hikvision-lpr-implementation` 中实现）
+- **LprAllInOne 设备** —— 使用 HTTP 回调端点
+- **华夏智信设备** —— 使用 HTTP 回调端点
 
-### Detailed Changes
+当前这些设备识别到车牌时，`MinimalWebHostService` 中的回调处理会直接调用 `IAttendedWeighingService.OnPlateNumberRecognized()`，导致硬件集成层与业务逻辑层紧耦合。
 
-#### 1. Create Unified MessageBus Message (ADDED)
+### 问题
 
-Create `LicensePlateRecognizedMessage` class to carry complete LPR recognition data:
+1. **紧耦合**：硬件回调处理（`MinimalWebHostService`）直接依赖业务服务（`IAttendedWeighingService`），违反依赖倒置原则
+
+2. **扩展性有限**：无法在不改调用代码的情况下支持 LPR 事件的多订阅方（如日志、统计、告警）
+
+3. **测试困难**：难以在脱离业务逻辑的情况下单独测试硬件回调逻辑
+
+4. **架构不一致**：应用其余部分使用 ReactiveUI MessageBus 做跨组件通信（ADR-009），而 LPR 事件仍用直接方法调用
+
+5. **事件模式混杂**：定义了 `LicensePlateRecognizedEvent`（ABP 事件）却未使用，内部又使用 `PlateNumberChangedMessage`（MessageBus），造成混淆
+
+---
+
+## 变更内容
+
+### 概述
+
+将 LPR 车牌识别事件投递重构为统一使用 ReactiveUI MessageBus。硬件回调处理改为向总线发布 `LicensePlateRecognizedMessage`，`AttendedWeighingService` 通过订阅接收并处理这些事件。从而解耦硬件集成与业务逻辑，并与 ADR-009 架构一致。
+
+### 具体变更
+
+#### 1. 创建统一 MessageBus 消息（新增）
+
+创建 `LicensePlateRecognizedMessage` 类，承载完整 LPR 识别数据：
 
 ```csharp
 namespace MaterialClient.Common.Events;
@@ -57,20 +57,20 @@ public class LicensePlateRecognizedMessage
 }
 ```
 
-This replaces the existing `LicensePlateRecognizedEvent` (ABP event) which is not actively used.
+用于替代当前未实际使用的 `LicensePlateRecognizedEvent`（ABP 事件）。
 
-#### 2. Refactor MinimalWebHostService (MODIFIED)
+#### 2. 重构 MinimalWebHostService（修改）
 
-Remove direct dependency on `IAttendedWeighingService`:
+移除对 `IAttendedWeighingService` 的直接依赖：
 
-**Current Code**:
+**当前代码**：
 ```csharp
 // MaterialClient/Services/MinimalWebHostService.cs:188-200
 var weighingService = _sharedServiceProvider.GetRequiredService<IAttendedWeighingService>();
 weighingService.OnPlateNumberRecognized(license, colorType);
 ```
 
-**New Code**:
+**新代码**：
 ```csharp
 // Publish to MessageBus instead
 var message = new LicensePlateRecognizedMessage
@@ -84,11 +84,11 @@ var message = new LicensePlateRecognizedMessage
 MessageBus.Current.SendMessage(message);
 ```
 
-Apply same pattern to Hikvision and Huaxiazhixin callback handlers.
+对海康与华夏智信的回调处理采用相同模式。
 
-#### 3. Modify AttendedWeighingService (MODIFIED)
+#### 3. 修改 AttendedWeighingService（修改）
 
-Add MessageBus subscription to receive LPR events:
+增加 MessageBus 订阅以接收 LPR 事件：
 
 ```csharp
 public partial class AttendedWeighingService : IAttendedWeighingService, ISingletonDependency
@@ -114,92 +114,92 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 }
 ```
 
-The existing `OnPlateNumberRecognized()` method implementation remains unchanged.
+现有 `OnPlateNumberRecognized()` 的实现保持不变。
 
-#### 4. Update Service Interface (MODIFIED)
+#### 4. 更新服务接口（修改）
 
-Remove the following method from `IAttendedWeighingService` interface:
+从 `IAttendedWeighingService` 接口中移除：
 ```csharp
 void OnPlateNumberRecognized(string plateNumber, LprAllInOneColorType? colorType = null);
 ```
 
-This method becomes private/internal implementation detail, not part of public interface. It's invoked via MessageBus subscription internally.
+该方法变为私有/内部实现细节，不再属于公开接口，仅通过 MessageBus 订阅在内部调用。
 
-#### 5. Documentation Updates (ADDED)
+#### 5. 文档更新（新增）
 
-Create or update documentation explaining:
-- MessageBus usage guidelines for hardware events
-- Difference between MessageBus (real-time UI events) and LocalEventBus (async domain events)
-- Memory leak prevention for MessageBus subscriptions
+创建或更新文档，说明：
+- 硬件事件使用 MessageBus 的指南
+- MessageBus（实时 UI 事件）与 LocalEventBus（异步领域事件）的差异
+- MessageBus 订阅的防内存泄漏要求
 
 ---
 
-## Impact
+## 影响
 
-### Expected Benefits
+### 预期收益
 
-1. **Loose Coupling**: Hardware layer no longer depends on business service layer, improving testability and modularity
+1. **松耦合**：硬件层不再依赖业务服务层，便于测试与模块化
 
-2. **Consistent Architecture**: Aligns with ADR-009 (MessageBus for cross-component communication) and reactive programming patterns documented in `timer-to-rx-pattern.md`
+2. **架构一致**：与 ADR-009（跨组件通信使用 MessageBus）及 `timer-to-rx-pattern.md` 中的响应式模式一致
 
-3. **Extensibility**: Easy to add new subscribers (logging, statistics, monitoring) without modifying existing code
+3. **可扩展**：易于新增订阅方（日志、统计、监控）而无需修改现有代码
 
-4. **Simplified Testing**: Can test hardware callback and business processing independently by sending/receiving MessageBus messages
+4. **测试简化**：可通过发送/接收 MessageBus 消息分别测试硬件回调和业务处理
 
-5. **Real-Time Performance**: MessageBus provides synchronous delivery (<1ms latency) suitable for high-frequency LPR events
+5. **实时性能**：MessageBus 同步投递（<1ms 延迟），适合高频 LPR 事件
 
-6. **Clarity**: Eliminates confusion between `LicensePlateRecognizedEvent` (unused ABP event) and actual message mechanism
+6. **清晰**：消除未使用的 `LicensePlateRecognizedEvent`（ABP 事件）与实际消息机制之间的混淆
 
-### Risks and Mitigations
+### 风险与缓解
 
-| Risk | Impact | Mitigation |
+| 风险 | 影响 | 缓解 |
 |------|--------|------------|
-| Memory leaks from undisposed subscriptions | High | Add `DisposeWith()` pattern, include subscription disposal in `DisposeAsync()`, add memory leak tests |
-| Breaking existing integrations | Medium | Keep `OnPlateNumberRecognized()` method signature unchanged, only change how it's invoked |
-| Regression in LPR functionality | Medium | Comprehensive integration tests for all device types (Hikvision, LprAllInOne, Huaxiazhixin) |
-| Performance overhead from MessageBus | Low | MessageBus is synchronous and lightweight; overhead is negligible |
+| 未释放订阅导致内存泄漏 | 高 | 采用 `DisposeWith()` 模式，在 `DisposeAsync()` 中释放订阅，增加内存泄漏测试 |
+| 破坏现有集成 | 中 | 保持 `OnPlateNumberRecognized()` 方法签名不变，仅改变调用方式 |
+| LPR 功能回归 | 中 | 对所有设备类型（海康、LprAllInOne、华夏智信）做完整集成测试 |
+| MessageBus 性能开销 | 低 | MessageBus 同步且轻量，开销可忽略 |
 
 ---
 
-## Success Criteria
+## 成功标准
 
-- [x] `LicensePlateRecognizedMessage` class created with all required properties
-- [ ] `MinimalWebHostService` callback handlers publish `LicensePlateRecognizedMessage` instead of calling `weighingService.OnPlateNumberRecognized()`
-- [ ] `AttendedWeighingService` subscribes to `LicensePlateRecognizedMessage` in constructor
-- [ ] `OnPlateNumberRecognized()` method removed from `IAttendedWeighingService` interface (becomes private)
-- [ ] All LPR device types (Hikvision, LprAllInOne, Huaxiazhixin) work correctly after refactoring
-- [ ] MessageBus subscriptions properly disposed in `DisposeAsync()`
-- [ ] Unit tests pass for message publishing and subscription
-- [ ] Integration tests pass for all LPR device types
-- [ ] Memory leak tests show no subscription-related leaks
-- [ ] Documentation updated with MessageBus usage guidelines
-
----
-
-## Next Steps
-
-1. **Review and Approve Proposal**: Review this proposal with the team, confirm architectural approach
-2. **Create Design Document**: Create detailed `design.md` explaining the refactoring approach and migration strategy
-3. **Create Spec Deltas**: Update `license-plate-recognition` specification with modified requirements
-4. **Implement Message Class**: Create `LicensePlateRecognizedMessage` with proper XML documentation
-5. **Refactor Callback Handlers**: Modify `MinimalWebHostService` to publish messages instead of direct calls
-6. **Add Subscription in AttendedWeighingService**: Implement MessageBus subscription and disposal
-7. **Update Service Interface**: Remove `OnPlateNumberRecognized()` from public interface
-8. **Write Tests**: Create unit and integration tests for message-based LPR event flow
-9. **Run Memory Leak Tests**: Verify no subscription-related memory leaks
-10. **Update Documentation**: Document MessageBus usage patterns and guidelines
-11. **Archive Old Event**: Remove or deprecate unused `LicensePlateRecognizedEvent` (ABP event)
+- [x] 创建 `LicensePlateRecognizedMessage` 类并包含全部所需属性
+- [ ] `MinimalWebHostService` 的回调处理改为发布 `LicensePlateRecognizedMessage`，不再调用 `weighingService.OnPlateNumberRecognized()`
+- [ ] `AttendedWeighingService` 在构造函数中订阅 `LicensePlateRecognizedMessage`
+- [ ] 从 `IAttendedWeighingService` 接口中移除 `OnPlateNumberRecognized()` 方法（改为 private）
+- [ ] 重构后所有 LPR 设备类型（海康、LprAllInOne、华夏智信）工作正常
+- [ ] 在 `DisposeAsync()` 中正确释放 MessageBus 订阅
+- [ ] 消息发布与订阅的单元测试通过
+- [ ] 所有 LPR 设备类型的集成测试通过
+- [ ] 内存泄漏测试未发现与订阅相关的泄漏
+- [ ] 文档已更新 MessageBus 使用指南
 
 ---
 
-## References
+## 后续步骤
 
-- **ADR-009**: `docs/SDD.md:1654-1693` - MessageBus for cross-component communication
-- **Reactive Pattern**: `openspec/docs/timer-to-rx-pattern.md` - Reactive programming patterns in the system
-- **Related Changes**:
-  - `hikvision-lpr-implementation` - Hikvision LPR service implementation
-  - `hikvision-lpr-integration` - Hikvision LPR configuration and UI
-- **Existing Events**:
-  - `MaterialClient.Common/Events/LicensePlateRecognizedEvent.cs` - Unused ABP event (to be deprecated)
-  - `MaterialClient.Common/Events/PlateNumberChangedMessage.cs` - Internal UI notification message
-- **Specification**: `openspec/specs/license-plate-recognition` - License plate recognition requirements
+1. **评审并批准提案**：与团队评审本提案，确认架构方案
+2. **编写设计文档**：编写详细 `design.md`，说明重构方式与迁移策略
+3. **编写规格增量**：在 `license-plate-recognition` 规格中补充修改后的需求
+4. **实现消息类**：创建带完整 XML 文档的 `LicensePlateRecognizedMessage`
+5. **重构回调处理**：修改 `MinimalWebHostService`，改为发布消息而非直接调用
+6. **在 AttendedWeighingService 中增加订阅**：实现 MessageBus 订阅与释放
+7. **更新服务接口**：从公开接口中移除 `OnPlateNumberRecognized()`
+8. **编写测试**：为基于消息的 LPR 事件流编写单元与集成测试
+9. **运行内存泄漏测试**：确认无订阅相关内存泄漏
+10. **更新文档**：记录 MessageBus 使用模式与指南
+11. **归档旧事件**：移除或弃用未使用的 `LicensePlateRecognizedEvent`（ABP 事件）
+
+---
+
+## 参考
+
+- **ADR-009**：`docs/SDD.md:1654-1693` —— 跨组件通信使用 MessageBus
+- **响应式模式**：`openspec/docs/timer-to-rx-pattern.md` —— 系统中的响应式编程模式
+- **相关变更**：
+  - `hikvision-lpr-implementation` —— 海康 LPR 服务实现
+  - `hikvision-lpr-integration` —— 海康 LPR 配置与 UI
+- **现有事件**：
+  - `MaterialClient.Common/Events/LicensePlateRecognizedEvent.cs` —— 未使用的 ABP 事件（待弃用）
+  - `MaterialClient.Common/Events/PlateNumberChangedMessage.cs` —— 内部 UI 通知消息
+- **规格**：`openspec/specs/license-plate-recognition` —— 车牌识别需求

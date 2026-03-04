@@ -1,103 +1,90 @@
-# Spec: File Organization - Controls
+# 规范：文件组织 - 控件
 
-## Overview
+## 概览
 
-This spec defines the requirements for organizing control-related XAML files in a separate `Views/Controls` folder with proper namespace isolation, improving code maintainability and project structure.
+本规范定义将控件相关 XAML 文件组织到独立的 `Views/Controls` 文件夹并实现命名空间隔离的需求，以提升代码可维护性与项目结构。
 
-## ADDED Requirements
+## ADDED 需求
 
-### Requirement: Controls folder structure exists
-The project SHALL maintain a `Views/Controls` folder structure for organizing control-related XAML files separate from view files.
+### 需求：存在 Controls 文件夹结构
 
-#### Scenario: Folder exists after migration
-- **WHEN** developer navigates to the Views folder
-- **THEN** a Controls subfolder SHALL exist containing all control-related XAML files
+项目应维护 `Views/Controls` 文件夹结构，用于将控件相关 XAML 文件与视图文件分开组织。
 
-#### Scenario: Controls folder contains only controls
-- **WHEN** developer lists files in Views/Controls
-- **THEN** all files SHALL be control-related (UserControl, CustomControl, or control templates)
+#### 场景：迁移后文件夹存在
+- **当** 开发者进入 Views 文件夹
+- **则** 应存在 Controls 子文件夹，且其中包含所有控件相关 XAML 文件
 
-### Requirement: Control files use correct namespace
-All control-related XAML files and their code-behind files SHALL use the `MaterialClient.Views.Controls` namespace.
+#### 场景：Controls 文件夹仅含控件
+- **当** 开发者列出 Views/Controls 中的文件
+- **则** 所有文件应为控件相关（UserControl、CustomControl 或控件模板）
 
-#### Scenario: Control XAML file has correct x:Class
-- **WHEN** developer opens a control XAML file in Views/Controls
-- **THEN** the x:Class attribute SHALL use `MaterialClient.Views.Controls.<ControlName>`
+### 需求：控件文件使用正确命名空间
 
-#### Scenario: Control code-behind uses correct namespace
-- **WHEN** developer opens a control code-behind file (.axaml.cs)
-- **THEN** the namespace SHALL be `MaterialClient.Views.Controls`
+所有控件相关 XAML 及其代码隐藏文件应使用 `MaterialClient.Views.Controls` 命名空间。
 
-### Requirement: View files reference controls with proper namespace
-View files that use controls SHALL reference them using the `Controls` namespace prefix.
+#### 场景：控件 XAML 的 x:Class 正确
+- **当** 开发者打开 Views/Controls 中的控件 XAML 文件
+- **则** x:Class 属性应为 `MaterialClient.Views.Controls.<ControlName>`
 
-#### Scenario: View file declares Controls namespace
-- **WHEN** developer opens a view XAML file that uses controls
-- **THEN** the file SHALL include `xmlns:Controls="using:MaterialClient.Views.Controls"`
+#### 场景：控件代码隐藏使用正确命名空间
+- **当** 开发者打开控件代码隐藏文件（.axaml.cs）
+- **则** 命名空间应为 `MaterialClient.Views.Controls`
 
-#### Scenario: View file uses Controls prefix
-- **WHEN** developer references a control in a view XAML file
-- **THEN** the control SHALL be referenced using the `Controls:` prefix (e.g., `<Controls:DataGridControl />`)
+### 需求：视图文件以正确命名空间引用控件
 
-### Requirement: Project file reflects correct file paths
-The project file (.csproj) SHALL reference all moved XAML files with their new relative paths under Views/Controls.
+使用控件的视图文件应通过 `Controls` 命名空间前缀引用控件。
 
-#### Scenario: Project file lists controls with new paths
-- **WHEN** developer opens the .csproj file
-- **THEN** control file entries SHALL reference Views/Controls/<filename>.axaml
+#### 场景：视图文件声明 Controls 命名空间
+- **当** 开发者打开使用控件的视图 XAML 文件
+- **则** 文件中应包含 `xmlns:Controls="using:MaterialClient.Views.Controls"`
 
-#### Scenario: Project builds successfully
-- **WHEN** developer builds the project
-- **THEN** the build SHALL succeed without file-not-found errors
+#### 场景：视图文件使用 Controls 前缀
+- **当** 在视图 XAML 中引用控件
+- **则** 控件应使用 `Controls:` 前缀引用（例如 `<Controls:DataGridControl />`）
 
-### Requirement: No behavioral changes introduced
-The migration SHALL preserve all existing functionality and behavior without introducing breaking changes to the application.
+### 需求：项目文件反映正确文件路径
 
-#### Scenario: Application runs successfully
-- **WHEN** developer runs the application
-- **THEN** the application SHALL launch without errors related to file location or namespaces
+项目文件（.csproj）应以 Views/Controls 下的新相对路径引用所有已移动的 XAML 文件。
 
-#### Scenario: Controls render correctly
-- **WHEN** user views a page containing controls
-- **THEN** all controls SHALL render identically to pre-migration behavior
+#### 场景：项目文件中控件使用新路径
+- **当** 开发者打开 .csproj 文件
+- **则** 控件文件条目应引用 Views/Controls/<filename>.axaml
+
+#### 场景：项目构建成功
+- **当** 开发者构建项目
+- **则** 构建应成功且无“文件未找到”类错误
+
+### 需求：不引入行为变更
+
+迁移应保留所有现有功能与行为，不对应用造成破坏性变更。
+
+#### 场景：应用成功运行
+- **当** 开发者运行应用
+- **则** 应用应能启动且无与文件位置或命名空间相关的错误
+
+#### 场景：控件正确渲染
+- **当** 用户查看包含控件的页面
+- **则** 所有控件应与迁移前行为一致地渲染
 
 ---
 
-## Capability Model
+## 能力模型
 
-```mermaid
-graph TD
-    A[File Organization - Controls] --> B[Controls Folder Structure]
-    A --> C[Namespace Isolation]
-    A --> D[Reference Updates]
-    A --> E[Build Compatibility]
+（见原文 mermaid 图：File Organization - Controls → Controls 文件夹结构、命名空间隔离、引用更新、构建兼容；子项包含创建文件夹、移动文件、更新 x:Class/namespace、更新 xmlns 与 .csproj 路径、构建成功、无运行时错误。）
 
-    B --> B1[Create Views/Controls folder]
-    B --> B2[Move control files]
+## 需求摘要
 
-    C --> C1[Update x:Class in XAML]
-    C --> C2[Update namespace in code-behind]
-
-    D --> D1[Update xmlns declarations in views]
-    D --> D2[Update file paths in .csproj]
-
-    E --> E1[Build succeeds]
-    E --> E2[No runtime errors]
-```
-
-## Requirements Summary
-
-| Requirement ID | Description | Priority |
+| 需求 ID | 描述 | 优先级 |
 |---------------|-------------|----------|
-| FR-FOC-01 | Controls folder structure exists | High |
-| FR-FOC-02 | Control files use correct namespace | High |
-| FR-FOC-03 | View files reference controls with proper namespace | High |
-| FR-FOC-04 | Project file reflects correct file paths | High |
-| FR-FOC-05 | No behavioral changes introduced | Critical |
+| FR-FOC-01 | Controls 文件夹结构存在 | 高 |
+| FR-FOC-02 | 控件文件使用正确命名空间 | 高 |
+| FR-FOC-03 | 视图文件以正确命名空间引用控件 | 高 |
+| FR-FOC-04 | 项目文件反映正确文件路径 | 高 |
+| FR-FOC-05 | 不引入行为变更 | 关键 |
 
-## Testing Considerations
+## 测试考虑
 
-- **Build Test**: Ensure project builds without errors after migration
-- **Runtime Test**: Verify application launches and all controls render correctly
-- **Reference Test**: Verify all XAML files that use controls reference them correctly
-- **Namespace Test**: Verify all moved files use the correct namespace
+- **构建测试**：确保迁移后项目无错误构建
+- **运行时测试**：验证应用启动且所有控件正确渲染
+- **引用测试**：验证所有使用控件的 XAML 文件均正确引用
+- **命名空间测试**：验证所有已移动文件使用正确命名空间
