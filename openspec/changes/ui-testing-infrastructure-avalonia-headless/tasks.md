@@ -64,12 +64,12 @@
 
 ## 阶段 6：编写 ViewModel 测试
 
-- [ ] 6.1 创建 ViewModels 测试目录结构
-- [ ] 6.2 编写 LoginViewModelTests.cs 测试
-  - [ ] 6.2.1 测试构造函数初始化
-  - [ ] 6.2.2 测试 LoginCommand 执行
-  - [ ] 6.2.3 测试属性变更通知
-  - [ ] 6.2.4 测试 CanLogin 状态
+- [x] 6.1 创建 ViewModels 测试目录结构
+- [x] 6.2 编写 LoginViewModelTests.cs 测试
+  - [x] 6.2.1 测试构造函数初始化
+  - [x] 6.2.2 测试 LoginCommand 执行
+  - [x] 6.2.3 测试属性变更通知
+  - [x] 6.2.4 测试 CanLogin 状态
 - [ ] 6.3 编写 MainWindowViewModelTests.cs 测试
   - [ ] 6.3.1 测试窗口初始化
   - [ ] 6.3.2 测试导航命令
@@ -83,11 +83,11 @@
 
 ## 阶段 7：编写 Converter 测试
 
-- [ ] 7.1 创建 Converters 测试目录结构
-- [ ] 7.2 编写 NullOrEmptyImageConverterTests.cs 测试
-  - [ ] 7.2.1 测试 null 值转换
-  - [ ] 7.2.2 测试空字符串转换
-  - [ ] 7.2.3 测试有效路径转换
+- [x] 7.1 创建 Converters 测试目录结构
+- [x] 7.2 编写 NullOrEmptyImageConverterTests.cs 测试
+  - [x] 7.2.1 测试 null 值转换
+  - [x] 7.2.2 测试空字符串转换
+  - [x] 7.2.3 测试有效路径转换
 - [ ] 7.3 编写 CarNullOrEmptyImageConverterTests.cs 测试
   - [ ] 7.3.1 测试 null 值转换
   - [ ] 7.3.2 测试空字符串转换
@@ -98,7 +98,7 @@
 
 ## 阶段 8：编写自定义控件测试
 
-- [ ] 8.1 创建 Controls 测试目录结构
+- [x] 8.1 创建 Controls 测试目录结构
 - [ ] 8.2 为关键自定义控件编写测试
 - [ ] 8.3 测试控件创建和初始化
 - [ ] 8.4 测试控件属性设置和获取
@@ -109,7 +109,7 @@
 
 ## 阶段 9：编写集成测试
 
-- [ ] 9.1 创建 Integration 测试目录结构
+- [x] 9.1 创建 Integration 测试目录结构
 - [ ] 9.2 编写 LoginWindow 集成测试
   - [ ] 9.2.1 测试窗口创建和显示
   - [ ] 9.2.2 测试表单提交流程
