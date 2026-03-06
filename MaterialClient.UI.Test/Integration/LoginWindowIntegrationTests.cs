@@ -30,24 +30,26 @@ public class LoginWindowIntegrationTests
 
     private UserSession CreateTestUserSession()
     {
-        return new UserSession(Guid.NewGuid())
-        {
-            UserId = 1,
-            Username = "admin",
-            ProjectId = Guid.NewGuid(),
-            LicenseInfoId = Guid.NewGuid(),
-            ClientId = Guid.NewGuid(),
-            AccessToken = "test-token",
-            IsAdmin = true,
-            IsCompany = false,
-            ProductType = 1,
-            FromProductId = 1,
-            ProductId = 1,
-            ProductName = "Test",
-            CompanyId = 1,
-            CompanyName = "Test",
-            ApiUrl = "https://test.com"
-        };
+        var id = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var licenseInfoId = Guid.NewGuid();
+        var userId = 1L;
+        var username = "admin";
+        var trueName = string.Empty;
+        var clientId = Guid.NewGuid();
+        var accessToken = "test-token";
+        var isAdmin = true;
+        var isCompany = false;
+        var productType = 1;
+        var fromProductId = 1L;
+        var productId = 1L;
+        var productName = "Test";
+        var companyId = 1;
+        var companyName = "Test";
+        var apiUrl = "https://test.com";
+        var loginTime = DateTime.Now;
+
+        return new UserSession(id, projectId, licenseInfoId, userId, username, trueName, clientId, accessToken, isAdmin, isCompany, productType, fromProductId, productId, productName, companyId, companyName, apiUrl, loginTime);
     }
 
     [Fact]
