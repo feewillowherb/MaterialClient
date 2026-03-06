@@ -3,9 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.UI.Views;
 
 public partial class ManualMatchWindow : Window
 {

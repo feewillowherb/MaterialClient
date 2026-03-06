@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
-namespace MaterialClient.Views.Controls;
+namespace MaterialClient.UI.Views.Controls;
 
 public partial class StandardModeFormView : UserControl
 {

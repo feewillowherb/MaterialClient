@@ -4,10 +4,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using System.Reactive.Linq;
 
-namespace MaterialClient.Views.Controls;
+namespace MaterialClient.UI.Views.Controls;
 
 public partial class SolidWasteModeFormView : UserControl
 {

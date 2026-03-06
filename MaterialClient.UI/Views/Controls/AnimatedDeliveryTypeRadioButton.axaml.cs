@@ -5,7 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
 
-namespace MaterialClient.Views.Controls;
+namespace MaterialClient.UI.Views.Controls;
 
 public partial class AnimatedDeliveryTypeRadioButton : UserControl
 {

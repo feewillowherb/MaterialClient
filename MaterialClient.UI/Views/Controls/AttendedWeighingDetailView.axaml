@@ -1,0 +1,185 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MaterialClient.UI.ViewModels"
+             xmlns:aw="using:MaterialClient.UI.Views.Controls"
+             x:Class="MaterialClient.UI.Views.Controls.AttendedWeighingDetailView"
+             x:DataType="vm:AttendedWeighingDetailViewModel"
+             x:Name="DetailViewRoot">
+
+
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Style.Resources>
+                <x:Double x:Key="DataGridSortIconMinWidth">16</x:Double>
+            </Style.Resources>
+
+            <!-- setters... -->
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Background="#F5F6FA" Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="180" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <Border Grid.Row="0" Background="White"
+                BorderBrush="#E4E4E4"
+                BorderThickness="1"
+                Padding="10,0"
+                Height="50"
+                Margin="0,0,0,8">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DeliveryTypeTitleText}"
+                               FontSize="14"
+                               Foreground="#222222"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd}', TargetNullValue=''}"
+                               FontSize="14"
+                               Foreground="#222222"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+        <!--第一行-->
+        <Border Grid.Row="1" Background="#EDF3FF" BorderBrush="#EDF3FF"
+                BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 第一行：重量信息 -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="0,5">
+                    <TextBlock Text="毛　   重：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
+                    <TextBlock VerticalAlignment="Center" FontSize="12">
+                        <Run Foreground="#427FF9" FontWeight="Bold"
+                             Text="{Binding AllWeight, StringFormat='{}{0:F2}'}" />
+                        <Run Foreground="#333333" Text=" 吨" />
+                    </TextBlock>
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="0,5">
+                    <TextBlock Text="皮　   重：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
+                    <TextBlock VerticalAlignment="Center" FontSize="12">
+                        <Run Foreground="#427FF9" FontWeight="Bold"
+                             Text="{Binding TruckWeight, StringFormat='{}{0:F2}'}" />
+                        <Run Foreground="#333333" Text=" 吨" />
+                    </TextBlock>
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="0,5">
+                    <TextBlock Text="净　    重：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
+                    <TextBlock VerticalAlignment="Center" FontSize="12">
+                        <Run Foreground="#F5A000" FontWeight="Bold"
+                             Text="{Binding GoodsWeight, StringFormat='{}{0:F2}'}" />
+                        <Run Foreground="#333333" Text=" 吨" />
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- 第二行：时间和操作员信息 -->
+                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="0,5">
+                    <TextBlock Text="进场时间：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
+                    <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}"
+                               VerticalAlignment="Center" FontSize="12" Foreground="#333" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="0,5">
+                    <TextBlock Text="出场时间：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
+                    <TextBlock Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}"
+                               VerticalAlignment="Center" FontSize="12" Foreground="#333" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="0,5">
+                    <TextBlock Text="收货员工：" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
+                    <TextBlock Text="{Binding Operator}" VerticalAlignment="Center"
+                               FontSize="12" Foreground="#333" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 第二、三行：按模式切换为独立 SubView -->
+        <Panel Grid.Row="2" Grid.RowSpan="2">
+            <aw:StandardModeFormView IsVisible="{Binding !IsSolidWasteMode}" />
+            <aw:SolidWasteModeFormView IsVisible="{Binding IsSolidWasteMode}" />
+        </Panel>
+
+        <!--第四行：按钮栏-->
+        <Grid Grid.Row="4" Margin="0,0,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧按钮 -->
+            <!-- <Button Grid.Column="0" Content="新增材料" -->
+            <!--         Classes="success-button" -->
+            <!--         Width="80" Height="32" FontSize="12" -->
+            <!--         HorizontalContentAlignment="Center" -->
+            <!--         VerticalContentAlignment="Center" -->
+            <!--         Command="{Binding AddMaterialCommand}" /> -->
+
+            <!-- 中间按钮组 -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal"
+                        HorizontalAlignment="Center" Spacing="8">
+                <Button Width="90" Height="32" FontSize="12" Content="保存"
+                        Classes="primary-button"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Command="{Binding SaveCommand}" />
+                <Button Width="90" Height="32" FontSize="12" Content="下一个"
+                        Classes="primary-button"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Command="{Binding CloseCommand}" />
+                <Button Width="110" Height="32" FontSize="12" Content="{Binding CompleteButtonText}"
+                        Classes="outline-button"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Command="{Binding CompleteCommand}"
+                        IsVisible="{Binding IsCompleteButtonVisible}" />
+            </StackPanel>
+
+            <!-- 右侧按钮组 -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <Button Width="80" Height="32" FontSize="12" Content="匹配"
+                        Classes="primary-button"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Command="{Binding MatchCommand}"
+                        IsVisible="{Binding IsMatchButtonVisible}" />
+                <Button Width="80" Height="32" FontSize="12" Content="废单"
+                        Classes="warning-button"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Command="{Binding AbolishCommand}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,189 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:MaterialClient.UI.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="300"
+        x:Class="MaterialClient.UI.Views.ProjectInfoWindow"
+        x:DataType="vm:ProjectInfoWindowViewModel"
+        Title="项目信息"
+        Width="500"
+        Height="300"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White"
+        Icon="/Assets/fd-ico.ico">
+
+    <Design.DataContext>
+        <vm:ProjectInfoWindowViewModel />
+    </Design.DataContext>
+
+    <Grid>
+        <!-- Border -->
+        <Border BorderBrush="#CCCCCC" BorderThickness="1" />
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar -->
+            <Grid Grid.Row="0" Background="#6498FE">
+                <TextBlock Text="项目信息"
+                           FontSize="14"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="20,0,0,0" />
+
+                <Button Content="✕"
+                        FontSize="18"
+                        Foreground="White"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        HorizontalAlignment="Right"
+                        Width="40"
+                        Height="40"
+                        Cursor="Hand"
+                        Click="OnCloseButtonClick"
+                        Classes="transparent-button">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#DC3545" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+            </Grid>
+
+            <!-- Content Area -->
+            <Grid Grid.Row="1" Margin="30,30,30,30">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- 项目信息 -->
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="项目信息:"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding ProjectName}"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- 产品名称（点击 20 次删除 LicenseInfo / UserSession / UserCredential） -->
+                <Grid Grid.Row="1" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="产品名称:"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                        <Button Content="{Binding ProductNameDisplay}"
+                                Command="{Binding ProductNameTapCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                HorizontalContentAlignment="Left"
+                                VerticalContentAlignment="Center"
+                                FontSize="14"
+                                FontWeight="Normal"
+                                Foreground="Black"
+                                Cursor="Hand">
+                            <Button.ContentTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"
+                                               FontSize="14"
+                                               FontWeight="Normal"
+                                               Foreground="Black"
+                                               VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </Button.ContentTemplate>
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Foreground" Value="Black" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="FontWeight" Value="Normal" />
+                                </Style>
+                                <Style Selector="Button:focus">
+                                    <Setter Property="Foreground" Value="Black" />
+                                    <Setter Property="FontWeight" Value="Normal" />
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 到期时间 -->
+                <Grid Grid.Row="2" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="到期时间:"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding ExpirationDate}"
+                               FontSize="14"
+                               Foreground="#DC3545"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- 机器码 -->
+                <Grid Grid.Row="3" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="机器码:"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding MachineCode}"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- 授权码 -->
+                <Grid Grid.Row="4" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="授权码:"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding AuthCode}"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Spacer -->
+                <Border Grid.Row="5" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

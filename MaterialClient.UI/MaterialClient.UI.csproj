@@ -12,6 +12,7 @@
     <ItemGroup>
         <AvaloniaResource Include="Assets\**" />
         <AvaloniaResource Include="Backgrounds\**" />
+        <AvaloniaXamlCompile Include="App.axaml" />
         <AvaloniaXamlCompile Include="Views\**\*.axaml" />
         <AvaloniaXamlCompile Include="Views\Controls\*.axaml" />
         <AvaloniaXamlCompile Include="Views\Dialogs\*.axaml" />
@@ -36,6 +37,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="App.axaml.cs" />
+        <Compile Include="ViewLocator.cs" />
         <Compile Include="Views\**\*.cs" />
         <Compile Include="ViewModels\**\*.cs" />
         <Compile Include="Converters\**\*.cs" />

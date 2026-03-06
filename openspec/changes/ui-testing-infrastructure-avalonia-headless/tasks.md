@@ -21,18 +21,18 @@
 
 ## 阶段 3：迁移 UI 代码到 MaterialClient.UI
 
-- [ ] 3.1 迁移 Views 目录及其所有子目录
-- [ ] 3.2 迁移 ViewModels 目录
-- [ ] 3.3 迁移 Controls 目录
-- [ ] 3.4 迁移 Converters 目录
-- [ ] 3.5 迁移 App.axaml 和 App.axaml.cs
-- [ ] 3.6 迁移 Assets 目录中的所有资源文件
-- [ ] 3.7 迁移 Backgrounds 目录中的所有背景文件
-- [ ] 3.8 更新所有文件的命名空间引用（MaterialClient.Views → MaterialClient.UI.Views）
-- [ ] 3.9 更新所有 XAML 文件中的命名空间引用
-- [ ] 3.10 更新所有 .axaml.cs 文件中的 using 语句
-- [ ] 3.11 验证 MaterialClient.UI 项目编译无错误
-- [ ] 3.12 修复编译错误和命名空间问题
+- [x] 3.1 迁移 Views 目录及其所有子目录
+- [x] 3.2 迁移 ViewModels 目录
+- [x] 3.3 迁移 Controls 目录
+- [x] 3.4 迁移 Converters 目录
+- [x] 3.5 迁移 App.axaml 和 App.axaml.cs（已在阶段 2 创建）
+- [x] 3.6 迁移 Assets 目录中的所有资源文件
+- [x] 3.7 迁移 Backgrounds 目录中的所有背景文件
+- [x] 3.8 更新所有文件的命名空间引用（MaterialClient.Views → MaterialClient.UI.Views）
+- [x] 3.9 更新所有 XAML 文件中的命名空间引用
+- [x] 3.10 更新所有 .axaml.cs 文件中的 using 语句
+- [x] 3.11 验证 MaterialClient.UI 项目编译无错误
+- [x] 3.12 修复编译错误和命名空间问题
 
 ## 阶段 4：创建 MaterialClient.UI.Test 项目
 
@@ -59,8 +59,8 @@
 - [x] 5.5 创建 TestHelper.cs 静态类，提供控件创建和初始化辅助方法
 - [x] 5.6 创建 Mocks 目录和 Mock 工厂类
 - [x] 5.7 实现常用 Mock 服务创建方法（AuthService、DataService 等）
-- [ ] 5.8 编写 TestAppBuilder 单元测试验证配置正确性
-- [ ] 5.9 验证测试基础设施可以在无头模式下运行
+- [x] 5.8 编写 TestAppBuilder 单元测试验证配置正确性
+- [x] 5.9 验证测试基础设施可以在无头模式下运行
 
 ## 阶段 6：编写 ViewModel 测试
 
@@ -70,16 +70,16 @@
   - [x] 6.2.2 测试 LoginCommand 执行
   - [x] 6.2.3 测试属性变更通知
   - [x] 6.2.4 测试 CanLogin 状态
-- [ ] 6.3 编写 MainWindowViewModelTests.cs 测试
-  - [ ] 6.3.1 测试窗口初始化
-  - [ ] 6.3.2 测试导航命令
-- [ ] 6.4 编写 SettingsWindowViewModelTests.cs 测试
-  - [ ] 6.4.1 测试设置加载
-  - [ ] 6.4.2 测试设置保存
-  - [ ] 6.4.3 测试设置验证
-- [ ] 6.5 为其他关键 ViewModel 编写测试
-- [ ] 6.6 运行所有 ViewModel 测试，验证通过
-- [ ] 6.7 修复失败的测试
+- [x] 6.3 编写 MainWindowViewModelTests.cs 测试
+  - [x] 6.3.1 测试窗口初始化
+  - [x] 6.3.2 测试导航命令
+- [x] 6.4 编写 SettingsWindowViewModelTests.cs 测试
+  - [x] 6.4.1 测试设置加载
+  - [x] 6.4.2 测试设置保存
+  - [x] 6.4.3 测试设置验证
+- [x] 6.5 为其他关键 ViewModel 编写测试
+- [x] 6.6 运行所有 ViewModel 测试，验证通过
+- [x] 6.7 修复失败的测试
 
 ## 阶段 7：编写 Converter 测试
 

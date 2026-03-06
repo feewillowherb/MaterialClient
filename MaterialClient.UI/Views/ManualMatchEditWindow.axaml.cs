@@ -4,9 +4,9 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.UI.Views;
 
 public partial class ManualMatchEditWindow : Window
 {

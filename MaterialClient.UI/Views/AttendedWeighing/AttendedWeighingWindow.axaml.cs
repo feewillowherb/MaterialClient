@@ -8,10 +8,10 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views.AttendedWeighing
+namespace MaterialClient.UI.Views.AttendedWeighing
 {
 public partial class AttendedWeighingWindow : Window, ITransientDependency
 {

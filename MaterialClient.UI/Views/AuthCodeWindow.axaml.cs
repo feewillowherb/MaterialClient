@@ -3,11 +3,11 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.UI.Views;
 
 public partial class AuthCodeWindow : Window, ITransientDependency
 {

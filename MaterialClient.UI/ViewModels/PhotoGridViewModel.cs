@@ -8,7 +8,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Utils;
-using MaterialClient.Views;
+using MaterialClient.UI.Views;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;

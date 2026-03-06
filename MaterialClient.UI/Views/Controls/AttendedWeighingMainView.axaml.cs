@@ -1,9 +1,9 @@
 using System;
 using Avalonia.Controls;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MaterialClient.Views.Controls;
+namespace MaterialClient.UI.Views.Controls;
 
 public partial class AttendedWeighingMainView : UserControl
 {

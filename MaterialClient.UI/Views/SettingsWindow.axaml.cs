@@ -7,11 +7,11 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.UI.Views;
 
 public partial class SettingsWindow : Window, ITransientDependency
 {

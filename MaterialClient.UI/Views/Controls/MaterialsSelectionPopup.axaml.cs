@@ -1,10 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using MaterialClient.Common.Entities;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views.Controls;
+namespace MaterialClient.UI.Views.Controls;
 
 public partial class MaterialsSelectionPopup : UserControl, ITransientDependency
 {

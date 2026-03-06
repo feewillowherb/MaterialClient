@@ -1,5 +1,5 @@
 using System;
-using MaterialClient.Views.AttendedWeighing;
+using MaterialClient.UI.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
