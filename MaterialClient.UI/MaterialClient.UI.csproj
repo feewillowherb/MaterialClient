@@ -6,11 +6,16 @@
         <Nullable>enable</Nullable>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     </PropertyGroup>
 
     <ItemGroup>
         <AvaloniaResource Include="Assets\**" />
         <AvaloniaResource Include="Backgrounds\**" />
+        <AvaloniaXamlCompile Include="Views\**\*.axaml" />
+        <AvaloniaXamlCompile Include="Views\Controls\*.axaml" />
+        <AvaloniaXamlCompile Include="Views\Dialogs\*.axaml" />
+        <AvaloniaXamlCompile Include="Views\AttendedWeighing\*.axaml" />
     </ItemGroup>
 
     <ItemGroup>
@@ -31,6 +36,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="Views\**\*.cs" />
+        <Compile Include="ViewModels\**\*.cs" />
+        <Compile Include="Converters\**\*.cs" />
         <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
     </ItemGroup>
 </Project>
