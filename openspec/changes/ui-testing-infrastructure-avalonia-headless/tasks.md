@@ -54,11 +54,11 @@
 
 - [x] 5.1 创建 TestAppBuilder.cs，配置 Headless 应用构建器
 - [x] 5.2 在 TestAppBuilder 中配置 AvaloniaHeadlessPlatformOptions（禁用 GPU，使用软件渲染）
-- [ ] 5.3 创建 TestBase.cs 基类，提供通用测试辅助方法
-- [ ] 5.4 添加程序集级别的 AvaloniaTestApplication 属性
+- [x] 5.3 创建 TestBase.cs 基类，提供通用测试辅助方法
+- [x] 5.4 添加程序集级别的 AvaloniaTestApplication 属性
 - [x] 5.5 创建 TestHelper.cs 静态类，提供控件创建和初始化辅助方法
-- [ ] 5.6 创建 Mocks 目录和 Mock 工厂类
-- [ ] 5.7 实现常用 Mock 服务创建方法（AuthService、DataService 等）
+- [x] 5.6 创建 Mocks 目录和 Mock 工厂类
+- [x] 5.7 实现常用 Mock 服务创建方法（AuthService、DataService 等）
 - [ ] 5.8 编写 TestAppBuilder 单元测试验证配置正确性
 - [ ] 5.9 验证测试基础设施可以在无头模式下运行
 
@@ -162,19 +162,19 @@
 
 ## 阶段 14：文档和指南
 
-- [ ] 14.1 创建测试编写指南文档
-- [ ] 14.2 记录 Mock 工厂的使用方法
+- [x] 14.1 创建测试编写指南文档
+- [x] 14.2 记录 Mock 工厂的使用方法
 - [ ] 14.3 创建测试最佳实践文档
-- [ ] 14.4 在 MaterialClient.UI.Test 中添加示例测试文件
-- [ ] 14.5 更新项目 README.md，说明测试基础设施
+- [x] 14.4 在 MaterialClient.UI.Test 中添加示例测试文件
+- [x] 14.5 更新项目 README.md，说明测试基础设施
 - [ ] 14.6 添加测试覆盖率说明文档
 
 ## 阶段 15：验证和测试
 
-- [ ] 15.1 在本地开发环境运行所有测试
+- [x] 15.1 在本地开发环境运行所有测试
 - [ ] 15.2 验证测试在无头模式下正常运行
 - [ ] 15.3 验证测试覆盖率符合目标
-- [ ] 15.4 测试应用程序启动和基本功能
+- [x] 15.4 测试应用程序启动和基本功能
 - [ ] 15.5 执行回归测试，确保现有功能正常工作
 - [ ] 15.6 验证 CI/CD 管道成功运行测试
 - [ ] 15.7 检查测试执行时间和性能
