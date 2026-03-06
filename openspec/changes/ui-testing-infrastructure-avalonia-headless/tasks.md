@@ -122,13 +122,13 @@
 
 ## 阶段 10：更新 MaterialClient 主项目
 
-- [ ] 10.1 从 MaterialClient.csproj 中移除 UI 相关包引用
-- [ ] 10.2 从 MaterialClient.csproj 中移除 UI 相关的 Compile Update 配置
-- [ ] 10.3 添加对 MaterialClient.UI 的项目引用
-- [ ] 10.4 更新 Program.cs，配置应用程序以使用 MaterialClient.UI
-- [ ] 10.5 更新 MaterialClientModule.cs，注册 UI 相关服务
-- [ ] 10.6 从 MaterialClient 项目中删除已迁移的目录
-- [ ] 10.7 验证解决方案可以成功编译
+- [x] 10.1 从 MaterialClient.csproj 中移除 UI 相关包引用
+- [x] 10.2 从 MaterialClient.csproj 中移除 UI 相关的 Compile Update 配置
+- [x] 10.3 添加对 MaterialClient.UI 的项目引用
+- [x] 10.4 更新 Program.cs，配置应用程序以使用 MaterialClient.UI
+- [x] 10.5 更新 MaterialClientModule.cs，注册 UI 相关服务
+- [x] 10.6 从 MaterialClient 项目中删除已迁移的目录
+- [x] 10.7 验证解决方案可以成功编译
 - [ ] 10.8 验证应用程序可以正常启动和运行
 
 ## 阶段 11：更新解决方案文件
