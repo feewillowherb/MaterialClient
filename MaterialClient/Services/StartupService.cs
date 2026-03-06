@@ -2,9 +2,9 @@ using System;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services.Authentication;
-using MaterialClient.ViewModels;
-using MaterialClient.Views;
-using MaterialClient.Views.AttendedWeighing;
+using MaterialClient.UI.ViewModels;
+using MaterialClient.UI.Views;
+using MaterialClient.UI.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -197,7 +197,6 @@ public class StartupService(
         // 显示 AttendedWeighingWindow，隐藏其他窗口
         _attendedWeighingWindow.Show();
         if (_authCodeWindow != null && _authCodeWindow.IsVisible) _authCodeWindow.Hide();
-
         if (_loginWindow != null && _loginWindow.IsVisible) _loginWindow.Hide();
     }
 
