@@ -92,6 +92,7 @@ Installer/
 
 # ---- Claude / MCP Temporary Directories ----
 tempclaude-*
+tmpclaude-*
 *.cwd
 # Temporary files in openspec/changes directories
 openspec/changes/**/tmpclaude-*-cwd
