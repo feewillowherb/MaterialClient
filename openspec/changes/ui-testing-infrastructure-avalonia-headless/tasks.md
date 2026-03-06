@@ -88,13 +88,18 @@
   - [x] 7.2.1 测试 null 值转换
   - [x] 7.2.2 测试空字符串转换
   - [x] 7.2.3 测试有效路径转换
-- [ ] 7.3 编写 CarNullOrEmptyImageConverterTests.cs 测试
-  - [ ] 7.3.1 测试 null 值转换
-  - [ ] 7.3.2 测试空字符串转换
-  - [ ] 7.3.3 测试有效路径转换
-- [ ] 7.4 为其他 Converter 编写测试
-- [ ] 7.5 运行所有 Converter 测试，验证通过
-- [ ] 7.6 修复失败的测试
+- [x] 7.3 编写 CarNullOrEmptyImageConverterTests.cs 测试
+  - [x] 7.3.1 测试 null 值转换
+  - [x] 7.3.2 测试空字符串转换
+  - [x] 7.3.3 测试有效路径转换
+- [x] 7.4 为其他 Converter 编写测试
+  - 编写了 BoolToBrushConverterTests.cs
+  - 编写了 ScaleTypeConverterTests.cs
+  - 编写了 StreamTypeConverterTests.cs
+  - 编写了 ScaleUnitConverterTests.cs
+  - 编写了 WeighingModeConverterTests.cs
+- [x] 7.5 运行所有 Converter 测试，验证通过
+- [x] 7.6 修复失败的测试
 
 ## 阶段 8：编写自定义控件测试
 

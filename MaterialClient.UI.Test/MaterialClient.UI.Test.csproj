@@ -4,11 +4,13 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <TargetFramework>net10.0</TargetFramework>
+        <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Avalonia.Headless.XUnit" />
         <PackageReference Include="Avalonia.Skia" />
+        <PackageReference Include="Aliyun.OSS.SDK.NetCore" />
         <PackageReference Include="coverlet.collector" />
         <PackageReference Include="NSubstitute" />
         <PackageReference Include="Shouldly" />
