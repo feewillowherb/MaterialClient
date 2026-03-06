@@ -9,6 +9,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.EFCore;
+using MaterialClient.Backgrounds;
 using MaterialClient.Services;
 using MaterialClient.UI.ViewModels;
 using MaterialClient.UI.Views;
@@ -209,14 +210,11 @@ public class MaterialClientModule : AbpModule
         }
 
         // 注册并启动后台工作器（可通过配置禁用）
-        // Note: PollingBackgroundService is temporarily disabled as it needs proper placement
         var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
         var pollingEnabled = configuration.GetValue("BackgroundServices:Polling", true);
         if (pollingEnabled)
         {
-            // await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
-            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientModule>>();
-            logger?.LogWarning("PollingBackgroundService registration is disabled pending proper implementation");
+            await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
         }
         else
         {
