@@ -4,6 +4,8 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <TargetFramework>net10.0</TargetFramework>
+        <!-- Copy all dependencies to output directory -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,7 +15,9 @@
         <PackageReference Include="coverlet.collector" />
         <PackageReference Include="NSubstitute" />
         <PackageReference Include="Shouldly" />
-        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit">
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
         <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

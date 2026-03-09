@@ -14,6 +14,11 @@
         <SelfContained>true</SelfContained>
     </PropertyGroup>
 
+
+    <ItemGroup>
+        <AvaloniaUILicenseKey Include="avln_on_key:v1:154e0da3970449c0878ba5c2d75eca71" />
+    </ItemGroup>
+
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Avalonia.Desktop" />
