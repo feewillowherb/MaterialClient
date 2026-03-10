@@ -123,6 +123,11 @@ public interface IAttendedWeighingService : IAsyncDisposable
 [AutoConstructor]
 public partial class AttendedWeighingService : IAttendedWeighingService, ISingletonDependency
 {
+    /// <summary>
+    ///     高优先级车牌的有效时间窗口（仅在此时间内的缓存记录参与高优先级筛选）
+    /// </summary>
+    private static readonly TimeSpan HighPriorityPlateWindow = TimeSpan.FromMinutes(20);
+
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
 
     private readonly IConfiguration _configuration;
@@ -454,11 +459,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         var finalPlateNumber = recommendedPlateNumber;
 
         // 只在车辆上磅期间缓存车牌号（OffScale 状态下不缓存）
-        var currentStatus = _statusSubject.Value;
-        if (currentStatus == AttendedWeighingStatus.OffScale)
-        {
-            return;
-        }
+        // var currentStatus = _statusSubject.Value;
+        // if (currentStatus == AttendedWeighingStatus.OffScale)
+        // {
+        //     return;
+        // }
 
         // 更新车牌缓存（使用推荐的车牌号，并存储颜色信息）
         _plateNumberCache.AddOrUpdate(
@@ -480,8 +485,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         if (_plateNumberCache.IsEmpty) return null;
 
-        // Separate high-priority and low-priority plates
+        // Separate high-priority and low-priority plates（高优先级：非低优先级颜色 且 最近 20 分钟内更新）
+        var highPriorityCutoff = DateTime.UtcNow - HighPriorityPlateWindow;
         var highPriorityPlates = _plateNumberCache
+            .Where(kvp => kvp.Value.LastUpdateTime >= highPriorityCutoff)
             .Where(kvp => !kvp.Value.ColorType.HasValue || !_lowPriorityPlateColors.Contains(kvp.Value.ColorType.Value))
             .ToList();
 
