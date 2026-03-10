@@ -2,7 +2,7 @@
 ; 用于创建 MaterialClient 应用程序的安装程序
 
 #define MyAppName "MaterialClient"
-#define MyAppVersion "1.0.4"
+#define MyAppVersion "1.0.5"
 #define MyAppPublisher "FindongSoft"
 #define MyAppURL "http://www.example.com/"
 #define MyAppExeName "MaterialClient.exe"
