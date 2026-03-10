@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Avalonia.Headless.XUnit" />
         <PackageReference Include="Avalonia.Skia" />
         <PackageReference Include="Aliyun.OSS.SDK.NetCore" />

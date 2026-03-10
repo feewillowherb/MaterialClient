@@ -1,4 +1,8 @@
 using Avalonia;
+using Avalonia.Headless;
+using MaterialClient.UI;
+
+[assembly: AvaloniaTestApplication(typeof(MaterialClient.UI.Test.TestAppBuilder))]
 
 namespace MaterialClient.UI.Test;
 
@@ -13,5 +17,7 @@ public static class TestAppBuilder
     /// </summary>
     /// <returns>Configured AppBuilder instance</returns>
     public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>();
+        AppBuilder.Configure<App>()
+            .UseSkia()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }

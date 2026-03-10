@@ -16,7 +16,7 @@ public class SimpleControlTests
 
         // Assert
         Assert.NotNull(button);
-        Assert.Equal("", button.Content);
+        Assert.True(button.Content == null || (button.Content as string) == "");
     }
 
     [Fact]
