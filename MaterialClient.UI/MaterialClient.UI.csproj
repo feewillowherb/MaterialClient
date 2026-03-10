@@ -11,14 +11,11 @@
 
     <ItemGroup>
         <AvaloniaResource Include="Assets\**" />
-        <AvaloniaXamlCompile Include="App.axaml" />
-        <AvaloniaXamlCompile Include="Views\**\*.axaml" />
-        <AvaloniaXamlCompile Include="Views\Controls\*.axaml" />
-        <AvaloniaXamlCompile Include="Views\Dialogs\*.axaml" />
-        <AvaloniaXamlCompile Include="Views\AttendedWeighing\*.axaml" />
     </ItemGroup>
 
     <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />
         <PackageReference Include="Avalonia" />
         <PackageReference Include="Avalonia.ReactiveUI" />
         <PackageReference Include="Avalonia.Themes.Fluent" />
@@ -36,7 +33,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="App.axaml.cs" />
+        <Compile Include="App.axaml.cs">
+          <DependentUpon>App.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Include="Services\MinimalWebHostService.cs" />
+        <Compile Include="Services\StartupService.cs" />
         <Compile Include="ViewLocator.cs" />
         <Compile Include="Views\**\*.cs" />
         <Compile Include="ViewModels\**\*.cs" />
