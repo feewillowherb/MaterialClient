@@ -13,7 +13,7 @@ namespace MaterialClient.UI.Converters;
 /// </summary>
 public class CarNullOrEmptyImageConverter : IValueConverter
 {
-    private const string DefaultCarImage = "avares://MaterialClient/Assets/Car_Default.png";
+    private const string DefaultCarImage = "avares://MaterialClient.UI/Assets/Car_Default.png";
     private static Bitmap? _defaultBitmap;
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -39,7 +39,7 @@ public class CarNullOrEmptyImageConverter : IValueConverter
             // 如果是资源路径，直接处理
             if (path.StartsWith("avares://") || path.StartsWith("/Assets/"))
             {
-                var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient{path}") : new Uri(path);
+                var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient.UI{path}") : new Uri(path);
                 var stream = AssetLoader.Open(uri);
                 return new Bitmap(stream);
             }

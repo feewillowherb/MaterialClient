@@ -1,3 +1,4 @@
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
@@ -34,9 +35,10 @@ public class App : Application
 
             try
             {
-                // Create and initialize ABP application with Autofac
-                // ABP framework will automatically load appsettings.json from the application base directory
-                _abpApplication = await AbpApplicationFactory.CreateAsync<MaterialClientModule>(options =>
+                // Create and initialize ABP application with Autofac (resolve root module from entry assembly to avoid circular project reference)
+                var rootModuleType = Assembly.GetEntryAssembly()?.GetType("MaterialClient.MaterialClientModule")
+                    ?? throw new InvalidOperationException("MaterialClient.MaterialClientModule not found. Ensure the application is started from the MaterialClient host project.");
+                _abpApplication = await AbpApplicationFactory.CreateAsync(rootModuleType, options =>
                 {
                     options.UseAutofac();
                 });

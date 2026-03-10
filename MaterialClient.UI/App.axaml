@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="MaterialClient.UI.App"
              xmlns:local="using:MaterialClient.UI"
+             xmlns:converters="using:MaterialClient.UI.Converters"
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              RequestedThemeVariant="Light">
@@ -16,7 +17,7 @@
         <semi:SemiTheme Locale="zh-CN" />
         <u-semi:SemiTheme Locale="zh-CN" />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
-        <!-- 全局颜色资源 -->
+        <!-- 全局颜色与转换器资源 -->
         <Style>
             <Style.Resources>
                 <!-- Color Brushes -->
@@ -30,6 +31,12 @@
                 <SolidColorBrush x:Key="BorderGray">#E5E7EB</SolidColorBrush>
                 <SolidColorBrush x:Key="TextPrimary">#333333</SolidColorBrush>
                 <SolidColorBrush x:Key="TextSecondary">#666666</SolidColorBrush>
+                <!-- Converters (used by AttendedWeighingMainView, PhotoGridView, SettingsWindow, AttendedWeighingWindow, etc.) -->
+                <converters:NullableBitmapToImageConverter x:Key="NullableBitmapToImageConverter" />
+                <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+                <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter" />
+                <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
+                <converters:EqualityToColorConverter x:Key="EqualityToColorConverter" />
             </Style.Resources>
         </Style>
 

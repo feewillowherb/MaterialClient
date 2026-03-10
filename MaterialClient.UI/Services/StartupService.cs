@@ -1,6 +1,7 @@
 using System;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.UI.ViewModels;
 using MaterialClient.UI.Views;
@@ -116,12 +117,14 @@ public class StartupService(
                 .Where(isVerified => isVerified)
                 .Subscribe(_ =>
                 {
-                    // 验证成功，隐藏AuthCodeWindow，显示LoginWindow
-                    _authCodeWindow?.Hide();
-                    if (_loginWindow != null) _loginWindow.Show();
-
-                    verifiedSubscription?.Dispose();
-                    tcs.TrySetResult(true);
+                    // 窗口 Show/Hide 必须在 UI 线程执行，否则下一窗口可能不显示
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _authCodeWindow?.Hide();
+                        if (_loginWindow != null) _loginWindow.Show();
+                        verifiedSubscription?.Dispose();
+                        tcs.TrySetResult(true);
+                    });
                 });
 
         // 监听窗口关闭事件（用户点击关闭按钮）
@@ -164,12 +167,14 @@ public class StartupService(
                 .Where(isSuccessful => isSuccessful)
                 .Subscribe(_ =>
                 {
-                    // 登录成功，隐藏LoginWindow，显示AttendedWeighingWindow
-                    _loginWindow?.Hide();
-                    if (_attendedWeighingWindow != null) _attendedWeighingWindow.Show();
-
-                    loginSuccessSubscription?.Dispose();
-                    tcs.TrySetResult(true);
+                    // 窗口 Show/Hide 必须在 UI 线程执行，否则下一窗口可能不显示
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _loginWindow?.Hide();
+                        if (_attendedWeighingWindow != null) _attendedWeighingWindow.Show();
+                        loginSuccessSubscription?.Dispose();
+                        tcs.TrySetResult(true);
+                    });
                 });
 
         // 监听窗口关闭事件（用户点击关闭按钮）

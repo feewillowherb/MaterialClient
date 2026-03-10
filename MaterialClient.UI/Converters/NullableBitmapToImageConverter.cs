@@ -11,7 +11,7 @@ namespace MaterialClient.UI.Converters;
 /// </summary>
 public class NullableBitmapToImageConverter : IValueConverter
 {
-    private const string DefaultCarImage = "avares://MaterialClient/Assets/Car_Default.png";
+    private const string DefaultCarImage = "avares://MaterialClient.UI/Assets/Car_Default.png";
     private static Bitmap? _defaultBitmap;
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)

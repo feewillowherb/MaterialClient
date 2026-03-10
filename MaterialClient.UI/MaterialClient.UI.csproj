@@ -15,6 +15,8 @@
 
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Volo.Abp.Core" />
+        <PackageReference Include="Volo.Abp.Autofac" />
         <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />
         <PackageReference Include="Avalonia" />
         <PackageReference Include="Avalonia.ReactiveUI" />
@@ -33,6 +35,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="MaterialClientUIModule.cs" />
         <Compile Include="App.axaml.cs">
           <DependentUpon>App.axaml</DependentUpon>
           <SubType>Code</SubType>

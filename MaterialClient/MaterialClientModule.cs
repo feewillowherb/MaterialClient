@@ -4,16 +4,11 @@ using System.Text;
 using System.Threading.Tasks;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
-using MaterialClient.Common.Configuration;
-using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.EFCore;
 using MaterialClient.Backgrounds;
-using MaterialClient.Services;
-using MaterialClient.UI.ViewModels;
-using MaterialClient.UI.Views;
-using MaterialClient.UI.Views.AttendedWeighing;
+using MaterialClient.UI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +27,7 @@ using Volo.Abp.Uow;
 namespace MaterialClient;
 
 [DependsOn(
+    typeof(MaterialClientUIModule),
     typeof(MaterialClientCommonModule),
     typeof(AbpAutofacModule),
     typeof(AbpBackgroundWorkersModule)
@@ -109,30 +105,6 @@ public class MaterialClientModule : AbpModule
                     3,
                     retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
                 ));
-
-        // Register Windows
-        // MainWindow is singleton as it's main application window
-        services.AddSingleton<MaterialClient.UI.Views.MainWindow>();
-
-        // Register startup service
-        services.AddTransient<StartupService>();
-
-        // Register Web Host service
-        services.AddSingleton<MinimalWebHostService>();
-
-        // Configure Streets
-        services.Configure<StreetsConfig>(options =>
-        {
-            var streets = configuration.GetSection("Streets").Get<string[]>();
-            options.Streets = streets ?? Array.Empty<string>();
-        });
-
-        // Configure SolidWasteTypes
-        services.Configure<SolidWasteTypeConfig>(options =>
-        {
-            var solidWasteTypes = configuration.GetSection("SolidWasteTypes").Get<string[]>();
-            options.SolidWasteTypes = solidWasteTypes ?? Array.Empty<string>();
-        });
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)

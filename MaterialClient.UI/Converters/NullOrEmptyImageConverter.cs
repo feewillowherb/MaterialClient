@@ -26,7 +26,7 @@ public class NullOrEmptyImageConverter : IValueConverter
             // 如果是资源路径，直接处理
             if (path.StartsWith("avares://") || path.StartsWith("/Assets/"))
             {
-                var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient{path}") : new Uri(path);
+                var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient.UI{path}") : new Uri(path);
                 var stream = AssetLoader.Open(uri);
                 return new Bitmap(stream);
             }
