@@ -203,11 +203,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     // SolidWaste 模式：增强下拉选择弹窗（搜索/分页）
     [Reactive] private GenericSelectionPopupViewModel<string>? _streetsPopupViewModel;
     [Reactive] private GenericSelectionPopupViewModel<Material>? _materialsPopupViewModel;
-    [Reactive] private GenericSelectionPopupViewModel<ProviderDto>? _providersPopupViewModel;
 
     [Reactive] private bool _isStreetsPopupOpen;
     [Reactive] private bool _isMaterialsPopupOpen;
-    [Reactive] private bool _isProvidersPopupOpen;
 
     /// <summary>
     ///     供应商创建委托（供 CreatablePageableSearchableSelectionBox 绑定）
@@ -451,102 +449,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     }
                 });
             });
-
-        // 供应商：服务端分页（支持按搜索新增）
-        ProvidersPopupViewModel = new GenericSelectionPopupViewModel<ProviderDto>(
-            pagingMode: GenericSelectionPagingMode.ServerSide,
-            displayTextSelector: p => p.ProviderName,
-            logger: Logger,
-            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
-                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds),
-            getSelectedId: p => p.Id,
-            createNewItemFunc: async name =>
-            {
-                var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
-                var created = await _materialService.CreateProviderAsync(name, deliveryType);
-                return (ProviderDto?)new ProviderDto
-                {
-                    Id = created.Id,
-                    ProviderType = created.ProviderType ?? (int)deliveryType,
-                    ProviderName = created.ProviderName,
-                    ContactName = created.ContectName,
-                    ContactPhone = created.ContectPhone
-                };
-            });
-
-        _ = ProvidersPopupViewModel.InitializeAsync();
-
-        var wasProvidersPopupOpen = false;
-        this.WhenAnyValue(x => x.IsProvidersPopupOpen, x => x.ProvidersPopupViewModel.SelectedItem)
-            .Subscribe(tuple =>
-            {
-                var (isOpen, selectedItem) = tuple;
-                if (ProvidersPopupViewModel == null) return;
-
-                // 1) 先处理“弹窗刚打开”
-                if (isOpen && !wasProvidersPopupOpen)
-                {
-                    wasProvidersPopupOpen = true;
-                    ProvidersPopupViewModel.SearchText = string.Empty;
-                    ProvidersPopupViewModel.CurrentPage = 1;
-                    ProvidersPopupViewModel.PendingSelectedIds = SelectedProvider != null
-                        ? new List<int> { SelectedProvider.Id }
-                        : null;
-                    if (SelectedProvider != null)
-                    {
-                        ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
-                        {
-                            Value = SelectedProvider,
-                            DisplayText = SelectedProvider.ProviderName
-                        };
-                    }
-                    else
-                    {
-                        ProvidersPopupViewModel.SelectedItem = null;
-                    }
-                    //_ = ProvidersPopupViewModel.RefreshAsync();
-                }
-
-                if (!isOpen)
-                {
-                    wasProvidersPopupOpen = false;
-                    return;
-                }
-
-                // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
-                if (selectedItem == null)
-                {
-                    Logger?.LogDebug("供应商选择弹窗选中项为 null，忽略本次变化");
-                    return;
-                }
-                if (wasProvidersPopupOpen == false)
-                {
-                    Logger?.LogDebug("供应商选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
-                    return;
-                }
-
-                var selectedId = selectedItem.Value.Id;
-                var selectedProvider = selectedItem.Value;
-
-                SelectedProvider = selectedProvider;
-                if (!Providers.Any(p => p.Id == selectedId))
-                    Providers.Insert(0, selectedProvider);
-
-                IsProvidersPopupOpen = false;
-
-                Dispatcher.UIThread.Post(async () =>
-                {
-                    try
-                    {
-                        await LoadProvidersAsync();
-                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger?.LogError(ex, "同步供应商选择失败");
-                    }
-                });
-            });
     }
 
     public void InitializeData(WeighingListItemDto listItem, string? capturedBillPhotoPath = null)
@@ -725,14 +627,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             {
                 var provider = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value);
                 if (provider != null)
-                {
                     SelectedProvider = provider;
-                    ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
-                    {
-                        Value = provider,
-                        DisplayText = provider.ProviderName
-                    };
-                }
             }
 
             // 如果是 SolidWaste 模式，加载 SolidWaste 数据

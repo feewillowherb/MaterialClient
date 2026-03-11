@@ -37,6 +37,8 @@
 - **Popup 关闭时取消悬挂的 debounce 计时器**：在 `OnIsPopupOpenChanged(false)` 中调用 `_debounceCts?.Cancel()`。理由：用户在 Popup 打开时输入搜索文本触发 debounce（300ms），若在 debounce 到期前通过选择项关闭 Popup，悬挂的 debounce 回调会在到期后执行 `if (!IsPopupOpen) IsPopupOpen = true`，导致 Popup 意外重新弹出。
 - **Popup 关闭后添加冷却保护防止 OnRootPointerPressed 立即重开**：在 `OnIsPopupOpenChanged(false)` 中设置 `_suppressNextOpen = true`，并通过 `Dispatcher.UIThread.Post(() => _suppressNextOpen = false)` 在下一帧重置。`OnRootPointerPressed` 在 `_suppressNextOpen` 为 true 时跳过打开。理由：Popup 关闭时（尤其是从 DataGrid 选择后程序关闭），Avalonia 的指针系统可能在 Popup 覆盖层移除后重新评估指针位置，产生新的 PointerPressed 事件到达控件区域，触发 `OnRootPointerPressed` 立即重开 Popup。冷却保护确保关闭动作的同一事件周期内不会重新打开。
 
+- **清理 ViewModel 中 ProvidersPopupViewModel 死代码**：`AttendedWeighingDetailViewModel` 中仍保留 `ProvidersPopupViewModel`（GenericSelectionPopupViewModel<ProviderDto>）、`IsProvidersPopupOpen`、以及约 80 行初始化 + WhenAnyValue 订阅代码（line 456-577）和 InitializeData 中的 SelectedItem 回写（line 729-733）。这些代码在供应商选择迁移到 `CreatablePageableSearchableSelectionBox` 后已成为死代码：没有任何 AXAML 绑定 `ProvidersPopupViewModel` 或 `IsProvidersPopupOpen`（`SolidWasteModeFormView.axaml.cs` 已注释"供应商已改用 CreatablePageableSearchableSelectionBox，不再使用 IsProvidersPopupOpen"）。应清理以消除无效的 InitializeAsync 调用、无效的 WhenAnyValue 订阅、以及对 `SelectedProvider` 的不必要回写，减少 ViewModel 复杂度。
+
 ## Risks / Trade-offs
 
 - **迁移期双轨**：新旧两种用法并存时，需在文档与代码注释中明确"新界面优先用新控件"，避免继续堆积旧组合。缓解：在 GenericSelectionPopup 相关类型上标记 Obsolete/Deprecated，并在 proposal 与 tasks 中写明清迁节奏。

@@ -79,3 +79,11 @@
 - [x] 10.10 更新 `SolidWasteModeFormView.axaml` 绑定：`SelectedItem` → `SelectedId="{Binding SelectedProviderId, Mode=TwoWay}"`，`AddNewCommand` → `CreateNewAsync="{Binding CreateProviderFunc}"`
 - [x] 10.11 更新 `AttendedWeighingDetailViewModel`：移除 `SelectedProviderSelectionItem` 属性、移除双向 WhenAnyValue 响应链（line 87-114 的反馈环）、移除 `AddNewProviderCommand`；新增 `CreateProviderFunc` (Func) 属性；保留 `SelectedProvider` 单向同步到 `SelectedProviderId`
 - [x] 10.12 更新无头测试：验证 SelectedId 绑定、CreateNewAsync 内部编排、关闭冷却保护、debounce 取消、选择不同项后 popup 不重弹
+
+## 11. 清理 ViewModel 中 ProvidersPopupViewModel 死代码
+
+- [x] 11.1 移除 `[Reactive] private GenericSelectionPopupViewModel<ProviderDto>? _providersPopupViewModel` 字段
+- [x] 11.2 移除 `[Reactive] private bool _isProvidersPopupOpen` 字段
+- [x] 11.3 移除 `InitializeSolidWasteSelectionPopups()` 中供应商 popup 相关的初始化代码（`new GenericSelectionPopupViewModel<ProviderDto>(...)`、`ProvidersPopupViewModel.InitializeAsync()`、`WhenAnyValue(x => x.IsProvidersPopupOpen, x => x.ProvidersPopupViewModel.SelectedItem).Subscribe(...)` 完整订阅块）
+- [x] 11.4 移除 `InitializeData()` 中 `ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>{...}` 的回写逻辑（line 729-733 区域）
+- [x] 11.5 确认编译通过、无头测试全部通过

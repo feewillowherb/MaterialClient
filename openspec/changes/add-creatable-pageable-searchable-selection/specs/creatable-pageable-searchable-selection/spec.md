@@ -230,3 +230,12 @@ The control SHALL be the sole owner of: `CurrentPageItems` (ObservableCollection
 - **GIVEN** a ViewModel with `SelectedProviderId` (int?), `LoadProvidersPageFunc` (Func), and `CreateProviderFunc` (Func)
 - **WHEN** the control is configured via XAML bindings (`SelectedId`, `LoadPageAsync`, `CreateNewAsync`, `Watermark`, `PageSize`)
 - **THEN** the ViewModel SHALL require zero reactive bridge subscriptions, zero SelectionItem properties, and zero post-selection/post-creation orchestration code
+
+### Requirement: Clean up dead ProvidersPopupViewModel infrastructure
+
+After migrating provider selection to `CreatablePageableSearchableSelectionBox`, the ViewModel SHALL NOT retain dead code from the old `GenericSelectionPopupViewModel<ProviderDto>` infrastructure. Specifically: `ProvidersPopupViewModel` property, `IsProvidersPopupOpen` property, the ~80 lines of initialization + WhenAnyValue subscription in `InitializeSolidWasteSelectionPopups()` for provider popup, and the `ProvidersPopupViewModel.SelectedItem` write-back in `InitializeData()` SHALL be removed. No AXAML view binds these properties; they execute at runtime but produce no visible effect.
+
+#### Scenario: No dead provider popup code in ViewModel
+
+- **WHEN** the ViewModel is inspected after migration
+- **THEN** there SHALL be no `ProvidersPopupViewModel` property, no `IsProvidersPopupOpen` property, and no WhenAnyValue subscription for provider popup open/close/selection; only `LoadProvidersPageAsync` (Func) and `CreateProviderFunc` (Func) SHALL remain as provider-selection-related members
