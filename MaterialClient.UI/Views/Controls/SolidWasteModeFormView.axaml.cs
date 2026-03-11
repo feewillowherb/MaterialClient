@@ -46,10 +46,7 @@ public partial class SolidWasteModeFormView : UserControl
                 if (vm.IsMaterialsPopupOpen)
                     Dispatcher.UIThread.Post(() => ApplyPopupOffset(MaterialsSelectionPopup, MaterialsSelectionPopupControl, MaterialsSelectionBox), DispatcherPriority.Loaded);
                 break;
-            case nameof(AttendedWeighingDetailViewModel.IsProvidersPopupOpen):
-                if (vm.IsProvidersPopupOpen)
-                    Dispatcher.UIThread.Post(() => ApplyPopupOffset(ProvidersSelectionPopup, ProvidersSelectionPopupControl, ProvidersSelectionBox), DispatcherPriority.Loaded);
-                break;
+            // 供应商已改用 CreatablePageableSearchableSelectionBox，不再使用 IsProvidersPopupOpen
         }
     }
 
@@ -59,8 +56,7 @@ public partial class SolidWasteModeFormView : UserControl
             StreetsSelectionPopup.PlacementTarget = StreetsSelectionBox;
         if (MaterialsSelectionPopup != null && MaterialsSelectionBox != null)
             MaterialsSelectionPopup.PlacementTarget = MaterialsSelectionBox;
-        if (ProvidersSelectionPopup != null && ProvidersSelectionBox != null)
-            ProvidersSelectionPopup.PlacementTarget = ProvidersSelectionBox;
+        // 供应商已改用 CreatablePageableSearchableSelectionBox，无独立 Popup
     }
 
     private static void ApplyPopupOffset(Popup? popup, Control? popupContent, Control? trigger)

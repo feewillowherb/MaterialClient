@@ -10,8 +10,10 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Avalonia.Threading;
+using System.Threading;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
@@ -19,6 +21,7 @@ using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using Volo.Abp;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Data;
 using MaterialClient.UI.Views;
 using MaterialClient.UI.Views.AttendedWeighing;
@@ -64,6 +67,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         // 初始化 SolidWaste 下拉选择弹窗（镇街/材料/供应商）
         InitializeSolidWasteSelectionPopups();
 
+        AddNewProviderCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            var deliveryType = _listItem?.DeliveryType ?? DeliveryType.Receiving;
+            var created = await _materialService.CreateProviderAsync("新供应商", deliveryType);
+            var item = created.ToSelectionItem();
+            SelectedProviderSelectionItem = item;
+            await LoadProvidersAsync();
+            SelectedProvider = Providers.FirstOrDefault(p => p.Id == created.Id);
+        });
+
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
             .Subscribe(_ => GoodsWeight = AllWeight - TruckWeight);
@@ -75,6 +88,29 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(provider =>
             {
                 if (provider != null) SelectedProviderId = provider.Id;
+                SelectedProviderSelectionItem = provider?.ToSelectionItem();
+            });
+
+        this.WhenAnyValue(x => x.SelectedProviderSelectionItem)
+            .Subscribe(async item =>
+            {
+                if (item == null) return;
+                SelectedProviderId = item.Id;
+                var existing = Providers.FirstOrDefault(p => p.Id == item.Id);
+                if (existing != null)
+                {
+                    SelectedProvider = existing;
+                    return;
+                }
+                try
+                {
+                    await LoadProvidersAsync();
+                    SelectedProvider = Providers.FirstOrDefault(p => p.Id == item.Id);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "同步供应商选择失败");
+                }
             });
 
         // 订阅 WeighingMode 变化，更新 IsSolidWasteMode
@@ -196,6 +232,26 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [Reactive] private bool _isStreetsPopupOpen;
     [Reactive] private bool _isMaterialsPopupOpen;
     [Reactive] private bool _isProvidersPopupOpen;
+
+    /// <summary>
+    ///     供应商选择（供 CreatablePageableSearchableSelectionBox 绑定）
+    /// </summary>
+    [Reactive] private SelectionItem? _selectedProviderSelectionItem;
+
+    /// <summary>
+    ///     供应商分页加载（供 CreatablePageableSearchableSelectionBox 绑定）
+    /// </summary>
+    public Func<string?, int, int, IReadOnlyList<int>?, CancellationToken, Task<PagedResultDto<SelectionItem>?>?> LoadProvidersPageAsync => async (search, page, pageSize, selectedIds, ct) =>
+    {
+        var result = await _materialService.GetPagedProvidersAsync(search, page, pageSize, selectedIds);
+        var items = (result?.Items ?? Array.Empty<ProviderDto>()).Select(p => p.ToSelectionItem()).ToList();
+        return result == null ? null : new PagedResultDto<SelectionItem>(result.TotalCount, items);
+    };
+
+    /// <summary>
+    ///     新增供应商（供 CreatablePageableSearchableSelectionBox 无结果时“新增”）
+    /// </summary>
+    public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> AddNewProviderCommand { get; }
 
     /// <summary>
     ///     供应商标签文本（根据当前记录的收发料类型动态显示）

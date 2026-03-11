@@ -4,6 +4,7 @@
              xmlns:local="using:MaterialClient.UI"
              xmlns:converters="using:MaterialClient.UI.Converters"
              xmlns:controls="using:MaterialClient.UI.Views.Controls"
+             xmlns:dtos="using:MaterialClient.Common.Api.Dtos"
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              RequestedThemeVariant="Light">
@@ -255,35 +256,85 @@
         <Style Selector="controls|CreatablePageableSearchableSelectionBox">
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border x:Name="PART_RootBorder"
-                            Background="#FFFFFF"
-                            BorderBrush="#E5E7EB"
-                            BorderThickness="1"
-                            CornerRadius="0"
-                            Padding="6,0,6,0">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBox x:Name="PART_TextBox"
-                                     Grid.Column="0"
-                                     FontSize="12"
-                                     Foreground="#333333"
-                                     VerticalAlignment="Center"
-                                     HorizontalAlignment="Stretch"
-                                     TextTrimming="CharacterEllipsis"
-                                     BorderThickness="0"
-                                     Background="Transparent" />
-                            <Path Grid.Column="1"
-                                  Width="10"
-                                  Height="6"
-                                  Margin="6,0,0,0"
-                                  VerticalAlignment="Center"
-                                  Fill="#666666"
-                                  Data="M 0 0 L 5 5 L 10 0 Z"
-                                  IsHitTestVisible="False" />
-                        </Grid>
-                    </Border>
-                    <Popup x:Name="PART_Popup"
-                           PlacementTarget="{Binding $parent[controls:CreatablePageableSearchableSelectionBox]}"
-                           IsOpen="{Binding IsPopupOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                    <Grid>
+                        <Border x:Name="PART_RootBorder"
+                                Background="#FFFFFF"
+                                BorderBrush="#E5E7EB"
+                                BorderThickness="1"
+                                CornerRadius="0"
+                                Padding="6,0,6,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="PART_TextBox"
+                                         Grid.Column="0"
+                                         FontSize="12"
+                                         Foreground="#333333"
+                                         VerticalAlignment="Center"
+                                         HorizontalAlignment="Stretch"
+                                         BorderThickness="0"
+                                         Background="Transparent" />
+                                <Path Grid.Column="1"
+                                      Width="10"
+                                      Height="6"
+                                      Margin="6,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Fill="#666666"
+                                      Data="M 0 0 L 5 5 L 10 0 Z"
+                                      IsHitTestVisible="False" />
+                            </Grid>
+                        </Border>
+                        <Popup x:Name="PART_Popup"
+                               PlacementTarget="{Binding $parent[controls:CreatablePageableSearchableSelectionBox]}"
+                               IsOpen="{Binding IsPopupOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                            <Border Background="White"
+                                    BorderBrush="#E5E7EB"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    MaxHeight="280"
+                                    MinWidth="200">
+                                <Grid RowDefinitions="*,Auto,Auto">
+                                    <ListBox x:Name="PART_ItemsList"
+                                             Grid.Row="0"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             ItemsSource="{Binding CurrentPageItems, RelativeSource={RelativeSource TemplatedParent}}"
+                                             MaxHeight="220">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate DataType="dtos:SelectionItem">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="12"
+                                                           Foreground="#333333"
+                                                           VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel x:Name="PART_Pager"
+                                                Grid.Row="1"
+                                                Orientation="Horizontal"
+                                                Spacing="8"
+                                                Margin="8,4">
+                                        <Button x:Name="PART_LoadMoreButton"
+                                                Content="加载更多"
+                                                FontSize="12"
+                                                Classes="transparent-button" />
+                                    </StackPanel>
+                                    <StackPanel x:Name="PART_EmptyPanel"
+                                                Grid.Row="2"
+                                                IsVisible="{Binding ShowAddNew, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                                Spacing="8"
+                                                Margin="12,8">
+                                        <TextBlock Text="未找到匹配结果"
+                                                   FontSize="12"
+                                                   Foreground="#666666"
+                                                   HorizontalAlignment="Center" />
+                                        <Button x:Name="PART_AddNewButton"
+                                                Content="新增"
+                                                Classes="primary-button"
+                                                Command="{Binding AddNewCommand, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Popup>
+                    </Grid>
                 </ControlTemplate>
             </Setter>
         </Style>
