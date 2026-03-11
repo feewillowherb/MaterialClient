@@ -73,12 +73,12 @@ Services that provide paged data (e.g. GetPagedProvidersAsync) SHALL accept an o
 
 ### Requirement: Visual consistency when closed
 
-When the popup is closed, the control SHALL match the current SearchableSelectionBox appearance: Height 32, background #FFFFFF, border #E5E7EB, BorderThickness 1, horizontal padding ~6,0,6,0; left content single-line text, font size 12, foreground #333333, vertical center, TextTrimming CharacterEllipsis; right side dropdown arrow ~10×6, color #666666. Hover/Focus/Error SHALL reuse or lightly adapt existing style resources.
+When the popup is closed, the control SHALL match the current SearchableSelectionBox appearance: Height 32, background #FFFFFF, border #E5E7EB, BorderThickness 1, horizontal padding ~6,0,6,0; left content single-line text, font size 12, foreground #333333, vertical center, TextTrimming CharacterEllipsis; right side dropdown arrow ~10×6, color #666666. Hover/Focus/Error SHALL reuse or lightly adapt existing style resources. When the popup is closed, the TextBox SHALL be read-only; the user SHALL NOT be able to edit text while the popup is not visible.
 
 #### Scenario: Closed state appearance
 
 - **WHEN** the popup is closed
-- **THEN** the control SHALL match the above dimensions, colors, and layout so that it is visually consistent with SearchableSelectionBox
+- **THEN** the control SHALL match the above dimensions, colors, and layout so that it is visually consistent with SearchableSelectionBox; the TextBox SHALL be read-only
 
 ### Requirement: Creatable when no results
 
@@ -91,17 +91,17 @@ When there are no matching results, the system SHALL show an empty state and SHA
 
 ### Requirement: Keyboard and selection behavior
 
-The system SHALL support Escape to close and reset. Selecting an item (click or Enter on DataGrid row) SHALL update SelectedItem, close the popup, and return focus to the TextBox. DataGrid DoubleTapped SHALL also confirm selection.
+The system SHALL support Escape to close and reset. Selecting an item (click or Enter on DataGrid row) SHALL update SelectedItem and close the popup. The system SHALL NOT programmatically return focus to the TextBox after selection or close; focus SHALL be allowed to move naturally. DataGrid DoubleTapped SHALL also confirm selection.
 
 #### Scenario: Select item and close
 
 - **WHEN** the user selects an item from the DataGrid (click, Enter, or double-tap)
-- **THEN** SelectedItem is updated, the popup closes, and focus returns to the TextBox
+- **THEN** SelectedItem is updated and the popup closes; focus SHALL NOT be programmatically forced to the TextBox
 
 #### Scenario: Escape closes and resets
 
 - **WHEN** the user presses Escape while the popup is open
-- **THEN** the popup closes and _searchText/TextBox display SHALL reset to the current selected item (or empty)
+- **THEN** the popup closes and _searchText/TextBox display SHALL reset to the current selected item (or empty); focus SHALL NOT be programmatically forced to the TextBox
 
 ### Requirement: Pagination state properties
 
@@ -111,3 +111,41 @@ The control SHALL expose the following StyledProperties for template binding: `C
 
 - **WHEN** data is loaded and TotalCount is 25
 - **THEN** CurrentPageInfo SHALL be "当前页:1", TotalCountInfo SHALL be "共25条记录", TotalCount SHALL be 25, ShowResults SHALL be true
+
+### Requirement: Popup open trigger — explicit user interaction only
+
+The popup SHALL open ONLY in response to explicit user interaction: (1) mouse click on the control area, or (2) text input in the TextBox (handled by debounce). The popup SHALL NOT open due to programmatic focus, initial render focus, or GotFocus events. The control SHALL NOT use `OnGotFocus` as a popup trigger. The control's `Focusable` property SHALL be set so that initial rendering does not cause the popup to appear.
+
+#### Scenario: Initial render does not open popup
+
+- **WHEN** the `SolidWasteModeFormView` (or any parent view) is rendered for the first time
+- **THEN** the popup SHALL NOT open; the TextBox SHALL display the watermark or the current selected item name in read-only mode
+
+#### Scenario: Click opens popup
+
+- **WHEN** the user clicks anywhere on the control (including the TextBox area or the dropdown arrow)
+- **THEN** the popup opens, the TextBox becomes editable, and data is loaded
+
+#### Scenario: Re-click after close reopens popup
+
+- **WHEN** the user closes the popup (via Escape or selection) and then clicks the control again
+- **THEN** the popup SHALL reopen; there SHALL NOT be a dead click where the TextBox is editable but the popup is not shown
+
+### Requirement: Popup and TextBox editability synchronization
+
+The popup open/close state and the TextBox editability SHALL always be in sync. When the popup is open, the TextBox SHALL be editable (IsReadOnly=false). When the popup is closed, the TextBox SHALL be read-only (IsReadOnly=true). There SHALL NOT be any intermediate state where one is active without the other. This synchronization SHALL be driven by the `IsPopupOpen` property change handler.
+
+#### Scenario: Popup open → TextBox editable
+
+- **WHEN** the popup transitions from closed to open
+- **THEN** the TextBox SHALL become editable immediately, allowing the user to type search text
+
+#### Scenario: Popup close → TextBox read-only
+
+- **WHEN** the popup transitions from open to closed (via selection, Escape, or click-outside)
+- **THEN** the TextBox SHALL become read-only immediately, displaying the selected item name or empty text
+
+#### Scenario: No desynchronized state
+
+- **GIVEN** any sequence of user interactions (clicks, typing, Escape, selection, re-clicks)
+- **THEN** at every point in time, exactly one of these invariants holds: (a) popup is open AND TextBox is editable, or (b) popup is closed AND TextBox is read-only

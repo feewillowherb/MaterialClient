@@ -46,3 +46,13 @@
 - [x] 7.6 在 UI 无头测试工程（MaterialClient.UI.Test）中新增针对 `CreatablePageableSearchableSelectionBox` 的无头测试类，验证关闭态视觉（Height=32、背景/边框/字体与 SearchableSelectionBox 一致）及 Popup 模板部件（PART_DataGrid、PART_EmptyPanel）
 - [x] 7.7 在 UI 无头测试中验证 `CreatablePageableSearchableSelectionBox` 的交互行为（点击/聚焦打开、输入搜索、防抖调用 LoadPageAsync、分页 CurrentPage 变更触发重载、Escape/点击外部重置、DataGrid 选择确认）及分页属性（CurrentPage、TotalCount、ShowResults、CurrentPageInfo、TotalCountInfo）
 - [x] 7.8 在 `SolidWasteModeFormView` 中仅替换供应商选择为新控件，验证端到端
+
+## 8. 焦点与状态管理修复（方案 B — 重构状态模型）
+
+- [ ] 8.1 移除 `OnGotFocus` 中 `IsPopupOpen = true` 的逻辑；控件可保留 `Focusable=true`，但 GotFocus 不再驱动 popup
+- [ ] 8.2 在 `OnApplyTemplate` 中通过 `AddHandler(PointerPressedEvent, handler, RoutingStrategies.Tunnel, handledEventsToo: true)` 注册 PART_RootBorder（或控件自身）的指针按下事件，保证 TextBox 消费 PointerPressed 后仍能触发 popup 打开
+- [ ] 8.3 在 `OnIsPopupOpenChanged` 中同步 TextBox 可编辑性：`IsPopupOpen=true` 时设 `PART_TextBox.IsReadOnly = false`；`IsPopupOpen=false` 时设 `PART_TextBox.IsReadOnly = true`，并恢复 TextBox 为已选项文本或 watermark
+- [ ] 8.4 移除 `OnDataGridSelectionChanged` 和 `OnDataGridDoubleTapped` 中的 `Dispatcher.Post(() => PART_TextBox.Focus())`，选择/关闭后不主动 focus TextBox
+- [ ] 8.5 确认 `OnRootPointerPressed` 只在 `!IsPopupOpen` 时设 `IsPopupOpen = true`，且使用 Tunnel 路由确保事件在 TextBox 处理之前被捕获
+- [ ] 8.6 验证初始渲染时 popup 不弹出：TextBox 初始为 `IsReadOnly=true`，显示 watermark 或已选项名称
+- [ ] 8.7 更新无头测试：新增测试验证初始渲染不弹出 popup、选择后 popup 不重新弹出、关闭→重新点击→popup 正常打开、任意时刻 IsPopupOpen 与 TextBox.IsReadOnly 互斥

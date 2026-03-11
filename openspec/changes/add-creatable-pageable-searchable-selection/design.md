@@ -12,6 +12,7 @@
 - 统一 SelectedItem 为 SelectionItem（Id + Name），业务实体通过 FromX/ToX 扩展方法与 SelectionItem 互转，UI 层不直接依赖领域实体。
 - 关闭状态下与 SearchableSelectionBox 外观一致，复用或轻量调整现有 Hover/Focus/Error 等样式。
 - Popup 打开时与 GenericSelectionPopup 视觉一致：Width=400、Height=250、BorderThickness=3、DataGrid 单列"名称"（白底黑字列头）、分页信息文本 + Ursa Pagination 组件。
+- Popup 状态与 TextBox 可编辑性严格同步：打开 ↔ 可编辑，关闭 ↔ 只读。不存在"TextBox 可编辑但 Popup 未打开"或"Popup 打开但 TextBox 只读"的中间态。
 - 支持点击打开、输入防抖搜索、分页、选择/新增后关闭、Escape/点击外部重置等交互；数据契约为 (searchText, page, pageSize, selectedIds, ct) => Task<PagedResultDto<T>>。
 
 **Non-Goals:**
@@ -26,6 +27,9 @@
 - **SelectionItem 与扩展方法**：UI 与调用方只交换 SelectionItem；Provider/Material/Street 等通过 ToSelectionItem() / ToProviderId() 等扩展方法互转。理由：控件不依赖具体领域类型，便于在不同实体上复用同一控件；ViewModel 仅需少量胶水代码。
 - **加载契约 selectedIds**：分页加载接受 selectedIds，当其中任一项的 Name 与 searchText 完全一致时，服务层忽略 searchText 过滤。理由：点击打开时 TextBox 显示已选项名称并作为 searchText 传入，若不忽略会导致"用已选项名搜索"结果为空。
 - **关闭时强制重置**：Escape 或点击外部关闭时，_searchText 与 TextBox 显示恢复为当前已选项显示文本（无则空），不保留用户输入。理由：与"允许不选择即关闭"的预期一致，避免未提交的输入残留在 UI 上。
+- **Popup 仅由显式用户交互打开，不使用 OnGotFocus 触发器**：移除 `OnGotFocus` 作为 popup 打开触发器。Popup 打开仅由以下用户行为驱动：(1) 鼠标点击控件区域（通过 Tunnel 路由 + handledEventsToo 捕获，确保 TextBox 消费 PointerPressed 后仍能响应）；(2) 键盘导航聚焦后的按键交互。理由：原设计使用 `OnGotFocus → IsPopupOpen = true` 存在三个已知缺陷——a) 选择关闭后编程式 Focus(TextBox) 触发 GotFocus 导致 popup 立即重新弹出（死循环）；b) 初始渲染时焦点系统自动聚焦到控件导致 popup 在页面加载瞬间弹出；c) Escape 关闭 popup 但焦点留在 TextBox，再次点击 TextBox 不触发 GotFocus 导致 popup 未打开但 TextBox 可编辑（状态不同步）。`SearchableSelectionBox` 虽然也有相同的 `OnGotFocus` 模式但不出问题，是因为其 `IsPopupOpen` 仅控制内部面板可见性切换而非真正的 Popup，实际 Popup 由父视图的独立属性控制。本控件的 Popup 直接绑定 `IsPopupOpen`，因此不能使用 focus 作为触发器。
+- **TextBox 可编辑性与 IsPopupOpen 严格绑定**：Popup 关闭时 TextBox 设为 `IsReadOnly=true`（或 `IsHitTestVisible=false`），Popup 打开时恢复可编辑。理由：保证"编辑状态"与"popup 打开"始终同步，不存在仅其中一个生效的中间态。关闭态下 TextBox 显示已选项名称或 watermark，不可交互编辑。
+- **选择/关闭后不主动 Focus TextBox**：DataGrid 选择项后或 Escape 关闭后，不再调用 `Dispatcher.Post(() => PART_TextBox.Focus())`。让焦点自然停留或移走。理由：主动 focus 是死循环的直接诱因；不 focus 则 GotFocus 不会触发（即使保留 OnGotFocus 也安全）；用户若要再次打开只需点击控件即可。
 
 ## Risks / Trade-offs
 
