@@ -6,6 +6,7 @@
              xmlns:controls="using:MaterialClient.UI.Views.Controls"
              xmlns:dtos="using:MaterialClient.Common.Api.Dtos"
              xmlns:semi="https://irihi.tech/semi"
+             xmlns:u="https://irihi.tech/ursa"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              RequestedThemeVariant="Light">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
@@ -284,53 +285,114 @@
                         </Border>
                         <Popup x:Name="PART_Popup"
                                PlacementTarget="{Binding $parent[controls:CreatablePageableSearchableSelectionBox]}"
+                               Placement="Bottom"
+                               IsLightDismissEnabled="True"
                                IsOpen="{Binding IsPopupOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                             <Border Background="White"
                                     BorderBrush="#E5E7EB"
-                                    BorderThickness="1"
+                                    BorderThickness="3"
                                     CornerRadius="4"
-                                    MaxHeight="280"
-                                    MinWidth="200">
-                                <Grid RowDefinitions="*,Auto,Auto">
-                                    <ListBox x:Name="PART_ItemsList"
-                                             Grid.Row="0"
-                                             Background="Transparent"
-                                             BorderThickness="0"
-                                             ItemsSource="{Binding CurrentPageItems, RelativeSource={RelativeSource TemplatedParent}}"
-                                             MaxHeight="220">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate DataType="dtos:SelectionItem">
-                                                <TextBlock Text="{Binding Name}"
+                                    Padding="0"
+                                    Width="400"
+                                    Height="250">
+                                <Border.Styles>
+                                    <Style Selector="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="White" />
+                                        <Setter Property="Foreground" Value="Black" />
+                                    </Style>
+                                </Border.Styles>
+                                <Grid RowDefinitions="*,50">
+                                    <!-- DataGrid 区域 -->
+                                    <Border Grid.Row="0"
+                                            BorderBrush="#E5E7EB"
+                                            BorderThickness="0"
+                                            Background="Transparent">
+                                        <Grid>
+                                            <DataGrid x:Name="PART_DataGrid"
+                                                      Height="200"
+                                                      AutoGenerateColumns="False"
+                                                      CanUserResizeColumns="False"
+                                                      CanUserSortColumns="False"
+                                                      IsReadOnly="True"
+                                                      SelectionMode="Single"
+                                                      HorizontalAlignment="Stretch"
+                                                      BorderThickness="0"
+                                                      Background="White"
+                                                      GridLinesVisibility="Horizontal"
+                                                      HeadersVisibility="Column"
+                                                      RowHeight="30"
+                                                      ItemsSource="{Binding CurrentPageItems, RelativeSource={RelativeSource TemplatedParent}}"
+                                                      IsVisible="{Binding ShowResults, RelativeSource={RelativeSource TemplatedParent}}">
+                                                <DataGrid.Columns>
+                                                    <DataGridTemplateColumn Width="*">
+                                                        <DataGridTemplateColumn.Header>
+                                                            <TextBlock FontSize="10"
+                                                                       Text="名称"
+                                                                       Foreground="Black"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center" />
+                                                        </DataGridTemplateColumn.Header>
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate DataType="dtos:SelectionItem">
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           FontSize="10"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"
+                                                                           TextAlignment="Center" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+
+                                            <!-- 空状态 + 新增 -->
+                                            <StackPanel x:Name="PART_EmptyPanel"
+                                                        IsVisible="{Binding ShowAddNew, RelativeSource={RelativeSource TemplatedParent}}"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Spacing="10">
+                                                <TextBlock Text="未找到匹配结果"
                                                            FontSize="12"
-                                                           Foreground="#333333"
-                                                           VerticalAlignment="Center" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                    <StackPanel x:Name="PART_Pager"
-                                                Grid.Row="1"
-                                                Orientation="Horizontal"
-                                                Spacing="8"
-                                                Margin="8,4">
-                                        <Button x:Name="PART_LoadMoreButton"
-                                                Content="加载更多"
-                                                FontSize="12"
-                                                Classes="transparent-button" />
-                                    </StackPanel>
-                                    <StackPanel x:Name="PART_EmptyPanel"
-                                                Grid.Row="2"
-                                                IsVisible="{Binding ShowAddNew, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                                                Spacing="8"
-                                                Margin="12,8">
-                                        <TextBlock Text="未找到匹配结果"
-                                                   FontSize="12"
-                                                   Foreground="#666666"
-                                                   HorizontalAlignment="Center" />
-                                        <Button x:Name="PART_AddNewButton"
-                                                Content="新增"
-                                                Classes="primary-button"
-                                                Command="{Binding AddNewCommand, RelativeSource={RelativeSource TemplatedParent}}" />
-                                    </StackPanel>
+                                                           Foreground="#666666"
+                                                           HorizontalAlignment="Center" />
+                                                <Button x:Name="PART_AddNewButton"
+                                                        Classes="primary-button"
+                                                        Height="36"
+                                                        FontSize="12"
+                                                        Padding="12,0"
+                                                        Content="新增"
+                                                        Command="{Binding AddNewCommand, RelativeSource={RelativeSource TemplatedParent}}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- 分页控件区域 -->
+                                    <Grid Grid.Row="1"
+                                          Height="50"
+                                          VerticalAlignment="Center"
+                                          Margin="10,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding CurrentPageInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                                                       FontSize="14"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding TotalCountInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                                                       FontSize="14"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <u:Pagination Grid.Column="1"
+                                                      CurrentPage="{Binding CurrentPage, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                      TotalCount="{Binding TotalCount, RelativeSource={RelativeSource TemplatedParent}}"
+                                                      PageSize="{Binding PageSize, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    </Grid>
                                 </Grid>
                             </Border>
                         </Popup>

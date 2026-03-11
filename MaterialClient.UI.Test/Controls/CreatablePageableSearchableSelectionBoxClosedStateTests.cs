@@ -104,11 +104,11 @@ public class CreatablePageableSearchableSelectionBoxClosedStateTests
     }
 
     [Fact]
-    public void PART_ItemsList_ShouldExist_WhenTemplateApplied()
+    public void PART_DataGrid_ShouldExist_WhenTemplateApplied()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         if (control.PART_TextBox == null) return;
-        Assert.NotNull(control.PART_ItemsList);
+        Assert.NotNull(control.PART_DataGrid);
     }
 
     [Fact]
@@ -117,14 +117,6 @@ public class CreatablePageableSearchableSelectionBoxClosedStateTests
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         if (control.PART_TextBox == null) return;
         Assert.NotNull(control.PART_EmptyPanel);
-    }
-
-    [Fact]
-    public void PART_LoadMoreButton_ShouldExist_WhenTemplateApplied()
-    {
-        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
-        if (control.PART_TextBox == null) return;
-        Assert.NotNull(control.PART_LoadMoreButton);
     }
 
     [Fact]

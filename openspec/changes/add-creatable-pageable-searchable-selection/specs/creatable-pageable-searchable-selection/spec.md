@@ -8,7 +8,7 @@
 
 ### Requirement: Single control with embedded popup and data contract
 
-The system SHALL provide one TemplatedControl that embeds a TextBox (single input/display surface) and a Popup (list, pager, optional "add new" area). The control SHALL connect to callers via LoadPageAsync, SelectedItem, DisplayMemberPath, GetItemId, Watermark, PageSize, and SHALL NOT depend on a specific ViewModel type. Data loading SHALL follow the contract (searchText, page, pageSize, selectedIds, ct) => Task<PagedResultDto<T>>.
+The system SHALL provide one TemplatedControl that embeds a TextBox (single input/display surface) and a Popup (DataGrid, Ursa Pagination, optional "add new" area). The control SHALL connect to callers via LoadPageAsync, SelectedItem, Watermark, PageSize, CurrentPage, TotalCount, and SHALL NOT depend on a specific ViewModel type. Data loading SHALL follow the contract (searchText, page, pageSize, selectedIds, ct) => Task<PagedResultDto<T>>.
 
 #### Scenario: Open with selected item
 
@@ -27,17 +27,31 @@ The system SHALL provide one TemplatedControl that embeds a TextBox (single inpu
 
 ### Requirement: Searchable and pageable behavior
 
-The system SHALL support search by user input in the TextBox with debounce (e.g. 300 ms), and SHALL load data with (searchText, page, pageSize, selectedIds). The popup SHALL support paging (e.g. pager or "load more").
+The system SHALL support search by user input in the TextBox with debounce (e.g. 300 ms), and SHALL load data with (searchText, page, pageSize, selectedIds). The popup SHALL provide proper pagination via Ursa `Pagination` component with page info text ("当前页:X  共N条记录") and page navigation controls, matching the GenericSelectionPopup paging layout.
 
 #### Scenario: Type to search
 
 - **WHEN** the user types in the TextBox while the popup is open
-- **THEN** after debounce the system SHALL request the first page with the new search text and keep the popup open
+- **THEN** after debounce the system SHALL request the first page with the new search text, reset CurrentPage to 1, and keep the popup open
 
-#### Scenario: Paging
+#### Scenario: Paging via Pagination component
 
-- **WHEN** the user triggers a page change (pager or load more)
-- **THEN** the system SHALL load the new page with the current search text and selectedIds
+- **WHEN** the user clicks a page number or navigation button in the Ursa Pagination component
+- **THEN** the system SHALL update CurrentPage (TwoWay bound), load the corresponding page with the current search text and selectedIds, and update CurrentPageInfo/TotalCountInfo
+
+### Requirement: Popup visual consistency with GenericSelectionPopup
+
+When the popup is open, its content SHALL visually match the existing GenericSelectionPopup layout: Border (Background White, BorderBrush #E5E7EB, BorderThickness 3, CornerRadius 4, Width 400, Height 250), containing a Grid with two rows: Row 0 for the DataGrid area (Height 200, single "名称" column with centered text, RowHeight 30, horizontal grid lines, white background column header with black foreground via local style override) and an overlapping empty-state/add-new panel; Row 1 for the pagination area (Height 50, page info text on the left, Ursa Pagination on the right).
+
+#### Scenario: Popup matches GenericSelectionPopup
+
+- **WHEN** the popup is open
+- **THEN** the popup SHALL have the same dimensions (400×250), border style (3px #E5E7EB), DataGrid layout (single column, centered text, horizontal grid lines), and pagination bar (page info + Ursa Pagination) as GenericSelectionPopup
+
+#### Scenario: DataGrid column header local style
+
+- **WHEN** the popup DataGrid renders its column header
+- **THEN** the column header SHALL have white background and black foreground (overriding the global blue header style), matching GenericSelectionPopup's local style override
 
 ### Requirement: SelectedItem as SelectionItem and extension methods
 
@@ -68,7 +82,7 @@ When the popup is closed, the control SHALL match the current SearchableSelectio
 
 ### Requirement: Creatable when no results
 
-When there are no matching results, the system SHALL show an empty state and SHALL provide an "add new" entry (e.g. button or command), consistent with existing GenericSelectionPopup "add new" behavior.
+When there are no matching results, the system SHALL show an empty state and SHALL provide an "add new" entry (e.g. button or command), consistent with existing GenericSelectionPopup "add new" behavior. The empty panel overlays the DataGrid area and is visible only when ShowAddNew is true.
 
 #### Scenario: Add new when no results
 
@@ -77,14 +91,23 @@ When there are no matching results, the system SHALL show an empty state and SHA
 
 ### Requirement: Keyboard and selection behavior
 
-The system SHALL support Arrow Up/Down in the popup to move highlight, Enter to confirm the current item, and Escape to close and reset. Selecting an item or executing "add new" SHALL update SelectedItem, close the popup, and return focus to the TextBox.
+The system SHALL support Escape to close and reset. Selecting an item (click or Enter on DataGrid row) SHALL update SelectedItem, close the popup, and return focus to the TextBox. DataGrid DoubleTapped SHALL also confirm selection.
 
 #### Scenario: Select item and close
 
-- **WHEN** the user selects an item from the list (click or Enter)
+- **WHEN** the user selects an item from the DataGrid (click, Enter, or double-tap)
 - **THEN** SelectedItem is updated, the popup closes, and focus returns to the TextBox
 
 #### Scenario: Escape closes and resets
 
 - **WHEN** the user presses Escape while the popup is open
 - **THEN** the popup closes and _searchText/TextBox display SHALL reset to the current selected item (or empty)
+
+### Requirement: Pagination state properties
+
+The control SHALL expose the following StyledProperties for template binding: `CurrentPage` (int, TwoWay with Pagination), `TotalCount` (int), `ShowResults` (bool, true when items exist), `CurrentPageInfo` (string, formatted as "当前页:X"), `TotalCountInfo` (string, formatted as "共N条记录"). These properties SHALL be updated after each data load via `UpdatePageInfo()`.
+
+#### Scenario: Page info reflects loaded data
+
+- **WHEN** data is loaded and TotalCount is 25
+- **THEN** CurrentPageInfo SHALL be "当前页:1", TotalCountInfo SHALL be "共25条记录", TotalCount SHALL be 25, ShowResults SHALL be true

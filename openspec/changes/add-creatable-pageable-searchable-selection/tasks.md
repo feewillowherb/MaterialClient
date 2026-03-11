@@ -8,22 +8,23 @@
 ## 2. 控件骨架与模板
 
 - [x] 2.1 新增 TemplatedControl，定义 PART_TextBox 与 PART_Popup
-- [x] 2.2 在默认模板中实现 Popup 内结构：列表（ListBox/ItemsControl）、分页区、可选空状态与"新增"区；PlacementTarget 为控件自身，宽度与触发器对齐
-- [x] 2.3 暴露属性：LoadPageAsync、SelectedItem（TwoWay）、DisplayMemberPath、GetItemId、Watermark、PageSize、IsPopupOpen（可选）、AddNewCommand（可选）
+- [x] 2.2 在默认模板中实现 Popup 内结构：DataGrid（单列"名称"、水平网格线、RowHeight=30、白底黑字列头）+ Ursa Pagination（分页信息 + 翻页控件）+ 可选空状态与"新增"区；Popup 外观与 GenericSelectionPopup 一致（Width=400、Height=250、BorderThickness=3、CornerRadius=4）；PlacementTarget 为控件自身
+- [x] 2.3 暴露属性：LoadPageAsync、SelectedItem（TwoWay）、Watermark、PageSize、IsPopupOpen、AddNewCommand、CurrentPage、TotalCount、ShowResults、CurrentPageInfo、TotalCountInfo、ShowAddNew
 
 ## 3. 交互与数据加载
 
 - [x] 3.1 实现点击/聚焦打开 Popup，_searchText 初始为当前选中项显示文本，以 selectedIds + page 1 + pageSize 调用 LoadPageAsync
 - [x] 3.2 实现 TextBox 输入防抖（如 300ms）后以新 searchText、page 1 请求；若 popup 未打开则打开
-- [x] 3.3 实现分页条/"加载更多"以当前 searchText 与新 page 调用 LoadPageAsync
-- [x] 3.4 实现列表选择（点击/Enter）更新 SelectedItem、关闭 Popup、焦点回 TextBox
+- [x] 3.3 实现 Ursa Pagination 翻页：CurrentPage 通过 TwoWay 绑定驱动，属性变化时以当前 searchText 与新 page 调用 LoadPageAsync；使用 _suppressPageChangeLoad 避免编程设值（如 popup 打开时重置 page=1）导致的双重加载
+- [x] 3.4 实现 DataGrid 选择（点击/DoubleTapped）更新 SelectedItem、关闭 Popup、焦点回 TextBox
 - [x] 3.5 实现 Escape/点击外部关闭时强制重置 _searchText 与 TextBox 显示为已选项（无则空）
-- [x] 3.6 实现 Popup 内 Arrow Up/Down 高亮移动、Enter 确认当前项
+- [x] 3.6 实现 DataGrid 内的选择确认行为（SelectionChanged + DoubleTapped 事件处理）
 
 ## 4. 样式与视觉一致
 
-- [x] 4.1 关闭状态样式与 SearchableSelectionBox 一致：Height=32、背景 #FFFFFF、边框 #E5E7EB、内边距、字体 12、前景 #333333、右侧下拉箭头 10×6 #666666、TextTrimming=CharacterEllipsis
-- [x] 4.2 复用或轻量调整 Hover/Focus/Error 等现有样式资源
+- [x] 4.1 关闭状态样式与 SearchableSelectionBox 一致：Height=32、背景 #FFFFFF、边框 #E5E7EB、内边距、字体 12、前景 #333333、右侧下拉箭头 10×6 #666666
+- [x] 4.2 Popup 打开状态样式与 GenericSelectionPopup 一致：Border（White、#E5E7EB、3px、4px 圆角、400×250）、DataGrid（Height=200、列头白底黑字通过 `<Border.Styles>` 局部覆盖全局蓝底白字）、分页栏（Height=50、左侧"当前页:X  共N条记录"、右侧 Ursa Pagination）
+- [x] 4.3 复用或轻量调整 Hover/Focus/Error 等现有样式资源
 
 ## 5. 服务层配合
 
@@ -42,6 +43,6 @@
 - [x] 7.3 测试：输入后不选择即关闭（Escape/点击外部）时 TextBox 与 _searchText 恢复为已选项
 - [x] 7.4 测试：选择一项后 SelectedItem 更新、Popup 关闭
 - [x] 7.5 测试：无结果时"新增"可触发 AddNewCommand（若实现）
-- [x] 7.6 在 UI 无头测试工程（MaterialClient.UI.Test）中新增针对 `CreatablePageableSearchableSelectionBox` 的无头测试类，验证关闭态视觉（Height=32、背景/边框/字体/箭头尺寸与 SearchableSelectionBox 一致）
-- [x] 7.7 在 UI 无头测试中验证 `CreatablePageableSearchableSelectionBox` 的交互行为（点击/聚焦打开、输入搜索、防抖调用 LoadPageAsync、分页、Escape/点击外部重置、键盘上下/Enter 选择）
+- [x] 7.6 在 UI 无头测试工程（MaterialClient.UI.Test）中新增针对 `CreatablePageableSearchableSelectionBox` 的无头测试类，验证关闭态视觉（Height=32、背景/边框/字体与 SearchableSelectionBox 一致）及 Popup 模板部件（PART_DataGrid、PART_EmptyPanel）
+- [x] 7.7 在 UI 无头测试中验证 `CreatablePageableSearchableSelectionBox` 的交互行为（点击/聚焦打开、输入搜索、防抖调用 LoadPageAsync、分页 CurrentPage 变更触发重载、Escape/点击外部重置、DataGrid 选择确认）及分页属性（CurrentPage、TotalCount、ShowResults、CurrentPageInfo、TotalCountInfo）
 - [x] 7.8 在 `SolidWasteModeFormView` 中仅替换供应商选择为新控件，验证端到端

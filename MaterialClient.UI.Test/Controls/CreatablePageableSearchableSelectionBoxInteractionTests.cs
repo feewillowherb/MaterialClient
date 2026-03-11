@@ -152,7 +152,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     public void OpenWithNoSelection_LoadPageAsyncCalledWithNullSelectedIds()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
-        IReadOnlyList<int>? capturedIds = new List<int> { -1 }; // distinguishable non-null initial
+        IReadOnlyList<int>? capturedIds = new List<int> { -1 };
         string? capturedSearch = "sentinel";
         var called = false;
 
@@ -192,10 +192,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
         Assert.Equal("已选项", control.PART_TextBox.Text);
 
-        // Simulate user typing in the TextBox
         control.PART_TextBox.Text = "新输入内容";
-
-        // Close without selecting → should reset
         control.IsPopupOpen = false;
 
         Assert.Equal("已选项", control.PART_TextBox.Text);
@@ -217,7 +214,6 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
         control.PART_TextBox.Text = "搜索文本";
         control.IsPopupOpen = false;
 
-        // TextBox should show watermark text (via UpdateTextBoxFromSelectedItem)
         Assert.True(
             control.PART_TextBox.Text == string.Empty || control.PART_TextBox.Text == "请选择",
             $"Expected empty or watermark, got: '{control.PART_TextBox.Text}'");
@@ -228,7 +224,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     #region 7.4 选择一项→更新 SelectedItem、关闭 Popup
 
     [Fact]
-    public void SelectItemFromList_SelectedItemUpdates()
+    public void SelectItemFromDataGrid_SelectedItemUpdates()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         var items = new List<SelectionItem>
@@ -241,10 +237,9 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
         control.IsPopupOpen = true;
 
-        if (control.PART_ItemsList == null) return;
+        if (control.PART_DataGrid == null) return;
 
-        // Simulate selecting an item
-        control.PART_ItemsList.SelectedItem = items[1];
+        control.PART_DataGrid.SelectedItem = items[1];
 
         Assert.NotNull(control.SelectedItem);
         Assert.Equal(2, control.SelectedItem!.Id);
@@ -252,7 +247,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     }
 
     [Fact]
-    public void SelectItemFromList_PopupCloses()
+    public void SelectItemFromDataGrid_PopupCloses()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         var items = new List<SelectionItem>
@@ -265,9 +260,9 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
         control.IsPopupOpen = true;
 
-        if (control.PART_ItemsList == null) return;
+        if (control.PART_DataGrid == null) return;
 
-        control.PART_ItemsList.SelectedItem = items[0];
+        control.PART_DataGrid.SelectedItem = items[0];
 
         Assert.False(control.IsPopupOpen);
     }
@@ -323,25 +318,85 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
     #endregion
 
-    #region 7.7 交互行为补充（防抖、分页、Escape、键盘）
+    #region 7.7 交互行为补充（分页信息、CurrentPage、Escape）
 
     [Fact]
-    public void LoadMore_IncrementsPage_AndAppendsItems()
+    public void Pagination_CurrentPage_DefaultIs1()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        Assert.Equal(1, control.CurrentPage);
+    }
 
-        control.LoadPageAsync = (_, page, _, _, _) =>
-            Task.FromResult<PagedResultDto<SelectionItem>?>(
-                SingleItemPage(page, $"项目{page}"));
+    [Fact]
+    public void Pagination_TotalCount_DefaultIs0()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        Assert.Equal(0, control.TotalCount);
+    }
+
+    [Fact]
+    public void Pagination_ShowResults_FalseWhenEmpty()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
 
         control.IsPopupOpen = true;
 
-        if (control.PART_LoadMoreButton == null) return;
+        if (control.PART_TextBox == null) return;
+        Assert.False(control.ShowResults);
+    }
 
-        var initialCount = control.CurrentPageItems.Count;
-        Assert.True(initialCount > 0, "Should have initial items");
+    [Fact]
+    public void Pagination_ShowResults_TrueWhenHasItems()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "A"));
 
-        control.PART_LoadMoreButton.Command?.Execute(null);
+        control.IsPopupOpen = true;
+
+        if (control.PART_TextBox == null) return;
+        Assert.True(control.ShowResults);
+    }
+
+    [Fact]
+    public void Pagination_PageInfoUpdatesAfterLoad()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(new PagedResultDto<SelectionItem>(
+                25,
+                new List<SelectionItem> { new() { Id = 1, Name = "A" } }));
+
+        control.IsPopupOpen = true;
+
+        if (control.PART_TextBox == null) return;
+
+        Assert.Equal("当前页:1", control.CurrentPageInfo);
+        Assert.Equal("共25条记录", control.TotalCountInfo);
+        Assert.Equal(25, control.TotalCount);
+    }
+
+    [Fact]
+    public void Pagination_ChangingCurrentPage_TriggersReload()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        var capturedPages = new List<int>();
+
+        control.LoadPageAsync = (_, page, _, _, _) =>
+        {
+            capturedPages.Add(page);
+            return Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(page, $"P{page}"));
+        };
+
+        control.IsPopupOpen = true;
+        if (control.PART_TextBox == null) return;
+
+        capturedPages.Clear();
+        control.CurrentPage = 2;
+
+        Assert.Contains(2, capturedPages);
     }
 
     [Fact]
