@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -16,19 +17,23 @@ namespace MaterialClient.UI.Views.Controls;
 
 /// <summary>
 /// 可创建、可分页、可搜索的单一选择控件。
-/// 内嵌 PART_TextBox + PART_Popup（DataGrid、分页、可选"新增"），视觉与 GenericSelectionPopup 一致。
+/// 公共 API: SelectedId (int?), LoadPageAsync (Func), CreateNewAsync (Func?), Watermark, PageSize。
+/// SelectionItem 为内部数据载体，不暴露给 ViewModel。
 /// </summary>
 public class CreatablePageableSearchableSelectionBox : TemplatedControl
 {
     private const int DebounceMs = 300;
 
     private string _searchText = string.Empty;
+    private string _selectedDisplayName = string.Empty;
     private CancellationTokenSource? _debounceCts;
     private bool _suppressPageChangeLoad;
     private bool _suppressTextChanged;
+    private bool _suppressNextOpen;
+    private bool _suppressSelectedIdReload;
 
     private IDisposable? _isPopupOpenSub;
-    private IDisposable? _selectedItemSub;
+    private IDisposable? _selectedIdSub;
     private IDisposable? _currentPageSub;
 
     #region Styled Properties
@@ -36,8 +41,8 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     public static readonly StyledProperty<bool> IsPopupOpenProperty =
         AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, bool>(nameof(IsPopupOpen));
 
-    public static readonly StyledProperty<SelectionItem?> SelectedItemProperty =
-        AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, SelectionItem?>(nameof(SelectedItem));
+    public static readonly StyledProperty<int?> SelectedIdProperty =
+        AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, int?>(nameof(SelectedId));
 
     public static readonly StyledProperty<string?> WatermarkProperty =
         AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, string?>(nameof(Watermark), defaultValue: "请选择");
@@ -48,8 +53,8 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     public static readonly StyledProperty<Func<string?, int, int, IReadOnlyList<int>?, CancellationToken, Task<PagedResultDto<SelectionItem>?>?>?> LoadPageAsyncProperty =
         AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, Func<string?, int, int, IReadOnlyList<int>?, CancellationToken, Task<PagedResultDto<SelectionItem>?>?>?>(nameof(LoadPageAsync));
 
-    public static readonly StyledProperty<object?> AddNewCommandProperty =
-        AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, object?>(nameof(AddNewCommand));
+    public static readonly StyledProperty<Func<string, CancellationToken, Task<SelectionItem?>>?> CreateNewAsyncProperty =
+        AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, Func<string, CancellationToken, Task<SelectionItem?>>?>(nameof(CreateNewAsync));
 
     public static readonly StyledProperty<bool> ShowAddNewProperty =
         AvaloniaProperty.Register<CreatablePageableSearchableSelectionBox, bool>(nameof(ShowAddNew));
@@ -74,7 +79,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     #region Property Accessors
 
     public bool IsPopupOpen { get => GetValue(IsPopupOpenProperty); set => SetValue(IsPopupOpenProperty, value); }
-    public SelectionItem? SelectedItem { get => GetValue(SelectedItemProperty); set => SetValue(SelectedItemProperty, value); }
+    public int? SelectedId { get => GetValue(SelectedIdProperty); set => SetValue(SelectedIdProperty, value); }
     public string? Watermark { get => GetValue(WatermarkProperty); set => SetValue(WatermarkProperty, value); }
     public int PageSize { get => GetValue(PageSizeProperty); set => SetValue(PageSizeProperty, value); }
 
@@ -84,7 +89,12 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         set => SetValue(LoadPageAsyncProperty, value);
     }
 
-    public object? AddNewCommand { get => GetValue(AddNewCommandProperty); set => SetValue(AddNewCommandProperty, value); }
+    public Func<string, CancellationToken, Task<SelectionItem?>>? CreateNewAsync
+    {
+        get => GetValue(CreateNewAsyncProperty);
+        set => SetValue(CreateNewAsyncProperty, value);
+    }
+
     public bool ShowAddNew { get => GetValue(ShowAddNewProperty); set => SetValue(ShowAddNewProperty, value); }
     public bool ShowResults { get => GetValue(ShowResultsProperty); set => SetValue(ShowResultsProperty, value); }
     public int CurrentPage { get => GetValue(CurrentPageProperty); set => SetValue(CurrentPageProperty, value); }
@@ -94,7 +104,6 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
 
     #endregion
 
-    /// <summary>当前页展示项，供模板 DataGrid 绑定。</summary>
     public ObservableCollection<SelectionItem> CurrentPageItems { get; } = new();
 
     #region Template Parts
@@ -119,7 +128,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     {
         base.OnApplyTemplate(e);
         _isPopupOpenSub?.Dispose();
-        _selectedItemSub?.Dispose();
+        _selectedIdSub?.Dispose();
         _currentPageSub?.Dispose();
 
         PART_TextBox = e.NameScope.Find<TextBox>("PART_TextBox");
@@ -143,20 +152,22 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
             PART_DataGrid.SelectionChanged += OnDataGridSelectionChanged;
             PART_DataGrid.DoubleTapped += OnDataGridDoubleTapped;
         }
+        if (PART_AddNewButton != null)
+            PART_AddNewButton.Click += OnAddNewButtonClick;
         if (PART_Popup != null)
             PART_Popup.Closed += OnPopupClosed;
 
         _isPopupOpenSub = this.GetObservable(IsPopupOpenProperty).Subscribe(OnIsPopupOpenChanged);
-        _selectedItemSub = this.GetObservable(SelectedItemProperty).Subscribe(_ => UpdateTextBoxFromSelectedItem());
+        _selectedIdSub = this.GetObservable(SelectedIdProperty).Subscribe(OnSelectedIdChanged);
         _currentPageSub = this.GetObservable(CurrentPageProperty).Subscribe(OnCurrentPageChanged);
 
-        UpdateTextBoxFromSelectedItem();
+        UpdateDisplayFromSelectedId();
     }
 
     private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!IsPopupOpen)
-            Dispatcher.UIThread.Post(() => { if (!IsPopupOpen) IsPopupOpen = true; });
+        if (!IsPopupOpen && !_suppressNextOpen)
+            Dispatcher.UIThread.Post(() => { if (!IsPopupOpen && !_suppressNextOpen) IsPopupOpen = true; });
     }
 
     private void OnIsPopupOpenChanged(bool isOpen)
@@ -169,7 +180,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
                 PART_TextBox.IsHitTestVisible = true;
                 PART_TextBox.IsReadOnly = false;
             }
-            _searchText = SelectedItem?.Name ?? string.Empty;
+            _searchText = _selectedDisplayName;
             SyncTextBoxToSearchText();
             _suppressPageChangeLoad = true;
             CurrentPage = 1;
@@ -179,15 +190,27 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         }
         else
         {
+            _debounceCts?.Cancel();
+            _suppressNextOpen = true;
+            Dispatcher.UIThread.Post(() => _suppressNextOpen = false);
+
             if (PART_TextBox != null)
             {
                 PART_TextBox.IsReadOnly = true;
                 PART_TextBox.Focusable = false;
                 PART_TextBox.IsHitTestVisible = false;
             }
-            ResetSearchTextToSelectedItem();
-            SyncTextBoxToSearchText();
+            _searchText = _selectedDisplayName;
+            SyncTextBoxToDisplayText();
         }
+    }
+
+    private void OnSelectedIdChanged(int? newId)
+    {
+        if (_suppressSelectedIdReload) return;
+        ResolveDisplayNameFromItems();
+        if (!IsPopupOpen)
+            UpdateDisplayFromSelectedId();
     }
 
     private void OnCurrentPageChanged(int newPage)
@@ -198,8 +221,8 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
 
     private void OnPopupClosed(object? sender, EventArgs e)
     {
-        ResetSearchTextToSelectedItem();
-        SyncTextBoxToSearchText();
+        _searchText = _selectedDisplayName;
+        SyncTextBoxToDisplayText();
     }
 
     private void OnTextBoxTextChanged(object? sender, TextChangedEventArgs e)
@@ -235,24 +258,57 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     private void OnDataGridSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (PART_DataGrid?.SelectedItem is SelectionItem item)
-        {
-            SelectedItem = item;
-            IsPopupOpen = false;
-        }
+            AcceptSelection(item);
     }
 
     private void OnDataGridDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (PART_DataGrid?.SelectedItem is SelectionItem item)
+            AcceptSelection(item);
+    }
+
+    private void AcceptSelection(SelectionItem item)
+    {
+        _selectedDisplayName = item.Name;
+        _suppressSelectedIdReload = true;
+        SelectedId = item.Id;
+        _suppressSelectedIdReload = false;
+        IsPopupOpen = false;
+    }
+
+    private async void OnAddNewButtonClick(object? sender, RoutedEventArgs e)
+    {
+        var create = CreateNewAsync;
+        if (create == null) return;
+
+        try
         {
-            SelectedItem = item;
+            var result = await create(_searchText, CancellationToken.None);
+            if (result == null) return;
+
+            _selectedDisplayName = result.Name;
+            _suppressSelectedIdReload = true;
+            SelectedId = result.Id;
+            _suppressSelectedIdReload = false;
             IsPopupOpen = false;
+        }
+        catch
+        {
+            // Creation failed; leave popup open for retry
         }
     }
 
-    private void ResetSearchTextToSelectedItem()
+    private void ResolveDisplayNameFromItems()
     {
-        _searchText = SelectedItem?.Name ?? string.Empty;
+        var id = SelectedId;
+        if (id == null)
+        {
+            _selectedDisplayName = string.Empty;
+            return;
+        }
+        var match = CurrentPageItems.FirstOrDefault(i => i.Id == id.Value);
+        if (match != null)
+            _selectedDisplayName = match.Name;
     }
 
     private void SyncTextBoxToSearchText()
@@ -265,22 +321,32 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         }
     }
 
-    private void UpdateTextBoxFromSelectedItem()
+    private void SyncTextBoxToDisplayText()
     {
-        if (!IsPopupOpen && PART_TextBox != null)
+        if (PART_TextBox != null)
         {
             _suppressTextChanged = true;
-            _searchText = SelectedItem?.Name ?? string.Empty;
-            PART_TextBox.Text = string.IsNullOrEmpty(_searchText) ? (Watermark ?? string.Empty) : _searchText;
+            PART_TextBox.Text = string.IsNullOrEmpty(_selectedDisplayName)
+                ? (Watermark ?? string.Empty)
+                : _selectedDisplayName;
             _suppressTextChanged = false;
+        }
+    }
+
+    private void UpdateDisplayFromSelectedId()
+    {
+        if (!IsPopupOpen)
+        {
+            ResolveDisplayNameFromItems();
+            SyncTextBoxToDisplayText();
         }
     }
 
     private IReadOnlyList<int>? GetSelectedIds()
     {
-        var sel = SelectedItem;
-        if (sel == null) return null;
-        return new[] { sel.Id };
+        var id = SelectedId;
+        if (id == null) return null;
+        return new[] { id.Value };
     }
 
     private void UpdatePageInfo()
@@ -309,12 +375,14 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
             foreach (var item in r.Items ?? Array.Empty<SelectionItem>())
                 CurrentPageItems.Add(item);
 
+            ResolveDisplayNameFromItems();
+
             if (CurrentPageItems.Count == 0)
-                ShowAddNew = true;
+                ShowAddNew = CreateNewAsync != null;
         }
         catch
         {
-            ShowAddNew = true;
+            ShowAddNew = CreateNewAsync != null;
         }
         finally
         {

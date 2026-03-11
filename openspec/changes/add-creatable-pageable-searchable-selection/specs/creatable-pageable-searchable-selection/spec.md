@@ -8,16 +8,16 @@
 
 ### Requirement: Single control with embedded popup and data contract
 
-The system SHALL provide one TemplatedControl that embeds a TextBox (single input/display surface) and a Popup (DataGrid, Ursa Pagination, optional "add new" area). The control SHALL connect to callers via LoadPageAsync, SelectedItem, Watermark, PageSize, CurrentPage, TotalCount, and SHALL NOT depend on a specific ViewModel type. Data loading SHALL follow the contract (searchText, page, pageSize, selectedIds, ct) => Task<PagedResultDto<T>>.
+The system SHALL provide one TemplatedControl that embeds a TextBox (single input/display surface) and a Popup (DataGrid, Ursa Pagination, optional "add new" area). The control SHALL connect to callers via two pure functions (`LoadPageAsync`, `CreateNewAsync`) and one identity property (`SelectedId: int?`), plus configuration properties (`Watermark`, `PageSize`). The control SHALL NOT depend on a specific ViewModel type. Data loading SHALL follow the contract `(searchText, page, pageSize, selectedIds, ct) => Task<PagedResultDto<SelectionItem>?>`. The control SHALL internally manage `CurrentPage`, `TotalCount`, `ShowResults`, `CurrentPageInfo`, `TotalCountInfo`, `CurrentPageItems` and all SelectionItem state; these SHALL NOT need to be set by the caller.
 
 #### Scenario: Open with selected item
 
-- **WHEN** the user clicks the control and there is a current SelectedItem
-- **THEN** the popup opens, _searchText is set to the selected item's display text, and the first page is loaded with selectedIds (and that searchText); the list SHALL include the selected item
+- **WHEN** the user clicks the control and there is a current SelectedId (resolved to a display name internally)
+- **THEN** the popup opens, _searchText is set to the selected item's display text, and the first page is loaded with selectedIds containing the current SelectedId; the list SHALL include the selected item
 
 #### Scenario: Open with no selection
 
-- **WHEN** the user clicks the control and there is no SelectedItem
+- **WHEN** the user clicks the control and SelectedId is null
 - **THEN** the popup opens, _searchText is empty, selectedIds is null, and the first page is loaded
 
 #### Scenario: Close without selecting resets display
@@ -53,14 +53,24 @@ When the popup is open, its content SHALL visually match the existing GenericSel
 - **WHEN** the popup DataGrid renders its column header
 - **THEN** the column header SHALL have white background and black foreground (overriding the global blue header style), matching GenericSelectionPopup's local style override
 
-### Requirement: SelectedItem as SelectionItem and extension methods
+### CHANGED Requirement: SelectedId (int?) as public selection API; SelectionItem is internal
 
-The system SHALL use a single model for the selected value: SelectionItem with Id and Name. The UI and callers SHALL interact only with SelectionItem. Business entities (e.g. Provider, Material, Street) SHALL be converted via FromX/ToX extension methods (e.g. Provider.ToSelectionItem(), SelectionItem.ToProviderId()).
+The control's public selection state SHALL be expressed as `SelectedId` (int?, TwoWay). ViewModel SHALL bind directly to its domain Id property (e.g. `SelectedProviderId`). `SelectionItem` (Id + Name) SHALL be used internally by the control for DataGrid display and as the return type of `LoadPageAsync` / `CreateNewAsync`, but SHALL NOT be exposed as a public StyledProperty. The ViewModel SHALL NOT need to create, hold, or push `SelectionItem` objects. Extension methods (`ToSelectionItem()` etc.) SHALL remain for use inside `LoadPageAsync` / `CreateNewAsync` function implementations provided by the ViewModel.
 
-#### Scenario: Binding to Provider
+#### Scenario: ViewModel binds SelectedId only
 
-- **WHEN** the control is bound to a provider list and the user selects an item
-- **THEN** SelectedItem is a SelectionItem; the ViewModel SHALL be able to convert to/from Provider (or provider id) via extension methods
+- **WHEN** the control is used for provider selection
+- **THEN** the XAML binding SHALL be `SelectedId="{Binding SelectedProviderId, Mode=TwoWay}"`; the ViewModel SHALL NOT have a `SelectedProviderSelectionItem` property or any reactive bridge between domain entities and SelectionItem
+
+#### Scenario: User selects a different item
+
+- **WHEN** the user selects an item from the DataGrid
+- **THEN** the control SHALL internally set `SelectedId = item.Id`; the TwoWay binding SHALL update `SelectedProviderId` in the ViewModel; no feedback loop SHALL occur because the ViewModel does not push SelectionItem back
+
+#### Scenario: ViewModel sets SelectedId programmatically
+
+- **WHEN** the ViewModel sets `SelectedProviderId` (e.g. loading an existing record)
+- **THEN** the control SHALL receive the new `SelectedId` via binding, resolve the display name from `CurrentPageItems` or by triggering `LoadPageAsync(selectedIds: [id])`, and update the TextBox display accordingly
 
 ### Requirement: Service layer selectedIds and filter bypass
 
@@ -80,28 +90,38 @@ When the popup is closed, the control SHALL match the current SearchableSelectio
 - **WHEN** the popup is closed
 - **THEN** the control SHALL match the above dimensions, colors, and layout so that it is visually consistent with SearchableSelectionBox; the TextBox SHALL be read-only
 
-### Requirement: Creatable when no results
+### CHANGED Requirement: Creatable when no results via CreateNewAsync function
 
-When there are no matching results, the system SHALL show an empty state and SHALL provide an "add new" entry (e.g. button or command), consistent with existing GenericSelectionPopup "add new" behavior. The empty panel overlays the DataGrid area and is visible only when ShowAddNew is true.
+When there are no matching results, the system SHALL show an empty state and SHALL provide an "add new" button. The creation logic SHALL be provided by the caller as a pure function `CreateNewAsync: Func<string, CancellationToken, Task<SelectionItem?>>?` (where the string parameter is the current search text, used as a name hint for the new item). The control SHALL internally handle all post-creation orchestration: (1) call `CreateNewAsync(searchText, ct)`, (2) if result is non-null, set `SelectedId = result.Id`, (3) refresh page data via `LoadPageAsync(selectedIds: [result.Id])`, (4) update display text to `result.Name`. The ViewModel SHALL NOT need to perform any post-creation selection or refresh logic.
 
 #### Scenario: Add new when no results
 
-- **WHEN** the user has searched and the result set is empty
-- **THEN** the user SHALL see an empty state and an option to add new (AddNewCommand or equivalent); invoking it SHALL behave like the existing add-new flow where applicable
+- **WHEN** the user has searched and the result set is empty and `CreateNewAsync` is provided
+- **THEN** the user SHALL see an empty state and an "add new" button; clicking it SHALL invoke `CreateNewAsync(searchText, ct)` provided by the caller
+
+#### Scenario: Post-creation orchestration is internal to control
+
+- **WHEN** `CreateNewAsync` returns a non-null `SelectionItem` (Id + Name)
+- **THEN** the control SHALL set `SelectedId = result.Id`, refresh page data to include the new item, close the popup, and display the new item's name; the ViewModel SHALL only observe the `SelectedId` change via TwoWay binding
+
+#### Scenario: Search text used as name hint
+
+- **WHEN** the user types "ABC公司" in the search box, gets no results, and clicks "新增"
+- **THEN** the control SHALL pass "ABC公司" as the first argument to `CreateNewAsync`, allowing the ViewModel to use it as the name for the new entity
 
 ### Requirement: Keyboard and selection behavior
 
-The system SHALL support Escape to close and reset. Selecting an item (click or Enter on DataGrid row) SHALL update SelectedItem and close the popup. The system SHALL NOT programmatically return focus to the TextBox after selection or close; focus SHALL be allowed to move naturally. DataGrid DoubleTapped SHALL also confirm selection.
+The system SHALL support Escape to close and reset. Selecting an item (click or Enter on DataGrid row) SHALL update `SelectedId` to the item's Id and close the popup. The system SHALL NOT programmatically return focus to the TextBox after selection or close; focus SHALL be allowed to move naturally. DataGrid DoubleTapped SHALL also confirm selection.
 
 #### Scenario: Select item and close
 
 - **WHEN** the user selects an item from the DataGrid (click, Enter, or double-tap)
-- **THEN** SelectedItem is updated and the popup closes; focus SHALL NOT be programmatically forced to the TextBox
+- **THEN** `SelectedId` is updated to `item.Id`, the popup closes, and the TextBox displays the item's name; focus SHALL NOT be programmatically forced to the TextBox
 
 #### Scenario: Escape closes and resets
 
 - **WHEN** the user presses Escape while the popup is open
-- **THEN** the popup closes and _searchText/TextBox display SHALL reset to the current selected item (or empty); focus SHALL NOT be programmatically forced to the TextBox
+- **THEN** the popup closes and _searchText/TextBox display SHALL reset to the current selected item's name (resolved from SelectedId, or empty if null); focus SHALL NOT be programmatically forced to the TextBox
 
 ### Requirement: Pagination state properties
 
@@ -177,3 +197,36 @@ The `OnRootPointerPressed` handler SHALL open the popup via `Dispatcher.UIThread
 
 - **WHEN** the user clicks the control to open the popup
 - **THEN** the popup SHALL open and remain open; the same click SHALL NOT trigger LightDismiss closure
+
+### Requirement: Popup close cooldown to prevent immediate reopen
+
+When the popup closes (via selection, Escape, or click-outside), the control SHALL suppress `OnRootPointerPressed` from reopening the popup during the same event cycle. A `_suppressNextOpen` flag SHALL be set on close and cleared via `Dispatcher.UIThread.Post` on the next frame. This prevents the scenario where Popup overlay removal causes Avalonia's pointer system to re-dispatch a PointerPressed event to the control area, immediately triggering a reopen.
+
+#### Scenario: Select different item does not reopen popup
+
+- **WHEN** the user selects a different item from the DataGrid and the popup closes
+- **THEN** the popup SHALL NOT reopen; the cooldown SHALL suppress any stale PointerPressed events from the closing cycle
+
+#### Scenario: Cooldown expires for next interaction
+
+- **WHEN** the cooldown frame has passed (next Dispatcher frame after close)
+- **THEN** `_suppressNextOpen` SHALL be false and the user's next click SHALL open the popup normally
+
+### Requirement: Cancel debounce on popup close
+
+When the popup closes, any pending debounce timer (`_debounceCts`) SHALL be cancelled immediately in `OnIsPopupOpenChanged(false)`. This prevents a scenario where: the user types in the search box (starting a 300ms debounce), then quickly selects an item (closing the popup); the debounce expires after close and its callback executes `if (!IsPopupOpen) IsPopupOpen = true`, causing the popup to reopen unexpectedly.
+
+#### Scenario: Type then quickly select does not reopen
+
+- **WHEN** the user types search text (debounce starts), then selects an item before the debounce expires
+- **THEN** the debounce SHALL be cancelled on popup close; the popup SHALL NOT reopen after the debounce delay
+
+### Requirement: Control owns all selection and pagination state
+
+The control SHALL be the sole owner of: `CurrentPageItems` (ObservableCollection), pagination state (`CurrentPage`, `TotalCount`, `ShowResults`, `CurrentPageInfo`, `TotalCountInfo`), internal display text, and internal `SelectionItem` resolution. The ViewModel SHALL NOT hold parallel collections of page items, SHALL NOT hold `SelectionItem` properties, and SHALL NOT perform post-selection or post-creation orchestration. The ViewModel's responsibilities are limited to: (1) providing `LoadPageAsync` and `CreateNewAsync` function implementations, (2) binding `SelectedId` (int?) for reading/writing the selected entity's Id.
+
+#### Scenario: Minimal ViewModel integration
+
+- **GIVEN** a ViewModel with `SelectedProviderId` (int?), `LoadProvidersPageFunc` (Func), and `CreateProviderFunc` (Func)
+- **WHEN** the control is configured via XAML bindings (`SelectedId`, `LoadPageAsync`, `CreateNewAsync`, `Watermark`, `PageSize`)
+- **THEN** the ViewModel SHALL require zero reactive bridge subscriptions, zero SelectionItem properties, and zero post-selection/post-creation orchestration code

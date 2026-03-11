@@ -120,10 +120,10 @@ public class CreatablePageableSearchableSelectionBoxClosedStateTests
     }
 
     [Fact]
-    public void DefaultSelectedItem_ShouldBeNull()
+    public void DefaultSelectedId_ShouldBeNull()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
-        Assert.Null(control.SelectedItem);
+        Assert.Null(control.SelectedId);
     }
 
     [Fact]

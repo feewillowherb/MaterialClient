@@ -360,8 +360,7 @@
                                                         Height="36"
                                                         FontSize="12"
                                                         Padding="12,0"
-                                                        Content="新增"
-                                                        Command="{Binding AddNewCommand, RelativeSource={RelativeSource TemplatedParent}}" />
+                                                        Content="新增" />
                                             </StackPanel>
                                         </Grid>
                                     </Border>

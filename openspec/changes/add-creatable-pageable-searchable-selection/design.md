@@ -8,8 +8,8 @@
 
 **Goals:**
 
-- 实现一个 TemplatedControl，内嵌 PART_TextBox + PART_Popup（DataGrid + Ursa Pagination + 可选"新增"），通过 LoadPageAsync、SelectedItem、Watermark、PageSize、CurrentPage、TotalCount 等与调用方对接。Popup 打开时的视觉结构与 GenericSelectionPopup 完全一致。
-- 统一 SelectedItem 为 SelectionItem（Id + Name），业务实体通过 FromX/ToX 扩展方法与 SelectionItem 互转，UI 层不直接依赖领域实体。
+- 实现一个 TemplatedControl，内嵌 PART_TextBox + PART_Popup（DataGrid + Ursa Pagination + 可选"新增"），通过 LoadPageAsync、CreateNewAsync、SelectedId、Watermark、PageSize 等与调用方对接。Popup 打开时的视觉结构与 GenericSelectionPopup 完全一致。ViewModel 仅提供两个纯函数（LoadPageAsync + CreateNewAsync）和一个 int? 绑定（SelectedId），零 Command、零桥接代码、零反馈环。
+- SelectionItem（Id + Name）作为控件内部数据载体及 LoadPageAsync / CreateNewAsync 的返回值契约，不作为控件公共属性暴露；控件公共 API 以 SelectedId (int?) 表达选择状态。
 - 关闭状态下与 SearchableSelectionBox 外观一致，复用或轻量调整现有 Hover/Focus/Error 等样式。
 - Popup 打开时与 GenericSelectionPopup 视觉一致：Width=400、Height=250、BorderThickness=3、DataGrid 单列"名称"（白底黑字列头）、分页信息文本 + Ursa Pagination 组件。
 - Popup 状态与 TextBox 可编辑性严格同步：打开 ↔ 可编辑，关闭 ↔ 只读。不存在"TextBox 可编辑但 Popup 未打开"或"Popup 打开但 TextBox 只读"的中间态。
@@ -32,6 +32,10 @@
 - **选择/关闭后不主动 Focus TextBox**：DataGrid 选择项后或 Escape 关闭后，不再调用 `Dispatcher.Post(() => PART_TextBox.Focus())`。让焦点自然停留或移走。理由：主动 focus 是死循环的直接诱因；不 focus 则 GotFocus 不会触发（即使保留 OnGotFocus 也安全）；用户若要再次打开只需点击控件即可。
 - **关闭态 TextBox 完全退出焦点系统（Focusable + IsHitTestVisible 三态同步）**：`SearchableSelectionBox` 关闭态展示的是 TextBlock（天然不可聚焦），而本控件复用同一个 TextBox 显示/编辑。因此关闭态必须将 TextBox 降级为等效于 TextBlock 的纯展示状态：`Focusable=false`（退出 Tab 导航、阻止焦点系统自动聚焦）+ `IsHitTestVisible=false`（点击事件穿透到 Border，由 OnRootPointerPressed 处理打开）+ `IsReadOnly=true`（防止编辑）。打开态恢复为 `Focusable=true` + `IsHitTestVisible=true` + `IsReadOnly=false`。设 `Focusable=false` 时 Avalonia 会自动释放该元素的焦点，解决"点击外部后焦点仍停留在 TextBox"和"初始渲染时 TextBox 被焦点系统选中导致光标闪烁"两个问题。
 - **OnRootPointerPressed 使用 Dispatcher.Post 延迟打开 Popup**：点击控件时，OnRootPointerPressed 通过 `Dispatcher.UIThread.Post(() => IsPopupOpen = true)` 延迟到当前输入事件处理完毕后再打开 Popup。理由：Popup 启用了 `IsLightDismissEnabled=true`，若在 Tunnel 阶段同步设置 `IsPopupOpen=true`，同一个点击事件在 Bubble 阶段会被 LightDismiss 识别为"外部点击"并立即关闭 Popup（同一次点击既打开又关闭）。延迟到下一个 Dispatcher 帧可避免此竞态。
+- **公共 API 从 SelectedItem (SelectionItem?) 改为 SelectedId (int?)，SelectionItem 降为控件内部类型**：控件的公共选择状态由 `SelectedId` (int?, TwoWay) 表达，ViewModel 仅绑定此属性。`SelectionItem` (Id + Name) 仍用于控件内部的 DataGrid 展示和 `LoadPageAsync` / `CreateNewAsync` 的返回值契约，但不再作为控件的公共属性暴露给 ViewModel。理由：此前 `SelectedItem` (SelectionItem?) 作为 TwoWay 属性暴露给 ViewModel，ViewModel 被迫维护 `SelectedProvider ↔ SelectedProviderSelectionItem` 双向响应链（28 行桥接代码 + WhenAnyValue 反馈环）。当用户选择不同项时，ViewModel 响应链将新的 SelectionItem 实例回推至控件，触发 popup 关闭后又重新打开的 bug。改用 `SelectedId` (int?) 后：(1) ViewModel 直接绑定已有的 `SelectedProviderId`，零桥接代码；(2) 不存在对象引用回推，消除反馈环和 popup 重弹 bug；(3) SelectionItem 成为 LoadPageAsync 返回的数据载体，控件内部自行管理 Id → Name 的解析与展示。控件在 `SelectedId` 变化时，通过 `LoadPageAsync(selectedIds: [id])` 获取该项的 Name 用于展示；若 CurrentPageItems 已包含该 Id 则直接匹配，无需额外请求。
+- **AddNewCommand (ICommand) 改为 CreateNewAsync (Func<string, CancellationToken, Task<SelectionItem?>>?)，创建后编排逻辑归控件所有**：原设计中 ViewModel 通过 `AddNewCommand` (ReactiveCommand) 执行创建，且创建完成后由 ViewModel 负责"选中新项 + 刷新列表 + 同步 SelectedProvider"等编排逻辑。新设计中，ViewModel 仅提供一个纯函数 `CreateNewAsync`，签名为 `(searchText, ct) → SelectionItem?`，只负责调用 Service 创建实体并返回结果。控件内部在用户点击"新增"按钮时调用此函数，传入当前搜索文本作为名称提示；创建成功后，控件自动设置 `SelectedId = newItem.Id`、刷新页面数据（LoadPageAsync with selectedIds）、更新展示文本。理由：(1) ViewModel 的 AddNewProviderCommand 中 8 行代码，仅前 2 行是业务知识（deliveryType、调哪个 Service），后续的"选中 + 刷新 + 同步"是通用编排，应封装在控件中；(2) 使 ViewModel 只需提供两个纯函数（LoadPageAsync + CreateNewAsync）即可完成全部配置，零 Command、零桥接、零反馈环；(3) 搜索文本作为名称提示传给 CreateNewAsync，比硬编码"新供应商"更合理——用户搜索"ABC公司"无结果后点新增，直接创建名为"ABC公司"的供应商。
+- **Popup 关闭时取消悬挂的 debounce 计时器**：在 `OnIsPopupOpenChanged(false)` 中调用 `_debounceCts?.Cancel()`。理由：用户在 Popup 打开时输入搜索文本触发 debounce（300ms），若在 debounce 到期前通过选择项关闭 Popup，悬挂的 debounce 回调会在到期后执行 `if (!IsPopupOpen) IsPopupOpen = true`，导致 Popup 意外重新弹出。
+- **Popup 关闭后添加冷却保护防止 OnRootPointerPressed 立即重开**：在 `OnIsPopupOpenChanged(false)` 中设置 `_suppressNextOpen = true`，并通过 `Dispatcher.UIThread.Post(() => _suppressNextOpen = false)` 在下一帧重置。`OnRootPointerPressed` 在 `_suppressNextOpen` 为 true 时跳过打开。理由：Popup 关闭时（尤其是从 DataGrid 选择后程序关闭），Avalonia 的指针系统可能在 Popup 覆盖层移除后重新评估指针位置，产生新的 PointerPressed 事件到达控件区域，触发 `OnRootPointerPressed` 立即重开 Popup。冷却保护确保关闭动作的同一事件周期内不会重新打开。
 
 ## Risks / Trade-offs
 
@@ -48,4 +52,4 @@
 
 ## Open Questions
 
-- 无；提案与需求已明确，实现可按 tasks 推进。
+- 控件在 `SelectedId` 变化但 `CurrentPageItems` 中没有该 Id 时的首次展示：控件通过 `LoadPageAsync(selectedIds: [id])` 获取该项的 Name 用于展示。若 `LoadPageAsync` 尚未完成或返回空，TextBox 显示 Watermark 直到数据加载完毕。这是否足够，还是需要额外的 `ResolveDisplayTextAsync` 回调？当前判断无需——因为控件打开或 SelectedId 变化时都会触发 LoadPageAsync，selectedIds 参数确保后端将该项包含在结果中。

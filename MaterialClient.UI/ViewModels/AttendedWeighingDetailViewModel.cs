@@ -67,15 +67,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         // 初始化 SolidWaste 下拉选择弹窗（镇街/材料/供应商）
         InitializeSolidWasteSelectionPopups();
 
-        AddNewProviderCommand = ReactiveCommand.CreateFromTask(async () =>
+        CreateProviderFunc = async (name, ct) =>
         {
             var deliveryType = _listItem?.DeliveryType ?? DeliveryType.Receiving;
-            var created = await _materialService.CreateProviderAsync("新供应商", deliveryType);
-            var item = created.ToSelectionItem();
-            SelectedProviderSelectionItem = item;
+            var created = await _materialService.CreateProviderAsync(
+                string.IsNullOrWhiteSpace(name) ? "新供应商" : name, deliveryType);
             await LoadProvidersAsync();
-            SelectedProvider = Providers.FirstOrDefault(p => p.Id == created.Id);
-        });
+            return created.ToSelectionItem();
+        };
 
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -88,29 +87,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(provider =>
             {
                 if (provider != null) SelectedProviderId = provider.Id;
-                SelectedProviderSelectionItem = provider?.ToSelectionItem();
-            });
-
-        this.WhenAnyValue(x => x.SelectedProviderSelectionItem)
-            .Subscribe(async item =>
-            {
-                if (item == null) return;
-                SelectedProviderId = item.Id;
-                var existing = Providers.FirstOrDefault(p => p.Id == item.Id);
-                if (existing != null)
-                {
-                    SelectedProvider = existing;
-                    return;
-                }
-                try
-                {
-                    await LoadProvidersAsync();
-                    SelectedProvider = Providers.FirstOrDefault(p => p.Id == item.Id);
-                }
-                catch (Exception ex)
-                {
-                    Logger?.LogError(ex, "同步供应商选择失败");
-                }
             });
 
         // 订阅 WeighingMode 变化，更新 IsSolidWasteMode
@@ -234,9 +210,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [Reactive] private bool _isProvidersPopupOpen;
 
     /// <summary>
-    ///     供应商选择（供 CreatablePageableSearchableSelectionBox 绑定）
+    ///     供应商创建委托（供 CreatablePageableSearchableSelectionBox 绑定）
     /// </summary>
-    [Reactive] private SelectionItem? _selectedProviderSelectionItem;
+    [Reactive] private Func<string, CancellationToken, Task<SelectionItem?>>? _createProviderFunc;
 
     /// <summary>
     ///     供应商分页加载（供 CreatablePageableSearchableSelectionBox 绑定）
@@ -247,11 +223,6 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         var items = (result?.Items ?? Array.Empty<ProviderDto>()).Select(p => p.ToSelectionItem()).ToList();
         return result == null ? null : new PagedResultDto<SelectionItem>(result.TotalCount, items);
     };
-
-    /// <summary>
-    ///     新增供应商（供 CreatablePageableSearchableSelectionBox 无结果时“新增”）
-    /// </summary>
-    public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> AddNewProviderCommand { get; }
 
     /// <summary>
     ///     供应商标签文本（根据当前记录的收发料类型动态显示）
@@ -1047,7 +1018,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 var firstRow = MaterialItems.FirstOrDefault();
                 var materialId = firstRow?.SelectedMaterial?.Id;
                 var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
-                var providerId = SelectedProvider?.Id;
+                var providerId = SelectedProviderId;
                 var waybillQuantity = firstRow?.WaybillQuantity;
 
                 var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
@@ -1352,7 +1323,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     private async Task CompleteStandardModeAsync()
     {
         // 验证是否选择了供应商
-        if (SelectedProvider == null)
+        if (!SelectedProviderId.HasValue)
         {
             ShowMessageBoxAsyncWithoutBlocking("请选择供应商");
             throw new InvalidOperationException("请选择供应商");
@@ -1361,7 +1332,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         var firstRow = MaterialItems.FirstOrDefault();
         var materialId = firstRow?.SelectedMaterial?.Id;
         var materialUnitId = firstRow?.SelectedMaterialUnit?.Id;
-        var providerId = SelectedProvider?.Id;
+        var providerId = SelectedProviderId;
         var waybillQuantity = firstRow?.WaybillQuantity;
 
         // 验证 materialId、materialUnitId、waybillQuantity 都不能为空

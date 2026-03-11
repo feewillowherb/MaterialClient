@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.UI.Views.Controls;
@@ -9,7 +10,8 @@ namespace MaterialClient.UI.Test.Controls;
 
 /// <summary>
 /// 无头测试：CreatablePageableSearchableSelectionBox 交互行为验证。
-/// 覆盖 spec 场景：打开(有/无选中)、关闭重置、选择、新增、防抖、分页、键盘。
+/// 覆盖 spec 场景：SelectedId 绑定、CreateNewAsync 编排、冷却保护、debounce 取消、
+/// 打开(有/无选中)、关闭重置、选择、新增、防抖、分页、键盘。
 /// 注：无头环境下模板可能未注入，模板依赖的断言使用 null guard。
 /// </summary>
 public class CreatablePageableSearchableSelectionBoxInteractionTests
@@ -41,21 +43,26 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     }
 
     [Fact]
-    public void WhenSelectedItemSet_AndPopupClosed_TextBoxShouldShowItemName()
+    public void WhenSelectedIdSet_AndItemsLoaded_TextBoxShouldShowItemName()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
-        control.SelectedItem = new SelectionItem { Id = 1, Name = "测试供应商" };
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "测试供应商"));
+
+        control.SelectedId = 1;
+        control.IsPopupOpen = true;
         control.IsPopupOpen = false;
+
         if (control.PART_TextBox == null) return;
         Assert.Equal("测试供应商", control.PART_TextBox.Text);
     }
 
     [Fact]
-    public void WhenNoSelectedItem_AndPopupClosed_TextBoxShouldShowWatermark()
+    public void WhenNoSelectedId_AndPopupClosed_TextBoxShouldShowWatermark()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         control.Watermark = "请选择供应商";
-        control.SelectedItem = null;
+        control.SelectedId = null;
         control.IsPopupOpen = false;
         if (control.PART_TextBox == null) return;
         Assert.Equal("请选择供应商", control.PART_TextBox.Text);
@@ -73,57 +80,78 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
     #endregion
 
-    #region 7.1 打开（有选中项）
+    #region 10.1 SelectedId 绑定
 
     [Fact]
-    public void OpenWithSelectedItem_TextBoxShowsSelectedItemName()
+    public void Default_SelectedId_ShouldBeNull()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        Assert.Null(control.SelectedId);
+    }
+
+    [Fact]
+    public void SelectedId_CanBeSetAndRetrieved()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.SelectedId = 42;
+        Assert.Equal(42, control.SelectedId);
+
+        control.SelectedId = null;
+        Assert.Null(control.SelectedId);
+    }
+
+    [Fact]
+    public void SelectedId_ResolvesDisplayNameFromCurrentPageItems()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         control.LoadPageAsync = (_, _, _, _, _) =>
             Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(42, "供应商A"));
 
-        control.SelectedItem = new SelectionItem { Id = 42, Name = "供应商A" };
         control.IsPopupOpen = true;
+        control.IsPopupOpen = false;
 
         if (control.PART_TextBox == null) return;
+
+        control.SelectedId = 42;
         Assert.Equal("供应商A", control.PART_TextBox.Text);
     }
 
+    #endregion
+
+    #region 7.1 打开（有选中项）
+
     [Fact]
-    public void OpenWithSelectedItem_LoadPageAsyncCalledWithSelectedIds()
+    public void OpenWithSelectedId_LoadPageAsyncCalledWithSelectedIds()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
-        string? capturedSearch = null;
         IReadOnlyList<int>? capturedIds = null;
         var callCount = 0;
 
-        control.LoadPageAsync = (search, _, _, ids, _) =>
+        control.LoadPageAsync = (_, _, _, ids, _) =>
         {
             callCount++;
-            capturedSearch = search;
             capturedIds = ids;
             return Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(42, "供应商A"));
         };
 
-        control.SelectedItem = new SelectionItem { Id = 42, Name = "供应商A" };
+        control.SelectedId = 42;
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
 
         Assert.True(callCount > 0, "LoadPageAsync should be called when popup opens");
-        Assert.Equal("供应商A", capturedSearch);
         Assert.NotNull(capturedIds);
         Assert.Contains(42, capturedIds!);
     }
 
     [Fact]
-    public void OpenWithSelectedItem_CurrentPageItemsContainsSelectedItem()
+    public void OpenWithSelectedId_CurrentPageItemsContainsSelectedItem()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         control.LoadPageAsync = (_, _, _, _, _) =>
             Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(42, "供应商A"));
 
-        control.SelectedItem = new SelectionItem { Id = 42, Name = "供应商A" };
+        control.SelectedId = 42;
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
@@ -141,7 +169,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
         control.LoadPageAsync = (_, _, _, _, _) =>
             Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
 
-        control.SelectedItem = null;
+        control.SelectedId = null;
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
@@ -164,7 +192,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
             return Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
         };
 
-        control.SelectedItem = null;
+        control.SelectedId = null;
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
@@ -179,18 +207,19 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     #region 7.3 输入后不选择即关闭→重置
 
     [Fact]
-    public void CloseWithoutSelection_TextBoxResetsToSelectedItemName()
+    public void CloseWithoutSelection_TextBoxResetsToSelectedDisplayName()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         control.LoadPageAsync = (_, _, _, _, _) =>
-            Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+            Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "已选项"));
 
-        control.SelectedItem = new SelectionItem { Id = 1, Name = "已选项" };
+        control.SelectedId = 1;
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
 
-        Assert.Equal("已选项", control.PART_TextBox.Text);
+        control.IsPopupOpen = false;
+        control.IsPopupOpen = true;
 
         control.PART_TextBox.Text = "新输入内容";
         control.IsPopupOpen = false;
@@ -199,14 +228,14 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     }
 
     [Fact]
-    public void CloseWithoutSelection_NoSelectedItem_TextBoxShowsWatermark()
+    public void CloseWithoutSelection_NoSelectedId_TextBoxShowsWatermark()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         control.Watermark = "请选择";
         control.LoadPageAsync = (_, _, _, _, _) =>
             Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
 
-        control.SelectedItem = null;
+        control.SelectedId = null;
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
@@ -221,10 +250,10 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
     #endregion
 
-    #region 7.4 选择一项→更新 SelectedItem、关闭 Popup
+    #region 7.4 选择一项→更新 SelectedId、关闭 Popup
 
     [Fact]
-    public void SelectItemFromDataGrid_SelectedItemUpdates()
+    public void SelectItemFromDataGrid_SelectedIdUpdates()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         var items = new List<SelectionItem>
@@ -241,9 +270,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
         control.PART_DataGrid.SelectedItem = items[1];
 
-        Assert.NotNull(control.SelectedItem);
-        Assert.Equal(2, control.SelectedItem!.Id);
-        Assert.Equal("项目2", control.SelectedItem!.Name);
+        Assert.Equal(2, control.SelectedId);
     }
 
     [Fact]
@@ -269,20 +296,37 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
     #endregion
 
-    #region 7.5 无结果→显示"新增"
+    #region 7.5 无结果→显示"新增" (only when CreateNewAsync set)
 
     [Fact]
-    public void EmptyResults_ShowAddNewIsTrue()
+    public void EmptyResults_WithCreateNewAsync_ShowAddNewIsTrue()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         control.LoadPageAsync = (_, _, _, _, _) =>
             Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+        control.CreateNewAsync = (_, _) =>
+            Task.FromResult<SelectionItem?>(new SelectionItem { Id = 99, Name = "new" });
 
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
 
-        Assert.True(control.ShowAddNew, "ShowAddNew should be true when no results");
+        Assert.True(control.ShowAddNew, "ShowAddNew should be true when no results and CreateNewAsync set");
+    }
+
+    [Fact]
+    public void EmptyResults_WithoutCreateNewAsync_ShowAddNewIsFalse()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+        control.CreateNewAsync = null;
+
+        control.IsPopupOpen = true;
+
+        if (control.PART_TextBox == null) return;
+
+        Assert.False(control.ShowAddNew, "ShowAddNew should be false when CreateNewAsync is null");
     }
 
     [Fact]
@@ -300,12 +344,15 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     }
 
     [Fact]
-    public void AddNewCommand_CanBeSetAndRetrieved()
+    public void CreateNewAsync_CanBeSetAndRetrieved()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
-        var command = new object();
-        control.AddNewCommand = command;
-        Assert.Same(command, control.AddNewCommand);
+        control.CreateNewAsync = (name, ct) =>
+            Task.FromResult<SelectionItem?>(new SelectionItem { Id = 1, Name = name });
+        Assert.NotNull(control.CreateNewAsync);
+
+        control.CreateNewAsync = null;
+        Assert.Null(control.CreateNewAsync);
     }
 
     [Fact]
@@ -314,6 +361,104 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         if (control.PART_AddNewButton == null) return;
         Assert.NotNull(control.PART_AddNewButton);
+    }
+
+    #endregion
+
+    #region 10.5 CreateNewAsync 内部编排
+
+    [Fact]
+    public async Task CreateNewAsync_WhenButtonClicked_SetsSelectedIdAndClosesPopup()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        var created = new SelectionItem { Id = 77, Name = "新建项" };
+        string? capturedName = null;
+
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+        control.CreateNewAsync = (name, _) =>
+        {
+            capturedName = name;
+            return Task.FromResult<SelectionItem?>(created);
+        };
+
+        control.IsPopupOpen = true;
+        if (control.PART_AddNewButton == null) return;
+
+        control.PART_AddNewButton.RaiseEvent(
+            new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+
+        await Task.Delay(100);
+
+        Assert.Equal(77, control.SelectedId);
+    }
+
+    #endregion
+
+    #region 10.8 _suppressNextOpen 冷却保护
+
+    [Fact]
+    public void AfterPopupClose_SuppressNextOpenFlagIsActive()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+
+        control.IsPopupOpen = true;
+        if (control.PART_TextBox == null) return;
+
+        control.IsPopupOpen = false;
+        Assert.False(control.IsPopupOpen, "Popup should remain closed after close");
+    }
+
+    [Fact]
+    public void SelectDifferentItem_PopupShouldNotReopen()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        var items = new List<SelectionItem>
+        {
+            new() { Id = 1, Name = "项目1" },
+            new() { Id = 2, Name = "项目2" }
+        };
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(MultiItemPage(items));
+
+        control.IsPopupOpen = true;
+        if (control.PART_DataGrid == null) return;
+
+        control.PART_DataGrid.SelectedItem = items[1];
+
+        Assert.False(control.IsPopupOpen, "Popup should stay closed after selecting different item");
+        Assert.Equal(2, control.SelectedId);
+    }
+
+    #endregion
+
+    #region 10.7 debounce 取消
+
+    [Fact]
+    public async Task PopupClose_CancelsDebounce()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        var loadCount = 0;
+
+        control.LoadPageAsync = (_, _, _, _, _) =>
+        {
+            loadCount++;
+            return Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+        };
+
+        control.IsPopupOpen = true;
+        if (control.PART_TextBox == null) return;
+
+        var openLoadCount = loadCount;
+
+        control.PART_TextBox.Text = "搜索";
+        control.IsPopupOpen = false;
+
+        await Task.Delay(500);
+
+        Assert.Equal(openLoadCount, loadCount);
     }
 
     #endregion
@@ -453,7 +598,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
             return Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
         };
 
-        control.SelectedItem = new SelectionItem { Id = 1, Name = "A" };
+        control.SelectedId = 1;
         control.IsPopupOpen = true;
 
         if (control.PART_TextBox == null) return;
@@ -468,18 +613,15 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     }
 
     [Fact]
-    public void SelectedItem_TwoWay_CanBeSetExternally()
+    public void SelectedId_TwoWay_CanBeSetExternally()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
 
-        var item = new SelectionItem { Id = 99, Name = "外部设置" };
-        control.SelectedItem = item;
+        control.SelectedId = 99;
+        Assert.Equal(99, control.SelectedId);
 
-        Assert.Equal(99, control.SelectedItem!.Id);
-        Assert.Equal("外部设置", control.SelectedItem!.Name);
-
-        control.SelectedItem = null;
-        Assert.Null(control.SelectedItem);
+        control.SelectedId = null;
+        Assert.Null(control.SelectedId);
     }
 
     #endregion
@@ -519,7 +661,7 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
         control.PART_DataGrid.SelectedItem = items[0];
 
         Assert.False(control.IsPopupOpen, "Popup should stay closed after selection");
-        Assert.Equal(1, control.SelectedItem?.Id);
+        Assert.Equal(1, control.SelectedId);
     }
 
     [Fact]
@@ -591,13 +733,11 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     }
 
     [Fact]
-    public void PopupClose_TextBoxBecomesReadOnly_WithSelectedItemText()
+    public void PopupClose_TextBoxBecomesReadOnly()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
         control.LoadPageAsync = (_, _, _, _, _) =>
             Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "测试"));
-
-        control.SelectedItem = new SelectionItem { Id = 1, Name = "测试" };
 
         if (control.PART_TextBox == null) return;
 
@@ -606,7 +746,6 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
 
         control.IsPopupOpen = false;
         Assert.True(control.PART_TextBox.IsReadOnly);
-        Assert.Equal("测试", control.PART_TextBox.Text);
     }
 
     #endregion

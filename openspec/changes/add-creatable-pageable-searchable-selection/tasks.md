@@ -64,3 +64,18 @@
 - [x] 9.3 在 `OnApplyTemplate` 中初始化 `PART_TextBox.Focusable = false` 和 `PART_TextBox.IsHitTestVisible = false`（与现有 `IsReadOnly = true` 初始化一致）
 - [x] 9.4 `OnRootPointerPressed` 使用 `Dispatcher.UIThread.Post(() => { if (!IsPopupOpen) IsPopupOpen = true; })` 延迟打开，避免同一个点击事件被 LightDismiss 立即关闭
 - [x] 9.5 更新无头测试：验证关闭态 TextBox.Focusable=false 和 TextBox.IsHitTestVisible=false；打开态三属性均恢复；多轮 open/close 循环中三属性始终与 IsPopupOpen 同步
+
+## 10. API 重构：SelectedId + CreateNewAsync + 消除反馈环
+
+- [x] 10.1 新增 `SelectedId` (int?, StyledProperty, TwoWay) 替代 `SelectedItem` (SelectionItem?) 作为公共选择 API；控件内部维护 `_selectedDisplayName` 用于 TextBox 展示
+- [x] 10.2 在 `SelectedId` 变化时（来自 ViewModel 绑定），从 `CurrentPageItems` 中查找匹配项更新展示文本；若未找到则触发 `LoadPageAsync(selectedIds: [id])` 加载并匹配
+- [x] 10.3 在 DataGrid 选择时设置 `SelectedId = item.Id`（替代 `SelectedItem = item`），内部更新展示文本
+- [x] 10.4 新增 `CreateNewAsync` (Func<string, CancellationToken, Task<SelectionItem?>>?, StyledProperty) 替代 `AddNewCommand` (object?)；控件内部在"新增"按钮点击时调用，传入当前 `_searchText`
+- [x] 10.5 实现控件内部的创建后编排：`CreateNewAsync` 返回非空时，设 `SelectedId = result.Id`，刷新 `LoadPageAsync(selectedIds: [result.Id])`，关闭 popup，更新展示文本
+- [x] 10.6 移除 `SelectedItem` 公共属性（或标记 Obsolete）、移除 `AddNewCommand` 公共属性、移除 `_selectedItemSub` 订阅
+- [x] 10.7 在 `OnIsPopupOpenChanged(false)` 中添加 `_debounceCts?.Cancel()` 取消悬挂的 debounce 计时器
+- [x] 10.8 添加 `_suppressNextOpen` 冷却标志：`OnIsPopupOpenChanged(false)` 设 true + `Dispatcher.Post` 重置 false；`OnRootPointerPressed` 检查此标志
+- [x] 10.9 更新 XAML 模板：PART_AddNewButton 的 Command 改为控件内部处理（不再绑定外部 AddNewCommand）
+- [x] 10.10 更新 `SolidWasteModeFormView.axaml` 绑定：`SelectedItem` → `SelectedId="{Binding SelectedProviderId, Mode=TwoWay}"`，`AddNewCommand` → `CreateNewAsync="{Binding CreateProviderFunc}"`
+- [x] 10.11 更新 `AttendedWeighingDetailViewModel`：移除 `SelectedProviderSelectionItem` 属性、移除双向 WhenAnyValue 响应链（line 87-114 的反馈环）、移除 `AddNewProviderCommand`；新增 `CreateProviderFunc` (Func) 属性；保留 `SelectedProvider` 单向同步到 `SelectedProviderId`
+- [x] 10.12 更新无头测试：验证 SelectedId 绑定、CreateNewAsync 内部编排、关闭冷却保护、debounce 取消、选择不同项后 popup 不重弹
