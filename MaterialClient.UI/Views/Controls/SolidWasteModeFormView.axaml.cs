@@ -1,0 +1,71 @@
+using System;
+using System.ComponentModel;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Threading;
+using MaterialClient.UI.ViewModels;
+using System.Reactive.Linq;
+
+namespace MaterialClient.UI.Views.Controls;
+
+public partial class SolidWasteModeFormView : UserControl
+{
+    public SolidWasteModeFormView()
+    {
+        InitializeComponent();
+        this.GetObservable(DataContextProperty).Subscribe(OnDataContextChanged);
+    }
+
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Dispatcher.UIThread.Post(SetPopupPlacementTargets, DispatcherPriority.Loaded);
+    }
+
+    private void OnDataContextChanged(object? _)
+    {
+        if (DataContext is INotifyPropertyChanged npc)
+        {
+            npc.PropertyChanged -= Vm_PropertyChanged;
+            npc.PropertyChanged += Vm_PropertyChanged;
+        }
+    }
+
+    private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not AttendedWeighingDetailViewModel vm) return;
+
+        switch (e.PropertyName)
+        {
+            case nameof(AttendedWeighingDetailViewModel.IsStreetsPopupOpen):
+                if (vm.IsStreetsPopupOpen)
+                    Dispatcher.UIThread.Post(() => ApplyPopupOffset(StreetsSelectionPopup, StreetsSelectionPopupControl, StreetsSelectionBox), DispatcherPriority.Loaded);
+                break;
+            case nameof(AttendedWeighingDetailViewModel.IsMaterialsPopupOpen):
+                if (vm.IsMaterialsPopupOpen)
+                    Dispatcher.UIThread.Post(() => ApplyPopupOffset(MaterialsSelectionPopup, MaterialsSelectionPopupControl, MaterialsSelectionBox), DispatcherPriority.Loaded);
+                break;
+            // 供应商已改用 CreatablePageableSearchableSelectionBox，不再使用 IsProvidersPopupOpen
+        }
+    }
+
+    private void SetPopupPlacementTargets()
+    {
+        if (StreetsSelectionPopup != null && StreetsSelectionBox != null)
+            StreetsSelectionPopup.PlacementTarget = StreetsSelectionBox;
+        if (MaterialsSelectionPopup != null && MaterialsSelectionBox != null)
+            MaterialsSelectionPopup.PlacementTarget = MaterialsSelectionBox;
+        // 供应商已改用 CreatablePageableSearchableSelectionBox，无独立 Popup
+    }
+
+    private static void ApplyPopupOffset(Popup? popup, Control? popupContent, Control? trigger)
+    {
+        if (popup == null || popupContent == null || trigger == null) return;
+
+        var popupWidth = popupContent.Width > 0 ? popupContent.Width : 400;
+        var triggerWidth = trigger.Bounds.Width > 0 ? trigger.Bounds.Width : trigger.DesiredSize.Width;
+        if (triggerWidth <= 0) triggerWidth = 80;
+        popup.HorizontalOffset = (popupWidth / 2) - (triggerWidth / 2);
+    }
+}

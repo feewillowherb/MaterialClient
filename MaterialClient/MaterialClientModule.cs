@@ -2,18 +2,13 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using MaterialClient.Backgrounds;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
-using MaterialClient.Common.Configuration;
-using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.EFCore;
-using MaterialClient.Services;
-using MaterialClient.ViewModels;
-using MaterialClient.Views;
-using MaterialClient.Views.AttendedWeighing;
+using MaterialClient.Backgrounds;
+using MaterialClient.UI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,9 +24,10 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
 
-namespace MaterialClient
-{
+namespace MaterialClient;
+
 [DependsOn(
+    typeof(MaterialClientUIModule),
     typeof(MaterialClientCommonModule),
     typeof(AbpAutofacModule),
     typeof(AbpBackgroundWorkersModule)
@@ -46,22 +42,22 @@ public class MaterialClientModule : AbpModule
         {
             var appDirectory = AppContext.BaseDirectory;
             var configBuilder = new ConfigurationBuilder();
-            
+
             // Add existing configuration (includes appsettings.json loaded by ABP)
             configBuilder.AddConfiguration(existingConfig);
-            
+
             // Add appsettings.product.json if it exists (optional, will override appsettings.json values)
             var productConfigPath = Path.Combine(appDirectory, "appsettings.secret.json");
             if (File.Exists(productConfigPath))
             {
                 configBuilder.AddJsonFile(productConfigPath, optional: true, reloadOnChange: true);
             }
-            
+
             #if DEBUG
-            // Add User Secrets as the last source (highest priority, overrides all config files)
+            // Add User Secrets as last source (highest priority, overrides all config files)
             configBuilder.AddUserSecrets<MaterialClientModule>();
             #endif
-            
+
             var enhancedConfig = configBuilder.Build();
             context.Services.ReplaceConfiguration(enhancedConfig);
         }
@@ -109,31 +105,6 @@ public class MaterialClientModule : AbpModule
                     3,
                     retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
                 ));
-
-        // Register Windows
-        // MainWindow is singleton as it's the main application window
-        services.AddSingleton<MainWindow>();
-        
-
-        // Register startup service
-        services.AddTransient<StartupService>();
-
-        // Register Web Host service
-        services.AddSingleton<MinimalWebHostService>();
-
-        // Configure Streets
-        services.Configure<StreetsConfig>(options =>
-        {
-            var streets = configuration.GetSection("Streets").Get<string[]>();
-            options.Streets = streets ?? Array.Empty<string>();
-        });
-
-        // Configure SolidWasteTypes
-        services.Configure<SolidWasteTypeConfig>(options =>
-        {
-            var solidWasteTypes = configuration.GetSection("SolidWasteTypes").Get<string[]>();
-            options.SolidWasteTypes = solidWasteTypes ?? Array.Empty<string>();
-        });
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
@@ -198,7 +169,6 @@ public class MaterialClientModule : AbpModule
             var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
             var dbContextProvider =
                 context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
-
             using var uow = unitOfWorkManager.Begin(true, false);
             await using var dbContext = await dbContextProvider.GetDbContextAsync();
             await dbContext.Database.MigrateAsync();
@@ -213,7 +183,6 @@ public class MaterialClientModule : AbpModule
 
         // 注册并启动后台工作器（可通过配置禁用）
         var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
-
         var pollingEnabled = configuration.GetValue("BackgroundServices:Polling", true);
         if (pollingEnabled)
         {
@@ -246,5 +215,4 @@ public class MaterialClientModule : AbpModule
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
     }
-}
 }

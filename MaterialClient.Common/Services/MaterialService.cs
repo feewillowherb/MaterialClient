@@ -113,12 +113,18 @@ public class MaterialService : DomainService, IMaterialService
         var queryable = await _materialRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(searchText))
+        var search = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim();
+        var ignoreSearchBecauseSelectedMatches = false;
+        if (search != null && selectedIds != null && selectedIds.Count > 0)
         {
-            var search = searchText.Trim();
-            queryable = queryable.Where(m =>
-                (m.Name != null && m.Name.Contains(search)));
+            var selectedNames = await queryable
+                .Where(m => selectedIds.Contains(m.Id))
+                .Select(m => m.Name)
+                .ToListAsync();
+            ignoreSearchBecauseSelectedMatches = selectedNames.Any(name => name == search);
         }
+        if (search != null && !ignoreSearchBecauseSelectedMatches)
+            queryable = queryable.Where(m => m.Name != null && m.Name.Contains(search));
 
         queryable = queryable.Where(m => !m.IsDeleted);
         queryable = queryable.Where(m => m.WeighingMode == weighingMode);
@@ -233,11 +239,18 @@ public class MaterialService : DomainService, IMaterialService
         var queryable = await _providerRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(searchText))
+        var search = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim();
+        var ignoreSearchBecauseSelectedMatches = false;
+        if (search != null && selectedIds != null && selectedIds.Count > 0)
         {
-            var search = searchText.Trim();
-            queryable = queryable.Where(p => p.ProviderName != null && p.ProviderName.Contains(search));
+            var selectedNames = await queryable
+                .Where(p => selectedIds.Contains(p.Id))
+                .Select(p => p.ProviderName)
+                .ToListAsync();
+            ignoreSearchBecauseSelectedMatches = selectedNames.Any(name => name == search);
         }
+        if (search != null && !ignoreSearchBecauseSelectedMatches)
+            queryable = queryable.Where(p => p.ProviderName != null && p.ProviderName.Contains(search));
 
         queryable = queryable.Where(p => !p.IsDeleted);
         queryable = queryable.Where(p => p.WeighingMode == weighingMode);

@@ -8,10 +8,6 @@
 ## 一、说明与范围
 
 - **目标**：实现一个**可创建（Creatable）、可分页（Pageable）、可搜索（Searchable）**的单一选择组件，用于替代当前「SearchableSelectionBox + 父视图中的 Popup + GenericSelectionPopup」的拼装方式。
-- **不引用**：本提案**不**基于、不引用现有 `PageableAutoCompleteBox` 控件；该控件的实现将回滚，本提案从需求与设计重新出发。
-- **参考文档**：
-  - [SearchableSelectionBox 与 AutoCompleteBox 对照分析](analysis-searchable-selection-vs-autocompletebox.md)：现有拼装方式的不足与改进方向。
-  - [Popup 选择弹窗问题分析](popup-selection-analysis.md)：弹窗打开/关闭与选中恢复的时序问题。
 
 ---
 
@@ -40,7 +36,26 @@
 - **加载接口**：`Func<string? searchText, int page, int pageSize, IReadOnlyList<int>? selectedIds, CancellationToken, Task<PagedResultDto<T>>>`（或等价），由调用方提供。
 - **已选项不误过滤**：当 `selectedIds` 对应项的**显示名称**与 `searchText` **完全一致**时，服务层应**忽略** `searchText` 过滤条件，避免“已选项名称”被当成搜索词导致结果为空。
   - `selectedIds` 通常数量为一个；可用 `Any()` 判断任一 selectedId 的 Name 与 `searchText` 完全一致即忽略过滤。
-- **选中与展示**：控件暴露 `SelectedItem`、`DisplayMemberPath`（或 ValueMemberBinding）、可选 `GetItemId`（用于组成 `selectedIds`）。
+- **选中与展示**：
+  - 控件暴露 `SelectedItem`、`DisplayMemberPath`（或 ValueMemberBinding）、可选 `GetItemId`（用于组成 `selectedIds`）。
+  - **SelectedItem 统一建模**：定义一个轻量级类，例如：
+    ```csharp
+    public sealed class SelectionItem
+    {
+        public int Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+    }
+    ```
+    - UI 控件与调用方之间只通过 `SelectionItem` 交互；
+    - 业务实体（如 Provider/Material/Street）通过扩展方法与 `SelectionItem` 互转。
+  - **扩展方法约定**：为常用实体提供 `FromX` / `ToX` 扩展方法：
+    - `Provider.ToSelectionItem()` / `SelectionItem.ToProviderId()`（或用于查询 Provider 的 key）  
+    - `Material.ToSelectionItem()` / `SelectionItem.ToMaterialId()`  
+    - `Street.ToSelectionItem()` / `SelectionItem.ToStreetName()`  
+    这样可以：
+    - 保持 UI 层只依赖 `SelectionItem`，不直接依赖具体领域实体；
+    - 在 ViewModel 中用极少量 glue code 完成从领域对象 → 选择项 → 领域对象 Id 的转换；
+    - 便于在不同域对象上复用同一控件实例。
 
 ---
 
@@ -50,6 +65,11 @@
 
 - **单一控件**：一个 Control，内嵌「TextBox + Popup（列表 + 分页区 + 可选“新增”区）」。
 - **不依赖具体 VM 类型**：通过 `LoadPageAsync`、`SelectedItem`、`DisplayMemberPath`、`GetItemId`、`Watermark`、`PageSize` 等标准属性与委托对接，可与现有 `GenericSelectionPopupViewModel` 或其它数据源适配，但不直接依赖 `IGenericSelectionPopupBindings`。
+- **渲染风格保持一致**：新控件在**关闭状态下**的视觉和交互应与当前 `SearchableSelectionBox` 保持一致，以避免引起用户认知差异：
+  - 外层 `Border` 默认样式：`Height=32`、背景 `#FFFFFF`、边框 `#E5E7EB`、`BorderThickness=1`，左右内边距约 `6,0,6,0`；
+  - 内容区域左侧为单行文本，字体大小约 `12`、前景 `#333333`、垂直居中，对超长文本使用 `TextTrimming=CharacterEllipsis`；
+  - 右侧为下拉箭头图标（宽约 `10`、高约 `6`、灰色 `#666666`），位置与现有控件一致；
+  - Hover / Focus / Error 等状态的样式（例如聚焦加粗边框或改变边框颜色）应复用或轻量调整现有样式资源，而不是完全重做。
 
 ### 3.2 建议结构（Template）
 
@@ -97,13 +117,25 @@
 
 ---
 
-## 五、与现有实现的关系
+## 五、与现有界面的集成与迁移
 
-- **当前状态**：采用 SearchableSelectionBox + 父视图 Popup + GenericSelectionPopup 拼装；PageableAutoCompleteBox 实现将回滚，**本提案不依赖该控件**。
-- **实现路径**：可新建一个控件（命名不沿用 PageableAutoCompleteBox），按本提案从零实现；或基于“触发器 + GenericSelectionPopup 内容”的既有逻辑，收口为单一 ControlTemplate，但**不引用** PageableAutoCompleteBox 的 axaml/cs。
-- **迁移**：新控件就绪后，可在 SolidWasteModeFormView 等视图中替换现有“SearchableSelectionBox + Popup + GenericSelectionPopup”拼装，父视图不再维护 `IsXxxPopupOpen`、PlacementTarget、ApplyPopupOffset 等。
+1. **替换模式**  
+   - 现状：界面中大量使用 `SearchableSelectionBox + Popup + GenericSelectionPopupView` 组合（如固废模式中的供应商/材料/镇街选择）。  
+   - 目标：在**不破坏现有业务逻辑/接口**的前提下，优先在新界面/重构界面中引入新控件，逐步替换老组合。
 
----
+2. **集成方式**  
+   - 在 ViewModel 中保留现有的分页/搜索服务方法（例如 `GetPagedProvidersAsync`），仅在 View 层改为通过新控件的 `LoadPageAsync` 进行调用。  
+   - 若已有 `GenericSelectionPopupViewModel`，可为其增加一个适配层 / 包装器，将其分页结果映射到新控件要求的 `PagedResultDto<T>` 形态，避免一次性大重构。
+
+3. **迁移节奏建议**
+   - 新增功能或大改动页面：**优先使用新控件**，避免继续堆积旧模式。  
+   - 关键业务路径（如有人值守称重主界面）：在保证测试覆盖的前提下，分步骤替换单个选择框，观察用户反馈与性能表现，再逐步扩大范围。  
+   - 旧控件的废弃计划：当主流程基本完成迁移且测试通过后，对 `SearchableSelectionBox + GenericSelectionPopup` 组合标记为 deprecated，并在后续迭代中清理。
+
+4. **非目标**
+   - 本次提案**不强制**一次性替换所有老界面。  
+   - 不修改现有服务层的核心契约，只在必要时补充 `selectedIds` 参数及忽略过滤的逻辑。
+
 
 ## 六、测试场景（与需求对应）
 
@@ -112,11 +144,3 @@
 3. **输入后不选择即关闭（Escape/点击外部）**：TextBox 与内部 _searchText 恢复为已选项显示文本（或无则空）。
 4. **输入后选择一项**：SelectedItem 更新，TextBox 显示新选中项，popup 关闭。
 5. **无结果时“新增”**：可触发 AddNewCommand 或等价入口，行为与现有“新增”一致（若实现该能力）。
-
----
-
-## 七、文档与参考
-
-- [SearchableSelectionBox 与 AutoCompleteBox 对照分析](analysis-searchable-selection-vs-autocompletebox.md)
-- [Popup 选择弹窗问题分析](popup-selection-analysis.md)
-- Avalonia / Semi.Avalonia AutoCompleteBox：可参考“单 TextBox + Popup”的模板与焦点管理，本组件不直接复用其实现。

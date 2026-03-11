@@ -1,0 +1,404 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MaterialClient.UI.App"
+             xmlns:local="using:MaterialClient.UI"
+             xmlns:converters="using:MaterialClient.UI.Converters"
+             xmlns:controls="using:MaterialClient.UI.Views.Controls"
+             xmlns:dtos="using:MaterialClient.Common.Api.Dtos"
+             xmlns:semi="https://irihi.tech/semi"
+             xmlns:u="https://irihi.tech/ursa"
+             xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
+             RequestedThemeVariant="Light">
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+        <semi:SemiTheme Locale="zh-CN" />
+        <u-semi:SemiTheme Locale="zh-CN" />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+        <!-- 全局颜色与转换器资源 -->
+        <Style>
+            <Style.Resources>
+                <!-- Color Brushes -->
+                <SolidColorBrush x:Key="PrimaryBlue">#4169E1</SolidColorBrush>
+                <SolidColorBrush x:Key="LightBlue">#4C82FC</SolidColorBrush>
+                <SolidColorBrush x:Key="SecondaryGray">#E5E7EB</SolidColorBrush>
+                <SolidColorBrush x:Key="SuccessGreen">#20C9A6</SolidColorBrush>
+                <SolidColorBrush x:Key="WarningOrange">#F5AA19</SolidColorBrush>
+                <SolidColorBrush x:Key="DangerRed">#DC3545</SolidColorBrush>
+                <SolidColorBrush x:Key="BackgroundGray">#F8F9FA</SolidColorBrush>
+                <SolidColorBrush x:Key="BorderGray">#E5E7EB</SolidColorBrush>
+                <SolidColorBrush x:Key="TextPrimary">#333333</SolidColorBrush>
+                <SolidColorBrush x:Key="TextSecondary">#666666</SolidColorBrush>
+                <!-- Converters (used by AttendedWeighingMainView, PhotoGridView, SettingsWindow, AttendedWeighingWindow, etc.) -->
+                <converters:NullableBitmapToImageConverter x:Key="NullableBitmapToImageConverter" />
+                <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+                <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter" />
+                <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
+                <converters:EqualityToColorConverter x:Key="EqualityToColorConverter" />
+            </Style.Resources>
+        </Style>
+
+        <!-- TextBox 全局样式 -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="TextBox:focus">
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <!-- ComboBox 全局样式 -->
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="ComboBox:focus">
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <!-- Button: ComboBox-like trigger (for popup-based selection) -->
+        <Style Selector="Button.combo-trigger">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#333333" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,0,6,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <Grid ColumnDefinitions="*,Auto"
+                              VerticalAlignment="Center">
+                            <ContentPresenter Grid.Column="0"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"
+                                              Margin="{TemplateBinding Padding}" />
+                            <!-- Dropdown arrow -->
+                            <Path Grid.Column="1"
+                                  Width="10"
+                                  Height="6"
+                                  Margin="6,0,6,0"
+                                  VerticalAlignment="Center"
+                                  Fill="#666666"
+                                  Data="M 0 0 L 5 5 L 10 0 Z" />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.combo-trigger:focus">
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <!-- CalendarDatePicker 全局样式 -->
+        <Style Selector="CalendarDatePicker">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="CalendarDatePicker:focus">
+            <Setter Property="BorderBrush" Value="#4169E1" />
+        </Style>
+
+        <!-- Button 主按钮样式 -->
+        <Style Selector="Button.primary-button">
+            <Setter Property="Background" Value="#4169E1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <!-- Button 次要按钮样式 -->
+        <Style Selector="Button.secondary-button">
+            <Setter Property="Background" Value="#E5E7EB" />
+            <Setter Property="Foreground" Value="#333" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <!-- Button 成功按钮样式 -->
+        <Style Selector="Button.success-button">
+            <Setter Property="Background" Value="#20C9A6" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#20C9A6" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <!-- Button 警告按钮样式 -->
+        <Style Selector="Button.warning-button">
+            <Setter Property="Background" Value="#F5AA19" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#F5AA19" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <!-- Button 危险按钮样式 -->
+        <Style Selector="Button.danger-button">
+            <Setter Property="Background" Value="#DC3545" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#DC3545" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <!-- Button 透明按钮样式 -->
+        <Style Selector="Button.transparent-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <!-- Button 白色边框按钮样式 -->
+        <Style Selector="Button.outline-button">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#4169E1" />
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <!-- delivery-button 样式：收料/发料切换按钮 -->
+        <Style Selector="Button.delivery-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#333" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.delivery-button.selected">
+            <Setter Property="Background" Value="#E0E7FF" />
+        </Style>
+
+        <!-- tab-button 样式：标签页按钮 -->
+        <Style Selector="Button.tab-button">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#666" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.tab-button.active">
+            <Setter Property="Background" Value="#F0F7FF" />
+            <Setter Property="Foreground" Value="#4169E1" />
+            <Setter Property="BorderBrush" Value="#4169E1" />
+        </Style>
+
+        <!-- Global: disable hover visual changes for all Buttons -->
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="BorderBrush" Value="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="BorderThickness" Value="{Binding BorderThickness, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="CornerRadius" Value="{Binding CornerRadius, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="TextElement.Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
+        </Style>
+
+        <!-- Border 卡片样式 -->
+        <Style Selector="Border.card-border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
+        <!-- Border 区块样式 -->
+        <Style Selector="Border.section-border">
+            <Setter Property="Background" Value="#F8F9FA" />
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
+        <!-- DataGrid 样式 -->
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="RowBackground" Value="#FFFFFF" />
+        </Style>
+
+        <!-- DataGrid 表头样式 -->
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#6498FE" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="4,8" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+
+        <!-- DataGrid 选中行样式 -->
+        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#C8DCFF" />
+        </Style>
+
+        <!-- DataGrid 未选中行悬停样式 -->
+        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#F0F7FF" />
+        </Style>
+
+        <!-- DataGrid 单元格样式 -->
+        <Style Selector="DataGridCell">
+            <Setter Property="BorderBrush" Value="#E5E7EB" />
+        </Style>
+
+        <!-- CreatablePageableSearchableSelectionBox：关闭态与 SearchableSelectionBox 一致 -->
+        <Style Selector="controls|CreatablePageableSearchableSelectionBox">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid>
+                        <Border x:Name="PART_RootBorder"
+                                Background="#FFFFFF"
+                                BorderBrush="#E5E7EB"
+                                BorderThickness="1"
+                                CornerRadius="0"
+                                Padding="6,0,6,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="PART_TextBox"
+                                         Grid.Column="0"
+                                         FontSize="12"
+                                         Foreground="#333333"
+                                         VerticalAlignment="Center"
+                                         HorizontalAlignment="Stretch"
+                                         BorderThickness="0"
+                                         Background="Transparent" />
+                                <Path Grid.Column="1"
+                                      Width="10"
+                                      Height="6"
+                                      Margin="6,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Fill="#666666"
+                                      Data="M 0 0 L 5 5 L 10 0 Z"
+                                      IsHitTestVisible="False" />
+                            </Grid>
+                        </Border>
+                        <Popup x:Name="PART_Popup"
+                               PlacementTarget="{Binding $parent[controls:CreatablePageableSearchableSelectionBox]}"
+                               Placement="Bottom"
+                               IsLightDismissEnabled="True"
+                               IsOpen="{Binding IsPopupOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                            <Border Background="White"
+                                    BorderBrush="#E5E7EB"
+                                    BorderThickness="3"
+                                    CornerRadius="4"
+                                    Padding="0"
+                                    Width="400"
+                                    Height="250">
+                                <Border.Styles>
+                                    <Style Selector="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="White" />
+                                        <Setter Property="Foreground" Value="Black" />
+                                    </Style>
+                                </Border.Styles>
+                                <Grid RowDefinitions="*,50">
+                                    <!-- DataGrid 区域 -->
+                                    <Border Grid.Row="0"
+                                            BorderBrush="#E5E7EB"
+                                            BorderThickness="0"
+                                            Background="Transparent">
+                                        <Grid>
+                                            <DataGrid x:Name="PART_DataGrid"
+                                                      Height="200"
+                                                      AutoGenerateColumns="False"
+                                                      CanUserResizeColumns="False"
+                                                      CanUserSortColumns="False"
+                                                      IsReadOnly="True"
+                                                      SelectionMode="Single"
+                                                      HorizontalAlignment="Stretch"
+                                                      BorderThickness="0"
+                                                      Background="White"
+                                                      GridLinesVisibility="Horizontal"
+                                                      HeadersVisibility="Column"
+                                                      RowHeight="30"
+                                                      ItemsSource="{Binding CurrentPageItems, RelativeSource={RelativeSource TemplatedParent}}"
+                                                      IsVisible="{Binding ShowResults, RelativeSource={RelativeSource TemplatedParent}}">
+                                                <DataGrid.Columns>
+                                                    <DataGridTemplateColumn Width="*">
+                                                        <DataGridTemplateColumn.Header>
+                                                            <TextBlock FontSize="10"
+                                                                       Text="名称"
+                                                                       Foreground="Black"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center" />
+                                                        </DataGridTemplateColumn.Header>
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate DataType="dtos:SelectionItem">
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           FontSize="10"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"
+                                                                           TextAlignment="Center" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+
+                                            <!-- 空状态 + 新增 -->
+                                            <StackPanel x:Name="PART_EmptyPanel"
+                                                        IsVisible="{Binding ShowAddNew, RelativeSource={RelativeSource TemplatedParent}}"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Spacing="10">
+                                                <TextBlock Text="未找到匹配结果"
+                                                           FontSize="12"
+                                                           Foreground="#666666"
+                                                           HorizontalAlignment="Center" />
+                                                <Button x:Name="PART_AddNewButton"
+                                                        Classes="primary-button"
+                                                        Height="36"
+                                                        FontSize="12"
+                                                        Padding="12,0"
+                                                        Content="新增" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- 分页控件区域 -->
+                                    <Grid Grid.Row="1"
+                                          Height="50"
+                                          VerticalAlignment="Center"
+                                          Margin="10,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding CurrentPageInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                                                       FontSize="14"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding TotalCountInfo, RelativeSource={RelativeSource TemplatedParent}}"
+                                                       FontSize="14"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <u:Pagination Grid.Column="1"
+                                                      CurrentPage="{Binding CurrentPage, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                      TotalCount="{Binding TotalCount, RelativeSource={RelativeSource TemplatedParent}}"
+                                                      PageSize="{Binding PageSize, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+    </Application.Styles>
+</Application>

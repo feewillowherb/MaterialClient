@@ -1,0 +1,143 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MaterialClient.UI.ViewModels"
+             xmlns:semi="https://irihi.tech/semi"
+             xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
+             xmlns:u="https://irihi.tech/ursa"
+             x:Class="MaterialClient.UI.Views.Controls.MaterialsSelectionPopup"
+             x:DataType="vm:MaterialsSelectionPopupViewModel"
+             Width="400" Height="300">
+    
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+    </UserControl.Styles>
+    
+    <Border Background="White"
+            BorderBrush="#E5E7EB"
+            BorderThickness="3"
+            CornerRadius="4"
+            Padding="0">
+        <Grid RowDefinitions="50,*,50">
+            
+            <!-- 搜索框区域 -->
+            <Border Grid.Row="0"
+                    Background="White"
+                    BorderBrush="#E5E9F2"
+                    Height="50">
+                <TextBox Height="35"
+                         FontSize="10"
+                         Watermark="输入关键字查找"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Center"
+                         Margin="1,0,1,10"
+                         Text="{Binding SearchText, Mode=TwoWay}" />
+            </Border>
+            
+            <!-- DataGrid 区域 -->
+            <Border Grid.Row="1"
+                    BorderBrush="#E5E7EB"
+                    BorderThickness="0"
+                    Background="Transparent">
+                <DataGrid Height="200"
+                          AutoGenerateColumns="False"
+                          CanUserResizeColumns="False"
+                          CanUserSortColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          HorizontalAlignment="Stretch"
+                          BorderThickness="0"
+                          Background="White"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          RowHeight="30"
+                          ItemsSource="{Binding PagedMaterials}"
+                          SelectedItem="{Binding SelectedMaterial, Mode=TwoWay}"
+                          DoubleTapped="OnMaterialDoubleTapped">
+                    
+                    
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="*">
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock FontSize="10" Text="名称" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <DataGridTemplateColumn Width="120">
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock FontSize="10" Text="规格型号" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Specifications}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <DataGridTemplateColumn Width="100">
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock FontSize="10" Text="单位" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding BasicUnit}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+            
+            <!-- 分页控件区域 -->
+            <Grid Grid.Row="2"
+                  Height="50"
+                  VerticalAlignment="Center"
+                  Margin="10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                
+                <!-- 分页信息 -->
+                <StackPanel Grid.Column="0"
+                           Orientation="Horizontal"
+                           VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentPageInfo}"
+                               FontSize="14"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding TotalCountInfo}"
+                               FontSize="14"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                
+                <!-- Ursa 分页组件 -->
+                <u:Pagination Grid.Column="1"
+                              CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
+                              TotalCount="{Binding TotalCount}"
+                              PageSize="{Binding PageSize}"
+                              Command="{Binding PageChangeCommand}" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
+

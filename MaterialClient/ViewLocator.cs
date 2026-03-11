@@ -1,7 +1,7 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 
 namespace MaterialClient;
 
@@ -22,6 +22,6 @@ public class ViewLocator : IDataTemplate
 
     public bool Match(object? data)
     {
-        return data is ViewModelBase;
+        return data is MaterialClient.UI.ViewModels.ViewModelBase;
     }
 }

@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>MaterialClient.UI</RootNamespace>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Volo.Abp.Core" />
+        <PackageReference Include="Volo.Abp.Autofac" />
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />
+        <PackageReference Include="Avalonia" />
+        <PackageReference Include="Avalonia.ReactiveUI" />
+        <PackageReference Include="Avalonia.Themes.Fluent" />
+        <PackageReference Include="Avalonia.Fonts.Inter" />
+        <PackageReference Include="Avalonia.Controls.DataGrid" />
+        <PackageReference Include="Irihi.Avalonia.Shared" />
+        <PackageReference Include="Irihi.Ursa" />
+        <PackageReference Include="Irihi.Ursa.Themes.Semi" />
+        <PackageReference Include="MessageBox.Avalonia" />
+        <PackageReference Include="ReactiveUI.SourceGenerators">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Semi.Avalonia" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="AssemblyInfo.cs" />
+        <Compile Include="MaterialClientUIModule.cs" />
+        <Compile Include="App.axaml.cs">
+          <DependentUpon>App.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Include="Services\MinimalWebHostService.cs" />
+        <Compile Include="Services\StartupService.cs" />
+        <Compile Include="ViewLocator.cs" />
+        <Compile Include="Views\**\*.cs" />
+        <Compile Include="ViewModels\**\*.cs" />
+        <Compile Include="Converters\**\*.cs" />
+        <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+    </ItemGroup>
+</Project>
