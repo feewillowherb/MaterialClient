@@ -483,4 +483,209 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
     }
 
     #endregion
+
+    #region 8.7 焦点与状态管理修复验证
+
+    [Fact]
+    public void InitialRender_PopupShouldNotOpen()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        Assert.False(control.IsPopupOpen);
+    }
+
+    [Fact]
+    public void InitialRender_TextBoxShouldBeReadOnly()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        if (control.PART_TextBox == null) return;
+        Assert.True(control.PART_TextBox.IsReadOnly);
+    }
+
+    [Fact]
+    public void SelectItem_PopupShouldNotReopen()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        var items = new List<SelectionItem>
+        {
+            new() { Id = 1, Name = "项目1" },
+            new() { Id = 2, Name = "项目2" }
+        };
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(MultiItemPage(items));
+
+        control.IsPopupOpen = true;
+        if (control.PART_DataGrid == null) return;
+
+        control.PART_DataGrid.SelectedItem = items[0];
+
+        Assert.False(control.IsPopupOpen, "Popup should stay closed after selection");
+        Assert.Equal(1, control.SelectedItem?.Id);
+    }
+
+    [Fact]
+    public void CloseAndReopen_PopupShouldOpenNormally()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        var callCount = 0;
+        control.LoadPageAsync = (_, _, _, _, _) =>
+        {
+            callCount++;
+            return Task.FromResult<PagedResultDto<SelectionItem>?>(
+                SingleItemPage(1, "A"));
+        };
+
+        control.IsPopupOpen = true;
+        if (control.PART_TextBox == null) return;
+
+        var firstCallCount = callCount;
+        Assert.True(firstCallCount > 0);
+
+        control.IsPopupOpen = false;
+        Assert.False(control.IsPopupOpen);
+
+        control.IsPopupOpen = true;
+        Assert.True(control.IsPopupOpen);
+        Assert.True(callCount > firstCallCount, "LoadPageAsync should be called again on reopen");
+    }
+
+    [Fact]
+    public void IsPopupOpen_And_TextBoxIsReadOnly_AreAlwaysOpposite()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "A"));
+
+        if (control.PART_TextBox == null) return;
+
+        Assert.False(control.IsPopupOpen);
+        Assert.True(control.PART_TextBox.IsReadOnly, "Closed → IsReadOnly should be true");
+
+        control.IsPopupOpen = true;
+        Assert.True(control.IsPopupOpen);
+        Assert.False(control.PART_TextBox.IsReadOnly, "Open → IsReadOnly should be false");
+
+        control.IsPopupOpen = false;
+        Assert.False(control.IsPopupOpen);
+        Assert.True(control.PART_TextBox.IsReadOnly, "Closed again → IsReadOnly should be true");
+
+        control.IsPopupOpen = true;
+        Assert.False(control.PART_TextBox.IsReadOnly, "Re-open → IsReadOnly should be false");
+
+        control.IsPopupOpen = false;
+        Assert.True(control.PART_TextBox.IsReadOnly, "Final close → IsReadOnly should be true");
+    }
+
+    [Fact]
+    public void PopupOpen_TextBoxBecomesEditable()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+
+        if (control.PART_TextBox == null) return;
+
+        Assert.True(control.PART_TextBox.IsReadOnly);
+
+        control.IsPopupOpen = true;
+        Assert.False(control.PART_TextBox.IsReadOnly);
+    }
+
+    [Fact]
+    public void PopupClose_TextBoxBecomesReadOnly_WithSelectedItemText()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "测试"));
+
+        control.SelectedItem = new SelectionItem { Id = 1, Name = "测试" };
+
+        if (control.PART_TextBox == null) return;
+
+        control.IsPopupOpen = true;
+        Assert.False(control.PART_TextBox.IsReadOnly);
+
+        control.IsPopupOpen = false;
+        Assert.True(control.PART_TextBox.IsReadOnly);
+        Assert.Equal("测试", control.PART_TextBox.Text);
+    }
+
+    #endregion
+
+    #region 9.5 TextBox 焦点系统退出验证
+
+    [Fact]
+    public void InitialRender_TextBoxShouldBeNonFocusable()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        if (control.PART_TextBox == null) return;
+        Assert.False(control.PART_TextBox.Focusable);
+    }
+
+    [Fact]
+    public void InitialRender_TextBoxShouldBeNonHitTestVisible()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        if (control.PART_TextBox == null) return;
+        Assert.False(control.PART_TextBox.IsHitTestVisible);
+    }
+
+    [Fact]
+    public void PopupOpen_TextBoxBecomesFocusableAndHitTestVisible()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(EmptyPage());
+
+        if (control.PART_TextBox == null) return;
+
+        control.IsPopupOpen = true;
+        Assert.True(control.PART_TextBox.Focusable);
+        Assert.True(control.PART_TextBox.IsHitTestVisible);
+        Assert.False(control.PART_TextBox.IsReadOnly);
+    }
+
+    [Fact]
+    public void PopupClose_TextBoxBecomesNonFocusableAndNonHitTestVisible()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "A"));
+
+        if (control.PART_TextBox == null) return;
+
+        control.IsPopupOpen = true;
+        Assert.True(control.PART_TextBox.Focusable);
+
+        control.IsPopupOpen = false;
+        Assert.False(control.PART_TextBox.Focusable);
+        Assert.False(control.PART_TextBox.IsHitTestVisible);
+        Assert.True(control.PART_TextBox.IsReadOnly);
+    }
+
+    [Fact]
+    public void MultipleOpenCloseCycles_ThreePropertiesAlwaysSyncWithIsPopupOpen()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(SingleItemPage(1, "A"));
+
+        if (control.PART_TextBox == null) return;
+
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.False(control.PART_TextBox.Focusable, $"Cycle {i}: closed → Focusable should be false");
+            Assert.False(control.PART_TextBox.IsHitTestVisible, $"Cycle {i}: closed → IsHitTestVisible should be false");
+            Assert.True(control.PART_TextBox.IsReadOnly, $"Cycle {i}: closed → IsReadOnly should be true");
+
+            control.IsPopupOpen = true;
+
+            Assert.True(control.PART_TextBox.Focusable, $"Cycle {i}: open → Focusable should be true");
+            Assert.True(control.PART_TextBox.IsHitTestVisible, $"Cycle {i}: open → IsHitTestVisible should be true");
+            Assert.False(control.PART_TextBox.IsReadOnly, $"Cycle {i}: open → IsReadOnly should be false");
+
+            control.IsPopupOpen = false;
+        }
+    }
+
+    #endregion
 }

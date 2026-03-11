@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MaterialClient.Common.Api.Dtos;
 using Volo.Abp.Application.Dtos;
@@ -24,6 +25,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     private string _searchText = string.Empty;
     private CancellationTokenSource? _debounceCts;
     private bool _suppressPageChangeLoad;
+    private bool _suppressTextChanged;
 
     private IDisposable? _isPopupOpenSub;
     private IDisposable? _selectedItemSub;
@@ -127,10 +129,12 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         PART_EmptyPanel = e.NameScope.Find<Panel>("PART_EmptyPanel");
         PART_AddNewButton = e.NameScope.Find<Button>("PART_AddNewButton");
 
-        if (PART_RootBorder != null)
-            PART_RootBorder.PointerPressed += OnRootPointerPressed;
+        AddHandler(PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel, true);
         if (PART_TextBox != null)
         {
+            PART_TextBox.IsReadOnly = true;
+            PART_TextBox.Focusable = false;
+            PART_TextBox.IsHitTestVisible = false;
             PART_TextBox.TextChanged += OnTextBoxTextChanged;
             PART_TextBox.KeyDown += OnTextBoxKeyDown;
         }
@@ -149,23 +153,22 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         UpdateTextBoxFromSelectedItem();
     }
 
-    protected override void OnGotFocus(GotFocusEventArgs e)
-    {
-        base.OnGotFocus(e);
-        if (!IsPopupOpen)
-            IsPopupOpen = true;
-    }
-
     private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (!IsPopupOpen)
-            IsPopupOpen = true;
+            Dispatcher.UIThread.Post(() => { if (!IsPopupOpen) IsPopupOpen = true; });
     }
 
     private void OnIsPopupOpenChanged(bool isOpen)
     {
         if (isOpen)
         {
+            if (PART_TextBox != null)
+            {
+                PART_TextBox.Focusable = true;
+                PART_TextBox.IsHitTestVisible = true;
+                PART_TextBox.IsReadOnly = false;
+            }
             _searchText = SelectedItem?.Name ?? string.Empty;
             SyncTextBoxToSearchText();
             _suppressPageChangeLoad = true;
@@ -176,6 +179,12 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         }
         else
         {
+            if (PART_TextBox != null)
+            {
+                PART_TextBox.IsReadOnly = true;
+                PART_TextBox.Focusable = false;
+                PART_TextBox.IsHitTestVisible = false;
+            }
             ResetSearchTextToSelectedItem();
             SyncTextBoxToSearchText();
         }
@@ -195,7 +204,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
 
     private void OnTextBoxTextChanged(object? sender, TextChangedEventArgs e)
     {
-        if (PART_TextBox == null) return;
+        if (PART_TextBox == null || _suppressTextChanged) return;
         _searchText = PART_TextBox.Text ?? string.Empty;
         _debounceCts?.Cancel();
         _debounceCts = new CancellationTokenSource();
@@ -229,7 +238,6 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         {
             SelectedItem = item;
             IsPopupOpen = false;
-            Dispatcher.UIThread.Post(() => PART_TextBox?.Focus(), DispatcherPriority.Loaded);
         }
     }
 
@@ -239,7 +247,6 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         {
             SelectedItem = item;
             IsPopupOpen = false;
-            Dispatcher.UIThread.Post(() => PART_TextBox?.Focus(), DispatcherPriority.Loaded);
         }
     }
 
@@ -251,15 +258,21 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     private void SyncTextBoxToSearchText()
     {
         if (PART_TextBox != null)
+        {
+            _suppressTextChanged = true;
             PART_TextBox.Text = _searchText;
+            _suppressTextChanged = false;
+        }
     }
 
     private void UpdateTextBoxFromSelectedItem()
     {
         if (!IsPopupOpen && PART_TextBox != null)
         {
+            _suppressTextChanged = true;
             _searchText = SelectedItem?.Name ?? string.Empty;
             PART_TextBox.Text = string.IsNullOrEmpty(_searchText) ? (Watermark ?? string.Empty) : _searchText;
+            _suppressTextChanged = false;
         }
     }
 

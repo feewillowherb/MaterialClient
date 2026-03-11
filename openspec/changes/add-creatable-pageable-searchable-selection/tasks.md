@@ -49,10 +49,18 @@
 
 ## 8. 焦点与状态管理修复（方案 B — 重构状态模型）
 
-- [ ] 8.1 移除 `OnGotFocus` 中 `IsPopupOpen = true` 的逻辑；控件可保留 `Focusable=true`，但 GotFocus 不再驱动 popup
-- [ ] 8.2 在 `OnApplyTemplate` 中通过 `AddHandler(PointerPressedEvent, handler, RoutingStrategies.Tunnel, handledEventsToo: true)` 注册 PART_RootBorder（或控件自身）的指针按下事件，保证 TextBox 消费 PointerPressed 后仍能触发 popup 打开
-- [ ] 8.3 在 `OnIsPopupOpenChanged` 中同步 TextBox 可编辑性：`IsPopupOpen=true` 时设 `PART_TextBox.IsReadOnly = false`；`IsPopupOpen=false` 时设 `PART_TextBox.IsReadOnly = true`，并恢复 TextBox 为已选项文本或 watermark
-- [ ] 8.4 移除 `OnDataGridSelectionChanged` 和 `OnDataGridDoubleTapped` 中的 `Dispatcher.Post(() => PART_TextBox.Focus())`，选择/关闭后不主动 focus TextBox
-- [ ] 8.5 确认 `OnRootPointerPressed` 只在 `!IsPopupOpen` 时设 `IsPopupOpen = true`，且使用 Tunnel 路由确保事件在 TextBox 处理之前被捕获
-- [ ] 8.6 验证初始渲染时 popup 不弹出：TextBox 初始为 `IsReadOnly=true`，显示 watermark 或已选项名称
-- [ ] 8.7 更新无头测试：新增测试验证初始渲染不弹出 popup、选择后 popup 不重新弹出、关闭→重新点击→popup 正常打开、任意时刻 IsPopupOpen 与 TextBox.IsReadOnly 互斥
+- [x] 8.1 移除 `OnGotFocus` 中 `IsPopupOpen = true` 的逻辑；控件可保留 `Focusable=true`，但 GotFocus 不再驱动 popup
+- [x] 8.2 在 `OnApplyTemplate` 中通过 `AddHandler(PointerPressedEvent, handler, RoutingStrategies.Tunnel, handledEventsToo: true)` 注册 PART_RootBorder（或控件自身）的指针按下事件，保证 TextBox 消费 PointerPressed 后仍能触发 popup 打开
+- [x] 8.3 在 `OnIsPopupOpenChanged` 中同步 TextBox 可编辑性：`IsPopupOpen=true` 时设 `PART_TextBox.IsReadOnly = false`；`IsPopupOpen=false` 时设 `PART_TextBox.IsReadOnly = true`，并恢复 TextBox 为已选项文本或 watermark
+- [x] 8.4 移除 `OnDataGridSelectionChanged` 和 `OnDataGridDoubleTapped` 中的 `Dispatcher.Post(() => PART_TextBox.Focus())`，选择/关闭后不主动 focus TextBox
+- [x] 8.5 确认 `OnRootPointerPressed` 只在 `!IsPopupOpen` 时设 `IsPopupOpen = true`，且使用 Tunnel 路由确保事件在 TextBox 处理之前被捕获
+- [x] 8.6 验证初始渲染时 popup 不弹出：TextBox 初始为 `IsReadOnly=true`，显示 watermark 或已选项名称
+- [x] 8.7 更新无头测试：新增测试验证初始渲染不弹出 popup、选择后 popup 不重新弹出、关闭→重新点击→popup 正常打开、任意时刻 IsPopupOpen 与 TextBox.IsReadOnly 互斥
+
+## 9. TextBox 焦点系统退出与 LightDismiss 竞态修复
+
+- [x] 9.1 在 `OnIsPopupOpenChanged(true)` 中设置 `PART_TextBox.Focusable = true` 和 `PART_TextBox.IsHitTestVisible = true`（在设 `IsReadOnly = false` 的同一处）
+- [x] 9.2 在 `OnIsPopupOpenChanged(false)` 中设置 `PART_TextBox.Focusable = false` 和 `PART_TextBox.IsHitTestVisible = false`（在设 `IsReadOnly = true` 的同一处）；Avalonia 在 Focusable=false 时自动释放焦点
+- [x] 9.3 在 `OnApplyTemplate` 中初始化 `PART_TextBox.Focusable = false` 和 `PART_TextBox.IsHitTestVisible = false`（与现有 `IsReadOnly = true` 初始化一致）
+- [x] 9.4 `OnRootPointerPressed` 使用 `Dispatcher.UIThread.Post(() => { if (!IsPopupOpen) IsPopupOpen = true; })` 延迟打开，避免同一个点击事件被 LightDismiss 立即关闭
+- [x] 9.5 更新无头测试：验证关闭态 TextBox.Focusable=false 和 TextBox.IsHitTestVisible=false；打开态三属性均恢复；多轮 open/close 循环中三属性始终与 IsPopupOpen 同步

@@ -133,19 +133,47 @@ The popup SHALL open ONLY in response to explicit user interaction: (1) mouse cl
 
 ### Requirement: Popup and TextBox editability synchronization
 
-The popup open/close state and the TextBox editability SHALL always be in sync. When the popup is open, the TextBox SHALL be editable (IsReadOnly=false). When the popup is closed, the TextBox SHALL be read-only (IsReadOnly=true). There SHALL NOT be any intermediate state where one is active without the other. This synchronization SHALL be driven by the `IsPopupOpen` property change handler.
+The popup open/close state and the TextBox editability SHALL always be in sync. When the popup is open, the TextBox SHALL be editable (IsReadOnly=false, Focusable=true, IsHitTestVisible=true). When the popup is closed, the TextBox SHALL be fully inert (IsReadOnly=true, Focusable=false, IsHitTestVisible=false) — behaving like a TextBlock that only displays text. This synchronization SHALL be driven by the `IsPopupOpen` property change handler.
 
-#### Scenario: Popup open → TextBox editable
+#### Scenario: Popup open → TextBox fully interactive
 
 - **WHEN** the popup transitions from closed to open
-- **THEN** the TextBox SHALL become editable immediately, allowing the user to type search text
+- **THEN** the TextBox SHALL become editable (IsReadOnly=false), focusable (Focusable=true), and hit-testable (IsHitTestVisible=true), and SHALL receive focus, allowing the user to type search text
 
-#### Scenario: Popup close → TextBox read-only
+#### Scenario: Popup close → TextBox fully inert
 
 - **WHEN** the popup transitions from open to closed (via selection, Escape, or click-outside)
-- **THEN** the TextBox SHALL become read-only immediately, displaying the selected item name or empty text
+- **THEN** the TextBox SHALL become read-only (IsReadOnly=true), non-focusable (Focusable=false), and non-hit-testable (IsHitTestVisible=false), displaying the selected item name or empty text; focus SHALL be automatically released by the framework when Focusable is set to false
 
 #### Scenario: No desynchronized state
 
 - **GIVEN** any sequence of user interactions (clicks, typing, Escape, selection, re-clicks)
-- **THEN** at every point in time, exactly one of these invariants holds: (a) popup is open AND TextBox is editable, or (b) popup is closed AND TextBox is read-only
+- **THEN** at every point in time, exactly one of these invariants holds: (a) popup is open AND TextBox is editable/focusable/hit-testable, or (b) popup is closed AND TextBox is read-only/non-focusable/non-hit-testable
+
+### Requirement: Closed-state TextBox exits focus system
+
+When the popup is closed, the inner TextBox SHALL NOT participate in the focus system. Specifically: (1) Tab navigation SHALL skip the TextBox (Focusable=false), (2) clicking the TextBox area SHALL pass through to the parent Border (IsHitTestVisible=false) triggering popup open, (3) the focus system SHALL NOT auto-focus the TextBox during initial rendering or layout. This ensures the closed control behaves visually like `SearchableSelectionBox`'s TextBlock display panel — a pure display surface with no caret, no focus ring, and no keyboard interaction.
+
+#### Scenario: Tab navigation skips closed control
+
+- **WHEN** the popup is closed and the user presses Tab to cycle focus
+- **THEN** focus SHALL skip the TextBox inside the control; the TextBox SHALL NOT receive focus
+
+#### Scenario: Click-outside releases focus
+
+- **WHEN** the popup is closed (via Escape, selection, or click-outside) and the TextBox previously had focus
+- **THEN** focus SHALL be released from the TextBox (due to Focusable=false); the control SHALL NOT retain a visible caret or focus ring
+
+#### Scenario: Click on closed control opens popup via Border
+
+- **WHEN** the popup is closed and the user clicks on the TextBox display area
+- **THEN** the click SHALL pass through the TextBox (IsHitTestVisible=false) to the parent Border, which triggers OnRootPointerPressed → popup opens
+
+### Requirement: Popup open via Dispatcher.Post to avoid LightDismiss race
+
+The `OnRootPointerPressed` handler SHALL open the popup via `Dispatcher.UIThread.Post()` (deferred to the next dispatcher frame) rather than synchronously. This ensures the Popup's `IsLightDismissEnabled` mechanism does not treat the same click that opens the popup as an "outside click" that immediately closes it. Without this deferral, the Tunnel-phase open and the Bubble-phase LightDismiss would conflict within a single pointer event.
+
+#### Scenario: Single click opens popup without immediate close
+
+- **WHEN** the user clicks the control to open the popup
+- **THEN** the popup SHALL open and remain open; the same click SHALL NOT trigger LightDismiss closure
