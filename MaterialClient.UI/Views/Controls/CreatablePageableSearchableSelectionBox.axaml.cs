@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +25,7 @@ namespace MaterialClient.UI.Views.Controls;
 public class CreatablePageableSearchableSelectionBox : TemplatedControl
 {
     private const int DebounceMs = 300;
+    private const int SuppressOpenDelayMs = 200;
 
     private string _searchText = string.Empty;
     private string _selectedDisplayName = string.Empty;
@@ -121,7 +124,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     {
         Height = 32;
         MinHeight = 32;
-        Focusable = true;
+        Focusable = false;
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
@@ -167,11 +170,19 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
     private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (!IsPopupOpen && !_suppressNextOpen)
-            Dispatcher.UIThread.Post(() => { if (!IsPopupOpen && !_suppressNextOpen) IsPopupOpen = true; });
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!IsPopupOpen && !_suppressNextOpen)
+                {
+                    DiagLog("OnRootPointerPressed.Post → IsPopupOpen = true");
+                    IsPopupOpen = true;
+                }
+            });
     }
 
     private void OnIsPopupOpenChanged(bool isOpen)
     {
+        DiagLog($"OnIsPopupOpenChanged({isOpen})\n{new StackTrace(true)}");
         if (isOpen)
         {
             if (PART_TextBox != null)
@@ -192,7 +203,8 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
         {
             _debounceCts?.Cancel();
             _suppressNextOpen = true;
-            Dispatcher.UIThread.Post(() => _suppressNextOpen = false);
+            DispatcherTimer.RunOnce(() => _suppressNextOpen = false,
+                TimeSpan.FromMilliseconds(SuppressOpenDelayMs));
 
             if (PART_TextBox != null)
             {
@@ -202,6 +214,8 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
             }
             _searchText = _selectedDisplayName;
             SyncTextBoxToDisplayText();
+            _debounceCts?.Cancel();
+            _debounceCts = null;
         }
     }
 
@@ -221,14 +235,17 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
 
     private void OnPopupClosed(object? sender, EventArgs e)
     {
+        DiagLog($"OnPopupClosed: IsPopupOpen={IsPopupOpen}");
         _searchText = _selectedDisplayName;
         SyncTextBoxToDisplayText();
     }
 
     private void OnTextBoxTextChanged(object? sender, TextChangedEventArgs e)
     {
+        DiagLog($"OnTextBoxTextChanged: suppressed={_suppressTextChanged}, text='{PART_TextBox?.Text}'");
         if (PART_TextBox == null || _suppressTextChanged) return;
         _searchText = PART_TextBox.Text ?? string.Empty;
+        DiagLog($"OnTextBoxTextChanged: creating debounce for '{_searchText}'");
         _debounceCts?.Cancel();
         _debounceCts = new CancellationTokenSource();
         var ct = _debounceCts.Token;
@@ -237,7 +254,8 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
             await Task.Delay(DebounceMs, ct).ConfigureAwait(false);
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                if (!IsPopupOpen) IsPopupOpen = true;
+                DiagLog($"debounce callback: IsPopupOpen={IsPopupOpen}");
+                if (!IsPopupOpen) return;
                 _suppressPageChangeLoad = true;
                 CurrentPage = 1;
                 _suppressPageChangeLoad = false;
@@ -257,6 +275,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
 
     private void OnDataGridSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        DiagLog($"OnDataGridSelectionChanged: SelectedItem={PART_DataGrid?.SelectedItem}, type={PART_DataGrid?.SelectedItem?.GetType().Name}");
         if (PART_DataGrid?.SelectedItem is SelectionItem item)
             AcceptSelection(item);
     }
@@ -269,11 +288,15 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
 
     private void AcceptSelection(SelectionItem item)
     {
+        DiagLog($"AcceptSelection: Id={item.Id}, Name='{item.Name}', current IsPopupOpen={IsPopupOpen}");
         _selectedDisplayName = item.Name;
         _suppressSelectedIdReload = true;
         SelectedId = item.Id;
         _suppressSelectedIdReload = false;
+        DiagLog("AcceptSelection: setting IsPopupOpen=false");
         IsPopupOpen = false;
+        DiagLog($"AcceptSelection: after IsPopupOpen=false, actual value={IsPopupOpen}");
+        ClearFocusFromControl();
     }
 
     private async void OnAddNewButtonClick(object? sender, RoutedEventArgs e)
@@ -291,6 +314,7 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
             SelectedId = result.Id;
             _suppressSelectedIdReload = false;
             IsPopupOpen = false;
+            ClearFocusFromControl();
         }
         catch
         {
@@ -340,6 +364,22 @@ public class CreatablePageableSearchableSelectionBox : TemplatedControl
             ResolveDisplayNameFromItems();
             SyncTextBoxToDisplayText();
         }
+    }
+
+    [Conditional("DEBUG")]
+    private static void DiagLog(string msg)
+    {
+        var line = $"[{DateTime.Now:HH:mm:ss.fff}] {msg}";
+        try { File.AppendAllText("popup-diag.log", line + Environment.NewLine); } catch { }
+    }
+
+    private void ClearFocusFromControl()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            topLevel?.Focus();
+        }, DispatcherPriority.Loaded);
     }
 
     private IReadOnlyList<int>? GetSelectedIds()

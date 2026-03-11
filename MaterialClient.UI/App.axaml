@@ -285,7 +285,7 @@
                         </Border>
                         <Popup x:Name="PART_Popup"
                                PlacementTarget="{Binding $parent[controls:CreatablePageableSearchableSelectionBox]}"
-                               Placement="Bottom"
+                               Placement="BottomEdgeAlignedLeft"
                                IsLightDismissEnabled="True"
                                IsOpen="{Binding IsPopupOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                             <Border Background="White"

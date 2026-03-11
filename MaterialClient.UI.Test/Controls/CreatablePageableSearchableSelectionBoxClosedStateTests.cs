@@ -26,10 +26,10 @@ public class CreatablePageableSearchableSelectionBoxClosedStateTests
     }
 
     [Fact]
-    public void Control_ShouldBeFocusable()
+    public void Control_ShouldNotBeFocusable()
     {
         var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
-        Assert.True(control.Focusable);
+        Assert.False(control.Focusable);
     }
 
     [Fact]

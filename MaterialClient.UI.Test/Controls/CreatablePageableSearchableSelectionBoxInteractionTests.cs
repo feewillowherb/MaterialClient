@@ -461,6 +461,33 @@ public class CreatablePageableSearchableSelectionBoxInteractionTests
         Assert.Equal(openLoadCount, loadCount);
     }
 
+    [Fact]
+    public async Task SelectDifferentItem_DebounceShouldNotReopenPopup()
+    {
+        var control = TestHelper.CreateControl<CreatablePageableSearchableSelectionBox>();
+        var items = new List<SelectionItem>
+        {
+            new() { Id = 1, Name = "项目1" },
+            new() { Id = 2, Name = "项目2" }
+        };
+        control.LoadPageAsync = (_, _, _, _, _) =>
+            Task.FromResult<PagedResultDto<SelectionItem>?>(MultiItemPage(items));
+
+        control.IsPopupOpen = true;
+        if (control.PART_DataGrid == null) return;
+
+        control.SelectedId = 1;
+        control.PART_DataGrid.SelectedItem = items[1];
+
+        Assert.False(control.IsPopupOpen, "Popup should close immediately after selection");
+
+        await Task.Delay(500);
+
+        Assert.False(control.IsPopupOpen,
+            "Popup must remain closed after debounce period elapses (debounce should not reopen it)");
+        Assert.Equal(2, control.SelectedId);
+    }
+
     #endregion
 
     #region 7.7 交互行为补充（分页信息、CurrentPage、Escape）
