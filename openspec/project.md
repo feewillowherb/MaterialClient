@@ -142,7 +142,7 @@ MaterialClient 是一个用于工业环境材料称重管理的 Windows 桌面�
    - 确保每个需求至少有一个 scenario
    - 在提案获得批准之前不要开始实施
 
-See `openspec/AGENTS.md` for complete OpenSpec workflow documentation.
+See `AGENTS.md`（项目根目录）for agent behavior rules and OpenSpec workflow documentation.
 
 ## Domain Context
 
@@ -346,7 +346,7 @@ MaterialClient/
 
 ## Related Documentation
 
-- `openspec/AGENTS.md` - OpenSpec workflow and conventions
+- `AGENTS.md` - Agent 行为准则和 OpenSpec 工作流规范
 - `openspec/PROPOSAL_DESIGN_GUIDELINES.md` - UI mockup and diagram guidelines
 - `docs/AttendedWeighingService-RxState-Optimization-Report.md` - State management architecture
 - `docs/AttendedWeighingService-MemoryLeak-Testing-Guide.md` - Memory leak testing

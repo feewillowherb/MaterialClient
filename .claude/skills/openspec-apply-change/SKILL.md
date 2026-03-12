@@ -64,13 +64,16 @@ Implement tasks from an OpenSpec change.
    - Remaining tasks overview
    - Dynamic instruction from CLI
 
-6. **Implement tasks (loop until done or blocked)**
+6. **Guide implementation (loop until done or blocked)**
+
+   **IMPORTANT: Agent 禁止直接修改源代码文件（.cs、.axaml 等）。** Agent 的职责是引导实施，而非亲自编码。
 
    For each pending task:
    - Show which task is being worked on
-   - Make the code changes required
-   - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
+   - Explain what needs to be changed, reference relevant Spec/Design sections
+   - Point out具体的文件位置和修改要点（只读分析）
+   - 由人工完成代码编写后，Agent 可验证一致性
+   - Mark task complete in the tasks file: `- [ ]` → `- [x]`（仅在人工确认完成后）
    - Continue to next task
 
    **Pause if:**
@@ -78,6 +81,7 @@ Implement tasks from an OpenSpec change.
    - Implementation reveals a design issue → suggest updating artifacts
    - Error or blocker encountered → report and wait for guidance
    - User interrupts
+   - 用户要求 Agent 直接写代码 → 提醒通过 OpenSpec 工作流驱动
 
 7. **On completion or pause, show status**
 
@@ -139,12 +143,13 @@ What would you like to do?
 ```
 
 **Guardrails**
+- **禁止修改源代码文件** - Agent 只能读取代码用于分析，不得创建或修改 .cs、.axaml 等文件
 - Keep going through tasks until done or blocked
 - Always read context files before starting (from the apply instructions output)
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
-- Keep code changes minimal and scoped to each task
-- Update task checkbox immediately after completing each task
+- Agent 的输出限定为 OpenSpec 产物（Spec/Design/Proposal/Tasks）
+- Update task checkbox only after human confirms completion
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
 
