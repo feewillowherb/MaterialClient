@@ -19,6 +19,8 @@
 - 对话框的过滤条件 UI 样式与 `WeighingRecordListView.axaml` 中的搜索区域保持一致（`card-border`、`FontSize="13"`、`Foreground="#666"` 标签、`primary-button`/`secondary-button` 按钮样式）
 - 用户确认后调用 `ISolidWasteExcelExportService.ExportAsync` 执行导出
 - 导出完成后显示成功/失败提示
+- 将 `ISolidWasteExcelExportService` 接口合并到 `SolidWasteExcelExportService.cs` 中，删除独立的接口文件
+- 补全导出的上传字段映射（上传结果、上传状态、上传时间），数据来源为 `Waybill.IsPendingSync` 和 `Waybill.LastSyncTime`
 
 ## Capabilities
 
@@ -32,6 +34,8 @@
 - `MaterialClient/Views/AttendedWeighing/AttendedWeighingWindow.axaml` — 新增导出按钮
 - `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` — 新增导出命令和对话框交互逻辑
 - 新增 `ExportFilterDialog.axaml` + `ExportFilterDialogViewModel.cs` — 过滤条件对话框
-- 依赖已有的 `ISolidWasteExcelExportService`、`SolidWasteExportFilter`
+- `MaterialClient.Common/Services/SolidWasteExcelExportService.cs` — 合并接口 + 补全上传字段映射
+- 删除 `MaterialClient.Common/Services/ISolidWasteExcelExportService.cs`
+- 依赖已有的 `SolidWasteExportFilter`
 - 依赖 `SystemSettings.DefaultWeighingMode` 判断当前称重模式
 - `MaterialClient.Common/Configuration/SystemSettings.cs` — 新增 `ExportDefaultPath` 属性

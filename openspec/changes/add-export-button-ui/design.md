@@ -18,7 +18,6 @@
 
 **Non-Goals:**
 - 不实现标准模式的导出功能（仅添加 TODO）
-- 不修改已有的 `SolidWasteExcelExportService` 逻辑
 - 不添加导出进度条（当前数据量不需要）
 
 ## Decisions
@@ -78,6 +77,24 @@
 ### Decision 5：标准模式 TODO 预留
 
 **方案**: 在 ViewModel 的导出命令处理方法中，围绕模式判断添加 `// TODO: 支持标准模式导出`，在 XAML 中的按钮 IsVisible 绑定处也添加注释说明。
+
+### Decision 7：合并接口文件
+
+**方案**: 将 `ISolidWasteExcelExportService` 接口定义移入 `SolidWasteExcelExportService.cs` 同一文件，删除独立的 `ISolidWasteExcelExportService.cs`。
+
+**理由**: 接口仅一个方法、仅一处实现，独立文件增加无谓的导航开销。合并后接口仍保留（ABP DI 基于接口注册），仅物理位置变化。
+
+### Decision 8：上传字段映射
+
+**方案**: `MapToExportRow` 中的三个上传字段不再写死空值，改为从 `Waybill` 实体字段映射：
+
+| Excel 列 | 映射规则 |
+|----------|---------|
+| 上传结果 | `!IsPendingSync` → `"1"`，否则 `"0"` |
+| 上传状态 | `!IsPendingSync` → `"上传成功"`，否则 `"未上传"` |
+| 上传时间 | `LastSyncTime?.ToString("yyyy-MM-dd HH:mm:ss")` |
+
+**理由**: `Waybill.IsPendingSync` 和 `Waybill.LastSyncTime` 已有完整的同步状态语义，直接映射即可。
 
 ## Risks / Trade-offs
 

@@ -97,6 +97,24 @@
 - **WHEN** `ExportAsync` 返回 `Success = false`
 - **THEN** 系统 SHALL 不更新 `SystemSettings.ExportDefaultPath`
 
+### Requirement: 上传字段映射
+导出的「上传结果」「上传状态」「上传时间」三列 SHALL 从 `Waybill` 实体的同步状态字段映射，不再为空。
+
+#### Scenario: 已同步运单的上传字段
+- **WHEN** `Waybill.IsPendingSync == false`
+- **THEN** 上传结果 SHALL 为 `"1"`
+- **AND** 上传状态 SHALL 为 `"上传成功"`
+- **AND** 上传时间 SHALL 为 `Waybill.LastSyncTime` 格式化为 `yyyy-MM-dd HH:mm:ss`
+
+#### Scenario: 未同步运单的上传字段
+- **WHEN** `Waybill.IsPendingSync == true`
+- **THEN** 上传结果 SHALL 为 `"0"`
+- **AND** 上传状态 SHALL 为 `"未上传"`
+- **AND** 上传时间 SHALL 为空字符串
+
+### Requirement: 接口与实现合并
+`ISolidWasteExcelExportService` 接口 SHALL 与 `SolidWasteExcelExportService` 类合并到同一个文件中，删除独立的接口文件。接口定义保留不变。
+
 ### Requirement: 过滤参数可空与默认值
 对话框中展示的过滤条件字段（日期范围、车牌号）SHALL 允许为空。GoodsName 和 ProviderName 不在对话框中展示，始终以 null 传入导出服务。
 

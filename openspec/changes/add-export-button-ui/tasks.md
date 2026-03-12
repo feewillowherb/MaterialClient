@@ -34,3 +34,10 @@
 - [x] 6.2 对话框初始化时读取 `SystemSettings.ExportDefaultPath`，有值则填入；为空则默认桌面路径
 - [x] 6.3 更新 `AttendedWeighingViewModel.ExportSolidWaste`：移除 `SaveFilePickerAsync`，从对话框 ViewModel 获取保存路径并拼接自动生成文件名
 - [x] 6.4 导出成功后将路径写入 `SystemSettings.ExportDefaultPath` 并调用 `SaveSettingsAsync`
+
+## 7. 导出服务重构
+
+- [x] 7.1 将 `ISolidWasteExcelExportService` 接口定义移入 `SolidWasteExcelExportService.cs`，删除 `ISolidWasteExcelExportService.cs`
+- [x] 7.2 更新 `MapToExportRow`：上传结果 = `!IsPendingSync` → `"1"` / `"0"`
+- [x] 7.3 更新 `MapToExportRow`：上传状态 = `!IsPendingSync` → `"上传成功"` / `"未上传"`
+- [x] 7.4 更新 `MapToExportRow`：上传时间 = `LastSyncTime?.ToString("yyyy-MM-dd HH:mm:ss")` ?? `string.Empty`

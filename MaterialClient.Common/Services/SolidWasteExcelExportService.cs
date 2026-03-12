@@ -11,6 +11,11 @@ using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
 
+public interface ISolidWasteExcelExportService
+{
+    Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath);
+}
+
 [AutoConstructor]
 public partial class SolidWasteExcelExportService : ISolidWasteExcelExportService, ITransientDependency
 {
@@ -174,9 +179,9 @@ public partial class SolidWasteExcelExportService : ISolidWasteExcelExportServic
             Street = waybill.GetStreet() ?? string.Empty,
             SolidWasteType = waybill.GetSolidWasteType() ?? string.Empty,
             ManifestNumber = waybill.GetSolidWasteOrderNumber() ?? string.Empty,
-            UploadResult = string.Empty,
-            UploadStatus = string.Empty,
-            UploadTime = string.Empty
+            UploadResult = waybill.IsPendingSync ? "0" : "1",
+            UploadStatus = waybill.IsPendingSync ? "未上传" : "上传成功",
+            UploadTime = waybill.LastSyncTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty
         };
     }
 
