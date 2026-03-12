@@ -55,6 +55,13 @@
                             Classes="transparent-button"
                             Foreground="White"
                             Padding="8,4" />
+                    <!-- 导出按钮：仅固废模式可见 -->
+                    <Button Content="导出"
+                            Classes="transparent-button"
+                            Foreground="White"
+                            Padding="8,4"
+                            Command="{Binding ExportSolidWasteCommand}"
+                            IsVisible="{Binding IsSolidWasteMode}" />
                 </StackPanel>
 
                 <!-- Window Control Buttons -->

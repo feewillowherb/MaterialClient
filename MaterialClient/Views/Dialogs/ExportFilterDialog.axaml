@@ -1,0 +1,83 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.ViewModels"
+        xmlns:u="https://irihi.tech/ursa"
+        x:Class="MaterialClient.Views.Dialogs.ExportFilterDialog"
+        x:DataType="vm:ExportFilterDialogViewModel"
+        Title="导出固废运单"
+        Width="420" Height="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Icon="/Assets/fd-ico.ico">
+
+    <Grid RowDefinitions="*,Auto" Margin="20">
+        <StackPanel Grid.Row="0" Spacing="16">
+            <TextBlock Text="导出过滤条件"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="Black"
+                       Margin="0,0,0,8" />
+
+            <!-- 日期范围 -->
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,0">
+                <TextBlock Text="添加日期"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           FontSize="13"
+                           Foreground="#666" />
+                <u:DateTimePicker Grid.Column="1"
+                                  Width="120"
+                                  FontSize="10"
+                                  Margin="0,0,8,0"
+                                  SelectedDate="{Binding StartDate}"
+                                  DisplayFormat="yyyy-MM-dd HH:mm"
+                                  PanelFormat="yyyy-MM-dd HH:mm" />
+                <TextBlock Grid.Column="2"
+                           Text="至"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           FontSize="13"
+                           Foreground="#666" />
+                <u:DateTimePicker Grid.Column="3"
+                                  Width="120"
+                                  FontSize="10"
+                                  SelectedDate="{Binding EndDate}"
+                                  DisplayFormat="yyyy-MM-dd HH:mm"
+                                  PanelFormat="yyyy-MM-dd HH:mm" />
+            </Grid>
+
+            <!-- 车牌号 -->
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Text="车牌号码"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           FontSize="13"
+                           Foreground="#666" />
+                <TextBox Grid.Column="1"
+                         FontSize="13"
+                         Text="{Binding PlateNumber}"
+                         Watermark="留空则不过滤" />
+            </Grid>
+        </StackPanel>
+
+        <!-- 按钮区域 -->
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="12"
+                    Margin="0,20,0,0">
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Classes="secondary-button"
+                    Padding="24,8"
+                    CornerRadius="4"
+                    FontSize="13" />
+            <Button Content="导出"
+                    Command="{Binding ExportCommand}"
+                    Classes="primary-button"
+                    Padding="24,8"
+                    CornerRadius="4"
+                    FontSize="13" />
+        </StackPanel>
+    </Grid>
+</Window>

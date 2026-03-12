@@ -26,8 +26,10 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
+using Avalonia.Platform.Storage;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
+using MaterialClient.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MsBox.Avalonia;
@@ -255,6 +257,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     public async Task InitializeOnFirstLoadAsync()
     {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            IsSolidWasteMode = settings.SystemSettings.DefaultWeighingMode == WeighingMode.SolidWaste;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "读取称重模式失败");
+        }
+
         await RefreshAsync();
         BackToMain();
         await SelectLatestCompletedItemAsync();
@@ -1055,6 +1067,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     [Reactive] private bool _isPrinterEnabled;
 
     [Reactive] private bool _isPrinterOnline;
+
+    [Reactive] private bool _isSolidWasteMode;
 
     [Reactive] private bool _isLprOnline;
 
@@ -1910,6 +1924,74 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         catch (Exception ex)
         {
             Logger?.LogError(ex, "打开项目信息窗口失败");
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task ExportSolidWaste()
+    {
+        // TODO: 支持标准模式导出
+        try
+        {
+            var parentWin = GetParentWindow();
+            if (parentWin == null) return;
+
+            var dialogVm = new ExportFilterDialogViewModel();
+            var dialog = new ExportFilterDialog(dialogVm);
+            var result = await dialog.ShowDialog<ExportFilterDialogViewModel?>(parentWin);
+
+            if (result is not { Confirmed: true }) return;
+
+            var topLevel = TopLevel.GetTopLevel(parentWin);
+            if (topLevel == null) return;
+
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "导出固废运单",
+                DefaultExtension = "xlsx",
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("Excel 文件") { Patterns = ["*.xlsx"] }
+                ],
+                SuggestedFileName = $"固废运单_{DateTime.Now:yyyyMMdd_HHmmss}"
+            });
+
+            if (file == null) return;
+
+            var outputPath = file.Path.LocalPath;
+            var filter = new SolidWasteExportFilter
+            {
+                StartDate = result.StartDate,
+                EndDate = result.EndDate,
+                PlateNumber = string.IsNullOrWhiteSpace(result.PlateNumber) ? null : result.PlateNumber,
+                GoodsName = null,
+                ProviderName = null
+            };
+
+            var exportService = _serviceProvider.GetRequiredService<ISolidWasteExcelExportService>();
+            var exportResult = await exportService.ExportAsync(filter, outputPath);
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (parentWin is AttendedWeighingWindow attendedWindow
+                    && attendedWindow.NotificationManager != null)
+                {
+                    if (exportResult.Success)
+                        attendedWindow.NotificationManager.Show(
+                            new Avalonia.Controls.Notifications.Notification("导出成功",
+                                $"已导出 {exportResult.RowCount} 条运单到 {Path.GetFileName(outputPath)}",
+                                NotificationType.Success));
+                    else
+                        attendedWindow.NotificationManager.Show(
+                            new Avalonia.Controls.Notifications.Notification("导出失败",
+                                "导出过程中发生错误，请重试",
+                                NotificationType.Error));
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "固废运单导出失败");
         }
     }
 
