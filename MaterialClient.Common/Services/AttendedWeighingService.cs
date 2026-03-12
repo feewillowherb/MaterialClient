@@ -1465,7 +1465,6 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// </summary>
     private async Task TryReWritePlateNumberAsync()
     {
-        // Get latest record ID directly from subject
         var recordId = _lastCreatedWeighingRecordIdSubject.Value;
 
         try
@@ -1476,12 +1475,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 return;
             }
 
-            var plateNumber = GetMostFrequentPlateNumber();
-            if (string.IsNullOrWhiteSpace(plateNumber))
-            {
-                _logger?.LogDebug("No plate number to rewrite");
-                return;
-            }
+            var config = await GetConfigurationAsync();
 
             using var uow = _unitOfWorkManager.Begin();
             var weighingRecord = await _weighingRecordRepository.GetAsync(recordId.Value);
@@ -1489,22 +1483,29 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var currentDeliveryType = _deliveryTypeSubject.Value;
             var hasChanges = false;
 
-            if (weighingRecord.PlateNumber != plateNumber)
+            if (config.EnablePlateRewrite)
             {
-                var oldPlateNumber = weighingRecord.PlateNumber;
-                weighingRecord.PlateNumber = plateNumber;
-                hasChanges = true;
+                var plateNumber = GetMostFrequentPlateNumber();
+                if (!string.IsNullOrWhiteSpace(plateNumber) && weighingRecord.PlateNumber != plateNumber)
+                {
+                    var oldPlateNumber = weighingRecord.PlateNumber;
+                    weighingRecord.PlateNumber = plateNumber;
+                    hasChanges = true;
 
-                _logger?.LogInformation(
-                    $"Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
+                    _logger?.LogInformation(
+                        $"Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
 
-                // 通过 ReactiveUI MessageBus 发送更新车牌号消息
-                var updateMessage = new UpdatePlateNumberMessage(weighingRecord.Id, plateNumber);
-                MessageBus.Current.SendMessage(updateMessage);
+                    var updateMessage = new UpdatePlateNumberMessage(weighingRecord.Id, plateNumber);
+                    MessageBus.Current.SendMessage(updateMessage);
 
-                _logger?.LogInformation(
-                    " Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
-                    weighingRecord.Id, plateNumber);
+                    _logger?.LogInformation(
+                        " Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                        weighingRecord.Id, plateNumber);
+                }
+            }
+            else
+            {
+                _logger?.LogDebug("Plate number rewrite is disabled, skipping plate number update");
             }
 
             if (weighingRecord.DeliveryType != currentDeliveryType)
