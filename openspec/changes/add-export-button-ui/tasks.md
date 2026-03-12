@@ -23,14 +23,14 @@
 
 ## 5. 保存路径字段与校验
 
-- [ ] 5.1 在 `ExportFilterDialogViewModel` 中添加 `SavePath`（string?）属性和 `SavePathError`（string?）校验提示属性
-- [ ] 5.2 在 `ExportFilterDialogViewModel` 中添加 `BrowseFolderCommand`，通过 `StorageProvider.OpenFolderPickerAsync` 选择目录
-- [ ] 5.3 在 `ExportCommand` 中添加路径非空校验：为空时设置 `SavePathError = "请选择保存位置"` 并中止导出
-- [ ] 5.4 更新 `ExportFilterDialog.axaml`：新增「保存位置」行（TextBox 显示路径 + [浏览] 按钮），路径为空时 TextBox 显示红色边框和提示
+- [x] 5.1 在 `ExportFilterDialogViewModel` 中添加 `SavePath`（string?）属性和 `SavePathError`（string?）校验提示属性
+- [x] 5.2 在 `ExportFilterDialogViewModel` 中添加 `BrowseFolderCommand`，通过 `StorageProvider.OpenFolderPickerAsync` 选择目录
+- [x] 5.3 在 `ExportCommand` 中添加路径非空校验：为空时设置 `SavePathError = "请选择保存位置"` 并中止导出
+- [x] 5.4 更新 `ExportFilterDialog.axaml`：新增「保存位置」行（TextBox 显示路径 + [浏览] 按钮），路径为空时 TextBox 显示红色边框和提示
 
 ## 6. SystemSettings 路径持久化
 
-- [ ] 6.1 在 `SystemSettings` 中新增 `ExportDefaultPath` 属性（string，默认空）
-- [ ] 6.2 对话框初始化时读取 `SystemSettings.ExportDefaultPath`，有值则填入；为空则默认桌面路径
-- [ ] 6.3 更新 `AttendedWeighingViewModel.ExportSolidWaste`：移除 `SaveFilePickerAsync`，从对话框 ViewModel 获取保存路径并拼接自动生成文件名
-- [ ] 6.4 导出成功后将路径写入 `SystemSettings.ExportDefaultPath` 并调用 `SaveSettingsAsync`
+- [x] 6.1 在 `SystemSettings` 中新增 `ExportDefaultPath` 属性（string，默认空）
+- [x] 6.2 对话框初始化时读取 `SystemSettings.ExportDefaultPath`，有值则填入；为空则默认桌面路径
+- [x] 6.3 更新 `AttendedWeighingViewModel.ExportSolidWaste`：移除 `SaveFilePickerAsync`，从对话框 ViewModel 获取保存路径并拼接自动生成文件名
+- [x] 6.4 导出成功后将路径写入 `SystemSettings.ExportDefaultPath` 并调用 `SaveSettingsAsync`

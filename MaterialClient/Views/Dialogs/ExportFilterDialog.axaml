@@ -5,19 +5,19 @@
         x:Class="MaterialClient.Views.Dialogs.ExportFilterDialog"
         x:DataType="vm:ExportFilterDialogViewModel"
         Title="导出固废运单"
-        Width="420" Height="300"
+        Width="480" Height="360"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Icon="/Assets/fd-ico.ico">
 
+    <Window.Styles>
+        <Style Selector="TextBox.hasError">
+            <Setter Property="BorderBrush" Value="Red" />
+        </Style>
+    </Window.Styles>
+
     <Grid RowDefinitions="*,Auto" Margin="20">
         <StackPanel Grid.Row="0" Spacing="16">
-            <TextBlock Text="导出过滤条件"
-                       FontSize="18"
-                       FontWeight="SemiBold"
-                       Foreground="Black"
-                       Margin="0,0,0,8" />
-
             <!-- 日期范围 -->
             <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,0">
                 <TextBlock Text="添加日期"
@@ -58,6 +58,34 @@
                          Text="{Binding PlateNumber}"
                          Watermark="留空则不过滤" />
             </Grid>
+
+            <!-- 保存位置 -->
+            <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="保存位置"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"
+                               FontSize="13"
+                               Foreground="#666" />
+                    <TextBox Grid.Column="1"
+                             FontSize="13"
+                             Text="{Binding SavePath}"
+                             Watermark="请选择导出目录"
+                             IsReadOnly="True"
+                             Classes.hasError="{Binding SavePathError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <Button Grid.Column="2"
+                            Content="浏览"
+                            Command="{Binding BrowseFolderCommand}"
+                            Margin="8,0,0,0"
+                            Padding="12,4"
+                            FontSize="13" />
+                </Grid>
+                <TextBlock Text="{Binding SavePathError}"
+                           FontSize="11"
+                           Foreground="Red"
+                           IsVisible="{Binding SavePathError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Margin="56,0,0,0" />
+            </StackPanel>
         </StackPanel>
 
         <!-- 按钮区域 -->

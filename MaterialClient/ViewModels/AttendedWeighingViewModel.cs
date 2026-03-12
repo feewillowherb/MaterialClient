@@ -26,7 +26,6 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
-using Avalonia.Platform.Storage;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
 using MaterialClient.Views.Dialogs;
@@ -1936,29 +1935,21 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             var parentWin = GetParentWindow();
             if (parentWin == null) return;
 
-            var dialogVm = new ExportFilterDialogViewModel();
+            var settings = await _settingsService.GetSettingsAsync();
+            var defaultPath = string.IsNullOrEmpty(settings.SystemSettings.ExportDefaultPath)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                : settings.SystemSettings.ExportDefaultPath;
+
+            var dialogVm = new ExportFilterDialogViewModel { SavePath = defaultPath };
             var dialog = new ExportFilterDialog(dialogVm);
             var result = await dialog.ShowDialog<ExportFilterDialogViewModel?>(parentWin);
 
             if (result is not { Confirmed: true }) return;
 
-            var topLevel = TopLevel.GetTopLevel(parentWin);
-            if (topLevel == null) return;
+            var savePath = result.SavePath!;
+            var fileName = $"固废运单_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var outputPath = Path.Combine(savePath, fileName);
 
-            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-            {
-                Title = "导出固废运单",
-                DefaultExtension = "xlsx",
-                FileTypeChoices =
-                [
-                    new FilePickerFileType("Excel 文件") { Patterns = ["*.xlsx"] }
-                ],
-                SuggestedFileName = $"固废运单_{DateTime.Now:yyyyMMdd_HHmmss}"
-            });
-
-            if (file == null) return;
-
-            var outputPath = file.Path.LocalPath;
             var filter = new SolidWasteExportFilter
             {
                 StartDate = result.StartDate,
@@ -1971,6 +1962,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             var exportService = _serviceProvider.GetRequiredService<ISolidWasteExcelExportService>();
             var exportResult = await exportService.ExportAsync(filter, outputPath);
 
+            if (exportResult.Success)
+            {
+                settings.SystemSettings.ExportDefaultPath = savePath;
+                await _settingsService.SaveSettingsAsync(settings);
+            }
+
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (parentWin is AttendedWeighingWindow attendedWindow
@@ -1979,7 +1976,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     if (exportResult.Success)
                         attendedWindow.NotificationManager.Show(
                             new Avalonia.Controls.Notifications.Notification("导出成功",
-                                $"已导出 {exportResult.RowCount} 条运单到 {Path.GetFileName(outputPath)}",
+                                $"已导出 {exportResult.RowCount} 条运单到 {fileName}",
                                 NotificationType.Success));
                     else
                         attendedWindow.NotificationManager.Show(

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
 
@@ -26,7 +27,8 @@ public partial class SolidWasteExcelExportService : ISolidWasteExcelExportServic
         "上传结果", "上传状态", "上传时间"
     ];
 
-    public async Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath)
+    [UnitOfWork]
+    public virtual async Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath)
     {
         try
         {
