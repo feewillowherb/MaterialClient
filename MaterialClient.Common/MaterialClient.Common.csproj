@@ -39,6 +39,7 @@
         <PackageReference Include="Yitter.IdGenerator"/>
         <PackageReference Include="FlashCap"/>
         <PackageReference Include="Aliyun.OSS.SDK.NetCore"/>
+        <PackageReference Include="ClosedXML"/>
         <PackageReference Include="System.Drawing.Common"/>
     </ItemGroup>
 
