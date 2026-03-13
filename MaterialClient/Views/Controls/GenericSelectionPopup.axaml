@@ -18,89 +18,91 @@
             BorderThickness="3"
             CornerRadius="4"
             Padding="0">
-        <Grid RowDefinitions="*,Auto,50">
+        <Grid RowDefinitions="*,50">
 
-            <!-- Row 0: 列表或空状态（仅显示其一，不重叠） -->
+            <!-- Row 0: 列表块（4 行数据 + 第 5 行新增）或空状态 -->
             <Border Grid.Row="0"
                     BorderBrush="#E5E7EB"
                     BorderThickness="0"
                     Background="Transparent">
-                <Grid>
-                    <DataGrid Height="200"
-                              AutoGenerateColumns="False"
-                              CanUserResizeColumns="False"
-                              CanUserSortColumns="False"
-                              IsReadOnly="True"
-                              SelectionMode="Single"
-                              HorizontalAlignment="Stretch"
-                              BorderThickness="0"
-                              Background="White"
-                              GridLinesVisibility="Horizontal"
-                              HeadersVisibility="Column"
-                              RowHeight="30"
-                              ItemsSource="{Binding PagedItems}"
-                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                              SelectionChanged="OnItemSelectionChanged"
-                              DoubleTapped="OnItemDoubleTapped"
-                              IsVisible="{Binding ShowResults}">
+                <Grid RowDefinitions="156,36"
+                      VerticalAlignment="Top">
+                    <!-- 上方 4 行：DataGrid 或 无结果居中（156=主题列头36+4×30数据，无溢出不触发滚轮） -->
+                    <Grid Grid.Row="0" Height="156">
+                        <DataGrid Height="156"
+                                  AutoGenerateColumns="False"
+                                  CanUserResizeColumns="False"
+                                  CanUserSortColumns="False"
+                                  IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Top"
+                                  BorderThickness="0"
+                                  Background="White"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column"
+                                  RowHeight="30"
+                                  ItemsSource="{Binding PagedItems}"
+                                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                  SelectionChanged="OnItemSelectionChanged"
+                                  DoubleTapped="OnItemDoubleTapped"
+                                  IsVisible="{Binding ShowResults}">
 
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Width="*">
-                                <DataGridTemplateColumn.Header>
-                                    <TextBlock FontSize="10"
-                                               Text="名称"
-                                               Foreground="Black"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" />
-                                </DataGridTemplateColumn.Header>
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate x:DataType="vm:IGenericSelectionItem">
-                                        <TextBlock Text="{Binding DisplayText}"
-                                                   FontSize="10"
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="*">
+                                    <DataGridTemplateColumn.Header>
+                                        <TextBlock FontSize="10"
+                                                   Text="名称"
+                                                   Foreground="Black"
                                                    HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   TextAlignment="Center" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                                                   VerticalAlignment="Center" />
+                                    </DataGridTemplateColumn.Header>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate x:DataType="vm:IGenericSelectionItem">
+                                            <TextBlock Text="{Binding DisplayText}"
+                                                       FontSize="10"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Center" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
 
-                    <!-- 无结果时：居中显示「未找到匹配结果」+ 新增 -->
-                    <StackPanel IsVisible="{Binding ShowNoResultsMessage}"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Spacing="10">
-                        <TextBlock Text="未找到匹配结果"
-                                   FontSize="12"
-                                   Foreground="#666666"
-                                   HorizontalAlignment="Center" />
-                        <Button Classes="primary-button"
-                                Height="36"
-                                FontSize="12"
-                                Padding="12,0"
-                                Content="{Binding AddNewButtonText}"
-                                Command="{Binding AddNewItemCommand}" />
-                    </StackPanel>
+                        <!-- 无结果时：居中显示「未找到匹配结果」+ 新增 -->
+                        <StackPanel IsVisible="{Binding ShowNoResultsMessage}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="10">
+                            <TextBlock Text="未找到匹配结果"
+                                       FontSize="12"
+                                       Foreground="#666666"
+                                       HorizontalAlignment="Center" />
+                            <Button Classes="primary-button"
+                                    Height="36"
+                                    FontSize="12"
+                                    Padding="12,0"
+                                    Content="{Binding AddNewButtonText}"
+                                    Command="{Binding AddNewItemCommand}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- 第 5 行：有结果且可新增时显示新增按钮 -->
+                    <Button Grid.Row="1"
+                            Classes="primary-button"
+                            Height="36"
+                            FontSize="12"
+                            Padding="12,0"
+                            HorizontalAlignment="Center"
+                            Content="{Binding AddNewButtonText}"
+                            Command="{Binding AddNewItemCommand}"
+                            IsVisible="{Binding ShowAddNewButtonBelowList}" />
                 </Grid>
             </Border>
 
-            <!-- Row 1: 有结果且可新增时，新增按钮独立一行（不遮挡列表） -->
-            <Border Grid.Row="1"
-                    Background="Transparent"
-                    Padding="0,6,0,0"
-                    IsVisible="{Binding ShowAddNewButtonBelowList}">
-                <Button Classes="primary-button"
-                        Height="36"
-                        FontSize="12"
-                        Padding="12,0"
-                        HorizontalAlignment="Center"
-                        Content="{Binding AddNewButtonText}"
-                        Command="{Binding AddNewItemCommand}" />
-            </Border>
-
             <!-- 分页控件区域 -->
-            <Grid Grid.Row="2"
+            <Grid Grid.Row="1"
                   Height="50"
                   VerticalAlignment="Center"
                   Margin="10,0">

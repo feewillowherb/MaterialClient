@@ -92,7 +92,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     , IGenericSelectionPopupViewModel
     , IGenericSelectionPopupBindings
 {
-    private const int DefaultPageSize = 10;
+    private const int DefaultPageSize = 4;
 
     private readonly GenericSelectionPagingMode _pagingMode;
     private readonly Func<T, string> _displayTextSelector;
