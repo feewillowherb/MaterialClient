@@ -150,6 +150,12 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         Close();
     }
 
+    private async void OnDataManagementClick(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new DataManagementDialogWindow();
+        await dialog.ShowDialog<bool?>(this);
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _closePopupCts?.Cancel();

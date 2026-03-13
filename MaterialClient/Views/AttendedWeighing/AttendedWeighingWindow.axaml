@@ -40,7 +40,8 @@
                     <Button Content="数据管理"
                             Classes="transparent-button"
                             Foreground="White"
-                            Padding="8,4" />
+                            Padding="8,4"
+                            Click="OnDataManagementClick" />
                     <Button Content="系统设置"
                             Classes="transparent-button"
                             Foreground="White"
