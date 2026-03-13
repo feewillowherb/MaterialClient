@@ -18,9 +18,9 @@
             BorderThickness="3"
             CornerRadius="4"
             Padding="0">
-        <Grid RowDefinitions="*,50">
+        <Grid RowDefinitions="*,Auto,50">
 
-            <!-- DataGrid 区域 -->
+            <!-- Row 0: 列表或空状态（仅显示其一，不重叠） -->
             <Border Grid.Row="0"
                     BorderBrush="#E5E7EB"
                     BorderThickness="0"
@@ -66,8 +66,8 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- Empty state + add new -->
-                    <StackPanel IsVisible="{Binding ShowAddNewButton}"
+                    <!-- 无结果时：居中显示「未找到匹配结果」+ 新增 -->
+                    <StackPanel IsVisible="{Binding ShowNoResultsMessage}"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Spacing="10">
@@ -85,8 +85,22 @@
                 </Grid>
             </Border>
 
+            <!-- Row 1: 有结果且可新增时，新增按钮独立一行（不遮挡列表） -->
+            <Border Grid.Row="1"
+                    Background="Transparent"
+                    Padding="0,6,0,0"
+                    IsVisible="{Binding ShowAddNewButtonBelowList}">
+                <Button Classes="primary-button"
+                        Height="36"
+                        FontSize="12"
+                        Padding="12,0"
+                        HorizontalAlignment="Center"
+                        Content="{Binding AddNewButtonText}"
+                        Command="{Binding AddNewItemCommand}" />
+            </Border>
+
             <!-- 分页控件区域 -->
-            <Grid Grid.Row="1"
+            <Grid Grid.Row="2"
                   Height="50"
                   VerticalAlignment="Center"
                   Margin="10,0">

@@ -36,6 +36,18 @@ public interface IGenericSelectionPopupBindings : IGenericSelectionPopupViewMode
 
     bool ShowAddNewButton { get; }
 
+    /// <summary>
+    /// True when the "未找到匹配结果" message should be shown (no results and add button visible).
+    /// False when there are results, so we do not show that message even if add button is visible.
+    /// </summary>
+    bool ShowNoResultsMessage { get; }
+
+    /// <summary>
+    /// True when the add button should be shown in the dedicated row below the list (has results and can add).
+    /// Used for layout A: list in row 0, add button in row 1, pagination in row 2.
+    /// </summary>
+    bool ShowAddNewButtonBelowList { get; }
+
     string AddNewButtonText { get; }
 
     int CurrentPage { get; set; }
@@ -108,6 +120,12 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     private int _pageSize = DefaultPageSize;
     private int _totalCount;
     private int _totalPages = 1;
+
+    /// <summary>
+    /// True when current SearchText (trimmed) equals some item's DisplayText in current page (case-insensitive).
+    /// Used to hide "Add new" when the exact same text already exists in results.
+    /// </summary>
+    private bool _searchTextExistsInCurrentPage;
 
     public GenericSelectionPopupViewModel(
         GenericSelectionPagingMode pagingMode,
@@ -186,7 +204,17 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
 
     public bool ShowResults => TotalCount > 0;
 
-    public bool ShowAddNewButton => _allowAddNew && TotalCount == 0 && !string.IsNullOrWhiteSpace(SearchText);
+    public bool ShowAddNewButton => _allowAddNew && !string.IsNullOrWhiteSpace(SearchText) && !_searchTextExistsInCurrentPage;
+
+    /// <summary>
+    /// Show "未找到匹配结果" only when there are no results; when there are results we show only the add button.
+    /// </summary>
+    public bool ShowNoResultsMessage => !ShowResults && ShowAddNewButton;
+
+    /// <summary>
+    /// Show add button in dedicated row below list when there are results and add is allowed (layout A).
+    /// </summary>
+    public bool ShowAddNewButtonBelowList => ShowResults && ShowAddNewButton;
 
     public string AddNewButtonText
     {
@@ -322,9 +350,33 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             this.RaisePropertyChanged(nameof(CurrentPageInfo));
             this.RaisePropertyChanged(nameof(TotalCountInfo));
             this.RaisePropertyChanged(nameof(ShowResults));
-            this.RaisePropertyChanged(nameof(ShowAddNewButton));
+            UpdateAddNewButtonState();
+            this.RaisePropertyChanged(nameof(ShowNoResultsMessage));
+            this.RaisePropertyChanged(nameof(ShowAddNewButtonBelowList));
             this.RaisePropertyChanged(nameof(AddNewButtonText));
         }
+    }
+
+    /// <summary>
+    /// Updates _searchTextExistsInCurrentPage from current SearchText and PagedItems, then raises ShowAddNewButton.
+    /// Call after PagedItems or SearchText have changed.
+    /// </summary>
+    private void UpdateAddNewButtonState()
+    {
+        var search = SearchText?.Trim();
+        if (string.IsNullOrEmpty(search))
+        {
+            _searchTextExistsInCurrentPage = false;
+        }
+        else
+        {
+            _searchTextExistsInCurrentPage = PagedItems.Any(x =>
+                string.Equals(x.DisplayText, search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        this.RaisePropertyChanged(nameof(ShowAddNewButton));
+        this.RaisePropertyChanged(nameof(ShowNoResultsMessage));
+        this.RaisePropertyChanged(nameof(ShowAddNewButtonBelowList));
     }
 
     private List<T> FilterClientSide(IReadOnlyList<T> items, string? searchText)
@@ -369,6 +421,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 }
                 PendingSelectedIds = null;
             }
+
+            UpdateAddNewButtonState();
         });
     }
 
@@ -430,7 +484,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
                 this.RaisePropertyChanged(nameof(TotalCountInfo));
                 this.RaisePropertyChanged(nameof(CurrentPageInfo));
                 this.RaisePropertyChanged(nameof(ShowResults));
-                this.RaisePropertyChanged(nameof(ShowAddNewButton));
+                UpdateAddNewButtonState();
                 SelectedItem = wrapper;
                 // If the grid clears selection when the collection updates, restore it on the next frame.
                 Dispatcher.UIThread.Post(() => SelectedItem = wrapper, DispatcherPriority.Loaded);
@@ -455,5 +509,9 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     ICommand IGenericSelectionPopupBindings.PageChangeCommand => PageChangeCommand;
 
     string IGenericSelectionPopupBindings.SelectedDisplayText => SelectedDisplayText;
+
+    bool IGenericSelectionPopupBindings.ShowNoResultsMessage => ShowNoResultsMessage;
+
+    bool IGenericSelectionPopupBindings.ShowAddNewButtonBelowList => ShowAddNewButtonBelowList;
 }
 
