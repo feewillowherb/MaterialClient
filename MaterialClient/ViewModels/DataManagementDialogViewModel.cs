@@ -39,11 +39,35 @@ public partial class DataManagementDialogViewModel : ViewModelBase
 
     private const int DefaultPageSize = 10;
 
-    [Reactive] public int CurrentPage { get; set; }
+    private int _currentPage = 1;
+    private int _totalCount;
+    private int _totalPages = 1;
 
-    [Reactive] public int TotalCount { get; set; }
+    public int CurrentPage
+    {
+        get => _currentPage;
+        set
+        {
+            if (_currentPage != value)
+            {
+                _currentPage = value;
+                this.RaisePropertyChanged();
+                _ = LoadDataAsync();
+            }
+        }
+    }
 
-    [Reactive] public int TotalPages { get; set; }
+    public int TotalCount
+    {
+        get => _totalCount;
+        private set => this.RaiseAndSetIfChanged(ref _totalCount, value);
+    }
+
+    public int TotalPages
+    {
+        get => _totalPages;
+        private set => this.RaiseAndSetIfChanged(ref _totalPages, value);
+    }
 
     public ICommand LoadDataCommand { get; }
 
