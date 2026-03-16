@@ -10,7 +10,7 @@
 ## Goals / Non-Goals
 
 **Goals:**
-- 将固废台账分页加载、筛选、导出准备、异常处理等所有与业务相关的逻辑从 View 完整迁移到独立的 ReactiveUI ViewModel 或应用服务中，View 只负责渲染布局与基本交互（按钮点击、打开对话框等），不包含与界面布局无关的业务处理代码。
+- 将固废台账分页加载、筛选、异常处理等业务逻辑从 View 完整迁移到独立的 ReactiveUI ViewModel 中，View 只负责渲染与基本交互。
 - 使用 `ViewModelBase` 作为基类，并通过 `[Reactive]` 属性管理分页相关状态（`CurrentPage`、`TotalCount`、`TotalPages` 等），统一项目中分页 ViewModel 的实现风格。
 - 通过命令（如 `LoadDataCommand`、`PageChangeCommand`）驱动数据加载，使得分页控件等 UI 元素只需绑定命令和状态即可。
 
@@ -37,16 +37,15 @@
     - 填充 `Records`、计算 `TotalCount` 和 `TotalPages` 并矫正 `CurrentPage`。
   - 实现 `PageChangeCommand`（`ReactiveCommand.CreateFromTask<int>`）用于响应分页控件的页码变化；当接收到合法页码时更新 `CurrentPage` 并调用 `LoadDataAsync`。
 
-- **视图与 ViewModel 的绑定方式（View 仅负责渲染与交互）：**
-  - 在 `DataManagementDialogWindow` 构造函数中仅通过依赖注入获取 ViewModel 或构造 ViewModel，并将其设置为 `DataContext`，不在 View 中直接构造或持有业务服务实例。
-  - 初次打开窗口时，通过执行 ViewModel 的命令（如 `LoadDataCommand`）触发一次数据加载，而不是在 View 中直接调用服务。
-  - 查询按钮点击事件（`OnQueryClick`）只修改 ViewModel 的 `CurrentPage` 并执行 `LoadDataCommand`，不在 View 中重建过滤条件或触发业务调用。
+- **视图与 ViewModel 的绑定方式：**
+  - 在 `DataManagementDialogWindow` 构造函数中通过构造注入的 `ISolidWasteService` 创建 `DataManagementDialogViewModel` 实例，并设置为 `DataContext`。
+  - 初次打开窗口时，通过执行 `LoadDataCommand` 触发一次数据加载，而不是在 View 中直接调用服务。
+  - 查询按钮点击事件（`OnQueryClick`）只修改 ViewModel 的 `CurrentPage` 并执行 `LoadDataCommand`，不在 View 中重建过滤条件。
   - XAML 中的 `u:Pagination` 控件绑定 `CurrentPage`、`TotalCount`、`PageSize` 和 `PageChangeCommand`，实现分页 UI 与 ViewModel 命令/状态的解耦。
-  - 导出按钮点击事件仅负责文件保存路径的选择和用户交互（如打开文件夹对话框），导出业务（构造 `SolidWasteExportFilter`、调用 `IExcelExportService`、返回导出结果）应由 ViewModel 中的命令或专门的应用服务封装，View 通过命令结果决定如何展示通知。
 
 - **错误处理策略：**
-  - 在 ViewModel 的 `LoadDataAsync`、导出命令等业务方法中捕获服务调用异常并记录日志（使用 `Logger`），并根据需要回退到测试数据、空列表或返回失败结果。
-  - View 只根据 ViewModel 暴露的错误状态或命令返回结果展示 UI 通知（例如通过 `WindowNotificationManager` 弹出消息），不直接参与异常分支中的业务决策或数据处理。
+  - 在 ViewModel 的 `LoadDataAsync` 中捕获服务调用异常并记录日志（使用 `Logger`），并回退到一条简单的测试数据或清空列表。
+  - View 保留与 UI 通知密切相关的逻辑（例如导出失败时通过 `WindowNotificationManager` 弹出消息），并在导出逻辑中直接构造 `SolidWasteExportFilter` 使用 ViewModel 的筛选属性值。
 
 ## Risks / Trade-offs
 

@@ -11,6 +11,7 @@ namespace MaterialClient.Views.AttendedWeighing;
 
 public partial class DataManagementDialogWindow : Window
 {
+    private readonly IExcelExportService _exportService;
     private readonly WindowNotificationManager? _notificationManager;
     private readonly DataManagementDialogViewModel _vm;
 
@@ -19,8 +20,9 @@ public partial class DataManagementDialogWindow : Window
         IExcelExportService exportService,
         WindowNotificationManager? notificationManager = null)
     {
+        _exportService = exportService;
         _notificationManager = notificationManager;
-        _vm = new DataManagementDialogViewModel(solidWasteService, exportService);
+        _vm = new DataManagementDialogViewModel(solidWasteService);
         InitializeComponent();
         DataContext = _vm;
         // 初次打开窗口时触发一次数据加载（命令内部处理异步）
@@ -43,17 +45,34 @@ public partial class DataManagementDialogWindow : Window
         var fileName = $"固废运单_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
         var outputPath = System.IO.Path.Combine(savePath, fileName);
 
-        var result = await _vm.ExportCommand.Execute(outputPath);
-        if (_notificationManager != null)
+        try
         {
-            if (result.Success)
-                _notificationManager.Show(new Notification("导出成功",
-                    $"已导出 {result.RowCount} 条到 {fileName}",
-                    NotificationType.Success));
-            else
-                _notificationManager.Show(new Notification("导出失败",
-                    "导出过程中发生错误，请重试",
-                    NotificationType.Error));
+            var filter = new SolidWasteExportFilter
+            {
+                StartDate = _vm.StartDate,
+                EndDate = _vm.EndDate,
+                PlateNumber = string.IsNullOrWhiteSpace(_vm.PlateNumber) ? null : _vm.PlateNumber,
+                GoodsName = string.IsNullOrWhiteSpace(_vm.GoodsName) ? null : _vm.GoodsName,
+                ProviderName = string.IsNullOrWhiteSpace(_vm.ProviderName) ? null : _vm.ProviderName
+            };
+            var result = await _exportService.ExportSolidWasteAsync(filter, outputPath);
+            if (_notificationManager != null)
+            {
+                if (result.Success)
+                    _notificationManager.Show(new Notification("导出成功",
+                        $"已导出 {result.RowCount} 条到 {fileName}",
+                        NotificationType.Success));
+                else
+                    _notificationManager.Show(new Notification("导出失败",
+                        "导出过程中发生错误，请重试",
+                        NotificationType.Error));
+            }
+        }
+        catch (Exception)
+        {
+            _notificationManager?.Show(new Notification("导出失败",
+                "导出过程中发生错误，请重试",
+                NotificationType.Error));
         }
     }
 

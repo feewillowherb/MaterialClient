@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
@@ -12,23 +13,19 @@ namespace MaterialClient.ViewModels;
 public class DataManagementDialogViewModel : ViewModelBase
 {
     private readonly ISolidWasteService _solidWasteService;
-    private readonly IExcelExportService _excelExportService;
 
     public DataManagementDialogViewModel(
         ISolidWasteService solidWasteService,
-        IExcelExportService excelExportService,
         ILogger<DataManagementDialogViewModel>? logger = null)
         : base(logger)
     {
         _solidWasteService = solidWasteService;
-        _excelExportService = excelExportService;
         Records = new ObservableCollection<SolidWasteExportRow>();
         CurrentPage = 1;
         TotalPages = 1;
 
         LoadDataCommand = ReactiveCommand.CreateFromTask(LoadDataAsync);
         PageChangeCommand = ReactiveCommand.CreateFromTask<int>(GoToPageAsync);
-        ExportCommand = ReactiveCommand.CreateFromTask<string>(ExportAsync);
     }
 
     public ObservableCollection<SolidWasteExportRow> Records { get; }
@@ -49,17 +46,12 @@ public class DataManagementDialogViewModel : ViewModelBase
 
     [Reactive] public int TotalPages { get; set; }
 
-    public ReactiveCommand<Unit, Unit> LoadDataCommand { get; }
+    public ICommand LoadDataCommand { get; }
 
     /// <summary>
     ///     分页变化命令（Ursa.Pagination 用），由 XAML 直接绑定。
     /// </summary>
-    public ReactiveCommand<int, Unit> PageChangeCommand { get; }
-
-    /// <summary>
-    ///     导出命令，参数为完整输出路径。
-    /// </summary>
-    public ReactiveCommand<string, ExportResult> ExportCommand { get; }
+    public ICommand PageChangeCommand { get; }
 
     private async Task LoadDataAsync()
     {
@@ -107,12 +99,6 @@ public class DataManagementDialogViewModel : ViewModelBase
             GoodsName = string.IsNullOrWhiteSpace(GoodsName) ? null : GoodsName,
             ProviderName = string.IsNullOrWhiteSpace(ProviderName) ? null : ProviderName
         };
-    }
-
-    private async Task<ExportResult> ExportAsync(string outputPath)
-    {
-        var filter = BuildFilter();
-        return await _excelExportService.ExportSolidWasteAsync(filter, outputPath);
     }
 
     private static SolidWasteExportRow CreateTestRow()
