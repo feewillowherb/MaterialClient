@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
-### Requirement: DataManagementDialogWindow view has no business logic
-`DataManagementDialogWindow` 视图层不得直接依赖业务服务或实现业务流程逻辑，所有与固废台账数据加载、分页与筛选相关的逻辑必须集中在对应的 ViewModel 中。
+### Requirement: DataManagementDialogWindow view has no non-layout business logic
+`DataManagementDialogWindow` 视图层不得直接依赖业务服务或实现与界面渲染布局无关的业务流程逻辑，所有与固废台账数据加载、分页、筛选、导出准备（例如构造过滤器、调用应用服务）相关的逻辑必须集中在对应的 ViewModel 或应用服务中。
 
 #### Scenario: View only handles rendering and basic interactions
 - **WHEN** 开发者在 `DataManagementDialogWindow.axaml.cs` 中查看代码
-- **THEN** 只能看到与界面渲染和基本交互相关的逻辑（如按钮点击关闭窗口、打开文件选择对话框、展示通知等），而看不到直接调用固废服务或手工计算分页的业务代码
+- **THEN** 只能看到与界面渲染和基本交互相关的逻辑（如按钮点击关闭窗口、打开文件选择对话框、展示通知等），而看不到直接调用固废或导出服务、构造业务过滤条件或手工计算分页的业务代码
 
 ### Requirement: DataManagementDialogWindow uses ReactiveUI ViewModel
 固废台账管理对话框必须使用单独的 ReactiveUI ViewModel 类型（如 `DataManagementDialogViewModel`），该 ViewModel 负责管理固废台账的分页、筛选状态以及调用 `ISolidWasteService`。
