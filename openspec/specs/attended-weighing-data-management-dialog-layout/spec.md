@@ -35,3 +35,13 @@
 - **WHEN** 数据管理对话框首次打开且尚未接入真实数据
 - **THEN** 台账表格中至少显示一条预置测试记录，字段值具有代表性并包含常见的单位与数值格式，用于对照截图进行视觉检查
 
+### Requirement: Avalonia implementation constraints for dialog view
+数据管理对话框的 XAML 实现 SHALL 符合当前项目的 Avalonia 约定，以保证编译通过与绑定正确。
+
+#### Scenario: DataGrid binding and properties
+- **WHEN** 对话框内使用 `DataGrid` 绑定台账集合
+- **THEN** 使用 `ItemsSource` 绑定数据源（不使用 WPF 风格的 `Items`）；不设置 `CanUserAddRows`（Avalonia.Controls.DataGrid 无此属性）；只读行为通过 `IsReadOnly="True"` 表达
+
+#### Scenario: Compiled bindings and x:DataType
+- **WHEN** 项目启用 `AvaloniaUseCompiledBindingsByDefault`
+- **THEN** 对话框根元素（如 `Window`）上 SHALL 声明合适的 `xmlns`（如 `xmlns:local`）及 `x:DataType`（指向对话框类型或对应 ViewModel），使 `{Binding Records}`、`{Binding CurrentPage}` 等编译绑定可解析；表格控件（`DataGrid`）上 SHALL 不设置会覆盖其 `DataContext` 的 `x:DataType`，以免 `ItemsSource` 等绑定无法解析

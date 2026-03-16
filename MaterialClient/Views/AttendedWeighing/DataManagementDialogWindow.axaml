@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:MaterialClient.Views.AttendedWeighing"
         x:Class="MaterialClient.Views.AttendedWeighing.DataManagementDialogWindow"
+        x:DataType="local:DataManagementDialogWindow"
         Title="台账管理"
         Width="1100"
         Height="600"
@@ -126,11 +128,10 @@
         <DataGrid Grid.Row="1"
                   Margin="10,0,10,5"
                   AutoGenerateColumns="False"
-                  CanUserAddRows="False"
                   IsReadOnly="True"
                   HeadersVisibility="Column"
                   GridLinesVisibility="Horizontal"
-                  Items="{Binding Records}">
+                  ItemsSource="{Binding Records}">
           <DataGrid.Columns>
             <DataGridTextColumn Binding="{Binding OrderNo}" Header="运单号" />
             <DataGridTextColumn Binding="{Binding TruckNo}" Header="车牌号" />
