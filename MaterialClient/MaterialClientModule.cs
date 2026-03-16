@@ -121,6 +121,9 @@ public class MaterialClientModule : AbpModule
         // Register Web Host service
         services.AddSingleton<MinimalWebHostService>();
 
+        // 固废导出与数据源（集成方式注册）
+        services.AddSolidWasteExportServices();
+
         // Configure Streets
         services.Configure<StreetsConfig>(options =>
         {

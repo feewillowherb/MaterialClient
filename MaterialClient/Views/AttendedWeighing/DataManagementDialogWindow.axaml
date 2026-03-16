@@ -2,9 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:MaterialClient.Views.AttendedWeighing"
         x:Class="MaterialClient.Views.AttendedWeighing.DataManagementDialogWindow"
-        x:DataType="local:DataManagementDialogWindow"
+        x:DataType="local:DataManagementDialogViewModel"
         Title="台账管理"
-        Width="1100"
+        Width="1200"
         Height="600"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
@@ -37,15 +37,10 @@
       <!-- 查询区 + 表格 -->
       <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="0">
 
-        <!-- 查询条件区域 -->
+        <!-- 查询条件区域：与 SolidWasteExportFilter 对齐 -->
         <Grid RowDefinitions="Auto" Margin="10,10,10,5">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-
           <Grid>
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="Auto" />
@@ -55,76 +50,63 @@
               <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- 车牌号码 -->
             <TextBox Grid.Column="0"
                      Margin="5"
                      Width="110"
                      Height="30"
-                     Watermark="车牌号码"
+                     Watermark="车牌号"
+                     Text="{Binding PlateNumber}"
                      VerticalContentAlignment="Center" />
 
-            <!-- 发货单号 -->
             <TextBox Grid.Column="1"
                      Margin="5"
                      Width="110"
                      Height="30"
-                     Watermark="发货单号"
+                     Watermark="货名"
+                     Text="{Binding GoodsName}"
                      VerticalContentAlignment="Center" />
 
-            <!-- 商品名称 -->
             <TextBox Grid.Column="2"
                      Margin="5"
                      Width="110"
                      Height="30"
-                     Watermark="商品名称"
+                     Watermark="发货单位"
+                     Text="{Binding ProviderName}"
                      VerticalContentAlignment="Center" />
 
-            <!-- 状态 -->
-            <ComboBox Grid.Column="3"
-                      Margin="5"
-                      Width="110"
-                      Height="30"
-                      VerticalContentAlignment="Center"
-                      SelectedIndex="0">
-              <ComboBoxItem Content="状态(全部)" />
-              <ComboBoxItem Content="收货中" />
-              <ComboBoxItem Content="已收货" />
-              <ComboBoxItem Content="已取消" />
-            </ComboBox>
-
-            <!-- 进场日期范围 -->
-            <StackPanel Grid.Column="4"
+            <StackPanel Grid.Column="3"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Margin="5,0">
               <TextBlock Text="进场日期：" VerticalAlignment="Center" Margin="0,0,4,0" />
-              <DatePicker Width="120" Height="30" />
+              <DatePicker Width="120" Height="30" SelectedDate="{Binding StartDate}" />
             </StackPanel>
 
-            <TextBlock Grid.Column="5"
+            <TextBlock Grid.Column="4"
                        Text="-"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,0" />
 
-            <DatePicker Grid.Column="6"
+            <DatePicker Grid.Column="5"
                         Margin="5"
                         Width="120"
-                        Height="30" />
+                        Height="30"
+                        SelectedDate="{Binding EndDate}" />
 
-            <!-- 查询按钮 -->
-            <Button Grid.Column="7"
-                    Content="查询"
-                    Width="80"
-                    Height="30"
-                    Margin="10,0,0,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Classes="primary-button" />
+            <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+              <Button Content="查询"
+                      Width="80"
+                      Height="30"
+                      Margin="10,0,0,0"
+                      VerticalAlignment="Center"
+                      Classes="primary-button"
+                      Click="OnQueryClick" />
+            </StackPanel>
           </Grid>
         </Grid>
 
-        <!-- 表格区域 -->
+        <!-- 表格区域：17 列与 SolidWasteExcelExportService 一致 -->
         <DataGrid Grid.Row="1"
                   Margin="10,0,10,5"
                   AutoGenerateColumns="False"
@@ -133,22 +115,23 @@
                   GridLinesVisibility="Horizontal"
                   ItemsSource="{Binding Records}">
           <DataGrid.Columns>
-            <DataGridTextColumn Binding="{Binding OrderNo}" Header="运单号" />
-            <DataGridTextColumn Binding="{Binding TruckNo}" Header="车牌号" />
-            <DataGridTextColumn Binding="{Binding TypeName}" Header="类型" />
-            <DataGridTextColumn Binding="{Binding GoodsNameSize}" Header="商品" />
-            <DataGridTextColumn Binding="{Binding OrderTypeName}" Header="状态" />
-            <DataGridTextColumn Binding="{Binding GoodsPlanOnPcsDesc}" Header="运单数量" />
-            <DataGridTextColumn Binding="{Binding GoodsPlanOnWeightDesc}" Header="运单重量" />
-            <DataGridTextColumn Binding="{Binding GoodsTakeWeightDesc}" Header="扣量" />
-            <DataGridTextColumn Binding="{Binding GoodsPcsDesc}" Header="实际数量" />
-            <DataGridTextColumn Binding="{Binding GoodsWeightDesc}" Header="实际重量" />
-            <DataGridTextColumn Binding="{Binding UnitNameRate}" Header="单位换算" />
-            <DataGridTextColumn Binding="{Binding JoinTime}" Header="进场时间" />
-            <DataGridTextColumn Binding="{Binding OutTime}" Header="出场时间" />
-            <DataGridTextColumn Binding="{Binding ProviderName}" Header="供应商" />
-            <DataGridTextColumn Binding="{Binding DispatchNo}" Header="发货单号" />
-            <DataGridTextColumn Binding="{Binding Remark}" Header="备注" />
+            <DataGridTextColumn Binding="{Binding SerialNumber}" Header="流水号" Width="120" />
+            <DataGridTextColumn Binding="{Binding VehicleNumber}" Header="车  号" Width="80" />
+            <DataGridTextColumn Binding="{Binding ShippingUnit}" Header="发货单位" Width="100" />
+            <DataGridTextColumn Binding="{Binding ReceivingUnit}" Header="收货单位" Width="100" />
+            <DataGridTextColumn Binding="{Binding GoodsName}" Header="货  名" Width="80" />
+            <DataGridTextColumn Binding="{Binding GrossWeight}" Header="毛  重" Width="70" />
+            <DataGridTextColumn Binding="{Binding TareWeight}" Header="皮  重" Width="70" />
+            <DataGridTextColumn Binding="{Binding NetWeight}" Header="净  重" Width="70" />
+            <DataGridTextColumn Binding="{Binding Remark}" Header="备 注" Width="80" />
+            <DataGridTextColumn Binding="{Binding GrossWeightTime}" Header="毛重时间" Width="130" />
+            <DataGridTextColumn Binding="{Binding TareWeightTime}" Header="皮重时间" Width="130" />
+            <DataGridTextColumn Binding="{Binding Street}" Header="所属街道" Width="80" />
+            <DataGridTextColumn Binding="{Binding SolidWasteType}" Header="类型" Width="80" />
+            <DataGridTextColumn Binding="{Binding ManifestNumber}" Header="联单编号" Width="90" />
+            <DataGridTextColumn Binding="{Binding UploadResult}" Header="上传结果" Width="70" />
+            <DataGridTextColumn Binding="{Binding UploadStatus}" Header="上传状态" Width="70" />
+            <DataGridTextColumn Binding="{Binding UploadTime}" Header="上传时间" Width="130" />
           </DataGrid.Columns>
         </DataGrid>
       </Grid>
@@ -162,7 +145,6 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <!-- 左侧分页按钮 -->
         <StackPanel Grid.Column="0"
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
@@ -182,10 +164,8 @@
           </StackPanel>
         </StackPanel>
 
-        <!-- 中间空白占位 -->
         <Grid Grid.Column="1" />
 
-        <!-- 右侧统计与确定按钮 -->
         <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
@@ -197,10 +177,16 @@
           <TextBlock Text="总页数：" VerticalAlignment="Center" Margin="8,0,0,0" />
           <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" />
 
+          <Button Content="导出"
+                  Width="80"
+                  Height="30"
+                  Margin="8,0,0,0"
+                  Classes="primary-button"
+                  Click="OnExportClick" />
           <Button Content="确定"
                   Width="80"
                   Height="30"
-                  Margin="16,0,0,0"
+                  Margin="8,0,0,0"
                   Classes="primary-button"
                   Click="OnConfirmButtonClick" />
         </StackPanel>
@@ -209,4 +195,3 @@
     </Grid>
   </Border>
 </Window>
-
