@@ -3,6 +3,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Data;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 
@@ -14,7 +15,7 @@ public interface ISolidWasteService
 }
 
 [AutoConstructor]
-public partial class SolidWasteService : ISolidWasteService
+public partial class SolidWasteService : ISolidWasteService, ITransientDependency
 {
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<Provider, int> _providerRepository;

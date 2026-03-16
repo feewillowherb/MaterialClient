@@ -1,38 +1,115 @@
 using ClosedXML.Excel;
+using MaterialClient.Common.Models;
+using Microsoft.Extensions.Logging;
+using Volo.Abp.Uow;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
-/// <summary>
-///     通用 Excel 导出：按表头与行数据写入 .xlsx，与业务无关。
-/// </summary>
-public interface IExcelExportService
+public interface c
 {
-    /// <summary>
-    ///     将表头与数据行写入指定路径的 .xlsx 文件。
-    /// </summary>
-    /// <param name="outputPath">输出文件路径</param>
-    /// <param name="headers">表头文本数组</param>
-    /// <param name="rows">数据行集合</param>
-    /// <param name="rowToValues">将每行转换为列值数组（长度应与 headers 一致）</param>
-    /// <param name="getSummaryRow">可选：根据已写入的行集合返回汇总行列值，若返回 null 则不追加汇总行</param>
-    Task WriteAsync<T>(
-        string outputPath,
-        string[] headers,
-        IEnumerable<T> rows,
-        Func<T, object?[]?> rowToValues,
-        Func<IReadOnlyList<T>, object?[]?>? getSummaryRow = null);
+    Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath);
 }
 
-public class ExcelExportService : IExcelExportService
+public interface IExcelExportService
 {
-    public Task WriteAsync<T>(
+    Task<ExportResult> ExportSolidWasteAsync(SolidWasteExportFilter filter, string outputPath);
+}
+
+[AutoConstructor]
+public partial class ExcelExportService : IExcelExportService, ISolidWasteExcelExportService, ITransientDependency
+{
+    private readonly ISolidWasteService _solidWasteService;
+    private readonly ILogger<ExcelExportService> _logger;
+
+    private static readonly string[] SolidWasteHeaders =
+    [
+        "流水号", "车  号", "发货单位", "收货单位", "货  名",
+        "毛  重", "皮  重", "净  重", "备 注", "毛重时间",
+        "皮重时间", "所属街道", "类型", "联单编号",
+        "上传结果", "上传状态", "上传时间"
+    ];
+
+    [UnitOfWork]
+    public virtual Task<ExportResult> ExportSolidWasteAsync(SolidWasteExportFilter filter, string outputPath)
+        => ExportAsync(filter, outputPath);
+
+    [UnitOfWork]
+    public virtual async Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath)
+    {
+        try
+        {
+            var rows = await _solidWasteService.GetExportRowsAsync(filter);
+            var rowList = rows.ToList();
+
+            WriteWorksheet(
+                outputPath,
+                SolidWasteHeaders,
+                rowList,
+                RowToValues,
+                GetSummaryRow);
+
+            return new ExportResult
+            {
+                RowCount = rowList.Count,
+                FilePath = outputPath,
+                Success = true
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "固废运单导出失败: {OutputPath}", outputPath);
+            return new ExportResult
+            {
+                RowCount = 0,
+                FilePath = outputPath,
+                Success = false
+            };
+        }
+    }
+
+    private static object?[]? RowToValues(SolidWasteExportRow row)
+    {
+        return
+        [
+            row.SerialNumber,
+            row.VehicleNumber,
+            row.ShippingUnit,
+            row.ReceivingUnit,
+            row.GoodsName,
+            row.GrossWeight ?? 0,
+            row.TareWeight ?? 0,
+            row.NetWeight ?? 0,
+            row.Remark,
+            row.GrossWeightTime,
+            row.TareWeightTime,
+            row.Street,
+            row.SolidWasteType,
+            row.ManifestNumber,
+            row.UploadResult,
+            row.UploadStatus,
+            row.UploadTime
+        ];
+    }
+
+    private static object?[]? GetSummaryRow(IReadOnlyList<SolidWasteExportRow> rows)
+    {
+        // 汇总行：第 1 列为总数，第 6/7/8 列为毛重/皮重/净重之和，其余列为空（共 17 列）
+        var arr = new object?[17];
+        arr[0] = rows.Count;
+        arr[5] = rows.Sum(r => r.GrossWeight ?? 0);
+        arr[6] = rows.Sum(r => r.TareWeight ?? 0);
+        arr[7] = rows.Sum(r => r.NetWeight ?? 0);
+        return arr;
+    }
+
+    private static void WriteWorksheet<T>(
         string outputPath,
         string[] headers,
-        IEnumerable<T> rows,
+        IReadOnlyList<T> rows,
         Func<T, object?[]?> rowToValues,
         Func<IReadOnlyList<T>, object?[]?>? getSummaryRow = null)
     {
-        var rowList = rows.ToList();
         using var workbook = new XLWorkbook();
         var ws = workbook.Worksheets.Add("Sheet1");
 
@@ -41,7 +118,7 @@ public class ExcelExportService : IExcelExportService
 
         var colCount = headers.Length;
         var r = 0;
-        foreach (var row in rowList)
+        foreach (var row in rows)
         {
             var values = rowToValues(row);
             if (values == null) continue;
@@ -55,10 +132,10 @@ public class ExcelExportService : IExcelExportService
 
         if (getSummaryRow != null)
         {
-            var summaryValues = getSummaryRow(rowList);
+            var summaryValues = getSummaryRow(rows);
             if (summaryValues != null && summaryValues.Length > 0)
             {
-                var summaryRowIndex = rowList.Count + 2;
+                var summaryRowIndex = rows.Count + 2;
                 for (var c = 0; c < summaryValues.Length && c < colCount; c++)
                 {
                     SetCellValue(ws.Cell(summaryRowIndex, c + 1), summaryValues[c]);
@@ -67,7 +144,6 @@ public class ExcelExportService : IExcelExportService
         }
 
         workbook.SaveAs(outputPath);
-        return Task.CompletedTask;
     }
 
     private static void SetCellValue(IXLCell cell, object? v)

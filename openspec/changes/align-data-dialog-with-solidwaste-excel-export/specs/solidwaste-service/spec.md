@@ -15,6 +15,9 @@
 - **WHEN** 调用时 `SolidWasteExportFilter` 的所有属性均为 null
 - **THEN** 系统 SHALL 返回全部满足 `WeighingMode == SolidWaste` 且 `OrderType == Completed` 的运单所对应的 `SolidWasteExportRow` 列表
 
+### Requirement: 服务注册方式
+本服务的实现类 SHALL 实现 `Volo.Abp.DependencyInjection.ITransientDependency`，由 ABP 按约定隐式注册；不通过扩展方法（如 `AddSolidWasteExportServices`）或 Module 的 `ConfigureServices` 显式注册。若有构造注入依赖，实现类 SHALL 标注 `[AutoConstructor]`。
+
 ### Requirement: 可空过滤参数定义
 本服务 SHALL 使用与现有固废导出一致的 `SolidWasteExportFilter` 定义，包含以下全部可空参数：`DateTime? StartDate`、`DateTime? EndDate`、`string? PlateNumber`、`string? GoodsName`、`string? ProviderName`。语义与现有导出规范一致（AddDate 范围、车牌号/货名/发货单位模糊匹配）。
 
