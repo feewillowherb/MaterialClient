@@ -60,13 +60,13 @@
                      Text="{Binding PlateNumber}"
                      VerticalContentAlignment="Center" />
 
-            <TextBox Grid.Column="1"
-                     Margin="5"
-                     Width="110"
-                     Height="30"
-                     Watermark="货名"
-                     Text="{Binding GoodsName}"
-                     VerticalContentAlignment="Center" />
+            <!-- <TextBox Grid.Column="1" -->
+            <!--          Margin="5" -->
+            <!--          Width="110" -->
+            <!--          Height="30" -->
+            <!--          Watermark="货名" -->
+            <!--          Text="{Binding GoodsName}" -->
+            <!--          VerticalContentAlignment="Center" /> -->
 
             <TextBox Grid.Column="2"
                      Margin="5"
