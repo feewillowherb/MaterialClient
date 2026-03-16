@@ -2,8 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:MaterialClient.Views.AttendedWeighing"
         xmlns:u="https://irihi.tech/ursa"
+        xmlns:viewModels="clr-namespace:MaterialClient.ViewModels"
         x:Class="MaterialClient.Views.AttendedWeighing.DataManagementDialogWindow"
-        x:DataType="local:DataManagementDialogViewModel"
+        x:DataType="viewModels:DataManagementDialogViewModel"
         Title="台账管理"
         Width="1200"
         Height="520"
@@ -79,8 +80,11 @@
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Margin="5,0">
-              <TextBlock Text="进场日期：" VerticalAlignment="Center" Margin="0,0,4,0" />
-              <u:DateTimePicker Width="120"
+              <TextBlock Text="进场日期："
+                         VerticalAlignment="Center"
+                         Margin="0,0,4,0" />
+              <u:DateTimePicker MinWidth="150"
+                                Width="170"
                                 Height="30"
                                 SelectedDate="{Binding StartDate}"
                                 DisplayFormat="yyyy-MM-dd"
@@ -95,7 +99,8 @@
 
             <u:DateTimePicker Grid.Column="5"
                               Margin="5"
-                              Width="120"
+                              MinWidth="150"
+                              Width="170"
                               Height="30"
                               SelectedDate="{Binding EndDate}"
                               DisplayFormat="yyyy-MM-dd"
@@ -120,25 +125,26 @@
                   IsReadOnly="True"
                   HeadersVisibility="Column"
                   GridLinesVisibility="Horizontal"
+                  CanUserResizeColumns="True"
                   ItemsSource="{Binding Records}">
           <DataGrid.Columns>
-            <DataGridTextColumn Binding="{Binding SerialNumber}" Header="流水号" Width="120" />
-            <DataGridTextColumn Binding="{Binding VehicleNumber}" Header="车  号" Width="80" />
-            <DataGridTextColumn Binding="{Binding ShippingUnit}" Header="发货单位" Width="100" />
-            <DataGridTextColumn Binding="{Binding ReceivingUnit}" Header="收货单位" Width="100" />
-            <DataGridTextColumn Binding="{Binding GoodsName}" Header="货  名" Width="80" />
-            <DataGridTextColumn Binding="{Binding GrossWeight}" Header="毛  重" Width="70" />
-            <DataGridTextColumn Binding="{Binding TareWeight}" Header="皮  重" Width="70" />
-            <DataGridTextColumn Binding="{Binding NetWeight}" Header="净  重" Width="70" />
-            <DataGridTextColumn Binding="{Binding Remark}" Header="备 注" Width="80" />
-            <DataGridTextColumn Binding="{Binding GrossWeightTime}" Header="毛重时间" Width="130" />
-            <DataGridTextColumn Binding="{Binding TareWeightTime}" Header="皮重时间" Width="130" />
-            <DataGridTextColumn Binding="{Binding Street}" Header="所属街道" Width="80" />
-            <DataGridTextColumn Binding="{Binding SolidWasteType}" Header="类型" Width="80" />
-            <DataGridTextColumn Binding="{Binding ManifestNumber}" Header="联单编号" Width="90" />
-            <DataGridTextColumn Binding="{Binding UploadResult}" Header="上传结果" Width="70" />
-            <DataGridTextColumn Binding="{Binding UploadStatus}" Header="上传状态" Width="70" />
-            <DataGridTextColumn Binding="{Binding UploadTime}" Header="上传时间" Width="130" />
+            <DataGridTextColumn Binding="{Binding SerialNumber}" Header="流水号" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding VehicleNumber}" Header="车  号" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding ShippingUnit}" Header="发货单位" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding ReceivingUnit}" Header="收货单位" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding GoodsName}" Header="货  名" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding GrossWeight}" Header="毛  重" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding TareWeight}" Header="皮  重" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding NetWeight}" Header="净  重" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding Remark}" Header="备 注" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding GrossWeightTime}" Header="毛重时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding TareWeightTime}" Header="皮重时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding Street}" Header="所属街道" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding SolidWasteType}" Header="类型" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding ManifestNumber}" Header="联单编号" MinWidth="110" />
+            <DataGridTextColumn Binding="{Binding UploadResult}" Header="上传结果" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding UploadStatus}" Header="上传状态" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding UploadTime}" Header="上传时间" MinWidth="140" />
           </DataGrid.Columns>
         </DataGrid>
       </Grid>

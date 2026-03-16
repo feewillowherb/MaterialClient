@@ -6,6 +6,7 @@ using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
+using Volo.Abp.Application.Dtos;
 
 namespace MaterialClient.Common.Services;
 
@@ -16,7 +17,7 @@ public interface ISolidWasteService
     /// <summary>
     ///     分页查询固废运单导出行，用于数据管理对话框按页展示。
     /// </summary>
-    Task<PagedSolidWasteResult> GetPagedExportRowsAsync(SolidWasteExportFilter filter, int pageIndex, int pageSize);
+    Task<PagedResultDto<SolidWasteExportRow>> GetPagedExportRowsAsync(SolidWasteExportFilter filter, int pageIndex, int pageSize);
 }
 
 [AutoConstructor]
@@ -38,7 +39,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
     }
 
     [UnitOfWork]
-    public virtual async Task<PagedSolidWasteResult> GetPagedExportRowsAsync(
+    public virtual async Task<PagedResultDto<SolidWasteExportRow>> GetPagedExportRowsAsync(
         SolidWasteExportFilter filter,
         int pageIndex,
         int pageSize)
@@ -54,7 +55,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
         var items = page
             .Select(w => MapToExportRow(w, providerDict, materialDict))
             .ToList();
-        return new PagedSolidWasteResult(items, totalCount);
+        return new PagedResultDto<SolidWasteExportRow>(totalCount, items);
     }
 
     private async Task<List<Waybill>> QueryWaybillsAsync(SolidWasteExportFilter filter)
