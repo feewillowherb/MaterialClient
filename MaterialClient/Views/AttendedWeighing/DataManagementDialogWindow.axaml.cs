@@ -1,13 +1,17 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
+using ReactiveUI;
 
 namespace MaterialClient.Views.AttendedWeighing;
 
@@ -27,6 +31,7 @@ public partial class DataManagementDialogWindow : Window
         _exportService = exportService;
         _notificationManager = notificationManager;
         _vm = new DataManagementDialogViewModel();
+        _vm.PageChangeCommand = ReactiveCommand.CreateFromTask(LoadDataAsync);
         InitializeComponent();
         DataContext = _vm;
         _ = LoadDataAsync();
@@ -37,17 +42,28 @@ public partial class DataManagementDialogWindow : Window
         try
         {
             var filter = BuildFilter();
-            var rows = await _solidWasteService.GetExportRowsAsync(filter);
+            var result = await _solidWasteService.GetPagedExportRowsAsync(
+                filter, _vm.CurrentPage, _vm.PageSize);
             _vm.Records.Clear();
-            foreach (var row in rows)
+            foreach (var row in result.Items)
                 _vm.Records.Add(row);
-            _vm.TotalCount = _vm.Records.Count;
+            _vm.TotalCount = result.TotalCount;
+            _vm.TotalPages = result.TotalCount > 0
+                ? (int)Math.Ceiling(result.TotalCount / (double)_vm.PageSize)
+                : 1;
+            if (_vm.CurrentPage > _vm.TotalPages && _vm.TotalPages > 0)
+                _vm.CurrentPage = _vm.TotalPages;
+            if (_vm.CurrentPage < 1)
+                _vm.CurrentPage = 1;
         }
         catch
         {
             // 未接入时使用一条测试数据用于样式验收
+            _vm.Records.Clear();
             _vm.Records.Add(CreateTestRow());
             _vm.TotalCount = 1;
+            _vm.TotalPages = 1;
+            _vm.CurrentPage = 1;
         }
     }
 
@@ -89,6 +105,7 @@ public partial class DataManagementDialogWindow : Window
 
     private async void OnQueryClick(object? sender, RoutedEventArgs e)
     {
+        _vm.CurrentPage = 1;
         await LoadDataAsync();
     }
 
@@ -137,15 +154,47 @@ public partial class DataManagementDialogWindow : Window
     }
 }
 
-public class DataManagementDialogViewModel
+public class DataManagementDialogViewModel : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private int _currentPage = 1;
+    private int _totalCount;
+    private int _totalPages = 1;
+    private const int DefaultPageSize = 10;
+
     public ObservableCollection<SolidWasteExportRow> Records { get; } = new();
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public string PlateNumber { get; set; } = string.Empty;
     public string GoodsName { get; set; } = string.Empty;
     public string ProviderName { get; set; } = string.Empty;
-    public int CurrentPage { get; set; } = 1;
-    public int TotalCount { get; set; }
-    public int TotalPages { get; set; } = 1;
+
+    public int PageSize => DefaultPageSize;
+
+    public int CurrentPage
+    {
+        get => _currentPage;
+        set { if (_currentPage != value) { _currentPage = value; OnPropertyChanged(); } }
+    }
+
+    public int TotalCount
+    {
+        get => _totalCount;
+        set { if (_totalCount != value) { _totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(TotalPages)); } }
+    }
+
+    public int TotalPages
+    {
+        get => _totalPages;
+        set { if (_totalPages != value) { _totalPages = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>
+    ///     分页变化命令（Ursa.Pagination 用），由窗口在构造时赋值为 LoadDataAsync。
+    /// </summary>
+    public ICommand? PageChangeCommand { get; set; }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:MaterialClient.Views.AttendedWeighing"
+        xmlns:u="https://irihi.tech/ursa"
         x:Class="MaterialClient.Views.AttendedWeighing.DataManagementDialogWindow"
         x:DataType="local:DataManagementDialogViewModel"
         Title="台账管理"
         Width="1200"
-        Height="600"
+        Height="520"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="None"
@@ -79,7 +80,11 @@
                         VerticalAlignment="Center"
                         Margin="5,0">
               <TextBlock Text="进场日期：" VerticalAlignment="Center" Margin="0,0,4,0" />
-              <DatePicker Width="120" Height="30" SelectedDate="{Binding StartDate}" />
+              <u:DateTimePicker Width="120"
+                                Height="30"
+                                SelectedDate="{Binding StartDate}"
+                                DisplayFormat="yyyy-MM-dd"
+                                PanelFormat="yyyy-MM-dd" />
             </StackPanel>
 
             <TextBlock Grid.Column="4"
@@ -88,11 +93,13 @@
                        HorizontalAlignment="Center"
                        Margin="0,0,0,0" />
 
-            <DatePicker Grid.Column="5"
-                        Margin="5"
-                        Width="120"
-                        Height="30"
-                        SelectedDate="{Binding EndDate}" />
+            <u:DateTimePicker Grid.Column="5"
+                              Margin="5"
+                              Width="120"
+                              Height="30"
+                              SelectedDate="{Binding EndDate}"
+                              DisplayFormat="yyyy-MM-dd"
+                              PanelFormat="yyyy-MM-dd" />
 
             <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
               <Button Content="查询"
@@ -145,24 +152,11 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0"
-                    Orientation="Horizontal"
-                    VerticalAlignment="Center"
-                    Spacing="8">
-          <Button Content="首页" Width="75" Height="30" />
-          <Button Content="上一页" Width="75" Height="30" />
-          <Button Content="下一页" Width="75" Height="30" />
-          <Button Content="末页" Width="75" Height="30" />
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="4">
-            <TextBlock Text="跳转到" VerticalAlignment="Center" />
-            <TextBox Width="40"
-                     Height="26"
-                     TextAlignment="Center"
-                     Text="1" />
-            <TextBlock Text="页" VerticalAlignment="Center" />
-            <Button Content="确定" Width="60" Height="26" Margin="4,0,0,0" />
-          </StackPanel>
-        </StackPanel>
+        <u:Pagination Grid.Column="0"
+                      CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
+                      TotalCount="{Binding TotalCount}"
+                      PageSize="{Binding PageSize}"
+                      Command="{Binding PageChangeCommand}" />
 
         <Grid Grid.Column="1" />
 

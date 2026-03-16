@@ -12,6 +12,11 @@ namespace MaterialClient.Common.Services;
 public interface ISolidWasteService
 {
     Task<IReadOnlyList<SolidWasteExportRow>> GetExportRowsAsync(SolidWasteExportFilter filter);
+
+    /// <summary>
+    ///     分页查询固废运单导出行，用于数据管理对话框按页展示。
+    /// </summary>
+    Task<PagedSolidWasteResult> GetPagedExportRowsAsync(SolidWasteExportFilter filter, int pageIndex, int pageSize);
 }
 
 [AutoConstructor]
@@ -30,6 +35,26 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
         return waybills
             .Select(w => MapToExportRow(w, providerDict, materialDict))
             .ToList();
+    }
+
+    [UnitOfWork]
+    public virtual async Task<PagedSolidWasteResult> GetPagedExportRowsAsync(
+        SolidWasteExportFilter filter,
+        int pageIndex,
+        int pageSize)
+    {
+        var waybills = await QueryWaybillsAsync(filter);
+        var totalCount = waybills.Count;
+        var page = waybills
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+        var providerDict = await BuildProviderDictAsync(page);
+        var materialDict = await BuildMaterialDictAsync(page);
+        var items = page
+            .Select(w => MapToExportRow(w, providerDict, materialDict))
+            .ToList();
+        return new PagedSolidWasteResult(items, totalCount);
     }
 
     private async Task<List<Waybill>> QueryWaybillsAsync(SolidWasteExportFilter filter)
