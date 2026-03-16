@@ -15,7 +15,8 @@
                     BorderThickness="1"
                     Padding="10,0"
                     Height="50">
-                <Grid ColumnDefinitions="*,Auto">
+                <Grid ColumnDefinitions="*,Auto,Auto"
+                      ColumnSpacing="4">
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center">
                         <TextBlock Text="{Binding DeliveryTypeTitleText}"
@@ -30,12 +31,20 @@
                     </StackPanel>
 
                     <Button Grid.Column="1"
+                            Content="修改"
+                            Command="{Binding EditSolidWasteCommand}"
+                            IsVisible="{Binding CanEditSolidWaste}"
+                            Height="28"
+                            Padding="14,0"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center" />
+
+                    <Button Grid.Column="2"
                             Content="打印"
                             Command="{Binding PrintSolidWasteCommand}"
                             IsVisible="{Binding CanPrintSolidWaste}"
                             Height="28"
                             Padding="14,0"
-                            Margin="0,0,4,0"
                             VerticalAlignment="Center" />
                 </Grid>
             </Border>

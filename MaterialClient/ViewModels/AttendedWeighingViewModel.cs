@@ -1120,6 +1120,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         WeighingMode: WeighingMode.SolidWaste
     };
 
+    public bool CanEditSolidWaste => SelectedListItem is
+    {
+        ItemType: WeighingListItemType.Waybill,
+        WeighingMode: WeighingMode.SolidWaste
+    };
+
     public string DeliveryTypeTitleText => IsReceiving ? "收料信息" : "发料信息";
 
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
@@ -2186,6 +2192,40 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         SearchPlateNumber = null;
         CurrentPage = 1; // 重置到第一页
         await RefreshAsync();
+    }
+
+    [ReactiveCommand]
+    private async Task EditSolidWasteAsync()
+    {
+        if (!CanEditSolidWaste || SelectedListItem == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // 将当前固废运单状态设置为 FirstWeight（首磅）
+            await _weighingMatchingService.SetWaybillFirstWeightAsync(SelectedListItem.Id);
+
+            // 状态更新后刷新列表并保持在 MainView，以便用户查看最新结果
+            await RefreshAsync();
+
+            // 尝试重新定位到当前运单
+            var updatedItem = ListItems.FirstOrDefault(x =>
+                x.ItemType == WeighingListItemType.Waybill && x.Id == SelectedListItem.Id);
+            if (updatedItem != null)
+            {
+                SelectedListItem = updatedItem;
+                SelectViewForItem(updatedItem);
+            }
+
+            await ShowMessageBoxAsync("固废运单状态已更新为首磅。");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "更新固废运单状态失败。WaybillId: {WaybillId}", SelectedListItem.Id);
+            await ShowMessageBoxAsync($"更新固废运单状态失败：{ex.Message}");
+        }
     }
 
     #endregion

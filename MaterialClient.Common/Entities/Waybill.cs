@@ -188,6 +188,11 @@ public class Waybill : Entity<long>, IHasExtraProperties, IMaterialClientAudited
         LastSyncTime = now;
     }
 
+    public void OrderTypeFirstWeight()
+    {
+        OrderType = OrderTypeEnum.FirstWeight;
+    }
+
     public void OrderTypeCompleted()
     {
         OrderType = OrderTypeEnum.Completed;
