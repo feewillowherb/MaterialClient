@@ -1959,8 +1959,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 ProviderName = null
             };
 
-            var exportService = _serviceProvider.GetRequiredService<ISolidWasteExcelExportService>();
-            var exportResult = await exportService.ExportAsync(filter, outputPath);
+            var exportService = _serviceProvider.GetRequiredService<IExcelExportService>();
+            var exportResult = await exportService.ExportSolidWasteAsync(filter, outputPath);
 
             if (exportResult.Success)
             {

@@ -14,13 +14,13 @@ namespace MaterialClient.Views.AttendedWeighing;
 public partial class DataManagementDialogWindow : Window
 {
     private readonly ISolidWasteService _solidWasteService;
-    private readonly ISolidWasteExcelExportService _exportService;
+    private readonly IExcelExportService _exportService;
     private readonly WindowNotificationManager? _notificationManager;
     private readonly DataManagementDialogViewModel _vm;
 
     public DataManagementDialogWindow(
         ISolidWasteService solidWasteService,
-        ISolidWasteExcelExportService exportService,
+        IExcelExportService exportService,
         WindowNotificationManager? notificationManager = null)
     {
         _solidWasteService = solidWasteService;
@@ -105,7 +105,7 @@ public partial class DataManagementDialogWindow : Window
         try
         {
             var filter = BuildFilter();
-            var result = await _exportService.ExportAsync(filter, outputPath);
+            var result = await _exportService.ExportSolidWasteAsync(filter, outputPath);
             if (_notificationManager != null)
             {
                 if (result.Success)

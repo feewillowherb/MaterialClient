@@ -6,18 +6,19 @@ using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
-public interface c
-{
-    Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath);
-}
-
+/// <summary>
+///     Excel 导出服务，提供具体业务的导出方法（如固废运单导出）。实现类与接口命名一致：ExcelExportService / IExcelExportService。
+/// </summary>
 public interface IExcelExportService
 {
+    /// <summary>
+    ///     按筛选条件导出固废运单为 .xlsx 文件。
+    /// </summary>
     Task<ExportResult> ExportSolidWasteAsync(SolidWasteExportFilter filter, string outputPath);
 }
 
 [AutoConstructor]
-public partial class ExcelExportService : IExcelExportService, ISolidWasteExcelExportService, ITransientDependency
+public partial class ExcelExportService : IExcelExportService, ITransientDependency
 {
     private readonly ISolidWasteService _solidWasteService;
     private readonly ILogger<ExcelExportService> _logger;
@@ -31,11 +32,7 @@ public partial class ExcelExportService : IExcelExportService, ISolidWasteExcelE
     ];
 
     [UnitOfWork]
-    public virtual Task<ExportResult> ExportSolidWasteAsync(SolidWasteExportFilter filter, string outputPath)
-        => ExportAsync(filter, outputPath);
-
-    [UnitOfWork]
-    public virtual async Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath)
+    public virtual async Task<ExportResult> ExportSolidWasteAsync(SolidWasteExportFilter filter, string outputPath)
     {
         try
         {
