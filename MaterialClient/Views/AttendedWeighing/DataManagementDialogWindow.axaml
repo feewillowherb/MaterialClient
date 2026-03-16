@@ -170,12 +170,6 @@
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
                     Spacing="8">
-          <TextBlock Text="现页数：" VerticalAlignment="Center" />
-          <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" />
-          <TextBlock Text="总条数：" VerticalAlignment="Center" Margin="8,0,0,0" />
-          <TextBlock Text="{Binding TotalCount}" VerticalAlignment="Center" />
-          <TextBlock Text="总页数：" VerticalAlignment="Center" Margin="8,0,0,0" />
-          <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" />
 
           <Button Content="导出"
                   Width="80"

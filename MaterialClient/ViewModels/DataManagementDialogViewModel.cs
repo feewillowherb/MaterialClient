@@ -10,7 +10,7 @@ using ReactiveUI.SourceGenerators;
 
 namespace MaterialClient.ViewModels;
 
-public class DataManagementDialogViewModel : ViewModelBase
+public partial class DataManagementDialogViewModel : ViewModelBase
 {
     private readonly ISolidWasteService _solidWasteService;
 
@@ -25,7 +25,6 @@ public class DataManagementDialogViewModel : ViewModelBase
         TotalPages = 1;
 
         LoadDataCommand = ReactiveCommand.CreateFromTask(LoadDataAsync);
-        PageChangeCommand = ReactiveCommand.CreateFromTask<int>(GoToPageAsync);
     }
 
     public ObservableCollection<SolidWasteExportRow> Records { get; }
@@ -47,11 +46,6 @@ public class DataManagementDialogViewModel : ViewModelBase
     [Reactive] public int TotalPages { get; set; }
 
     public ICommand LoadDataCommand { get; }
-
-    /// <summary>
-    ///     分页变化命令（Ursa.Pagination 用），由 XAML 直接绑定。
-    /// </summary>
-    public ICommand PageChangeCommand { get; }
 
     private async Task LoadDataAsync()
     {
@@ -125,11 +119,11 @@ public class DataManagementDialogViewModel : ViewModelBase
         };
     }
 
-    private async Task GoToPageAsync(int page)
-    {
-        if (page < 1 || page > TotalPages) return;
-        CurrentPage = page;
-        await LoadDataAsync();
-    }
+    /// <summary>
+    ///     分页变化命令（Ursa.Pagination 用），由 XAML 直接绑定生成的 PageChangeCommand 调用。
+    ///     Ursa 通过 TwoWay 绑定更新 CurrentPage，然后执行该无参数命令。
+    /// </summary>
+    [ReactiveCommand]
+    private Task PageChangeAsync() => LoadDataAsync();
 }
 

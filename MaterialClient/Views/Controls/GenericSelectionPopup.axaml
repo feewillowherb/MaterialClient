@@ -107,25 +107,11 @@
                   VerticalAlignment="Center"
                   Margin="10,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- 分页信息 -->
-                <StackPanel Grid.Column="0"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="{Binding CurrentPageInfo}"
-                               FontSize="14"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0" />
-                    <TextBlock Text="{Binding TotalCountInfo}"
-                               FontSize="14"
-                               VerticalAlignment="Center" />
-                </StackPanel>
-
                 <!-- Ursa 分页组件 -->
-                <u:Pagination Grid.Column="1"
+                <u:Pagination Grid.Column="0"
                               CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
                               TotalCount="{Binding TotalCount}"
                               PageSize="{Binding PageSize}"
