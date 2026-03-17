@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MaterialClient.Common.Models;
@@ -7,25 +8,35 @@ using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
-public partial class DataManagementDialogViewModel : ViewModelBase
+public partial class DataManagementDialogViewModel : ViewModelBase, ITransientDependency
 {
     private readonly ISolidWasteService _solidWasteService;
+    private readonly IExcelExportService _exportService;
+    private Func<Task<string?>>? _browseFolderAsync;
+    private Action<string, string, bool>? _notify;
 
     public DataManagementDialogViewModel(
         ISolidWasteService solidWasteService,
+        IExcelExportService exportService,
         ILogger<DataManagementDialogViewModel>? logger = null)
         : base(logger)
     {
         _solidWasteService = solidWasteService;
+        _exportService = exportService;
         Records = new ObservableCollection<SolidWasteExportRow>();
         CurrentPage = 1;
         TotalPages = 1;
 
         LoadDataCommand = ReactiveCommand.CreateFromTask(LoadDataAsync);
     }
+
+    public void SetBrowseHandler(Func<Task<string?>> handler) => _browseFolderAsync = handler;
+
+    public void SetNotifyHandler(Action<string, string, bool> handler) => _notify = handler;
 
     public ObservableCollection<SolidWasteExportRow> Records { get; }
 
@@ -149,5 +160,53 @@ public partial class DataManagementDialogViewModel : ViewModelBase
     /// </summary>
     [ReactiveCommand]
     private Task PageChangeAsync() => LoadDataAsync();
+
+    [ReactiveCommand]
+    private Task QueryAsync()
+    {
+        CurrentPage = 1;
+        return LoadDataAsync();
+    }
+
+    [ReactiveCommand]
+    private async Task ExportAsync()
+    {
+        if (_browseFolderAsync == null) return;
+        var savePath = await _browseFolderAsync();
+        if (string.IsNullOrEmpty(savePath)) return;
+
+        var fileName = $"固废运单_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+        var outputPath = Path.Combine(savePath, fileName);
+
+        try
+        {
+            var filter = BuildFilter();
+            var result = await _exportService.ExportSolidWasteAsync(filter, outputPath);
+            if (_notify != null)
+            {
+                if (result.Success)
+                    _notify("导出成功", $"已导出 {result.RowCount} 条到 {fileName}", true);
+                else
+                    _notify("导出失败", "导出过程中发生错误，请重试", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "导出固废台账失败");
+            _notify?.Invoke("导出失败", "导出过程中发生错误，请重试", false);
+        }
+    }
+
+    [ReactiveCommand]
+    private void Close()
+    {
+        // View 订阅 CloseCommand 执行 Close(false)
+    }
+
+    [ReactiveCommand]
+    private void Confirm()
+    {
+        // View 订阅 ConfirmCommand 执行 Close(true)
+    }
 }
 

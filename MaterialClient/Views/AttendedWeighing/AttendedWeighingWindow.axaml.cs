@@ -158,9 +158,8 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
     private async void OnDataManagementClick(object? sender, RoutedEventArgs e)
     {
         if (_serviceProvider == null) return;
-        var solidWasteService = _serviceProvider.GetRequiredService<ISolidWasteService>();
-        var exportService = _serviceProvider.GetRequiredService<IExcelExportService>();
-        var dialog = new DataManagementDialogWindow(solidWasteService, exportService, NotificationManager);
+        var viewModel = _serviceProvider.GetRequiredService<DataManagementDialogViewModel>();
+        var dialog = new DataManagementDialogWindow(viewModel, NotificationManager);
         await dialog.ShowDialog<bool?>(this);
     }
 

@@ -32,7 +32,7 @@
                 Foreground="White"
                 Width="40"
                 Height="35"
-                Click="OnCloseButtonClick"
+                Command="{Binding CloseCommand}"
                 Cursor="Hand" />
       </Grid>
 
@@ -113,7 +113,7 @@
                       Margin="10,0,0,0"
                       VerticalAlignment="Center"
                       Classes="primary-button"
-                      Click="OnQueryClick" />
+                      Command="{Binding QueryCommand}" />
             </StackPanel>
           </Grid>
         </Grid>
@@ -176,13 +176,13 @@
                   Height="30"
                   Margin="8,0,0,0"
                   Classes="primary-button"
-                  Click="OnExportClick" />
+                  Command="{Binding ExportCommand}" />
           <Button Content="确定"
                   Width="80"
                   Height="30"
                   Margin="8,0,0,0"
                   Classes="primary-button"
-                  Click="OnConfirmButtonClick" />
+                  Command="{Binding ConfirmCommand}" />
         </StackPanel>
       </Grid>
 
