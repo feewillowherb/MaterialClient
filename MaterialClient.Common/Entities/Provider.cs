@@ -63,6 +63,18 @@ public class Provider : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
     /// </summary>
     public string? ContectPhone { get; set; }
 
+    public void UpdateInfo(string providerName, string? contactName, string? contactPhone)
+    {
+        if (string.IsNullOrWhiteSpace(providerName))
+        {
+            throw new ArgumentException("Provider name is required.", nameof(providerName));
+        }
+
+        ProviderName = providerName.Trim();
+        ContectName = string.IsNullOrWhiteSpace(contactName) ? null : contactName.Trim();
+        ContectPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim();
+    }
+
 
     public int? MaterialTypeId { get; set; }
 

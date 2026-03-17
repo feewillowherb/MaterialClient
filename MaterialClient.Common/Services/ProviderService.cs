@@ -44,6 +44,11 @@ public interface IProviderService
     /// <param name="providerName">供应商名称</param>
     /// <param name="deliveryType">当前称重记录/联单的 DeliveryType</param>
     Task<Provider> CreateProviderAsync(string providerName, DeliveryType deliveryType);
+
+    /// <summary>
+    ///     更新供应商信息
+    /// </summary>
+    Task<ProviderDto> UpdateProviderAsync(int id, string providerName, string? contactName, string? contactPhone);
 }
 
 /// <summary>
@@ -178,5 +183,41 @@ public partial class ProviderService : DomainService, IProviderService
         };
 
         return await _providerRepository.InsertAsync(provider, autoSave: true);
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public virtual async Task<ProviderDto> UpdateProviderAsync(
+        int id,
+        string providerName,
+        string? contactName,
+        string? contactPhone)
+    {
+        var weighingMode = await _settingsService.GetWeighingModeAsync();
+
+        var queryable = await _providerRepository.GetQueryableAsync();
+        var provider = await queryable
+            .Where(p => p.Id == id)
+            .Where(p => !p.IsDeleted)
+            .Where(p => p.WeighingMode == weighingMode)
+            .FirstOrDefaultAsync();
+
+        if (provider == null)
+        {
+            throw new ArgumentException($"Provider(id={id}) not found.", nameof(id));
+        }
+
+        provider.UpdateInfo(providerName, contactName, contactPhone);
+
+        await _providerRepository.UpdateAsync(provider, autoSave: true);
+
+        return new ProviderDto
+        {
+            Id = provider.Id,
+            ProviderType = provider.ProviderType ?? 0,
+            ProviderName = provider.ProviderName ?? string.Empty,
+            ContactName = provider.ContectName,
+            ContactPhone = provider.ContectPhone
+        };
     }
 }

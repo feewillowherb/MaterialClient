@@ -3,10 +3,12 @@
         xmlns:local="using:MaterialClient.Views.AttendedWeighing"
         xmlns:u="https://irihi.tech/ursa"
         xmlns:viewModels="clr-namespace:MaterialClient.ViewModels"
+        xmlns:dto="clr-namespace:MaterialClient.Common.Api.Dtos;assembly=MaterialClient.Common"
         x:Class="MaterialClient.Views.AttendedWeighing.ProviderManagementWindow"
         x:DataType="viewModels:ProviderManagementViewModel"
+        x:Name="Root"
         Title="供应商管理"
-        Width="600"
+        Width="750"
         SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
@@ -81,6 +83,20 @@
           <DataGrid.Columns>
             <DataGridTextColumn Binding="{Binding Id}" Header="编号" MinWidth="80" />
             <DataGridTextColumn Binding="{Binding ProviderName}" Header="名称" MinWidth="200" />
+            <DataGridTextColumn Binding="{Binding ContactName}" Header="联系人姓名" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding ContactPhone}" Header="联系人电话" MinWidth="140" />
+            <DataGridTemplateColumn Header="操作" MinWidth="90">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="dto:ProviderDto">
+                  <Button Content="编辑"
+                          Width="70"
+                          Height="26"
+                          Classes="primary-button"
+                          Command="{Binding DataContext.EditCommand, ElementName=Root}"
+                          CommandParameter="{Binding .}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
       </Grid>

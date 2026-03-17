@@ -2,9 +2,14 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Services;
+using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
@@ -17,16 +22,19 @@ namespace MaterialClient.ViewModels;
 public partial class ProviderManagementViewModel : ViewModelBase, ITransientDependency
 {
     private readonly IProviderService _providerService;
+    private readonly IServiceProvider _serviceProvider;
     private int _currentPage = 1;
     private int _totalCount;
     private int _totalPages = 1;
 
     public ProviderManagementViewModel(
         IProviderService providerService,
+        IServiceProvider serviceProvider,
         ILogger<ProviderManagementViewModel>? logger = null)
         : base(logger)
     {
         _providerService = providerService;
+        _serviceProvider = serviceProvider;
         Records = new ObservableCollection<ProviderDto>();
         CurrentPage = 1;
         TotalPages = 1;
@@ -119,5 +127,33 @@ public partial class ProviderManagementViewModel : ViewModelBase, ITransientDepe
     private void Close()
     {
         // View 订阅 CloseCommand 执行 Close(false)
+    }
+
+    private Window GetWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.Windows.FirstOrDefault(w => w.DataContext == this)
+                   ?? throw new InvalidOperationException("Cannot find window");
+        }
+
+        throw new InvalidOperationException("Application is not running in desktop mode");
+    }
+
+    [ReactiveCommand]
+    private async Task EditAsync(ProviderDto provider)
+    {
+        var parentWin = GetWindow();
+
+        var dialogVm = _serviceProvider.GetRequiredService<ProviderEditWindowViewModel>();
+        dialogVm.Initialize(provider);
+
+        var dialog = new ProviderEditWindow(dialogVm);
+        var result = await dialog.ShowDialog<ProviderDto?>(parentWin);
+
+        if (result != null)
+        {
+            await LoadDataAsync();
+        }
     }
 }

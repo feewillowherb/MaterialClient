@@ -1,0 +1,97 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewModels="clr-namespace:MaterialClient.ViewModels"
+        x:Class="MaterialClient.Views.AttendedWeighing.ProviderEditWindow"
+        x:DataType="viewModels:ProviderEditWindowViewModel"
+        Title="编辑供应商"
+        Width="520"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White"
+        Icon="/Assets/fd-ico.ico">
+
+  <Border BorderBrush="LightGray" BorderThickness="1">
+    <Grid RowDefinitions="50,Auto,Auto" Margin="0">
+
+      <!-- 标题栏 -->
+      <Grid Grid.Row="0" Background="#6498FE">
+        <TextBlock Text="编辑供应商"
+                   FontSize="14"
+                   Foreground="White"
+                   VerticalAlignment="Center"
+                   Margin="15,0,0,0" />
+        <Button Content="✕"
+                Classes="transparent-button"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                FontSize="20"
+                Foreground="White"
+                Width="40"
+                Height="35"
+                Command="{Binding CancelCommand}"
+                Cursor="Hand" />
+      </Grid>
+
+      <!-- 表单 -->
+      <StackPanel Grid.Row="1" Margin="16" Spacing="12">
+        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
+          <TextBlock Text="供应商名称："
+                     VerticalAlignment="Center"
+                     Foreground="#333" />
+          <TextBox Grid.Column="1"
+                   Height="30"
+                   Text="{Binding ProviderName, Mode=TwoWay}"
+                   Watermark="请输入供应商名称"
+                   VerticalContentAlignment="Center" />
+        </Grid>
+
+        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
+          <TextBlock Text="联系人姓名："
+                     VerticalAlignment="Center"
+                     Foreground="#333" />
+          <TextBox Grid.Column="1"
+                   Height="30"
+                   Text="{Binding ContectName, Mode=TwoWay}"
+                   Watermark="请输入联系人姓名"
+                   VerticalContentAlignment="Center" />
+        </Grid>
+
+        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
+          <TextBlock Text="联系人电话："
+                     VerticalAlignment="Center"
+                     Foreground="#333" />
+          <TextBox Grid.Column="1"
+                   Height="30"
+                   Text="{Binding ContectPhone, Mode=TwoWay}"
+                   Watermark="请输入联系人电话"
+                   VerticalContentAlignment="Center" />
+        </Grid>
+      </StackPanel>
+
+      <!-- 底部按钮 -->
+      <Grid Grid.Row="2" Margin="16,0,16,16">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Button Grid.Column="1"
+                Content="取消"
+                Width="80"
+                Height="30"
+                Margin="0,0,8,0"
+                Classes="secondary-button"
+                Command="{Binding CancelCommand}" />
+        <Button Grid.Column="2"
+                Content="确定"
+                Width="80"
+                Height="30"
+                Classes="primary-button"
+                Command="{Binding SaveCommand}" />
+      </Grid>
+    </Grid>
+  </Border>
+</Window>
