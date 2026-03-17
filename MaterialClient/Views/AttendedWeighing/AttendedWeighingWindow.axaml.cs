@@ -33,9 +33,11 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         if (Design.IsDesignMode) return;
         DataContext = serviceProvider?.GetService(typeof(AttendedWeighingViewModel)) as AttendedWeighingViewModel;
 
-        // Set PlacementTarget for Popup
+        // Set PlacementTarget for Popups
         if (CameraStatusPopup != null && CameraStatusPanel != null)
             CameraStatusPopup.PlacementTarget = CameraStatusPanel;
+        if (DataManagementMenuPopup != null && DataManagementButton != null)
+            DataManagementMenuPopup.PlacementTarget = DataManagementButton;
 
         // 窗口打开时启动轮询后台服务和创建 NotificationManager
         Opened += AttendedWeighingWindow_Opened;
@@ -155,7 +157,32 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         Close();
     }
 
-    private async void OnDataManagementClick(object? sender, RoutedEventArgs e)
+    private void OnDataManagementMenuClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataManagementMenuPopup != null)
+            DataManagementMenuPopup.IsOpen = true;
+    }
+
+    private void OnMaterialManagementClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataManagementMenuPopup != null)
+            DataManagementMenuPopup.IsOpen = false;
+    }
+
+    private void OnSupplyManagementClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataManagementMenuPopup != null)
+            DataManagementMenuPopup.IsOpen = false;
+    }
+
+    private async void OnLedgerManagementClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataManagementMenuPopup != null)
+            DataManagementMenuPopup.IsOpen = false;
+        await OpenLedgerManagementDialogAsync();
+    }
+
+    private async Task OpenLedgerManagementDialogAsync()
     {
         if (_serviceProvider == null) return;
         var viewModel = _serviceProvider.GetRequiredService<DataManagementDialogViewModel>();

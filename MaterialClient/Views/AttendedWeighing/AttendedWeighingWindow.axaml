@@ -37,11 +37,12 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Margin="-450,0,0,0">
-                    <Button Content="数据管理"
+                    <Button x:Name="DataManagementButton"
+                            Content="数据管理"
                             Classes="transparent-button"
                             Foreground="White"
                             Padding="8,4"
-                            Click="OnDataManagementClick" />
+                            Click="OnDataManagementMenuClick" />
                     <Button Content="系统设置"
                             Classes="transparent-button"
                             Foreground="White"
@@ -108,6 +109,78 @@
                         </Button.Styles>
                     </Button>
                 </StackPanel>
+
+                <!-- 数据管理三行弹出菜单 -->
+                <Popup x:Name="DataManagementMenuPopup"
+                       Placement="Bottom"
+                       IsLightDismissEnabled="True"
+                       VerticalOffset="2"
+                       HorizontalOffset="0">
+                    <Border Background="#2E5A9E"
+                            CornerRadius="4"
+                            Padding="0,4"
+                            MinWidth="140">
+                        <StackPanel Spacing="0">
+                            <Button Background="Transparent"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Padding="12,10"
+                                    HorizontalContentAlignment="Left"
+                                    Click="OnMaterialManagementClick">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="&#x25C6;"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               Opacity="0.9" />
+                                    <TextBlock Text="材料管理" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="#3D6BB3" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                            <Button Background="Transparent"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Padding="12,10"
+                                    HorizontalContentAlignment="Left"
+                                    Click="OnSupplyManagementClick">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="&#x25CF;"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               Opacity="0.9" />
+                                    <TextBlock Text="供应管理" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="#3D6BB3" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                            <Button Background="Transparent"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Padding="12,10"
+                                    HorizontalContentAlignment="Left"
+                                    Click="OnLedgerManagementClick">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="&#x25A4;"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               Opacity="0.9" />
+                                    <TextBlock Text="台账管理" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="#3D6BB3" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </Popup>
             </Grid>
         </Border>
 
