@@ -8,7 +8,7 @@
         x:DataType="viewModels:ProviderManagementViewModel"
         x:Name="Root"
         Title="供应商管理"
-        Width="750"
+        Width="680"
         SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
@@ -82,7 +82,7 @@
                   ItemsSource="{Binding Records}">
           <DataGrid.Columns>
             <DataGridTextColumn Binding="{Binding Id}" Header="编号" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding ProviderName}" Header="名称" MinWidth="200" />
+            <DataGridTextColumn Binding="{Binding ProviderName}" Header="名称" MinWidth="200" Width="*" />
             <DataGridTextColumn Binding="{Binding ContactName}" Header="联系人姓名" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding ContactPhone}" Header="联系人电话" MinWidth="140" />
             <DataGridTemplateColumn Header="操作" MinWidth="90">
