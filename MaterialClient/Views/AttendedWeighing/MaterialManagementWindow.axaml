@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:MaterialClient.Views.AttendedWeighing"
+        xmlns:u="https://irihi.tech/ursa"
+        xmlns:viewModels="clr-namespace:MaterialClient.ViewModels"
+        x:Class="MaterialClient.Views.AttendedWeighing.MaterialManagementWindow"
+        x:DataType="viewModels:MaterialManagementViewModel"
+        x:Name="Root"
+        Title="材料管理"
+        Width="680"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White"
+        Icon="/Assets/fd-ico.ico">
+
+  <Border BorderBrush="LightGray" BorderThickness="1">
+    <Grid RowDefinitions="50,Auto,50">
+
+      <!-- 标题栏 -->
+      <Grid Grid.Row="0" Background="#6498FE">
+        <TextBlock Text="材料管理"
+                   FontSize="14"
+                   Foreground="White"
+                   VerticalAlignment="Center"
+                   Margin="15,0,0,0" />
+        <Button Content="✕"
+                Classes="transparent-button"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                FontSize="20"
+                Foreground="White"
+                Width="40"
+                Height="35"
+                Command="{Binding CloseCommand}"
+                Cursor="Hand" />
+      </Grid>
+
+      <!-- 查询区 + 表格 -->
+      <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="0">
+
+        <!-- 查询条件 -->
+        <Grid RowDefinitions="Auto" Margin="10,10,10,5">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0"
+                     Margin="5"
+                     Width="180"
+                     Height="30"
+                     Watermark="名称"
+                     Text="{Binding Name}"
+                     VerticalContentAlignment="Center" />
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+              <Button Content="查询"
+                      Width="80"
+                      Height="30"
+                      Margin="10,0,0,0"
+                      VerticalAlignment="Center"
+                      Classes="primary-button"
+                      Command="{Binding QueryCommand}" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+
+        <!-- 表格：仅展示列，无操作列 -->
+        <DataGrid Grid.Row="1"
+                  RowHeight="30"
+                  VerticalScrollBarVisibility="Disabled"
+                  Margin="10,0,10,5"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  CanUserResizeColumns="True"
+                  ItemsSource="{Binding Records}">
+          <DataGrid.Columns>
+            <DataGridTextColumn Binding="{Binding Id}" Header="编号" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding Name}" Header="名称" MinWidth="200" Width="*" />
+            <DataGridTextColumn Binding="{Binding Code}" Header="物料编码" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding Brand}" Header="品牌" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding Size}" Header="规格尺寸" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding UnitName}" Header="单位" MinWidth="80" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </Grid>
+
+      <!-- 分页 -->
+      <Grid Grid.Row="2" Margin="10,0,10,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <u:Pagination Grid.Column="0"
+                      CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
+                      TotalCount="{Binding TotalCount}"
+                      PageSize="{Binding PageSize}"
+                      Command="{Binding PageChangeCommand}" />
+
+        <Grid Grid.Column="1" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+          <Button Content="关闭"
+                  Width="80"
+                  Height="30"
+                  Margin="8,0,0,0"
+                  Classes="primary-button"
+                  Command="{Binding CloseCommand}" />
+        </StackPanel>
+      </Grid>
+
+    </Grid>
+  </Border>
+</Window>

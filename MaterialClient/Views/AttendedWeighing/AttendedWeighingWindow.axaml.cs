@@ -163,10 +163,19 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
             DataManagementMenuPopup.IsOpen = true;
     }
 
-    private void OnMaterialManagementClick(object? sender, RoutedEventArgs e)
+    private async void OnMaterialManagementClick(object? sender, RoutedEventArgs e)
     {
         if (DataManagementMenuPopup != null)
             DataManagementMenuPopup.IsOpen = false;
+        await OpenMaterialManagementDialogAsync();
+    }
+
+    private async Task OpenMaterialManagementDialogAsync()
+    {
+        if (_serviceProvider == null) return;
+        var viewModel = _serviceProvider.GetRequiredService<MaterialManagementViewModel>();
+        var dialog = new MaterialManagementWindow(viewModel, NotificationManager);
+        await dialog.ShowDialog<bool?>(this);
     }
 
     private async void OnSupplyManagementClick(object? sender, RoutedEventArgs e)
