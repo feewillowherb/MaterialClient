@@ -7,7 +7,7 @@
         x:DataType="viewModels:DataManagementDialogViewModel"
         Title="台账管理"
         Width="1200"
-        Height="520"
+        SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="None"
@@ -15,7 +15,7 @@
         Icon="/Assets/fd-ico.ico">
 
   <Border BorderBrush="LightGray" BorderThickness="1">
-    <Grid RowDefinitions="50,*,50">
+    <Grid RowDefinitions="50,Auto,50">
 
       <!-- 标题栏 -->
       <Grid Grid.Row="0" Background="#6498FE">
@@ -36,8 +36,8 @@
                 Cursor="Hand" />
       </Grid>
 
-      <!-- 查询区 + 表格 -->
-      <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="0">
+      <!-- 查询区 + 表格（表格禁用垂直滚动，高度随行数自动计算） -->
+      <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="0">
 
         <!-- 查询条件区域：与 SolidWasteExportFilter 对齐 -->
         <Grid RowDefinitions="Auto" Margin="10,10,10,5">
@@ -118,8 +118,10 @@
           </Grid>
         </Grid>
 
-        <!-- 表格区域：17 列与 SolidWasteExcelExportService 一致 -->
+        <!-- 表格区域：17 列与 SolidWasteExcelExportService 一致；禁用垂直滚动，高度随 PageSize 自动计算 -->
         <DataGrid Grid.Row="1"
+                  RowHeight="30"
+                  VerticalScrollBarVisibility="Disabled"
                   Margin="10,0,10,5"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"

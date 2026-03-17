@@ -169,10 +169,19 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
             DataManagementMenuPopup.IsOpen = false;
     }
 
-    private void OnSupplyManagementClick(object? sender, RoutedEventArgs e)
+    private async void OnSupplyManagementClick(object? sender, RoutedEventArgs e)
     {
         if (DataManagementMenuPopup != null)
             DataManagementMenuPopup.IsOpen = false;
+        await OpenSupplyManagementDialogAsync();
+    }
+
+    private async Task OpenSupplyManagementDialogAsync()
+    {
+        if (_serviceProvider == null) return;
+        var viewModel = _serviceProvider.GetRequiredService<ProviderManagementViewModel>();
+        var dialog = new ProviderManagementWindow(viewModel, NotificationManager);
+        await dialog.ShowDialog<bool?>(this);
     }
 
     private async void OnLedgerManagementClick(object? sender, RoutedEventArgs e)

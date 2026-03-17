@@ -21,6 +21,7 @@ namespace MaterialClient.ViewModels;
 public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientDependency
 {
     private readonly IMaterialService? _materialService;
+    private readonly IProviderService? _providerService;
     private readonly IServiceProvider _serviceProvider;
 
     public ManualMatchEditWindowViewModel(
@@ -36,6 +37,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
         _serviceProvider = serviceProvider;
 
         _materialService = serviceProvider.GetService<IMaterialService>();
+        _providerService = serviceProvider.GetService<IProviderService>();
 
         InitializeData();
 
@@ -241,11 +243,11 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
 
     private async Task LoadProvidersAsync()
     {
-        if (_materialService == null) return;
+        if (_providerService == null) return;
 
         try
         {
-            var providers = await _materialService.GetAllProvidersAsync();
+            var providers = await _providerService.GetAllProvidersAsync();
             Providers.Clear();
             foreach (var provider in providers)
                 Providers.Add(new ProviderDto

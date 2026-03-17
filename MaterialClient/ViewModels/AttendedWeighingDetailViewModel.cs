@@ -41,6 +41,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 {
     private WeighingListItemDto _listItem = null!;
     private readonly IMaterialService _materialService;
+    private readonly IProviderService _providerService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IOptions<StreetsConfig> _streetsConfig;
@@ -54,6 +55,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         _serviceProvider = serviceProvider;
         _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
         _materialService = _serviceProvider.GetRequiredService<IMaterialService>();
+        _providerService = _serviceProvider.GetRequiredService<IProviderService>();
         _streetsConfig = _serviceProvider.GetRequiredService<IOptions<StreetsConfig>>();
         _solidWasteTypeConfig = _serviceProvider.GetRequiredService<IOptions<SolidWasteTypeConfig>>();
         _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
@@ -431,12 +433,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             displayTextSelector: p => p.ProviderName,
             logger: Logger,
             loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
-                _materialService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds),
+                _providerService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds),
             getSelectedId: p => p.Id,
             createNewItemFunc: async name =>
             {
                 var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
-                var created = await _materialService.CreateProviderAsync(name, deliveryType);
+                var created = await _providerService.CreateProviderAsync(name, deliveryType);
                 return (ProviderDto?)new ProviderDto
                 {
                     Id = created.Id,
@@ -873,7 +875,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     {
         try
         {
-            var providers = await _materialService.GetAllProvidersAsync();
+            var providers = await _providerService.GetAllProvidersAsync();
             Providers.Clear();
             foreach (var provider in providers)
                 Providers.Add(new ProviderDto
