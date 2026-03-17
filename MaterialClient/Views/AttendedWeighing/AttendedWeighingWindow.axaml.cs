@@ -8,7 +8,10 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using MaterialClient.Common.Models;
+using MaterialClient.Common.Services;
 using MaterialClient.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Views.AttendedWeighing
@@ -17,6 +20,7 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
 {
     private CancellationTokenSource? _closePopupCts;
     private bool _isMouseOverPopup;
+    private readonly IServiceProvider? _serviceProvider;
 
     public AttendedWeighingWindow() : this(null)
     {
@@ -24,6 +28,7 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
 
     public AttendedWeighingWindow(IServiceProvider? serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         InitializeComponent();
         if (Design.IsDesignMode) return;
         DataContext = serviceProvider?.GetService(typeof(AttendedWeighingViewModel)) as AttendedWeighingViewModel;
@@ -148,6 +153,15 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private async void OnDataManagementClick(object? sender, RoutedEventArgs e)
+    {
+        if (_serviceProvider == null) return;
+        var solidWasteService = _serviceProvider.GetRequiredService<ISolidWasteService>();
+        var exportService = _serviceProvider.GetRequiredService<IExcelExportService>();
+        var dialog = new DataManagementDialogWindow(solidWasteService, exportService, NotificationManager);
+        await dialog.ShowDialog<bool?>(this);
     }
 
     protected override void OnClosed(EventArgs e)

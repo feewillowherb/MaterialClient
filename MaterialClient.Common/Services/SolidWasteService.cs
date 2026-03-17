@@ -1,63 +1,61 @@
-using ClosedXML.Excel;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
+using Volo.Abp.Application.Dtos;
 
 namespace MaterialClient.Common.Services;
 
+public interface ISolidWasteService
+{
+    Task<IReadOnlyList<SolidWasteExportRow>> GetExportRowsAsync(SolidWasteExportFilter filter);
+
+    /// <summary>
+    ///     分页查询固废运单导出行，用于数据管理对话框按页展示。
+    /// </summary>
+    Task<PagedResultDto<SolidWasteExportRow>> GetPagedExportRowsAsync(SolidWasteExportFilter filter, int pageIndex, int pageSize);
+}
+
 [AutoConstructor]
-public partial class SolidWasteExcelExportService : ISolidWasteExcelExportService, ITransientDependency
+public partial class SolidWasteService : ISolidWasteService, ITransientDependency
 {
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<Material, int> _materialRepository;
-    private readonly ILogger<SolidWasteExcelExportService> _logger;
 
-    private static readonly string[] Headers =
-    [
-        "流水号", "车  号", "发货单位", "收货单位", "货  名",
-        "毛  重", "皮  重", "净  重", "备 注", "毛重时间",
-        "皮重时间", "所属街道", "类型", "联单编号",
-        "上传结果", "上传状态", "上传时间"
-    ];
-
-    public async Task<ExportResult> ExportAsync(SolidWasteExportFilter filter, string outputPath)
+    [UnitOfWork]
+    public virtual async Task<IReadOnlyList<SolidWasteExportRow>> GetExportRowsAsync(SolidWasteExportFilter filter)
     {
-        try
-        {
-            var waybills = await QueryWaybillsAsync(filter);
+        var waybills = await QueryWaybillsAsync(filter);
+        var providerDict = await BuildProviderDictAsync(waybills);
+        var materialDict = await BuildMaterialDictAsync(waybills);
+        return waybills
+            .Select(w => MapToExportRow(w, providerDict, materialDict))
+            .ToList();
+    }
 
-            var providerDict = await BuildProviderDictAsync(waybills);
-            var materialDict = await BuildMaterialDictAsync(waybills);
-
-            var rows = waybills
-                .Select(w => MapToExportRow(w, providerDict, materialDict))
-                .ToList();
-
-            WriteExcel(rows, outputPath);
-
-            return new ExportResult
-            {
-                RowCount = rows.Count,
-                FilePath = outputPath,
-                Success = true
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "固废运单导出失败: {OutputPath}", outputPath);
-            return new ExportResult
-            {
-                RowCount = 0,
-                FilePath = outputPath,
-                Success = false
-            };
-        }
+    [UnitOfWork]
+    public virtual async Task<PagedResultDto<SolidWasteExportRow>> GetPagedExportRowsAsync(
+        SolidWasteExportFilter filter,
+        int pageIndex,
+        int pageSize)
+    {
+        var waybills = await QueryWaybillsAsync(filter);
+        var totalCount = waybills.Count;
+        var page = waybills
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+        var providerDict = await BuildProviderDictAsync(page);
+        var materialDict = await BuildMaterialDictAsync(page);
+        var items = page
+            .Select(w => MapToExportRow(w, providerDict, materialDict))
+            .ToList();
+        return new PagedResultDto<SolidWasteExportRow>(totalCount, items);
     }
 
     private async Task<List<Waybill>> QueryWaybillsAsync(SolidWasteExportFilter filter)
@@ -172,49 +170,9 @@ public partial class SolidWasteExcelExportService : ISolidWasteExcelExportServic
             Street = waybill.GetStreet() ?? string.Empty,
             SolidWasteType = waybill.GetSolidWasteType() ?? string.Empty,
             ManifestNumber = waybill.GetSolidWasteOrderNumber() ?? string.Empty,
-            UploadResult = string.Empty,
-            UploadStatus = string.Empty,
-            UploadTime = string.Empty
+            UploadResult = waybill.IsPendingSync ? "0" : "1",
+            UploadStatus = waybill.IsPendingSync ? "未上传" : "上传成功",
+            UploadTime = waybill.LastSyncTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty
         };
-    }
-
-    private static void WriteExcel(List<SolidWasteExportRow> rows, string outputPath)
-    {
-        using var workbook = new XLWorkbook();
-        var ws = workbook.Worksheets.Add("Sheet1");
-
-        for (var i = 0; i < Headers.Length; i++)
-            ws.Cell(1, i + 1).Value = Headers[i];
-
-        for (var r = 0; r < rows.Count; r++)
-        {
-            var row = rows[r];
-            var excelRow = r + 2;
-            ws.Cell(excelRow, 1).Value = row.SerialNumber;
-            ws.Cell(excelRow, 2).Value = row.VehicleNumber;
-            ws.Cell(excelRow, 3).Value = row.ShippingUnit;
-            ws.Cell(excelRow, 4).Value = row.ReceivingUnit;
-            ws.Cell(excelRow, 5).Value = row.GoodsName;
-            ws.Cell(excelRow, 6).Value = row.GrossWeight ?? 0;
-            ws.Cell(excelRow, 7).Value = row.TareWeight ?? 0;
-            ws.Cell(excelRow, 8).Value = row.NetWeight ?? 0;
-            ws.Cell(excelRow, 9).Value = row.Remark;
-            ws.Cell(excelRow, 10).Value = row.GrossWeightTime;
-            ws.Cell(excelRow, 11).Value = row.TareWeightTime;
-            ws.Cell(excelRow, 12).Value = row.Street;
-            ws.Cell(excelRow, 13).Value = row.SolidWasteType;
-            ws.Cell(excelRow, 14).Value = row.ManifestNumber;
-            ws.Cell(excelRow, 15).Value = row.UploadResult;
-            ws.Cell(excelRow, 16).Value = row.UploadStatus;
-            ws.Cell(excelRow, 17).Value = row.UploadTime;
-        }
-
-        var summaryRow = rows.Count + 2;
-        ws.Cell(summaryRow, 1).Value = rows.Count;
-        ws.Cell(summaryRow, 6).Value = rows.Sum(r => r.GrossWeight ?? 0);
-        ws.Cell(summaryRow, 7).Value = rows.Sum(r => r.TareWeight ?? 0);
-        ws.Cell(summaryRow, 8).Value = rows.Sum(r => r.NetWeight ?? 0);
-
-        workbook.SaveAs(outputPath);
     }
 }

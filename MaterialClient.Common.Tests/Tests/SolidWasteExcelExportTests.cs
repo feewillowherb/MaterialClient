@@ -24,7 +24,7 @@ public class SolidWasteExcelExportTests
         var providerDict = new Dictionary<int, string> { { 1, "长巷村" } };
         var materialDict = new Dictionary<int, string> { { 10, "装修垃圾" } };
 
-        var row = SolidWasteExcelExportService.MapToExportRow(waybill, providerDict, materialDict);
+        var row = SolidWasteService.MapToExportRow(waybill, providerDict, materialDict);
 
         row.SerialNumber.ShouldBe("A202603040001");
         row.VehicleNumber.ShouldBe("浙A96H93");
@@ -43,14 +43,16 @@ public class SolidWasteExcelExportTests
     }
 
     [Fact]
-    public void MapToExportRow_UploadColumns_AlwaysEmpty()
+    public void MapToExportRow_UploadColumns_WhenNotPendingSync()
     {
         var waybill = CreateTestWaybill();
-        var row = SolidWasteExcelExportService.MapToExportRow(
+        waybill.IsPendingSync = false;
+        waybill.LastSyncTime = null;
+        var row = SolidWasteService.MapToExportRow(
             waybill, new Dictionary<int, string>(), new Dictionary<int, string>());
 
-        row.UploadResult.ShouldBe(string.Empty);
-        row.UploadStatus.ShouldBe(string.Empty);
+        row.UploadResult.ShouldBe("1");
+        row.UploadStatus.ShouldBe("上传成功");
         row.UploadTime.ShouldBe(string.Empty);
     }
 
@@ -68,7 +70,7 @@ public class SolidWasteExcelExportTests
             AddDate = DateTime.Now
         };
 
-        var row = SolidWasteExcelExportService.MapToExportRow(
+        var row = SolidWasteService.MapToExportRow(
             waybill, new Dictionary<int, string>(), new Dictionary<int, string>());
 
         row.VehicleNumber.ShouldBe(string.Empty);
@@ -87,7 +89,7 @@ public class SolidWasteExcelExportTests
         waybill.ProviderId = 999;
 
         var providerDict = new Dictionary<int, string> { { 1, "长巷村" } };
-        var row = SolidWasteExcelExportService.MapToExportRow(
+        var row = SolidWasteService.MapToExportRow(
             waybill, providerDict, new Dictionary<int, string>());
 
         row.ShippingUnit.ShouldBe(string.Empty);
@@ -100,7 +102,7 @@ public class SolidWasteExcelExportTests
         waybill.SetProperty("SolidWasteInfo.MaterialId", 999);
 
         var materialDict = new Dictionary<int, string> { { 10, "装修垃圾" } };
-        var row = SolidWasteExcelExportService.MapToExportRow(
+        var row = SolidWasteService.MapToExportRow(
             waybill, new Dictionary<int, string>(), materialDict);
 
         row.GoodsName.ShouldBe(string.Empty);

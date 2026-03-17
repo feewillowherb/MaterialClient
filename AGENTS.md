@@ -69,6 +69,10 @@ openspec/
 3. 帮助用户将需求转化为 Spec/Design 文档
 4. 在提案获得批准后，通过 `/opsx:apply` 实施代码
 
+## 项目约定（服务注册）
+
+- **服务注册**：优先采用 **ABP 集成式 + 隐式 + AutoConstructor**。服务实现类实现 ABP 依赖接口（如 `ITransientDependency`、`ISingletonDependency`）并标注 `[AutoConstructor]`，由 ABP 按约定扫描注册，无需在 Module 或扩展方法中显式注册。参考实现：`SoundDeviceService`（实现 `ISoundDeviceService, ISingletonDependency` + `[AutoConstructor]`）。仅在确有“集成一组服务”的跨模块需求时再考虑扩展方法集中注册。
+
 ## OpenSpec 参考
 
 - 项目上下文：`openspec/project.md`

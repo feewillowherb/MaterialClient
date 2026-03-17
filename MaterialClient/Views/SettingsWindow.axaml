@@ -270,7 +270,7 @@
                     <Border Padding="20" Margin="0,0,0,0">
                         <StackPanel Spacing="12">
 
-                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
                                   RowSpacing="12"
                                   ColumnSpacing="12">
                                 <TextBlock Text="最小称重阈值(吨):"
@@ -338,6 +338,18 @@
                                          Grid.Row="5"
                                          Grid.Column="1"
                                          Watermark="1" />
+
+                                <TextBlock Text="启用车牌重写:"
+                                           Grid.Row="6"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="160" />
+                                <ToggleSwitch IsChecked="{Binding EnablePlateRewrite}"
+                                              Grid.Row="6"
+                                              Grid.Column="1"
+                                              OnContent="启用"
+                                              OffContent="关闭" />
                             </Grid>
                         </StackPanel>
                     </Border>

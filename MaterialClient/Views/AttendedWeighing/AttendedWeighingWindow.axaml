@@ -40,7 +40,8 @@
                     <Button Content="数据管理"
                             Classes="transparent-button"
                             Foreground="White"
-                            Padding="8,4" />
+                            Padding="8,4"
+                            Click="OnDataManagementClick" />
                     <Button Content="系统设置"
                             Classes="transparent-button"
                             Foreground="White"
@@ -55,6 +56,13 @@
                             Classes="transparent-button"
                             Foreground="White"
                             Padding="8,4" />
+                    <!-- 导出按钮：仅固废模式可见 -->
+                     <Button Content="导出"
+                            Classes="transparent-button"
+                            Foreground="White"
+                            Padding="8,4"
+                            Command="{Binding ExportSolidWasteCommand}"
+                            IsVisible="{Binding IsSolidWasteMode}" />
                 </StackPanel>
 
                 <!-- Window Control Buttons -->

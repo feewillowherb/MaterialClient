@@ -28,6 +28,7 @@ using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
+using MaterialClient.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MsBox.Avalonia;
@@ -255,6 +256,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     public async Task InitializeOnFirstLoadAsync()
     {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            IsSolidWasteMode = settings.SystemSettings.DefaultWeighingMode == WeighingMode.SolidWaste;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "读取称重模式失败");
+        }
+
         await RefreshAsync();
         BackToMain();
         await SelectLatestCompletedItemAsync();
@@ -1056,6 +1067,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     [Reactive] private bool _isPrinterOnline;
 
+    [Reactive] private bool _isSolidWasteMode;
+
     [Reactive] private bool _isLprOnline;
 
     [Reactive] private string _printerName = string.Empty;
@@ -1104,6 +1117,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     public bool CanPrintSolidWaste => SelectedListItem is
     {
         ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed,
+        WeighingMode: WeighingMode.SolidWaste
+    };
+
+    public bool CanEditSolidWaste => SelectedListItem is
+    {
+        ItemType: WeighingListItemType.Waybill,
         WeighingMode: WeighingMode.SolidWaste
     };
 
@@ -1914,6 +1933,72 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     }
 
     [ReactiveCommand]
+    private async Task ExportSolidWaste()
+    {
+        // TODO: 支持标准模式导出
+        try
+        {
+            var parentWin = GetParentWindow();
+            if (parentWin == null) return;
+
+            var settings = await _settingsService.GetSettingsAsync();
+            var defaultPath = string.IsNullOrEmpty(settings.SystemSettings.ExportDefaultPath)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                : settings.SystemSettings.ExportDefaultPath;
+
+            var dialogVm = new ExportFilterDialogViewModel { SavePath = defaultPath };
+            var dialog = new ExportFilterDialog(dialogVm);
+            var result = await dialog.ShowDialog<ExportFilterDialogViewModel?>(parentWin);
+
+            if (result is not { Confirmed: true }) return;
+
+            var savePath = result.SavePath!;
+            var fileName = $"固废运单_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var outputPath = Path.Combine(savePath, fileName);
+
+            var filter = new SolidWasteExportFilter
+            {
+                StartDate = result.StartDate,
+                EndDate = result.EndDate,
+                PlateNumber = string.IsNullOrWhiteSpace(result.PlateNumber) ? null : result.PlateNumber,
+                GoodsName = null,
+                ProviderName = null
+            };
+
+            var exportService = _serviceProvider.GetRequiredService<IExcelExportService>();
+            var exportResult = await exportService.ExportSolidWasteAsync(filter, outputPath);
+
+            if (exportResult.Success)
+            {
+                settings.SystemSettings.ExportDefaultPath = savePath;
+                await _settingsService.SaveSettingsAsync(settings);
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (parentWin is AttendedWeighingWindow attendedWindow
+                    && attendedWindow.NotificationManager != null)
+                {
+                    if (exportResult.Success)
+                        attendedWindow.NotificationManager.Show(
+                            new Avalonia.Controls.Notifications.Notification("导出成功",
+                                $"已导出 {exportResult.RowCount} 条运单到 {fileName}",
+                                NotificationType.Success));
+                    else
+                        attendedWindow.NotificationManager.Show(
+                            new Avalonia.Controls.Notifications.Notification("导出失败",
+                                "导出过程中发生错误，请重试",
+                                NotificationType.Error));
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "固废运单导出失败");
+        }
+    }
+
+    [ReactiveCommand]
     private void OpenImageViewer(string? imagePath)
     {
         if (string.IsNullOrEmpty(imagePath))
@@ -2107,6 +2192,40 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         SearchPlateNumber = null;
         CurrentPage = 1; // 重置到第一页
         await RefreshAsync();
+    }
+
+    [ReactiveCommand]
+    private async Task EditSolidWasteAsync()
+    {
+        if (!CanEditSolidWaste || SelectedListItem == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // 将当前固废运单状态设置为 FirstWeight（首磅）
+            await _weighingMatchingService.SetWaybillFirstWeightAsync(SelectedListItem.Id);
+
+            // 状态更新后刷新列表并保持在 MainView，以便用户查看最新结果
+            await RefreshAsync();
+
+            // 尝试重新定位到当前运单
+            var updatedItem = ListItems.FirstOrDefault(x =>
+                x.ItemType == WeighingListItemType.Waybill && x.Id == SelectedListItem.Id);
+            if (updatedItem != null)
+            {
+                SelectedListItem = updatedItem;
+                SelectViewForItem(updatedItem);
+            }
+
+            await ShowMessageBoxAsync("固废运单状态已更新为首磅。");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "更新固废运单状态失败。WaybillId: {WaybillId}", SelectedListItem.Id);
+            await ShowMessageBoxAsync($"更新固废运单状态失败：{ex.Message}");
+        }
     }
 
     #endregion

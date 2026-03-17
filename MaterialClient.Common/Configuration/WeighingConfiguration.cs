@@ -36,6 +36,11 @@ public class WeighingConfiguration
     public decimal MinWeightDiff { get; set; } = 1m;
 
     /// <summary>
+    ///     是否启用下磅时车牌重写（用最频繁识别的车牌覆盖上磅车牌）
+    /// </summary>
+    public bool EnablePlateRewrite { get; set; } = true;
+
+    /// <summary>
     ///     判断配置是否有效
     ///     验证所有数值参数是否在合理范围内
     /// </summary>

@@ -1,0 +1,30 @@
+---
+description: OpenSpec 工作流约束 — 禁止在非 apply 流程中修改源代码
+alwaysApply: true
+---
+
+# OpenSpec Code Guard
+
+## 核心规则
+
+**Agent 默认禁止直接修改任何源代码文件。** 所有代码变更必须通过 OpenSpec apply 工作流（`/openspec-apply-change`）驱动。
+
+## 允许修改的文件
+
+- `openspec/**/*.md`, `openspec/**/*.yaml` — OpenSpec 产物
+- `.cursor/rules/**` — Cursor 规则
+
+## 禁止修改的文件（非 apply 模式）
+
+- `**/*.cs`, `**/*.axaml`, `**/*.axaml.cs`, `**/*.csproj`, `**/*.sln`
+- `**/*.json`, `**/*.props`, `**/*.targets`
+
+## 当用户直接要求修改代码时
+
+1. 提醒：当前项目要求所有变更通过 OpenSpec 工作流驱动
+2. 建议：使用 `/openspec-propose` 创建变更提案，或 `/openspec-explore` 先探索
+3. 在提案就绪后，通过 `/openspec-apply-change` 实施代码
+
+## 例外
+
+当 Agent 正在执行 **openspec-apply-change** skill 时，源代码修改限制解除。判断依据：当前消息或会话中用户通过 skill 调用了 `openspec-apply-change`。

@@ -70,6 +70,13 @@ public interface IWeighingMatchingService
     Task CompleteOrderAsync(long waybillId);
 
     /// <summary>
+    ///     将运单状态设置为 FirstWeight（仅更新状态，不修改重量等其他字段）
+    /// </summary>
+    /// <param name="waybillId">运单ID</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task SetWaybillFirstWeightAsync(long waybillId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     ///     尝试计算物料重量（如果有必要的参数）
     /// </summary>
     /// <param name="waybill">运单实体</param>
@@ -721,6 +728,34 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         {
             _recommendPlateNumberService.AddPlateNumberToCache(waybill.PlateNumber);
         }
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task SetWaybillFirstWeightAsync(long waybillId, CancellationToken cancellationToken = default)
+    {
+        var waybill = await _waybillRepository.FindAsync(waybillId, cancellationToken: cancellationToken);
+
+        if (waybill == null)
+        {
+            _logger?.LogWarning("SetWaybillFirstWeightAsync: Waybill with ID {WaybillId} not found.", waybillId);
+            return;
+        }
+
+        if (waybill.OrderType == OrderTypeEnum.FirstWeight)
+        {
+            _logger?.LogDebug("SetWaybillFirstWeightAsync: Waybill {WaybillId} already in FirstWeight state.",
+                waybillId);
+            return;
+        }
+
+        waybill.OrderTypeFirstWeight();
+        waybill.SetPendingSync();
+
+        await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
+
+        _logger?.LogInformation("SetWaybillFirstWeightAsync: Waybill {WaybillId} OrderType set to FirstWeight.",
+            waybillId);
     }
 
     /// <inheritdoc />

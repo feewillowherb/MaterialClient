@@ -48,4 +48,9 @@ public class SystemSettings
     ///     Selected printer name for printing tickets
     /// </summary>
     public string SelectedPrinterName { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     Default export directory path (remembered after successful export)
+    /// </summary>
+    public string ExportDefaultPath { get; set; } = string.Empty;
 }

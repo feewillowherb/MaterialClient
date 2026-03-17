@@ -122,6 +122,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private int _stabilityCheckIntervalMs = 200;
     [Reactive] private int _maxIntervalMinutes = 300;
     [Reactive] private decimal _minWeightDiff = 1m;
+    [Reactive] private bool _enablePlateRewrite = true;
 
     // Sound device settings
     [Reactive] private bool _soundDeviceEnabled = false;
@@ -250,7 +251,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     StabilityWindowMs = StabilityWindowMs,
                     StabilityCheckIntervalMs = StabilityCheckIntervalMs,
                     MaxIntervalMinutes = MaxIntervalMinutes,
-                    MinWeightDiff = MinWeightDiff
+                    MinWeightDiff = MinWeightDiff,
+                    EnablePlateRewrite = EnablePlateRewrite
                 },
                 new SoundDeviceSettings
                 {
@@ -684,6 +686,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             StabilityCheckIntervalMs = settings.WeighingConfiguration.StabilityCheckIntervalMs;
             MaxIntervalMinutes = settings.WeighingConfiguration.MaxIntervalMinutes;
             MinWeightDiff = settings.WeighingConfiguration.MinWeightDiff;
+            EnablePlateRewrite = settings.WeighingConfiguration.EnablePlateRewrite;
 
             // Load camera configs
             CameraConfigs.Clear();
