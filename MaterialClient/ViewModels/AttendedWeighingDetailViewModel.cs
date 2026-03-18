@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -123,6 +124,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     }
 
     #region 属性
+
+    public sealed record ConfirmTextRequest(string Title, string Message, string InitialValue);
+
+    /// <summary>
+    /// 由 View 层注册处理器并弹出确认对话框。
+    /// 返回 null 表示取消；返回非空字符串表示确认后的输入。
+    /// </summary>
+    public Interaction<ConfirmTextRequest, string?> ConfirmTextInteraction { get; } = new();
 
     [Reactive] private long _weighingRecordId;
 
@@ -350,7 +359,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize, selectedIds),
             getSelectedId: m => m.Id,
             createNewItemFunc: async name =>
-                (Material?)await _materialService.CreateMaterialAsync(name));
+                (Material?)await _materialService.CreateMaterialAsync(name),
+            confirmNewNameFunc: proposed =>
+                ConfirmTextInteraction.Handle(new ConfirmTextRequest(
+                        Title: "确认新增材料",
+                        Message: "将新增一条材料，请确认名称：",
+                        InitialValue: proposed))
+                    .ToTask());
 
         _ = MaterialsPopupViewModel.InitializeAsync();
 
@@ -447,7 +462,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     ContactName = created.ContectName,
                     ContactPhone = created.ContectPhone
                 };
-            });
+            },
+            confirmNewNameFunc: proposed =>
+                ConfirmTextInteraction.Handle(new ConfirmTextRequest(
+                        Title: "确认新增供应商",
+                        Message: "将新增一条供应商，请确认名称：",
+                        InitialValue: proposed))
+                    .ToTask());
 
         _ = ProvidersPopupViewModel.InitializeAsync();
 
