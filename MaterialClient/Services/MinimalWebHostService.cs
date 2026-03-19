@@ -232,8 +232,8 @@ public class MinimalWebHostService : IAsyncDisposable
                     });
                 }
 
-                var scaleService = _sharedServiceProvider.GetRequiredService<ITruckScaleWeightService>();
-                scaleService.SetWeight(request.Weight);
+                var preprocessor = _sharedServiceProvider.GetRequiredService<IScaleTestWeightPreprocessorService>();
+                preprocessor.Enqueue(request.Weight);
 
                 logger.LogInformation("地磅测试模式设置重量: {Weight} t", request.Weight);
 

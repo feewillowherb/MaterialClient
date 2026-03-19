@@ -13,6 +13,7 @@
 |------|---------|
 | `MaterialClient.Common/Entities/Enums/ScaleType.cs` | 新增 `TestMode` 枚举值 |
 | `MaterialClient.Common/Services/Hardware/TruckScaleWeightService.cs` | 处理测试模式的初始化逻辑 |
+| `MaterialClient.Common/Services/Hardware/ScaleTestWeightPreprocessorService.cs` | 新增测试数据预处理（队列+200ms smoothstep 平滑过渡+稳定保持） |
 | `MaterialClient/Services/MinimalWebHostService.cs` | 新增设置重量的 POST API 端点 |
 | `MaterialClient/Converters/ScaleTypeConverter.cs` | 添加"测试模式"显示文本 |
 | `MaterialClient/ViewModels/SettingsWindowViewModel.cs` | ScaleTypeOptions 添加 TestMode 选项 |
@@ -52,7 +53,7 @@
 1. 验证重量值为非负数
 2. 获取当前设置，检查是否为测试模式
 3. 非测试模式返回错误
-4. 测试模式下调用 `ITruckScaleWeightService.SetWeight()` 设置重量
+4. 测试模式下调用 `IScaleTestWeightPreprocessorService.Enqueue()` 入队目标重量，由中间层在每 200ms 推送 smoothstep 平滑过渡值（并在到达 B 后保持稳定窗口）
 5. 记录操作日志
 
 ### 3.4 根路由更新
@@ -68,9 +69,11 @@
          ▼
  MinimalWebHostService
          │
-         │  获取 ITruckScaleWeightService
+         │  获取 IScaleTestWeightPreprocessorService
          ▼
- TruckScaleWeightService.SetWeight()
+ScaleTestWeightPreprocessorService（200ms tick）
+         │
+         │  计算 smoothstep(A->B) 并多次调用 TruckScaleWeightService.SetWeight()
          │
          │  Rx Stream (WeightUpdates)
          ▼
@@ -91,7 +94,7 @@
 | 测试场景 | 预期结果 |
 |----------|----------|
 | 切换到测试模式 | 串口不被初始化，`IsOnline` 返回 `true` |
-| API 设置重量 | POST 请求成功，重量值被正确设置 |
+| API 设置重量 | POST 请求成功，后续会按 200ms 多次推送重量更新：先 smoothstep 平滑过渡到 B，再保持稳定窗口 |
 | Rx 流更新 | AttendedWeighingService 收到重量更新通知 |
 | 非测试模式调用 API | 返回错误，提示"当前不是测试模式" |
 | 服务重启 | 重量重置为 0 |
@@ -105,3 +108,4 @@
 - [ ] TruckScaleWeightService.IsOnline 处理测试模式
 - [ ] MinimalWebHostService 添加 `/api/scale/weight` 端点
 - [ ] 更新根路由端点列表
+- [ ] 新增 `ScaleTestWeightPreprocessorService`（队列+200ms tick+smoothstep+稳定保持）
