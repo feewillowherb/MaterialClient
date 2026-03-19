@@ -60,13 +60,18 @@
                      Text="{Binding PlateNumber}"
                      VerticalContentAlignment="Center" />
 
-            <!-- <TextBox Grid.Column="1" -->
-            <!--          Margin="5" -->
-            <!--          Width="110" -->
-            <!--          Height="30" -->
-            <!--          Watermark="货名" -->
-            <!--          Text="{Binding GoodsName}" -->
-            <!--          VerticalContentAlignment="Center" /> -->
+            <ComboBox Grid.Column="1"
+                      Margin="5"
+                      Width="110"
+                      Height="30"
+                      ItemsSource="{x:Static viewModels:DataManagementDialogViewModel.WeighingTypeOptions}"
+                      SelectedItem="{Binding SelectedWeighingType}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:WeighingTypeFilterOption">
+                  <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
 
             <TextBox Grid.Column="2"
                      Margin="5"
@@ -132,6 +137,7 @@
           <DataGrid.Columns>
             <DataGridTextColumn Binding="{Binding SerialNumber}" Header="流水号" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding VehicleNumber}" Header="车  号" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding WeighingType}" Header="称重类型" MinWidth="80" />
             <DataGridTextColumn Binding="{Binding ShippingUnit}" Header="发货单位" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding ReceivingUnit}" Header="收货单位" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding GoodsName}" Header="货  名" MinWidth="100" />

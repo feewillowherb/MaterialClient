@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
@@ -12,12 +14,21 @@ using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.ViewModels;
 
+public record WeighingTypeFilterOption(string DisplayName, DeliveryType? Value);
+
 public partial class DataManagementDialogViewModel : ViewModelBase, ITransientDependency
 {
     private readonly ISolidWasteService _solidWasteService;
     private readonly IExcelExportService _exportService;
     private Func<Task<string?>>? _browseFolderAsync;
     private Action<string, string, bool>? _notify;
+
+    public static IReadOnlyList<WeighingTypeFilterOption> WeighingTypeOptions { get; } =
+    [
+        new WeighingTypeFilterOption("全部", null),
+        new WeighingTypeFilterOption("收料", DeliveryType.Receiving),
+        new WeighingTypeFilterOption("发料", DeliveryType.Sending)
+    ];
 
     public DataManagementDialogViewModel(
         ISolidWasteService solidWasteService,
@@ -30,6 +41,7 @@ public partial class DataManagementDialogViewModel : ViewModelBase, ITransientDe
         Records = new ObservableCollection<SolidWasteExportRow>();
         CurrentPage = 1;
         TotalPages = 1;
+        SelectedWeighingType = WeighingTypeOptions[0];
 
         LoadDataCommand = ReactiveCommand.CreateFromTask(LoadDataAsync);
     }
@@ -45,6 +57,7 @@ public partial class DataManagementDialogViewModel : ViewModelBase, ITransientDe
     [Reactive] public string PlateNumber { get; set; } = string.Empty;
     [Reactive] public string GoodsName { get; set; } = string.Empty;
     [Reactive] public string ProviderName { get; set; } = string.Empty;
+    [Reactive] public WeighingTypeFilterOption? SelectedWeighingType { get; set; }
 
     public int PageSize => DefaultPageSize;
 
@@ -126,7 +139,8 @@ public partial class DataManagementDialogViewModel : ViewModelBase, ITransientDe
             EndDate = EndDate,
             PlateNumber = string.IsNullOrWhiteSpace(PlateNumber) ? null : PlateNumber,
             GoodsName = string.IsNullOrWhiteSpace(GoodsName) ? null : GoodsName,
-            ProviderName = string.IsNullOrWhiteSpace(ProviderName) ? null : ProviderName
+            ProviderName = string.IsNullOrWhiteSpace(ProviderName) ? null : ProviderName,
+            WeighingType = SelectedWeighingType?.Value
         };
     }
 
@@ -136,6 +150,7 @@ public partial class DataManagementDialogViewModel : ViewModelBase, ITransientDe
         {
             SerialNumber = "sl-20251118153228-001",
             VehicleNumber = "浙A12345",
+            WeighingType = "收料",
             ShippingUnit = "测试供应商",
             ReceivingUnit = "东部资源化处置点",
             GoodsName = "装修垃圾",

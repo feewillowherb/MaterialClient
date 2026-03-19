@@ -1,12 +1,13 @@
 namespace MaterialClient.Common.Models;
 
 /// <summary>
-///     固废运单导出行 DTO，与 sample.csv 模板 17 列一一对应
+///     固废运单导出行 DTO，与 sample.csv 模板 18 列一一对应
 /// </summary>
 public class SolidWasteExportRow
 {
     public string SerialNumber { get; set; } = string.Empty;
     public string VehicleNumber { get; set; } = string.Empty;
+    public string WeighingType { get; set; } = string.Empty;
     public string ShippingUnit { get; set; } = string.Empty;
     public string ReceivingUnit { get; set; } = string.Empty;
     public string GoodsName { get; set; } = string.Empty;
