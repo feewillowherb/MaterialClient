@@ -78,7 +78,7 @@
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="进场时间：" VerticalAlignment="Center"
                                FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
-                    <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:MM-dd HH:mm}'}"
+                    <TextBlock Text="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
                                VerticalAlignment="Center" FontSize="12" Foreground="#333" />
                 </StackPanel>
 
@@ -86,7 +86,7 @@
                             VerticalAlignment="Center" Margin="0,5">
                     <TextBlock Text="出场时间：" VerticalAlignment="Center"
                                FontSize="12" Foreground="#666" Width="60" TextAlignment="Right" />
-                    <TextBlock Text="{Binding OutTime, StringFormat='{}{0:MM-dd HH:mm}'}"
+                    <TextBlock Text="{Binding OutTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
                                VerticalAlignment="Center" FontSize="12" Foreground="#333" />
                 </StackPanel>
 

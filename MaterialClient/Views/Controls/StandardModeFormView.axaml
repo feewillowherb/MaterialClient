@@ -20,6 +20,38 @@
                 Padding="10"
                 Margin="0,0,0,10">
             <StackPanel Spacing="8">
+                <!-- 称重类型（Waybill 仅显示不可编辑） -->
+                <Grid ColumnDefinitions="50,*">
+                    <Label Content="称重类型"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           FontSize="12"
+                           Foreground="#333333"
+                           Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1"
+                              Height="20"
+                              FontSize="12"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding DeliveryTypeOptions}"
+                              SelectedValue="{Binding SelectedDeliveryType}"
+                              SelectedValueBinding="{Binding Value}"
+                              IsVisible="{Binding IsWeighingRecord}"
+                              Margin="0,5,0,5">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayName}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding DeliveryTypeDisplayText}"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="#333333"
+                               IsVisible="{Binding !IsWeighingRecord}"
+                               Margin="0,5,0,5" />
+                </Grid>
+
                 <!-- 车牌号 -->
                 <Grid ColumnDefinitions="50,*">
                     <Label Content="车牌号"
@@ -34,30 +66,6 @@
                              TextAlignment="Left"
                              FontSize="12"
                              Margin="0,5,0,5" />
-                </Grid>
-
-                <!-- 收发类型（仅 WeighingRecord 可编辑） -->
-                <Grid ColumnDefinitions="50,*" IsVisible="{Binding IsWeighingRecord}">
-                    <Label Content="称重类型"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Left"
-                           FontSize="12"
-                           Foreground="#333333"
-                           Margin="0,0,8,0" />
-                    <ComboBox Grid.Column="1"
-                              Height="20"
-                              FontSize="12"
-                              HorizontalAlignment="Stretch"
-                              ItemsSource="{Binding DeliveryTypeOptions}"
-                              SelectedValue="{Binding SelectedDeliveryType}"
-                              SelectedValueBinding="{Binding Value}"
-                              Margin="0,5,0,5">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding DisplayName}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
                 </Grid>
 
                 <!-- 供应商 -->

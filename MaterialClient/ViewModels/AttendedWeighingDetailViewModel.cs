@@ -88,6 +88,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 if (_listItem == null) return;
 
                 _listItem.DeliveryType = deliveryType;
+                this.RaisePropertyChanged(nameof(DeliveryTypeDisplayText));
                 this.RaisePropertyChanged(nameof(ProviderLabelText));
                 this.RaisePropertyChanged(nameof(DeliveryTypeTitleText));
                 this.RaisePropertyChanged(nameof(CompleteButtonText));
@@ -269,6 +270,12 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         new(DeliveryType.Receiving, "收料"),
         new(DeliveryType.Sending, "发料")
     ];
+
+    public string DeliveryTypeDisplayText => (_listItem?.DeliveryType ?? DeliveryType.Receiving) switch
+    {
+        DeliveryType.Sending => "发料",
+        _ => "收料"
+    };
 
     #endregion
 
@@ -594,6 +601,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
         // 通知 CompleteButtonText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(CompleteButtonText));
+        this.RaisePropertyChanged(nameof(DeliveryTypeDisplayText));
         this.RaisePropertyChanged(nameof(IsWeighingRecord));
 
         // 保存临时拍照文件路径
