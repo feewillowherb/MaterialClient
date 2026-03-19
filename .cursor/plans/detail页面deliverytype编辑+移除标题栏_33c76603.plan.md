@@ -4,19 +4,19 @@ overview: 在详情页为 WeighingRecord 增加可编辑的 DeliveryType 下拉�
 todos:
   - id: vm-deliverytype-state
     content: 在 AttendedWeighingDetailViewModel 增加 IsWeighingRecord/SelectedDeliveryType/Options，并在变更时联动更新依赖显示字段
-    status: pending
+    status: completed
   - id: ui-deliverytype-dropdown
     content: 在 StandardModeFormView.axaml 与 SolidWasteModeFormView.axaml 增加 DeliveryType 下拉，并仅 WeighingRecord 可见
-    status: pending
+    status: completed
   - id: persist-deliverytype-solidwaste
     content: 扩展 UpdateSolidWasteModeInput 并在 WeighingMatchingService.UpdateSolidWasteModeAsync(WeighingRecord) 写入 DeliveryType；ViewModel 保存时传入
-    status: pending
+    status: completed
   - id: remove-titlebar-shift-rows
     content: 删除 AttendedWeighingDetailView.axaml Title Bar，并调整 Grid 行号让内容整体上移
-    status: pending
+    status: completed
   - id: smoke-check
     content: 本地启动后手工验证：WeighingRecord/Waybill 显示差异、两模式保存落库、布局上移无错位
-    status: pending
+    status: completed
 isProject: false
 ---
 

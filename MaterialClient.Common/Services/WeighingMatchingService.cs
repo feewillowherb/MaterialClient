@@ -423,6 +423,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             record.WeighingMode = WeighingMode.SolidWaste;
             if (input.PlateNumber != null) record.PlateNumber = input.PlateNumber;
             if (input.ProviderId.HasValue) record.ProviderId = input.ProviderId;
+            if (input.DeliveryType.HasValue) record.DeliveryType = input.DeliveryType;
 
             var materials = record.Materials;
             var firstMaterial = materials.FirstOrDefault();
@@ -1371,7 +1372,8 @@ public record UpdateSolidWasteModeInput(
     string? Street,
     string? SolidWasteOrderNumber,
     string? Remark,
-    string? Shipper
+    string? Shipper,
+    DeliveryType? DeliveryType
 );
 
 public record UpdateListItemInput(
