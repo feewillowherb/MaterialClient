@@ -1382,13 +1382,51 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         OutWeightInfo = null;
     }
 
-    [ReactiveCommand]
-    private Task OpenDetail(WeighingListItemDto? item)
+    /// <summary>
+    ///     从数据库重新加载列表项
+    /// </summary>
+    private async Task<WeighingListItemDto?> ReloadItemFromDatabaseAsync(long itemId, WeighingListItemType itemType)
     {
-        if (item == null) return Task.CompletedTask;
+        try
+        {
+            var item = await _weighingMatchingService.GetListItemByIdAsync(itemId, itemType);
+            if (item != null)
+            {
+                Logger?.LogInformation("ReloadItemFromDatabaseAsync: Successfully reloaded item {ItemId}", itemId);
+            }
+            else
+            {
+                Logger?.LogWarning("ReloadItemFromDatabaseAsync: Item {ItemId} not found in database", itemId);
+            }
+
+            return item;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "ReloadItemFromDatabaseAsync: Failed to reload item {ItemId}", itemId);
+            return null;
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task OpenDetail(WeighingListItemDto? item)
+    {
+        if (item == null) return;
 
         try
         {
+            
+            var reloadedItem = await ReloadItemFromDatabaseAsync(item.Id, item.ItemType);
+            if (reloadedItem == null)
+            {
+                Logger?.LogWarning("OpenDetailAsync: Failed to reload item from database, using cached item");
+            }
+            else
+            {
+                item = reloadedItem;
+            }
+            
+            
             DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
             DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
@@ -1405,8 +1443,49 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             Logger?.LogError(ex, "打开详情视图失败");
         }
+    }
 
-        return Task.CompletedTask;
+    /// <summary>
+    ///     打开详情视图（支持从数据库重新加载数据）
+    /// </summary>
+    /// <param name="item">列表项</param>
+    /// <param name="reloadFromDb">是否从数据库重新加载</param>
+    private async Task OpenDetailAsync(WeighingListItemDto? item, bool reloadFromDb = false)
+    {
+        if (item == null) return;
+
+        try
+        {
+            // 如果需要从数据库重新加载
+            if (reloadFromDb)
+            {
+                var reloadedItem = await ReloadItemFromDatabaseAsync(item.Id, item.ItemType);
+                if (reloadedItem == null)
+                {
+                    Logger?.LogWarning("OpenDetailAsync: Failed to reload item from database, using cached item");
+                }
+                else
+                {
+                    item = reloadedItem;
+                }
+            }
+
+            DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
+            DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
+
+            DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
+            DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
+            DetailViewModel.CloseRequested += OnDetailCloseRequested;
+            DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
+            DetailViewModel.CompleteCompleted += OnDetailCompleteCompleted;
+            DetailViewModel.ManualMatchSaveCompleted += OnDetailManualMatchSaveCompleted;
+
+            IsShowingMainView = false;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "打开详情视图失败");
+        }
     }
 
     [ReactiveCommand]

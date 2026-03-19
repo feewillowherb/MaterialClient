@@ -57,6 +57,14 @@ public interface IWeighingMatchingService
     Task<PagedResultDto<WeighingListItemDto>> GetListItemsAsync(GetWeighingListItemsInput input);
 
     /// <summary>
+    ///     根据 ID 和类型获取单个列表项
+    /// </summary>
+    /// <param name="id">记录ID</param>
+    /// <param name="itemType">数据来源类型（WeighingRecord 或 Waybill）</param>
+    /// <returns>列表项 DTO，如果未找到则返回 null</returns>
+    Task<WeighingListItemDto?> GetListItemByIdAsync(long id, WeighingListItemType itemType);
+
+    /// <summary>
     ///     自动匹配称重记录（同时尝试收料和发料两种类型）
     /// </summary>
     /// <param name="weighingRecordId">称重记录ID</param>
@@ -670,6 +678,91 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         await PopulateComputedFieldsAsync(items);
 
         return new PagedResultDto<WeighingListItemDto>(totalCount, items);
+    }
+
+    /// <summary>
+    ///     根据 ID 和类型获取单个列表项
+    /// </summary>
+    [UnitOfWork]
+    public async Task<WeighingListItemDto?> GetListItemByIdAsync(long id, WeighingListItemType itemType)
+    {
+        WeighingListItemDto? result = null;
+
+        // 收集需要查询的 MaterialId 和 MaterialUnitId
+        var materialIds = new HashSet<int>();
+        var materialUnitIds = new HashSet<int>();
+
+        if (itemType == WeighingListItemType.WeighingRecord)
+        {
+            var recordQuery = await _weighingRecordRepository.GetQueryableAsync();
+            var record = await recordQuery
+                .Where(r => r.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (record == null)
+            {
+                _logger?.LogWarning("WeighingRecord {RecordId} not found", id);
+                return null;
+            }
+
+            // 收集物料信息
+            foreach (var material in record.Materials)
+            {
+                if (material.MaterialId.HasValue)
+                    materialIds.Add(material.MaterialId.Value);
+                if (material.MaterialUnitId.HasValue)
+                    materialUnitIds.Add(material.MaterialUnitId.Value);
+            }
+
+            // 批量查询 Material 和 MaterialUnit
+            var materialsDict = materialIds.Count > 0
+                ? (await _materialRepository.GetListAsync(m => materialIds.Contains(m.Id))).ToDictionary(m => m.Id)
+                : new Dictionary<int, Material>();
+
+            var materialUnitsDict = materialUnitIds.Count > 0
+                ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
+                : new Dictionary<int, MaterialUnit>();
+
+            result = WeighingListItemDto.FromWeighingRecord(record, materialsDict, materialUnitsDict);
+        }
+        else if (itemType == WeighingListItemType.Waybill)
+        {
+            var waybillQuery = await _waybillRepository.GetQueryableAsync();
+            var waybill = await waybillQuery
+                .Where(w => w.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (waybill == null)
+            {
+                _logger?.LogWarning("Waybill {WaybillId} not found", id);
+                return null;
+            }
+
+            // 收集物料信息
+            if (waybill.MaterialId.HasValue)
+                materialIds.Add(waybill.MaterialId.Value);
+            if (waybill.MaterialUnitId.HasValue)
+                materialUnitIds.Add(waybill.MaterialUnitId.Value);
+
+            // 批量查询 Material 和 MaterialUnit
+            var materialsDict = materialIds.Count > 0
+                ? (await _materialRepository.GetListAsync(m => materialIds.Contains(m.Id))).ToDictionary(m => m.Id)
+                : new Dictionary<int, Material>();
+
+            var materialUnitsDict = materialUnitIds.Count > 0
+                ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
+                : new Dictionary<int, MaterialUnit>();
+
+            result = WeighingListItemDto.FromWaybill(waybill, materialsDict, materialUnitsDict);
+        }
+
+        if (result != null)
+        {
+            // 填充预计算字段
+            await PopulateComputedFieldsAsync(new List<WeighingListItemDto> { result });
+        }
+
+        return result;
     }
 
     /// <summary>
