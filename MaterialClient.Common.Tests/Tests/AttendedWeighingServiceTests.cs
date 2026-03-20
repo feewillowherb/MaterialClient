@@ -351,6 +351,56 @@ public class AttendedWeighingServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetMostFrequentPlateNumber_Should_PrioritizeLastUpdateTime_WhenEnableLatestPlateNumberEnabled()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enableLatestPlateNumber: true);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Act - A count is higher, but B is newer
+        SendPlateRecognition("京A12345");
+        SendPlateRecognition("京A12345");
+        await Task.Delay(80);
+        SendPlateRecognition("粤B67890");
+        await Task.Delay(200);
+
+        // Assert
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("粤B67890");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetMostFrequentPlateNumber_Should_PrioritizeLastUpdateTime_InLowPriorityFallback_WhenEnableLatestPlateNumberEnabled()
+    {
+        // Arrange - Mark blue/yellow as low-priority so fallback path is used
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(
+            new[] { LprAllInOneColorType.Blue, LprAllInOneColorType.Yellow },
+            enableLatestPlateNumber: true);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Act - A count is higher, but B is newer
+        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
+        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
+        await Task.Delay(80);
+        SendPlateRecognition("粤B67890", LprAllInOneColorType.Yellow);
+        await Task.Delay(200);
+
+        // Assert
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("粤B67890");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
     public async Task OnPlateNumberRecognized_Should_TriggerMessageBusNotification()
     {
         // Arrange
@@ -1377,26 +1427,31 @@ public class AttendedWeighingServiceTests : IDisposable
         });
     }
 
-    private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithWeightSubject()
+    private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithWeightSubject(
+        bool enableLatestPlateNumber = false)
     {
         var weightSubject = new Subject<decimal>();
         var mockWeightService = Substitute.For<ITruckScaleWeightService>();
         mockWeightService.WeightUpdates.Returns(weightSubject.AsObservable());
         mockWeightService.IsOnline.Returns(true);
 
-        var service = CreateAttendedWeighingService(mockWeightService);
+        var service = CreateAttendedWeighingService(mockWeightService, enableLatestPlateNumber: enableLatestPlateNumber);
         return (service, weightSubject);
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithLowPriorityColors(
-        LprAllInOneColorType[] lowPriorityColors)
+        LprAllInOneColorType[] lowPriorityColors,
+        bool enableLatestPlateNumber = false)
     {
         var weightSubject = new Subject<decimal>();
         var mockWeightService = Substitute.For<ITruckScaleWeightService>();
         mockWeightService.WeightUpdates.Returns(weightSubject.AsObservable());
         mockWeightService.IsOnline.Returns(true);
 
-        var service = CreateAttendedWeighingService(mockWeightService, lowPriorityColors: lowPriorityColors);
+        var service = CreateAttendedWeighingService(
+            mockWeightService,
+            lowPriorityColors: lowPriorityColors,
+            enableLatestPlateNumber: enableLatestPlateNumber);
         return (service, weightSubject);
     }
 
@@ -1457,7 +1512,8 @@ public class AttendedWeighingServiceTests : IDisposable
         IRepository<WeighingRecord, long>? mockRepo = null,
         IUnitOfWorkManager? mockUowManager = null,
         IHikvisionService? mockHikvision = null,
-        LprAllInOneColorType[]? lowPriorityColors = null)
+        LprAllInOneColorType[]? lowPriorityColors = null,
+        bool enableLatestPlateNumber = false)
     {
         var configData = new Dictionary<string, string?>();
         if (lowPriorityColors != null && lowPriorityColors.Length > 0)
@@ -1481,7 +1537,8 @@ public class AttendedWeighingServiceTests : IDisposable
                 MinWeightThreshold = 0.5m,
                 WeightStabilityThreshold = 0.05m,
                 StabilityWindowMs = 3000,
-                StabilityCheckIntervalMs = 200
+                StabilityCheckIntervalMs = 200,
+                EnableLatestPlateNumber = enableLatestPlateNumber
             },
             new SoundDeviceSettings());
         settingsService.GetSettingsAsync().Returns(Task.FromResult(settingsEntity));
