@@ -76,6 +76,9 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             queryable = queryable.Where(w =>
                 w.PlateNumber != null && w.PlateNumber.Contains(filter.PlateNumber));
 
+        if (filter.WeighingType.HasValue)
+            queryable = queryable.Where(w => w.DeliveryType == filter.WeighingType.Value);
+
         var waybills = await queryable.OrderBy(w => w.AddDate).ToListAsync();
 
         if (!string.IsNullOrWhiteSpace(filter.ProviderName))
@@ -154,10 +157,18 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             ? mn
             : string.Empty;
 
+        var weighingType = waybill.DeliveryType switch
+        {
+            DeliveryType.Receiving => "收料",
+            DeliveryType.Sending => "发料",
+            _ => string.Empty
+        };
+
         return new SolidWasteExportRow
         {
             SerialNumber = waybill.OrderNo ?? string.Empty,
             VehicleNumber = waybill.PlateNumber ?? string.Empty,
+            WeighingType = weighingType,
             ShippingUnit = providerName,
             ReceivingUnit = waybill.GetShipper(),
             GoodsName = goodsName,

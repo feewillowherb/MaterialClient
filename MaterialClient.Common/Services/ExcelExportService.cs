@@ -25,7 +25,7 @@ public partial class ExcelExportService : IExcelExportService, ITransientDepende
 
     private static readonly string[] SolidWasteHeaders =
     [
-        "流水号", "车  号", "发货单位", "收货单位", "货  名",
+        "流水号", "车  号", "称重类型", "发货单位", "收货单位", "货  名",
         "毛  重", "皮  重", "净  重", "备 注", "毛重时间",
         "皮重时间", "所属街道", "类型", "联单编号",
         "上传结果", "上传状态", "上传时间"
@@ -71,6 +71,7 @@ public partial class ExcelExportService : IExcelExportService, ITransientDepende
         [
             row.SerialNumber,
             row.VehicleNumber,
+            row.WeighingType,
             row.ShippingUnit,
             row.ReceivingUnit,
             row.GoodsName,
@@ -91,12 +92,12 @@ public partial class ExcelExportService : IExcelExportService, ITransientDepende
 
     private static object?[]? GetSummaryRow(IReadOnlyList<SolidWasteExportRow> rows)
     {
-        // 汇总行：第 1 列为总数，第 6/7/8 列为毛重/皮重/净重之和，其余列为空（共 17 列）
-        var arr = new object?[17];
+        // 汇总行：第 1 列为总数，第 7/8/9 列为毛重/皮重/净重之和，其余列为空（共 18 列）
+        var arr = new object?[18];
         arr[0] = rows.Count;
-        arr[5] = rows.Sum(r => r.GrossWeight ?? 0);
-        arr[6] = rows.Sum(r => r.TareWeight ?? 0);
-        arr[7] = rows.Sum(r => r.NetWeight ?? 0);
+        arr[6] = rows.Sum(r => r.GrossWeight ?? 0);
+        arr[7] = rows.Sum(r => r.TareWeight ?? 0);
+        arr[8] = rows.Sum(r => r.NetWeight ?? 0);
         return arr;
     }
 

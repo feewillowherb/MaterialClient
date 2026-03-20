@@ -100,6 +100,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
     private readonly Func<T, int?>? _getSelectedId;
     private readonly Func<Task<IReadOnlyList<T>>>? _loadAllFunc;
     private readonly Func<string, Task<T?>>? _createNewItemFunc;
+    private readonly Func<string, Task<string?>>? _confirmNewNameFunc;
     private readonly bool _allowAddNew;
 
     private IReadOnlyList<T> _allItems = Array.Empty<T>();
@@ -136,7 +137,8 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         Func<Task<IReadOnlyList<T>>>? loadAllFunc = null,
         Func<string, Task<T?>>? createNewItemFunc = null,
         int pageSize = DefaultPageSize,
-        bool allowAddNew = true)
+        bool allowAddNew = true,
+        Func<string, Task<string?>>? confirmNewNameFunc = null)
         : base(logger)
     {
         _pagingMode = pagingMode;
@@ -146,6 +148,7 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
         _loadAllFunc = loadAllFunc;
         _createNewItemFunc = createNewItemFunc;
         _allowAddNew = allowAddNew;
+        _confirmNewNameFunc = confirmNewNameFunc;
 
         _pageSize = pageSize <= 0 ? DefaultPageSize : pageSize;
 
@@ -456,10 +459,26 @@ public partial class GenericSelectionPopupViewModel<T> : ViewModelBase
             return;
         }
 
-        var name = SearchText?.Trim();
-        if (string.IsNullOrWhiteSpace(name))
+        var proposedName = SearchText?.Trim();
+        if (string.IsNullOrWhiteSpace(proposedName))
         {
             return;
+        }
+
+        var name = proposedName;
+        if (_confirmNewNameFunc != null)
+        {
+            var confirmed = await _confirmNewNameFunc(proposedName);
+            if (confirmed == null)
+            {
+                return;
+            }
+
+            name = confirmed.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return;
+            }
         }
 
         try

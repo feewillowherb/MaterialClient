@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Huaxiazhixin;
 using MaterialClient.Common.Services.LprAllInOne;
 using Microsoft.AspNetCore.Builder;
@@ -38,6 +39,7 @@ public class MinimalWebHostService : IAsyncDisposable
     private static string LprAllInOneCallDeviceMessagePath = "/api/CarLicense/CallDeviceMessage";
     private static string CallDeviceMessageHuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
     private static string LprAllInOneCallDeviceStatusPath = "/api/CarLicense/CallDeviceStatus";
+    private static string SetScaleWeightApiPath = "/api/scale/weight";
 
     /// <summary>
     ///     构造函数，注入共享的服务提供者
@@ -190,9 +192,68 @@ public class MinimalWebHostService : IAsyncDisposable
             {
                 LprAllInOneCallDeviceMessagePath,
                 CallDeviceMessageHuaXiaZhiXingApiPath,
-                LprAllInOneCallDeviceStatusPath
+                LprAllInOneCallDeviceStatusPath,
+                SetScaleWeightApiPath
             }
         }));
+
+        // 地磅测试模式 - 设置重量
+        app.MapPost(SetScaleWeightApiPath, async (SetWeightRequest? request) =>
+        {
+            if (request == null)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "请求体为空"
+                });
+            }
+
+            if (request.Weight < 0)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "重量必须为非负数（单位：吨）"
+                });
+            }
+
+            try
+            {
+                var settingsService = _sharedServiceProvider.GetRequiredService<ISettingsService>();
+                var settings = await settingsService.GetSettingsAsync();
+
+                if (settings.ScaleSettings.ScaleType != ScaleType.TestMode)
+                {
+                    return Results.BadRequest(new
+                    {
+                        success = false,
+                        message = "当前不是地磅测试模式"
+                    });
+                }
+
+                var preprocessor = _sharedServiceProvider.GetRequiredService<IScaleTestWeightPreprocessorService>();
+                preprocessor.Enqueue(request.Weight);
+
+                logger.LogInformation("地磅测试模式设置重量: {Weight} t", request.Weight);
+
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = "完成",
+                    weight = request.Weight
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "地磅测试模式设置重量失败");
+                return Results.InternalServerError(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        });
 
         // 车牌识别 - 设备回调接口（LprAllInOne）
         app.MapPost(LprAllInOneCallDeviceMessagePath, async (LprAllInOnePlateCallback? callback) =>
@@ -503,6 +564,10 @@ public class MinimalWebHostService : IAsyncDisposable
             }
         });
     }
+
+    private record SetWeightRequest(
+        [property: JsonPropertyName("weight")] decimal Weight
+    );
 
 
     #region 华夏智信响应数据模型

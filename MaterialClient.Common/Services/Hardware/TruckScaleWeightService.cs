@@ -101,6 +101,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         get
         {
             using var _ = _rwLock.ReadLock();
+            // Test mode: always treated as online to enable UI + weighing flow.
+            if (_currentSettings?.ScaleType == ScaleType.TestMode) return true;
             return _serialPort != null && _serialPort.IsOpen && !_isClosing;
         }
     }
@@ -116,12 +118,28 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             try
             {
                 using var _ = _rwLock.WriteLock();
+                // Test mode: do not open / use physical serial port.
+                if (settings.ScaleType == ScaleType.TestMode)
+                {
+                    _currentSettings = settings;
+
+                    // Prevent any in-flight serial receive from pushing updates.
+                    _isClosing = true;
+
+                    // Ensure defaults for conversions (used by UI and weight updates).
+                    _receType = ReceType.String;
+                    _endChar = "=";
+                    _byteCount = 12;
+                    return true;
+                }
+
                 if (_serialPort != null && _serialPort.IsOpen)
                 {
                     if (_currentSettings != null &&
                         _currentSettings.SerialPort == settings.SerialPort &&
                         _currentSettings.BaudRate == settings.BaudRate &&
-                        _currentSettings.CommunicationMethod == settings.CommunicationMethod)
+                        _currentSettings.CommunicationMethod == settings.CommunicationMethod &&
+                        _currentSettings.ScaleType == settings.ScaleType)
                         // Settings haven't changed, keep existing connection
                         return true;
 

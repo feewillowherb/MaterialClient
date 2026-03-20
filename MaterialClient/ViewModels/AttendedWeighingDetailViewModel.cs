@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -39,6 +40,8 @@ namespace MaterialClient.ViewModels;
 /// </summary>
 public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransientDependency
 {
+    public sealed record DeliveryTypeOption(DeliveryType Value, string DisplayName);
+
     private WeighingListItemDto _listItem = null!;
     private readonly IMaterialService _materialService;
     private readonly IProviderService _providerService;
@@ -77,6 +80,18 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             .Subscribe(provider =>
             {
                 if (provider != null) SelectedProviderId = provider.Id;
+            });
+
+        this.WhenAnyValue(x => x.SelectedDeliveryType)
+            .Subscribe(deliveryType =>
+            {
+                if (_listItem == null) return;
+
+                _listItem.DeliveryType = deliveryType;
+                this.RaisePropertyChanged(nameof(DeliveryTypeDisplayText));
+                this.RaisePropertyChanged(nameof(ProviderLabelText));
+                this.RaisePropertyChanged(nameof(DeliveryTypeTitleText));
+                this.RaisePropertyChanged(nameof(CompleteButtonText));
             });
 
         // 订阅 WeighingMode 变化，更新 IsSolidWasteMode
@@ -123,6 +138,14 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     }
 
     #region 属性
+
+    public sealed record ConfirmTextRequest(string Title, string Message, string InitialValue);
+
+    /// <summary>
+    /// 由 View 层注册处理器并弹出确认对话框。
+    /// 返回 null 表示取消；返回非空字符串表示确认后的输入。
+    /// </summary>
+    public Interaction<ConfirmTextRequest, string?> ConfirmTextInteraction { get; } = new();
 
     [Reactive] private long _weighingRecordId;
 
@@ -199,6 +222,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     [Reactive] private bool _isMaterialsPopupOpen;
     [Reactive] private bool _isProvidersPopupOpen;
 
+    [Reactive] private DeliveryType _selectedDeliveryType = DeliveryType.Receiving;
+
     /// <summary>
     ///     供应商标签文本（根据当前记录的收发料类型动态显示）
     /// </summary>
@@ -237,6 +262,20 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             return deliveryType == DeliveryType.Sending ? "完成本次发货" : "完成本次收货";
         }
     }
+
+    public bool IsWeighingRecord => _listItem != null && _listItem.ItemType == WeighingListItemType.WeighingRecord;
+
+    public IReadOnlyList<DeliveryTypeOption> DeliveryTypeOptions { get; } =
+    [
+        new(DeliveryType.Receiving, "收料"),
+        new(DeliveryType.Sending, "发料")
+    ];
+
+    public string DeliveryTypeDisplayText => (_listItem?.DeliveryType ?? DeliveryType.Receiving) switch
+    {
+        DeliveryType.Sending => "发料",
+        _ => "收料"
+    };
 
     #endregion
 
@@ -350,7 +389,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize, selectedIds),
             getSelectedId: m => m.Id,
             createNewItemFunc: async name =>
-                (Material?)await _materialService.CreateMaterialAsync(name));
+                (Material?)await _materialService.CreateMaterialAsync(name),
+            confirmNewNameFunc: proposed =>
+                ConfirmTextInteraction.Handle(new ConfirmTextRequest(
+                        Title: "确认新增材料",
+                        Message: "将新增一条材料，请确认名称：",
+                        InitialValue: proposed))
+                    .ToTask());
 
         _ = MaterialsPopupViewModel.InitializeAsync();
 
@@ -447,7 +492,13 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     ContactName = created.ContectName,
                     ContactPhone = created.ContectPhone
                 };
-            });
+            },
+            confirmNewNameFunc: proposed =>
+                ConfirmTextInteraction.Handle(new ConfirmTextRequest(
+                        Title: "确认新增供应商",
+                        Message: "将新增一条供应商，请确认名称：",
+                        InitialValue: proposed))
+                    .ToTask());
 
         _ = ProvidersPopupViewModel.InitializeAsync();
 
@@ -527,6 +578,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
     public void InitializeData(WeighingListItemDto listItem, string? capturedBillPhotoPath = null)
     {
         _listItem = listItem;
+        SelectedDeliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
         WeighingRecordId = _listItem.Id;
         AllWeight = _listItem.Weight ?? 0;
         TruckWeight = _listItem.TruckWeight ?? 0;
@@ -549,6 +601,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
         // 通知 CompleteButtonText 属性变化（因为它依赖于 _listItem.DeliveryType）
         this.RaisePropertyChanged(nameof(CompleteButtonText));
+        this.RaisePropertyChanged(nameof(DeliveryTypeDisplayText));
+        this.RaisePropertyChanged(nameof(IsWeighingRecord));
 
         // 保存临时拍照文件路径
         _capturedBillPhotoPath = capturedBillPhotoPath;
@@ -1005,7 +1059,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     materialId,
                     materialUnitId,
                     waybillQuantity,
-                    null,
+                    IsWeighingRecord ? SelectedDeliveryType : null,
                     Remark
                 ));
             }
@@ -1073,7 +1127,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 SelectedStreet,
                 SolidWasteOrderNumber,
                 Remark,
-                null));
+                null,
+                IsWeighingRecord ? SelectedDeliveryType : null));
         }
         catch (BusinessException ex)
         {
@@ -1340,7 +1395,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             materialId,
             materialUnitId,
             waybillQuantity,
-            null,
+            IsWeighingRecord ? SelectedDeliveryType : null,
             Remark
         ));
 
@@ -1401,7 +1456,8 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 SelectedStreet,
                 SolidWasteOrderNumber,
                 Remark,
-                null));
+                null,
+                IsWeighingRecord ? SelectedDeliveryType : null));
 
             // 然后完成订单
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);

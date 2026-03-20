@@ -88,7 +88,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public ObservableCollection<ScaleType> ScaleTypeOptions { get; } = new()
     {
         ScaleType.Yaohua,
-        ScaleType.DingSong
+        ScaleType.DingSong,
+        ScaleType.TestMode
     };
 
     /// <summary>

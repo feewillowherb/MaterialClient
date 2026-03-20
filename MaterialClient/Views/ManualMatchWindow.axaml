@@ -71,15 +71,17 @@
                     <!-- 第二行：收发料类型选择 -->
                     <Grid ColumnDefinitions="*,*">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="收发类型：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
+                            <TextBlock Text="称重类型：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
                                        Margin="10,5" />
                             <RadioButton Content="收料"
                                          IsChecked="{Binding IsReceiving}"
                                          GroupName="DeliveryType"
+                                         IsEnabled="False"
                                          Margin="5,0" />
                             <RadioButton Content="发料"
                                          IsChecked="{Binding !IsReceiving}"
                                          GroupName="DeliveryType"
+                                         IsEnabled="False"
                                          Margin="5,0" />
                         </StackPanel>
                     </Grid>
