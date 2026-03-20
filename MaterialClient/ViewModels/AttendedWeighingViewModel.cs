@@ -1089,7 +1089,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     [Reactive] private double _deliveryTypeNotificationOpacity;
 
-    [Reactive] private AttendedWeighingDetailViewModel? _detailViewModel;
+    [Reactive] private AttendedWeighingDetailViewModelBase? _detailViewModel;
 
     [Reactive] private int _currentPage = 1;
 
@@ -1428,7 +1428,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             }
             
             
-            DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
+            DetailViewModel = CreateDetailViewModel(item.WeighingMode);
             DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
             DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
@@ -1471,7 +1471,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 }
             }
 
-            DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
+            DetailViewModel = CreateDetailViewModel(item.WeighingMode);
             DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
             DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
@@ -2306,6 +2306,18 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             Logger?.LogError(ex, "更新固废运单状态失败。WaybillId: {WaybillId}", SelectedListItem.Id);
             await ShowMessageBoxAsync($"更新固废运单状态失败：{ex.Message}");
         }
+    }
+
+    /// <summary>
+    ///     根据称重模式创建对应的 DetailViewModel
+    /// </summary>
+    private AttendedWeighingDetailViewModelBase CreateDetailViewModel(WeighingMode weighingMode)
+    {
+        return weighingMode switch
+        {
+            WeighingMode.SolidWaste => _serviceProvider.GetRequiredService<SolidWasteModeDetailViewModel>(),
+            _ => _serviceProvider.GetRequiredService<StandardModeDetailViewModel>()
+        };
     }
 
     #endregion

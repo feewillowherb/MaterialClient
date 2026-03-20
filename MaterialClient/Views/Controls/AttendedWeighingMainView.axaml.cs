@@ -15,6 +15,6 @@ public partial class AttendedWeighingMainView : UserControl
     public AttendedWeighingMainView(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModel>();
+        DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModelBase>();
     }
 }

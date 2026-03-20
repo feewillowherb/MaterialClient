@@ -3,7 +3,7 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:views="using:MaterialClient.Views.Controls"
              x:Class="MaterialClient.Views.Controls.StandardModeFormView"
-             x:DataType="vm:AttendedWeighingDetailViewModel">
+             x:DataType="vm:StandardModeDetailViewModel">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -146,7 +146,7 @@
                                             FontWeight="Normal"
                                             Name="MaterialSelectionButton"
                                             Click="MaterialSelectionButton_Click"
-                                            Command="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).OpenMaterialSelectionCommand}"
+                                            Command="{Binding $parent[UserControl].((vm:StandardModeDetailViewModel)DataContext).OpenMaterialSelectionCommand}"
                                             CommandParameter="{Binding}">
                                         <Button.Styles>
                                             <Style Selector="Button:pointerover">

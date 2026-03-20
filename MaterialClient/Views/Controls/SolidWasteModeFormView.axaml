@@ -3,7 +3,7 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:views="using:MaterialClient.Views.Controls"
              x:Class="MaterialClient.Views.Controls.SolidWasteModeFormView"
-             x:DataType="vm:AttendedWeighingDetailViewModel">
+             x:DataType="vm:SolidWasteModeDetailViewModel">
 
     <Grid Background="White">
         <Grid.RowDefinitions>
@@ -80,7 +80,7 @@
                                                  Grid.Column="1"
                                                  Height="32"
                                                  DataContext="{Binding ProvidersPopupViewModel}"
-                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsProvidersPopupOpen, Mode=TwoWay}"
+                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:SolidWasteModeDetailViewModel)DataContext).IsProvidersPopupOpen, Mode=TwoWay}"
                                                  PlaceholderText="请选择供应商"
                                                  Margin="0,5,0,5" />
                 </Grid>
@@ -97,7 +97,7 @@
                                                  Grid.Column="1"
                                                  Height="32"
                                                  DataContext="{Binding MaterialsPopupViewModel}"
-                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsMaterialsPopupOpen, Mode=TwoWay}"
+                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:SolidWasteModeDetailViewModel)DataContext).IsMaterialsPopupOpen, Mode=TwoWay}"
                                                  PlaceholderText="请选择材料"
                                                  Margin="0,5,0,5" />
                 </Grid>
@@ -129,7 +129,7 @@
                     <views:SearchableSelectionBox x:Name="StreetsSelectionBox"
                                                  Grid.Column="1"
                                                  DataContext="{Binding StreetsPopupViewModel}"
-                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsStreetsPopupOpen, Mode=TwoWay}"
+                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:SolidWasteModeDetailViewModel)DataContext).IsStreetsPopupOpen, Mode=TwoWay}"
                                                  PlaceholderText="请选择镇街"
                                                  Margin="0,5,0,5" />
                 </Grid>

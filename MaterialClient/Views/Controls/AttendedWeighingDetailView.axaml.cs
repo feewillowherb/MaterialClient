@@ -22,25 +22,13 @@ public partial class AttendedWeighingDetailView : UserControl
     public AttendedWeighingDetailView(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModel>();
+        // DataContext 由父级 ViewModel 设置，不再从 DI 容器直接获取
         this.GetObservable(DataContextProperty)
-            .Subscribe(_ => WireInteractions(DataContext as AttendedWeighingDetailViewModel))
+            .Subscribe(_ => WireInteractions(DataContext as AttendedWeighingDetailViewModelBase))
             .DisposeWith(_lifetimeDisposables);
-        // if (DataContext is AttendedWeighingDetailViewModel viewModel)
-        // {
-        //     viewModel.WhenAnyValue(x => x.MaterialsSelectionPopupViewModel)
-        //         .Subscribe(popupViewModel =>
-        //         {
-        //             if (popupViewModel != null)
-        //             {
-        //                 MaterialsSelectionPopupControl.DataContext = popupViewModel;
-        //             }
-        //         });
-        // }
-
     }
 
-    private void WireInteractions(AttendedWeighingDetailViewModel? viewModel)
+    private void WireInteractions(AttendedWeighingDetailViewModelBase? viewModel)
     {
         _interactionDisposables.Dispose();
         _interactionDisposables = new CompositeDisposable();
@@ -52,7 +40,7 @@ public partial class AttendedWeighingDetailView : UserControl
             var owner = TopLevel.GetTopLevel(this) as Window;
             if (owner == null)
             {
-                // 没有 owner 时不弹窗，等价于取消（“像什么都没发生”）
+                // 没有 owner 时不弹窗，等价于取消（”像什么都没发生”）
                 ctx.SetOutput(null);
                 return;
             }

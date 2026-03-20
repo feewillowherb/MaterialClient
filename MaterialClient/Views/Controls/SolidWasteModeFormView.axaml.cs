@@ -34,19 +34,19 @@ public partial class SolidWasteModeFormView : UserControl
 
     private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is not AttendedWeighingDetailViewModel vm) return;
+        if (sender is not SolidWasteModeDetailViewModel vm) return;
 
         switch (e.PropertyName)
         {
-            case nameof(AttendedWeighingDetailViewModel.IsStreetsPopupOpen):
+            case nameof(SolidWasteModeDetailViewModel.IsStreetsPopupOpen):
                 if (vm.IsStreetsPopupOpen)
                     Dispatcher.UIThread.Post(() => ApplyPopupOffset(StreetsSelectionPopup, StreetsSelectionPopupControl, StreetsSelectionBox), DispatcherPriority.Loaded);
                 break;
-            case nameof(AttendedWeighingDetailViewModel.IsMaterialsPopupOpen):
+            case nameof(SolidWasteModeDetailViewModel.IsMaterialsPopupOpen):
                 if (vm.IsMaterialsPopupOpen)
                     Dispatcher.UIThread.Post(() => ApplyPopupOffset(MaterialsSelectionPopup, MaterialsSelectionPopupControl, MaterialsSelectionBox), DispatcherPriority.Loaded);
                 break;
-            case nameof(AttendedWeighingDetailViewModel.IsProvidersPopupOpen):
+            case nameof(SolidWasteModeDetailViewModel.IsProvidersPopupOpen):
                 if (vm.IsProvidersPopupOpen)
                     Dispatcher.UIThread.Post(() => ApplyPopupOffset(ProvidersSelectionPopup, ProvidersSelectionPopupControl, ProvidersSelectionBox), DispatcherPriority.Loaded);
                 break;
