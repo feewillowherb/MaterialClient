@@ -58,4 +58,16 @@
         </None>
     </ItemGroup>
 
+    <!-- Add VzSDK native libraries and files to the output directory -->
+    <ItemGroup>
+        <!-- Copy all DLLs in VzSDK root directly to output root (flattened) -->
+        <None Include="VzSDK\*.dll" CopyToOutputDirectory="PreserveNewest">
+            <Link>%(Filename)%(Extension)</Link>
+        </None>
+        <!-- Copy all other files (configs, ini, subfolders) preserving directory structure -->
+        <None Include="VzSDK\**\*.*" CopyToOutputDirectory="PreserveNewest">
+            <Link>VzSDK\%(RecursiveDir)%(Filename)%(Extension)</Link>
+        </None>
+    </ItemGroup>
+
 </Project>
