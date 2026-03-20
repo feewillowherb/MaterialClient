@@ -101,7 +101,7 @@
 
 ### 需求：按条目状态选择视图
 
-系统应根据条目的类型与完成状态自动选择合适视图（MainView 或 DetailView）。
+系统应根据条目的类型、完成状态**以及称重模式**自动选择合适视图和 ViewModel。
 
 #### 场景：已完成运单在 MainView 中显示
 - **当** 导航到的条目为运单（Waybill）
@@ -111,12 +111,73 @@
 #### 场景：可编辑条目在 DetailView 中显示
 - **当** 导航到的条目不是已完成的运单
 - **示例**：未匹配的 WeighingRecord、OrderType = FirstWeight 的运单
-- **则** 系统应显示 AttendedWeighingDetailView（可编辑表单视图）
+- **则** 系统必须显示 AttendedWeighingDetailView（可编辑表单视图）
+- **且** 根据 `WeighingMode` 创建对应的派生 ViewModel
+
+#### 场景：标准模式使用 StandardModeFormView
+- **当** 显示 `WeighingMode.Standard` 的可编辑条目
+- **则** 系统必须在 DetailView 中显示 `StandardModeFormView`
+- **且** 使用 `StandardModeDetailViewModel` 作为绑定上下文
+
+#### 场景：固废模式使用 SolidWasteModeFormView
+- **当** 显示 `WeighingMode.SolidWaste` 的可编辑条目
+- **则** 系统必须在 DetailView 中显示 `SolidWasteModeFormView`
+- **且** 使用 `SolidWasteModeDetailViewModel` 作为绑定上下文
 
 #### 场景：完成操作后的视图选择
 - **当** 用户完成运单（将 OrderType 从 FirstWeight 改为 Completed）
 - **则** 系统应从 AttendedWeighingDetailView 切换到 AttendedWeighingMainView
 - **因为** 条目已变为只读，适合在 MainView 中查看
+
+### 需求：系统必须根据称重模式选择对应的 ViewModel
+
+系统必须根据 `WeighingListItemDto.WeighingMode` 属性动态选择使用 `StandardModeDetailViewModel` 或 `SolidWasteModeDetailViewModel`。
+
+#### 场景：标准模式 ViewModel 选择
+- **当** 用户选择一条 `WeighingMode.Standard` 的称重记录
+- **则** 系统必须创建 `StandardModeDetailViewModel` 实例
+- **且** 将其设置为 `AttendedWeighingDetailView` 的 DataContext
+
+#### 场景：固废模式 ViewModel 选择
+- **当** 用户选择一条 `WeighingMode.SolidWaste` 的称重记录
+- **则** 系统必须创建 `SolidWasteModeDetailViewModel` 实例
+- **且** 将其设置为 `AttendedWeighingDetailView` 的 DataContext
+
+#### 场景：默认使用标准模式
+- **当** `WeighingListItemDto.WeighingMode` 为空或未知值
+- **则** 系统必须默认创建 `StandardModeDetailViewModel` 实例
+
+### 需求：子视图必须绑定到正确的 ViewModel 类型
+
+系统必须确保 `StandardModeFormView` 和 `SolidWasteModeFormView` 分别绑定到对应的 ViewModel 类型。
+
+#### 场景：标准模式表单绑定
+- **当** `StandardModeFormView` 显示时
+- **则** 系统必须将 `x:DataType` 设置为 `StandardModeDetailViewModel`
+- **且** 绑定路径必须与 `StandardModeDetailViewModel` 的属性匹配
+
+#### 场景：固废模式表单绑定
+- **当** `SolidWasteModeFormView` 显示时
+- **则** 系统必须将 `x:DataType` 设置为 `SolidWasteModeDetailViewModel`
+- **且** 绑定路径必须与 `SolidWasteModeDetailViewModel` 的属性匹配
+
+### 需求：事件必须在基类中定义
+
+系统必须确保所有操作事件在 `AttendedWeighingDetailViewModelBase` 基类中定义，以便父 ViewModel 可以统一订阅。
+
+#### 场景：父 ViewModel 订阅事件
+- **当** `AttendedWeighingViewModel` 订阅 `SaveCompleted` 事件
+- **则** 无论是 `StandardModeDetailViewModel` 还是 `SolidWasteModeDetailViewModel`
+- **且** 事件必须能够正确触发并传递 `ItemOperationCompletedEventArgs`
+
+#### 场景：事件参数包含完整上下文
+- **当** 任何派生 ViewModel 触发操作事件
+- **则** 事件参数必须包含：
+  - ItemId：结果条目的 ID
+  - ItemType：条目类型
+  - OrderType：订单类型
+  - IsCompleted：完成状态
+  - OperationType：操作类型
 
 ### 需求：操作事件上下文
 
