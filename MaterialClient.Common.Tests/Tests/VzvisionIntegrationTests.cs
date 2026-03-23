@@ -60,6 +60,40 @@ public class VzvisionIntegrationTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// 在已连接设备上调用 <see cref="VzvisionSdk.VzLPRClient_ForceTrigger"/>（与业务默认一致）。
+    /// </summary>
+    [Fact(Skip = "Requires physical Vzvision device; may trigger hardware capture")]
+    public void VzForceTrigger_ShouldReturnSuccess()
+    {
+        int handle = 0;
+        try
+        {
+            var setupRet = VzvisionSdk.VzLPRClient_Setup();
+            Assert.True(setupRet == 0, $"VzLPRClient_Setup failed: {setupRet}");
+
+            handle = VzvisionSdk.VzLPRClient_Open(TestIp, TestPort, TestUsername, TestPassword);
+            Assert.True(handle != 0, "VzLPRClient_Open returned 0 handle");
+
+            var trigRet = VzvisionSdk.VzLPRClient_ForceTrigger(handle);
+            Assert.True(trigRet == 0, $"VzLPRClient_ForceTrigger failed: {trigRet}");
+
+            output.WriteLine($"ForceTrigger ok: handle={handle}");
+        }
+        finally
+        {
+            try
+            {
+                if (handle != 0)
+                    _ = VzvisionSdk.VzLPRClient_Close(handle);
+            }
+            finally
+            {
+                VzvisionSdk.VzLPRClient_Cleanup();
+            }
+        }
+    }
+
+    /// <summary>
     /// 测试 GPIO/IO 输出通道设置能力（调用 SetIOOutput / GetIOOutput）。
     /// 注意：具体通道号与接线需要以设备实际配置为准。
     /// </summary>

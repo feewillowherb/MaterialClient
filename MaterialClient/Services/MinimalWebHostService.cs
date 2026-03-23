@@ -11,7 +11,6 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Huaxiazhixin;
-using MaterialClient.Common.Services.LprAllInOne;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -36,9 +35,7 @@ public class MinimalWebHostService : IAsyncDisposable
     private bool _isRunning;
     private WebApplication? _webApplication;
 
-    private static string LprAllInOneCallDeviceMessagePath = "/api/CarLicense/CallDeviceMessage";
     private static string CallDeviceMessageHuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
-    private static string LprAllInOneCallDeviceStatusPath = "/api/CarLicense/CallDeviceStatus";
     private static string SetScaleWeightApiPath = "/api/scale/weight";
 
     /// <summary>
@@ -128,7 +125,8 @@ public class MinimalWebHostService : IAsyncDisposable
 
             var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
             logger?.LogInformation("启动 Web 服务于 {Urls}", urls);
-            logger?.LogInformation("API 端点: {Urls}{ApiPath}", urls, LprAllInOneCallDeviceMessagePath);
+            logger?.LogInformation("API 端点: {Urls}{ApiPath} 等（华夏智信回调、地磅测试）", urls,
+                CallDeviceMessageHuaXiaZhiXingApiPath);
 
             // Start the web application
             await _webApplication.RunAsync();
@@ -190,9 +188,7 @@ public class MinimalWebHostService : IAsyncDisposable
             version = "1.0",
             endpoints = new[]
             {
-                LprAllInOneCallDeviceMessagePath,
                 CallDeviceMessageHuaXiaZhiXingApiPath,
-                LprAllInOneCallDeviceStatusPath,
                 SetScaleWeightApiPath
             }
         }));
@@ -251,64 +247,6 @@ public class MinimalWebHostService : IAsyncDisposable
                 {
                     success = false,
                     message = ex.Message
-                });
-            }
-        });
-
-        // 车牌识别 - 设备回调接口（LprAllInOne）
-        app.MapPost(LprAllInOneCallDeviceMessagePath, async (LprAllInOnePlateCallback? callback) =>
-        {
-            try
-            {
-                // 解析LprAllInOne设备数据
-                var plateResult = callback?.AlarmInfoPlate?.Result?.PlateResult;
-                var license = plateResult?.License;
-
-                if (!string.IsNullOrWhiteSpace(license))
-                {
-                    var colorType = plateResult?.ColorType.HasValue == true
-                        ? (LprAllInOneColorType?)plateResult.ColorType.Value
-                        : null;
-
-                    // 发布 MessageBus 消息(统一事件传递)
-                    var message = new LicensePlateRecognizedMessage
-                    {
-                        PlateNumber = license,
-                        ColorType = colorType,
-                        DeviceType = LprDeviceType.LprAllInOne,
-                        DeviceName = callback?.AlarmInfoPlate?.DeviceName ?? "Unknown",
-                        Timestamp = DateTime.Now
-                    };
-                    MessageBus.Current.SendMessage(message);
-
-                    logger.LogInformation(
-                        $"接收到车牌识别: {license} (设备: {callback?.AlarmInfoPlate?.DeviceName}, IP: {callback?.AlarmInfoPlate?.IpAddr})");
-
-                    return Results.Ok(new
-                    {
-                        result = 1,
-                        success = true,
-                        msg = "完成",
-                        data = new { license }
-                    });
-                }
-
-                logger.LogWarning("接收到无效的车牌数据");
-                return Results.BadRequest(new
-                {
-                    result = 0,
-                    success = false,
-                    msg = "无效的车牌数据"
-                });
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "处理车牌识别回调失败");
-                return Results.Ok(new
-                {
-                    result = 1,
-                    success = false,
-                    msg = ex.Message
                 });
             }
         });
@@ -476,93 +414,6 @@ public class MinimalWebHostService : IAsyncDisposable
             await WriteCompressedJsonResponse(context, result, logger);
             return;
         });
-
-
-        // LprAllInOne comet 轮询端点 - 设备状态查询
-        // 设备会轮询此端点（GET 或 POST），如果需要触发车牌识别，在响应中返回触发消息
-        // 根据 cap.md，设备会发送设备注册消息（心跳），包含 ipaddr 字段
-        app.MapMethods(LprAllInOneCallDeviceStatusPath, new[] { "GET", "POST" }, async (HttpContext context) =>
-        {
-            var statusLogger = _sharedServiceProvider.GetRequiredService<ILogger<MinimalWebHostService>>();
-
-            try
-            {
-                string? deviceIp = null;
-
-                // 首先尝试从查询参数中获取设备IP（GET 请求）
-                deviceIp = context.Request.Query["ipaddr"].ToString();
-
-                // 如果查询参数中没有，尝试从表单数据中获取（POST 请求，comet 轮询通常使用 POST）
-                if (string.IsNullOrWhiteSpace(deviceIp))
-                {
-                    if (context.Request.HasFormContentType)
-                    {
-                        try
-                        {
-                            context.Request.EnableBuffering();
-                            var form = await context.Request.ReadFormAsync();
-                            deviceIp = form["ipaddr"].ToString();
-                        }
-                        catch
-                        {
-                            // 忽略表单读取错误
-                        }
-                    }
-                }
-
-                // 如果仍然没有，尝试从 RemoteIpAddress 获取
-                if (string.IsNullOrWhiteSpace(deviceIp))
-                {
-                    deviceIp = context.Connection.RemoteIpAddress?.ToString();
-                }
-
-                if (string.IsNullOrWhiteSpace(deviceIp))
-                {
-                    statusLogger.LogWarning("Cannot determine device IP from CallDeviceStatus request");
-                    return Results.Ok(new
-                    {
-                        success = true,
-                        msg = ""
-                    });
-                }
-
-                // 记录设备最后轮询时间，用于在线状态判断
-                var lprService = _sharedServiceProvider
-                    .GetService<MaterialClient.Common.Services.LprAllInOne.ILprAllInOneService>();
-                lprService?.RecordLastSeen(deviceIp);
-
-                // 检查是否需要触发车牌识别
-                if (lprService != null && lprService.CheckAndClearTriggerFlag(deviceIp))
-                {
-                    // 需要触发车牌识别，返回触发消息
-                    // 根据 cap.md (700-711)，返回格式：{"Response_AlarmInfoPlate": {"manualTrigger": "ok"}}
-                    statusLogger.LogInformation("Returning manual trigger message for device IP: {Ip}", deviceIp);
-                    return Results.Json(new
-                    {
-                        Response_AlarmInfoPlate = new
-                        {
-                            manualTrigger = "ok"
-                        }
-                    });
-                }
-
-                // 不需要触发，返回正常响应
-                return Results.Ok(new
-                {
-                    success = true,
-                    msg = ""
-                });
-            }
-            catch (Exception ex)
-            {
-                statusLogger.LogError(ex, "Error processing CallDeviceStatus request");
-                return Results.Ok(new
-                {
-                    success = true,
-                    msg = ""
-                });
-            }
-        });
     }
 
     private record SetWeightRequest(
@@ -645,45 +496,4 @@ public class MinimalWebHostService : IAsyncDisposable
 
     #endregion
 
-    #region LprAllInOne车牌识别数据模型
-
-    /// <summary>
-    ///     LprAllInOne车牌识别回调数据模型
-    /// </summary>
-    private record LprAllInOnePlateCallback(
-        [property: JsonPropertyName("AlarmInfoPlate")]
-        AlarmInfoPlate? AlarmInfoPlate
-    );
-
-    /// <summary>
-    ///     报警信息
-    /// </summary>
-    private record AlarmInfoPlate(
-        [property: JsonPropertyName("channel")]
-        int Channel,
-        [property: JsonPropertyName("deviceName")]
-        string? DeviceName,
-        [property: JsonPropertyName("ipaddr")] string? IpAddr,
-        [property: JsonPropertyName("result")] PlateResultWrapper? Result
-    );
-
-    /// <summary>
-    ///     车牌结果包装
-    /// </summary>
-    private record PlateResultWrapper(
-        [property: JsonPropertyName("PlateResult")]
-        PlateResult? PlateResult
-    );
-
-    /// <summary>
-    ///     车牌结果
-    /// </summary>
-    private record PlateResult(
-        [property: JsonPropertyName("license")]
-        string? License,
-        [property: JsonPropertyName("colorType")]
-        int? ColorType
-    );
-
-    #endregion
 }

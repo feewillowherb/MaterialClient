@@ -107,7 +107,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public ObservableCollection<LprDeviceType> LprDeviceTypeOptions { get; } = new()
     {
         LprDeviceType.Hikvision,
-        LprDeviceType.LprAllInOne,
+        LprDeviceType.Vzvision,
         LprDeviceType.Huaxiazhixin
     };
 
@@ -115,6 +115,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     ///     是否显示海康威视专用配置字段
     /// </summary>
     public bool ShowHikvisionLprFields => LprDeviceType == LprDeviceType.Hikvision;
+
+    /// <summary>
+    ///     列表中是否显示用户名、端口列（海康与臻识 Vzvision）
+    /// </summary>
+    public bool ShowLprUserPortColumns =>
+        LprDeviceType is LprDeviceType.Hikvision or LprDeviceType.Vzvision;
 
     // Weighing configuration
     [Reactive] private decimal _minWeightThreshold = 0.5m;
@@ -168,9 +174,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 });
             });
 
-        // Subscribe to LprDeviceType changes to notify ShowHikvisionLprFields property change
+        // Subscribe to LprDeviceType changes to notify LPR-related visibility properties
         this.WhenAnyValue(x => x.LprDeviceType)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(ShowHikvisionLprFields)));
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(ShowHikvisionLprFields));
+                this.RaisePropertyChanged(nameof(ShowLprUserPortColumns));
+            });
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
@@ -243,6 +253,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     };
                     if (HikvisionLprDefaults.ShouldApply(LprDeviceType))
                         HikvisionLprDefaults.ApplyDefaults(config);
+                    else if (VzvisionLprDefaults.ShouldApply(LprDeviceType))
+                        VzvisionLprDefaults.ApplyDefaults(config);
                     return config;
                 }).ToList(),
                 new WeighingConfiguration

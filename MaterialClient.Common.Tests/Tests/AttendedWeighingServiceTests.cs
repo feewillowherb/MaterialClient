@@ -9,7 +9,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
-using MaterialClient.Common.Services.LprAllInOne;
+using MaterialClient.Common.Services.Vzvision;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using BatchCaptureRequest = MaterialClient.Common.Services.Hikvision.BatchCaptureRequest;
@@ -380,7 +380,7 @@ public class AttendedWeighingServiceTests : IDisposable
     public async Task OnPlateNumberRecognized_HighPriority_Should_Override_LowPriority()
     {
         // Arrange - Create service with Yellow as low-priority color
-        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { VzvisionColorType.Yellow });
         await service.StartAsync();
         weightSubject.OnNext(1.0m); // Put on scale
         await Task.Delay(300);
@@ -388,9 +388,9 @@ public class AttendedWeighingServiceTests : IDisposable
         // Act - Recognize yellow plate 10 times, then blue plate once
         for (int i = 0; i < 10; i++)
         {
-            SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
+            SendPlateRecognition("京B99999", VzvisionColorType.Yellow);
         }
-        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
+        SendPlateRecognition("京A12345", VzvisionColorType.Blue);
         await Task.Delay(200);
 
         // Assert - Blue plate (high-priority) should be selected despite lower count
@@ -405,14 +405,14 @@ public class AttendedWeighingServiceTests : IDisposable
     public async Task OnPlateNumberRecognized_LowPriority_Should_BeUsed_WhenNoHighPriority()
     {
         // Arrange - Create service with Yellow as low-priority color
-        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { VzvisionColorType.Yellow });
         await service.StartAsync();
         weightSubject.OnNext(1.0m); // Put on scale
         await Task.Delay(300);
 
         // Act - Only recognize yellow plates (low-priority)
-        SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
-        SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
+        SendPlateRecognition("京B99999", VzvisionColorType.Yellow);
+        SendPlateRecognition("京B99999", VzvisionColorType.Yellow);
         await Task.Delay(200);
 
         // Assert - Yellow plate should be selected (no high-priority alternative)
@@ -427,16 +427,16 @@ public class AttendedWeighingServiceTests : IDisposable
     public async Task OnPlateNumberRecognized_LowPriority_Cannot_Override_HighPriority()
     {
         // Arrange - Create service with Yellow as low-priority color
-        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { VzvisionColorType.Yellow });
         await service.StartAsync();
         weightSubject.OnNext(1.0m); // Put on scale
         await Task.Delay(300);
 
         // Act - Blue plate first, then many yellow plates
-        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
+        SendPlateRecognition("京A12345", VzvisionColorType.Blue);
         for (int i = 0; i < 100; i++)
         {
-            SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
+            SendPlateRecognition("京B99999", VzvisionColorType.Yellow);
         }
         await Task.Delay(200);
 
@@ -452,7 +452,7 @@ public class AttendedWeighingServiceTests : IDisposable
     public async Task OnPlateNumberRecognized_NullColor_Should_BeTreated_AsHighPriority()
     {
         // Arrange - Create service with Yellow as low-priority color
-        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { LprAllInOneColorType.Yellow });
+        var (service, weightSubject) = CreateServiceWithLowPriorityColors(new[] { VzvisionColorType.Yellow });
         await service.StartAsync();
         weightSubject.OnNext(1.0m); // Put on scale
         await Task.Delay(300);
@@ -460,7 +460,7 @@ public class AttendedWeighingServiceTests : IDisposable
         // Act - Yellow plate many times, then plate without color once
         for (int i = 0; i < 10; i++)
         {
-            SendPlateRecognition("京B99999", LprAllInOneColorType.Yellow);
+            SendPlateRecognition("京B99999", VzvisionColorType.Yellow);
         }
         SendPlateRecognition("京A12345", null); // No color info
         await Task.Delay(200);
@@ -483,8 +483,8 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act - Recognize plate with color
-        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
-        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue); // Recognize again
+        SendPlateRecognition("京A12345", VzvisionColorType.Blue);
+        SendPlateRecognition("京A12345", VzvisionColorType.Blue); // Recognize again
         await Task.Delay(200);
 
         // Assert - Plate should be cached and selected
@@ -1365,7 +1365,7 @@ public class AttendedWeighingServiceTests : IDisposable
     /// <summary>
     /// 辅助方法:通过 MessageBus 发送车牌识别消息
     /// </summary>
-    private void SendPlateRecognition(string plateNumber, LprAllInOneColorType? colorType = null)
+    private void SendPlateRecognition(string plateNumber, VzvisionColorType? colorType = null)
     {
         MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage
         {
@@ -1389,7 +1389,7 @@ public class AttendedWeighingServiceTests : IDisposable
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithLowPriorityColors(
-        LprAllInOneColorType[] lowPriorityColors)
+        VzvisionColorType[] lowPriorityColors)
     {
         var weightSubject = new Subject<decimal>();
         var mockWeightService = Substitute.For<ITruckScaleWeightService>();
@@ -1457,7 +1457,7 @@ public class AttendedWeighingServiceTests : IDisposable
         IRepository<WeighingRecord, long>? mockRepo = null,
         IUnitOfWorkManager? mockUowManager = null,
         IHikvisionService? mockHikvision = null,
-        LprAllInOneColorType[]? lowPriorityColors = null)
+        VzvisionColorType[]? lowPriorityColors = null)
     {
         var configData = new Dictionary<string, string?>();
         if (lowPriorityColors != null && lowPriorityColors.Length > 0)
@@ -1514,7 +1514,7 @@ public class AttendedWeighingServiceTests : IDisposable
             hikvisionService,
             eventBus,
             logger,
-            null, // ILPRAllInOneService? (可选)
+            null, // IVzvisionLprService? (可选)
             settingsService,
             null, // ISoundDeviceService? (可选)
             recommendPlateService,

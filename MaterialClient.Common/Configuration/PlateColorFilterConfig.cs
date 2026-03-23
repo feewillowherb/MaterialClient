@@ -6,7 +6,7 @@ namespace MaterialClient.Common.Configuration;
 public class PlateColorFilterConfig
 {
     /// <summary>
-    ///     Plate colors to treat as low-priority (values map to LprAllInOneColorType)
+    ///     Plate colors to treat as low-priority (values map to VzvisionColorType)
     /// </summary>
     public List<int> LowPriorityPlateColors { get; set; } = new();
 }

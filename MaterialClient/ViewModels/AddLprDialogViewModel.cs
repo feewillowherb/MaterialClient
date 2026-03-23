@@ -22,9 +22,14 @@ public partial class AddLprDialogViewModel : ViewModelBase
     [Reactive] private string? _channel;
 
     /// <summary>
-    ///     是否显示海康威视专用配置字段
+    ///     是否显示海康威视专用配置字段（含通道）
     /// </summary>
     public bool ShowHikvisionLprFields => _lprDeviceType == LprDeviceType.Hikvision;
+
+    /// <summary>
+    ///     是否显示臻识 Vz SDK 连接字段（用户名、密码、端口，无通道）
+    /// </summary>
+    public bool ShowVzvisionLprFields => _lprDeviceType == LprDeviceType.Vzvision;
 
     public AddLprDialogViewModel(LprDeviceType lprDeviceType = LprDeviceType.Hikvision)
     {
@@ -36,6 +41,11 @@ public partial class AddLprDialogViewModel : ViewModelBase
             _userName = HikvisionLprDefaults.DefaultUserName;
             _port = HikvisionLprDefaults.DefaultPort;
             _channel = HikvisionLprDefaults.DefaultChannel;
+        }
+        else if (VzvisionLprDefaults.ShouldApply(lprDeviceType))
+        {
+            _userName = VzvisionLprDefaults.DefaultUserName;
+            _port = VzvisionLprDefaults.DefaultPort;
         }
 
         this.WhenAnyValue(x => x.Direction)
@@ -86,6 +96,16 @@ public partial class AddLprDialogViewModel : ViewModelBase
             if (password == null)
                 password = string.Empty;
         }
+        else if (VzvisionLprDefaults.ShouldApply(_lprDeviceType))
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+                userName = VzvisionLprDefaults.DefaultUserName;
+            if (string.IsNullOrWhiteSpace(port))
+                port = VzvisionLprDefaults.DefaultPort;
+            if (password == null)
+                password = string.Empty;
+            channel = null;
+        }
 
         Result = new LicensePlateRecognitionConfigViewModel
         {
@@ -95,7 +115,9 @@ public partial class AddLprDialogViewModel : ViewModelBase
             UserName = userName,
             Password = password,
             Port = port,
-            Channel = channel ?? HikvisionLprDefaults.DefaultChannel
+            Channel = _lprDeviceType == LprDeviceType.Hikvision
+                ? (channel ?? HikvisionLprDefaults.DefaultChannel)
+                : null
         };
     }
 

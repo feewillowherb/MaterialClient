@@ -6,7 +6,6 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
-using MaterialClient.Common.Services.LprAllInOne;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;

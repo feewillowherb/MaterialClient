@@ -231,7 +231,7 @@ public class WeightScaleRxTests
             hikvisionService,
             eventBus,
             logger,
-            null, // ILPRAllInOneService? (可选)
+            null, // IVzvisionLprService? (可选)
             settingsService,
             null, // ISoundDeviceService? (可选)
             recommendPlateService,

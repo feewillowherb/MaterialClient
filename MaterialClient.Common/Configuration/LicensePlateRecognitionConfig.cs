@@ -23,26 +23,22 @@ public class LicensePlateRecognitionConfig
     public LicensePlateDirection Direction { get; set; } = LicensePlateDirection.In;
 
     /// <summary>
-    ///     设备认证用户名(海康威视专用)
-    ///     仅在 LprDeviceType == Hikvision 时使用
+    ///     设备认证用户名（海康威视、Vzvision 臻识 SDK 连接使用）
     /// </summary>
     public string? UserName { get; set; }
 
     /// <summary>
-    ///     设备认证密码(海康威视专用)
-    ///     仅在 LprDeviceType == Hikvision 时使用
+    ///     设备认证密码（海康威视、Vzvision 臻识 SDK 连接使用）
     /// </summary>
     public string? Password { get; set; }
 
     /// <summary>
-    ///     设备服务端口号(海康威视专用)
-    ///     仅在 LprDeviceType == Hikvision 时使用
+    ///     设备服务端口：海康为设备服务端口字符串；Vzvision 为 <c>VzLPRClient_Open</c> 的 TCP 端口（常见 80）
     /// </summary>
     public string? Port { get; set; }
 
     /// <summary>
-    ///     通道号(海康威视专用,默认值为 "1")
-    ///     仅在 LprDeviceType == Hikvision 时使用
+    ///     通道号（仅海康威视使用，默认 "1"）
     /// </summary>
     public string? Channel { get; set; }
 

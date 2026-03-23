@@ -114,6 +114,49 @@
                                  ToolTip.Tip="通道号固定为 1,无需修改" />
                     </Grid>
                 </StackPanel>
+
+                <!-- Vzvision (臻识 SDK)：用户名、密码、端口，无通道 -->
+                <StackPanel IsVisible="{Binding ShowVzvisionLprFields}" Spacing="16" Margin="0,16,0,0">
+                    <Separator Margin="0,8" />
+                    <TextBlock Text="臻识设备（Vz SDK）连接"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="Black" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="用户名:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding UserName}"
+                                 Grid.Column="1"
+                                 Watermark="admin" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="密码:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding Password}"
+                                 Grid.Column="1"
+                                 Watermark="请输入密码"
+                                 PasswordChar="●" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="端口:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding Port}"
+                                 Grid.Column="1"
+                                 Watermark="80" />
+                    </Grid>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

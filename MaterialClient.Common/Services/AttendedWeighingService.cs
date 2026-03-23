@@ -11,7 +11,7 @@ using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
-using MaterialClient.Common.Services.LprAllInOne;
+using MaterialClient.Common.Services.Vzvision;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -41,7 +41,7 @@ public record PlateNumberCacheRecord
     /// <summary>
     ///     车牌颜色类型（用于优先级判断）
     /// </summary>
-    public LprAllInOneColorType? ColorType { get; init; }
+    public VzvisionColorType? ColorType { get; init; }
 }
 
 /// <summary>
@@ -135,7 +135,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<AttendedWeighingService> _logger;
 
-    private readonly ILprAllInOneService? _lprAllInOneService;
+    private readonly IVzvisionLprService? _vzvisionLprService;
     private readonly ISettingsService _settingsService;
     private readonly ISoundDeviceService? _soundDeviceService;
     private readonly RecommendPlateNumberService _recommendPlateNumberService;
@@ -166,7 +166,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
     // Plate color priority config (initialized once at startup)
     private bool _plateColorFilterInitialized;
-    private HashSet<LprAllInOneColorType> _lowPriorityPlateColors = new();
+    private HashSet<VzvisionColorType> _lowPriorityPlateColors = new();
 
     // 订阅管理
     private IDisposable? _stateSubscription;
@@ -228,15 +228,15 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         // Load plate color priority config from appsettings.json (initialize once)
         if (!_plateColorFilterInitialized)
         {
-            var lowPriorityColors = _configuration.GetSection("LowPriorityPlateColors").Get<LprAllInOneColorType[]>();
+            var lowPriorityColors = _configuration.GetSection("LowPriorityPlateColors").Get<VzvisionColorType[]>();
             if (lowPriorityColors == null || lowPriorityColors.Length == 0)
             {
-                _lowPriorityPlateColors = new HashSet<LprAllInOneColorType>();
+                _lowPriorityPlateColors = new HashSet<VzvisionColorType>();
             }
             else
             {
                 _lowPriorityPlateColors = lowPriorityColors
-                    .Select(v => (LprAllInOneColorType)v)
+                    .Select(v => (VzvisionColorType)v)
                     .ToHashSet();
             }
 
@@ -426,7 +426,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     /// <summary>
     ///     接收车牌识别结果(通过 MessageBus 订阅调用)
     /// </summary>
-    private void OnPlateNumberRecognized(string plateNumber, LprAllInOneColorType? colorType = null)
+    private void OnPlateNumberRecognized(string plateNumber, VzvisionColorType? colorType = null)
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return;
 
@@ -995,7 +995,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger.LogInformation(
                     $"Entered WaitingForStability state (ascending), weight: {weight:F3}t");
 
-                // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
+                // 触发 Vzvision 抓拍（如果配置为 Vzvision）
                 EnqueueAsyncOperation(async () => await TriggerCaptureOnWaitingForStabilityAsync());
                 break;
 
@@ -1038,7 +1038,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger?.LogWarning(
                     $"Abnormal departure from WeightStabilized, weight returned to {weight:F3}t");
 
-                // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
+                // 触发 Vzvision 抓拍（如果配置为 Vzvision）
                 EnqueueAsyncOperation(async () => await TriggerCaptureOnOffScaleAsync());
                 EnqueueAsyncOperation(async () => await ResetWeighingCycleAsync());
                 break;
@@ -1048,7 +1048,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 _logger?.LogInformation(
                     $"Normal flow completed (normal departure), entered OffScale state, weight: {weight:F3}t");
 
-                // 触发 LPRAllInOne 抓拍（如果配置为 LPRAllInOne）
+                // 触发 Vzvision 抓拍（如果配置为 Vzvision）
                 EnqueueAsyncOperation(async () => await TriggerCaptureOnOffScaleAsync());
                 EnqueueAsyncOperation(async () => await ResetWeighingCycleAsync());
                 break;
@@ -1077,7 +1077,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // Capture all cameras (Hikvision)
             var photoPaths = await CaptureAllCamerasAsync("WeightStabilized");
 
-            // 触发 LPRAllInOne 车牌识别（方法内部会判断 LprDeviceType）
+            // 触发 Vzvision 车牌识别（方法内部会判断 LprDeviceType）
             await TriggerCaptureOnWeightStabilizedAsync();
 
             // 创建WeighingRecord（传入照片路径）
@@ -1166,203 +1166,76 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     }
 
     /// <summary>
-    ///     触发 LPRAllInOne 抓拍（进入 WaitingForStability 状态时）
+    ///     触发 Vzvision（臻识 SDK）抓拍（进入 WaitingForStability 状态时）
     /// </summary>
-    private async Task TriggerCaptureOnWaitingForStabilityAsync()
-    {
-        try
-        {
-            var settings = await _settingsService.GetSettingsAsync();
-
-            // 如果类型不是 LprAllInOne，不做任何动作
-            if (settings.SystemSettings.LprDeviceType != LprDeviceType.LprAllInOne)
-            {
-                return;
-            }
-
-            // 如果服务未注入，记录警告并返回
-            if (_lprAllInOneService == null)
-            {
-                _logger?.LogWarning(
-                    "ILPRAllInOneService is not available, cannot trigger capture on WaitingForStability");
-                return;
-            }
-
-            var lprConfigs = settings.LicensePlateRecognitionConfigs;
-            if (lprConfigs.Count == 0)
-            {
-                _logger?.LogWarning("No LPRAllInOne devices configured, cannot trigger capture on WaitingForStability");
-                return;
-            }
-
-            _logger?.LogInformation("Triggering LPRAllInOne capture on WaitingForStability for {Count} devices",
-                lprConfigs.Count);
-
-            var tasks = lprConfigs
-                .Where(config => config.IsValid())
-                .Select(async config =>
-                {
-                    var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
-                    if (success)
-                    {
-                        _logger?.LogInformation(
-                            "Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability",
-                            config.Name, config.Ip);
-                    }
-                    else
-                    {
-                        _logger?.LogWarning(
-                            "Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WaitingForStability",
-                            config.Name, config.Ip);
-                    }
-
-                    return success;
-                });
-
-            var results = await Task.WhenAll(tasks);
-            var successCount = results.Count(r => r);
-            var failCount = results.Length - successCount;
-
-            _logger?.LogInformation(
-                "LPRAllInOne capture on WaitingForStability completed: {SuccessCount} succeeded, {FailCount} failed",
-                successCount, failCount);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Error occurred while triggering LPRAllInOne capture on WaitingForStability");
-        }
-    }
+    private Task TriggerCaptureOnWaitingForStabilityAsync() =>
+        TriggerVzvisionCaptureForAllAsync("WaitingForStability");
 
     /// <summary>
-    ///     触发 LPRAllInOne 抓拍（进入 WeightStabilized 状态时）
+    ///     触发 Vzvision 抓拍（进入 WeightStabilized 状态时）
     /// </summary>
-    private async Task TriggerCaptureOnWeightStabilizedAsync()
-    {
-        try
-        {
-            var settings = await _settingsService.GetSettingsAsync();
-
-            // 如果类型不是 LprAllInOne，不做任何动作
-            if (settings.SystemSettings.LprDeviceType != LprDeviceType.LprAllInOne)
-            {
-                return;
-            }
-
-            // 如果服务未注入，记录警告并返回
-            if (_lprAllInOneService == null)
-            {
-                _logger?.LogWarning("ILPRAllInOneService is not available, cannot trigger capture on WeightStabilized");
-                return;
-            }
-
-            var lprConfigs = settings.LicensePlateRecognitionConfigs;
-            if (lprConfigs.Count == 0)
-            {
-                _logger?.LogWarning("No LPRAllInOne devices configured, cannot trigger capture on WeightStabilized");
-                return;
-            }
-
-            _logger?.LogInformation("Triggering LPRAllInOne capture on WeightStabilized for {Count} devices",
-                lprConfigs.Count);
-
-            var tasks = lprConfigs
-                .Where(config => config.IsValid())
-                .Select(async config =>
-                {
-                    var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
-                    if (success)
-                    {
-                        _logger?.LogInformation(
-                            "Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized",
-                            config.Name, config.Ip);
-                    }
-                    else
-                    {
-                        _logger?.LogWarning(
-                            "Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on WeightStabilized",
-                            config.Name, config.Ip);
-                    }
-
-                    return success;
-                });
-
-            var results = await Task.WhenAll(tasks);
-            var successCount = results.Count(r => r);
-            var failCount = results.Length - successCount;
-
-            _logger?.LogInformation(
-                "LPRAllInOne capture on WeightStabilized completed: {SuccessCount} succeeded, {FailCount} failed",
-                successCount, failCount);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Error occurred while triggering LPRAllInOne capture on WeightStabilized");
-        }
-    }
+    private Task TriggerCaptureOnWeightStabilizedAsync() =>
+        TriggerVzvisionCaptureForAllAsync("WeightStabilized");
 
     /// <summary>
-    ///     触发 LPRAllInOne 抓拍（进入 OffScale 状态时）
+    ///     触发 Vzvision 抓拍（进入 OffScale 状态时）
     /// </summary>
-    private async Task TriggerCaptureOnOffScaleAsync()
+    private Task TriggerCaptureOnOffScaleAsync() =>
+        TriggerVzvisionCaptureForAllAsync("OffScale");
+
+    private async Task TriggerVzvisionCaptureForAllAsync(string phase)
     {
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
 
-            // 如果类型不是 LprAllInOne，不做任何动作
-            if (settings.SystemSettings.LprDeviceType != LprDeviceType.LprAllInOne)
-            {
+            if (settings.SystemSettings.LprDeviceType != LprDeviceType.Vzvision)
                 return;
-            }
 
-            // 如果服务未注入，记录警告并返回
-            if (_lprAllInOneService == null)
+            if (_vzvisionLprService == null)
             {
-                _logger?.LogWarning("ILPRAllInOneService is not available, cannot trigger capture on OffScale");
+                _logger?.LogWarning("IVzvisionLprService 未注入，无法抓拍 ({Phase})", phase);
                 return;
             }
 
             var lprConfigs = settings.LicensePlateRecognitionConfigs;
             if (lprConfigs.Count == 0)
             {
-                _logger?.LogWarning("No LPRAllInOne devices configured, cannot trigger capture on OffScale");
+                _logger?.LogWarning("未配置 Vzvision 车牌设备，跳过抓拍 ({Phase})", phase);
                 return;
             }
 
-            _logger?.LogInformation("Triggering LPRAllInOne capture on OffScale for {Count} devices", lprConfigs.Count);
+            _logger?.LogInformation("触发 Vzvision 抓拍 ({Phase})，设备数 {Count}", phase, lprConfigs.Count);
 
             var tasks = lprConfigs
                 .Where(config => config.IsValid())
                 .Select(async config =>
                 {
-                    var success = await _lprAllInOneService.TriggerManualRecognitionAsync(config);
-                    if (success)
+                    try
                     {
-                        _logger?.LogInformation(
-                            "Successfully triggered LPRAllInOne capture for device: {Name} ({Ip}) on OffScale",
-                            config.Name, config.Ip);
+                        await _vzvisionLprService.TriggerCaptureAsync(config);
+                        _logger?.LogInformation("Vzvision 抓拍已发送: {Name} ({Ip}) [{Phase}]", config.Name, config.Ip,
+                            phase);
+                        return true;
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        _logger?.LogWarning(
-                            "Failed to trigger LPRAllInOne capture for device: {Name} ({Ip}) on OffScale",
-                            config.Name, config.Ip);
+                        _logger?.LogWarning(ex, "Vzvision 抓拍失败: {Name} ({Ip}) [{Phase}]", config.Name, config.Ip,
+                            phase);
+                        return false;
                     }
-
-                    return success;
                 });
 
             var results = await Task.WhenAll(tasks);
             var successCount = results.Count(r => r);
             var failCount = results.Length - successCount;
 
-            _logger?.LogInformation(
-                "LPRAllInOne capture on OffScale completed: {SuccessCount} succeeded, {FailCount} failed",
+            _logger?.LogInformation("Vzvision 抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}", phase,
                 successCount, failCount);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error occurred while triggering LPRAllInOne capture on OffScale");
+            _logger?.LogError(ex, "触发 Vzvision 抓拍异常 ({Phase})", phase);
         }
     }
 

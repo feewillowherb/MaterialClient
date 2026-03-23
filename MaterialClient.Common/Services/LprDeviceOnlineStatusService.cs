@@ -4,14 +4,14 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Huaxiazhixin;
-using MaterialClient.Common.Services.LprAllInOne;
+using MaterialClient.Common.Services.Vzvision;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
 /// <summary>
 ///     统一 LPR 设备在线状态查询接口
-///     对 Hikvision、LprAllInOne、华夏智信 三种设备类型提供单一 API
+///     对 Hikvision、Vzvision、华夏智信 三种设备类型提供单一 API
 /// </summary>
 public interface ILprDeviceOnlineStatusService
 {
@@ -19,7 +19,7 @@ public interface ILprDeviceOnlineStatusService
     ///     判断指定类型的 LPR 设备是否在线
     /// </summary>
     /// <param name="deviceType">设备类型</param>
-    /// <param name="config">设备配置（Hikvision 需完整配置，LprAllInOne/华夏智信 主要使用 Ip）</param>
+    /// <param name="config">设备配置（Hikvision 需完整配置；Vzvision/华夏智信 主要使用 Ip 等）</param>
     /// <returns>设备在线返回 true，否则 false；配置无效（如 Ip 为空）返回 false</returns>
     bool IsOnline(LprDeviceType deviceType, LicensePlateRecognitionConfig config);
 
@@ -36,24 +36,24 @@ public interface ILprDeviceOnlineStatusService
 
 /// <summary>
 ///     统一 LPR 设备在线状态服务实现
-///     按设备类型委托给 IHikvisionLprService / ILprAllInOneService / IHuaxiazhixinLprOnlineState
+///     按设备类型委托给 IHikvisionLprService / IVzvisionLprService / IHuaxiazhixinLprOnlineState
 /// </summary>
 public class LprDeviceOnlineStatusService : ILprDeviceOnlineStatusService, ISingletonDependency
 {
-    private static readonly TimeSpan DefaultTimeoutLprAllInOne = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan DefaultTimeoutVzvision = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan DefaultTimeoutHuaxiazhixin = TimeSpan.FromSeconds(30);
 
     private readonly IHikvisionLprService _hikvisionLprService;
-    private readonly ILprAllInOneService _lprAllInOneService;
+    private readonly IVzvisionLprService _vzvisionLprService;
     private readonly IHuaxiazhixinLprOnlineState _huaxiazhixinLprOnlineState;
 
     public LprDeviceOnlineStatusService(
         IHikvisionLprService hikvisionLprService,
-        ILprAllInOneService lprAllInOneService,
+        IVzvisionLprService vzvisionLprService,
         IHuaxiazhixinLprOnlineState huaxiazhixinLprOnlineState)
     {
         _hikvisionLprService = hikvisionLprService ?? throw new ArgumentNullException(nameof(hikvisionLprService));
-        _lprAllInOneService = lprAllInOneService ?? throw new ArgumentNullException(nameof(lprAllInOneService));
+        _vzvisionLprService = vzvisionLprService ?? throw new ArgumentNullException(nameof(vzvisionLprService));
         _huaxiazhixinLprOnlineState = huaxiazhixinLprOnlineState ?? throw new ArgumentNullException(nameof(huaxiazhixinLprOnlineState));
     }
 
@@ -68,7 +68,7 @@ public class LprDeviceOnlineStatusService : ILprDeviceOnlineStatusService, ISing
         return deviceType switch
         {
             LprDeviceType.Hikvision => _hikvisionLprService.IsOnline(config),
-            LprDeviceType.LprAllInOne => _lprAllInOneService.IsOnline(config.Ip, DefaultTimeoutLprAllInOne),
+            LprDeviceType.Vzvision => _vzvisionLprService.IsOnline(config.Ip, DefaultTimeoutVzvision),
             LprDeviceType.Huaxiazhixin => _huaxiazhixinLprOnlineState.IsOnline(config.Ip, DefaultTimeoutHuaxiazhixin),
             _ => false
         };

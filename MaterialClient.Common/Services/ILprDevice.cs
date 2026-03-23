@@ -8,7 +8,7 @@ namespace MaterialClient.Common.Services;
 /// </summary>
 /// <remarks>
 ///     Defines the active capture standard for all LPR device types.
-///     Support varies by vendor: Hikvision (supported), LprAllInOne (supported), Huaxiazhixin (not supported).
+///     Support varies by vendor: Hikvision (supported), Vzvision (supported), Huaxiazhixin (not supported).
 ///     Recognition results are delivered only via MessageBus <see cref="Events.LicensePlateRecognizedMessage"/>.
 /// </remarks>
 public interface ILprDevice

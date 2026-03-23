@@ -1,7 +1,7 @@
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Huaxiazhixin;
-using MaterialClient.Common.Services.LprAllInOne;
+using MaterialClient.Common.Services.Vzvision;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
@@ -14,7 +14,7 @@ public interface ILprDeviceResolver
     /// <summary>
     ///     Gets the <see cref="ILprDevice"/> implementation for the given <paramref name="type"/>.
     /// </summary>
-    /// <param name="type">LPR device type (Hikvision, LprAllInOne, Huaxiazhixin).</param>
+    /// <param name="type">LPR device type (Hikvision, Vzvision, Huaxiazhixin).</param>
     /// <returns>The corresponding LPR device instance.</returns>
     ILprDevice GetDevice(LprDeviceType type);
 }
@@ -25,16 +25,16 @@ public interface ILprDeviceResolver
 public class LprDeviceResolver : ILprDeviceResolver, ISingletonDependency
 {
     private readonly IHikvisionLprService _hikvisionLprService;
-    private readonly ILprAllInOneService _lprAllInOneService;
+    private readonly IVzvisionLprService _vzvisionLprService;
     private readonly HuaxiazhixinLprService _huaxiazhixinLprService;
 
     public LprDeviceResolver(
         IHikvisionLprService hikvisionLprService,
-        ILprAllInOneService lprAllInOneService,
+        IVzvisionLprService vzvisionLprService,
         HuaxiazhixinLprService huaxiazhixinLprService)
     {
         _hikvisionLprService = hikvisionLprService;
-        _lprAllInOneService = lprAllInOneService;
+        _vzvisionLprService = vzvisionLprService;
         _huaxiazhixinLprService = huaxiazhixinLprService;
     }
 
@@ -44,7 +44,7 @@ public class LprDeviceResolver : ILprDeviceResolver, ISingletonDependency
         return type switch
         {
             LprDeviceType.Hikvision => (ILprDevice)_hikvisionLprService,
-            LprDeviceType.LprAllInOne => (ILprDevice)_lprAllInOneService,
+            LprDeviceType.Vzvision => (ILprDevice)_vzvisionLprService,
             LprDeviceType.Huaxiazhixin => _huaxiazhixinLprService,
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown LPR device type.")
         };

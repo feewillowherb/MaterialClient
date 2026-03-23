@@ -2,6 +2,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Services.Vzvision;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Services;
@@ -72,11 +73,15 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
                 await StartHikvisionLprServiceAsync();
             }
 
+            if (settings.SystemSettings.LprDeviceType == LprDeviceType.Vzvision)
+            {
+                await StartVzvisionLprServiceAsync();
+            }
+
             _isStarted = true; // 标记为已启动
 
             // TODO: Start other devices
             // - Start document scanner service
-            // - Start other license plate recognition services (LprAllInOne, Huaxiazhixin)
         }
         catch (Exception ex)
         {
@@ -104,11 +109,12 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             // Stop Hikvision LPR service if it was started
             await StopHikvisionLprServiceAsync();
 
+            await StopVzvisionLprServiceAsync();
+
             _isStarted = false; // 重置启动状态
 
             // TODO: Close other devices
             // - Close document scanner service
-            // - Close other license plate recognition services
 
             await Task.CompletedTask;
         }
@@ -165,6 +171,11 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     private IHikvisionLprService GetHikvisionLprService()
     {
         return _serviceProvider.GetRequiredService<IHikvisionLprService>();
+    }
+
+    private IVzvisionLprService GetVzvisionLprService()
+    {
+        return _serviceProvider.GetRequiredService<IVzvisionLprService>();
     }
 
     /// <summary>
@@ -310,6 +321,58 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
         {
             _logger?.LogError(ex, "Error stopping Hikvision LPR service");
             // Don't throw, allow other cleanup to continue
+        }
+    }
+
+    private async Task StartVzvisionLprServiceAsync()
+    {
+        try
+        {
+            var vz = GetVzvisionLprService();
+            var settings = await _settingsService.GetSettingsAsync();
+            var lprConfigs = settings.LicensePlateRecognitionConfigs;
+            if (lprConfigs == null || lprConfigs.Count == 0)
+            {
+                _logger?.LogInformation("未配置 Vzvision 车牌设备");
+                return;
+            }
+
+            foreach (var lprConfig in lprConfigs)
+            {
+                if (lprConfig.IsValid())
+                {
+                    vz.AddOrUpdateDevice(lprConfig);
+                    _logger?.LogInformation("Vzvision 设备已登记: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
+                }
+                else
+                {
+                    _logger?.LogWarning("Vzvision 车牌配置无效: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
+                }
+            }
+
+            var started = await vz.StartAsync();
+            if (started)
+                _logger?.LogInformation("Vzvision LPR 服务已启动");
+            else
+                _logger?.LogWarning("Vzvision LPR 服务未启动或已在运行");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "启动 Vzvision LPR 服务失败");
+        }
+    }
+
+    private async Task StopVzvisionLprServiceAsync()
+    {
+        try
+        {
+            var vz = GetVzvisionLprService();
+            await vz.StopAsync();
+            _logger?.LogInformation("Vzvision LPR 服务已停止");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "停止 Vzvision LPR 服务失败");
         }
     }
 }

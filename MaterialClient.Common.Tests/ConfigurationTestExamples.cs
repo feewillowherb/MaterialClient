@@ -76,7 +76,7 @@ public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientDomainT
             EnableAutoStart = true,
             CaptureStreamType = StreamType.Mainstream,  // 使用主码流
             Urls = "http://test-server:8080",
-            LprDeviceType = LprDeviceType.LprAllInOne,
+            LprDeviceType = LprDeviceType.Vzvision,
             MinDiffCharCount = 1
         };
 
@@ -84,7 +84,7 @@ public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientDomainT
 
         // 在测试中使用自定义配置
         var lprDeviceType = customSettings.LprDeviceType;
-        lprDeviceType.ShouldBe(LprDeviceType.LprAllInOne);
+        lprDeviceType.ShouldBe(LprDeviceType.Vzvision);
     }
 
     [Fact]

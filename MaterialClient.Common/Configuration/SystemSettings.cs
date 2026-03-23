@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Configuration;
@@ -23,9 +24,10 @@ public class SystemSettings
     public string Urls { get; set; } = "http://localhost:9960";
 
     /// <summary>
-    ///     车牌识别设备类型 (Hikvision 或 LprAllInOne 或 Huaxiazhixin)
+    ///     车牌识别设备类型 (Hikvision / Vzvision / Huaxiazhixin)
     ///     默认值: Hikvision
     /// </summary>
+    [JsonConverter(typeof(LprDeviceTypeJsonConverter))]
     public LprDeviceType LprDeviceType { get; set; } = LprDeviceType.Hikvision;
 
     /// <summary>

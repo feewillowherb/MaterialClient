@@ -1,5 +1,5 @@
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.Common.Services.LprAllInOne;
+using MaterialClient.Common.Services.Vzvision;
 
 namespace MaterialClient.Common.Events;
 
@@ -20,7 +20,7 @@ public class LicensePlateRecognizedMessage
     /// <summary>
     ///     可选的车牌颜色类型(例如 蓝色、黄色、绿色)
     /// </summary>
-    public LprAllInOneColorType? ColorType { get; set; }
+    public VzvisionColorType? ColorType { get; set; }
 
     /// <summary>
     ///     识别车牌的设备类型

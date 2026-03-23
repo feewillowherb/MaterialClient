@@ -4,7 +4,6 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hikvision;
-using MaterialClient.Common.Services.LprAllInOne;
 using ReactiveUI;
 
 namespace MaterialClient.Common.Tests.Mocks;

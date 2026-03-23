@@ -40,7 +40,7 @@ public partial class SettingsWindow : Window, ITransientDependency
         if (viewModel != null)
         {
             viewModel.WhenAnyValue(x => x.LprDeviceType)
-                .Subscribe(_ => UpdateLprColumnVisibility(viewModel.ShowHikvisionLprFields));
+                .Subscribe(_ => UpdateLprColumnVisibility(viewModel.ShowLprUserPortColumns));
         }
     }
 
@@ -56,7 +56,7 @@ public partial class SettingsWindow : Window, ITransientDependency
             // Initialize LPR column visibility based on current device type
             if (DataContext is SettingsWindowViewModel viewModel)
             {
-                UpdateLprColumnVisibility(viewModel.ShowHikvisionLprFields);
+                UpdateLprColumnVisibility(viewModel.ShowLprUserPortColumns);
             }
         }, DispatcherPriority.Loaded);
     }

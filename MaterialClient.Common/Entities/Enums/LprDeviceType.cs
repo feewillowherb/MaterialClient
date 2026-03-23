@@ -10,8 +10,9 @@ public enum LprDeviceType
     [Description("海康威视")]
     Hikvision = 0,
     
-    [Description("车牌识别一体机")]
-    LprAllInOne = 1,
+    /// <summary>臻识一体机（Vz SDK，原 LprAllInOne 枚举名；持久化 JSON 中数值仍为 1）</summary>
+    [Description("臻识车牌识别")]
+    Vzvision = 1,
     
     [Description("华夏智信")]
     Huaxiazhixin = 2
