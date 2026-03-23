@@ -473,7 +473,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     Dispatcher.UIThread.Post(() => { IsLprOnline = false; });
                 }
             });
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(60));
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
 
         _disposables.Add(lprStatusTimer);
     }
