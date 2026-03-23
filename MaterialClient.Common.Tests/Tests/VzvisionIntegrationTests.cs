@@ -140,6 +140,86 @@ public class VzvisionIntegrationTests(ITestOutputHelper output)
             }
         }
     }
+
+    /// <summary>
+    /// 测试 GPIO/IO 自动输出并复位（调用 <see cref="VzvisionSdk.VzLPRClient_SetIOOutputAuto"/>）。
+    /// </summary>
+    [Fact(Skip = "Requires physical Vzvision device (VzLPRSDK.dll + device connectivity)")]
+    public void VzGpioSetAuto_ShouldReturnSuccess()
+    {
+        int handle = 0;
+        const uint ioChannel = 0;
+        const int durationMs = 500;
+
+        try
+        {
+            var setupRet = VzvisionSdk.VzLPRClient_Setup();
+            Assert.True(setupRet == 0, $"VzLPRClient_Setup failed: {setupRet}");
+
+            handle = VzvisionSdk.VzLPRClient_Open(TestIp, TestPort, TestUsername, TestPassword);
+            Assert.True(handle != 0, "VzLPRClient_Open returned 0 handle (login/open failed)");
+
+            var setRet = VzvisionSdk.VzLPRClient_SetIOOutputAuto(handle, ioChannel, durationMs);
+            Assert.True(setRet == 0, $"VzLPRClient_SetIOOutputAuto failed: {setRet}");
+
+            output.WriteLine($"Vz IO auto set ok: ip={TestIp}, channel={ioChannel}, durationMs={durationMs}");
+        }
+        finally
+        {
+            try
+            {
+                if (handle != 0)
+                {
+                    _ = VzvisionSdk.VzLPRClient_SetIOOutput(handle, ioChannel, 0);
+                    _ = VzvisionSdk.VzLPRClient_Close(handle);
+                }
+            }
+            finally
+            {
+                VzvisionSdk.VzLPRClient_Cleanup();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 测试 GPIO/IO 自动输出并复位（带响应，调用 <see cref="VzvisionSdk.VzLPRClient_SetIOOutputAutoResp"/>）。
+    /// </summary>
+    [Fact(Skip = "Requires physical Vzvision device (VzLPRSDK.dll + device connectivity)")]
+    public void VzGpioSetAutoResp_ShouldReturnSuccess()
+    {
+        int handle = 0;
+        const uint ioChannel = 0;
+        const int durationMs = 500;
+
+        try
+        {
+            var setupRet = VzvisionSdk.VzLPRClient_Setup();
+            Assert.True(setupRet == 0, $"VzLPRClient_Setup failed: {setupRet}");
+
+            handle = VzvisionSdk.VzLPRClient_Open(TestIp, TestPort, TestUsername, TestPassword);
+            Assert.True(handle != 0, "VzLPRClient_Open returned 0 handle (login/open failed)");
+
+            var setRet = VzvisionSdk.VzLPRClient_SetIOOutputAutoResp(handle, ioChannel, durationMs);
+            Assert.True(setRet == 0, $"VzLPRClient_SetIOOutputAutoResp failed: {setRet}");
+
+            output.WriteLine($"Vz IO auto-resp set ok: ip={TestIp}, channel={ioChannel}, durationMs={durationMs}");
+        }
+        finally
+        {
+            try
+            {
+                if (handle != 0)
+                {
+                    _ = VzvisionSdk.VzLPRClient_SetIOOutput(handle, ioChannel, 0);
+                    _ = VzvisionSdk.VzLPRClient_Close(handle);
+                }
+            }
+            finally
+            {
+                VzvisionSdk.VzLPRClient_Cleanup();
+            }
+        }
+    }
 }
 
 /// <summary>
