@@ -6,6 +6,7 @@ using System.Text;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -267,6 +268,13 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
             var license = DecodeLicense(plate.license);
             if (string.IsNullOrWhiteSpace(license))
                 return 0;
+
+            if (!PlateNumberValidator.IsValidChinesePlateNumber(license))
+            {
+                _logger?.LogWarning("Vzvision 车牌过滤：无效车牌号 {Plate}，Handle={Handle}，ResultType={ResultType}",
+                    license, handle, eResultType);
+                return 0;
+            }
 
             if (!_handleToIp.TryGetValue(handle, out var ip) || !_configs.TryGetValue(ip, out var cfg))
             {
