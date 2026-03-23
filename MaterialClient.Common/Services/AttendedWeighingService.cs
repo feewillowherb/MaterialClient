@@ -106,7 +106,7 @@ public interface IAttendedWeighingService : IAsyncDisposable
     AttendedWeighingStatus GetCurrentStatus();
 
     /// <summary>
-    ///     获取当前识别次数最大的车牌号
+    ///     获取当前推荐车牌号（启用“最新车牌”时按最近更新时间优先）
     /// </summary>
     string? GetMostFrequentPlateNumber();
 
@@ -160,6 +160,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private decimal _weightStabilityThreshold;
     private int _stabilityWindowMs;
     private int _stabilityCheckIntervalMs;
+    private bool _enableLatestPlateNumber;
 
     // Plate number cache (field-level management)
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
@@ -171,6 +172,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // 订阅管理
     private IDisposable? _stateSubscription;
     private IDisposable? _licensePlateSubscription; // MessageBus 订阅
+    private IDisposable? _settingsSavedSubscription;
 
     // 异步操作追踪（用于优雅关闭）
     private readonly ConcurrentBag<Task> _pendingOperations = new();
@@ -218,12 +220,21 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             _logger?.LogInformation("已订阅 LicensePlateRecognizedMessage (MessageBus)");
         }
 
+        if (_settingsSavedSubscription == null)
+        {
+            _settingsSavedSubscription = MessageBus.Current
+                .Listen<SettingsSavedMessage>()
+                .Subscribe(_ => EnqueueAsyncOperation(UpdateRuntimeConfigurationAsync));
+            _logger?.LogInformation("已订阅 SettingsSavedMessage (MessageBus)");
+        }
+
         // Load configuration into fields
         var config = await GetConfigurationAsync();
         _minWeightThreshold = config.MinWeightThreshold;
         _weightStabilityThreshold = config.WeightStabilityThreshold;
         _stabilityWindowMs = config.StabilityWindowMs;
         _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
+        _enableLatestPlateNumber = config.EnableLatestPlateNumber;
 
         // Load plate color priority config from appsettings.json (initialize once)
         if (!_plateColorFilterInitialized)
@@ -496,14 +507,18 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         if (highPriorityPlates.Count > 0)
         {
             var mostFrequent = highPriorityPlates
-                .OrderByDescending(kvp => kvp.Value.Count)
+                .OrderByDescending(kvp =>
+                    _enableLatestPlateNumber ? kvp.Value.LastUpdateTime.Ticks : kvp.Value.Count)
+                .ThenByDescending(kvp => kvp.Value.Count)
                 .First();
             return mostFrequent.Key;
         }
 
         // Fall back to low-priority plates if no high-priority plates exist
         var lowPriorityMostFrequent = _plateNumberCache
-            .OrderByDescending(kvp => kvp.Value.Count)
+            .OrderByDescending(kvp =>
+                _enableLatestPlateNumber ? kvp.Value.LastUpdateTime.Ticks : kvp.Value.Count)
+            .ThenByDescending(kvp => kvp.Value.Count)
             .First();
 
         _logger?.LogInformation("使用低优先级车牌（无高优先级车牌可用）: Plate={Plate}, Color={Color}",
@@ -524,6 +539,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             _licensePlateSubscription?.Dispose();
             _licensePlateSubscription = null;
+            _settingsSavedSubscription?.Dispose();
+            _settingsSavedSubscription = null;
         }
         catch (Exception ex)
         {
@@ -612,6 +629,20 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     _logger?.LogError(ex, "Error in async operation (fallback mode)");
                 }
             });
+        }
+    }
+
+    private async Task UpdateRuntimeConfigurationAsync()
+    {
+        try
+        {
+            var config = await GetConfigurationAsync();
+            _enableLatestPlateNumber = config.EnableLatestPlateNumber;
+            _logger?.LogInformation("已刷新启用最新车牌开关: {Enabled}", _enableLatestPlateNumber);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "刷新运行时称重配置失败");
         }
     }
 

@@ -41,6 +41,11 @@ public class WeighingConfiguration
     public bool EnablePlateRewrite { get; set; } = true;
 
     /// <summary>
+    ///     获取推荐车牌时是否优先使用最近识别（LastUpdateTime 优先于 Count）
+    /// </summary>
+    public bool EnableLatestPlateNumber { get; set; } = false;
+
+    /// <summary>
     ///     判断配置是否有效
     ///     验证所有数值参数是否在合理范围内
     /// </summary>
