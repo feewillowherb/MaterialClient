@@ -379,17 +379,17 @@ public class AttendedWeighingServiceTests : IDisposable
     {
         // Arrange - Mark blue/yellow as low-priority so fallback path is used
         var (service, weightSubject) = CreateServiceWithLowPriorityColors(
-            new[] { LprAllInOneColorType.Blue, LprAllInOneColorType.Yellow },
+            new[] { VzvisionColorType.Blue, VzvisionColorType.Yellow },
             enableLatestPlateNumber: true);
         await service.StartAsync();
         weightSubject.OnNext(1.0m);
         await Task.Delay(300);
 
         // Act - A count is higher, but B is newer
-        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
-        SendPlateRecognition("京A12345", LprAllInOneColorType.Blue);
+        SendPlateRecognition("京A12345", VzvisionColorType.Blue);
+        SendPlateRecognition("京A12345", VzvisionColorType.Blue);
         await Task.Delay(80);
-        SendPlateRecognition("粤B67890", LprAllInOneColorType.Yellow);
+        SendPlateRecognition("粤B67890", VzvisionColorType.Yellow);
         await Task.Delay(200);
 
         // Assert
@@ -1440,8 +1440,7 @@ public class AttendedWeighingServiceTests : IDisposable
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithLowPriorityColors(
-        VzvisionColorType[] lowPriorityColors)
-        LprAllInOneColorType[] lowPriorityColors,
+        VzvisionColorType[] lowPriorityColors,
         bool enableLatestPlateNumber = false)
     {
         var weightSubject = new Subject<decimal>();
