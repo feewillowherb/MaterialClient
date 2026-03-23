@@ -43,6 +43,16 @@ public class LicensePlateRecognitionConfig
     public string? Channel { get; set; }
 
     /// <summary>
+    ///     是否启用道闸 I/O 联动功能（统一建模，当前仅 Vzvision 执行）
+    /// </summary>
+    public bool EnableGateIo { get; set; } = false;
+
+    /// <summary>
+    ///     道闸 I/O 通道号（统一建模，当前仅 Vzvision 执行）
+    /// </summary>
+    public string? IoChannel { get; set; }
+
+    /// <summary>
     ///     判断配置是否有效
     ///     需要Name和Ip都不为空
     /// </summary>

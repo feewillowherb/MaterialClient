@@ -36,6 +36,11 @@ public interface IVzvisionLprService : ILprDevice
     ///     基于当前连接句柄的 <see cref="VzvisionSdk.VzLPRClient_IsConnected"/>（无 HTTP 轮询）。
     /// </summary>
     bool IsOnline(string deviceIp, TimeSpan? timeout = null);
+
+    /// <summary>
+    ///     发送道闸 I/O 输出信号。
+    /// </summary>
+    Task SetIoOutputAsync(LicensePlateRecognitionConfig config, uint ioChannel, int outputValue);
 }
 
 /// <inheritdoc cref="IVzvisionLprService" />
@@ -168,6 +173,29 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
         }
 
         _logger?.LogInformation("已触发 Vzvision 抓拍: Device={Name}", config.Name);
+    }
+
+    /// <inheritdoc />
+    public async Task SetIoOutputAsync(LicensePlateRecognitionConfig config, uint ioChannel, int outputValue)
+    {
+        await Task.CompletedTask;
+        ArgumentNullException.ThrowIfNull(config);
+        if (!config.IsValid())
+            throw new InvalidOperationException("车牌识别配置无效");
+
+        if (!TryEnsureHandle(config, out var handle))
+            throw new InvalidOperationException($"设备未连接或打开失败: {config.Name} ({config.Ip})");
+
+        var ret = VzvisionSdk.VzLPRClient_SetIOOutput(handle, ioChannel, outputValue);
+        if (ret != 0)
+        {
+            _logger?.LogWarning("VzLPRClient_SetIOOutput 返回非零: {Ret}, Device={Name}, IoChannel={IoChannel}, Output={Output}",
+                ret, config.Name, ioChannel, outputValue);
+            throw new InvalidOperationException($"I/O 输出失败 (代码 {ret})");
+        }
+
+        _logger?.LogInformation("已发送 Vzvision I/O 输出: Device={Name}, IoChannel={IoChannel}, Output={Output}",
+            config.Name, ioChannel, outputValue);
     }
 
     private bool TryEnsureHandle(LicensePlateRecognitionConfig config, out int handle)

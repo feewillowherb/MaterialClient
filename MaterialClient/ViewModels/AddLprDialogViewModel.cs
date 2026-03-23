@@ -20,6 +20,8 @@ public partial class AddLprDialogViewModel : ViewModelBase
     [Reactive] private string? _password;
     [Reactive] private string? _port;
     [Reactive] private string? _channel;
+    [Reactive] private bool _enableGateIo;
+    [Reactive] private string? _ioChannel;
 
     /// <summary>
     ///     是否显示海康威视专用配置字段（含通道）
@@ -47,6 +49,8 @@ public partial class AddLprDialogViewModel : ViewModelBase
             _userName = VzvisionLprDefaults.DefaultUserName;
             _port = VzvisionLprDefaults.DefaultPort;
         }
+
+        _ioChannel ??= "1";
 
         this.WhenAnyValue(x => x.Direction)
             .Subscribe(_ =>
@@ -84,6 +88,7 @@ public partial class AddLprDialogViewModel : ViewModelBase
         string? password = Password;
         string? port = Port;
         string? channel = Channel;
+        string? ioChannel = IoChannel;
 
         if (HikvisionLprDefaults.ShouldApply(_lprDeviceType))
         {
@@ -117,7 +122,9 @@ public partial class AddLprDialogViewModel : ViewModelBase
             Port = port,
             Channel = _lprDeviceType == LprDeviceType.Hikvision
                 ? (channel ?? HikvisionLprDefaults.DefaultChannel)
-                : null
+                : null,
+            EnableGateIo = EnableGateIo,
+            IoChannel = string.IsNullOrWhiteSpace(ioChannel) ? "1" : ioChannel
         };
     }
 

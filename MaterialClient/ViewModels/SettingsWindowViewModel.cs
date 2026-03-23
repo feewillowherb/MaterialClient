@@ -250,7 +250,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                         UserName = l.UserName,
                         Password = l.Password,
                         Port = l.Port,
-                        Channel = l.Channel
+                        Channel = l.Channel,
+                        EnableGateIo = l.EnableGateIo,
+                        IoChannel = l.IoChannel
                     };
                     if (HikvisionLprDefaults.ShouldApply(LprDeviceType))
                         HikvisionLprDefaults.ApplyDefaults(config);
@@ -462,7 +464,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UserName = config.UserName,
             Password = config.Password,
             Port = config.Port,
-            Channel = config.Channel
+            Channel = config.Channel,
+            EnableGateIo = config.EnableGateIo,
+            IoChannel = config.IoChannel
         };
 
         var dialog = new AddLprDialog(dialogViewModel);
@@ -498,7 +502,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UserName = row.UserName,
             Password = row.Password,
             Port = row.Port,
-            Channel = row.Channel
+            Channel = row.Channel,
+            EnableGateIo = row.EnableGateIo,
+            IoChannel = row.IoChannel
         };
 
         var device = _lprDeviceResolver.GetDevice(LprDeviceType);
@@ -728,7 +734,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     UserName = config.UserName,
                     Password = config.Password,
                     Port = config.Port,
-                    Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel
+                    Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel,
+                    EnableGateIo = config.EnableGateIo,
+                    IoChannel = string.IsNullOrWhiteSpace(config.IoChannel) ? "1" : config.IoChannel
                 });
 
             // Load sound device settings
@@ -810,6 +818,10 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     [Reactive] private string? _port;
 
     [Reactive] private string? _channel;
+
+    [Reactive] private bool _enableGateIo;
+
+    [Reactive] private string? _ioChannel;
 
     /// <summary>
     ///     设备是否在线（由 10 分钟定时检查更新）

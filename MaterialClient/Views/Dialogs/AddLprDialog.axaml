@@ -55,6 +55,42 @@
                     </ComboBox>
                 </Grid>
 
+                <!-- Gate I/O -->
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <Separator Margin="0,8" />
+                    <TextBlock Text="道闸 I/O 联动"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="Black" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="启用I/O:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <CheckBox IsChecked="{Binding EnableGateIo}"
+                                  Grid.Column="1"
+                                  Content="识别后触发开闸信号" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="I/O通道:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding IoChannel}"
+                                 Grid.Column="1"
+                                 Watermark="1" />
+                    </Grid>
+
+                    <TextBlock Text="说明：当前仅 Vzvision 设备支持执行道闸 I/O，其他设备将记录未支持日志。"
+                               Foreground="Gray"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
                 <!-- Hikvision Fields -->
                 <StackPanel IsVisible="{Binding ShowHikvisionLprFields}" Spacing="16" Margin="0,16,0,0">
                     <Separator Margin="0,8" />

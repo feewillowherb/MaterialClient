@@ -64,6 +64,7 @@ public class MaterialClientCommonModule : AbpModule
         services.AddSingleton<IHuaxiazhixinLprOnlineState>(sp => sp.GetRequiredService<HuaxiazhixinLprService>());
 
         services.AddSingleton<IVzvisionLprService>(sp => sp.GetRequiredService<VzvisionLprService>());
+        services.AddSingleton<ILprGateIoControlService, LprGateIoControlService>();
     }
 
 }
