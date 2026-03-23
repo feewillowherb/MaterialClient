@@ -1,14 +1,14 @@
 ## Context
 
 当前车牌识别配置页面 `AddLprDialog` 已按设备类型动态展示字段，但尚无道闸 I/O 联动配置。  
-同时，`VzvisionSdk` 已具备 `VzLPRClient_SetIOOutput(handle, ioChannel, 1)` 可调用能力，说明底层接口可用，但业务链路缺少“识别后自动触发”的统一封装。  
+同时，`VzvisionSdk` 已具备 `VzLPRClient_SetIOOutputAutoResp(handle, ioChannel, 500)` 可调用能力，说明底层接口可用，但业务链路缺少“识别后自动触发”的统一封装。  
 本次变更要求将该能力定义为 LPR 通用可选能力，但当前仅在 Vzvision 场景落地；对其他设备类型通过能力门控与日志提示处理，并且避免把设备 I/O 控制直接塞入识别服务，保持职责分离与后续扩展性。
 
 ## Goals / Non-Goals
 
 **Goals:**
 - 在 LPR 配置中新增可持久化字段：`EnableGateIo` 与 `IoChannel`。
-- 在收到识别结果后，若配置启用且设备类型为 Vzvision，则向对应设备发送 I/O 输出值 `1`。
+- 在收到识别结果后，若配置启用且设备类型为 Vzvision，则向对应设备发送 `VzLPRClient_SetIOOutputAutoResp(..., 500)` 开闸脉冲（500ms 自动复位）。
 - 建立职责分离：识别服务与 I/O 控制服务解耦，通过清晰接口/编排连接。
 - 明确非 Vzvision 设备当前不支持该行为，跳过执行并打印“设备未支持道闸 I/O”日志。
 
@@ -29,9 +29,9 @@
    - 原因：复用现有 MessageBus 架构，满足职责分离，降低识别服务与硬件控制耦合，便于独立维护与扩展。
    - 备选：在 `VzvisionLprService` 内直接调用 SDK。放弃原因：职责混杂，后续维护与测试复杂。
 
-3. **发送语义固定为“开闸信号值 1”**
-   - 选择：收到有效识别后发送 `SetIOOutput(ioChannel, 1)`。
-   - 原因：与现有 SDK 用例一致，满足当前需求最小闭环。
+3. **发送语义固定为“500ms 自动复位开闸脉冲”**
+   - 选择：收到有效识别后发送 `SetIOOutputAutoResp(ioChannel, 500ms)` 自动复位开闸信号。
+   - 原因：带响应确认且满足 SDK 最小脉冲时长约束，满足当前需求最小闭环。
    - 备选：可配置输出值。放弃原因：当前无业务需求，增加错误配置风险。
 
 4. **显式供应商能力门控**

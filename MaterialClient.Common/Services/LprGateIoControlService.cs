@@ -130,7 +130,7 @@ public sealed class LprGateIoControlService : ILprGateIoControlService, ISinglet
                 return;
             }
 
-            await _vzvisionLprService.SetIoOutputAsync(config, ioChannel, 1);
+            await _vzvisionLprService.SetIoOutputAutoRespAsync(config, ioChannel, 500);
         }
         catch (Exception ex)
         {

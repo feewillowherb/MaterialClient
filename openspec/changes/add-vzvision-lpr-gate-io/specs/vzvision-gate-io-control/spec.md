@@ -20,11 +20,11 @@
 - **THEN** 系统 MUST 保留并加载配置值，但在运行时按能力门控判定为当前不支持
 
 ### Requirement: 识别后触发开闸信号
-系统 MUST 通过 MessageBus 驱动的后置动作流程，在满足条件时调用 Vzvision SDK 向指定通道下发开闸信号值 `1`。
+系统 MUST 通过 MessageBus 驱动的后置动作流程，在满足条件时调用 Vzvision SDK 向指定通道下发 `500ms` 自动复位开闸脉冲。
 
 #### Scenario: 启用配置后识别触发开闸
 - **WHEN** 设备类型为 Vzvision，`EnableGateIo = true`，且识别链路通过 MessageBus 收到有效车辆识别消息
-- **THEN** 系统 MUST 调用 `VzLPRClient_SetIOOutput(handle, ioChannel, 1)`
+- **THEN** 系统 MUST 调用 `VzLPRClient_SetIOOutputAutoResp(handle, ioChannel, 500)`（500ms 自动复位）
 
 #### Scenario: 未启用配置时不触发开闸
 - **WHEN** 设备类型为 Vzvision，`EnableGateIo = false`，且收到车辆识别事件

@@ -38,9 +38,9 @@ public interface IVzvisionLprService : ILprDevice
     bool IsOnline(string deviceIp, TimeSpan? timeout = null);
 
     /// <summary>
-    ///     发送道闸 I/O 输出信号。
+    ///     发送道闸 I/O 自动复位输出（带响应确认）。
     /// </summary>
-    Task SetIoOutputAsync(LicensePlateRecognitionConfig config, uint ioChannel, int outputValue);
+    Task SetIoOutputAutoRespAsync(LicensePlateRecognitionConfig config, uint ioChannel, int durationMs = 500);
 }
 
 /// <inheritdoc cref="IVzvisionLprService" />
@@ -176,7 +176,7 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
     }
 
     /// <inheritdoc />
-    public async Task SetIoOutputAsync(LicensePlateRecognitionConfig config, uint ioChannel, int outputValue)
+    public async Task SetIoOutputAutoRespAsync(LicensePlateRecognitionConfig config, uint ioChannel, int durationMs = 500)
     {
         await Task.CompletedTask;
         ArgumentNullException.ThrowIfNull(config);
@@ -186,16 +186,22 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
         if (!TryEnsureHandle(config, out var handle))
             throw new InvalidOperationException($"设备未连接或打开失败: {config.Name} ({config.Ip})");
 
-        var ret = VzvisionSdk.VzLPRClient_SetIOOutput(handle, ioChannel, outputValue);
+        // SDK 文档约束自动复位时长范围 [500, 5000]，当前需求固定 500ms。
+        if (durationMs < 500)
+            durationMs = 500;
+        else if (durationMs > 5000)
+            durationMs = 5000;
+
+        var ret = VzvisionSdk.VzLPRClient_SetIOOutputAutoResp(handle, ioChannel, durationMs);
         if (ret != 0)
         {
-            _logger?.LogWarning("VzLPRClient_SetIOOutput 返回非零: {Ret}, Device={Name}, IoChannel={IoChannel}, Output={Output}",
-                ret, config.Name, ioChannel, outputValue);
-            throw new InvalidOperationException($"I/O 输出失败 (代码 {ret})");
+            _logger?.LogWarning("VzLPRClient_SetIOOutputAutoResp 返回非零: {Ret}, Device={Name}, IoChannel={IoChannel}, DurationMs={DurationMs}",
+                ret, config.Name, ioChannel, durationMs);
+            throw new InvalidOperationException($"I/O 自动复位输出失败 (代码 {ret})");
         }
 
-        _logger?.LogInformation("已发送 Vzvision I/O 输出: Device={Name}, IoChannel={IoChannel}, Output={Output}",
-            config.Name, ioChannel, outputValue);
+        _logger?.LogInformation("已发送 Vzvision I/O 自动复位输出: Device={Name}, IoChannel={IoChannel}, DurationMs={DurationMs}",
+            config.Name, ioChannel, durationMs);
     }
 
     private bool TryEnsureHandle(LicensePlateRecognitionConfig config, out int handle)
