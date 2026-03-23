@@ -40,6 +40,13 @@ public interface IVzvisionLprService : ILprDevice
 /// <inheritdoc cref="IVzvisionLprService" />
 public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependency
 {
+    /// <summary>SDK 车牌字节为 GB2312（与 Vz 设备侧常见编码一致）</summary>
+    private static readonly Lazy<Encoding> Gb2312Encoding = new(() =>
+    {
+        Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding("GB2312");
+    });
+
     private readonly ILogger<VzvisionLprService>? _logger;
 
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _configs = new(
@@ -317,11 +324,11 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
 
         try
         {
-            return Encoding.Default.GetString(license, 0, n);
+            return Gb2312Encoding.Value.GetString(license, 0, n);
         }
-        catch
+        catch (DecoderFallbackException)
         {
-            return Encoding.UTF8.GetString(license, 0, n);
+            return string.Empty;
         }
     }
 }
