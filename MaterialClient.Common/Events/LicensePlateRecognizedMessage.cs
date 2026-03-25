@@ -33,6 +33,11 @@ public class LicensePlateRecognizedMessage
     public string DeviceName { get; set; } = string.Empty;
 
     /// <summary>
+    ///     识别方向（进口/出口，来自配置）
+    /// </summary>
+    public LicensePlateDirection Direction { get; set; } = LicensePlateDirection.In;
+
+    /// <summary>
     ///     识别发生时的时间戳
     /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.Now;

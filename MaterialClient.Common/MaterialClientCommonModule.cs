@@ -1,6 +1,7 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.GateIO;
 using MaterialClient.Common.Services.Huaxiazhixin;
 using MaterialClient.Common.Services.Vzvision;
 using MaterialClient.Common.Utils;
@@ -65,6 +66,11 @@ public class MaterialClientCommonModule : AbpModule
 
         services.AddSingleton<IVzvisionLprService>(sp => sp.GetRequiredService<VzvisionLprService>());
         services.AddSingleton<ILprGateIoControlService, LprGateIoControlService>();
+
+        // 注册道闸 IO 控制相关服务
+        services.AddSingleton<IGateIOConfigurationValidator, GateIOConfigurationValidator>();
+        services.AddSingleton<IGateIOStateService, GateIOStateService>();
+        services.AddSingleton<VzLPRGateIOController>();
     }
 
 }

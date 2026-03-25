@@ -318,6 +318,7 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
 
             var color = MapColor(plate.nColor);
             var deviceName = cfg.Name;
+            var direction = cfg.Direction;
 
             Observable.Return(Unit.Default)
                 .ObserveOn(RxApp.MainThreadScheduler)
@@ -329,6 +330,7 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
                         ColorType = color,
                         DeviceType = LprDeviceType.Vzvision,
                         DeviceName = deviceName,
+                        Direction = direction,
                         Timestamp = DateTime.Now
                     });
                 });

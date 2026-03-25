@@ -1,5 +1,6 @@
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services.GateIO;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Vzvision;
@@ -80,6 +81,9 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
 
             await StartLprGateIoControlServiceAsync();
 
+            // 启动道闸 IO 状态管理服务（包含配置验证）
+            await StartGateIOStateServiceAsync(settings);
+
             _isStarted = true; // 标记为已启动
 
             // TODO: Start other devices
@@ -113,6 +117,7 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
 
             await StopVzvisionLprServiceAsync();
             await StopLprGateIoControlServiceAsync();
+            await StopGateIOStateServiceAsync();
 
             _isStarted = false; // 重置启动状态
 
@@ -184,6 +189,16 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     private ILprGateIoControlService GetLprGateIoControlService()
     {
         return _serviceProvider.GetRequiredService<ILprGateIoControlService>();
+    }
+
+    private IGateIOConfigurationValidator GetGateIOConfigurationValidator()
+    {
+        return _serviceProvider.GetRequiredService<IGateIOConfigurationValidator>();
+    }
+
+    private IGateIOStateService GetGateIOStateService()
+    {
+        return _serviceProvider.GetRequiredService<IGateIOStateService>();
     }
 
     /// <summary>
@@ -409,6 +424,63 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
         catch (Exception ex)
         {
             _logger?.LogError(ex, "停止 LPR Gate I/O 控制服务失败");
+        }
+    }
+
+    /// <summary>
+    ///     启动道闸 IO 状态管理服务（包含配置验证）
+    /// </summary>
+    private async Task StartGateIOStateServiceAsync(SettingsEntity settings)
+    {
+        try
+        {
+            // 验证配置
+            var validator = GetGateIOConfigurationValidator();
+            var validationResult = await validator.ValidateAsync(settings.LicensePlateRecognitionConfigs);
+
+            if (!validationResult.IsValid)
+            {
+                _logger?.LogError("道闸 IO 配置验证失败，服务未启动");
+                foreach (var error in validationResult.Errors)
+                {
+                    _logger?.LogError("  - {Error}", error);
+                }
+                return;
+            }
+
+            // 检查是否启用了道闸 IO 功能
+            var hasGateIoEnabled = settings.LicensePlateRecognitionConfigs.Any(c => c.EnableGateIo);
+            if (!hasGateIoEnabled)
+            {
+                _logger?.LogInformation("道闸 IO 功能未启用，跳过服务启动");
+                return;
+            }
+
+            // 启动状态管理服务
+            var gateIOStateService = GetGateIOStateService();
+            await gateIOStateService.StartAsync();
+            _logger?.LogInformation("道闸 IO 状态管理服务已启动");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "启动道闸 IO 状态管理服务失败");
+        }
+    }
+
+    /// <summary>
+    ///     停止道闸 IO 状态管理服务
+    /// </summary>
+    private async Task StopGateIOStateServiceAsync()
+    {
+        try
+        {
+            var gateIOStateService = GetGateIOStateService();
+            await gateIOStateService.StopAsync();
+            _logger?.LogInformation("道闸 IO 状态管理服务已停止");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "停止道闸 IO 状态管理服务失败");
         }
     }
 }
