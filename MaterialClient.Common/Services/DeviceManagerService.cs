@@ -78,7 +78,7 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
                 await StartVzvisionLprServiceAsync();
             }
 
-            await StartLprGateIoControlServiceAsync();
+            await StartGateIoControlServiceAsync();
 
             _isStarted = true; // 标记为已启动
 
@@ -112,7 +112,7 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             await StopHikvisionLprServiceAsync();
 
             await StopVzvisionLprServiceAsync();
-            await StopLprGateIoControlServiceAsync();
+            await StopGateIoControlServiceAsync();
 
             _isStarted = false; // 重置启动状态
 
@@ -181,9 +181,9 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
         return _serviceProvider.GetRequiredService<IVzvisionLprService>();
     }
 
-    private ILprGateIoControlService GetLprGateIoControlService()
+    private IGateIoControlService GetGateIoControlService()
     {
-        return _serviceProvider.GetRequiredService<ILprGateIoControlService>();
+        return _serviceProvider.GetRequiredService<IGateIoControlService>();
     }
 
     /// <summary>
@@ -384,31 +384,31 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
         }
     }
 
-    private async Task StartLprGateIoControlServiceAsync()
+    private async Task StartGateIoControlServiceAsync()
     {
         try
         {
-            var gateIoService = GetLprGateIoControlService();
+            var gateIoService = GetGateIoControlService();
             await gateIoService.StartAsync();
-            _logger?.LogInformation("LPR Gate I/O 控制服务已启动");
+            _logger?.LogInformation("道闸 I/O 控制服务已启动");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "启动 LPR Gate I/O 控制服务失败");
+            _logger?.LogError(ex, "启动道闸 I/O 控制服务失败");
         }
     }
 
-    private async Task StopLprGateIoControlServiceAsync()
+    private async Task StopGateIoControlServiceAsync()
     {
         try
         {
-            var gateIoService = GetLprGateIoControlService();
+            var gateIoService = GetGateIoControlService();
             await gateIoService.StopAsync();
-            _logger?.LogInformation("LPR Gate I/O 控制服务已停止");
+            _logger?.LogInformation("道闸 I/O 控制服务已停止");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "停止 LPR Gate I/O 控制服务失败");
+            _logger?.LogError(ex, "停止道闸 I/O 控制服务失败");
         }
     }
 }

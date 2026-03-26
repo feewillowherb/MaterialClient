@@ -18,9 +18,10 @@ public class LicensePlateRecognitionConfig
     public string Ip { get; set; } = string.Empty;
 
     /// <summary>
-    ///     Recognition direction (In or Out)
+    ///     设备物理侧别（A=入口，B=出口）
+    ///     注意：A/B 表示物理位置侧别，与会话运行时角色（Entry/Exit）区分
     /// </summary>
-    public LicensePlateDirection Direction { get; set; } = LicensePlateDirection.In;
+    public LicensePlateDirection Direction { get; set; } = LicensePlateDirection.A;
 
     /// <summary>
     ///     设备认证用户名（海康威视、Vzvision 臻识 SDK 连接使用）

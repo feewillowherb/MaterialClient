@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using ReactiveUI;
@@ -15,7 +16,7 @@ public partial class AddLprDialogViewModel : ViewModelBase
 
     [Reactive] private string _name = string.Empty;
     [Reactive] private string _ip = string.Empty;
-    [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.In;
+    [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.A;
     [Reactive] private string? _userName;
     [Reactive] private string? _password;
     [Reactive] private string? _port;
@@ -73,7 +74,15 @@ public partial class AddLprDialogViewModel : ViewModelBase
         }
     }
 
-    public string DirectionText => _direction == LicensePlateDirection.In ? "进场" : "出场";
+    public string DirectionText
+    {
+        get
+        {
+            var fieldInfo = _direction.GetType().GetField(_direction.ToString());
+            var attribute = fieldInfo?.GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() as DescriptionAttribute;
+            return attribute?.Description ?? _direction.ToString();
+        }
+    }
 
     public LicensePlateRecognitionConfigViewModel? Result { get; private set; }
 

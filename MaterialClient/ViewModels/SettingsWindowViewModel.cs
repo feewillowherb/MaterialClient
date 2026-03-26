@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
@@ -409,7 +410,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         var dialogViewModel = new AddLprDialogViewModel(LprDeviceType)
         {
             Name = $"camera_{LicensePlateRecognitionConfigs.Count + 1}",
-            Direction = LicensePlateDirection.In
+            Direction = LicensePlateDirection.A
         };
 
         var dialog = new AddLprDialog(dialogViewModel);
@@ -805,7 +806,7 @@ public partial class CameraConfigViewModel : ReactiveObject
 /// </summary>
 public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 {
-    [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.In;
+    [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.A;
 
     [Reactive] private string _ip = string.Empty;
 
@@ -865,5 +866,13 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     /// <summary>
     ///     Direction as text for display
     /// </summary>
-    public string DirectionText => Direction == LicensePlateDirection.In ? "进场" : "出场";
+    public string DirectionText
+    {
+        get
+        {
+            var fieldInfo = Direction.GetType().GetField(Direction.ToString());
+            var attribute = fieldInfo?.GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() as DescriptionAttribute;
+            return attribute?.Description ?? Direction.ToString();
+        }
+    }
 }
