@@ -132,6 +132,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private decimal _minWeightDiff = 1m;
     [Reactive] private bool _enablePlateRewrite = true;
     [Reactive] private bool _enableLatestPlateNumber = false;
+    [Reactive] private string _gateIoValidationErrorMessage = string.Empty;
+    [Reactive] private bool _hasGateIoValidationError;
 
     // Sound device settings
     [Reactive] private bool _soundDeviceEnabled = false;
@@ -420,6 +422,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         if (result != null)
         {
             LicensePlateRecognitionConfigs.Add(result);
+            SubscribeToLprItemChanges(result);
+            RefreshGateIoValidationHints();
         }
     }
 
@@ -480,6 +484,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             if (index >= 0)
             {
                 LicensePlateRecognitionConfigs[index] = result;
+                SubscribeToLprItemChanges(result);
+                RefreshGateIoValidationHints();
             }
         }
     }
@@ -487,7 +493,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [ReactiveCommand]
     private void RemoveLicensePlateRecognition(LicensePlateRecognitionConfigViewModel? config)
     {
-        if (config != null) LicensePlateRecognitionConfigs.Remove(config);
+        if (config != null)
+        {
+            LicensePlateRecognitionConfigs.Remove(config);
+            RefreshGateIoValidationHints();
+        }
     }
 
     [ReactiveCommand]
@@ -740,6 +750,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     IoChannel = string.IsNullOrWhiteSpace(config.IoChannel) ? "1" : config.IoChannel
                 });
 
+            foreach (var item in LicensePlateRecognitionConfigs)
+                SubscribeToLprItemChanges(item);
+            RefreshGateIoValidationHints();
+
             // Load sound device settings
             SoundDeviceEnabled = settings.SoundDeviceSettings.Enabled;
             SoundDeviceLocalIP = settings.SoundDeviceSettings.LocalIP;
@@ -757,6 +771,71 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public void Dispose()
     {
         _lprMessageSubscription?.Dispose();
+    }
+
+    private void SubscribeToLprItemChanges(LicensePlateRecognitionConfigViewModel item)
+    {
+        item.WhenAnyValue(x => x.EnableGateIo, x => x.Direction)
+            .Subscribe(_ => RefreshGateIoValidationHints());
+    }
+
+    private void RefreshGateIoValidationHints()
+    {
+        var enabledConfigs = LicensePlateRecognitionConfigs
+            .Where(c => c.EnableGateIo)
+            .ToList();
+        var countA = enabledConfigs.Count(c => c.Direction == LicensePlateDirection.A);
+        var countB = enabledConfigs.Count(c => c.Direction == LicensePlateDirection.B);
+        var sideAText = GetDirectionDescription(LicensePlateDirection.A);
+        var sideBText = GetDirectionDescription(LicensePlateDirection.B);
+
+        string? reason = null;
+        var isValid = false;
+        if (countA == 0 && countB == 0)
+        {
+            isValid = true;
+        }
+        else if (countA == 1 && countB == 1)
+        {
+            isValid = true;
+        }
+        else
+        {
+            reason = countA == 0 ? $"缺少{sideAText}侧道闸配置" :
+                countB == 0 ? $"缺少{sideBText}侧道闸配置" :
+                countA > 1 ? $"{sideAText}侧道闸配置过多（{countA}个），期望恰好1个" :
+                $"{sideBText}侧道闸配置过多（{countB}个），期望恰好1个";
+        }
+
+        foreach (var item in LicensePlateRecognitionConfigs)
+        {
+            if (!item.EnableGateIo)
+            {
+                item.GateIoStatusReason = "未启用道闸联动";
+                continue;
+            }
+
+            item.GateIoStatusReason = isValid ? "道闸配置有效" : reason ?? "道闸配置无效";
+        }
+
+        if (isValid)
+        {
+            GateIoValidationErrorMessage = string.Empty;
+            HasGateIoValidationError = false;
+        }
+        else
+        {
+            GateIoValidationErrorMessage = reason ?? "道闸配置无效";
+            HasGateIoValidationError = true;
+        }
+    }
+
+    private static string GetDirectionDescription(LicensePlateDirection direction)
+    {
+        var fieldInfo = direction.GetType().GetField(direction.ToString());
+        var attribute = fieldInfo?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+            .FirstOrDefault() as DescriptionAttribute;
+        return attribute?.Description ?? direction.ToString();
     }
 
     #endregion
@@ -824,6 +903,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 
     [Reactive] private string? _ioChannel;
 
+    [Reactive] private string _gateIoStatusReason = string.Empty;
+
     /// <summary>
     ///     设备是否在线（由 10 分钟定时检查更新）
     /// </summary>
@@ -834,12 +915,17 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     /// </summary>
     [Reactive] private string _lastCapturePlateNumber = string.Empty;
 
-    /// <summary>
-    ///     在线状态显示文本
-    /// </summary>
-    public string OnlineStatusText => IsOnline ? "在线" : "离线";
+        /// <summary>
+        ///     在线状态显示文本
+        /// </summary>
+        public string OnlineStatusText => IsOnline ? "在线" : "离线";
 
-    public LicensePlateRecognitionConfigViewModel()
+        /// <summary>
+        ///     道闸启用状态显示文本
+        /// </summary>
+        public string GateIoStatusText => EnableGateIo ? "已启用" : "未启用";
+
+        public LicensePlateRecognitionConfigViewModel()
     {
         this.WhenAnyValue(x => x.Direction)
             .Subscribe(_ =>
@@ -849,6 +935,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
             });
         this.WhenAnyValue(x => x.IsOnline)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(OnlineStatusText)));
+        this.WhenAnyValue(x => x.EnableGateIo)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(GateIoStatusText)));
     }
 
     /// <summary>

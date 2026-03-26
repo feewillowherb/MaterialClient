@@ -498,11 +498,20 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="名称" Width="80" Binding="{Binding Name}" />
                                     <DataGridTextColumn Header="IP" Width="120" Binding="{Binding Ip}" />
-                                    <DataGridTextColumn Header="方向" Width="60" Binding="{Binding DirectionText}" />
-                                    <DataGridTextColumn Header="用户名" Width="60" Binding="{Binding UserName}" />
-                                    <DataGridTextColumn Header="端口" Width="40" Binding="{Binding Port}" />
-                                    <DataGridTextColumn Header="抓拍结果" Width="80" Binding="{Binding LastCapturePlateNumber}" />
-                                    <DataGridTemplateColumn Header="操作" Width="160">
+                                    <DataGridTextColumn Header="方向" Width="80" Binding="{Binding DirectionText}" />
+                                <DataGridTextColumn Header="用户名" Width="80" Binding="{Binding UserName}" />
+                                <DataGridTemplateColumn Header="道闸" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding GateIoStatusText}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="端口" Width="60" Binding="{Binding Port}" />
+                                    <DataGridTextColumn Header="抓拍结果" Width="100" Binding="{Binding LastCapturePlateNumber}" />
+                                    <DataGridTemplateColumn Header="操作" Width="140">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
@@ -544,6 +553,11 @@
                                     </DataGridTemplateColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
+                            <TextBlock Text="{Binding GateIoValidationErrorMessage}"
+                                       Foreground="Red"
+                                       IsVisible="{Binding HasGateIoValidationError}"
+                                       Margin="0,6,0,0"
+                                       TextWrapping="Wrap" />
 
                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
                                   ColumnSpacing="12" Margin="0,12,0,0">
