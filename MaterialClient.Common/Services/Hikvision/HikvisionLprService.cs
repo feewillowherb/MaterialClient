@@ -353,7 +353,7 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
 
             _logger?.LogInformation(
                 "收到车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.In, message.Timestamp);
+                message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.A, message.Timestamp);
         }
         catch (Exception ex)
         {
@@ -399,7 +399,7 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
 
                 _logger?.LogInformation(
                     "收到 ITS 车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                    message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.In, message.Timestamp);
+                    message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.A, message.Timestamp);
             }
         }
         catch (Exception ex)
