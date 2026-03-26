@@ -44,10 +44,10 @@ public class HikvisionLprServiceTests : IDisposable
     public void AddOrUpdateDevice_ShouldUpdateExistingDevice()
     {
         // Arrange
-        var config1 = CreateTestConfig("192.168.1.100", "Camera1", LicensePlateDirection.In);
+        var config1 = CreateTestConfig("192.168.1.100", "Camera1", LicensePlateDirection.A);
         _service.AddOrUpdateDevice(config1);
 
-        var config2 = CreateTestConfig("192.168.1.100", "Camera1Updated", LicensePlateDirection.Out);
+        var config2 = CreateTestConfig("192.168.1.100", "Camera1Updated", LicensePlateDirection.B);
 
         // Act
         _service.AddOrUpdateDevice(config2);
@@ -57,7 +57,7 @@ public class HikvisionLprServiceTests : IDisposable
         var retrievedConfig = _service.GetDeviceConfig("192.168.1.100");
         Assert.NotNull(retrievedConfig);
         Assert.Equal("Camera1Updated", retrievedConfig.Name);
-        Assert.Equal(LicensePlateDirection.Out, retrievedConfig.Direction);
+        Assert.Equal(LicensePlateDirection.B, retrievedConfig.Direction);
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public class HikvisionLprServiceTests : IDisposable
         {
             PlateNumber = "京A12345",
             DeviceName = "Camera1",
-            Direction = LicensePlateDirection.In,
+            Direction = LicensePlateDirection.A,
             Timestamp = DateTime.Now
         };
 
@@ -189,8 +189,8 @@ public class HikvisionLprServiceTests : IDisposable
     public void SimulatePlateRecognition_ShouldPublishMultipleEvents()
     {
         // Arrange
-        var event1 = CreateTestEvent("京A12345", "Camera1", LicensePlateDirection.In);
-        var event2 = CreateTestEvent("沪B67890", "Camera2", LicensePlateDirection.Out);
+        var event1 = CreateTestEvent("京A12345", "Camera1", LicensePlateDirection.A);
+        var event2 = CreateTestEvent("沪B67890", "Camera2", LicensePlateDirection.B);
 
         // Act
         _service.SimulatePlateRecognition(event1);
@@ -204,22 +204,22 @@ public class HikvisionLprServiceTests : IDisposable
     public void SimulatePlateRecognition_SimplifiedVersion_ShouldPublishEvent()
     {
         // Act
-        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.In);
+        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.A);
 
         // Assert
         Assert.Single(_service.RecognizedEvents);
         Assert.Equal("京A12345", _service.RecognizedEvents[0].PlateNumber);
         Assert.Equal("Camera1", _service.RecognizedEvents[0].DeviceName);
-        Assert.Equal(LicensePlateDirection.In, _service.RecognizedEvents[0].Direction);
+        Assert.Equal(LicensePlateDirection.A, _service.RecognizedEvents[0].Direction);
     }
 
     [Fact]
     public void GetEventsByDevice_ShouldReturnCorrectEvents()
     {
         // Arrange
-        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.In);
-        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.Out);
-        _service.SimulatePlateRecognition("粤C11111", "Camera1", LicensePlateDirection.In);
+        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.A);
+        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.B);
+        _service.SimulatePlateRecognition("粤C11111", "Camera1", LicensePlateDirection.A);
 
         // Act
         var camera1Events = _service.GetEventsByDevice("Camera1");
@@ -236,9 +236,9 @@ public class HikvisionLprServiceTests : IDisposable
     public void GetEventsByPlateNumber_ShouldReturnCorrectEvents()
     {
         // Arrange
-        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.In);
-        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.Out);
-        _service.SimulatePlateRecognition("京A12345", "Camera3", LicensePlateDirection.In);
+        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.A);
+        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.B);
+        _service.SimulatePlateRecognition("京A12345", "Camera3", LicensePlateDirection.A);
 
         // Act
         var events = _service.GetEventsByPlateNumber("京A12345");
@@ -252,27 +252,27 @@ public class HikvisionLprServiceTests : IDisposable
     public void GetEventsByDirection_ShouldReturnCorrectEvents()
     {
         // Arrange
-        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.In);
-        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.Out);
-        _service.SimulatePlateRecognition("粤C11111", "Camera3", LicensePlateDirection.In);
+        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.A);
+        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.B);
+        _service.SimulatePlateRecognition("粤C11111", "Camera3", LicensePlateDirection.A);
 
         // Act
-        var inEvents = _service.GetEventsByDirection(LicensePlateDirection.In);
-        var outEvents = _service.GetEventsByDirection(LicensePlateDirection.Out);
+        var inEvents = _service.GetEventsByDirection(LicensePlateDirection.A);
+        var outEvents = _service.GetEventsByDirection(LicensePlateDirection.B);
 
         // Assert
         Assert.Equal(2, inEvents.Count);
         Assert.Single(outEvents);
-        Assert.All(inEvents, e => Assert.Equal(LicensePlateDirection.In, e.Direction));
-        Assert.All(outEvents, e => Assert.Equal(LicensePlateDirection.Out, e.Direction));
+        Assert.All(inEvents, e => Assert.Equal(LicensePlateDirection.A, e.Direction));
+        Assert.All(outEvents, e => Assert.Equal(LicensePlateDirection.B, e.Direction));
     }
 
     [Fact]
     public void ClearRecognizedEvents_ShouldClearAllEvents()
     {
         // Arrange
-        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.In);
-        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.Out);
+        _service.SimulatePlateRecognition("京A12345", "Camera1", LicensePlateDirection.A);
+        _service.SimulatePlateRecognition("沪B67890", "Camera2", LicensePlateDirection.B);
 
         // Act
         _service.ClearRecognizedEvents();
@@ -297,7 +297,7 @@ public class HikvisionLprServiceTests : IDisposable
     }
 
     private LicensePlateRecognitionConfig CreateTestConfig(string ip, string name,
-        LicensePlateDirection direction = LicensePlateDirection.In)
+        LicensePlateDirection direction = LicensePlateDirection.A)
     {
         return new LicensePlateRecognitionConfig
         {

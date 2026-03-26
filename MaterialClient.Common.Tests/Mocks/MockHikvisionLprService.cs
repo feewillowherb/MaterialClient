@@ -117,7 +117,7 @@ public sealed class MockHikvisionLprService : IHikvisionLprService, ILprDevice, 
     /// </summary>
     public void SimulatePlateRecognition(string plateNumber, string deviceName,
         MaterialClient.Common.Entities.Enums.LicensePlateDirection direction =
-            MaterialClient.Common.Entities.Enums.LicensePlateDirection.In)
+            MaterialClient.Common.Entities.Enums.LicensePlateDirection.A)
     {
         var @event = new LicensePlateRecognizedEvent
         {

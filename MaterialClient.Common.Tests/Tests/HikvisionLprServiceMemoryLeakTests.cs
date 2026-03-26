@@ -93,7 +93,7 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
             service.SimulatePlateRecognition(
                 $"京A{i:D5}",
                 $"Camera{i % 10}",
-                i % 2 == 0 ? LicensePlateDirection.In : LicensePlateDirection.Out);
+                i % 2 == 0 ? LicensePlateDirection.A : LicensePlateDirection.B);
 
             if (i % 1000 == 0)
             {
@@ -152,7 +152,7 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
         // 生成一些事件
         for (var i = 0; i < 100; i++)
         {
-            service.SimulatePlateRecognition($"京A{i:D5}", "Camera1", LicensePlateDirection.In);
+            service.SimulatePlateRecognition($"京A{i:D5}", "Camera1", LicensePlateDirection.A);
         }
 
         // 释放所有订阅
@@ -206,7 +206,7 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
         // Act: 持续生成事件（SimulatePlateRecognition 会发送 MessageBus 消息）
         while (stopwatch.Elapsed < duration)
         {
-            service.SimulatePlateRecognition($"京A{eventCount:D5}", "Camera1", LicensePlateDirection.In);
+            service.SimulatePlateRecognition($"京A{eventCount:D5}", "Camera1", LicensePlateDirection.A);
             eventCount++;
 
             if (eventCount % 100 == 0)
@@ -267,7 +267,7 @@ public class HikvisionLprServiceMemoryLeakTests : IDisposable
                 {
                     Ip = $"192.168.{i / 256}.{i % 256}",
                     Name = $"Camera{i}",
-                    Direction = i % 2 == 0 ? LicensePlateDirection.In : LicensePlateDirection.Out,
+                    Direction = i % 2 == 0 ? LicensePlateDirection.A : LicensePlateDirection.B,
                     UserName = "admin",
                     Password = "admin123",
                     Port = "8000",

@@ -90,7 +90,7 @@ public class LicensePlateRecognitionConfigTests
         {
             Name = "device1",
             Ip = "192.168.1.100",
-            Direction = LicensePlateDirection.In,
+            Direction = LicensePlateDirection.A,
             // 海康威视字段为 null
             UserName = null,
             Password = null,
@@ -113,7 +113,7 @@ public class LicensePlateRecognitionConfigTests
         {
             Name = "device1",
             Ip = "192.168.1.100",
-            Direction = LicensePlateDirection.In,
+            Direction = LicensePlateDirection.A,
             UserName = "admin",
             Password = "password123",
             Port = "8000",

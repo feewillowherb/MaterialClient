@@ -38,7 +38,7 @@ public class HikvisionLprConfigJsonTests
         var config1 = configs[0];
         Assert.Equal("lpr_device_1", config1.Name);
         Assert.Equal("192.168.1.100", config1.Ip);
-        Assert.Equal(LicensePlateDirection.In, config1.Direction);
+        Assert.Equal(LicensePlateDirection.A, config1.Direction);
         Assert.Null(config1.UserName);
         Assert.Null(config1.Password);
         Assert.Null(config1.Port);
@@ -47,7 +47,7 @@ public class HikvisionLprConfigJsonTests
         var config2 = configs[1];
         Assert.Equal("lpr_device_2", config2.Name);
         Assert.Equal("192.168.1.101", config2.Ip);
-        Assert.Equal(LicensePlateDirection.Out, config2.Direction);
+        Assert.Equal(LicensePlateDirection.B, config2.Direction);
         Assert.Null(config2.UserName);
         Assert.Null(config2.Password);
         Assert.Null(config2.Port);
@@ -62,7 +62,7 @@ public class HikvisionLprConfigJsonTests
         {
             Name = "lpr_device_1",
             Ip = "192.168.1.100",
-            Direction = LicensePlateDirection.In,
+            Direction = LicensePlateDirection.A,
             UserName = "admin",
             Password = "password123",
             Port = "8000",
@@ -97,7 +97,7 @@ public class HikvisionLprConfigJsonTests
         {
             Name = "lpr_device_1",
             Ip = "192.168.1.100",
-            Direction = LicensePlateDirection.In,
+            Direction = LicensePlateDirection.A,
             UserName = null,
             Password = null,
             Port = null,
@@ -175,7 +175,7 @@ public class HikvisionLprConfigJsonTests
             {
                 Name = "device1",
                 Ip = "192.168.1.100",
-                Direction = LicensePlateDirection.In,
+                Direction = LicensePlateDirection.A,
                 UserName = "admin",
                 Password = "password123",
                 Port = "8000",
@@ -185,7 +185,7 @@ public class HikvisionLprConfigJsonTests
             {
                 Name = "device2",
                 Ip = "192.168.1.101",
-                Direction = LicensePlateDirection.Out,
+                Direction = LicensePlateDirection.B,
                 UserName = "user",
                 Password = "pass",
                 Port = "8001",
