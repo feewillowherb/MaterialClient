@@ -71,7 +71,7 @@
                                    Width="100" />
                         <CheckBox IsChecked="{Binding EnableGateIo}"
                                   Grid.Column="1"
-                                  Content="识别后触发开闸信号" />
+                                  Content="启用软件控制道闸打开" />
                     </Grid>
 
                     <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
@@ -82,10 +82,11 @@
                                    Width="100" />
                         <TextBox Text="{Binding IoChannel}"
                                  Grid.Column="1"
-                                 Watermark="1" />
+                                 Watermark="0" />
                     </Grid>
 
-                    <TextBlock Text="说明：当前仅 Vzvision 设备支持执行道闸 I/O，其他设备将记录未支持日志。"
+                    <TextBlock Text="说明：需要在臻识抓拍机配置的[外设管理]-[输出配置]中解除所有[车牌识别触发]与[输出口]绑定,并将[开关量输入1]与[开关量输出1]绑定。
+                    [开光量输入1]对应I/O通道0,[开光量输入2]对应I/O通道1"
                                Foreground="Gray"
                                FontSize="12"
                                TextWrapping="Wrap" />
