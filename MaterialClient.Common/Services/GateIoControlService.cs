@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Linq;
+using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
@@ -32,6 +35,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
         public LicensePlateDirection? EntrySide { get; set; }
         public bool ExitOpened { get; set; }
         public DateTime SessionStartedAt { get; set; }
+        public string PlateNumber { get; set; } = string.Empty;
 
         public void Reset()
         {
@@ -39,6 +43,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             EntrySide = null;
             ExitOpened = false;
             SessionStartedAt = DateTime.MinValue;
+            PlateNumber = string.Empty;
         }
 
         public string GetStatus()
@@ -47,7 +52,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
                 return "SessionActive=false";
 
             var duration = DateTime.UtcNow - SessionStartedAt;
-            return $"SessionActive=true, EntrySide={EntrySide}, ExitOpened={ExitOpened}, Duration={duration:hh\\:mm\\:ss}";
+            return $"SessionActive=true, EntrySide={EntrySide}, ExitOpened={ExitOpened}, Duration={duration:hh\\:mm\\:ss}, Plate={PlateNumber}";
         }
     }
 
@@ -244,9 +249,8 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             {
                 if (_session.SessionActive)
                 {
-                    _logger?.LogInformation("道闸会话已激活，拒绝 LRP 触发: Device={Device}, EntrySide={EntrySide}, SessionStatus={SessionStatus}",
-                        message.DeviceName, _session.EntrySide, _session.GetStatus());
-                    return;
+                    if (!TryResetGhostSession(message.PlateNumber, message.DeviceName))
+                        return;
                 }
 
                 // 创建新会话
@@ -254,9 +258,10 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
                 _session.EntrySide = config.Direction;
                 _session.ExitOpened = false;
                 _session.SessionStartedAt = DateTime.UtcNow;
+                _session.PlateNumber = message.PlateNumber;
 
-                _logger?.LogInformation("创建道闸会话: Device={Device}, EntrySide={EntrySide}",
-                    message.DeviceName, config.Direction);
+                _logger?.LogInformation("创建道闸会话: Device={Device}, EntrySide={EntrySide}, Plate={Plate}",
+                    message.DeviceName, config.Direction, message.PlateNumber);
             }
 
             // 调用统一控制接口打开入口道闸
@@ -275,6 +280,46 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     private bool ShouldAllowGateOpen()
     {
         return _currentWeighingStatus == AttendedWeighingStatus.OffScale;
+    }
+
+    /// <summary>
+    ///     尝试重置幽灵会话（会话激活但车辆从未上磅）。
+    ///     调用方 MUST 已持有 _sync 锁。
+    /// </summary>
+    /// <returns>true 表示检测到幽灵会话并已重置；false 表示未重置（正常拒绝或跳过）</returns>
+    private bool TryResetGhostSession(string newPlateNumber, string newDeviceName)
+    {
+        if (!_session.SessionActive)
+            return false;
+
+        var isNewPlate = !string.Equals(newPlateNumber, _session.PlateNumber, StringComparison.OrdinalIgnoreCase);
+
+        // 同一车牌重复识别：车辆在闸口等待上磅，LRP 持续识别
+        if (!isNewPlate)
+        {
+            _logger?.LogDebug("同一车牌重复识别，跳过: Plate={Plate}, SessionStatus={SessionStatus}",
+                newPlateNumber, _session.GetStatus());
+            return false;
+        }
+
+        // 幽灵会话：不同车牌 + 从未上磅
+        if (!_session.ExitOpened && _currentWeighingStatus == AttendedWeighingStatus.OffScale)
+        {
+            _logger?.LogWarning(
+                "检测到幽灵会话(从未上磅)，新车牌触发重置: " +
+                "OldPlate={OldPlate}, OldEntrySide={OldEntrySide}, OldDuration={OldDuration}, " +
+                "NewPlate={NewPlate}, NewDevice={NewDevice}",
+                _session.PlateNumber, _session.EntrySide,
+                DateTime.UtcNow - _session.SessionStartedAt,
+                newPlateNumber, newDeviceName);
+            _session.Reset();
+            return true;
+        }
+
+        // 会话正在处理中（已上磅/正在称重），正常拒绝
+        _logger?.LogInformation("道闸会话已激活且正在处理中，拒绝新车牌: Device={Device}, SessionPlate={SessionPlate}, NewPlate={NewPlate}",
+            newDeviceName, _session.PlateNumber, newPlateNumber);
+        return false;
     }
 
     /// <summary>
