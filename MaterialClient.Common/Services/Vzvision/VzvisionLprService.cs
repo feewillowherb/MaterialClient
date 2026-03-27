@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Reactive;
-using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using MaterialClient.Common.Configuration;
@@ -44,7 +42,7 @@ public interface IVzvisionLprService : ILprDevice
 }
 
 /// <inheritdoc cref="IVzvisionLprService" />
-public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependency
+public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAsyncDisposable
 {
     /// <summary>SDK 车牌字节为 GB2312（与 Vz 设备侧常见编码一致）</summary>
     private static readonly Lazy<Encoding> Gb2312Encoding = new(() =>
@@ -117,7 +115,11 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
     /// <inheritdoc />
     public async Task StopAsync()
     {
-        await Task.CompletedTask;
+        _started = false;
+
+        var handlesToClose = new List<(string Ip, int Handle)>();
+        bool cleanupNeeded;
+
         lock (_sync)
         {
             foreach (var ip in _ipToHandle.Keys.ToArray())
@@ -125,18 +127,50 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
                 if (_ipToHandle.TryRemove(ip, out var handle) && handle != 0)
                 {
                     _handleToIp.TryRemove(handle, out _);
-                    _ = VzvisionSdk.VzLPRClient_Close(handle);
-                    _logger?.LogInformation("Vzvision 设备已关闭: IP={Ip}, Handle={Handle}", ip, handle);
+                    handlesToClose.Add((ip, handle));
                 }
             }
 
-            if (_sdkSetupDone)
-            {
-                VzvisionSdk.VzLPRClient_Cleanup();
-                _sdkSetupDone = false;
-            }
+            cleanupNeeded = _sdkSetupDone;
+            _sdkSetupDone = false;
+        }
 
-            _started = false;
+        foreach (var (ip, handle) in handlesToClose)
+        {
+            await CloseHandleWithTimeoutAsync(ip, handle);
+        }
+
+        if (cleanupNeeded)
+        {
+            await CleanupWithTimeoutAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+    }
+
+    private static readonly TimeSpan SdkTimeout = TimeSpan.FromSeconds(3);
+
+    private async Task CloseHandleWithTimeoutAsync(string ip, int handle)
+    {
+        var task = Task.Run(() => VzvisionSdk.VzLPRClient_Close(handle));
+        if (await Task.WhenAny(task, Task.Delay(SdkTimeout)) != task)
+        {
+            _logger?.LogWarning("VzLPRClient_Close 超时: IP={Ip}, Handle={Handle}", ip, handle);
+            return;
+        }
+
+        _logger?.LogInformation("Vzvision 设备已关闭: IP={Ip}, Handle={Handle}", ip, handle);
+    }
+
+    private async Task CleanupWithTimeoutAsync()
+    {
+        var task = Task.Run(() => VzvisionSdk.VzLPRClient_Cleanup());
+        if (await Task.WhenAny(task, Task.Delay(SdkTimeout)) != task)
+        {
+            _logger?.LogWarning("VzLPRClient_Cleanup 超时");
         }
     }
 
@@ -319,19 +353,14 @@ public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependen
             var color = MapColor(plate.nColor);
             var deviceName = cfg.Name;
 
-            Observable.Return(Unit.Default)
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(_ =>
-                {
-                    MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage
-                    {
-                        PlateNumber = license,
-                        ColorType = color,
-                        DeviceType = LprDeviceType.Vzvision,
-                        DeviceName = deviceName,
-                        Timestamp = DateTime.Now
-                    });
-                });
+            MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage
+            {
+                PlateNumber = license,
+                ColorType = color,
+                DeviceType = LprDeviceType.Vzvision,
+                DeviceName = deviceName,
+                Timestamp = DateTime.Now
+            });
         }
         catch (Exception ex)
         {

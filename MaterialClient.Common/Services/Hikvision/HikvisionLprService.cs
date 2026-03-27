@@ -52,7 +52,7 @@ public interface IHikvisionLprService
 ///     通过 HCNetSDK 与海康设备通信，接收车牌识别结果
 ///     支持被动捕获（设备推送）和主动捕获（应用触发）
 /// </summary>
-public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonDependency
+public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonDependency, IAsyncDisposable
 {
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _deviceConfigs = new();
     private readonly ConcurrentDictionary<string, int> _deviceKeyToUserId = new(); // 登录会话缓存
@@ -286,6 +286,11 @@ public sealed class HikvisionLprService : IHikvisionLprService, ILprDevice, ISin
 
             _listenHandle = -1;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
     }
 
     /// <summary>
