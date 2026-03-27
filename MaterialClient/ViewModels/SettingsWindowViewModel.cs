@@ -781,31 +781,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
     private void RefreshGateIoValidationHints()
     {
-        var enabledConfigs = LicensePlateRecognitionConfigs
-            .Where(c => c.EnableGateIo)
-            .ToList();
-        var countA = enabledConfigs.Count(c => c.Direction == LicensePlateDirection.A);
-        var countB = enabledConfigs.Count(c => c.Direction == LicensePlateDirection.B);
-        var sideAText = GetDirectionDescription(LicensePlateDirection.A);
-        var sideBText = GetDirectionDescription(LicensePlateDirection.B);
-
-        string? reason = null;
-        var isValid = false;
-        if (countA == 0 && countB == 0)
-        {
-            isValid = true;
-        }
-        else if (countA == 1 && countB == 1)
-        {
-            isValid = true;
-        }
-        else
-        {
-            reason = countA == 0 ? $"缺少{sideAText}侧道闸配置" :
-                countB == 0 ? $"缺少{sideBText}侧道闸配置" :
-                countA > 1 ? $"{sideAText}侧道闸配置过多（{countA}个），期望恰好1个" :
-                $"{sideBText}侧道闸配置过多（{countB}个），期望恰好1个";
-        }
+        var validation = GateConfigurationValidation.Validate(
+            LicensePlateRecognitionConfigs.Select(item => new LicensePlateRecognitionConfig
+            {
+                Name = item.Name,
+                Direction = item.Direction,
+                EnableGateIo = item.EnableGateIo
+            }));
 
         foreach (var item in LicensePlateRecognitionConfigs)
         {
@@ -815,27 +797,19 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 continue;
             }
 
-            item.GateIoStatusReason = isValid ? "道闸配置有效" : reason ?? "道闸配置无效";
+            item.GateIoStatusReason = validation.IsValid ? "道闸配置有效" : validation.Reason ?? "道闸配置无效";
         }
 
-        if (isValid)
+        if (validation.IsValid)
         {
             GateIoValidationErrorMessage = string.Empty;
             HasGateIoValidationError = false;
         }
         else
         {
-            GateIoValidationErrorMessage = reason ?? "道闸配置无效";
+            GateIoValidationErrorMessage = validation.Reason ?? "道闸配置无效";
             HasGateIoValidationError = true;
         }
-    }
-
-    private static string GetDirectionDescription(LicensePlateDirection direction)
-    {
-        var fieldInfo = direction.GetType().GetField(direction.ToString());
-        var attribute = fieldInfo?.GetCustomAttributes(typeof(DescriptionAttribute), false)
-            .FirstOrDefault() as DescriptionAttribute;
-        return attribute?.Description ?? direction.ToString();
     }
 
     #endregion

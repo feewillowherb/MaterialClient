@@ -51,19 +51,6 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
         }
     }
 
-    /// <summary>
-    ///     配置校验结果
-    /// </summary>
-    private sealed class ValidationResult
-    {
-        public bool IsValid { get; set; }
-        public string? Reason { get; set; }
-        public int CountA { get; set; }
-        public int CountB { get; set; }
-        public List<string> DevicesA { get; set; } = new();
-        public List<string> DevicesB { get; set; } = new();
-    }
-
     private readonly object _sync = new();
     private readonly ISettingsService _settingsService;
     private readonly IVzvisionLprService _vzvisionLprService;
@@ -189,58 +176,16 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     /// <summary>
     ///     验证道闸配置的有效性（A/B 成对性校验）
     /// </summary>
-    private ValidationResult ValidateGateConfiguration()
+    private GateConfigurationValidationResult ValidateGateConfiguration()
     {
         try
         {
-            var configs = _configByName.Values.Where(c => c.EnableGateIo).ToList();
-            var countA = configs.Count(c => c.Direction == LicensePlateDirection.A);
-            var countB = configs.Count(c => c.Direction == LicensePlateDirection.B);
-            var devicesA = configs.Where(c => c.Direction == LicensePlateDirection.A).Select(c => c.Name).ToList();
-            var devicesB = configs.Where(c => c.Direction == LicensePlateDirection.B).Select(c => c.Name).ToList();
-
-            if (countA == 0 && countB == 0)
-            {
-                return new ValidationResult
-                {
-                    IsValid = true, // 无道闸配置视为有效（降级模式）
-                    Reason = null,
-                    CountA = 0,
-                    CountB = 0
-                };
-            }
-
-            if (countA == 1 && countB == 1)
-            {
-                return new ValidationResult
-                {
-                    IsValid = true,
-                    CountA = countA,
-                    CountB = countB,
-                    DevicesA = devicesA,
-                    DevicesB = devicesB
-                };
-            }
-
-            var reason = countA == 0 ? "缺少 A 侧道闸配置" :
-                        countB == 0 ? "缺少 B 侧道闸配置" :
-                        countA > 1 ? $"A 侧道闸配置过多（{countA}个），期望恰好1个" :
-                        $"B 侧道闸配置过多（{countB}个），期望恰好1个";
-
-            return new ValidationResult
-            {
-                IsValid = false,
-                Reason = reason,
-                CountA = countA,
-                CountB = countB,
-                DevicesA = devicesA,
-                DevicesB = devicesB
-            };
+            return GateConfigurationValidation.Validate(_configByName.Values);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "道闸配置校验过程中发生异常");
-            return new ValidationResult
+            return new GateConfigurationValidationResult
             {
                 IsValid = false,
                 Reason = "配置校验过程中发生异常"
