@@ -7,12 +7,22 @@
 
 ### Requirement: Vz LPR SDK 进程生命周期
 
-系统 MUST 在首次使用 Vzvision LPR 能力前调用全局初始化（`VzLPRClient_Setup`），并在应用退出或明确释放 LPR 子系统时调用清理（`VzLPRClient_Cleanup`），且保证与多设备 `Open`/`Close` 的配对关系可验证。
+系统 MUST 在首次使用 Vzvision LPR 能力前调用全局初始化（`VzLPRClient_Setup`），并在应用退出或明确释放 LPR 子系统时调用清理（`VzLPRClient_Cleanup`），且保证与多设备 `Open`/`Close` 的配对关系可验证。服务 MUST 实现 `IAsyncDisposable`，ABP 容器释放时自动调用 `StopAsync`。SDK 同步调用（`VzLPRClient_Close`、`VzLPRClient_Cleanup`）MUST 有超时保护（建议 3 秒），超时后放弃等待并记录警告，不抛异常。
 
 #### Scenario: 应用退出时释放 SDK
 
 - **WHEN** 桌面应用进程正常退出或设备子系统被关闭
 - **THEN** 系统 MUST 关闭所有已打开的设备句柄并调用与 `Setup` 对称的清理路径，避免原生资源泄漏
+
+#### Scenario: IAsyncDisposable 自动清理
+
+- **WHEN** ABP Autofac 容器执行 ShutdownAsync 释放 VzvisionLprService 单例
+- **THEN** 系统 MUST 自动调用 `StopAsync` 完成资源清理
+
+#### Scenario: SDK 调用超时不死锁
+
+- **WHEN** `VzLPRClient_Close` 或 `VzLPRClient_Cleanup` 因设备网络异常而阻塞
+- **THEN** 系统 MUST 在超时（3 秒）后放弃等待并记录警告日志，MUST NOT 无限阻塞
 
 ---
 
@@ -33,7 +43,7 @@
 #### Scenario: 回调线程安全
 
 - **WHEN** 非托管回调在任意线程执行
-- **THEN** 系统 MUST NOT 在违反 UI 或服务线程假设的前提下直接更新 UI 或访问非线程安全单例；发布消息或调用业务逻辑 MUST 经约定的同步/调度机制
+- **THEN** 系统 MUST 直接在回调线程调用 `MessageBus.Current.SendMessage`（线程安全），MUST NOT 使用 `ObserveOn(RxApp.MainThreadScheduler)` 调度到 UI 线程，避免应用关闭时死锁
 
 ---
 

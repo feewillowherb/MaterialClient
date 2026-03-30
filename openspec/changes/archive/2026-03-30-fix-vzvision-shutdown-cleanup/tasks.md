@@ -16,10 +16,10 @@
 
 ## 4. HikvisionLprService 实现 IAsyncDisposable
 
-- [ ] 4.1 让 `HikvisionLprService` 实现 `IAsyncDisposable`，`DisposeAsync` 内调用 `StopAsync`
+- [x] 4.1 让 `HikvisionLprService` 实现 `IAsyncDisposable`，`DisposeAsync` 内调用 `StopAsync`
 
 ## 5. App.OnApplicationExit 显式关闭硬件设备
 
-- [ ] 5.1 在 `App.axaml.cs` 的 `OnApplicationExit` 中，WebHost 停止后、ABP Shutdown 前，从 ServiceProvider 获取 `IDeviceManagerService` 并调用 `CloseAsync()`
-- [ ] 5.2 将整体超时从 3 秒调整为 10 秒，为硬件关闭留足时间
-- [ ] 5.3 为每个关闭步骤添加耗时日志，便于排查
+- [x] 5.1 在 `App.axaml.cs` 的 `OnApplicationExit` 中，WebHost 停止后、ABP Shutdown 前，从 ServiceProvider 获取 `IDeviceManagerService` 并调用 `CloseAsync()`
+- [x] 5.2 将整体超时从 3 秒调整为 10 秒，为硬件关闭留足时间
+- [x] 5.3 为每个关闭步骤添加耗时日志，便于排查
