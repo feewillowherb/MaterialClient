@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
@@ -75,8 +76,12 @@ public partial class PrintPreviewViewModel : ViewModelBase, IDisposable, ITransi
     {
         try
         {
-            if (!string.IsNullOrWhiteSpace(PreviewImagePath) && File.Exists(PreviewImagePath))
-                File.Delete(PreviewImagePath);
+            if (!string.IsNullOrWhiteSpace(PreviewImagePath))
+            {
+                var normalizedPreviewPath = AttachmentPathUtils.ToAbsolutePath(PreviewImagePath);
+                if (File.Exists(normalizedPreviewPath))
+                    File.Delete(normalizedPreviewPath);
+            }
         }
         catch (Exception ex)
         {

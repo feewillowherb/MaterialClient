@@ -53,6 +53,8 @@ public class OssUploadService : IOssUploadService, ITransientDependency
     {
         try
         {
+            // Normalize before File API usage (localPath may be stored as relative path in DB).
+            localPath = AttachmentPathUtils.ToAbsolutePath(localPath);
             if (!File.Exists(localPath))
             {
                 _logger?.LogWarning("本地文件不存在: {LocalPath}", localPath);
@@ -89,7 +91,7 @@ public class OssUploadService : IOssUploadService, ITransientDependency
         foreach (var item in attachments)
             try
             {
-                if (string.IsNullOrWhiteSpace(item.Attachment.LocalPath) || !File.Exists(item.Attachment.LocalPath))
+                if (string.IsNullOrWhiteSpace(item.Attachment.LocalPath))
                 {
                     _logger?.LogWarning(
                         " 跳过不存在的文件: AttachmentId={AttachmentId}, LocalPath={LocalPath}",
@@ -97,14 +99,26 @@ public class OssUploadService : IOssUploadService, ITransientDependency
                     continue;
                 }
 
+                var normalizedLocalPath = AttachmentPathUtils.ToAbsolutePath(item.Attachment.LocalPath);
+                if (!File.Exists(normalizedLocalPath))
+                {
+                    _logger?.LogWarning(
+                        " 跳过不存在的文件: AttachmentId={AttachmentId}, LocalPath={LocalPath} (normalized={NormalizedLocalPath})",
+                        item.Attachment.Id, item.Attachment.LocalPath, normalizedLocalPath);
+                    continue;
+                }
+
                 // 根据附件类型构建OSS对象键
-                var fileName = Path.GetFileName(item.Attachment.LocalPath);
+                var fileName = Path.GetFileName(normalizedLocalPath);
                 var ossObjectKey = AttachmentPathUtils.GetOssObjectKey(
                     item.Attachment.AttachType,
                     item.Attachment.Id,
                     fileName);
 
-                await Task.Run(() => { _ossClient.PutObject(bucketName, ossObjectKey, item.Attachment.LocalPath); });
+                await Task.Run(() =>
+                    {
+                        _ossClient.PutObject(bucketName, ossObjectKey, normalizedLocalPath);
+                    });
 
                 // 构建OSS完整URL
                 var ossUrl = _config.GetOssUrl(ossObjectKey);

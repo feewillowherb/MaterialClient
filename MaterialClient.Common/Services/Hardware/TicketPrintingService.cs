@@ -5,6 +5,7 @@ using System.Drawing.Printing;
 using System.Globalization;
 using System.Runtime.Versioning;
 using MaterialClient.Common.Models;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
@@ -193,6 +194,9 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
         {
             outputPdfPath = Path.Combine(AppContext.BaseDirectory, outputPdfPath);
         }
+
+        // Normalize before File API usage (avoid resolving relative path from System32)
+        imagePath = AttachmentPathUtils.ToAbsolutePath(imagePath);
         
         if (!File.Exists(imagePath))
         {
@@ -334,6 +338,9 @@ public class TicketPrintingService : ITicketPrintingService, ISingletonDependenc
     /// <param name="printerName">Optional printer name. If null, uses default or auto-detected printer</param>
     public void PrintImage(string imagePath, string? printerName = null)
     {
+        // Normalize before File API usage (avoid resolving relative path from System32)
+        imagePath = AttachmentPathUtils.ToAbsolutePath(imagePath);
+
         if (!File.Exists(imagePath))
         {
             throw new FileNotFoundException($"Image file not found: {imagePath}");

@@ -8,6 +8,33 @@ namespace MaterialClient.Common.Utils;
 public static class AttachmentPathUtils
 {
     /// <summary>
+    /// Normalize a local (possibly relative) path to an absolute path based on <see cref="AppContext.BaseDirectory"/>.
+    /// This prevents File API calls from depending on the process working directory (e.g., auto-start from System32).
+    /// </summary>
+    /// <param name="path">Local path (absolute or relative)</param>
+    /// <returns>Absolute path for file system operations; empty string for null/empty input.</returns>
+    public static string ToAbsolutePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        return PathManager.ToAbsolutePath(path);
+    }
+
+    /// <summary>
+    /// Check file existence with path normalization.
+    /// </summary>
+    /// <param name="path">Local path (absolute or relative)</param>
+    public static bool FileExists(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        var absolutePath = ToAbsolutePath(path);
+        return File.Exists(absolutePath);
+    }
+
+    /// <summary>
     ///     根据附件类型获取基础路径
     /// </summary>
     /// <param name="attachType">附件类型</param>

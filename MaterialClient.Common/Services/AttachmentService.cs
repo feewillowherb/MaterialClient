@@ -302,7 +302,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 过滤掉本地文件不存在的
             var validAttachments = attachmentFiles
-                .Where(af => File.Exists(af.LocalPath))
+                // LocalPath is stored in DB as a relative path; normalize before File API usage.
+                .Where(af => AttachmentPathUtils.FileExists(af.LocalPath))
                 .Select(af => new AttachmentWithWaybill(af, waybillId))
                 .ToList();
 
@@ -377,7 +378,8 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 过滤掉本地文件不存在的
             var validAttachments = pendingAttachments
-                .Where(x => File.Exists(x.AttachmentFile.LocalPath))
+                // LocalPath is stored in DB as a relative path; normalize before File API usage.
+                .Where(x => AttachmentPathUtils.FileExists(x.AttachmentFile.LocalPath))
                 .Select(x => new AttachmentWithWaybill(x.AttachmentFile, x.Id))
                 .ToList();
 
@@ -471,9 +473,10 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
             // 获取文件大小（KB）
             int? fileSize = null;
-            if (File.Exists(attachment.LocalPath))
+            var normalizedLocalPath = AttachmentPathUtils.ToAbsolutePath(attachment.LocalPath);
+            if (!string.IsNullOrWhiteSpace(normalizedLocalPath) && File.Exists(normalizedLocalPath))
             {
-                var fileInfo = new FileInfo(attachment.LocalPath);
+                var fileInfo = new FileInfo(normalizedLocalPath);
                 fileSize = (int)(fileInfo.Length / 1024); // 转换为KB
             }
 
