@@ -22,6 +22,62 @@ MaterialClient 是一个用于工业环境材料称重管理的 Windows 桌面�
 - **Cloud Storage**: Aliyun OSS SDK 2.14.1
 - **ID Generation**: Yitter.IdGenerator 1.0.14 (Snowflake algorithm)
 
+## Architecture Principles
+
+### Core Architecture
+
+- 采用清晰的分层架构：UI（Avalonia）、应用服务、领域、基础设施（EF Core/SQLite、Refit 客户端）。
+- 各层职责明确，禁止跨层依赖（除经 DTO/接口透传）。
+- 使用 ABP 框架提供的基础设施（依赖注入、领域驱动设计、数据访问等）。
+
+### ABP Framework Integration
+
+- 统一使用 ABP 框架（版本 10.0.1）提供的核心功能。
+- 依赖注入使用 Autofac（通过 ABP Autofac 模块）。
+- 数据访问使用 ABP EntityFrameworkCore 集成。
+- 领域驱动设计使用 ABP Domain 包。
+
+### Dependency Injection
+
+- 统一使用 IoC 管理依赖，首选 Autofac。
+- 类构造函数依赖可使用 AutoConstructor 源生成器以减少样板代码。
+
+### HTTP Client
+
+- 统一使用 Refit 生成类型安全的 REST 客户端接口，与 `HttpClientFactory` 集成以获得连接复用与可配置的处理管线。
+
+### Data Access
+
+- **ABP EntityFrameworkCore Sqlite 包**：必须引用 `Volo.Abp.EntityFrameworkCore.Sqlite` 包（版本 10.0.1）。
+- **DbContext 基类**：继承自 `Volo.Abp.EntityFrameworkCore.AbpDbContext<TDbContext>`，获得审计、多租户、软删除等特性。
+- **仓储模式**：使用 `Volo.Abp.Domain.Repositories.IRepository<TEntity, TKey>` 接口访问数据，避免直接使用 `DbContext`。
+- **SQLite 配置**：
+  - 使用 `AddAbpDbContext<TDbContext>(options => options.UseSqlite(...))` 进行配置。
+  - 数据库文件路径应在应用配置中可配置。
+  - 支持数据库加密（如 SQLCipher）。
+
+### Domain-Driven Design (DDD) & Entity Model
+
+- **ABP Domain 包**：必须引用 `Volo.Abp.Ddd.Domain` 包（版本 10.0.1）。
+- **实体基类**：
+  - 普通实体：继承 `Volo.Abp.Domain.Entities.Entity<TKey>`。
+  - 审计实体：继承 `Volo.Abp.Domain.Entities.Auditing.FullAuditedEntity<TKey>`。
+  - 聚合根：继承 `Volo.Abp.Domain.Entities.Auditing.FullAuditedAggregateRoot<TKey>`。
+- **领域服务**：业务逻辑封装在领域服务中，使用 `Volo.Abp.Domain.Services.DomainService` 基类或实现 `IDomainService` 接口。
+- **领域事件**：使用 `Volo.Abp.Domain.Entities.Events.EntityChangedEventData<TEntity>` 或其派生类发布领域事件。
+
+### Background Sync
+
+- 轮询协调器负责调度与节流。
+- 同步服务封装读库、状态标记与 Refit 调用。
+- 失败应记录并带指数退避重试，确保至多一次或至少一次语义按业务要求配置。
+
+### Observability
+
+- 对关键路径（后台同步、HTTP 调用、数据库写入）记录结构化日志与指标，便于追踪与告警。
+- 测试中使用 Serilog 进行日志记录。
+- 遵循 YAGNI（You Aren't Gonna Need It）原则，从简单开始，避免过度设计。
+
 ## Project Conventions
 
 ### 代码风格
@@ -81,6 +137,13 @@ MaterialClient 是一个用于工业环境材料称重管理的 Windows 桌面�
 
 ### 测试策略
 
+- **Test-First（NON-NEGOTIABLE）**: TDD 强制要求：测试先行编写 → 用户批准 → 测试失败 → 然后实现；严格遵循 Red-Green-Refactor 循环。
+- **集成测试风格**：采用 ABP 集成测试框架，使用内存 SQLite 进行数据库测试，支持事务隔离与数据种子。
+- **BDD 测试**：使用 Reqnroll.NUnit 进行行为驱动开发，通过 `.feature` 文件和 `Steps.cs` 定义测试场景。
+- **Feature Background 数据初始化（NON-NEGOTIABLE）**：
+  - Feature 中的 Background 最好初始化当前 feature 需要用到的一些通用数据，如 Material、MaterialUnit、Provider 等环境数据。
+  - 避免在业务测试中找不到对应的环境数据。
+
 - **Test Framework**: xUnit（由 `.Tests` 项目结构暗示）
 - **Test Categories**:
   - 业务逻辑和 reducers 的单元测试
@@ -91,6 +154,28 @@ MaterialClient 是一个用于工业环境材料称重管理的 Windows 桌面�
 - **Key Test Suites**:
   - `AttendedWeighingServiceMemoryLeakTests` - 验证正确的资源清理
   - 所有硬件服务的 mock 实现
+
+#### Integration Test Infrastructure
+
+- **测试项目结构**：所有测试统一在 `MaterialClient.Common.Tests` 项目中，包含 TestBase、EntityFrameworkCore、Domain 三个测试层次。
+- **测试基础设施**：基于 ABP TestBase 模块，提供统一的测试环境、配置和基类。
+- **数据持久化操作封装（NON-NEGOTIABLE）**：
+  - 集成测试中，所有涉及数据持久化的操作尽量封装到其对应的 DomainService 中。
+  - 避免在测试步骤中直接操作仓储或 DbContext，通过领域服务进行数据操作。
+  - 如果业务中没用到仅测试中使用到的接口，必须显式使用 `ITestService` 接口实现。
+- **测试基类**：
+  - `MaterialClientTestBase<TStartupModule>` 提供 ABP 集成测试基础功能。
+  - `MaterialClientEntityFrameworkCoreTestBase` 用于数据库相关测试。
+  - `MaterialClientDomainTestBase<TStartupModule>` 用于领域层测试。
+- **测试模块**：
+  - 测试模块继承自 `MaterialClientTestBaseModule`，提供统一的测试环境配置（禁用后台任务、允许所有授权、数据种子等）。
+  - EntityFrameworkCore 测试使用内存 SQLite（`:memory:`），通过 `MaterialClientEntityFrameworkCoreTestModule` 配置。
+  - Domain 测试使用 `MaterialClientDomainTestModule`，集成 Serilog 日志记录。
+- **测试工具**：
+  - 使用 NSubstitute 进行模拟、Shouldly 进行断言。
+  - 使用 `FakeCurrentPrincipalAccessor` 模拟当前用户上下文。
+  - 使用 `WithUnitOfWorkAsync` 方法进行工作单元测试，确保事务隔离。
+- **测试配置文件**：`appsettings.json` 和 `appsettings.secrets.json` 用于测试环境配置。
 
 #### Integration Test Conventions
 
@@ -205,6 +290,7 @@ See `AGENTS.md`（项目根目录）for agent behavior rules and OpenSpec workfl
 - **Runtime**: .NET 10.0 desktop runtime required
 - **Deployment**: Single-file executable with self-contained deployment
 - **HCNetSDK**: Native DLLs must be distributed with application (HCNetSDK/, HCNetSDKCom/)
+- **Windows 桌面客户端**：采用 Avalonia，目标平台仅限 Windows（不要求跨平台）。
 
 ### Performance Constraints
 
@@ -222,6 +308,7 @@ See `AGENTS.md`（项目根目录）for agent behavior rules and OpenSpec workfl
 
 ### Data Constraints
 
+- **Local Data Persistence**: 使用 SQLite 作为嵌入式数据库；若数据库文件不存在，首次启动时应自动创建。
 - **SQLite Limits**: Suitable for single-user desktop application, not concurrent multi-user
 - **Attachment Storage**: Photos stored locally or uploaded to Aliyun OSS
 - **ID Generation**: Snowflake IDs require unique worker ID per instance
@@ -347,6 +434,7 @@ MaterialClient/
 ## Related Documentation
 
 - `AGENTS.md` - Agent 行为准则和 OpenSpec 工作流规范
+- `.specify/memory/constitution.md` - 项目宪章（核心原则与强制约束的完整定义）
 - `openspec/PROPOSAL_DESIGN_GUIDELINES.md` - UI mockup and diagram guidelines
 - `docs/AttendedWeighingService-RxState-Optimization-Report.md` - State management architecture
 - `docs/AttendedWeighingService-MemoryLeak-Testing-Guide.md` - Memory leak testing
