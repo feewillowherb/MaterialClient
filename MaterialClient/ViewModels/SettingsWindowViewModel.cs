@@ -897,7 +897,7 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
         /// <summary>
         ///     道闸启用状态显示文本
         /// </summary>
-        public string GateIoStatusText => EnableGateIo ? "已启用" : "未启用";
+        public string GateIoStatusText => EnableGateIo ? "已关联" : "未关联";
 
         public LicensePlateRecognitionConfigViewModel()
     {
