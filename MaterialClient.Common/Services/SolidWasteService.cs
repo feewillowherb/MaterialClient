@@ -30,11 +30,11 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
     [UnitOfWork]
     public virtual async Task<IReadOnlyList<SolidWasteExportRow>> GetExportRowsAsync(SolidWasteExportFilter filter)
     {
-        var waybills = await QueryWaybillsAsync(filter);
-        var providerDict = await BuildProviderDictAsync(waybills);
-        var materialDict = await BuildMaterialDictAsync(waybills);
+        var waybills = await SolidWasteQueryWaybillsAsync(filter);
+        var providerDict = await SolidWasteBuildProviderDictAsync(waybills);
+        var materialDict = await SolidWasteBuildMaterialDictAsync(waybills);
         return waybills
-            .Select(w => MapToExportRow(w, providerDict, materialDict))
+            .Select(w => SolidWasteMapToExportRow(w, providerDict, materialDict))
             .ToList();
     }
 
@@ -44,21 +44,21 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
         int pageIndex,
         int pageSize)
     {
-        var waybills = await QueryWaybillsAsync(filter);
+        var waybills = await SolidWasteQueryWaybillsAsync(filter);
         var totalCount = waybills.Count;
         var page = waybills
             .Skip((pageIndex - 1) * pageSize)
             .Take(pageSize)
             .ToList();
-        var providerDict = await BuildProviderDictAsync(page);
-        var materialDict = await BuildMaterialDictAsync(page);
+        var providerDict = await SolidWasteBuildProviderDictAsync(page);
+        var materialDict = await SolidWasteBuildMaterialDictAsync(page);
         var items = page
-            .Select(w => MapToExportRow(w, providerDict, materialDict))
+            .Select(w => SolidWasteMapToExportRow(w, providerDict, materialDict))
             .ToList();
         return new PagedResultDto<SolidWasteExportRow>(totalCount, items);
     }
 
-    private async Task<List<Waybill>> QueryWaybillsAsync(SolidWasteExportFilter filter)
+    private async Task<List<Waybill>> SolidWasteQueryWaybillsAsync(SolidWasteExportFilter filter)
     {
         var queryable = await _waybillRepository.GetQueryableAsync();
 
@@ -110,7 +110,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
         return waybills;
     }
 
-    private async Task<Dictionary<int, string>> BuildProviderDictAsync(List<Waybill> waybills)
+    private async Task<Dictionary<int, string>> SolidWasteBuildProviderDictAsync(List<Waybill> waybills)
     {
         var providerIds = waybills
             .Where(w => w.ProviderId.HasValue)
@@ -125,7 +125,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             .ToDictionary(p => p.Id, p => p.ProviderName);
     }
 
-    private async Task<Dictionary<int, string>> BuildMaterialDictAsync(List<Waybill> waybills)
+    private async Task<Dictionary<int, string>> SolidWasteBuildMaterialDictAsync(List<Waybill> waybills)
     {
         var materialIds = waybills
             .Select(w => w.GetProperty<int?>("SolidWasteInfo.MaterialId"))
@@ -141,7 +141,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             .ToDictionary(m => m.Id, m => m.Name);
     }
 
-    internal static SolidWasteExportRow MapToExportRow(
+    internal static SolidWasteExportRow SolidWasteMapToExportRow(
         Waybill waybill,
         Dictionary<int, string> providerDict,
         Dictionary<int, string> materialDict)
@@ -164,13 +164,15 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             _ => string.Empty
         };
 
+        var (shippingUnit, receivingUnit) = waybill.GetSolidWasteShippingAndReceivingUnits(providerName);
+
         return new SolidWasteExportRow
         {
             SerialNumber = waybill.OrderNo ?? string.Empty,
             VehicleNumber = waybill.PlateNumber ?? string.Empty,
             WeighingType = weighingType,
-            ShippingUnit = providerName,
-            ReceivingUnit = waybill.GetShipper(),
+            ShippingUnit = shippingUnit,
+            ReceivingUnit = receivingUnit,
             GoodsName = goodsName,
             GrossWeight = waybill.OrderTotalWeight,
             TareWeight = waybill.OrderTruckWeight,
@@ -178,7 +180,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             Remark = waybill.Remark ?? string.Empty,
             GrossWeightTime = waybill.JoinTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty,
             TareWeightTime = waybill.OutTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty,
-            Street = waybill.GetStreet() ?? string.Empty,
+            Street = waybill.GetSolidWasteStreet() ?? string.Empty,
             SolidWasteType = waybill.GetSolidWasteType() ?? string.Empty,
             ManifestNumber = waybill.GetSolidWasteOrderNumber() ?? string.Empty,
             UploadResult = waybill.IsPendingSync ? "0" : "1",

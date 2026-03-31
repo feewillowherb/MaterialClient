@@ -179,25 +179,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     {
         // SolidWaste extra fields
         var solidWasteType = waybill.GetSolidWasteType() ?? string.Empty;
-        var street = waybill.GetStreet() ?? string.Empty;
+        var street = waybill.GetSolidWasteStreet() ?? string.Empty;
         var solidWasteOrderNo = waybill.GetSolidWasteOrderNumber() ?? string.Empty;
 
-        // Determine units (swap for Sending)
+        // Determine units using domain method
         var providerName = item.ProviderName ?? string.Empty;
-        var shipper = waybill.GetShipper();
-
-        string shippingUnit;
-        string receivingUnit;
-        if (waybill.DeliveryType == DeliveryType.Sending)
-        {
-            shippingUnit = shipper;
-            receivingUnit = providerName;
-        }
-        else
-        {
-            shippingUnit = providerName;
-            receivingUnit = shipper;
-        }
+        var (shippingUnit, receivingUnit) = waybill.GetSolidWasteShippingAndReceivingUnits(providerName);
 
         // Resolve SolidWaste material name from ExtraProperties (preferred)
         string goodsName = string.Empty;
@@ -454,9 +441,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             }
 
             if (input.SolidWasteType != null) record.SetSolidWasteType(input.SolidWasteType);
-            if (input.Street != null) record.SetStreet(input.Street);
+            if (input.Street != null) record.SetSolidWasteStreet(input.Street);
             if (input.SolidWasteOrderNumber != null) record.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
-            if (input.Shipper != null) record.SetShipper(input.Shipper);
+            if (input.Shipper != null) record.SetSolidWasteShipper(input.Shipper);
             record.PatchSolidWasteMaterialInfo(input.MaterialId, null);
 
             await _weighingRecordRepository.UpdateAsync(record);
@@ -478,9 +465,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             if (waybill.OrderGoodsWeight.HasValue) waybill.OrderPlanOnPcs = waybill.OrderGoodsWeight;
 
             if (input.SolidWasteType != null) waybill.SetSolidWasteType(input.SolidWasteType);
-            if (input.Street != null) waybill.SetStreet(input.Street);
+            if (input.Street != null) waybill.SetSolidWasteStreet(input.Street);
             if (input.SolidWasteOrderNumber != null) waybill.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
-            if (input.Shipper != null) waybill.SetShipper(input.Shipper);
+            if (input.Shipper != null) waybill.SetSolidWasteShipper(input.Shipper);
             waybill.PatchSolidWasteMaterialInfo(input.MaterialId, waybill.OrderGoodsWeight);
 
             waybill.SetPendingSync();
@@ -981,7 +968,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         waybill.WeighingMode = WeighingMode.SolidWaste;
 
         var solidWasteType = primary.GetSolidWasteType();
-        var street = primary.GetStreet();
+        var street = primary.GetSolidWasteStreet();
         var solidWasteOrderNumber = primary.GetSolidWasteOrderNumber();
 
         // Shipper 的扩展 GetShipper() 会返回默认值，无法判断是否“未设置”，因此这里读取原始 ExtraProperties 值
@@ -992,18 +979,18 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (fallback.WeighingMode == WeighingMode.SolidWaste)
         {
             solidWasteType ??= fallback.GetSolidWasteType();
-            street ??= fallback.GetStreet();
+            street ??= fallback.GetSolidWasteStreet();
             solidWasteOrderNumber ??= fallback.GetSolidWasteOrderNumber();
             shipper ??= fallback.GetProperty<string>("SolidWasteInfo.Shipper");
             solidWasteMaterialId ??= fallback.GetProperty<int?>("SolidWasteInfo.MaterialId");
         }
 
         if (solidWasteType != null) waybill.SetSolidWasteType(solidWasteType);
-        if (street != null) waybill.SetStreet(street);
+        if (street != null) waybill.SetSolidWasteStreet(street);
         if (solidWasteOrderNumber != null) waybill.SetSolidWasteOrderNumber(solidWasteOrderNumber);
 
         // 即使 shipper 未设置，也写入默认值（SetShipper 内部会回退 DefaultShipper）
-        waybill.SetShipper(shipper);
+        waybill.SetSolidWasteShipper(shipper);
 
         // UI 读取 SolidWaste 材料使用 ExtraProperties 的 SolidWasteInfo.MaterialId / WaybillQuantity
         // WaybillQuantity 在 SolidWaste 模式下约定为 GoodsWeight（自动派生）

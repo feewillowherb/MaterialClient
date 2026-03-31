@@ -22,13 +22,13 @@ public interface ISolidWasteInfo
     ///     设置街道
     /// </summary>
     /// <param name="street">街道（来自StreetsConfig）</param>
-    void SetStreet(string? street);
+    void SetSolidWasteStreet(string? street);
 
     /// <summary>
     ///     获取街道
     /// </summary>
     /// <returns>街道，如果未设置则返回null</returns>
-    string? GetStreet();
+    string? GetSolidWasteStreet();
 
     /// <summary>
     ///     设置联单编号
@@ -47,13 +47,13 @@ public interface ISolidWasteInfo
     ///     设置发货单位
     /// </summary>
     /// <param name="shipper">发货单位，如果为null则使用默认值"固废资源化综合体"</param>
-    void SetShipper(string? shipper = null);
+    void SetSolidWasteShipper(string? shipper = null);
 
     /// <summary>
     ///     获取发货单位
     /// </summary>
     /// <returns>发货单位，如果未设置则返回默认值"固废资源化综合体"</returns>
-    string GetShipper();
+    string GetSolidWasteShipper();
 
     /// <summary>
     ///     设置所有固体废料信息

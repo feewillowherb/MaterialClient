@@ -48,7 +48,7 @@ public class WeighingMatchingServiceSolidWasteTransferTests
         // Assert
         waybill.WeighingMode.ShouldBe(WeighingMode.SolidWaste);
         waybill.GetSolidWasteType().ShouldBe("TypeFromJoin");
-        waybill.GetShipper().ShouldBe("ShipperFromOut");
+        waybill.GetSolidWasteShipper().ShouldBe("ShipperFromOut");
 
         waybill.GetProperty<int?>("SolidWasteInfo.MaterialId").ShouldBe(1001);
         waybill.GetProperty<decimal?>("SolidWasteInfo.WaybillQuantity").ShouldBe(5.5m);
@@ -62,7 +62,7 @@ public class WeighingMatchingServiceSolidWasteTransferTests
         var outRecord = new WeighingRecord(10m) { WeighingMode = WeighingMode.SolidWaste };
 
         outRecord.SetSolidWasteType("TypeFromOut");
-        outRecord.SetStreet("StreetFromOut");
+        outRecord.SetSolidWasteStreet("StreetFromOut");
         outRecord.SetSolidWasteOrderNumber("OrderNoFromOut");
         outRecord.SetProperty("SolidWasteInfo.MaterialId", 2002);
 
@@ -80,7 +80,7 @@ public class WeighingMatchingServiceSolidWasteTransferTests
         // Assert
         waybill.WeighingMode.ShouldBe(WeighingMode.SolidWaste);
         waybill.GetSolidWasteType().ShouldBe("TypeFromOut");
-        waybill.GetStreet().ShouldBe("StreetFromOut");
+        waybill.GetSolidWasteStreet().ShouldBe("StreetFromOut");
         waybill.GetSolidWasteOrderNumber().ShouldBe("OrderNoFromOut");
 
         waybill.GetProperty<int?>("SolidWasteInfo.MaterialId").ShouldBe(2002);

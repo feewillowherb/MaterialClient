@@ -811,7 +811,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = record.GetSolidWasteOrderNumber();
-                SelectedStreet = record.GetStreet();
+                SelectedStreet = record.GetSolidWasteStreet();
                 if (!string.IsNullOrEmpty(SelectedStreet))
                 {
                     StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
@@ -861,7 +861,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
-                SelectedStreet = waybill.GetStreet();
+                SelectedStreet = waybill.GetSolidWasteStreet();
                 if (!string.IsNullOrEmpty(SelectedStreet))
                 {
                     StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>

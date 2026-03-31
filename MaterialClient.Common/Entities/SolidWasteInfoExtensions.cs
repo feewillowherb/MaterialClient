@@ -1,4 +1,5 @@
 using System;
+using MaterialClient.Common.Entities.Enums;
 using Volo.Abp.Data;
 
 namespace MaterialClient.Common.Entities;
@@ -59,7 +60,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     设置街道
     /// </summary>
-    public static void SetStreet(this WeighingRecord record, string? street)
+    public static void SetSolidWasteStreet(this WeighingRecord record, string? street)
     {
         if (record == null) throw new ArgumentNullException(nameof(record));
         record.SetProperty(StreetKey, street);
@@ -68,7 +69,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     获取街道
     /// </summary>
-    public static string? GetStreet(this WeighingRecord record)
+    public static string? GetSolidWasteStreet(this WeighingRecord record)
     {
         if (record == null) throw new ArgumentNullException(nameof(record));
         return record.GetProperty<string>(StreetKey);
@@ -104,7 +105,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     设置发货单位
     /// </summary>
-    public static void SetShipper(this WeighingRecord record, string? shipper = null)
+    public static void SetSolidWasteShipper(this WeighingRecord record, string? shipper = null)
     {
         if (record == null) throw new ArgumentNullException(nameof(record));
         record.SetProperty(ShipperKey, shipper ?? DefaultShipper);
@@ -113,7 +114,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     获取发货单位
     /// </summary>
-    public static string GetShipper(this WeighingRecord record)
+    public static string GetSolidWasteShipper(this WeighingRecord record)
     {
         if (record == null) throw new ArgumentNullException(nameof(record));
         return record.GetProperty<string>(ShipperKey) ?? DefaultShipper;
@@ -133,9 +134,9 @@ public static class SolidWasteInfoExtensions
         if (record == null) throw new ArgumentNullException(nameof(record));
 
         record.SetSolidWasteType(solidWasteType);
-        record.SetStreet(street);
+        record.SetSolidWasteStreet(street);
         record.SetSolidWasteOrderNumber(solidWasteOrderNumber);
-        record.SetShipper(shipper);
+        record.SetSolidWasteShipper(shipper);
     }
 
     public static void SetSolidWasteMaterialInfo(this WeighingRecord record, int materialId, decimal? waybillQuantity)
@@ -178,7 +179,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     设置街道
     /// </summary>
-    public static void SetStreet(this Waybill waybill, string? street)
+    public static void SetSolidWasteStreet(this Waybill waybill, string? street)
     {
         if (waybill == null) throw new ArgumentNullException(nameof(waybill));
         waybill.SetProperty(StreetKey, street);
@@ -187,7 +188,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     获取街道
     /// </summary>
-    public static string? GetStreet(this Waybill waybill)
+    public static string? GetSolidWasteStreet(this Waybill waybill)
     {
         if (waybill == null) throw new ArgumentNullException(nameof(waybill));
         return waybill.GetProperty<string>(StreetKey);
@@ -223,7 +224,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     设置发货单位
     /// </summary>
-    public static void SetShipper(this Waybill waybill, string? shipper = null)
+    public static void SetSolidWasteShipper(this Waybill waybill, string? shipper = null)
     {
         if (waybill == null) throw new ArgumentNullException(nameof(waybill));
         waybill.SetProperty(ShipperKey, shipper ?? DefaultShipper);
@@ -232,7 +233,7 @@ public static class SolidWasteInfoExtensions
     /// <summary>
     ///     获取发货单位
     /// </summary>
-    public static string GetShipper(this Waybill waybill)
+    public static string GetSolidWasteShipper(this Waybill waybill)
     {
         if (waybill == null) throw new ArgumentNullException(nameof(waybill));
         return waybill.GetProperty<string>(ShipperKey) ?? DefaultShipper;
@@ -252,9 +253,9 @@ public static class SolidWasteInfoExtensions
         if (waybill == null) throw new ArgumentNullException(nameof(waybill));
 
         waybill.SetSolidWasteType(solidWasteType);
-        waybill.SetStreet(street);
+        waybill.SetSolidWasteStreet(street);
         waybill.SetSolidWasteOrderNumber(solidWasteOrderNumber);
-        waybill.SetShipper(shipper);
+        waybill.SetSolidWasteShipper(shipper);
     }
 
     public static void SetSolidWasteMaterialInfo(this Waybill waybill, int materialId, decimal? waybillQuantity)
@@ -270,6 +271,23 @@ public static class SolidWasteInfoExtensions
 
         if (materialId.HasValue) waybill.SetProperty(MaterialIdKey, materialId.Value);
         if (waybillQuantity.HasValue) waybill.SetProperty(WaybillQuantityKey, waybillQuantity.Value);
+    }
+
+    /// <summary>
+    ///     根据收料/发料模式确定发货单位和收货单位
+    ///     收料模式：发货=providerName，收货=shipper
+    ///     发料模式：发货=shipper，收货=providerName（对调）
+    /// </summary>
+    public static (string ShippingUnit, string ReceivingUnit) GetSolidWasteShippingAndReceivingUnits(
+        this Waybill waybill, string providerName)
+    {
+        if (waybill == null) throw new ArgumentNullException(nameof(waybill));
+
+        var shipper = waybill.GetProperty<string>(ShipperKey) ?? DefaultShipper;
+
+        return waybill.DeliveryType == DeliveryType.Sending
+            ? (shipper, providerName)
+            : (providerName, shipper);
     }
 
     #endregion

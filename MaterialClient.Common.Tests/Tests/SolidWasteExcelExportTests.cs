@@ -24,7 +24,7 @@ public class SolidWasteExcelExportTests
         var providerDict = new Dictionary<int, string> { { 1, "长巷村" } };
         var materialDict = new Dictionary<int, string> { { 10, "装修垃圾" } };
 
-        var row = SolidWasteService.MapToExportRow(waybill, providerDict, materialDict);
+        var row = SolidWasteService.SolidWasteMapToExportRow(waybill, providerDict, materialDict);
 
         row.SerialNumber.ShouldBe("A202603040001");
         row.VehicleNumber.ShouldBe("浙A96H93");
@@ -48,7 +48,7 @@ public class SolidWasteExcelExportTests
         var waybill = CreateTestWaybill();
         waybill.IsPendingSync = false;
         waybill.LastSyncTime = null;
-        var row = SolidWasteService.MapToExportRow(
+        var row = SolidWasteService.SolidWasteMapToExportRow(
             waybill, new Dictionary<int, string>(), new Dictionary<int, string>());
 
         row.UploadResult.ShouldBe("1");
@@ -70,7 +70,7 @@ public class SolidWasteExcelExportTests
             AddDate = DateTime.Now
         };
 
-        var row = SolidWasteService.MapToExportRow(
+        var row = SolidWasteService.SolidWasteMapToExportRow(
             waybill, new Dictionary<int, string>(), new Dictionary<int, string>());
 
         row.VehicleNumber.ShouldBe(string.Empty);
@@ -89,7 +89,7 @@ public class SolidWasteExcelExportTests
         waybill.ProviderId = 999;
 
         var providerDict = new Dictionary<int, string> { { 1, "长巷村" } };
-        var row = SolidWasteService.MapToExportRow(
+        var row = SolidWasteService.SolidWasteMapToExportRow(
             waybill, providerDict, new Dictionary<int, string>());
 
         row.ShippingUnit.ShouldBe(string.Empty);
@@ -102,7 +102,7 @@ public class SolidWasteExcelExportTests
         waybill.SetProperty("SolidWasteInfo.MaterialId", 999);
 
         var materialDict = new Dictionary<int, string> { { 10, "装修垃圾" } };
-        var row = SolidWasteService.MapToExportRow(
+        var row = SolidWasteService.SolidWasteMapToExportRow(
             waybill, new Dictionary<int, string>(), materialDict);
 
         row.GoodsName.ShouldBe(string.Empty);
