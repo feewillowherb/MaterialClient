@@ -1,13 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:u="https://irihi.tech/ursa"
+             xmlns:models="clr-namespace:MaterialClient.Common.Models;assembly=MaterialClient.Common"
              x:Class="MaterialClient.Views.Controls.SearchableSelectionBox"
              x:Name="Self"
              Height="32"
              MinHeight="32">
 
-    <!-- 触发区域 -->
-    <Border x:Name="RootBorder"
+    <Grid>
+        <!-- 触发区域 -->
+        <Border x:Name="RootBorder"
             Background="White"
             BorderBrush="#E5E7EB"
             BorderThickness="1"
@@ -94,7 +96,7 @@
                                                VerticalAlignment="Center" />
                                 </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
+                                    <DataTemplate x:DataType="models:SelectionItem">
                                         <TextBlock Text="{Binding Name}"
                                                    FontSize="10"
                                                    HorizontalAlignment="Center"
@@ -148,4 +150,5 @@
             </Grid>
         </Border>
     </Popup>
+    </Grid>
 </UserControl>
