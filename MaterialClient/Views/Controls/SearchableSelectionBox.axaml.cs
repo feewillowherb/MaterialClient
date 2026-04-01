@@ -1,178 +1,366 @@
 using System;
-using System.ComponentModel;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.ReactiveUI;
 using Avalonia.Threading;
-using MaterialClient.ViewModels;
+using Avalonia.VisualTree;
+using MaterialClient.Common.Models;
+using Volo.Abp.Application.Dtos;
 
 namespace MaterialClient.Views.Controls;
 
 public partial class SearchableSelectionBox : UserControl
 {
-    public static readonly StyledProperty<bool> IsPopupOpenProperty =
-        AvaloniaProperty.Register<SearchableSelectionBox, bool>(nameof(IsPopupOpen), defaultValue: false);
+    #region StyledProperties
 
-    public static readonly StyledProperty<string?> PlaceholderTextProperty =
-        AvaloniaProperty.Register<SearchableSelectionBox, string?>(nameof(PlaceholderText), defaultValue: "请选择");
+    public static readonly StyledProperty<SelectionItem?> SelectedItemProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, SelectionItem?>(nameof(SelectedItem));
 
-    /// <summary>
-    /// 弹窗打开期间缓存的已选显示文本；弹窗关闭后若 VM 的已选项被清空，则用此值恢复显示。
-    /// </summary>
-    private string? _cachedDisplayTextWhenPopupOpen;
+    public static readonly StyledProperty<Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>>?> LoadPageAsyncProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>>?>(nameof(LoadPageAsync));
 
-    /// <summary>
-    /// 为 true 表示当前显示的是“关闭弹窗时从缓存恢复”的文本（VM 已选项为空但界面显示缓存值）。
-    /// </summary>
-    private bool _displayRestoredFromCache;
+    public static readonly StyledProperty<Func<string, Task<SelectionItem?>>?> CreateNewAsyncProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, Func<string, Task<SelectionItem?>>?>(nameof(CreateNewAsync));
 
-    public bool IsPopupOpen
+    public static readonly StyledProperty<string?> WatermarkProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, string?>(nameof(Watermark), "请选择");
+
+    public static readonly StyledProperty<bool> AllowCreateNewProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, bool>(nameof(AllowCreateNew), true);
+
+    public static readonly StyledProperty<int> PageSizeProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, int>(nameof(PageSize), 4);
+
+    public static readonly StyledProperty<double> PopupWidthProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, double>(nameof(PopupWidth), 400);
+
+    public static readonly StyledProperty<bool> IsDropdownOpenProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, bool>(nameof(IsDropdownOpen));
+
+    public static readonly StyledProperty<int> CurrentPageProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, int>(nameof(CurrentPage), 1);
+
+    public static readonly StyledProperty<int> TotalCountProperty =
+        AvaloniaProperty.Register<SearchableSelectionBox, int>(nameof(TotalCount));
+
+    #endregion
+
+    private bool _isInitializing;
+    private string _searchText = string.Empty;
+    private SelectionItem? _selectedItemBeforeOpen;
+
+    public SelectionItem? SelectedItem
     {
-        get => GetValue(IsPopupOpenProperty);
-        set => SetValue(IsPopupOpenProperty, value);
+        get => GetValue(SelectedItemProperty);
+        set => SetValue(SelectedItemProperty, value);
     }
 
-    public string? PlaceholderText
+    public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>>? LoadPageAsync
     {
-        get => GetValue(PlaceholderTextProperty);
-        set => SetValue(PlaceholderTextProperty, value);
+        get => GetValue(LoadPageAsyncProperty);
+        set => SetValue(LoadPageAsyncProperty, value);
     }
+
+    public Func<string, Task<SelectionItem?>>? CreateNewAsync
+    {
+        get => GetValue(CreateNewAsyncProperty);
+        set => SetValue(CreateNewAsyncProperty, value);
+    }
+
+    public string? Watermark
+    {
+        get => GetValue(WatermarkProperty);
+        set => SetValue(WatermarkProperty, value);
+    }
+
+    public bool AllowCreateNew
+    {
+        get => GetValue(AllowCreateNewProperty);
+        set => SetValue(AllowCreateNewProperty, value);
+    }
+
+    public int PageSize
+    {
+        get => GetValue(PageSizeProperty);
+        set => SetValue(PageSizeProperty, value);
+    }
+
+    public double PopupWidth
+    {
+        get => GetValue(PopupWidthProperty);
+        set => SetValue(PopupWidthProperty, value);
+    }
+
+    public bool IsDropdownOpen
+    {
+        get => GetValue(IsDropdownOpenProperty);
+        set => SetValue(IsDropdownOpenProperty, value);
+    }
+
+    public int CurrentPage
+    {
+        get => GetValue(CurrentPageProperty);
+        set => SetValue(CurrentPageProperty, value);
+    }
+
+    public int TotalCount
+    {
+        get => GetValue(TotalCountProperty);
+        set => SetValue(TotalCountProperty, value);
+    }
+
+    private ObservableCollection<SelectionItem> PagedItems { get; } = new();
 
     public SearchableSelectionBox()
     {
         InitializeComponent();
         Focusable = true;
 
-        this.GetObservable(IsPopupOpenProperty).Subscribe(OnIsPopupOpenChanged);
-        this.GetObservable(DataContextProperty).Subscribe(_ => OnDataContextChanged());
-    }
+        this.GetObservable(IsDropdownOpenProperty).Subscribe(OnIsDropdownOpenChanged);
+        this.GetObservable(SelectedItemProperty).Subscribe(_ => UpdateDisplayText());
 
-    private void OnDataContextChanged()
-    {
-        if (DataContext is INotifyPropertyChanged npc)
-        {
-            npc.PropertyChanged -= Npc_PropertyChanged;
-            npc.PropertyChanged += Npc_PropertyChanged;
-        }
-
-        _cachedDisplayTextWhenPopupOpen = null;
-        _displayRestoredFromCache = false;
-
-        UpdateDisplayText();
-    }
-
-    private void Npc_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(IGenericSelectionPopupBindings.SelectedDisplayText))
-            return;
-
-        if (DataContext is IGenericSelectionPopupBindings vm)
-        {
-            var text = vm.SelectedDisplayText;
-            if (IsPopupOpen && !string.IsNullOrEmpty(text))
+        // Page change → reload data
+        this.GetObservable(CurrentPageProperty)
+            .DistinctUntilChanged()
+            .Subscribe(_p =>
             {
-                _cachedDisplayTextWhenPopupOpen = text;
-            }
+                if (IsDropdownOpen)
+                    _ = LoadDataAsync();
+            });
 
-            if (!string.IsNullOrEmpty(text))
+        // Debounced search: 300ms throttle
+        SearchTextBox.GetObservable(TextBox.TextProperty)
+            .Throttle(TimeSpan.FromMilliseconds(300))
+            .ObserveOn(AvaloniaScheduler.Instance)
+            .Subscribe(text =>
             {
-                _displayRestoredFromCache = false;
-            }
-        }
-
-        UpdateDisplayText();
+                _searchText = text ?? string.Empty;
+                CurrentPage = 1;
+                // If already on page 1, CurrentPage setter won't trigger reload
+                if (CurrentPage == 1)
+                    _ = LoadDataAsync();
+            });
     }
+
+    #region Display
 
     private void UpdateDisplayText()
     {
         if (DisplayTextBlock == null) return;
+        if (_isInitializing) return;
 
-        if (DataContext is IGenericSelectionPopupBindings vm)
+        if (SelectedItem != null)
         {
-            var text = vm.SelectedDisplayText;
-            if (!string.IsNullOrEmpty(text))
-            {
-                DisplayTextBlock.Text = text;
-                DisplayTextBlock.Foreground = new SolidColorBrush(Color.Parse("#333333"));
-                return;
-            }
-
-            // VM 已选项为空：若处于“从缓存恢复”状态则继续显示缓存文本
-            if (_displayRestoredFromCache && !string.IsNullOrEmpty(_cachedDisplayTextWhenPopupOpen))
-            {
-                DisplayTextBlock.Text = _cachedDisplayTextWhenPopupOpen;
-                DisplayTextBlock.Foreground = new SolidColorBrush(Color.Parse("#333333"));
-                return;
-            }
-
-            DisplayTextBlock.Text = PlaceholderText ?? "请选择";
+            DisplayTextBlock.Text = SelectedItem.Name;
+            DisplayTextBlock.Foreground = new SolidColorBrush(Color.Parse("#333333"));
+        }
+        else
+        {
+            DisplayTextBlock.Text = Watermark ?? "请选择";
             DisplayTextBlock.Foreground = new SolidColorBrush(Color.Parse("#999999"));
         }
     }
 
-    private void OnIsPopupOpenChanged(bool isOpen)
-    {
-        if (DisplayPanel == null || SearchTextBox == null) return;
+    #endregion
 
-        DisplayPanel.IsVisible = !isOpen;
-        SearchTextBox.IsVisible = isOpen;
+    #region Popup Open/Close
+
+    private void OnIsDropdownOpenChanged(bool isOpen)
+    {
+        if (DisplayTextBlock == null || SearchTextBox == null) return;
 
         if (isOpen)
         {
-            _displayRestoredFromCache = false;
+            _selectedItemBeforeOpen = SelectedItem;
+            DisplayTextBlock.IsVisible = false;
+            SearchTextBox.IsVisible = true;
+            SearchTextBox.Text = string.Empty;
+            _searchText = string.Empty;
+            CurrentPage = 1;
 
-            if (DataContext is IGenericSelectionPopupBindings vm &&
-                !string.IsNullOrEmpty(vm.SelectedDisplayText))
-            {
-                _cachedDisplayTextWhenPopupOpen = vm.SelectedDisplayText;
-            }
-
-            // Defer focus to next UI tick to avoid re-entrancy / layout deadlock when opening
-            var box = SearchTextBox;
-            Dispatcher.UIThread.Post(() => box.Focus(), DispatcherPriority.Loaded);
+            Dispatcher.UIThread.Post(() => SearchTextBox.Focus(), DispatcherPriority.Loaded);
+            _ = LoadDataAsync();
         }
         else
         {
-            // 弹窗关闭后：若已选项被清空但存在缓存，则从缓存恢复显示
-            if (DataContext is IGenericSelectionPopupBindings vm &&
-                string.IsNullOrEmpty(vm.SelectedDisplayText) &&
-                !string.IsNullOrEmpty(_cachedDisplayTextWhenPopupOpen))
-            {
-                _displayRestoredFromCache = true;
-
-                if (DisplayTextBlock != null)
-                {
-                    DisplayTextBlock.Text = _cachedDisplayTextWhenPopupOpen;
-                    DisplayTextBlock.Foreground = new SolidColorBrush(Color.Parse("#333333"));
-                }
-            }
+            SearchTextBox.IsVisible = false;
+            DisplayTextBlock.IsVisible = true;
+            UpdateDisplayText();
         }
     }
 
+    private void ClosePopup()
+    {
+        IsDropdownOpen = false;
+    }
+
+    #endregion
+
+    #region Data Loading
+
+    private async Task LoadDataAsync()
+    {
+        var loadFunc = LoadPageAsync;
+        if (loadFunc == null)
+        {
+            PagedItems.Clear();
+            UpdateListVisualState();
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<int>? selectedIds = null;
+            if (SelectedItem != null)
+                selectedIds = new List<int> { SelectedItem.Id };
+
+            var search = string.IsNullOrWhiteSpace(_searchText) ? null : _searchText.Trim();
+            var result = await loadFunc(search, CurrentPage, PageSize, selectedIds);
+
+            TotalCount = (int)result.TotalCount;
+
+            _isInitializing = true;
+            try
+            {
+                PagedItems.Clear();
+                foreach (var item in result.Items)
+                    PagedItems.Add(item);
+
+                ItemsDataGrid.ItemsSource = null;
+                ItemsDataGrid.ItemsSource = PagedItems;
+
+                // Restore selection
+                if (SelectedItem != null)
+                {
+                    var match = PagedItems.FirstOrDefault(x => x.Id == SelectedItem.Id);
+                    if (match != null)
+                        ItemsDataGrid.SelectedItem = match;
+                }
+            }
+            finally
+            {
+                _isInitializing = false;
+            }
+
+            UpdateListVisualState();
+        }
+        catch
+        {
+            PagedItems.Clear();
+            UpdateListVisualState();
+        }
+    }
+
+    private void UpdateListVisualState()
+    {
+        var hasResults = PagedItems.Count > 0;
+        var searchTrimmed = _searchText?.Trim() ?? string.Empty;
+        var canCreateNew = AllowCreateNew && CreateNewAsync != null && !string.IsNullOrEmpty(searchTrimmed);
+        var searchTextExistsInResults = hasResults && PagedItems.Any(x =>
+            string.Equals(x.Name, searchTrimmed, StringComparison.OrdinalIgnoreCase));
+
+        ItemsDataGrid.IsVisible = hasResults;
+
+        if (!hasResults && canCreateNew)
+        {
+            NoResultsPanel.IsVisible = true;
+            AddNewBelowListButton.IsVisible = false;
+        }
+        else
+        {
+            NoResultsPanel.IsVisible = false;
+            AddNewBelowListButton.IsVisible = hasResults && canCreateNew && !searchTextExistsInResults;
+        }
+    }
+
+    #endregion
+
+    #region Event Handlers
+
     private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!IsPopupOpen)
-            IsPopupOpen = true;
+        if (!IsDropdownOpen)
+        {
+            IsDropdownOpen = true;
+            e.Handled = true;
+        }
     }
 
-    private void OnDisplayPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnDataGridPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!IsPopupOpen)
-            IsPopupOpen = true;
+        if (sender is not DataGrid grid) return;
+
+        var hit = grid.InputHitTest(e.GetPosition(grid)) as Visual;
+        var current = hit;
+        while (current != null)
+        {
+            if (current is DataGridRow row)
+            {
+                var item = row.DataContext as SelectionItem;
+                if (item != null)
+                {
+                    ConfirmSelection(item);
+                    e.Handled = true;
+                    return;
+                }
+            }
+            current = current.GetVisualParent();
+        }
     }
 
-    protected override void OnGotFocus(GotFocusEventArgs e)
+    private void ConfirmSelection(SelectionItem item)
     {
-        base.OnGotFocus(e);
-        if (!IsPopupOpen)
-            IsPopupOpen = true;
+        SelectedItem = item;
+        ClosePopup();
     }
 
-    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    private async void OnAddNewClick(object? sender, RoutedEventArgs e)
+    {
+        var createFunc = CreateNewAsync;
+        if (createFunc == null) return;
+
+        var name = _searchText?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(name)) return;
+
+        try
+        {
+            var newItem = await createFunc(name);
+            if (newItem != null)
+            {
+                SelectedItem = newItem;
+                ClosePopup();
+            }
+            // null => keep popup open
+        }
+        catch
+        {
+            // keep popup open on error
+        }
+    }
+
+    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            SelectedItem = _selectedItemBeforeOpen;
+            ClosePopup();
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         UpdateDisplayText();
     }
+
+    #endregion
 }
