@@ -11,7 +11,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using MaterialClient.Common.Models;
 using Volo.Abp.Application.Dtos;
 
@@ -294,26 +293,13 @@ public partial class SearchableSelectionBox : UserControl
         }
     }
 
-    private void OnDataGridPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not DataGrid grid) return;
+        if (sender is not Control control) return;
+        if (control.DataContext is not SelectionItem item) return;
 
-        var hit = grid.InputHitTest(e.GetPosition(grid)) as Visual;
-        var current = hit;
-        while (current != null)
-        {
-            if (current is DataGridRow row)
-            {
-                var item = row.DataContext as SelectionItem;
-                if (item != null)
-                {
-                    ConfirmSelection(item);
-                    e.Handled = true;
-                    return;
-                }
-            }
-            current = current.GetVisualParent();
-        }
+        ConfirmSelection(item);
+        e.Handled = true;
     }
 
     private void ConfirmSelection(SelectionItem item)

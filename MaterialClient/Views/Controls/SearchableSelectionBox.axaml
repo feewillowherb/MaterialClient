@@ -57,6 +57,7 @@
            IsLightDismissEnabled="True"
            Placement="Bottom"
            PlacementTarget="{Binding #RootBorder}"
+           HorizontalOffset="-110"
            IsOpen="{Binding #Self.IsDropdownOpen, Mode=TwoWay}"
            WindowManagerAddShadowHint="True">
 
@@ -83,8 +84,7 @@
                               Background="White"
                               GridLinesVisibility="Horizontal"
                               HeadersVisibility="Column"
-                              RowHeight="30"
-                              PointerPressed="OnDataGridPointerPressed">
+                              RowHeight="30">
 
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Width="*">
@@ -97,11 +97,16 @@
                                 </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate x:DataType="models:SelectionItem">
-                                        <TextBlock Text="{Binding Name}"
-                                                   FontSize="10"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   TextAlignment="Center" />
+                                        <Border Background="Transparent"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch"
+                                                PointerPressed="OnItemPointerPressed">
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontSize="10"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Center" />
+                                        </Border>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
