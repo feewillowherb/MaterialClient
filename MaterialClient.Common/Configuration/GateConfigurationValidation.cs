@@ -31,9 +31,10 @@ public static class GateConfigurationValidation
         {
             return new GateConfigurationValidationResult
             {
-                IsValid = true,
+                IsValid = false,
                 CountA = 0,
-                CountB = 0
+                CountB = 0,
+                Reason = "未配置任何道闸设备"
             };
         }
 
