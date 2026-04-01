@@ -1,12 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:MaterialClient.ViewModels"
+             xmlns:u="https://irihi.tech/ursa"
+             xmlns:models="clr-namespace:MaterialClient.Common.Models;assembly=MaterialClient.Common"
              x:Class="MaterialClient.Views.Controls.SearchableSelectionBox"
-             x:DataType="vm:IGenericSelectionPopupBindings"
+             x:Name="Self"
              Height="32"
              MinHeight="32">
 
-    <Border x:Name="RootBorder"
+    <Grid>
+        <!-- 触发区域 -->
+        <Border x:Name="RootBorder"
             Background="White"
             BorderBrush="#E5E7EB"
             BorderThickness="1"
@@ -15,21 +18,16 @@
             PointerPressed="OnRootPointerPressed"
             Focusable="False">
         <Grid ColumnDefinitions="*,Auto">
-            <!-- Display when popup closed -->
-            <Border x:Name="DisplayPanel"
-                    Grid.Column="0"
-                    Background="Transparent"
-                    VerticalAlignment="Stretch"
-                    HorizontalAlignment="Stretch"
-                    PointerPressed="OnDisplayPointerPressed">
-                <TextBlock x:Name="DisplayTextBlock"
-                           FontSize="12"
-                           Foreground="#333333"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Left"
-                           TextTrimming="CharacterEllipsis" />
-            </Border>
-            <!-- Search input when popup open -->
+            <!-- 关闭时：TextBlock -->
+            <TextBlock x:Name="DisplayTextBlock"
+                       Grid.Column="0"
+                       FontSize="12"
+                       Foreground="#999999"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Left"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding #Self.Watermark}" />
+            <!-- 打开时：TextBox -->
             <TextBox x:Name="SearchTextBox"
                      Grid.Column="0"
                      Height="20"
@@ -40,9 +38,9 @@
                      Padding="0"
                      VerticalAlignment="Center"
                      HorizontalAlignment="Stretch"
-                     Text="{Binding SearchText, Mode=TwoWay}"
-                     IsVisible="False" />
-            <!-- Dropdown arrow -->
+                     IsVisible="False"
+                     KeyDown="OnSearchKeyDown" />
+            <!-- 下拉箭头 -->
             <Path Grid.Column="1"
                   Width="10"
                   Height="6"
@@ -53,4 +51,109 @@
                   IsHitTestVisible="False" />
         </Grid>
     </Border>
+
+    <!-- 内嵌 Popup -->
+    <Popup x:Name="DropdownPopup"
+           IsLightDismissEnabled="True"
+           Placement="Bottom"
+           PlacementTarget="{Binding #RootBorder}"
+           HorizontalOffset="-110"
+           IsOpen="{Binding #Self.IsDropdownOpen, Mode=TwoWay}"
+           WindowManagerAddShadowHint="True">
+
+        <Border x:Name="PopupBorder"
+                Background="White"
+                BorderBrush="#E5E7EB"
+                BorderThickness="3"
+                CornerRadius="4"
+                Width="{Binding #Self.PopupWidth}">
+            <Grid RowDefinitions="*,36,Auto">
+
+                <!-- Row 0: 列表 / 无结果 -->
+                <Grid Grid.Row="0" Height="156">
+                    <DataGrid x:Name="ItemsDataGrid"
+                              Height="156"
+                              AutoGenerateColumns="False"
+                              CanUserResizeColumns="False"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Top"
+                              BorderThickness="0"
+                              Background="White"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              RowHeight="30">
+
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="*">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock FontSize="10"
+                                               Text="名称"
+                                               Foreground="Black"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="models:SelectionItem">
+                                        <Border Background="Transparent"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch"
+                                                PointerPressed="OnItemPointerPressed">
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontSize="10"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Center" />
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- 无结果居中 -->
+                    <StackPanel x:Name="NoResultsPanel"
+                                IsVisible="False"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="10">
+                        <TextBlock Text="未找到匹配结果"
+                                   FontSize="12"
+                                   Foreground="#666666"
+                                   HorizontalAlignment="Center" />
+                        <Button x:Name="NoResultsAddButton"
+                                Classes="primary-button"
+                                Height="36"
+                                FontSize="12"
+                                Padding="12,0"
+                                Content="新增"
+                                Click="OnAddNewClick" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Row 1: 有结果时的"新增"按钮 -->
+                <Button x:Name="AddNewBelowListButton"
+                        Grid.Row="1"
+                        Classes="primary-button"
+                        Height="36"
+                        FontSize="12"
+                        Padding="12,0"
+                        HorizontalAlignment="Center"
+                        Content="新增"
+                        Click="OnAddNewClick"
+                        IsVisible="False" />
+
+                <!-- Row 2: 分页 -->
+                <Grid Grid.Row="2" Height="50" VerticalAlignment="Center" Margin="10,0">
+                    <u:Pagination x:Name="PaginationControl"
+                                  CurrentPage="{Binding #Self.CurrentPage, Mode=TwoWay}"
+                                  TotalCount="{Binding #Self.TotalCount}"
+                                  PageSize="{Binding #Self.PageSize}" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Popup>
+    </Grid>
 </UserControl>

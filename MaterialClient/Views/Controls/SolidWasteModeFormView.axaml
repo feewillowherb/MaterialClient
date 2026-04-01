@@ -79,9 +79,10 @@
                     <views:SearchableSelectionBox x:Name="ProvidersSelectionBox"
                                                  Grid.Column="1"
                                                  Height="32"
-                                                 DataContext="{Binding ProvidersPopupViewModel}"
-                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsProvidersPopupOpen, Mode=TwoWay}"
-                                                 PlaceholderText="请选择供应商"
+                                                 SelectedItem="{Binding SelectedProviderItem, Mode=TwoWay}"
+                                                 LoadPageAsync="{Binding ProviderLoadPageAsync}"
+                                                 CreateNewAsync="{Binding ProviderCreateNewAsync}"
+                                                 Watermark="请选择供应商"
                                                  Margin="0,5,0,5" />
                 </Grid>
 
@@ -96,9 +97,10 @@
                     <views:SearchableSelectionBox x:Name="MaterialsSelectionBox"
                                                  Grid.Column="1"
                                                  Height="32"
-                                                 DataContext="{Binding MaterialsPopupViewModel}"
-                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsMaterialsPopupOpen, Mode=TwoWay}"
-                                                 PlaceholderText="请选择材料"
+                                                 SelectedItem="{Binding SelectedMaterialItem, Mode=TwoWay}"
+                                                 LoadPageAsync="{Binding MaterialLoadPageAsync}"
+                                                 CreateNewAsync="{Binding MaterialCreateNewAsync}"
+                                                 Watermark="请选择材料"
                                                  Margin="0,5,0,5" />
                 </Grid>
 
@@ -128,9 +130,11 @@
                            Margin="0,0,8,0" />
                     <views:SearchableSelectionBox x:Name="StreetsSelectionBox"
                                                  Grid.Column="1"
-                                                 DataContext="{Binding StreetsPopupViewModel}"
-                                                 IsPopupOpen="{Binding $parent[UserControl].((vm:AttendedWeighingDetailViewModel)DataContext).IsStreetsPopupOpen, Mode=TwoWay}"
-                                                 PlaceholderText="请选择镇街"
+                                                 Height="32"
+                                                 SelectedItem="{Binding SelectedStreetItem, Mode=TwoWay}"
+                                                 LoadPageAsync="{Binding StreetLoadPageAsync}"
+                                                 Watermark="请选择镇街"
+                                                 AllowCreateNew="False"
                                                  Margin="0,5,0,5" />
                 </Grid>
 
@@ -179,42 +183,5 @@
                 Margin="0,0,0,0">
             <Grid />
         </Border>
-
-        <!-- 所属镇街选择弹窗 -->
-        <Popup Name="StreetsSelectionPopup"
-               Grid.RowSpan="2"
-               Placement="Bottom"
-               IsLightDismissEnabled="True"
-               HorizontalOffset="0"
-               VerticalOffset="0"
-               IsOpen="{Binding IsStreetsPopupOpen, Mode=TwoWay}">
-            <views:GenericSelectionPopup x:Name="StreetsSelectionPopupControl"
-                                         DataContext="{Binding StreetsPopupViewModel}" />
-        </Popup>
-
-        <!-- 材料名称选择弹窗 -->
-        <Popup Name="MaterialsSelectionPopup"
-               Grid.RowSpan="2"
-               Placement="Bottom"
-               IsLightDismissEnabled="True"
-               HorizontalOffset="0"
-               VerticalOffset="0"
-               IsOpen="{Binding IsMaterialsPopupOpen, Mode=TwoWay}">
-            <views:GenericSelectionPopup x:Name="MaterialsSelectionPopupControl"
-                                         DataContext="{Binding MaterialsPopupViewModel}" />
-        </Popup>
-
-        <!-- 供应商选择弹窗 -->
-        <Popup Name="ProvidersSelectionPopup"
-               Grid.RowSpan="2"
-               Placement="Bottom"
-               IsLightDismissEnabled="True"
-               HorizontalOffset="0"
-               VerticalOffset="0"
-               IsOpen="{Binding IsProvidersPopupOpen, Mode=TwoWay}">
-            <views:GenericSelectionPopup x:Name="ProvidersSelectionPopupControl"
-                                         DataContext="{Binding ProvidersPopupViewModel}" />
-        </Popup>
     </Grid>
 </UserControl>
-
