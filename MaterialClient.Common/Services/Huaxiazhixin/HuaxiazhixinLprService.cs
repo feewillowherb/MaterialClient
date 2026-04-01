@@ -11,7 +11,7 @@ namespace MaterialClient.Common.Services.Huaxiazhixin;
 ///     华夏智信设备在线状态查询接口
 ///     用于根据心跳记录判断设备是否在线
 /// </summary>
-public interface IHuaxiazhixinLprOnlineState
+public interface IHuaxiazhixinLprService
 {
     /// <summary>
     ///     记录设备最后心跳时间（用于在线状态判断）
@@ -32,7 +32,7 @@ public interface IHuaxiazhixinLprOnlineState
 ///     华夏智信车牌识别服务占位实现
 ///     厂商不支持主动抓拍,此服务明确标记此限制
 /// </summary>
-public class HuaxiazhixinLprService : ILprDevice, IHuaxiazhixinLprOnlineState, ISingletonDependency
+public class HuaxiazhixinLprService : ILprDevice, IHuaxiazhixinLprService, ISingletonDependency
 {
     private readonly ILogger<HuaxiazhixinLprService>? _logger;
 

@@ -42,7 +42,7 @@ public interface IVzvisionLprService : ILprDevice
 }
 
 /// <inheritdoc cref="IVzvisionLprService" />
-public sealed class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAsyncDisposable
+public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAsyncDisposable
 {
     /// <summary>SDK 车牌字节为 GB2312（与 Vz 设备侧常见编码一致）</summary>
     private static readonly Lazy<Encoding> Gb2312Encoding = new(() =>

@@ -45,16 +45,16 @@ public class LprDeviceOnlineStatusService : ILprDeviceOnlineStatusService, ISing
 
     private readonly IHikvisionLprService _hikvisionLprService;
     private readonly IVzvisionLprService _vzvisionLprService;
-    private readonly IHuaxiazhixinLprOnlineState _huaxiazhixinLprOnlineState;
+    private readonly IHuaxiazhixinLprService _huaxiazhixinLprService;
 
     public LprDeviceOnlineStatusService(
         IHikvisionLprService hikvisionLprService,
         IVzvisionLprService vzvisionLprService,
-        IHuaxiazhixinLprOnlineState huaxiazhixinLprOnlineState)
+        IHuaxiazhixinLprService huaxiazhixinLprService)
     {
         _hikvisionLprService = hikvisionLprService ?? throw new ArgumentNullException(nameof(hikvisionLprService));
         _vzvisionLprService = vzvisionLprService ?? throw new ArgumentNullException(nameof(vzvisionLprService));
-        _huaxiazhixinLprOnlineState = huaxiazhixinLprOnlineState ?? throw new ArgumentNullException(nameof(huaxiazhixinLprOnlineState));
+        _huaxiazhixinLprService = huaxiazhixinLprService ?? throw new ArgumentNullException(nameof(huaxiazhixinLprService));
     }
 
     /// <inheritdoc />
@@ -69,7 +69,7 @@ public class LprDeviceOnlineStatusService : ILprDeviceOnlineStatusService, ISing
         {
             LprDeviceType.Hikvision => _hikvisionLprService.IsOnline(config),
             LprDeviceType.Vzvision => _vzvisionLprService.IsOnline(config.Ip, DefaultTimeoutVzvision),
-            LprDeviceType.Huaxiazhixin => _huaxiazhixinLprOnlineState.IsOnline(config.Ip, DefaultTimeoutHuaxiazhixin),
+            LprDeviceType.Huaxiazhixin => _huaxiazhixinLprService.IsOnline(config.Ip, DefaultTimeoutHuaxiazhixin),
             _ => false
         };
     }

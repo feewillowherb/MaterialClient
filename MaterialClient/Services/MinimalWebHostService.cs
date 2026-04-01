@@ -396,7 +396,7 @@ public class MinimalWebHostService : IAsyncDisposable
                     {
                         logger.LogInformation($"华夏智信设备心跳：{camIp}");
                         var huaxiazhixinOnlineState = _sharedServiceProvider
-                            .GetService<IHuaxiazhixinLprOnlineState>();
+                            .GetService<IHuaxiazhixinLprService>();
                         huaxiazhixinOnlineState?.RecordLastSeen(camIp);
                     }
                 }
