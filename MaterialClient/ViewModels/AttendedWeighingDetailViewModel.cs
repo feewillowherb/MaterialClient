@@ -20,6 +20,7 @@ using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using Volo.Abp;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Data;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
@@ -66,8 +67,40 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
         // 初始化材料选择弹窗 ViewModel
         InitializeMaterialsSelectionPopup();
 
-        // 初始化 SolidWaste 下拉选择弹窗（镇街/材料/供应商）
-        InitializeSolidWasteSelectionPopups();
+        // 初始化 SolidWaste 选择器委托
+        ProviderLoadPageAsync = LoadProvidersPageAsync;
+        MaterialLoadPageAsync = LoadMaterialsPageAsync;
+        StreetLoadPageAsync = LoadStreetsPageAsync;
+        ProviderCreateNewAsync = CreateNewProviderAsync;
+        MaterialCreateNewAsync = CreateNewMaterialAsync;
+
+        // 订阅 SelectionItem 变化 → 同步业务属性
+        this.WhenAnyValue(x => x.SelectedProviderItem)
+            .Subscribe(item =>
+            {
+                if (item != null)
+                {
+                    SelectedProvider = new ProviderDto { Id = item.Id, ProviderName = item.Name };
+                    SelectedProviderId = item.Id;
+                }
+            });
+
+        this.WhenAnyValue(x => x.SelectedMaterialItem)
+            .Where(m => m != null)
+            .Subscribe(async item =>
+            {
+                if (item == null) return;
+                // 回查原始 Material 实体以保留全部字段
+                var materials = await _materialService.GetAllMaterialsAsync();
+                var material = materials.FirstOrDefault(m => m.Id == item.Id);
+                if (material != null) SelectedSolidWasteMaterial = material;
+            });
+
+        this.WhenAnyValue(x => x.SelectedStreetItem)
+            .Subscribe(item =>
+            {
+                SelectedStreet = item?.Name;
+            });
 
         // Setup property change subscriptions
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -213,14 +246,16 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
 
     [Reactive] private Material? _selectedSolidWasteMaterial;
 
-    // SolidWaste 模式：增强下拉选择弹窗（搜索/分页）
-    [Reactive] private GenericSelectionPopupViewModel<string>? _streetsPopupViewModel;
-    [Reactive] private GenericSelectionPopupViewModel<Material>? _materialsPopupViewModel;
-    [Reactive] private GenericSelectionPopupViewModel<ProviderDto>? _providersPopupViewModel;
+    // SolidWaste 模式：新的自包含选择器属性
+    [Reactive] private SelectionItem? _selectedProviderItem;
+    [Reactive] private SelectionItem? _selectedMaterialItem;
+    [Reactive] private SelectionItem? _selectedStreetItem;
 
-    [Reactive] private bool _isStreetsPopupOpen;
-    [Reactive] private bool _isMaterialsPopupOpen;
-    [Reactive] private bool _isProvidersPopupOpen;
+    public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>> ProviderLoadPageAsync { get; }
+    public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>> MaterialLoadPageAsync { get; }
+    public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>> StreetLoadPageAsync { get; }
+    public Func<string, Task<SelectionItem?>>? ProviderCreateNewAsync { get; }
+    public Func<string, Task<SelectionItem?>>? MaterialCreateNewAsync { get; }
 
     [Reactive] private DeliveryType _selectedDeliveryType = DeliveryType.Receiving;
 
@@ -323,257 +358,97 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
             });
     }
 
-    private void InitializeSolidWasteSelectionPopups()
+    #region SolidWaste 选择器委托方法
+
+    private async Task<PagedResultDto<SelectionItem>> LoadProvidersPageAsync(
+        string? search, int pageIndex, int pageSize, IReadOnlyList<int>? selectedIds)
     {
-        // 镇街：客户端分页
-        StreetsPopupViewModel = new GenericSelectionPopupViewModel<string>(
-            pagingMode: GenericSelectionPagingMode.ClientSide,
-            displayTextSelector: s => s,
-            logger: Logger,
-            loadAllFunc: () =>
-            {
-                var streets = _streetsConfig.Value.Streets ?? Array.Empty<string>();
-                System.Collections.Generic.IReadOnlyList<string> result = streets
-                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Select(s => s.Trim())
-                    .Distinct()
-                    .OrderBy(s => s)
-                    .ToList();
-                return Task.FromResult<System.Collections.Generic.IReadOnlyList<string>>(result);
-            },
-            allowAddNew: false);
-
-        _ = StreetsPopupViewModel.InitializeAsync();
-
-        StreetsPopupViewModel.WhenAnyValue(x => x.SelectedItem)
-            .Where(item => item != null)
-            .Subscribe(item =>
-            {
-                if (item == null) return;
-                SelectedStreet = item.Value;
-                IsStreetsPopupOpen = false;
-            });
-
-        this.WhenAnyValue(x => x.IsStreetsPopupOpen)
-            .Subscribe(isOpen =>
-            {
-                if (isOpen && StreetsPopupViewModel != null)
-                {
-                    StreetsPopupViewModel.SearchText = string.Empty;
-                    StreetsPopupViewModel.CurrentPage = 1;
-                    
-                    // Sync current selection to popup
-                    if (!string.IsNullOrEmpty(SelectedStreet))
-                    {
-                        StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
-                        {
-                            Value = SelectedStreet,
-                            DisplayText = SelectedStreet
-                        };
-                    }
-                    else
-                    {
-                        StreetsPopupViewModel.SelectedItem = null;
-                    }
-                    
-                    _ = StreetsPopupViewModel.RefreshAsync();
-                }
-            });
-
-        // 材料：服务端分页（支持按搜索新增）
-        MaterialsPopupViewModel = new GenericSelectionPopupViewModel<Material>(
-            pagingMode: GenericSelectionPagingMode.ServerSide,
-            displayTextSelector: m => m.Name ?? string.Empty,
-            logger: Logger,
-            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
-                _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize, selectedIds),
-            getSelectedId: m => m.Id,
-            createNewItemFunc: async name =>
-                (Material?)await _materialService.CreateMaterialAsync(name),
-            confirmNewNameFunc: proposed =>
-                ConfirmTextInteraction.Handle(new ConfirmTextRequest(
-                        Title: "确认新增材料",
-                        Message: "将新增一条材料，请确认名称：",
-                        InitialValue: proposed))
-                    .ToTask());
-
-        _ = MaterialsPopupViewModel.InitializeAsync();
-
-        var wasMaterialsPopupOpen = false;
-        this.WhenAnyValue(x => x.IsMaterialsPopupOpen, x => x.MaterialsPopupViewModel.SelectedItem)
-            .Subscribe(tuple =>
-            {
-                var (isOpen, selectedItem) = tuple;
-                if (MaterialsPopupViewModel == null) return;
-
-                // 1) 先处理“弹窗刚打开”
-                if (isOpen && !wasMaterialsPopupOpen)
-                {
-                    wasMaterialsPopupOpen = true;
-                    MaterialsPopupViewModel.SearchText = string.Empty;
-                    MaterialsPopupViewModel.CurrentPage = 1;
-                    MaterialsPopupViewModel.PendingSelectedIds = SelectedSolidWasteMaterial != null
-                        ? new List<int> { SelectedSolidWasteMaterial.Id }
-                        : null;
-                    if (SelectedSolidWasteMaterial != null)
-                    {
-                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
-                        {
-                            Value = SelectedSolidWasteMaterial,
-                            DisplayText = SelectedSolidWasteMaterial.Name ?? string.Empty
-                        };
-                    }
-                    else
-                    {
-                        MaterialsPopupViewModel.SelectedItem = null;
-                    }
-                    //_ = MaterialsPopupViewModel.RefreshAsync();
-                }
-
-                if (!isOpen)
-                {
-                    wasMaterialsPopupOpen = false;
-                    return;
-                }
-
-                // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
-                if (selectedItem == null) return;
-
-                if (wasMaterialsPopupOpen == false)
-                {
-                    Logger?.LogDebug("材料选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
-                    return;
-                }
-
-                var selectedId = selectedItem.Value.Id;
-                var selectedMaterial = selectedItem.Value;
-
-                SelectedSolidWasteMaterial = selectedMaterial;
-                if (!SolidWasteMaterials.Any(m => m.Id == selectedId))
-                    SolidWasteMaterials.Insert(0, selectedMaterial);
-
-                IsMaterialsPopupOpen = false;
-
-                Dispatcher.UIThread.Post(async () =>
-                {
-                    try
-                    {
-                        // 重新加载材料列表以确保数据最新
-                        SolidWasteMaterials.Clear();
-                        var materials = await _materialService.GetAllMaterialsAsync();
-                        foreach (var material in materials)
-                            SolidWasteMaterials.Add(material);
-                        SelectedSolidWasteMaterial = SolidWasteMaterials.FirstOrDefault(m => m.Id == selectedId);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger?.LogError(ex, "同步材料选择失败");
-                    }
-                });
-            });
-
-        // 供应商：服务端分页（支持按搜索新增）
-        ProvidersPopupViewModel = new GenericSelectionPopupViewModel<ProviderDto>(
-            pagingMode: GenericSelectionPagingMode.ServerSide,
-            displayTextSelector: p => p.ProviderName,
-            logger: Logger,
-            loadPageFunc: (search, pageIndex, pageSize, selectedIds) =>
-                _providerService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds),
-            getSelectedId: p => p.Id,
-            createNewItemFunc: async name =>
-            {
-                var deliveryType = _listItem.DeliveryType ?? DeliveryType.Receiving;
-                var created = await _providerService.CreateProviderAsync(name, deliveryType);
-                return (ProviderDto?)new ProviderDto
-                {
-                    Id = created.Id,
-                    ProviderType = created.ProviderType ?? (int)deliveryType,
-                    ProviderName = created.ProviderName,
-                    ContactName = created.ContectName,
-                    ContactPhone = created.ContectPhone
-                };
-            },
-            confirmNewNameFunc: proposed =>
-                ConfirmTextInteraction.Handle(new ConfirmTextRequest(
-                        Title: "确认新增供应商",
-                        Message: "将新增一条供应商，请确认名称：",
-                        InitialValue: proposed))
-                    .ToTask());
-
-        _ = ProvidersPopupViewModel.InitializeAsync();
-
-        var wasProvidersPopupOpen = false;
-        this.WhenAnyValue(x => x.IsProvidersPopupOpen, x => x.ProvidersPopupViewModel.SelectedItem)
-            .Subscribe(tuple =>
-            {
-                var (isOpen, selectedItem) = tuple;
-                if (ProvidersPopupViewModel == null) return;
-
-                // 1) 先处理“弹窗刚打开”
-                if (isOpen && !wasProvidersPopupOpen)
-                {
-                    wasProvidersPopupOpen = true;
-                    ProvidersPopupViewModel.SearchText = string.Empty;
-                    ProvidersPopupViewModel.CurrentPage = 1;
-                    ProvidersPopupViewModel.PendingSelectedIds = SelectedProvider != null
-                        ? new List<int> { SelectedProvider.Id }
-                        : null;
-                    if (SelectedProvider != null)
-                    {
-                        ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
-                        {
-                            Value = SelectedProvider,
-                            DisplayText = SelectedProvider.ProviderName
-                        };
-                    }
-                    else
-                    {
-                        ProvidersPopupViewModel.SelectedItem = null;
-                    }
-                    //_ = ProvidersPopupViewModel.RefreshAsync();
-                }
-
-                if (!isOpen)
-                {
-                    wasProvidersPopupOpen = false;
-                    return;
-                }
-
-                // 2) 再处理“选中项与当前不同 → 回写并关弹窗”
-                if (selectedItem == null)
-                {
-                    Logger?.LogDebug("供应商选择弹窗选中项为 null，忽略本次变化");
-                    return;
-                }
-                if (wasProvidersPopupOpen == false)
-                {
-                    Logger?.LogDebug("供应商选择弹窗选中项变化，但弹窗当前未打开，可能是外部修改了 SelectedItem，忽略本次变化");
-                    return;
-                }
-
-                var selectedId = selectedItem.Value.Id;
-                var selectedProvider = selectedItem.Value;
-
-                SelectedProvider = selectedProvider;
-                if (!Providers.Any(p => p.Id == selectedId))
-                    Providers.Insert(0, selectedProvider);
-
-                IsProvidersPopupOpen = false;
-
-                Dispatcher.UIThread.Post(async () =>
-                {
-                    try
-                    {
-                        await LoadProvidersAsync();
-                        SelectedProvider = Providers.FirstOrDefault(p => p.Id == selectedId);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger?.LogError(ex, "同步供应商选择失败");
-                    }
-                });
-            });
+        var result = await _providerService.GetPagedProvidersAsync(search, pageIndex, pageSize, selectedIds);
+        var items = result.Items.Select(SelectionItem.FromProvider).ToList();
+        return new PagedResultDto<SelectionItem>(result.TotalCount, items);
     }
+
+    private async Task<PagedResultDto<SelectionItem>> LoadMaterialsPageAsync(
+        string? search, int pageIndex, int pageSize, IReadOnlyList<int>? selectedIds)
+    {
+        var result = await _materialService.GetPagedMaterialsAsync(search, pageIndex, pageSize, selectedIds);
+        var items = result.Items.Select(SelectionItem.FromMaterial).ToList();
+        return new PagedResultDto<SelectionItem>(result.TotalCount, items);
+    }
+
+    private Task<PagedResultDto<SelectionItem>> LoadStreetsPageAsync(
+        string? search, int pageIndex, int pageSize, IReadOnlyList<int>? selectedIds)
+    {
+        var allStreets = (_streetsConfig.Value.Streets ?? Array.Empty<string>())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s.Trim())
+            .Distinct()
+            .OrderBy(s => s)
+            .Select(SelectionItem.FromStreet)
+            .ToList();
+
+        // Filter by search
+        IEnumerable<SelectionItem> filtered = allStreets;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.Trim().ToLowerInvariant();
+            filtered = allStreets.Where(s => s.Name.ToLowerInvariant().Contains(searchLower));
+        }
+
+        // Ensure selectedIds items are included
+        if (selectedIds is { Count: > 0 })
+        {
+            var selectedSet = new HashSet<int>(selectedIds);
+            var selected = allStreets.Where(s => selectedSet.Contains(s.Id)).ToList();
+            foreach (var item in selected)
+            {
+                if (!filtered.Any(f => f.Id == item.Id))
+                    filtered = filtered.Prepend(item);
+            }
+        }
+
+        var list = filtered.ToList();
+        var total = list.Count;
+        var page = list.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+        return Task.FromResult(new PagedResultDto<SelectionItem>(total, page));
+    }
+
+    private async Task<SelectionItem?> CreateNewProviderAsync(string name)
+    {
+        var confirmed = await ConfirmTextInteraction.Handle(new ConfirmTextRequest(
+            Title: "确认新增供应商",
+            Message: "将新增一条供应商，请确认名称：",
+            InitialValue: name));
+        if (confirmed == null) return null;
+
+        var deliveryType = _listItem?.DeliveryType ?? DeliveryType.Receiving;
+        var created = await _providerService.CreateProviderAsync(confirmed, deliveryType);
+        var dto = new ProviderDto
+        {
+            Id = created.Id,
+            ProviderType = created.ProviderType ?? (int)deliveryType,
+            ProviderName = created.ProviderName,
+            ContactName = created.ContectName,
+            ContactPhone = created.ContectPhone
+        };
+        return SelectionItem.FromProvider(dto);
+    }
+
+    private async Task<SelectionItem?> CreateNewMaterialAsync(string name)
+    {
+        var confirmed = await ConfirmTextInteraction.Handle(new ConfirmTextRequest(
+            Title: "确认新增材料",
+            Message: "将新增一条材料，请确认名称：",
+            InitialValue: name));
+        if (confirmed == null) return null;
+
+        var created = await _materialService.CreateMaterialAsync(confirmed);
+        if (created is Material material)
+            return SelectionItem.FromMaterial(material);
+        return null;
+    }
+
+    #endregion
 
     public void InitializeData(WeighingListItemDto listItem, string? capturedBillPhotoPath = null)
     {
@@ -756,11 +631,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 if (provider != null)
                 {
                     SelectedProvider = provider;
-                    ProvidersPopupViewModel.SelectedItem = new GenericSelectionItem<ProviderDto>
-                    {
-                        Value = provider,
-                        DisplayText = provider.ProviderName
-                    };
+                    SelectedProviderItem = SelectionItem.FromProvider(provider);
                 }
             }
 
@@ -812,17 +683,15 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = record.GetSolidWasteOrderNumber();
                 SelectedStreet = record.GetSolidWasteStreet();
-                if (!string.IsNullOrEmpty(SelectedStreet))
-                {
-                    StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
-                    {
-                        Value = SelectedStreet,
-                        DisplayText = SelectedStreet
-                    };
-                }
+                SelectedStreetItem = !string.IsNullOrEmpty(SelectedStreet)
+                    ? SelectionItem.FromStreet(SelectedStreet)
+                    : null;
                 SelectedSolidWasteType = record.GetSolidWasteType();
                 SelectedProviderId = record.ProviderId;
                 _listItem.ProviderId = record.ProviderId;
+                SelectedProviderItem = SelectedProviderId.HasValue
+                    ? SelectionItem.FromProvider(new ProviderDto { Id = SelectedProviderId.Value, ProviderName = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value)?.ProviderName ?? string.Empty })
+                    : null;
 
                 // 读取 MaterialId 和 WaybillQuantity
                 var materialId = record.GetProperty<int?>("SolidWasteInfo.MaterialId");
@@ -834,11 +703,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
-                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
-                        {
-                            Value = material,
-                            DisplayText = material.Name ?? string.Empty
-                        };
+                        SelectedMaterialItem = SelectionItem.FromMaterial(material);
 
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
@@ -862,14 +727,9 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                 // 从 ExtraProperties 读取 SolidWaste 数据
                 SolidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
                 SelectedStreet = waybill.GetSolidWasteStreet();
-                if (!string.IsNullOrEmpty(SelectedStreet))
-                {
-                    StreetsPopupViewModel.SelectedItem = new GenericSelectionItem<string>
-                    {
-                        Value = SelectedStreet,
-                        DisplayText = SelectedStreet
-                    };
-                }
+                SelectedStreetItem = !string.IsNullOrEmpty(SelectedStreet)
+                    ? SelectionItem.FromStreet(SelectedStreet)
+                    : null;
                 SelectedSolidWasteType = waybill.GetSolidWasteType();
                 SelectedProviderId = waybill.ProviderId;
                 _listItem.ProviderId = waybill.ProviderId;
@@ -890,11 +750,7 @@ public partial class AttendedWeighingDetailViewModel : ViewModelBase, ITransient
                     if (material != null)
                     {
                         SelectedSolidWasteMaterial = material;
-                        MaterialsPopupViewModel.SelectedItem = new GenericSelectionItem<Material>
-                        {
-                            Value = material,
-                            DisplayText = material.Name ?? string.Empty
-                        };
+                        SelectedMaterialItem = SelectionItem.FromMaterial(material);
 
                         // 加载单位并自动选择第一个
                         var units = await LoadMaterialUnitsForRowAsync(material.Id);
