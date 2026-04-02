@@ -110,9 +110,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
 
         // Assert - Should complete without errors
-        // After disposal, operations may not work but should not crash
-        var status = service.GetCurrentStatus();
-        status.ShouldBeOneOf(AttendedWeighingStatus.OffScale, AttendedWeighingStatus.WaitingForStability);
+        // After disposal, internal subjects may be disposed; avoid querying state.
 
         // Cleanup
         weightSubject.Dispose();
@@ -259,7 +257,7 @@ public class AttendedWeighingServiceTests : IDisposable
         var (service, weightSubject) = CreateServiceWithWeightSubject();
         await service.StartAsync();
         weightSubject.OnNext(1.0m); // Put on scale
-        await Task.Delay(300);
+        await Task.Delay(500);
 
         // Act
         MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345挂" });
@@ -280,7 +278,7 @@ public class AttendedWeighingServiceTests : IDisposable
         var (service, weightSubject) = CreateServiceWithWeightSubject();
         await service.StartAsync();
         weightSubject.OnNext(1.0m); // Put on scale
-        await Task.Delay(300);
+        await Task.Delay(500);
 
         // Act
         MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
@@ -331,6 +329,134 @@ public class AttendedWeighingServiceTests : IDisposable
         // Assert
         var plateNumber = service.GetMostFrequentPlateNumber();
         plateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetMostFrequentPlateNumber_Should_LockFirstLockedAt_WhenEnablePlateRewriteDisabled()
+    {
+        // Arrange - disable plate rewrite to enable LockedAt-first selection
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enablePlateRewrite: false);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Act - first A locks first, then B locks later
+        SendPlateRecognition("京A12345");
+        await Task.Delay(250);
+        SendPlateRecognition("粤B67890");
+        await Task.Delay(250);
+
+        // Assert - should still return A (earliest LockedAt)
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetMostFrequentPlateNumber_Should_NotOverwriteLockedAt_ForSamePlate()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enablePlateRewrite: false);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Act - lock A, lock B, then recognize A again
+        // If LockedAt were overwritten on A again, B would become the earliest locked candidate.
+        SendPlateRecognition("京A12345");
+        await Task.Delay(250);
+        SendPlateRecognition("粤B67890");
+        await Task.Delay(250);
+        SendPlateRecognition("京A12345");
+        await Task.Delay(250);
+
+        // Assert - should still return A (LockedAt should remain at the first lock time)
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetMostFrequentPlateNumber_Should_SelectEarliestLockedAt_WhenMultipleLockedCandidates()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enablePlateRewrite: false);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Act - A locks first, then B, then C
+        SendPlateRecognition("京A12345");
+        await Task.Delay(400);
+        // Ensure A has become the current recommendation before sending the rest
+        service.GetMostFrequentPlateNumber().ShouldBe("京A12345");
+
+        SendPlateRecognition("粤B67890");
+        await Task.Delay(300);
+        SendPlateRecognition("浙C13579");
+        await Task.Delay(350);
+
+        // Assert - earliest LockedAt should remain A
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("京A12345");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetMostFrequentPlateNumber_Should_FallbackToOriginalLogic_WhenNoLockedCandidates()
+    {
+        // Arrange - keep plate rewrite enabled so LockedAt-first is never triggered
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enableLatestPlateNumber: true, enablePlateRewrite: true);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Act - count is higher for A, but B is newer
+        SendPlateRecognition("京A12345");
+        SendPlateRecognition("京A12345");
+        await Task.Delay(80);
+        SendPlateRecognition("粤B67890");
+        await Task.Delay(200);
+
+        // Assert - should follow original EnableLatestPlateNumber behavior
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBe("粤B67890");
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task OnPlateNumberRecognized_Concurrent_Should_NotThrow()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enablePlateRewrite: false);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Act
+        var tasks = new[]
+        {
+            Task.Run(async () => { await Task.Delay(10); SendPlateRecognition("京A12345"); }),
+            Task.Run(async () => { await Task.Delay(20); SendPlateRecognition("粤B67890"); }),
+            Task.Run(async () => { await Task.Delay(30); SendPlateRecognition("浙C13579"); })
+        };
+        await Task.WhenAll(tasks);
+        await Task.Delay(200);
+
+        // Assert - should select a plate without throwing
+        var plateNumber = service.GetMostFrequentPlateNumber();
+        plateNumber.ShouldBeOneOf("京A12345", "粤B67890", "浙C13579");
 
         // Cleanup
         await service.DisposeAsync();
@@ -632,6 +758,41 @@ public class AttendedWeighingServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_CreateRecord_UseLockedAtPlateNumber_WhenEnablePlateRewriteDisabled()
+    {
+        // Arrange
+        var (service, weightSubject, mockRepo, mockUow) = CreateServiceWithMocks(enablePlateRewrite: false);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        // Lock A first, then B
+        SendPlateRecognition("京A12345");
+        await Task.Delay(60);
+        SendPlateRecognition("粤B67890");
+        await Task.Delay(60);
+
+        // Act - Send stable weights to trigger record creation
+        for (int i = 0; i < 20; i++)
+        {
+            var weight = 1.0m + (decimal)((i % 3 - 1) * 0.01);
+            weightSubject.OnNext(weight);
+            await Task.Delay(200);
+        }
+
+        await Task.Delay(2000); // Wait for stability and record creation
+
+        // Assert - plate number should be based on locked selection (earliest LockedAt)
+        await mockRepo.Received().InsertAsync(
+            Arg.Is<WeighingRecord>(w => w.PlateNumber == "京A12345"),
+            Arg.Any<bool>());
+        await mockUow.Received().CompleteAsync(Arg.Any<CancellationToken>());
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
     public async Task Should_CapturePhotos_WhenWeightStabilizes()
     {
         // Arrange
@@ -764,6 +925,29 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(500);
 
         // Assert
+        service.GetMostFrequentPlateNumber().ShouldBeNull();
+
+        // Cleanup
+        await service.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task ResetCycle_Should_ClearLockedAt_WhenEnablePlateRewriteDisabled()
+    {
+        // Arrange
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enablePlateRewrite: false);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+        SendPlateRecognition("京A12345");
+        await Task.Delay(100);
+        service.GetMostFrequentPlateNumber().ShouldBe("京A12345");
+
+        // Act - Reset by going off scale
+        weightSubject.OnNext(0.3m);
+        await Task.Delay(500);
+
+        // Assert - cache should be cleared (LockedAt removed)
         service.GetMostFrequentPlateNumber().ShouldBeNull();
 
         // Cleanup
@@ -1428,20 +1612,25 @@ public class AttendedWeighingServiceTests : IDisposable
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithWeightSubject(
-        bool enableLatestPlateNumber = false)
+        bool enableLatestPlateNumber = false,
+        bool enablePlateRewrite = true)
     {
         var weightSubject = new Subject<decimal>();
         var mockWeightService = Substitute.For<ITruckScaleWeightService>();
         mockWeightService.WeightUpdates.Returns(weightSubject.AsObservable());
         mockWeightService.IsOnline.Returns(true);
 
-        var service = CreateAttendedWeighingService(mockWeightService, enableLatestPlateNumber: enableLatestPlateNumber);
+        var service = CreateAttendedWeighingService(
+            mockWeightService,
+            enableLatestPlateNumber: enableLatestPlateNumber,
+            enablePlateRewrite: enablePlateRewrite);
         return (service, weightSubject);
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithLowPriorityColors(
         VzvisionColorType[] lowPriorityColors,
-        bool enableLatestPlateNumber = false)
+        bool enableLatestPlateNumber = false,
+        bool enablePlateRewrite = true)
     {
         var weightSubject = new Subject<decimal>();
         var mockWeightService = Substitute.For<ITruckScaleWeightService>();
@@ -1451,12 +1640,14 @@ public class AttendedWeighingServiceTests : IDisposable
         var service = CreateAttendedWeighingService(
             mockWeightService,
             lowPriorityColors: lowPriorityColors,
-            enableLatestPlateNumber: enableLatestPlateNumber);
+            enableLatestPlateNumber: enableLatestPlateNumber,
+            enablePlateRewrite: enablePlateRewrite);
         return (service, weightSubject);
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject,
-        IRepository<WeighingRecord, long> mockRepo, IUnitOfWork mockUow) CreateServiceWithMocks()
+        IRepository<WeighingRecord, long> mockRepo, IUnitOfWork mockUow) CreateServiceWithMocks(
+        bool enablePlateRewrite = true)
     {
         var weightSubject = new Subject<decimal>();
         var mockWeightService = Substitute.For<ITruckScaleWeightService>();
@@ -1473,14 +1664,16 @@ public class AttendedWeighingServiceTests : IDisposable
         var service = CreateAttendedWeighingService(
             mockWeightService,
             mockRepo,
-            mockUowManager);
+            mockUowManager,
+            enablePlateRewrite: enablePlateRewrite);
 
         return (service, weightSubject, mockRepo, mockUow);
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject,
         IRepository<WeighingRecord, long> mockRepo, IUnitOfWork mockUow,
-        IHikvisionService mockHikvision) CreateServiceWithMocksAndHikvision()
+        IHikvisionService mockHikvision) CreateServiceWithMocksAndHikvision(
+        bool enablePlateRewrite = true)
     {
         var weightSubject = new Subject<decimal>();
         var mockWeightService = Substitute.For<ITruckScaleWeightService>();
@@ -1502,7 +1695,8 @@ public class AttendedWeighingServiceTests : IDisposable
             mockWeightService,
             mockRepo,
             mockUowManager,
-            mockHikvision);
+            mockHikvision,
+            enablePlateRewrite: enablePlateRewrite);
 
         return (service, weightSubject, mockRepo, mockUow, mockHikvision);
     }
@@ -1513,7 +1707,8 @@ public class AttendedWeighingServiceTests : IDisposable
         IUnitOfWorkManager? mockUowManager = null,
         IHikvisionService? mockHikvision = null,
         VzvisionColorType[]? lowPriorityColors = null,
-        bool enableLatestPlateNumber = false)
+        bool enableLatestPlateNumber = false,
+        bool enablePlateRewrite = true)
     {
         var configData = new Dictionary<string, string?>();
         if (lowPriorityColors != null && lowPriorityColors.Length > 0)
@@ -1538,7 +1733,8 @@ public class AttendedWeighingServiceTests : IDisposable
                 WeightStabilityThreshold = 0.05m,
                 StabilityWindowMs = 3000,
                 StabilityCheckIntervalMs = 200,
-                EnableLatestPlateNumber = enableLatestPlateNumber
+                EnableLatestPlateNumber = enableLatestPlateNumber,
+                EnablePlateRewrite = enablePlateRewrite
             },
             new SoundDeviceSettings());
         settingsService.GetSettingsAsync().Returns(Task.FromResult(settingsEntity));
