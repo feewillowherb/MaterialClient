@@ -3,7 +3,7 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:views="using:MaterialClient.Views.Controls"
              x:Class="MaterialClient.Views.Controls.SolidWasteModeFormView"
-             x:DataType="vm:AttendedWeighingDetailViewModel">
+             x:DataType="vm:SolidWasteWeighingDetailViewModel">
 
     <Grid Background="White">
         <Grid.RowDefinitions>

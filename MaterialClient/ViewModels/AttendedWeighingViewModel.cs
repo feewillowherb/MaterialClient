@@ -1089,7 +1089,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     [Reactive] private double _deliveryTypeNotificationOpacity;
 
-    [Reactive] private AttendedWeighingDetailViewModel? _detailViewModel;
+    [Reactive] private AttendedWeighingDetailViewModelBase? _detailViewModel;
 
     [Reactive] private int _currentPage = 1;
 
@@ -1428,7 +1428,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             }
             
             
-            DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
+            DetailViewModel = CreateDetailViewModel(item.WeighingMode);
             DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
             DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
@@ -1471,7 +1471,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 }
             }
 
-            DetailViewModel = _serviceProvider.GetRequiredService<AttendedWeighingDetailViewModel>();
+            DetailViewModel = CreateDetailViewModel(item.WeighingMode);
             DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
             DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
@@ -1487,6 +1487,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             Logger?.LogError(ex, "打开详情视图失败");
         }
+    }
+
+    private AttendedWeighingDetailViewModelBase CreateDetailViewModel(WeighingMode weighingMode)
+    {
+        return weighingMode == WeighingMode.SolidWaste
+            ? _serviceProvider.GetRequiredService<SolidWasteWeighingDetailViewModel>()
+            : _serviceProvider.GetRequiredService<StandardWeighingDetailViewModel>();
     }
 
     [ReactiveCommand]
