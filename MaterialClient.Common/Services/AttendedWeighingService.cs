@@ -42,6 +42,11 @@ public record PlateNumberCacheRecord
     ///     车牌颜色类型（用于优先级判断）
     /// </summary>
     public VzvisionColorType? ColorType { get; init; }
+
+    /// <summary>
+    ///     锁定时间（用于关闭车牌重写时的周期内稳定选择）
+    /// </summary>
+    public DateTime? LockedAt { get; init; }
 }
 
 /// <summary>
@@ -161,6 +166,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private int _stabilityWindowMs;
     private int _stabilityCheckIntervalMs;
     private bool _enableLatestPlateNumber;
+    private bool _enablePlateRewrite;
 
     // Plate number cache (field-level management)
     private readonly ConcurrentDictionary<string, PlateNumberCacheRecord> _plateNumberCache = new();
@@ -235,6 +241,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _stabilityWindowMs = config.StabilityWindowMs;
         _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
         _enableLatestPlateNumber = config.EnableLatestPlateNumber;
+        _enablePlateRewrite = config.EnablePlateRewrite;
 
         // Load plate color priority config from appsettings.json (initialize once)
         if (!_plateColorFilterInitialized)
@@ -470,18 +477,31 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         var finalPlateNumber = recommendedPlateNumber;
 
         // 只在车辆上磅期间缓存车牌号（OffScale 状态下不缓存）
-        // var currentStatus = _statusSubject.Value;
-        // if (currentStatus == AttendedWeighingStatus.OffScale)
-        // {
-        //     return;
-        // }
+        var currentStatus = _statusSubject.Value;
+        if (currentStatus == AttendedWeighingStatus.OffScale)
+        {
+            return;
+        }
 
         // 更新车牌缓存（使用推荐的车牌号，并存储颜色信息）
         _plateNumberCache.AddOrUpdate(
             finalPlateNumber,
-            new PlateNumberCacheRecord { Count = 1, LastUpdateTime = DateTime.UtcNow, ColorType = colorType },
+            new PlateNumberCacheRecord
+            {
+                Count = 1,
+                LastUpdateTime = DateTime.UtcNow,
+                ColorType = colorType,
+                LockedAt = _enablePlateRewrite ? null : DateTime.UtcNow
+            },
             (key, oldValue) => new PlateNumberCacheRecord
-                { Count = oldValue.Count + 1, LastUpdateTime = DateTime.UtcNow, ColorType = colorType ?? oldValue.ColorType });
+                {
+                    Count = oldValue.Count + 1,
+                    LastUpdateTime = DateTime.UtcNow,
+                    ColorType = colorType ?? oldValue.ColorType,
+                    LockedAt = !_enablePlateRewrite
+                        ? (oldValue.LockedAt ?? DateTime.UtcNow)
+                        : oldValue.LockedAt
+                });
 
         // 获取最频繁的车牌号并发送通知
         var mostFrequent = GetMostFrequentPlateNumber();
@@ -495,6 +515,17 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     public string? GetMostFrequentPlateNumber()
     {
         if (_plateNumberCache.IsEmpty) return null;
+
+        // LockedAt 优先：关闭车牌重写时，允许多个候选被锁定，但推荐车牌的选择只由 LockedAt 的排序决定
+        var lockedCandidates = _plateNumberCache
+            .Where(kvp => kvp.Value.LockedAt.HasValue)
+            .OrderBy(kvp => kvp.Value.LockedAt!.Value)
+            .ToList();
+
+        if (lockedCandidates.Count > 0)
+        {
+            return lockedCandidates[0].Key;
+        }
 
         // Separate high-priority and low-priority plates（高优先级：非低优先级颜色 且 最近 20 分钟内更新）
         var highPriorityCutoff = DateTime.UtcNow - HighPriorityPlateWindow;
@@ -639,6 +670,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var config = await GetConfigurationAsync();
             _enableLatestPlateNumber = config.EnableLatestPlateNumber;
             _logger?.LogInformation("已刷新启用最新车牌开关: {Enabled}", _enableLatestPlateNumber);
+            _enablePlateRewrite = config.EnablePlateRewrite;
         }
         catch (Exception ex)
         {
