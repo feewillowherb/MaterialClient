@@ -475,13 +475,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // 使用推荐的车牌号继续后续处理
         var finalPlateNumber = recommendedPlateNumber;
-
-        // 只在车辆上磅期间缓存车牌号（OffScale 状态下不缓存）
-        var currentStatus = _statusSubject.Value;
-        if (currentStatus == AttendedWeighingStatus.OffScale)
-        {
-            return;
-        }
+        
 
         // 更新车牌缓存（使用推荐的车牌号，并存储颜色信息）
         _plateNumberCache.AddOrUpdate(
@@ -524,7 +518,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         if (lockedCandidates.Count > 0)
         {
-            return lockedCandidates[0].Key;
+            _logger.LogWarning(
+                "车牌重写已关闭，使用 LockedAt 优先选择车牌: Plate={Plate}, LockedAt={LockedAt}, Color={Color}",
+                lockedCandidates[0].Key, lockedCandidates[0].Value.LockedAt, lockedCandidates[0].Value.ColorType);
+
+            if (!string.IsNullOrWhiteSpace(lockedCandidates[0].Key))
+            {
+                return lockedCandidates[0].Key;
+            }
         }
 
         // Separate high-priority and low-priority plates（高优先级：非低优先级颜色 且 最近 20 分钟内更新）
