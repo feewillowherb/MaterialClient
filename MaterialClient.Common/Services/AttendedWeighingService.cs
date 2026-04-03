@@ -494,14 +494,14 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 LockedAt = _enablePlateRewrite ? null : DateTime.UtcNow
             },
             (key, oldValue) => new PlateNumberCacheRecord
-                {
-                    Count = oldValue.Count + 1,
-                    LastUpdateTime = DateTime.UtcNow,
-                    ColorType = colorType ?? oldValue.ColorType,
-                    LockedAt = !_enablePlateRewrite
-                        ? (oldValue.LockedAt ?? DateTime.UtcNow)
-                        : oldValue.LockedAt
-                });
+            {
+                Count = oldValue.Count + 1,
+                LastUpdateTime = DateTime.UtcNow,
+                ColorType = colorType ?? oldValue.ColorType,
+                LockedAt = !_enablePlateRewrite
+                    ? (oldValue.LockedAt ?? DateTime.UtcNow)
+                    : oldValue.LockedAt
+            });
 
         // 获取最频繁的车牌号并发送通知
         var mostFrequent = GetMostFrequentPlateNumber();
@@ -997,7 +997,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             return "车辆已下磅，称重已完成";
         }
-        
+
         if (previousStatus == AttendedWeighingStatus.WaitingForStability &&
             currentStatus == AttendedWeighingStatus.OffScale)
         {
@@ -1248,6 +1248,10 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
     private async Task TriggerVzvisionCaptureForAllAsync(string phase)
     {
+        _logger.LogWarning("Attempting to trigger Vzvision capture for phase: {Phase}", phase);
+        return;
+
+
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
@@ -1317,11 +1321,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             var currentDeliveryType = _deliveryTypeSubject.Value;
             var weighingRecord = new WeighingRecord(weight, plateNumber);
             weighingRecord.DeliveryType = currentDeliveryType;
-            
+
             // Set WeighingMode from settings
             var weighingMode = await _settingsService.GetWeighingModeAsync();
             weighingRecord.SetWeighingMode(weighingMode);
-            
+
             await _weighingRecordRepository.InsertAsync(weighingRecord);
             await uow.CompleteAsync();
 
