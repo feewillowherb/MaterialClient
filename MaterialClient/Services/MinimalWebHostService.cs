@@ -11,6 +11,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Huaxiazhixin;
+using MaterialClient.Common.Services.Vzvision;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -37,6 +38,7 @@ public class MinimalWebHostService : IAsyncDisposable
 
     private static string CallDeviceMessageHuaXiaZhiXingApiPath = "/api/CarLicense/CallDeviceMessageHuaXiaZhiXing";
     private static string SetScaleWeightApiPath = "/api/scale/weight";
+    private static string SetTestPlateApiPath = "/api/lpr/test-plate";
 
     /// <summary>
     ///     构造函数，注入共享的服务提供者
@@ -189,7 +191,8 @@ public class MinimalWebHostService : IAsyncDisposable
             endpoints = new[]
             {
                 CallDeviceMessageHuaXiaZhiXingApiPath,
-                SetScaleWeightApiPath
+                SetScaleWeightApiPath,
+                SetTestPlateApiPath
             }
         }));
 
@@ -243,6 +246,67 @@ public class MinimalWebHostService : IAsyncDisposable
             catch (Exception ex)
             {
                 logger.LogError(ex, "地磅测试模式设置重量失败");
+                return Results.InternalServerError(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        });
+
+        // 车牌测试模式 - 注入测试车牌识别结果
+        app.MapPost(SetTestPlateApiPath, (SetTestPlateRequest? request) =>
+        {
+            if (request == null)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "请求体为空"
+                });
+            }
+
+            var plateNumber = request.PlateNumber?.Trim();
+            if (string.IsNullOrWhiteSpace(plateNumber))
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "车牌号不能为空"
+                });
+            }
+
+            try
+            {
+                var message = new LicensePlateRecognizedMessage
+                {
+                    PlateNumber = plateNumber,
+                    ColorType = request.ColorType,
+                    DeviceType = request.DeviceType ?? LprDeviceType.Huaxiazhixin,
+                    DeviceName = string.IsNullOrWhiteSpace(request.DeviceName)
+                        ? "TestApi"
+                        : request.DeviceName.Trim(),
+                    Timestamp = request.Timestamp ?? DateTime.Now
+                };
+
+                MessageBus.Current.SendMessage(message);
+                logger.LogInformation("测试车牌注入成功：Plate={Plate}, DeviceType={DeviceType}, DeviceName={DeviceName}",
+                    message.PlateNumber, message.DeviceType, message.DeviceName);
+
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = "完成",
+                    plateNumber = message.PlateNumber,
+                    deviceType = message.DeviceType.ToString(),
+                    deviceName = message.DeviceName,
+                    colorType = message.ColorType?.ToString(),
+                    timestamp = message.Timestamp
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "测试车牌注入失败");
                 return Results.InternalServerError(new
                 {
                     success = false,
@@ -418,6 +482,19 @@ public class MinimalWebHostService : IAsyncDisposable
 
     private record SetWeightRequest(
         [property: JsonPropertyName("weight")] decimal Weight
+    );
+
+    private record SetTestPlateRequest(
+        [property: JsonPropertyName("plateNumber")]
+        string? PlateNumber,
+        [property: JsonPropertyName("deviceType")]
+        LprDeviceType? DeviceType,
+        [property: JsonPropertyName("deviceName")]
+        string? DeviceName,
+        [property: JsonPropertyName("colorType")]
+        VzvisionColorType? ColorType,
+        [property: JsonPropertyName("timestamp")]
+        DateTime? Timestamp
     );
 
 
