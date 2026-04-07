@@ -412,6 +412,36 @@ public class AttendedWeighingServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GhostGateSessionReset_Should_RemoveAbandonedLockedPlate_WhenPlateRewriteDisabled()
+    {
+        var (service, weightSubject) = CreateServiceWithWeightSubject(enablePlateRewrite: false);
+        await service.StartAsync();
+        weightSubject.OnNext(1.0m);
+        await Task.Delay(300);
+
+        SendPlateRecognition("京A12345");
+        await Task.Delay(250);
+        SendPlateRecognition("粤B67890");
+        await Task.Delay(250);
+
+        service.GetMostFrequentPlateNumber().ShouldBe("京A12345");
+
+        var plateMessages = new List<PlateNumberChangedMessage>();
+        var sub = MessageBus.Current.Listen<PlateNumberChangedMessage>().Subscribe(plateMessages.Add);
+        _disposables.Add(sub);
+
+        MessageBus.Current.SendMessage(new GhostGateSessionResetMessage("京A12345", "粤B67890", "GateA"));
+        await Task.Delay(200);
+
+        service.GetMostFrequentPlateNumber().ShouldBe("粤B67890");
+        plateMessages.ShouldNotBeEmpty();
+        plateMessages.Last().PlateNumber.ShouldBe("粤B67890");
+
+        await service.DisposeAsync();
+        weightSubject.Dispose();
+    }
+
+    [Fact]
     public async Task GetMostFrequentPlateNumber_Should_FallbackToOriginalLogic_WhenNoLockedCandidates()
     {
         // Arrange - keep plate rewrite enabled so LockedAt-first is never triggered

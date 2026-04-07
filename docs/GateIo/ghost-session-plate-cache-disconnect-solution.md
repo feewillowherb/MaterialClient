@@ -173,9 +173,10 @@ var plateNumber = GetMostFrequentPlateNumber();
 
 ---
 
-## 9. 状态
+## 9. 状态与实现跟踪
 
 | 项目 | 说明 |
 |------|------|
-| 本文档 | 设计级方案，**不含**具体 PR 级补丁 |
-| 代码变更 | 待立项后于 `openspec/changes/` 或任务单中跟踪 |
+| 本文档 | 设计级背景；具体契约与任务见 OpenSpec 变更 |
+| OpenSpec 变更 | [`openspec/changes/ghost-gate-session-plate-cache-sync/`](../../openspec/changes/ghost-gate-session-plate-cache-sync/)（`proposal.md`、`design.md`、`tasks.md`、delta 规格） |
+| 实现 | 代码落地：`GhostGateSessionResetMessage`、`GateIoControlService` 发布事件，`AttendedWeighingService` 移除废弃键并 `PlateNumberChangedMessage` |

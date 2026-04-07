@@ -178,6 +178,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     // 订阅管理
     private IDisposable? _stateSubscription;
     private IDisposable? _licensePlateSubscription; // MessageBus 订阅
+    private IDisposable? _ghostGateSessionSubscription;
     private IDisposable? _settingsSavedSubscription;
 
     // 异步操作追踪（用于优雅关闭）
@@ -224,6 +225,29 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                 });
 
             _logger?.LogInformation("已订阅 LicensePlateRecognizedMessage (MessageBus)");
+        }
+
+        if (_ghostGateSessionSubscription == null)
+        {
+            _ghostGateSessionSubscription = MessageBus.Current
+                .Listen<GhostGateSessionResetMessage>()
+                .Subscribe(msg =>
+                {
+                    try
+                    {
+                        RemoveAbandonedPlateFromCache(msg.AbandonedPlateNumber);
+                        var mostFrequent = GetMostFrequentPlateNumber();
+                        MessageBus.Current.SendMessage(new PlateNumberChangedMessage(mostFrequent));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex,
+                            "处理幽灵道闸会话重置消息失败: AbandonedPlate={AbandonedPlate}",
+                            msg.AbandonedPlateNumber);
+                    }
+                });
+
+            _logger?.LogInformation("已订阅 GhostGateSessionResetMessage (MessageBus)");
         }
 
         if (_settingsSavedSubscription == null)
@@ -571,6 +595,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         {
             _licensePlateSubscription?.Dispose();
             _licensePlateSubscription = null;
+            _ghostGateSessionSubscription?.Dispose();
+            _ghostGateSessionSubscription = null;
             _settingsSavedSubscription?.Dispose();
             _settingsSavedSubscription = null;
         }
@@ -1476,6 +1502,31 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error occurred while rewriting plate number");
+        }
+    }
+
+    /// <summary>
+    ///     移除与道闸废弃会话对应的车牌缓存键（与 <see cref="OnPlateNumberRecognized" /> 键规则一致，忽略大小写匹配单键）。
+    /// </summary>
+    private void RemoveAbandonedPlateFromCache(string abandonedPlateNumber)
+    {
+        if (string.IsNullOrWhiteSpace(abandonedPlateNumber))
+            return;
+
+        var keysToRemove = _plateNumberCache.Keys
+            .Where(k => string.Equals(k, abandonedPlateNumber, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var key in keysToRemove)
+        {
+            _plateNumberCache.TryRemove(key, out _);
+        }
+
+        if (keysToRemove.Count > 0)
+        {
+            _logger?.LogDebug(
+                "幽灵会话重置: 已从车牌缓存移除废弃键 AbandonedPlate={AbandonedPlate}, RemovedCount={Count}",
+                abandonedPlateNumber, keysToRemove.Count);
         }
     }
 
