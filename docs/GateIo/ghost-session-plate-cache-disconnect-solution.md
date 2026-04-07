@@ -111,6 +111,30 @@
 - A1 实现快、行为与「周期结束清空」一致，但会丢掉**同一闸口尚未上磅、却已识别到的新车牌**的缓存（若幽灵重置后立即又有识别，通常仍会再次写入，需结合现场节奏评估）。
 - A2 只移除废弃牌，对其它候选干扰小，实现与测试略复杂。
 
+### 方案 A 与 `CreateWeighingRecordAsync` 的时序关系（落库车牌）
+
+称重记录创建在 `AttendedWeighingService` 的 `CreateWeighingRecordAsync` 中，首行使用当前缓存推导车牌：
+
+```csharp
+var plateNumber = GetMostFrequentPlateNumber();
+```
+
+该路径**仅**在重量稳定流程中被调用：`OnWeightStabilizedAsync` 在抓拍等步骤之后 `await CreateWeighingRecordAsync(...)`，即状态已到达 `WeightStabilized`、车辆**已上磅**之后。
+
+**与幽灵场景的关系**：
+
+| 事实 | 说明 |
+|------|------|
+| 幽灵会话 | 判定条件包含「从未上磅」、称重状态长期为 `OffScale`，**不会**在同一轮幽灵 episode 里触发 `OnWeightStabilizedAsync` / `CreateWeighingRecordAsync`。 |
+| 方案 A 生效时刻 | 幽灵重置当下发布事件，订阅方同步或异步清理 `_plateNumberCache`（去旧键或全清）。 |
+| 落库时刻 | 真正建库发生在**后续**车辆上磅且重量稳定之后，与幽灵事件通常相隔**秒级至分钟级**，中间仍有多次 LPR 可刷新缓存。 |
+
+**结论（可视为确定）**：在**典型业务流程**下，方案 A 对缓存的修正**会在** `CreateWeighingRecordAsync` 调用 `GetMostFrequentPlateNumber()` **之前早已发生**；落库时再用推荐车牌，**一般不再**受「幽灵车牌仍占 `LockedAt`」这一脱节影响。
+
+**仍须区分的风险面**：同一 **`LicensePlateRecognizedMessage`** 内「称重订阅先于道闸」时，`OnPlateNumberRecognized` 里**那一次** `GetMostFrequentPlateNumber()` 仍可能短暂返回幽灵车牌（见前文订阅顺序）。该问题主要影响**即时 UI / 日志**，与**建记录**不在同一调用链、也不在相近时间点。
+
+**边界**：若方案 A 采用 **A1 全清** 后、至上磅稳定前**几乎无新的 LPR**，`GetMostFrequentPlateNumber()` 可能为 `null` 或依赖后续规则，需由产品决定是否允许空牌落库或依赖其它补全策略（与幽灵脱节无关，属空缓存策略问题）。
+
 ### 方案 B：统一会话协调器（中长期）
 
 将「道闸会话」与「当前推荐车牌 / 缓存策略」收敛到**单一组件**或明确的分层：**会话开始 / 幽灵废弃 / 周期结束** 三种出口统一调用同一套「缓存失效」API，避免两处各自维护。改动面较大，适合与道闸、称重其它重构一起做。
@@ -137,6 +161,7 @@
 | `AttendedWeighingService.ClearPlateNumberCache` | 已有整表清空与 `PlateNumberChangedMessage` 通知。 |
 | `AttendedWeighingService.OnPlateNumberRecognized` | `LockedAt` 写入与 `AddOrUpdate` 逻辑。 |
 | `AttendedWeighingService.GetMostFrequentPlateNumber` | `LockedAt` 最早优先的选择策略。 |
+| `AttendedWeighingService.CreateWeighingRecordAsync` | 落库前调用 `GetMostFrequentPlateNumber()`；仅由 `OnWeightStabilizedAsync` 触发，与幽灵「未上磅」不在同一时间线。 |
 
 ---
 
