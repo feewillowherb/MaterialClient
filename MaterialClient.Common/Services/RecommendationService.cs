@@ -11,7 +11,7 @@ using Volo.Abp.Uow;
 namespace MaterialClient.Common.Services;
 
 /// <summary>
-///     推荐服务接口，提供基于车牌号的推荐数据查询与缓存读取
+///     推荐服务接口，提供推荐数据查询与全局缓存读取
 /// </summary>
 public interface IRecommendationService
 {
@@ -23,11 +23,10 @@ public interface IRecommendationService
     Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber);
 
     /// <summary>
-    ///     根据车牌号从内存缓存读取最新推荐数据
+    ///     从全局内存缓存读取最新推荐数据
     /// </summary>
-    /// <param name="plateNumber">车牌号</param>
     /// <returns>缓存的推荐数据，如果未找到则返回 null</returns>
-    Task<WaybillRecommendationDto?> GetLatestRecommendationAsync(string plateNumber);
+    Task<WaybillRecommendationDto?> GetLatestRecommendationAsync();
 
     /// <summary>
     ///     更新推荐缓存（从运单实体构建缓存数据并写入）
@@ -37,19 +36,16 @@ public interface IRecommendationService
 }
 
 /// <summary>
-///     推荐服务实现，提供数据库查询和内存缓存双路径
+///     推荐服务实现，提供数据库查询和全局内存缓存双路径。
+///     缓存使用全局唯一键存储单个推荐数据，任意运单完成时直接覆盖。
 /// </summary>
 public class RecommendationService : IRecommendationService, ISingletonDependency
 {
-    private const string CacheKeyPrefix = "Recommendation_";
-    private const string CacheIndexKey = "Recommendation_Index";
-    private const int MaxCacheSize = 200;
-    private const int EvictCount = 10;
+    private const string GlobalCacheKey = "Recommendation_Global";
 
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly ILogger<RecommendationService> _logger;
     private readonly IMemoryCache _memoryCache;
-    private readonly ReaderWriterLockSlim _lock = new();
     private readonly IUnitOfWorkManager _unitOfWorkManager;
 
     public RecommendationService(
@@ -123,35 +119,22 @@ public class RecommendationService : IRecommendationService, ISingletonDependenc
     }
 
     /// <inheritdoc />
-    public Task<WaybillRecommendationDto?> GetLatestRecommendationAsync(string plateNumber)
+    public Task<WaybillRecommendationDto?> GetLatestRecommendationAsync()
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-            return Task.FromResult<WaybillRecommendationDto?>(null);
-
         try
         {
-            using (_lock.ReadLock())
+            if (_memoryCache.TryGetValue(GlobalCacheKey, out WaybillRecommendationDto? dto))
             {
-                var cacheKey = BuildCacheKey(plateNumber);
-                if (_memoryCache.TryGetValue(cacheKey, out WaybillRecommendationDto? dto))
-                {
-                    _logger.LogDebug(
-                        "GetLatestRecommendationAsync: Cache hit for plate number '{PlateNumber}'",
-                        plateNumber);
-                    return Task.FromResult<WaybillRecommendationDto?>(dto);
-                }
+                _logger.LogDebug("GetLatestRecommendationAsync: Cache hit");
+                return Task.FromResult<WaybillRecommendationDto?>(dto);
             }
 
-            _logger.LogDebug(
-                "GetLatestRecommendationAsync: Cache miss for plate number '{PlateNumber}'",
-                plateNumber);
+            _logger.LogDebug("GetLatestRecommendationAsync: Cache miss");
             return Task.FromResult<WaybillRecommendationDto?>(null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "GetLatestRecommendationAsync: Error reading cache for plate number '{PlateNumber}'",
-                plateNumber);
+            _logger.LogError(ex, "GetLatestRecommendationAsync: Error reading cache");
             return Task.FromResult<WaybillRecommendationDto?>(null);
         }
     }
@@ -159,7 +142,7 @@ public class RecommendationService : IRecommendationService, ISingletonDependenc
     /// <inheritdoc />
     public void UpdateRecommendationCache(Waybill waybill)
     {
-        if (waybill == null || string.IsNullOrWhiteSpace(waybill.PlateNumber))
+        if (waybill == null)
             return;
 
         try
@@ -171,77 +154,20 @@ public class RecommendationService : IRecommendationService, ISingletonDependenc
                 waybill.OrderPlanOnPcs
             );
 
-            using (_lock.WriteLock())
+            _memoryCache.Set(GlobalCacheKey, dto, new MemoryCacheEntryOptions
             {
-                var index = GetOrCreateIndex();
-                var cacheKey = BuildCacheKey(waybill.PlateNumber);
+                Priority = CacheItemPriority.NeverRemove
+            });
 
-                // 如果已存在，原地更新（移到最新位置）
-                if (index.Remove(waybill.PlateNumber))
-                {
-                    _memoryCache.Set(cacheKey, dto, new MemoryCacheEntryOptions
-                    {
-                        Priority = CacheItemPriority.NeverRemove
-                    });
-                    index.Add(waybill.PlateNumber);
-                    UpdateIndex(index);
-                    _logger.LogDebug(
-                        "UpdateRecommendationCache: Updated existing cache for plate number '{PlateNumber}'",
-                        waybill.PlateNumber);
-                    return;
-                }
-
-                // 缓存已达上限，执行 LRU 淘汰
-                if (index.Count >= MaxCacheSize)
-                {
-                    var evictKeys = index.Take(EvictCount).ToList();
-                    foreach (var evictKey in evictKeys)
-                    {
-                        _memoryCache.Remove(BuildCacheKey(evictKey));
-                        index.Remove(evictKey);
-                    }
-
-                    _logger.LogDebug(
-                        "UpdateRecommendationCache: Evicted {Count} oldest entries", evictKeys.Count);
-                }
-
-                // 写入新缓存
-                _memoryCache.Set(cacheKey, dto, new MemoryCacheEntryOptions
-                {
-                    Priority = CacheItemPriority.NeverRemove
-                });
-                index.Add(waybill.PlateNumber);
-                UpdateIndex(index);
-
-                _logger.LogInformation(
-                    "UpdateRecommendationCache: Cached recommendation for plate number '{PlateNumber}', cache size: {Count}",
-                    waybill.PlateNumber, index.Count);
-            }
+            _logger.LogInformation(
+                "UpdateRecommendationCache: Cached recommendation, WaybillId: {WaybillId}",
+                waybill.Id);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "UpdateRecommendationCache: Error updating cache for plate number '{PlateNumber}'",
-                waybill.PlateNumber);
+                "UpdateRecommendationCache: Error updating cache for WaybillId: {WaybillId}",
+                waybill.Id);
         }
-    }
-
-    private static string BuildCacheKey(string plateNumber) => $"{CacheKeyPrefix}{plateNumber}";
-
-    private List<string> GetOrCreateIndex()
-    {
-        return _memoryCache.GetOrCreate(CacheIndexKey, entry =>
-        {
-            entry.Priority = CacheItemPriority.NeverRemove;
-            return new List<string>();
-        })!;
-    }
-
-    private void UpdateIndex(List<string> index)
-    {
-        _memoryCache.Set(CacheIndexKey, index, new MemoryCacheEntryOptions
-        {
-            Priority = CacheItemPriority.NeverRemove
-        });
     }
 }

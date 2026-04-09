@@ -10,7 +10,7 @@
 
 系统须提供 `IRecommendationService` 接口，包含以下方法：
 - `Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber)` — 根据车牌号查询数据库获取最新已完成运单
-- `Task<WaybillRecommendationDto?> GetLatestRecommendationAsync(string plateNumber)` — 从内存缓存读取推荐数据
+- `Task<WaybillRecommendationDto?> GetLatestRecommendationAsync()` — 从全局内存缓存读取推荐数据（无参数）
 
 #### 场景：数据库查询返回推荐数据
 - **当** 使用有效车牌号调用 `GetRecommendationByPlateNumberAsync`
@@ -26,12 +26,13 @@
 - **则** 系统须返回 `null`，不查询数据库
 
 #### 场景：缓存查找返回已缓存的推荐数据
-- **当** 使用某车牌号调用 `GetLatestRecommendationAsync`
-- **且** 该车牌号在缓存中有推荐数据条目
+- **当** 调用 `GetLatestRecommendationAsync()`
+- **且** 全局缓存中存在推荐数据
 - **则** 系统须返回缓存的 `WaybillRecommendationDto`
 
-#### 场景：未缓存车牌号缓存查找返回空
-- **当** 使用不在缓存中的车牌号调用 `GetLatestRecommendationAsync`
+#### 场景：缓存为空时返回 null
+- **当** 调用 `GetLatestRecommendationAsync()`
+- **且** 全局缓存中无推荐数据
 - **则** 系统须返回 `null`
 
 #### 场景：数据库查询对 ProviderId 回退到任意运单

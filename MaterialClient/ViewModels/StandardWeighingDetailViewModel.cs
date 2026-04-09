@@ -89,8 +89,7 @@ public partial class StandardWeighingDetailViewModel : AttendedWeighingDetailVie
         var hasMaterialUnitId = firstMaterialDto?.MaterialUnitId.HasValue ?? _listItem.MaterialUnitId.HasValue;
         var hasProviderId = _listItem.ProviderId.HasValue;
 
-        var needsRecommendation = (!hasMaterialId || !hasMaterialUnitId || !hasProviderId) &&
-                                  !string.IsNullOrWhiteSpace(PlateNumber);
+        var needsRecommendation = !hasMaterialId || !hasMaterialUnitId || !hasProviderId;
 
         WaybillRecommendationDto? recommendation = null;
         if (needsRecommendation)
@@ -102,9 +101,9 @@ public partial class StandardWeighingDetailViewModel : AttendedWeighingDetailVie
 
                 if (enableLatestRecommendation)
                 {
-                    recommendation = await _recommendationService.GetLatestRecommendationAsync(PlateNumber);
+                    recommendation = await _recommendationService.GetLatestRecommendationAsync();
                 }
-                else
+                else if (!string.IsNullOrWhiteSpace(PlateNumber))
                 {
                     recommendation = await _recommendationService.GetRecommendationByPlateNumberAsync(PlateNumber);
                 }

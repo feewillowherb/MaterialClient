@@ -60,11 +60,17 @@
 
 #### 场景：默认行为（设置未启用）
 - **当** `EnableLatestRecommendation` 为 `false`
+- **且** 当前车牌号非空
 - **则** ViewModel 须调用 `IRecommendationService.GetRecommendationByPlateNumberAsync(plateNumber)` 查询数据库
+
+#### 场景：默认行为车牌为空
+- **当** `EnableLatestRecommendation` 为 `false`
+- **且** 当前车牌号为 null 或空白
+- **则** ViewModel 须跳过推荐数据获取
 
 #### 场景：启用最新推荐
 - **当** `EnableLatestRecommendation` 为 `true`
-- **则** ViewModel 须调用 `IRecommendationService.GetLatestRecommendationAsync(plateNumber)` 从缓存读取
+- **则** ViewModel 须调用 `IRecommendationService.GetLatestRecommendationAsync()` 从全局缓存读取（不要求车牌号非空）
 
 #### 场景：构造注入
 - **当** 构造 `StandardWeighingDetailViewModel`
