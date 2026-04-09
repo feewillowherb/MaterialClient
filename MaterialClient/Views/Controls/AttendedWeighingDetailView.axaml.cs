@@ -22,9 +22,9 @@ public partial class AttendedWeighingDetailView : UserControl
     public AttendedWeighingDetailView(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModel>();
+        DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModelBase>();
         this.GetObservable(DataContextProperty)
-            .Subscribe(_ => WireInteractions(DataContext as AttendedWeighingDetailViewModel))
+            .Subscribe(_ => WireInteractions(DataContext as AttendedWeighingDetailViewModelBase))
             .DisposeWith(_lifetimeDisposables);
         // if (DataContext is AttendedWeighingDetailViewModel viewModel)
         // {
@@ -40,7 +40,7 @@ public partial class AttendedWeighingDetailView : UserControl
 
     }
 
-    private void WireInteractions(AttendedWeighingDetailViewModel? viewModel)
+    private void WireInteractions(AttendedWeighingDetailViewModelBase? viewModel)
     {
         _interactionDisposables.Dispose();
         _interactionDisposables = new CompositeDisposable();

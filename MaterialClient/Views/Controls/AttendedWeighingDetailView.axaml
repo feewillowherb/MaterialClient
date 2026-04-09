@@ -3,7 +3,7 @@
              xmlns:vm="using:MaterialClient.ViewModels"
              xmlns:aw="using:MaterialClient.Views.Controls"
              x:Class="MaterialClient.Views.Controls.AttendedWeighingDetailView"
-             x:DataType="vm:AttendedWeighingDetailViewModel"
+             x:DataType="vm:AttendedWeighingDetailViewModelBase"
              x:Name="DetailViewRoot">
 
 
