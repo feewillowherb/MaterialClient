@@ -638,6 +638,21 @@
 
                             <CheckBox Content="开机自动启动"
                                       IsChecked="{Binding EnableAutoStart}" />
+
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
+                                  ColumnSpacing="12">
+                                <TextBlock Text="启用最新推荐数据:"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="140" />
+                                <ToggleSwitch IsChecked="{Binding EnableLatestRecommendation}"
+                                              Grid.Row="0"
+                                              Grid.Column="1"
+                                              OnContent="启用"
+                                              OffContent="关闭" />
+                            </Grid>
                         </StackPanel>
                     </Border>
 

@@ -29,13 +29,20 @@ public partial class StandardWeighingDetailViewModel : AttendedWeighingDetailVie
     [Reactive] private MaterialItemRow? _currentMaterialRow;
     [Reactive] private MaterialsSelectionPopupViewModel? _materialsSelectionPopupViewModel;
 
+    private readonly IRecommendationService _recommendationService;
+    private readonly ISettingsService _settingsService;
     private IDisposable? _materialSelectionSubscription;
 
     public override bool IsSolidWasteMode => false;
 
-    public StandardWeighingDetailViewModel(IServiceProvider serviceProvider)
+    public StandardWeighingDetailViewModel(
+        IServiceProvider serviceProvider,
+        IRecommendationService recommendationService,
+        ISettingsService settingsService)
         : base(serviceProvider, serviceProvider.GetService<ILogger<StandardWeighingDetailViewModel>>())
     {
+        _recommendationService = recommendationService;
+        _settingsService = settingsService;
         InitializeMaterialsSelectionPopup();
     }
 
@@ -90,8 +97,17 @@ public partial class StandardWeighingDetailViewModel : AttendedWeighingDetailVie
         {
             try
             {
-                var weighingMatchingService = _serviceProvider.GetRequiredService<IWeighingMatchingService>();
-                recommendation = await weighingMatchingService.GetRecommendationByPlateNumberAsync(PlateNumber);
+                var settings = await _settingsService.GetSettingsAsync();
+                var enableLatestRecommendation = settings.SystemSettings.EnableLatestRecommendation;
+
+                if (enableLatestRecommendation)
+                {
+                    recommendation = await _recommendationService.GetLatestRecommendationAsync(PlateNumber);
+                }
+                else
+                {
+                    recommendation = await _recommendationService.GetRecommendationByPlateNumberAsync(PlateNumber);
+                }
 
                 if (recommendation != null)
                 {
