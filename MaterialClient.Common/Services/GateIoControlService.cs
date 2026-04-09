@@ -245,11 +245,12 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             }
 
             // 会话管理：检查并创建会话
+            string? ghostAbandonedPlate = null;
             lock (_sync)
             {
                 if (_session.SessionActive)
                 {
-                    if (!TryResetGhostSession(message.PlateNumber, message.DeviceName))
+                    if (!TryResetGhostSession(message.PlateNumber, message.DeviceName, out ghostAbandonedPlate))
                         return;
                 }
 
@@ -262,6 +263,18 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
 
                 _logger?.LogInformation("创建道闸会话: Device={Device}, EntrySide={EntrySide}, Plate={Plate}",
                     message.DeviceName, config.Direction, message.PlateNumber);
+            }
+
+            if (!string.IsNullOrWhiteSpace(ghostAbandonedPlate))
+            {
+                var ghostMsg = new GhostGateSessionResetMessage(
+                    ghostAbandonedPlate,
+                    message.PlateNumber,
+                    message.DeviceName);
+                MessageBus.Current.SendMessage(ghostMsg);
+                _logger?.LogInformation(
+                    "已发布幽灵会话重置事件: AbandonedPlate={AbandonedPlate}, NewPlate={NewPlate}, Device={Device}, OccurredAtUtc={OccurredAtUtc:O}",
+                    ghostAbandonedPlate, message.PlateNumber, message.DeviceName, ghostMsg.OccurredAtUtc);
             }
 
             // 调用统一控制接口打开入口道闸
@@ -287,8 +300,10 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     ///     调用方 MUST 已持有 _sync 锁。
     /// </summary>
     /// <returns>true 表示检测到幽灵会话并已重置；false 表示未重置（正常拒绝或跳过）</returns>
-    private bool TryResetGhostSession(string newPlateNumber, string newDeviceName)
+    private bool TryResetGhostSession(string newPlateNumber, string newDeviceName, out string? abandonedPlate)
     {
+        abandonedPlate = null;
+
         if (!_session.SessionActive)
             return false;
 
@@ -305,11 +320,12 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
         // 幽灵会话：不同车牌 + 从未上磅
         if (!_session.ExitOpened && _currentWeighingStatus == AttendedWeighingStatus.OffScale)
         {
+            abandonedPlate = _session.PlateNumber;
             _logger?.LogWarning(
                 "检测到幽灵会话(从未上磅)，新车牌触发重置: " +
                 "OldPlate={OldPlate}, OldEntrySide={OldEntrySide}, OldDuration={OldDuration}, " +
                 "NewPlate={NewPlate}, NewDevice={NewDevice}",
-                _session.PlateNumber, _session.EntrySide,
+                abandonedPlate, _session.EntrySide,
                 DateTime.UtcNow - _session.SessionStartedAt,
                 newPlateNumber, newDeviceName);
             _session.Reset();
