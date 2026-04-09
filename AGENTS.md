@@ -93,6 +93,14 @@ openspec/
 
 - 所有数据绑定强制使用 ReactiveUI，不要使用 CommunityToolkit.Mvvm。
 
+### ViewModel 间通信约定（NON-NEGOTIABLE）
+
+- ViewModel 间通信必须使用 ReactiveUI `MessageBus`，禁止新增 `public event` 声明。
+- Message 类型定义在 `MaterialClient.Common/Events/` 目录下，使用 `class` + primary constructor。
+- 发布方使用 `MessageBus.Current.SendMessage(new XxxMessage(...))`。
+- 订阅方使用 `MessageBus.Current.Listen<XxxMessage>().ObserveOn(RxApp.MainThreadScheduler).Subscribe(...).DisposeWith(_disposables)` 管理生命周期。
+- View code-behind 中的 MessageBus 订阅同样使用 `CompositeDisposable` + `DisposeWith`，在 `OnClosed` 中统一 Dispose。
+
 ### 实施计划语言（NON-NEGOTIABLE）
 
 - 实施计划文档（如 plan.md、`.cursor/plans/*.plan.md`）必须使用英文撰写。

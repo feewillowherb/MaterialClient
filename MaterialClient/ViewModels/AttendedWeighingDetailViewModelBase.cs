@@ -461,13 +461,13 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
             var message = new SaveCompletedMessage(_listItem.Id, _listItem.ItemType);
             MessageBus.Current.SendMessage(message);
 
-            // Trigger save completed event with full operation context
-            SaveCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
+            // Send detail operation completed message via MessageBus
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
                 itemId: _listItem.Id,
                 itemType: _listItem.ItemType,
                 orderType: _listItem.OrderType,
                 isCompleted: _listItem.OrderType == OrderTypeEnum.Completed,
-                operationType: "Save"));
+                operationType: DetailOperationType.Save));
 
             // Show success notification
             Dispatcher.UIThread.Post(() =>
@@ -513,13 +513,13 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
                 }
             }
 
-            // Trigger complete event with full operation context
-            CompleteCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
+            // Send complete operation completed message via MessageBus
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
                 itemId: _listItem.Id,
                 itemType: WeighingListItemType.Waybill,
                 orderType: OrderTypeEnum.Completed,
                 isCompleted: true,
-                operationType: "Complete"));
+                operationType: DetailOperationType.Complete));
         }
         catch (Exception ex)
         {
@@ -551,12 +551,13 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         {
             await _weighingRecordRepository.DeleteAsync(_listItem.Id);
 
-            AbolishCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
+            // Send abolish completed message via MessageBus
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
                 itemId: _listItem.Id,
                 itemType: _listItem.ItemType,
                 orderType: _listItem.OrderType,
                 isCompleted: false,
-                operationType: "Abolish"));
+                operationType: DetailOperationType.Abolish));
         }
         catch (Exception ex)
         {
@@ -567,7 +568,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     [ReactiveCommand]
     private void Close()
     {
-        CloseRequested?.Invoke(this, EventArgs.Empty);
+        MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
     }
 
     [ReactiveCommand]
@@ -603,12 +604,9 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
             {
                 if (matchWindow.SavedWaybillId.HasValue)
                 {
-                    ManualMatchSaveCompleted?.Invoke(this, new ItemOperationCompletedEventArgs(
-                        itemId: matchWindow.SavedWaybillId.Value,
-                        itemType: WeighingListItemType.Waybill,
-                        orderType: OrderTypeEnum.FirstWeight,
-                        isCompleted: false,
-                        operationType: "ManualMatch"));
+                    // Send manual match save completed message via MessageBus
+                    MessageBus.Current.SendMessage(new ManualMatchSaveCompletedMessage(
+                        waybillId: matchWindow.SavedWaybillId.Value));
                 }
             }
         }
@@ -617,17 +615,6 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
             Logger?.LogError(ex, "匹配失败");
         }
     }
-
-    #endregion
-
-    #region Events
-
-    public event EventHandler<ItemOperationCompletedEventArgs>? SaveCompleted;
-    public event EventHandler<ItemOperationCompletedEventArgs>? AbolishCompleted;
-    public event EventHandler? CloseRequested;
-    public event EventHandler<ItemOperationCompletedEventArgs>? MatchCompleted;
-    public event EventHandler<ItemOperationCompletedEventArgs>? CompleteCompleted;
-    public event EventHandler<ItemOperationCompletedEventArgs>? ManualMatchSaveCompleted;
 
     #endregion
 }

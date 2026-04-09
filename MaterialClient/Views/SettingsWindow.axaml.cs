@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using MaterialClient.Common.Events;
 using MaterialClient.ViewModels;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
@@ -18,6 +20,7 @@ public partial class SettingsWindow : Window, ITransientDependency
     private readonly Dictionary<string, Border> _sectionElements = new();
     private readonly Dictionary<string, ListBoxItem> _navigationItems = new();
     private bool _isNavigationClick = false; // Prevent recursive updates
+    private readonly CompositeDisposable _disposables = new();
 
 
     public SettingsWindow() : this(null)
@@ -33,8 +36,11 @@ public partial class SettingsWindow : Window, ITransientDependency
 
         DataContext = viewModel;
 
-        // Subscribe to close requested event
-        viewModel?.CloseRequested += OnCloseRequested;
+        // Subscribe to close requested messages via MessageBus
+        MessageBus.Current.Listen<DetailCloseRequestedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => Close())
+            .DisposeWith(_disposables);
 
         // Subscribe to LprDeviceType changes to update column visibility
         if (viewModel != null)
@@ -224,11 +230,6 @@ public partial class SettingsWindow : Window, ITransientDependency
         Close();
     }
 
-    private void OnCloseRequested(object? sender, EventArgs e)
-    {
-        Close();
-    }
-
     private void UpdateLprColumnVisibility(bool isVisible)
     {
         if (LprDataGrid?.Columns == null) return;
@@ -249,10 +250,12 @@ public partial class SettingsWindow : Window, ITransientDependency
 
     protected override void OnClosed(EventArgs e)
     {
-        // Unsubscribe from event and dispose ViewModel (MessageBus subscription)
+        // Dispose MessageBus subscriptions
+        _disposables.Dispose();
+
+        // Dispose ViewModel (MessageBus subscription)
         if (DataContext is SettingsWindowViewModel viewModel)
         {
-            viewModel.CloseRequested -= OnCloseRequested;
             (viewModel as IDisposable)?.Dispose();
         }
         base.OnClosed(e);

@@ -216,6 +216,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         StartUpdatePlateNumberMessageBusSubscription();
         StartSettingsSavedMessageBusSubscription();
 
+        // Subscribe to detail operation messages (replacing direct event subscriptions)
+        StartDetailOperationCompletedMessageBusSubscription();
+        StartDetailCloseRequestedMessageBusSubscription();
+        StartManualMatchSaveCompletedMessageBusSubscription();
+
         this.WhenAnyValue(x => x.PrinterName)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(PrinterTooltip)))
             .DisposeWith(_disposables);
@@ -972,6 +977,98 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .DisposeWith(_disposables);
     }
 
+    /// <summary>
+    ///     Subscribe to detail operation completed messages (replacing direct event subscriptions).
+    ///     Dispatches to the appropriate handler based on OperationType.
+    /// </summary>
+    private void StartDetailOperationCompletedMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<DetailOperationCompletedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
+            {
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received DetailOperationCompletedMessage, OperationType={OperationType}, ItemId={ItemId}",
+                    message.OperationType, message.ItemId);
+
+                try
+                {
+                    switch (message.OperationType)
+                    {
+                        case DetailOperationType.Save:
+                            await OnDetailSaveCompleted(message);
+                            break;
+                        case DetailOperationType.Abolish:
+                            await OnDetailAbolishCompleted(message);
+                            break;
+                        case DetailOperationType.Match:
+                            await OnDetailMatchCompleted(message);
+                            break;
+                        case DetailOperationType.Complete:
+                            await OnDetailCompleteCompleted(message);
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error handling DetailOperationCompletedMessage for ItemId {ItemId}",
+                        message.ItemId);
+                }
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    ///     Subscribe to detail close requested messages (replacing CloseRequested event).
+    /// </summary>
+    private void StartDetailCloseRequestedMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<DetailCloseRequestedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async _ =>
+            {
+                Logger?.LogInformation("AttendedWeighingViewModel: Received DetailCloseRequestedMessage");
+
+                try
+                {
+                    await OnDetailCloseRequested();
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "AttendedWeighingViewModel: Error handling DetailCloseRequestedMessage");
+                }
+            })
+            .DisposeWith(_disposables);
+    }
+
+    /// <summary>
+    ///     Subscribe to manual match save completed messages (replacing ManualMatchSaveCompleted event).
+    /// </summary>
+    private void StartManualMatchSaveCompletedMessageBusSubscription()
+    {
+        MessageBus.Current.Listen<ManualMatchSaveCompletedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async message =>
+            {
+                Logger?.LogInformation(
+                    "AttendedWeighingViewModel: Received ManualMatchSaveCompletedMessage, WaybillId={WaybillId}",
+                    message.WaybillId);
+
+                try
+                {
+                    await OnDetailManualMatchSaveCompleted(message);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex,
+                        "AttendedWeighingViewModel: Error handling ManualMatchSaveCompletedMessage for WaybillId {WaybillId}",
+                        message.WaybillId);
+                }
+            })
+            .DisposeWith(_disposables);
+    }
+
     private static string GetStatusText(AttendedWeighingStatus status)
     {
         return status switch
@@ -1431,13 +1528,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             DetailViewModel = CreateDetailViewModel(item.WeighingMode);
             DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
-            DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
-            DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
-            DetailViewModel.CloseRequested += OnDetailCloseRequested;
-            DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
-            DetailViewModel.CompleteCompleted += OnDetailCompleteCompleted;
-            DetailViewModel.ManualMatchSaveCompleted += OnDetailManualMatchSaveCompleted;
-
             IsShowingMainView = false;
         }
         catch (Exception ex)
@@ -1474,13 +1564,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             DetailViewModel = CreateDetailViewModel(item.WeighingMode);
             DetailViewModel.InitializeData(item, CapturedBillPhotoPath);
 
-            DetailViewModel.SaveCompleted += OnDetailSaveCompleted;
-            DetailViewModel.AbolishCompleted += OnDetailAbolishCompleted;
-            DetailViewModel.CloseRequested += OnDetailCloseRequested;
-            DetailViewModel.MatchCompleted += OnDetailMatchCompleted;
-            DetailViewModel.CompleteCompleted += OnDetailCompleteCompleted;
-            DetailViewModel.ManualMatchSaveCompleted += OnDetailManualMatchSaveCompleted;
-
             IsShowingMainView = false;
         }
         catch (Exception ex)
@@ -1499,49 +1582,48 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     [ReactiveCommand]
     private void BackToMain()
     {
-        if (DetailViewModel != null)
-        {
-            DetailViewModel.SaveCompleted -= OnDetailSaveCompleted;
-            DetailViewModel.AbolishCompleted -= OnDetailAbolishCompleted;
-            DetailViewModel.CloseRequested -= OnDetailCloseRequested;
-            DetailViewModel.MatchCompleted -= OnDetailMatchCompleted;
-            DetailViewModel.CompleteCompleted -= OnDetailCompleteCompleted;
-            DetailViewModel.ManualMatchSaveCompleted -= OnDetailManualMatchSaveCompleted;
-        }
-
         SelectedListItem = null;
         IsShowingMainView = true;
         DetailViewModel = null;
     }
 
-    private async void OnDetailSaveCompleted(object? sender, ItemOperationCompletedEventArgs e)
+    private async Task OnDetailSaveCompleted(DetailOperationCompletedMessage msg)
     {
-        await NavigateToItemAsync(e);
+        await NavigateToItemAsync(msg);
     }
 
-    private async void OnDetailAbolishCompleted(object? sender, ItemOperationCompletedEventArgs e)
+    private async Task OnDetailAbolishCompleted(DetailOperationCompletedMessage msg)
     {
         // Abolish操作删除了item，所以导航到下一个未匹配项
         await RefreshAsync();
         await SelectUnmatchedNextItemAsync();
     }
 
-    private async void OnDetailMatchCompleted(object? sender, ItemOperationCompletedEventArgs e)
+    private async Task OnDetailMatchCompleted(DetailOperationCompletedMessage msg)
     {
-        await NavigateToItemAsync(e);
+        await NavigateToItemAsync(msg);
     }
 
-    private async void OnDetailCompleteCompleted(object? sender, ItemOperationCompletedEventArgs e)
+    private async Task OnDetailCompleteCompleted(DetailOperationCompletedMessage msg)
     {
-        await NavigateToItemAsync(e);
+        await NavigateToItemAsync(msg);
     }
 
-    private async void OnDetailManualMatchSaveCompleted(object? sender, ItemOperationCompletedEventArgs e)
+    private async Task OnDetailManualMatchSaveCompleted(ManualMatchSaveCompletedMessage msg)
     {
-        await NavigateToItemAsync(e);
+        // Navigate to the saved waybill using a DetailOperationCompletedMessage-like navigation
+        if (msg.WaybillId.HasValue)
+        {
+            await NavigateToItemAsync(new DetailOperationCompletedMessage(
+                itemId: msg.WaybillId.Value,
+                itemType: WeighingListItemType.Waybill,
+                orderType: OrderTypeEnum.FirstWeight,
+                isCompleted: false,
+                operationType: DetailOperationType.Match));
+        }
     }
 
-    private async void OnDetailCloseRequested(object? sender, EventArgs e)
+    private async Task OnDetailCloseRequested()
     {
         await RefreshAsync();
         //BackToMain();
@@ -1551,7 +1633,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     统一的导航逻辑：根据操作上下文导航到目标项
     /// </summary>
-    private async Task NavigateToItemAsync(ItemOperationCompletedEventArgs args)
+    private async Task NavigateToItemAsync(DetailOperationCompletedMessage args)
     {
         try
         {
@@ -1591,7 +1673,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     args.ItemId);
 
                 // 如果未找到目标项，根据操作类型选择备用行为
-                if (args.OperationType == "Complete")
+                if (args.OperationType == DetailOperationType.Complete)
                 {
                     // Complete操作：尝试选择第一个已完成项
                     await SelectLatestCompletedItemAsync();
@@ -1612,7 +1694,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     判断是否需要切换tab
     /// </summary>
-    private bool ShouldSwitchTab(ItemOperationCompletedEventArgs args)
+    private bool ShouldSwitchTab(DetailOperationCompletedMessage args)
     {
         // 如果显示全部记录，永不切换tab
         if (IsShowAllRecords)
@@ -1643,7 +1725,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     切换到合适的tab以显示目标项
     /// </summary>
-    private void SwitchToAppropriateTab(ItemOperationCompletedEventArgs args)
+    private void SwitchToAppropriateTab(DetailOperationCompletedMessage args)
     {
         if (args.IsCompleted)
         {

@@ -1,9 +1,13 @@
 using System;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.ViewModels;
+using ReactiveUI;
 
 namespace MaterialClient.Views;
 
@@ -12,6 +16,7 @@ public partial class ManualMatchWindow : Window
     private readonly IServiceProvider? _serviceProvider;
     private readonly ManualMatchWindowViewModel? _viewModel;
     private long? _savedWaybillId;
+    private readonly CompositeDisposable _disposables = new();
 
     /// <summary>
     ///     无参构造函数（用于设计器）
@@ -31,6 +36,12 @@ public partial class ManualMatchWindow : Window
         _serviceProvider = serviceProvider;
         _viewModel = new ManualMatchWindowViewModel(currentRecord, serviceProvider);
         DataContext = _viewModel;
+
+        // Subscribe to ManualMatchSaveCompletedMessage via MessageBus
+        MessageBus.Current.Listen<ManualMatchSaveCompletedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(msg => _savedWaybillId = msg.WaybillId)
+            .DisposeWith(_disposables);
     }
 
     /// <summary>
@@ -65,18 +76,15 @@ public partial class ManualMatchWindow : Window
             _viewModel.SelectedDeliveryType,
             _serviceProvider);
 
-        // 订阅 SaveCompleted 事件以捕获 WaybillId
-        if (editWindow.ViewModel != null)
-        {
-            editWindow.ViewModel.SaveCompleted += (_, args) =>
-            {
-                _savedWaybillId = args.WaybillId;
-            };
-        }
-
         var result = await editWindow.ShowDialog<bool?>(this);
 
         // 如果用户确认保存，则关闭当前窗口并返回匹配结果
         if (result == true) Close(_viewModel.SelectedCandidateRecord.Record);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _disposables.Dispose();
+        base.OnClosed(e);
     }
 }

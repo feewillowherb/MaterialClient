@@ -394,10 +394,10 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
                 "SaveAsync: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
                 waybill.Id, CurrentRecord.Id);
 
-            // 触发保存完成事件
-            SaveCompleted?.Invoke(this, new ManualMatchSaveCompletedEventArgs { WaybillId = waybill.Id });
+            // 触发保存完成消息（via MessageBus）
+            MessageBus.Current.SendMessage(new ManualMatchSaveCompletedMessage(waybill.Id));
             Logger?.LogInformation(
-                "SaveAsync: Raised SaveCompleted event for WaybillId {WaybillId}",
+                "SaveAsync: Sent ManualMatchSaveCompletedMessage via MessageBus for WaybillId {WaybillId}",
                 waybill.Id);
 
             return true;
@@ -454,21 +454,4 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
     }
 
     #endregion
-
-    #region Events
-
-    /// <summary>
-    ///     保存完成事件
-    /// </summary>
-    public event EventHandler<ManualMatchSaveCompletedEventArgs>? SaveCompleted;
-
-    #endregion
-}
-
-/// <summary>
-///     手动匹配保存完成事件参数
-/// </summary>
-public class ManualMatchSaveCompletedEventArgs : EventArgs
-{
-    public long? WaybillId { get; init; }
 }

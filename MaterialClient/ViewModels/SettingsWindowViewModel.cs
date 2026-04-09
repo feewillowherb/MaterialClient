@@ -194,15 +194,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _ = LoadSettingsAsync();
     }
 
-    #region Events
-
-    /// <summary>
-    ///     Event raised when the window should be closed
-    /// </summary>
-    public event EventHandler? CloseRequested;
-
-    #endregion
-
     #region Commands
 
     [ReactiveCommand]
@@ -293,7 +284,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             MessageBus.Current.SendMessage(new SettingsSavedMessage());
 
             // Close window after saving
-            CloseRequested?.Invoke(this, EventArgs.Empty);
+            MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
         }
         catch
         {
@@ -305,7 +296,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private void Cancel()
     {
         // Raise close requested event
-        CloseRequested?.Invoke(this, EventArgs.Empty);
+        MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
     }
 
     [ReactiveCommand]
