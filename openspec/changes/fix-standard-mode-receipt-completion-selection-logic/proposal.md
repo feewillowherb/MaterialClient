@@ -1,6 +1,6 @@
 ## Why
 
-标准模式下完成收货/发料后，系统导航至刚完成的条目（只读 MainView），迫使用户手动寻找下一个未完成条目。选择优先级应优先指向下一个可操作条目，以保持连续工作流。
+标准模式（`WeighingMode.Standard`）下完成收货/发料后，系统导航至刚完成的条目（只读 MainView），迫使用户手动寻找下一个未完成条目。选择优先级应优先指向下一个可操作条目，以保持连续工作流。此变更仅对 `WeighingMode.Standard` 生效，SolidWaste 模式沿用现有导航逻辑（导航至刚完成的条目）。
 
 ## What Changes
 
@@ -16,7 +16,7 @@ _（无）_
 
 ### Modified Capabilities
 
-- `attended-weighing`：「完成操作后的导航」需求从「选中新完成的条目」改为「按优先级选择下一个未完成条目」。
+- `attended-weighing`：「完成操作后的导航」需求从「选中新完成的条目」改为「按优先级选择下一个未完成条目」。此变更仅对 `WeighingMode.Standard` 生效，SolidWaste 模式保持现有行为。
 
 ## Impact
 
@@ -57,4 +57,4 @@ sequenceDiagram
 - 无 API/接口变更
 - 无数据库 schema 变更
 - Save/Match/Abolish 导航行为不变
-- SolidWaste 模式不受影响（使用相同处理器，优先级逻辑通用适用）
+- SolidWaste 模式不受影响，沿用现有导航逻辑（导航至刚完成的条目）

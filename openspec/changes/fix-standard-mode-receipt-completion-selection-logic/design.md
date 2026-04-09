@@ -1,6 +1,8 @@
 ## Context
 
-`AttendedWeighingViewModel` 管理有人值守称重列表及详情导航。当前 `OnDetailCompleteCompleted` 处理器委托 `NavigateToItemAsync`，导航至刚完成的条目（已变为只读运单），迫使用户手动寻找下一个未完成条目。
+`AttendedWeighingViewModel` 管理有人值守称重列表及详情导航。当前 `OnDetailCompleteCompleted` 处理器委托 `NavigateToItemAsync`，导航至刚完成的条目（已变为只读运单），迫使用户手动寻找下一个未完成条目。**此变更仅对 `WeighingMode.Standard` 生效**，SolidWaste 模式沿用现有逻辑（`NavigateToItemAsync`）。
+
+`DetailOperationCompletedMessage` 不包含 `WeighingMode` 信息，但 `AttendedWeighingViewModel` 持有 `IsSolidWasteMode` 属性（在初始化时从系统设置读取），可在 `OnDetailCompleteCompleted` 中通过 `IsSolidWasteMode` 判断当前模式并分支。
 
 已有的 `SelectUnmatchedNextItemAsync` 方法实现了「查找下一个未完成 → 兜底已完成」逻辑，但仅用于 Abolish 和 Close 处理器，Complete 处理器未使用。
 
@@ -27,11 +29,13 @@ CompleteAsync (base)
 
 ```
 AttendedWeighingViewModel
-├── OnDetailCompleteCompleted(msg)        ← 修改：替换 NavigateToItemAsync
-│   └── SelectNextUnfinishedItemAsync()   ← 新增：基于优先级的选择
-│       ├── 优先级 1：未完成 Waybill
-│       ├── 优先级 2：未完成 WeighingRecord
-│       └── 兜底：SelectLatestCompletedItemAsync()
+├── OnDetailCompleteCompleted(msg)        ← 修改：按 WeighingMode 分支
+│   ├── IsSolidWasteMode=true             ← SolidWaste：沿用 NavigateToItemAsync（不变）
+│   └── IsSolidWasteMode=false            ← Standard：新逻辑
+│       └── SelectNextUnfinishedItemAsync()   ← 新增：基于优先级的选择
+│           ├── 优先级 1：未完成 Waybill
+│           ├── 优先级 2：未完成 WeighingRecord
+│           └── 兜底：SelectLatestCompletedItemAsync()
 ├── OnDetailSaveCompleted(msg)            ← 不变
 ├── OnDetailAbolishCompleted(msg)         ← 不变
 └── OnDetailMatchCompleted(msg)           ← 不变
@@ -40,13 +44,14 @@ AttendedWeighingViewModel
 ## Goals / Non-Goals
 
 **目标：**
-- 完成收货/发料后，自动导航至下一个未完成条目
+- Standard 模式（`WeighingMode.Standard`）下完成收货/发料后，自动导航至下一个未完成条目
+- SolidWaste 模式保持现有导航行为（`NavigateToItemAsync`）
 - 保持现有标签页切换规则（尊重 `IsShowAllRecords`）
 - 尽可能复用已有方法（`SelectViewForItem`、标签页切换逻辑）
 
 **非目标：**
 - 修改 Save/Match/Abolish 的导航行为
-- 修改 SolidWaste 模式特有的行为（同一处理器，逻辑通用）
+- 修改 SolidWaste 模式特有的行为（SolidWaste 沿用 `NavigateToItemAsync`）
 - 新增 MessageBus 事件或接口
 - 修改 `StandardWeighingDetailViewModel` 或 `AttendedWeighingDetailViewModelBase`
 
@@ -86,7 +91,9 @@ AttendedWeighingViewModel
 
 ```mermaid
 flowchart TD
-    A[OnDetailCompleteCompleted] --> B[RefreshAsync]
+    A[OnDetailCompleteCompleted] --> M{IsSolidWasteMode?}
+    M -->|true 固废模式| N[NavigateToItemAsync 沿用旧逻辑]
+    M -->|false 标准模式| B[RefreshAsync]
     B --> C{搜索未完成 Waybill}
     C -->|找到| D[按需切换至未匹配标签]
     D --> E[SelectViewForItem]
@@ -109,17 +116,22 @@ sequenceDiagram
     Detail->>SVC: CompleteOrderAsync()
     Detail->>Bus: DetailOperationCompletedMessage(Complete)
     Bus->>Main: OnDetailCompleteCompleted(msg)
-    Main->>SVC: 刷新列表数据
-    Main->>Main: 查找下一个未完成 Waybill
-    alt 找到未完成 Waybill
-        Main->>Main: 按需切换标签页
-        Main->>Main: OpenDetail(waybill)
-    else 无未完成 Waybill
-        Main->>Main: 查找下一个未完成 WeighingRecord
-        alt 找到未完成 WeighingRecord
-            Main->>Main: OpenDetail(record)
-        else 全部已完成
-            Main->>Main: SelectLatestCompletedItemAsync
+    Main->>Main: 检查 IsSolidWasteMode
+    alt SolidWaste 模式
+        Main->>Main: NavigateToItemAsync(msg) 沿用旧逻辑
+    else Standard 模式
+        Main->>SVC: 刷新列表数据
+        Main->>Main: 查找下一个未完成 Waybill
+        alt 找到未完成 Waybill
+            Main->>Main: 按需切换标签页
+            Main->>Main: OpenDetail(waybill)
+        else 无未完成 Waybill
+            Main->>Main: 查找下一个未完成 WeighingRecord
+            alt 找到未完成 WeighingRecord
+                Main->>Main: OpenDetail(record)
+            else 全部已完成
+                Main->>Main: SelectLatestCompletedItemAsync
+            end
         end
     end
 ```
@@ -137,5 +149,5 @@ sequenceDiagram
 
 | 文件路径 | 变更类型 | 变更说明 | 影响模块 |
 |-----------|-------------|-------------|-----------------|
-| `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` :: `OnDetailCompleteCompleted` | 修改 | 将 `NavigateToItemAsync(msg)` 替换为新的优先级选择逻辑 | 完成处理器 |
-| `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` | 新增 | 新增私有方法 `SelectNextUnfinishedItemAsync` | 导航逻辑 |
+| `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` :: `OnDetailCompleteCompleted` | 修改 | 增加 `IsSolidWasteMode` 分支判断：SolidWaste 沿用 `NavigateToItemAsync`，Standard 调用 `SelectNextUnfinishedItemAsync` | 完成处理器 |
+| `MaterialClient/ViewModels/AttendedWeighingViewModel.cs` | 新增 | 新增私有方法 `SelectNextUnfinishedItemAsync` | Standard 模式导航逻辑 |
