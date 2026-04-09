@@ -1606,7 +1606,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     private async Task OnDetailCompleteCompleted(DetailOperationCompletedMessage msg)
     {
-        await NavigateToItemAsync(msg);
+        if (IsSolidWasteMode)
+        {
+            // SolidWaste 模式：沿用现有导航逻辑
+            await NavigateToItemAsync(msg);
+        }
+        else
+        {
+            // Standard 模式：按优先级选择下一个未完成条目
+            await SelectNextUnfinishedItemAsync();
+        }
     }
 
     private async Task OnDetailManualMatchSaveCompleted(ManualMatchSaveCompletedMessage msg)
@@ -1895,6 +1904,83 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         catch
         {
             // 如果出错，忽略错误，不影响主流程
+        }
+    }
+
+    /// <summary>
+    ///     Standard 模式下完成操作后的导航逻辑：按优先级选择下一个未完成条目。
+    ///     优先级：未完成 Waybill → 未完成 WeighingRecord → 兜底已完成条目。
+    /// </summary>
+    private async Task SelectNextUnfinishedItemAsync()
+    {
+        try
+        {
+            await RefreshAsync();
+
+            // 优先级 1：未完成 Waybill
+            var unfinishedWaybill = ListItems.FirstOrDefault(item =>
+                item.ItemType == WeighingListItemType.Waybill &&
+                item.OrderType != OrderTypeEnum.Completed);
+
+            if (unfinishedWaybill != null)
+            {
+                // 按需切换标签页（若当前标签页无法显示未完成项）
+                if (!IsShowAllRecords && (IsShowCompleted || !IsShowUnmatched))
+                {
+                    IsShowUnmatched = true;
+                    IsShowCompleted = false;
+                    IsShowAllRecords = false;
+                    CurrentPage = 1;
+                    await RefreshAsync();
+
+                    unfinishedWaybill = ListItems.FirstOrDefault(item =>
+                        item.ItemType == WeighingListItemType.Waybill &&
+                        item.OrderType != OrderTypeEnum.Completed);
+                }
+
+                if (unfinishedWaybill != null)
+                {
+                    SelectedListItem = unfinishedWaybill;
+                    SelectViewForItem(unfinishedWaybill);
+                    return;
+                }
+            }
+
+            // 优先级 2：未完成 WeighingRecord
+            var unfinishedRecord = ListItems.FirstOrDefault(item =>
+                item.ItemType == WeighingListItemType.WeighingRecord &&
+                item.OrderType != OrderTypeEnum.Completed);
+
+            if (unfinishedRecord != null)
+            {
+                // 按需切换标签页
+                if (!IsShowAllRecords && (IsShowCompleted || !IsShowUnmatched))
+                {
+                    IsShowUnmatched = true;
+                    IsShowCompleted = false;
+                    IsShowAllRecords = false;
+                    CurrentPage = 1;
+                    await RefreshAsync();
+
+                    unfinishedRecord = ListItems.FirstOrDefault(item =>
+                        item.ItemType == WeighingListItemType.WeighingRecord &&
+                        item.OrderType != OrderTypeEnum.Completed);
+                }
+
+                if (unfinishedRecord != null)
+                {
+                    SelectedListItem = unfinishedRecord;
+                    SelectViewForItem(unfinishedRecord);
+                    return;
+                }
+            }
+
+            // 兜底：所有条目已完成，选择最新已完成项
+            await SelectLatestCompletedItemAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "SelectNextUnfinishedItemAsync 失败");
         }
     }
 
