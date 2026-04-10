@@ -49,3 +49,18 @@
 - **WHEN** 称重周期被重置（例如下磅流程完成并执行缓存清理）
 - **THEN** 系统 MUST 清空车牌缓存
 - **AND THEN** 系统 MUST 使后续推荐车牌计算不再受上一个周期的 `LockedAt` 影响
+
+---
+
+### Requirement: 幽灵会话废弃时失效对应锁定缓存
+当 `EnablePlateRewrite = false` 且系统收到道闸侧发出的幽灵会话重置领域事件时，系统 MUST 使被废弃会话车牌对应的缓存记录不再参与「LockedAt 优先选择」；实现上 MAY 移除该车牌键或清空整个车牌缓存（与项目选定策略一致）。
+
+#### Scenario: 废弃车牌不再成为最早 LockedAt 候选
+- **WHEN** 缓存中存在车牌 A 的 `LockedAt` 记录且道闸已裁定车牌 A 所属会话为幽灵并已废弃
+- **AND WHEN** 称重侧已处理幽灵会话重置领域事件
+- **THEN** 系统 MUST NOT 在后续 `GetMostFrequentPlateNumber()` 中仅因车牌 A 的剩余 `LockedAt` 而返回车牌 A（除非车牌 A 因新的有效 LPR 再次写入缓存）
+
+#### Scenario: 与称重周期重置的独立性
+- **WHEN** 幽灵会话重置事件发生且车辆从未完成「称重周期结束」类状态回环
+- **THEN** 系统 MUST 仍执行上述锁定失效行为
+- **AND THEN** 该行为 MUST 不依赖 `ResetWeighingCycleAsync` 或 `OffScale` 周期迁移作为唯一触发条件
