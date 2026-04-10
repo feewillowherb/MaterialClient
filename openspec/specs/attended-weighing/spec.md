@@ -10,13 +10,36 @@
 系统应在执行操作（保存、完成、匹配、作废）后，提供一致的、指向 WeighingListItemDto 的导航。
 
 #### 场景：完成操作后的导航
-- **当** 用户在 AttendedWeighingDetailView 中将运单完成（首磅 → 已完成）
-- **则** 系统应：
+- **WHEN** 用户在 AttendedWeighingDetailView 中将运单完成（首磅 → 已完成）
+- **THEN** 系统应：
   - 刷新列表数据以反映已完成状态
-  - 在列表中选中新完成的运单
-  - 在 AttendedWeighingMainView（而非 DetailView）中显示已完成的运单
-  - 若该条目不在当前页，则导航到正确页码
-  - 仅在必要时切换标签页（遵循 IsShowAllRecords 标志）
+  - 按以下优先级选择下一个条目：
+    1. 优先选择下一个未完成的 Waybill（ItemType=Waybill, OrderType≠Completed）
+    2. 若无未完成 Waybill，选择下一个未完成的 WeighingRecord（ItemType=WeighingRecord, OrderType≠Completed）
+    3. 仅当所有条目均已完成时，选择最新已完成项
+  - 若选中的是未完成项，在 AttendedWeighingDetailView 中打开该条目供继续操作
+  - 若选中的是已完成项（fallback），在 AttendedWeighingMainView 中显示
+  - 若目标条目不在当前页，则导航到正确页码
+  - 遵循标签页切换规则（尊重 IsShowAllRecords 标志）
+
+#### 场景：完成操作后存在未完成 Waybill
+- **WHEN** 用户完成一个运单
+- **AND** 列表中存在其他 OrderType≠Completed 的 Waybill
+- **THEN** 系统应选择第一个未完成的 Waybill
+- **AND** 在 AttendedWeighingDetailView 中打开该 Waybill
+
+#### 场景：完成操作后无未完成 Waybill 但存在未完成 WeighingRecord
+- **WHEN** 用户完成一个运单
+- **AND** 列表中不存在未完成的 Waybill
+- **AND** 列表中存在 OrderType≠Completed 的 WeighingRecord
+- **THEN** 系统应选择第一个未完成的 WeighingRecord
+- **AND** 在 AttendedWeighingDetailView 中打开该 WeighingRecord
+
+#### 场景：完成操作后所有条目均已完成
+- **WHEN** 用户完成一个运单
+- **AND** 列表中不存在任何未完成的 Waybill 或 WeighingRecord
+- **THEN** 系统应选择最新已完成项
+- **AND** 在 AttendedWeighingMainView 中显示
 
 #### 场景：保存操作后的导航
 - **当** 用户在 AttendedWeighingDetailView 中保存称重记录或运单的修改

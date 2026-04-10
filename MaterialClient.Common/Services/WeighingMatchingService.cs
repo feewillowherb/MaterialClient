@@ -101,13 +101,6 @@ public interface IWeighingMatchingService
     Task PushWaybillAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     根据车牌号获取推荐数据（从最新完成的运单中获取）
-    /// </summary>
-    /// <param name="plateNumber">车牌号</param>
-    /// <returns>推荐数据，如果未找到则返回 null</returns>
-    Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber);
-
-    /// <summary>
     ///     根据运单ID获取运单实体
     /// </summary>
     /// <param name="waybillId">运单ID</param>
@@ -144,6 +137,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly ISettingsService _settingsService;
     private readonly RecommendPlateNumberService _recommendPlateNumberService;
+    private readonly IRecommendationService _recommendationService;
 
     /// <summary>
     ///     Load configuration from settings
@@ -357,6 +351,12 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         waybill.SetPendingSync();
 
         await _waybillRepository.UpdateAsync(waybill);
+
+        // 更新推荐缓存（仅当车牌号非空时）
+        if (!string.IsNullOrWhiteSpace(waybill.PlateNumber))
+        {
+            _recommendationService.UpdateRecommendationCache(waybill);
+        }
     }
 
     [UnitOfWork]
@@ -808,6 +808,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (!string.IsNullOrWhiteSpace(waybill.PlateNumber))
         {
             _recommendPlateNumberService.AddPlateNumberToCache(waybill.PlateNumber);
+            _recommendationService.UpdateRecommendationCache(waybill);
         }
     }
 
@@ -1358,66 +1359,6 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         _logger?.LogInformation(
             " 更新完成，成功: {SuccessCount}, 失败: {FailCount}",
             successCount, failCount);
-    }
-
-    /// <inheritdoc />
-    [UnitOfWork]
-    public async Task<WaybillRecommendationDto?> GetRecommendationByPlateNumberAsync(string plateNumber)
-    {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            _logger?.LogWarning("GetRecommendationByPlateNumberAsync: Plate number is null or empty");
-            return null;
-        }
-
-        try
-        {
-            var waybillQuery = await _waybillRepository.GetQueryableAsync();
-            var latestWaybill = await waybillQuery
-                .AsNoTracking()
-                .Where(w => w.OrderType == OrderTypeEnum.Completed)
-                .Where(w => w.PlateNumber == plateNumber)
-                .OrderByDescending(w => w.JoinTime ?? w.AddDate)
-                .FirstOrDefaultAsync();
-
-            if (latestWaybill == null)
-            {
-                _logger?.LogInformation(
-                    "GetRecommendationByPlateNumberAsync: No completed waybill found for plate number '{PlateNumber}'",
-                    plateNumber);
-                return null;
-            }
-
-            _logger?.LogInformation(
-                "GetRecommendationByPlateNumberAsync: Found recommendation for plate number '{PlateNumber}', WaybillId: {WaybillId}",
-                plateNumber, latestWaybill.Id);
-
-
-            var validProviderId = latestWaybill.ProviderId;
-
-            if (validProviderId == null)
-            {
-                validProviderId =
-                    (await waybillQuery
-                        .FirstOrDefaultAsync(x => x.PlateNumber == plateNumber && x.ProviderId != null))
-                    ?.ProviderId;
-            }
-
-
-            return new WaybillRecommendationDto(
-                latestWaybill.MaterialId,
-                validProviderId,
-                latestWaybill.MaterialUnitId,
-                latestWaybill.OrderPlanOnPcs
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex,
-                "GetRecommendationByPlateNumberAsync: Error occurred while getting recommendation for plate number '{PlateNumber}'",
-                plateNumber);
-            return null;
-        }
     }
 }
 

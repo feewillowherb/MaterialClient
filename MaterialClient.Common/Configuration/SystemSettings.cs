@@ -55,4 +55,9 @@ public class SystemSettings
     ///     Default export directory path (remembered after successful export)
     /// </summary>
     public string ExportDefaultPath { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     启用最新推荐数据（使用缓存数据而非数据库查询）
+    /// </summary>
+    public bool EnableLatestRecommendation { get; set; } = false;
 }

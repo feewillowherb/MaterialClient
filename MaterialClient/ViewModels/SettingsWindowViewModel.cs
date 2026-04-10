@@ -57,6 +57,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private LprDeviceType _lprDeviceType = LprDeviceType.Hikvision;
     [Reactive] private bool _enablePrinter;
     [Reactive] private string _selectedPrinterName = string.Empty;
+    [Reactive] private bool _enableLatestRecommendation;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -194,15 +195,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _ = LoadSettingsAsync();
     }
 
-    #region Events
-
-    /// <summary>
-    ///     Event raised when the window should be closed
-    /// </summary>
-    public event EventHandler? CloseRequested;
-
-    #endregion
-
     #region Commands
 
     [ReactiveCommand]
@@ -219,6 +211,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.LprDeviceType = LprDeviceType;
             systemSettings.EnablePrinter = EnablePrinter;
             systemSettings.SelectedPrinterName = SelectedPrinterName;
+            systemSettings.EnableLatestRecommendation = EnableLatestRecommendation;
 
             var settings = new SettingsEntity(
                 new ScaleSettings
@@ -293,7 +286,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             MessageBus.Current.SendMessage(new SettingsSavedMessage());
 
             // Close window after saving
-            CloseRequested?.Invoke(this, EventArgs.Empty);
+            MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
         }
         catch
         {
@@ -305,7 +298,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private void Cancel()
     {
         // Raise close requested event
-        CloseRequested?.Invoke(this, EventArgs.Empty);
+        MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
     }
 
     [ReactiveCommand]
@@ -703,6 +696,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             LprDeviceType = settings.SystemSettings.LprDeviceType;
             EnablePrinter = settings.SystemSettings.EnablePrinter;
             SelectedPrinterName = settings.SystemSettings.SelectedPrinterName;
+            EnableLatestRecommendation = settings.SystemSettings.EnableLatestRecommendation;
 
             // Ensure the loaded printer is in the available list (might be disconnected)
             if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&

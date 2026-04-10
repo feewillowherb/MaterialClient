@@ -15,6 +15,6 @@ public partial class WeighingRecordListView : UserControl
     public WeighingRecordListView(IServiceProvider? serviceProvider)
     {
         InitializeComponent();
-        DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModel>();
+        DataContext = serviceProvider?.GetService<AttendedWeighingDetailViewModelBase>();
     }
 }
