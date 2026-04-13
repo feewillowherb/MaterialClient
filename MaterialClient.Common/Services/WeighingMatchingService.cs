@@ -20,6 +20,11 @@ namespace MaterialClient.Common.Services;
 
 public interface IWeighingMatchingService
 {
+    /// <summary>
+    ///     手动匹配使用的最小重量差阈值（吨），固定 0.1 吨
+    /// </summary>
+    public const decimal ManualMatchMinWeightDiff = 0.1m;
+
     Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record);
     Task UpdateWaybillAsync(UpdateWaybillInput input);
     Task UpdateWeighingRecordAsync(UpdateWeighingRecordInput input);
@@ -36,8 +41,10 @@ public interface IWeighingMatchingService
     /// </summary>
     /// <param name="record">当前称重记录</param>
     /// <param name="deliveryType">收发料类型</param>
+    /// <param name="minWeightDiffOverride">手动匹配时传入的最小重量差覆盖值，为 null 时使用配置值</param>
     /// <returns>可匹配的候选记录列表</returns>
-    Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType);
+    Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType,
+        decimal? minWeightDiffOverride = null);
 
     /// <summary>
     ///     手动匹配两条称重记录并创建运单
@@ -121,6 +128,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     // 匹配配置（从设置中加载）
     private int _maxIntervalMinutes = 300;
     private decimal _minWeightDiff = 1m;
+
+    /// <summary>
+    ///     手动匹配使用的最小重量差阈值（吨），引用接口常量
+    /// </summary>
+    private const decimal ManualMatchMinWeightDiff = IWeighingMatchingService.ManualMatchMinWeightDiff;
 
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
@@ -507,10 +519,13 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     ///     获取可匹配的候选记录列表（双向匹配，record 可作为 join 或 out）
     /// </summary>
     [UnitOfWork]
-    public async Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType)
+    public async Task<List<WeighingRecord>> GetCandidateRecordsAsync(WeighingRecord record, DeliveryType deliveryType,
+        decimal? minWeightDiffOverride = null)
     {
         // Load configuration
         await LoadConfigurationAsync();
+
+        var minWeightDiff = minWeightDiffOverride ?? _minWeightDiff;
 
         if (string.IsNullOrWhiteSpace(record.PlateNumber))
         {
@@ -536,7 +551,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         // 使用 TryMatch 过滤可匹配的候选记录
         return unmatchedRecords
-            .Where(r => WeighingRecord.TryMatch(record, r, deliveryType, _maxIntervalMinutes, _minWeightDiff).IsMatch)
+            .Where(r => WeighingRecord.TryMatch(record, r, deliveryType, _maxIntervalMinutes, minWeightDiff).IsMatch)
             .OrderByDescending(r => r.AddDate)
             .ToList();
     }
@@ -551,9 +566,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         // Load configuration
         await LoadConfigurationAsync();
 
-        // 使用领域方法自动判断 join/out
+        // 使用领域方法自动判断 join/out（手动匹配使用固定阈值）
         var matchResult = WeighingRecord.TryMatch(currentRecord, matchedRecord, deliveryType, _maxIntervalMinutes,
-            _minWeightDiff);
+            ManualMatchMinWeightDiff);
 
         if (!matchResult.IsMatch || matchResult.JoinRecord == null || matchResult.OutRecord == null)
             throw new BusinessException("无法匹配这两条记录");
