@@ -54,7 +54,7 @@ public static class PlateNumberValidator
         // 新能源车牌格式：省份简称 + 字母 + 6位数字/字母组合（8位）
         // 小型新能源车：第6位为D或F，例如：京AD12345
         // 大型新能源车：第1位为D或F，例如：京AF12345
-        var pattern = @"^[京津冀晋蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新港澳台][A-Z]([0-9DF][A-HJ-NP-Z0-9]{5}|[A-HJ-NP-Z0-9]{5}[DF])$";
+        var pattern = @"^[京津晋冀蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新][A-Z][A-HJ-NP-Z0-9]{6}$";
         return Regex.IsMatch(plateNumber.Trim(), pattern);
     }
 
