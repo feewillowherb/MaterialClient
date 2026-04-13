@@ -154,7 +154,8 @@ public partial class ManualMatchWindowViewModel : ViewModelBase, ITransientDepen
 
             var candidates = await _weighingMatchingService.GetCandidateRecordsAsync(
                 CurrentRecord,
-                SelectedDeliveryType);
+                SelectedDeliveryType,
+                IWeighingMatchingService.ManualMatchMinWeightDiff);
 
             foreach (var record in candidates)
                 CandidateRecords.Add(new CandidateRecordViewModel(record, CurrentRecord.AddDate));
