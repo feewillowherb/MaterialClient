@@ -328,12 +328,12 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
             await ShowMessageBoxAsync("请先选择镇街");
             throw new InvalidOperationException("请先选择镇街");
         }
-
-        if (string.IsNullOrEmpty(SelectedSolidWasteType))
-        {
-            await ShowMessageBoxAsync("请先选择类型");
-            throw new InvalidOperationException("请先选择类型");
-        }
+        // For now, we won't enforce selecting a solid waste type, as some scenarios may not require it.
+        // if (string.IsNullOrEmpty(SelectedSolidWasteType))
+        // {
+        //     await ShowMessageBoxAsync("请先选择类型");
+        //     throw new InvalidOperationException("请先选择类型");
+        // }
 
         if (string.IsNullOrEmpty(SolidWasteOrderNumber))
         {
