@@ -226,6 +226,14 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
                 SelectedSolidWasteType = waybill.GetSolidWasteType();
                 SelectedProviderId = waybill.ProviderId;
                 _listItem.ProviderId = waybill.ProviderId;
+                SelectedProviderItem = SelectedProviderId.HasValue
+                    ? SelectionItem.FromProvider(new ProviderDto
+                    {
+                        Id = SelectedProviderId.Value,
+                        ProviderName = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value)?.ProviderName
+                            ?? string.Empty
+                    })
+                    : null;
 
                 // Read MaterialId and WaybillQuantity
                 var materialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
