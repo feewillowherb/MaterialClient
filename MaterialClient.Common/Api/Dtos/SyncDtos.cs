@@ -24,37 +24,37 @@ public record UpsertMaterialGoodDto
     ///     物料名称
     /// </summary>
     [JsonPropertyName("goodsName")]
-    public string? GoodsName { get; init; }
+    public string GoodsName { get; init; } = string.Empty;
 
     /// <summary>
     ///     物料编码
     /// </summary>
     [JsonPropertyName("goodsCode")]
-    public string? GoodsCode { get; init; }
+    public string GoodsCode { get; init; } = string.Empty;
 
     /// <summary>
     ///     规格说明
     /// </summary>
     [JsonPropertyName("specifications")]
-    public string? Specifications { get; init; }
+    public string Specifications { get; init; } = string.Empty;
 
     /// <summary>
     ///     基础单位
     /// </summary>
     [JsonPropertyName("basicUnit")]
-    public string? BasicUnit { get; init; }
+    public string BasicUnit { get; init; } = string.Empty;
 
     /// <summary>
     ///     上限
     /// </summary>
     [JsonPropertyName("upperLimit")]
-    public decimal? UpperLimit { get; init; }
+    public decimal UpperLimit { get; init; }
 
     /// <summary>
     ///     下限
     /// </summary>
     [JsonPropertyName("lowerLimit")]
-    public decimal? LowerLimit { get; init; }
+    public decimal LowerLimit { get; init; }
 
     /// <summary>
     ///     物料类型ID
@@ -66,19 +66,19 @@ public record UpsertMaterialGoodDto
     ///     供应商ID
     /// </summary>
     [JsonPropertyName("proId")]
-    public string? ProId { get; init; }
+    public string ProId { get; init; } = string.Empty;
 
     /// <summary>
     ///     公司ID
     /// </summary>
     [JsonPropertyName("coId")]
-    public int? CoId { get; init; }
+    public int CoId { get; init; }
 
     /// <summary>
     ///     单位列表
     /// </summary>
     [JsonPropertyName("units")]
-    public List<UpsertMaterialUnitDto>? Units { get; init; }
+    public List<UpsertMaterialUnitDto> Units { get; init; } = [];
 
     /// <summary>
     ///     基础版本（用于乐观并发控制）
@@ -90,7 +90,7 @@ public record UpsertMaterialGoodDto
     ///     客户端请求ID（幂等键）
     /// </summary>
     [JsonPropertyName("clientRequestId")]
-    public Guid ClientRequestId { get; init; }
+    public string ClientRequestId { get; init; } = string.Empty;
 
     /// <summary>
     ///     从 Material 实体创建 DTO
@@ -102,17 +102,17 @@ public record UpsertMaterialGoodDto
             Action = action,
             GoodsId = material.Id,
             GoodsName = material.Name,
-            GoodsCode = material.Code,
-            Specifications = material.Specifications,
-            BasicUnit = material.BasicUnit,
-            UpperLimit = material.UpperLimit,
-            LowerLimit = material.LowerLimit,
+            GoodsCode = material.Code ?? string.Empty,
+            Specifications = material.Specifications ?? string.Empty,
+            BasicUnit = material.BasicUnit ?? string.Empty,
+            UpperLimit = material.UpperLimit ?? 0,
+            LowerLimit = material.LowerLimit ?? 0,
             MaterialTypeId = null, // TODO: 从 MaterialType 获取
-            ProId = material.ProId,
+            ProId = material.ProId ?? string.Empty,
             CoId = material.CoId,
-            Units = null, // TODO: 从 MaterialUnit 获取
+            Units = [], // TODO: 从 MaterialUnit 获取
             BaseVersion = localVersion,
-            ClientRequestId = clientRequestId
+            ClientRequestId = clientRequestId.ToString("D")
         };
     }
 }
@@ -123,10 +123,10 @@ public record UpsertMaterialGoodDto
 public record UpsertMaterialUnitDto
 {
     [JsonPropertyName("unitId")]
-    public int? UnitId { get; init; }
+    public int UnitId { get; init; }
 
     [JsonPropertyName("unitName")]
-    public string? UnitName { get; init; }
+    public string UnitName { get; init; } = string.Empty;
 
     [JsonPropertyName("rate")]
     public decimal? Rate { get; init; }
@@ -159,31 +159,31 @@ public record UpsertMaterialProviderDto
     ///     供应商名称
     /// </summary>
     [JsonPropertyName("providerName")]
-    public string? ProviderName { get; init; }
+    public string ProviderName { get; init; } = string.Empty;
 
     /// <summary>
     ///     联系人姓名
     /// </summary>
     [JsonPropertyName("contectName")]
-    public string? ContectName { get; init; }
+    public string ContectName { get; init; } = string.Empty;
 
     /// <summary>
     ///     联系人电话
     /// </summary>
     [JsonPropertyName("contectPhone")]
-    public string? ContectPhone { get; init; }
+    public string ContectPhone { get; init; } = string.Empty;
 
     /// <summary>
     ///     统一社会信用代码
     /// </summary>
     [JsonPropertyName("usciCode")]
-    public string? UsciCode { get; init; }
+    public string UsciCode { get; init; } = string.Empty;
 
     /// <summary>
     ///     公司ID
     /// </summary>
     [JsonPropertyName("coId")]
-    public int? CoId { get; init; }
+    public int CoId { get; init; }
 
     /// <summary>
     ///     物料类型ID
@@ -201,7 +201,7 @@ public record UpsertMaterialProviderDto
     ///     客户端请求ID（幂等键）
     /// </summary>
     [JsonPropertyName("clientRequestId")]
-    public Guid ClientRequestId { get; init; }
+    public string ClientRequestId { get; init; } = string.Empty;
 
     /// <summary>
     ///     从 Provider 实体创建 DTO
@@ -213,13 +213,13 @@ public record UpsertMaterialProviderDto
             Action = action,
             ProviderId = provider.Id,
             ProviderName = provider.ProviderName,
-            ContectName = provider.ContectName,
-            ContectPhone = provider.ContectPhone,
-            UsciCode = null, // Provider 实体中没有此字段
-            CoId = provider.CoId,
+            ContectName = provider.ContectName ?? string.Empty,
+            ContectPhone = provider.ContectPhone ?? string.Empty,
+            UsciCode = string.Empty, // Provider 实体中没有此字段
+            CoId = provider.CoId ?? 0,
             MaterialTypeId = provider.MaterialTypeId,
             BaseVersion = localVersion,
-            ClientRequestId = clientRequestId
+            ClientRequestId = clientRequestId.ToString("D")
         };
     }
 }

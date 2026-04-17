@@ -135,7 +135,7 @@ public partial class UploadSyncService : DomainService, IUploadSyncService, ISin
                 {
                     // 构建批量请求
                     var items = new List<UpsertMaterialGoodDto>();
-                    var syncStateMap = new Dictionary<Guid, SyncState>();
+                    var syncStateMap = new Dictionary<string, SyncState>();
 
                     foreach (var syncState in batch)
                     {
@@ -169,7 +169,7 @@ public partial class UploadSyncService : DomainService, IUploadSyncService, ISin
                     foreach (var result in results)
                     {
                         var clientRequestId = items.FirstOrDefault(i => i.GoodsId == result.EntityId)?.ClientRequestId;
-                        if (clientRequestId == null || !syncStateMap.TryGetValue(clientRequestId.Value, out var syncState))
+                        if (string.IsNullOrWhiteSpace(clientRequestId) || !syncStateMap.TryGetValue(clientRequestId, out var syncState))
                         {
                             _logger.LogWarning("无法找到对应的 SyncState: EntityId={EntityId}", result.EntityId);
                             continue;
@@ -280,7 +280,7 @@ public partial class UploadSyncService : DomainService, IUploadSyncService, ISin
                 {
                     // 构建批量请求
                     var items = new List<UpsertMaterialProviderDto>();
-                    var syncStateMap = new Dictionary<Guid, SyncState>();
+                    var syncStateMap = new Dictionary<string, SyncState>();
 
                     foreach (var syncState in batch)
                     {
@@ -314,7 +314,7 @@ public partial class UploadSyncService : DomainService, IUploadSyncService, ISin
                     foreach (var result in results)
                     {
                         var clientRequestId = items.FirstOrDefault(i => i.ProviderId == result.EntityId)?.ClientRequestId;
-                        if (clientRequestId == null || !syncStateMap.TryGetValue(clientRequestId.Value, out var syncState))
+                        if (string.IsNullOrWhiteSpace(clientRequestId) || !syncStateMap.TryGetValue(clientRequestId, out var syncState))
                         {
                             _logger.LogWarning("无法找到对应的 SyncState: EntityId={EntityId}", result.EntityId);
                             continue;
