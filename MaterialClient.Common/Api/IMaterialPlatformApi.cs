@@ -78,6 +78,50 @@ public interface IMaterialPlatformApi
         //OUT
         VerificationMachineCodeEnum verificationMachineCode,
         CancellationToken cancellationToken = default);
+
+    // ========== 上行同步 API ==========
+
+    /// <summary>
+    ///     单条物料上行同步
+    /// </summary>
+    [Post("/api/Sync/UpsertMaterialGood")]
+    Task<UpsertResultDto> UpsertMaterialGoodAsync(
+        [Body] UpsertMaterialGoodDto request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     单条供应商上行同步
+    /// </summary>
+    [Post("/api/Sync/UpsertMaterialProvider")]
+    Task<UpsertResultDto> UpsertMaterialProviderAsync(
+        [Body] UpsertMaterialProviderDto request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     批量物料上行同步
+    /// </summary>
+    [Post("/api/Sync/UpsertMaterialGoodsBatch")]
+    Task<List<UpsertResultDto>> UpsertMaterialGoodsBatchAsync(
+        [Body] UpsertBatchRequestDto<UpsertMaterialGoodDto> request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     批量供应商上行同步
+    /// </summary>
+    [Post("/api/Sync/UpsertMaterialProviderBatch")]
+    Task<List<UpsertResultDto>> UpsertMaterialProviderBatchAsync(
+        [Body] UpsertBatchRequestDto<UpsertMaterialProviderDto> request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     查询服务端变更日志
+    /// </summary>
+    [Get("/api/Sync/Changes")]
+    Task<List<SyncChangeItemDto>> GetSyncChangesAsync(
+        [Query] long? sinceChangeId,
+        [Query] string? entityType,
+        [Query] int? limit,
+        CancellationToken cancellationToken = default);
 }
 
 public record GetAuthMachineCodeInput(
