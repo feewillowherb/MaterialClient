@@ -40,7 +40,6 @@ MaterialClient (Avalonia)
 - Enable MaterialClient to push local material and supplier changes to the platform via the existing Sync API
 - Track sync state per entity (pending, applied, conflict) with version alignment
 - Integrate upload sync into the existing polling cycle
-- Provide a UI for monitoring sync status and manual trigger
 - Notify ViewModels of sync completion via MessageBus
 
 **Non-Goals:**
@@ -114,7 +113,21 @@ MaterialClient (Avalonia)
 | 下载同步覆盖已推送的本地数据 | 推送尝试之间平台更新到达时客户端变更丢失 | 上传在轮询周期中下载之后运行；版本检查可捕获此情况 |
 | 大量待同步项导致超时 | 同步步骤超过轮询间隔 | 分为 100 条一批；Polly 重试策略处理瞬态错误 |
 | SyncState 表无限增长 | 随时间推移的存储/性能问题 | 自动清理：删除超过 30 天的"已同步"条目 |
-| 离线期间产生大量待同步项 | 重连后首次同步较慢 | 批量处理并记录进度；不阻塞 UI |
+| 离线期间产生大量待同步项 | 重连后首次同步较慢 | 批量处理并记录进度 |
+
+## Removed: UI Components
+
+**[反馈 2026-04-16]**：用户不需要关心数据同步状态，同步应在后台自动完成。
+
+以下组件已从设计中移除：
+- `DataManagementWindow` - 数据管理对话框
+- `DataManagementViewModel` - 数据管理 ViewModel
+- 所有与同步状态显示相关的 UI 任务
+
+**影响**：
+- 同步完全在后台通过 `PollingBackgroundService` 自动执行
+- 冲突解决采用"服务端优先"策略，无需用户干预
+- `MessageBus` 消息（`MaterialSyncedMessage`、`ProviderSyncedMessage`）仍保留，用于 ViewModel 刷新缓存数据
 
 ## Component Architecture
 
@@ -123,8 +136,7 @@ Upload Sync Components
 ├── UploadSyncService (Domain Service)
 │   ├── UploadPendingMaterialsAsync()
 │   ├── UploadPendingProvidersAsync()
-│   ├── UploadAllPendingAsync()
-│   └── ResolveConflictAsync()
+│   └── UploadAllPendingAsync()
 ├── SyncState (Entity)
 │   ├── EntityType (Material/Provider)
 │   ├── EntityId (int)
@@ -138,17 +150,9 @@ Upload Sync Components
 │   ├── UpsertMaterialProviderDto (record)
 │   ├── UpsertBatchRequestDto<T> (record)
 │   └── UpsertResultDto (record)
-├── Sync Messages (Events)
-│   ├── MaterialSyncedMessage
-│   └── ProviderSyncedMessage
-├── DataManagementViewModel (ViewModel)
-│   ├── SyncStates (ObservableCollection)
-│   ├── SyncAllCommand
-│   └── RefreshCommand
-└── DataManagementWindow (View)
-    ├── Material sync status DataGrid
-    ├── Provider sync status DataGrid
-    └── Sync All / Refresh buttons
+└── Sync Messages (Events)
+    ├── MaterialSyncedMessage
+    └── ProviderSyncedMessage
 ```
 
 ## Data Flow
@@ -241,7 +245,4 @@ sequenceDiagram
 | `MaterialClient/Backgrounds/PollingBackgroundService.cs` | Modify | 在下载同步后添加 UploadAllPendingAsync 步骤 | Background |
 | `MaterialClient.EFCore/EntityConfigurations/SyncStateConfiguration.cs` | Create | EF Core 配置: 表名、索引、必填字段 | EF Core |
 | `MaterialClient.EFCore/MaterialClientDbContext.cs` | Modify | 添加 DbSet\<SyncState\> | EF Core |
-| `MaterialClient/ViewModels/DataManagementViewModel.cs` | Create | ViewModel: 加载同步状态, SyncAll/Refresh 命令 | ViewModel |
-| `MaterialClient/Views/DataManagementWindow.axaml` | Create | 基于 DataGrid 的同步状态对话框 | UI |
-| `MaterialClient/Views/DataManagementWindow.axaml.cs` | Create | 含 MessageBus 清理的 code-behind | UI |
 | `MaterialClient/Migrations/` | Create | SyncState 表的 EF Core 迁移 | Migration |

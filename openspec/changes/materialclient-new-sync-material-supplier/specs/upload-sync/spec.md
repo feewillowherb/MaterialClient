@@ -118,7 +118,7 @@
 
 ### Requirement: 同步完成后发送 MessageBus 通知
 
-系统须在成功完成上行同步后发送 MessageBus 消息，以便 ViewModel 刷新缓存数据。
+系统须在成功完成上行同步后发送 MessageBus 消息，以便 ViewModel 刷新缓存数据（例如，推荐缓存失效）。
 
 #### Scenario: 物料同步成功
 
@@ -135,6 +135,23 @@
 
 - **WHEN** 上行同步完成，但已应用项为零
 - **THEN** 系统不得发布任何 MessageBus 消息
+
+### Requirement: 与 PollingBackgroundService 集成
+
+`PollingBackgroundService` 须在所有下载同步步骤完成后包含上行同步步骤。
+
+#### Scenario: 上行同步在下载同步之后执行
+
+- **WHEN** `PollingBackgroundService.DoWorkAsync` 执行
+- **THEN** 系统须先运行下载同步步骤（VerifyAuth、SyncMaterial、SyncMaterialType、SyncProvider）
+- **AND** 然后运行 `IUploadSyncService.UploadAllPendingAsync`
+- **AND** 最后按原有逻辑运行 PushWaybill 和 UploadAttachments
+
+#### Scenario: 上行同步失败不阻塞后续步骤
+
+- **WHEN** 上行同步步骤抛出异常
+- **THEN** 异常须被捕获并记录
+- **AND** 后续步骤（PushWaybill、UploadAttachments）须继续执行
 
 ### Requirement: 同步操作的 DTO 定义
 
