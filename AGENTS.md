@@ -101,9 +101,18 @@ openspec/
 - 订阅方使用 `MessageBus.Current.Listen<XxxMessage>().ObserveOn(RxApp.MainThreadScheduler).Subscribe(...).DisposeWith(_disposables)` 管理生命周期。
 - View code-behind 中的 MessageBus 订阅同样使用 `CompositeDisposable` + `DisposeWith`，在 `OnClosed` 中统一 Dispose。
 
-### 实施计划语言（NON-NEGOTIABLE）
+### Cursor Plans 约定（NON-NEGOTIABLE）
 
-- 实施计划文档（如 plan.md、`.cursor/plans/*.plan.md`）必须使用英文撰写。
+- 计划文档统一存放在 `.cursor/plans/`，文件后缀必须为 `.plan.md`。
+- 文件命名使用 kebab_case + 随机后缀，推荐格式：`<topic>_<8hex>.plan.md`（如 `add_weighingmode_filtering_c451b965.plan.md`）。
+- 实施计划文档（如 `plan.md`、`.cursor/plans/*.plan.md`）必须使用英文撰写。
+- 每个 plan 文件必须包含 YAML Front Matter，至少包含：
+  - `name`
+  - `overview`
+  - `todos`（每项含 `id`、`content`、`status`）
+- `todos.status` 仅允许：`pending`、`in_progress`、`completed`。
+- 实施过程中需持续更新 `todos` 状态，确保任一时刻最多只有一个 `in_progress`。
+- 代码实现、验收与回归时，应以对应 `.cursor/plans/*.plan.md` 作为执行与追踪依据。
 
 ## 设计模式原则
 
