@@ -98,15 +98,19 @@ After refactoring, the codebase SHALL NOT contain any `if (IsSolidWasteMode)` co
 - **THEN** zero matches are found
 
 ### Requirement: View DataType compatibility
-All views that bind to the detail ViewModel SHALL use `x:DataType="vm:AttendedWeighingDetailViewModelBase"` for compiled bindings.
+All detail sub-views SHALL be selected through `ContentControl` + typed `DataTemplate` in `AttendedWeighingDetailView.axaml`. `AttendedWeighingDetailView` SHALL bind `Content="{Binding}"`, and each sub-view SHALL keep its own concrete `x:DataType` matching the ViewModel subclass (`StandardWeighingDetailViewModel` / `SolidWasteWeighingDetailViewModel`).
 
-#### Scenario: StandardModeFormView resolves base class bindings
-- **WHEN** `StandardModeFormView` is rendered with a `StandardWeighingDetailViewModel` DataContext
-- **THEN** all bindings to base class properties (PlateNumber, Providers, MaterialItems, etc.) resolve correctly
+#### Scenario: StandardModeFormView resolves Standard subclass bindings
+- **WHEN** `AttendedWeighingDetailView` is rendered with a `StandardWeighingDetailViewModel` DataContext
+- **THEN** only `StandardModeFormView` is instantiated by `DataTemplate` type matching, and compiled bindings to `StandardWeighingDetailViewModel` properties resolve correctly
 
-#### Scenario: SolidWasteModeFormView resolves base class bindings
-- **WHEN** `SolidWasteModeFormView` is rendered with a `SolidWasteWeighingDetailViewModel` DataContext
-- **THEN** all bindings to base class and subclass properties resolve correctly
+#### Scenario: SolidWasteModeFormView resolves SolidWaste subclass bindings
+- **WHEN** `AttendedWeighingDetailView` is rendered with a `SolidWasteWeighingDetailViewModel` DataContext
+- **THEN** only `SolidWasteModeFormView` is instantiated by `DataTemplate` type matching, and compiled bindings to `SolidWasteWeighingDetailViewModel` properties resolve correctly
+
+#### Scenario: No cast exception in SolidWaste mode
+- **WHEN** the DataContext is `SolidWasteWeighingDetailViewModel`
+- **THEN** `StandardModeFormView` is NOT instantiated in the visual tree, and no `InvalidCastException` occurs
 
 ### Requirement: MaterialItemRow independence
 `MaterialItemRow` SHALL be defined in its own file (`ViewModels/MaterialItemRow.cs`) and remain shared by both modes via the base class `MaterialItems` collection.
