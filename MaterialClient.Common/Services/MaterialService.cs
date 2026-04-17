@@ -56,15 +56,18 @@ public class MaterialService : DomainService, IMaterialService
 {
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
+    private readonly IRepository<SyncState, int> _syncStateRepository;
     private readonly ISettingsService _settingsService;
 
     public MaterialService(
         IRepository<Material, int> materialRepository,
         IRepository<MaterialUnit, int> materialUnitRepository,
+        IRepository<SyncState, int> syncStateRepository,
         ISettingsService settingsService)
     {
         _materialRepository = materialRepository;
         _materialUnitRepository = materialUnitRepository;
+        _syncStateRepository = syncStateRepository;
         _settingsService = settingsService;
     }
 
@@ -207,7 +210,32 @@ public class MaterialService : DomainService, IMaterialService
 
         await _materialUnitRepository.InsertAsync(defaultUnit, autoSave: true);
 
+        var localVersion = material.UpdateTime ?? material.AddTime;
+        await UpsertMaterialSyncStateAsync(material.Id, localVersion);
+
         return material;
+    }
+
+    private async Task UpsertMaterialSyncStateAsync(int materialId, long localVersion)
+    {
+        var syncState = await _syncStateRepository.FirstOrDefaultAsync(
+            s => s.EntityType == SyncEntityType.Material && s.EntityId == materialId);
+
+        if (syncState == null)
+        {
+            var newSyncState = new SyncState(
+                SyncEntityType.Material,
+                materialId,
+                localVersion,
+                Guid.NewGuid());
+
+            await _syncStateRepository.InsertAsync(newSyncState, autoSave: true);
+            return;
+        }
+
+        syncState.ResetToPending(localVersion);
+        syncState.ClientRequestId = Guid.NewGuid();
+        await _syncStateRepository.UpdateAsync(syncState, autoSave: true);
     }
 }
 

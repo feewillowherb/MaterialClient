@@ -58,6 +58,7 @@ public interface IProviderService
 public partial class ProviderService : DomainService, IProviderService
 {
     private readonly IRepository<Provider, int> _providerRepository;
+    private readonly IRepository<SyncState, int> _syncStateRepository;
     private readonly ISettingsService _settingsService;
 
     /// <inheritdoc />
@@ -182,7 +183,12 @@ public partial class ProviderService : DomainService, IProviderService
             IsDeleted = false
         };
 
-        return await _providerRepository.InsertAsync(provider, autoSave: true);
+        provider = await _providerRepository.InsertAsync(provider, autoSave: true);
+
+        var localVersion = provider.UpdateTime ?? provider.AddTime;
+        await UpsertProviderSyncStateAsync(provider.Id, localVersion);
+
+        return provider;
     }
 
     /// <inheritdoc />
@@ -208,8 +214,10 @@ public partial class ProviderService : DomainService, IProviderService
         }
 
         provider.UpdateInfo(providerName, contactName, contactPhone);
+        provider.UpdateTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         await _providerRepository.UpdateAsync(provider, autoSave: true);
+        await UpsertProviderSyncStateAsync(provider.Id, provider.UpdateTime.Value);
 
         return new ProviderDto
         {
@@ -219,5 +227,27 @@ public partial class ProviderService : DomainService, IProviderService
             ContactName = provider.ContectName,
             ContactPhone = provider.ContectPhone
         };
+    }
+
+    private async Task UpsertProviderSyncStateAsync(int providerId, long localVersion)
+    {
+        var syncState = await _syncStateRepository.FirstOrDefaultAsync(
+            s => s.EntityType == SyncEntityType.Provider && s.EntityId == providerId);
+
+        if (syncState == null)
+        {
+            var newSyncState = new SyncState(
+                SyncEntityType.Provider,
+                providerId,
+                localVersion,
+                Guid.NewGuid());
+
+            await _syncStateRepository.InsertAsync(newSyncState, autoSave: true);
+            return;
+        }
+
+        syncState.ResetToPending(localVersion);
+        syncState.ClientRequestId = Guid.NewGuid();
+        await _syncStateRepository.UpdateAsync(syncState, autoSave: true);
     }
 }
