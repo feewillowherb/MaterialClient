@@ -2,7 +2,7 @@
 
 ### Requirement: SyncState 实体结构
 
-系统须在 SQLite 中维护 `SyncState` 实体，包含以下属性：
+系统 MUST 在 SQLite 中维护 `SyncState` 实体，包含以下属性：
 - `Id`（int，主键，自增）
 - `EntityType`（enum：`Material` = 0, `Provider` = 1）
 - `EntityId`（int，外键关联 Material 或 Provider）
@@ -28,7 +28,7 @@
 
 ### Requirement: 实体变更时创建 SyncState
 
-当本地 Material 或 Provider 实体被创建或更新（通过检测到本地修改的下载同步）时，系统须创建状态为 `Pending` 的 `SyncState` 条目。
+当本地 Material 或 Provider 实体被创建或更新（通过检测到本地修改的下载同步）时，系统 MUST 创建状态为 `Pending` 的 `SyncState` 条目。
 
 #### Scenario: 从平台下载新物料
 
@@ -47,7 +47,7 @@
 
 ### Requirement: SyncState 状态转换
 
-系统须强制执行以下 `SyncState.Status` 状态转换：
+系统 MUST 强制执行以下 `SyncState.Status` 状态转换：
 
 ```
 Pending ──上传成功──► Applied
@@ -82,7 +82,7 @@ Applied ──实体被修改──► Pending
 
 ### Requirement: 自动清理过期的 Applied 条目
 
-系统须在每次上传同步周期中删除 `Status = Applied` 且超过 30 天的 `SyncState` 条目。
+系统 MUST 在每次上传同步周期中删除 `Status = Applied` 且超过 30 天的 `SyncState` 条目。
 
 #### Scenario: 同步期间执行清理
 
@@ -97,7 +97,7 @@ Applied ──实体被修改──► Pending
 
 ### Requirement: SyncState 的 EF Core 配置
 
-系统须在专用的 `SyncStateConfiguration` 类中使用 EF Core Fluent API 配置 `SyncState` 实体。
+系统 MUST 在专用的 `SyncStateConfiguration` 类中使用 EF Core Fluent API 配置 `SyncState` 实体。
 
 #### Scenario: 必填字段配置
 

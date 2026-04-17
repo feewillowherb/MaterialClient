@@ -19,6 +19,7 @@
 - [x] 3.5 实现 `UploadAllPendingAsync`：先运行物料上传，再运行供应商上传，返回包含计数的 `UploadSyncSummary` record。
 - [x] 3.6 实现自动清理：在每个上传周期开始时删除超过 30 天的 Applied SyncState 条目。
 - [x] 3.7 创建 `MaterialClient.Common/Events/MaterialSyncedMessage.cs` 和 `ProviderSyncedMessage.cs` MessageBus 消息类。上传成功后发布。
+- [ ] 3.8 在本地实体变更路径中创建/更新 `SyncState`：当 Material/Provider 被本地修改且需要上传时，新增 `Pending` 条目（含新 `ClientRequestId`）；若条目已存在则重置为 `Pending`、更新 `LocalVersion` 并重置 `RetryCount`。
 
 ## 4. PollingBackgroundService 集成
 

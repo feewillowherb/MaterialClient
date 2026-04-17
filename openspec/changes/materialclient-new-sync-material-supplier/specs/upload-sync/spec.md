@@ -2,7 +2,7 @@
 
 ### Requirement: 上行同步服务接口
 
-系统须提供 `IUploadSyncService` 接口，包含以下方法：
+系统 MUST 提供 `IUploadSyncService` 接口，包含以下方法：
 - `Task UploadAllPendingAsync(CancellationToken ct)` — 上传所有待同步的物料和供应商
 - `Task<UploadSyncSummary> UploadPendingMaterialsAsync(CancellationToken ct)` — 仅上传待同步的物料
 - `Task<UploadSyncSummary> UploadPendingProvidersAsync(CancellationToken ct)` — 仅上传待同步的供应商
@@ -30,7 +30,7 @@
 
 ### Requirement: 分批上传与自动分块
 
-系统须按照后端要求，以每批最多 100 条的方式分批上传待同步项。
+系统 MUST 按照后端要求，以每批最多 100 条的方式分批上传待同步项。
 
 #### Scenario: 待同步物料超过 100 条
 
@@ -46,7 +46,7 @@
 
 ### Requirement: 每条同步状态对应唯一幂等键
 
-每条 `SyncState` 条目须在创建时生成唯一的 `ClientRequestId`（GUID）。该键须在每次上传尝试时发送。
+每条 `SyncState` 条目 MUST 在创建时生成唯一的 `ClientRequestId`（GUID）。该键 MUST 在每次上传尝试时发送。
 
 #### Scenario: 使用相同幂等键重试
 
@@ -61,7 +61,7 @@
 
 ### Requirement: 基于版本跟踪的乐观并发
 
-系统须在每次上传请求中包含 `SyncState.LocalVersion` 作为 `baseVersion`。服务端响应中的版本须存储在 `SyncState.ServerVersion` 中。
+系统 MUST 在每次上传请求中包含 `SyncState.LocalVersion` 作为 `baseVersion`。服务端响应中的版本 MUST 存储在 `SyncState.ServerVersion` 中。
 
 #### Scenario: 版本匹配 — 已应用
 
@@ -84,7 +84,7 @@
 
 ### Requirement: 同步端点的 Refit API 客户端
 
-系统须扩展 `IMaterialPlatformApi`，为所有同步 API 端点添加 Refit 方法。
+系统 MUST 扩展 `IMaterialPlatformApi`，为所有同步 API 端点添加 Refit 方法。
 
 #### Scenario: 单条物料上行同步端点
 
@@ -118,7 +118,7 @@
 
 ### Requirement: 同步完成后发送 MessageBus 通知
 
-系统须在成功完成上行同步后发送 MessageBus 消息，以便 ViewModel 刷新缓存数据（例如，推荐缓存失效）。
+系统 MUST 在成功完成上行同步后发送 MessageBus 消息，以便 ViewModel 刷新缓存数据（例如，推荐缓存失效）。
 
 #### Scenario: 物料同步成功
 
@@ -138,7 +138,7 @@
 
 ### Requirement: 与 PollingBackgroundService 集成
 
-`PollingBackgroundService` 须在所有下载同步步骤完成后包含上行同步步骤。
+`PollingBackgroundService` MUST 在所有下载同步步骤完成后包含上行同步步骤。
 
 #### Scenario: 上行同步在下载同步之后执行
 
@@ -155,7 +155,7 @@
 
 ### Requirement: 同步操作的 DTO 定义
 
-系统须在 `MaterialClient.Common/Api/Dtos/` 中定义以下 record 类型：
+系统 MUST 在 `MaterialClient.Common/Api/Dtos/` 中定义以下 record 类型：
 
 - `UpsertMaterialGoodDto` — 对应服务端 DTO：Action, GoodsId, GoodsName, GoodsCode, Specifications, BasicUnit, UpperLimit, LowerLimit, MaterialTypeId, ProId, CoId, Units, baseVersion, clientRequestId
 - `UpsertMaterialProviderDto` — 对应服务端 DTO：Action, ProviderId, ProviderName, ContectName, ContectPhone, UsciCode, CoId, MaterialTypeId, baseVersion, clientRequestId
@@ -171,7 +171,7 @@
 
 ### Requirement: UploadSyncService 作为单例并使用 AutoConstructor
 
-`UploadSyncService` 须通过 ABP 约定（`ISingletonDependency`）注册为单例，并使用 `[AutoConstructor]` 进行依赖注入。
+`UploadSyncService` MUST 通过 ABP 约定（`ISingletonDependency`）注册为单例，并使用 `[AutoConstructor]` 进行依赖注入。
 
 #### Scenario: 服务注册
 

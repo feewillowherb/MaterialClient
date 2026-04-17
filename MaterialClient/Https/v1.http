@@ -1,7 +1,7 @@
 ﻿### MaterialClient API 测试
 
 ### 变量定义
-@baseUrl = http://localhost:9960
+@baseUrl = http://192.168.3.112:9960
 
 ### 0. 测试服务信息
 GET {{baseUrl}}/
