@@ -93,4 +93,4 @@ Installer/
 # ---- Claude / MCP Temporary Directories ----
 tempclaude-*
 tmpclaude-*
-*.cwd
+*.cwd  
