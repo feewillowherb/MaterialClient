@@ -40,6 +40,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     public DbSet<SettingsEntity> Settings { get; set; }
     public DbSet<WorkSettingsEntity> WorkSettings { get; set; }
 
+    // Sync DbSet
+    public DbSet<SyncState> SyncStates { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -228,6 +231,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
         // Configure WorkSettingsEntity
         modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
+
+        // Apply SyncState configuration from separate configuration class
+        modelBuilder.ApplyConfiguration(new SyncStateConfiguration());
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
