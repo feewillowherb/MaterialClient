@@ -49,7 +49,10 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
             
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
+            if (workerContext.CancellationToken.IsCancellationRequested) return;
+            await WithUow(UploadSyncAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
             
@@ -107,6 +110,26 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         Logger.LogInformation("开始同步供应商数据...");
         await service.SyncProviderAsync();
         Logger.LogInformation("供应商数据同步完成");
+    }
+
+    private async Task UploadSyncAsync(IServiceProvider serviceProvider,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var service = serviceProvider.GetRequiredService<IUploadSyncService>();
+
+            Logger.LogInformation("开始上行同步待同步数据...");
+            var summary = await service.UploadAllPendingAsync(cancellationToken);
+            Logger.LogInformation(
+                "上行同步完成：已应用 {Applied}，冲突 {Conflict}，失败 {Failed}，跳过 {Skipped}",
+                summary.AppliedCount, summary.ConflictCount, summary.FailedCount, summary.SkippedCount);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "上行同步时发生异常");
+            // 不抛出异常，避免影响后续步骤
+        }
     }
 
     private async Task VerifyAuthAsync(IServiceProvider serviceProvider,
