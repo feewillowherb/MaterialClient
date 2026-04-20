@@ -41,6 +41,21 @@ public interface IMaterialPlatformApi
         CancellationToken cancellationToken = default
     );
 
+    [Post("/api/Material/CreateMaterialByName")]
+    Task<HttpResult<MaterialWriteResultDto>> CreateMaterialByNameAsync(
+        [Body] CreateMaterialByNameInput request,
+        CancellationToken cancellationToken = default);
+
+    [Post("/api/Provider/CreateProvider")]
+    Task<HttpResult<ProviderWriteResultDto>> CreateProviderAsync(
+        [Body] CreateProviderInput request,
+        CancellationToken cancellationToken = default);
+
+    [Post("/api/Provider/UpdateProvider")]
+    Task<HttpResult<ProviderWriteResultDto>> UpdateProviderAsync(
+        [Body] UpdateProviderInput request,
+        CancellationToken cancellationToken = default);
+
 
     /// <summary>
     ///     用户登录
@@ -100,6 +115,18 @@ public record GetMaterialProviderListInput(
     string ProId,
     long UploadTime
 );
+
+public record CreateMaterialByNameInput(string Name);
+
+public record CreateProviderInput(
+    string ProviderName,
+    int DeliveryType);
+
+public record UpdateProviderInput(
+    int Id,
+    string ProviderName,
+    string? ContactName,
+    string? ContactPhone);
 
 public enum VerificationMachineCodeEnum
 {

@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
+using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -57,6 +59,7 @@ public interface IProviderService
 [AutoConstructor]
 public partial class ProviderService : DomainService, IProviderService
 {
+    private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly ISettingsService _settingsService;
 
@@ -168,21 +171,15 @@ public partial class ProviderService : DomainService, IProviderService
             throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-        var now = DateTime.Now;
-
-        var provider = new Provider(
-            providerType: (int)deliveryType,
-            providerName: providerName.Trim())
+        var response = await _materialPlatformApi.CreateProviderAsync(
+            new CreateProviderInput(providerName.Trim(), (int)deliveryType));
+        if (response.Success != true || response.Data == null)
         {
-            CoId = 1, // TODO update in next version
-            WeighingMode = weighingMode,
-            AddDate = now,
-            AddTime = (int)DateTimeOffset.Now.ToUnixTimeSeconds(),
-            IsDeleted = false
-        };
+            var errorMessage = response.Msg ?? "Remote provider create failed.";
+            throw new BusinessException("PROVIDER:REMOTE_CREATE_FAILED", errorMessage);
+        }
 
-        return await _providerRepository.InsertAsync(provider, autoSave: true);
+        return response.Data.ToEntity();
     }
 
     /// <inheritdoc />
@@ -193,31 +190,19 @@ public partial class ProviderService : DomainService, IProviderService
         string? contactName,
         string? contactPhone)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
-        var queryable = await _providerRepository.GetQueryableAsync();
-        var provider = await queryable
-            .Where(p => p.Id == id)
-            .Where(p => !p.IsDeleted)
-            .Where(p => p.WeighingMode == weighingMode)
-            .FirstOrDefaultAsync();
-
-        if (provider == null)
+        if (string.IsNullOrWhiteSpace(providerName))
         {
-            throw new ArgumentException($"Provider(id={id}) not found.", nameof(id));
+            throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
-        provider.UpdateInfo(providerName, contactName, contactPhone);
-
-        await _providerRepository.UpdateAsync(provider, autoSave: true);
-
-        return new ProviderDto
+        var response = await _materialPlatformApi.UpdateProviderAsync(
+            new UpdateProviderInput(id, providerName.Trim(), contactName?.Trim(), contactPhone?.Trim()));
+        if (response.Success != true || response.Data == null)
         {
-            Id = provider.Id,
-            ProviderType = provider.ProviderType ?? 0,
-            ProviderName = provider.ProviderName ?? string.Empty,
-            ContactName = provider.ContectName,
-            ContactPhone = provider.ContectPhone
-        };
+            var errorMessage = response.Msg ?? "Remote provider update failed.";
+            throw new BusinessException("PROVIDER:REMOTE_UPDATE_FAILED", errorMessage);
+        }
+
+        return response.Data.ToProviderDto();
     }
 }

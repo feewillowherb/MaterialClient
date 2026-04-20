@@ -1,8 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MaterialClient.Common.Api;
+using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using Microsoft.EntityFrameworkCore;
+using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -56,15 +59,18 @@ public class MaterialService : DomainService, IMaterialService
 {
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
+    private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly ISettingsService _settingsService;
 
     public MaterialService(
         IRepository<Material, int> materialRepository,
         IRepository<MaterialUnit, int> materialUnitRepository,
+        IMaterialPlatformApi materialPlatformApi,
         ISettingsService settingsService)
     {
         _materialRepository = materialRepository;
         _materialUnitRepository = materialUnitRepository;
+        _materialPlatformApi = materialPlatformApi;
         _settingsService = settingsService;
     }
 
@@ -175,39 +181,15 @@ public class MaterialService : DomainService, IMaterialService
             throw new ArgumentException("Material name is required.", nameof(materialName));
         }
 
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-        var now = DateTime.Now;
-
-        var material = new Material(
-            name: materialName.Trim(),
-            coId: 1) // TODO update in next version
+        var response = await _materialPlatformApi.CreateMaterialByNameAsync(
+            new CreateMaterialByNameInput(materialName.Trim()));
+        if (response.Success != true || response.Data == null)
         {
-            UnitName = "个",
-            UnitRate = 1,
-            WeighingMode = weighingMode,
-            AddDate = now,
-            AddTime = (int)DateTimeOffset.Now.ToUnixTimeSeconds(),
-            IsDeleted = false
-        };
+            var errorMessage = response.Msg ?? "Remote material create failed.";
+            throw new BusinessException("MATERIAL:REMOTE_CREATE_FAILED", errorMessage);
+        }
 
-        material = await _materialRepository.InsertAsync(material, autoSave: true);
-
-        // Create default MaterialUnit to keep downstream unit loading consistent.
-        var defaultUnit = new MaterialUnit(
-            materialId: material.Id,
-            unitName: "个",
-            rate: 1m)
-        {
-            UnitCalculationType = 1, // 按数量
-            WeighingMode = weighingMode,
-            AddDate = now,
-            AddTime = (int)DateTimeOffset.Now.ToUnixTimeSeconds(),
-            IsDeleted = false
-        };
-
-        await _materialUnitRepository.InsertAsync(defaultUnit, autoSave: true);
-
-        return material;
+        return response.Data.ToEntity();
     }
 }
 
