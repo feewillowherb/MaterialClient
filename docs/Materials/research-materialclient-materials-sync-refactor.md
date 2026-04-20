@@ -115,6 +115,7 @@
 - Content-Type：`application/json`
 - 幂等请求头（Create 可选）：`X-Idempotency-Key: <uuid>`
 - 追踪请求头（可选）：`X-Correlation-Id: <trace-id>`
+- 本次业务以“简单模式（仅名称）”为主；标准全字段 Create/Update 作为扩展能力保留。
 
 统一响应包装建议：
 
@@ -127,22 +128,22 @@
 }
 ```
 
-### 2. 新增物料（Create）
+### 2. 接口分层策略（Simple 与 Standard）
 
-- Method & Path：`POST /api/materials`
-- 用途：创建新物料，由服务端生成主键并返回最新实体。
+- **Simple API（推荐客户端默认使用）**：客户端只传 `name`（和更新时的 `version`），服务端负责补全复杂字段。
+- **Standard API（扩展能力）**：完整字段的 `Create/Update`，用于后台管理或未来高级编辑场景。
+- 建议客户端封装专用网关：`CreateMaterialByNameAsync`、`RenameMaterialAsync`，避免 UI 直接调用 Standard API。
 
-请求体示例：
+### 3. Simple API：按名称创建（Create By Name）
+
+- Method & Path：`POST /api/materials/simple-create`
+- 用途：客户端仅提交名称，由服务端按默认策略创建完整物料对象。
+
+请求体示例（仅名称）：
 
 ```json
 {
-  "materialCode": "M-10001",
-  "materialName": "冷轧钢板",
-  "specification": "SPCC 1.2mm",
-  "unit": "kg",
-  "categoryCode": "RAW-METAL",
-  "isEnabled": true,
-  "remark": "首批导入后新增"
+  "name": "冷轧钢板"
 }
 ```
 
@@ -151,37 +152,33 @@
 ```json
 {
   "code": "OK",
-  "message": "Material created",
+  "message": "Material created by name",
   "traceId": "2d9fdbf7f5a64453be9c4673e09b2455",
   "data": {
     "id": "8f8b4d6a-40ec-4ca9-95d3-3c9f7f8f3511",
     "materialCode": "M-10001",
     "materialName": "冷轧钢板",
-    "specification": "SPCC 1.2mm",
-    "unit": "kg",
-    "categoryCode": "RAW-METAL",
+    "specification": "",
+    "unit": "pcs",
+    "categoryCode": "UNCLASSIFIED",
     "isEnabled": true,
+    "remark": "",
     "version": 1,
     "updatedAt": "2026-04-20T08:00:00Z"
   }
 }
 ```
 
-### 3. 更新物料（Update）
+### 4. Simple API：按名称重命名（Rename）
 
-- Method & Path：`PUT /api/materials/{id}`
-- 用途：更新既有物料，需携带版本号进行并发控制。
+- Method & Path：`PUT /api/materials/{id}/simple-rename`
+- 用途：仅修改名称；需携带 `version` 做并发控制，其他复杂字段不允许由客户端变更。
 
-请求体示例：
+请求体示例（仅名称 + 版本）：
 
 ```json
 {
-  "materialName": "冷轧钢板-A",
-  "specification": "SPCC 1.2mm",
-  "unit": "kg",
-  "categoryCode": "RAW-METAL",
-  "isEnabled": true,
-  "remark": "名称修订",
+  "name": "冷轧钢板-A",
   "version": 1
 }
 ```
@@ -191,30 +188,37 @@
 ```json
 {
   "code": "OK",
-  "message": "Material updated",
+  "message": "Material renamed",
   "traceId": "f89e91ca4df742f1ab8042f2f53f7ea5",
   "data": {
     "id": "8f8b4d6a-40ec-4ca9-95d3-3c9f7f8f3511",
     "materialCode": "M-10001",
     "materialName": "冷轧钢板-A",
-    "specification": "SPCC 1.2mm",
-    "unit": "kg",
-    "categoryCode": "RAW-METAL",
+    "specification": "",
+    "unit": "pcs",
+    "categoryCode": "UNCLASSIFIED",
     "isEnabled": true,
+    "remark": "",
     "version": 2,
     "updatedAt": "2026-04-20T08:30:00Z"
   }
 }
 ```
 
-### 4. 写后回读（Get By Id / Get By Code）
+### 5. Standard API（保留）
+
+- `POST /api/materials`：完整字段创建（非本期客户端默认入口）。
+- `PUT /api/materials/{id}`：完整字段更新（非本期客户端默认入口）。
+- 说明：Standard API 保留用于后台管理或后续高级编辑需求，避免与 Simple API 职责混淆。
+
+### 6. 写后回读（Get By Id / Get By Code）
 
 - `GET /api/materials/{id}`：按主键查询。
 - `GET /api/materials/by-code/{materialCode}`：按业务编码查询。
 
 客户端在新增/更新成功后，建议按 `id` 回读一次，确保界面展示与服务端最终状态一致。
 
-### 5. 列表查询（可选但推荐）
+### 7. 列表查询（可选但推荐）
 
 - Method & Path：`GET /api/materials`
 - Query 参数建议：
@@ -224,30 +228,86 @@
   - `page` / `pageSize`：分页
 - 用途：支持客户端列表刷新与检索。
 
-### 6. 错误码约定（建议）
+### 8. 错误码约定（建议）
 
 | HTTP Status | 业务码 | 场景 | 客户端建议处理 |
 |---|---|---|---|
+| 400 | `NAME_REQUIRED` | 名称为空 | 直接提示“名称不能为空” |
+| 400 | `NAME_TOO_LONG` | 名称超过长度限制 | 提示长度超限 |
 | 400 | `VALIDATION_ERROR` | 字段校验失败 | 直接展示字段错误 |
 | 401 | `UNAUTHORIZED` | 未登录或令牌无效 | 引导重新登录 |
 | 403 | `FORBIDDEN` | 无权限新增/更新 | 提示无权限并记录日志 |
 | 404 | `MATERIAL_NOT_FOUND` | 更新目标不存在 | 提示数据已不存在并刷新列表 |
+| 409 | `NAME_DUPLICATE` | 名称重复（按业务唯一策略） | 提示修改名称后重试 |
 | 409 | `MATERIAL_CODE_CONFLICT` | 编码重复 | 提示修改编码后重试 |
 | 409 | `VERSION_CONFLICT` | 并发版本冲突 | 提示“数据已被他人修改”，触发回读 |
 | 500 | `INTERNAL_ERROR` | 服务端异常 | 显示通用错误并上报 traceId |
 
-### 7. 最小字段定义（Create/Update）
+### 9. 默认值与服务端补全策略（Simple API 关键）
 
-- `materialCode`：物料编码（Create 必填，Update 通常不允许修改）。
-- `materialName`：物料名称（必填）。
-- `specification`：规格型号（可选）。
-- `unit`：单位（必填，建议字典约束）。
-- `categoryCode`：分类编码（可选/按业务要求）。
-- `isEnabled`：启用状态（必填，默认 `true`）。
-- `remark`：备注（可选，长度限制建议 <= 500）。
-- `version`：并发版本号（Update 必填）。
+- `materialCode`：由服务端规则生成（如前缀 + 流水号），客户端不传。
+- `specification`：默认空字符串或模板默认值。
+- `unit`：默认值（例如 `pcs`），由服务端统一配置。
+- `categoryCode`：默认分类（例如 `UNCLASSIFIED`），由服务端统一配置。
+- `isEnabled`：默认 `true`。
+- `remark`：默认空。
+- 以上默认策略必须集中在单一策略组件（如 `MaterialDefaultValuePolicy`），避免散落。
 
-> 注：若现有服务端字段名与以上示例不一致，建议以服务端统一命名为准，客户端通过映射层适配，避免在 UI 层散落转换逻辑。
+### 10. Provider（供应商）对象的特殊封装建议
+
+由于客户端在本期仅提供“名称”输入，无法维护供应商关联、结算规则、主供标记等复杂属性，建议由服务端对 Material-Provider（物料-供应商）关系进行统一封装：
+
+- 客户端请求只传 `name`（以及更新时 `version`），不传 `providerId`、`providerCode`、`providerPrice` 等复杂字段。
+- 服务端在 Simple API 中执行“供应商补全策略”：
+  - 按规则绑定默认供应商（如系统默认供应商、组织默认供应商）。
+  - 若无默认供应商，创建时允许空关系，但返回 `providerBindingStatus` 供客户端提示。
+  - 对需要强制供应商的租户/组织，直接返回业务错误，阻止创建成功但数据不完整。
+- 建议在响应中增加供应商摘要字段，避免客户端二次拼装：
+  - `providerId`
+  - `providerName`
+  - `providerBindingStatus`（`BOUND` / `UNBOUND` / `REQUIRED`）
+- 重命名接口（`simple-rename`）默认不允许修改供应商关系；供应商维护通过独立接口完成，防止职责混淆。
+- 若后续需要客户端可选供应商，建议新增扩展接口而不是破坏 Simple API 纯名称契约，例如：
+  - `PUT /api/materials/{id}/provider-binding`
+  - 请求体：`providerId`、`version`
+  - 仅处理物料-供应商绑定，不处理名称与其他字段。
+
+### 11. 当前代为实现位置（客户端现状接口）
+
+当前在客户端侧，已有“代为创建/更新”的接口形态如下（本次改造需要将其内部实现切换为调用 `FdSoft.Materials` API，而非本地直写）：
+
+```csharp
+public async Task<Material> CreateMaterialAsync(string materialName)
+
+/// <summary>
+///     新增供应商
+/// </summary>
+/// <param name="providerName">供应商名称</param>
+/// <param name="deliveryType">当前称重记录/联单的 DeliveryType</param>
+Task<Provider> CreateProviderAsync(string providerName, DeliveryType deliveryType);
+
+/// <summary>
+///     更新供应商信息
+/// </summary>
+Task<ProviderDto> UpdateProviderAsync(int id, string providerName, string? contactName, string? contactPhone);
+```
+
+改造约束建议：
+
+- `CreateMaterialAsync(string materialName)`：保持“仅名称输入”契约，对应调用 `simple-create`。
+- `CreateProviderAsync(...)`：保持与 `DeliveryType` 的业务绑定，由服务端决定默认属性填充与规则校验。
+- `UpdateProviderAsync(...)`：保留“轻量更新”语义，避免扩展为全量供应商字段覆盖，防止误改。
+- 上述接口签名可先保持不变，通过实现层切换远程调用，降低 UI/ViewModel 改造成本。
+
+### 12. 最小字段定义（Simple / Standard）
+
+- **Simple Create 请求**：`name`
+- **Simple Rename 请求**：`name` + `version`
+- **Simple 响应建议补充**：`providerId`、`providerName`、`providerBindingStatus`
+- **Standard Create 请求**：`materialCode`、`materialName`、`unit` 等完整字段
+- **Standard Update 请求**：可编辑字段 + `version`
+
+> 注：若现有服务端字段名与以上示例不一致，建议以服务端统一命名为准，客户端通过映射层适配；Simple API 与 Standard API 的职责边界需在接口文档中明确声明。
 
 ---
 
