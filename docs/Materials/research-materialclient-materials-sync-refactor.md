@@ -110,12 +110,13 @@
 
 ### 1. 通用约定
 
-- Base URL：`/api/materials`
+- 路由风格参考当前 `FdSoft.Material.PublicApi/Controllers`：`api/[controller]/[action]`
+- 建议本次 Simple API 使用控制器路由：`/api/Material/[action]`
 - 鉴权：`Authorization: Bearer <token>`
 - Content-Type：`application/json`
 - 幂等请求头（Create 可选）：`X-Idempotency-Key: <uuid>`
 - 追踪请求头（可选）：`X-Correlation-Id: <trace-id>`
-- 本次业务以“简单模式（仅名称）”为主；标准全字段 Create/Update 作为扩展能力保留。
+- 本次仅设计和实现 Simple API（仅名称输入），不设计 Standard API。
 
 统一响应包装建议：
 
@@ -128,15 +129,15 @@
 }
 ```
 
-### 2. 接口分层策略（Simple 与 Standard）
+### 2. 接口策略（仅 Simple）
 
-- **Simple API（推荐客户端默认使用）**：客户端只传 `name`（和更新时的 `version`），服务端负责补全复杂字段。
-- **Standard API（扩展能力）**：完整字段的 `Create/Update`，用于后台管理或未来高级编辑场景。
-- 建议客户端封装专用网关：`CreateMaterialByNameAsync`、`RenameMaterialAsync`，避免 UI 直接调用 Standard API。
+- 客户端只传 `name`（和更新时的 `version`），服务端负责补全复杂字段。
+- 接口命名尽量与现有 PublicApi Action 风格保持一致（动词+业务名），避免引入 REST 风格混用。
+- 建议客户端封装专用方法：`CreateMaterialByNameAsync`、`RenameMaterialAsync`，避免 UI 直接拼接 HTTP 细节。
 
 ### 3. Simple API：按名称创建（Create By Name）
 
-- Method & Path：`POST /api/materials/simple-create`
+- Method & Path（建议，参考现有 Controller 风格）：`POST /api/Material/CreateMaterialByName`
 - 用途：客户端仅提交名称，由服务端按默认策略创建完整物料对象。
 
 请求体示例（仅名称）：
@@ -171,13 +172,14 @@
 
 ### 4. Simple API：按名称重命名（Rename）
 
-- Method & Path：`PUT /api/materials/{id}/simple-rename`
+- Method & Path（建议，参考现有 Controller 风格）：`POST /api/Material/RenameMaterialByName`
 - 用途：仅修改名称；需携带 `version` 做并发控制，其他复杂字段不允许由客户端变更。
 
 请求体示例（仅名称 + 版本）：
 
 ```json
 {
+  "id": "8f8b4d6a-40ec-4ca9-95d3-3c9f7f8f3511",
   "name": "冷轧钢板-A",
   "version": 1
 }
@@ -205,22 +207,16 @@
 }
 ```
 
-### 5. Standard API（保留）
+### 5. 写后回读（Get By Id / Get By Code）
 
-- `POST /api/materials`：完整字段创建（非本期客户端默认入口）。
-- `PUT /api/materials/{id}`：完整字段更新（非本期客户端默认入口）。
-- 说明：Standard API 保留用于后台管理或后续高级编辑需求，避免与 Simple API 职责混淆。
-
-### 6. 写后回读（Get By Id / Get By Code）
-
-- `GET /api/materials/{id}`：按主键查询。
-- `GET /api/materials/by-code/{materialCode}`：按业务编码查询。
+- `POST /api/Material/GetById`：按主键查询（请求体传 `id`）。
+- `POST /api/Material/GetByCode`：按业务编码查询（请求体传 `materialCode`）。
 
 客户端在新增/更新成功后，建议按 `id` 回读一次，确保界面展示与服务端最终状态一致。
 
-### 7. 列表查询（可选但推荐）
+### 6. 列表查询（可选但推荐）
 
-- Method & Path：`GET /api/materials`
+- Method & Path（建议）：`POST /api/Material/ListByKeyword`
 - Query 参数建议：
   - `keyword`：关键字（编码/名称）
   - `categoryCode`：分类过滤
@@ -228,7 +224,7 @@
   - `page` / `pageSize`：分页
 - 用途：支持客户端列表刷新与检索。
 
-### 8. 错误码约定（建议）
+### 7. 错误码约定（建议）
 
 | HTTP Status | 业务码 | 场景 | 客户端建议处理 |
 |---|---|---|---|
@@ -243,7 +239,7 @@
 | 409 | `VERSION_CONFLICT` | 并发版本冲突 | 提示“数据已被他人修改”，触发回读 |
 | 500 | `INTERNAL_ERROR` | 服务端异常 | 显示通用错误并上报 traceId |
 
-### 9. 默认值与服务端补全策略（Simple API 关键）
+### 8. 默认值与服务端补全策略（Simple API 关键）
 
 - `materialCode`：由服务端规则生成（如前缀 + 流水号），客户端不传。
 - `specification`：默认空字符串或模板默认值。
@@ -268,7 +264,7 @@
   - `providerBindingStatus`（`BOUND` / `UNBOUND` / `REQUIRED`）
 - 重命名接口（`simple-rename`）默认不允许修改供应商关系；供应商维护通过独立接口完成，防止职责混淆。
 - 若后续需要客户端可选供应商，建议新增扩展接口而不是破坏 Simple API 纯名称契约，例如：
-  - `PUT /api/materials/{id}/provider-binding`
+  - `POST /api/Material/BindProvider`
   - 请求体：`providerId`、`version`
   - 仅处理物料-供应商绑定，不处理名称与其他字段。
 
@@ -299,15 +295,13 @@ Task<ProviderDto> UpdateProviderAsync(int id, string providerName, string? conta
 - `UpdateProviderAsync(...)`：保留“轻量更新”语义，避免扩展为全量供应商字段覆盖，防止误改。
 - 上述接口签名可先保持不变，通过实现层切换远程调用，降低 UI/ViewModel 改造成本。
 
-### 12. 最小字段定义（Simple / Standard）
+### 12. 最小字段定义（Simple）
 
 - **Simple Create 请求**：`name`
 - **Simple Rename 请求**：`name` + `version`
 - **Simple 响应建议补充**：`providerId`、`providerName`、`providerBindingStatus`
-- **Standard Create 请求**：`materialCode`、`materialName`、`unit` 等完整字段
-- **Standard Update 请求**：可编辑字段 + `version`
 
-> 注：若现有服务端字段名与以上示例不一致，建议以服务端统一命名为准，客户端通过映射层适配；Simple API 与 Standard API 的职责边界需在接口文档中明确声明。
+> 注：若现有服务端字段名与以上示例不一致，建议以服务端统一命名为准，客户端通过映射层适配。当前版本仅包含 Simple API，不引入 Standard API。
 
 ---
 
