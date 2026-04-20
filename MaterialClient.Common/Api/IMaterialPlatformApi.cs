@@ -42,17 +42,17 @@ public interface IMaterialPlatformApi
     );
 
     [Post("/api/Material/CreateMaterialByName")]
-    Task<HttpResult<MaterialWriteResultDto>> CreateMaterialByNameAsync(
+    Task<ApiEnvelopeDto<MaterialWriteResultDto>> CreateMaterialByNameAsync(
         [Body] CreateMaterialByNameInput request,
         CancellationToken cancellationToken = default);
 
     [Post("/api/Provider/CreateProvider")]
-    Task<HttpResult<ProviderWriteResultDto>> CreateProviderAsync(
+    Task<ApiEnvelopeDto<ProviderWriteResultDto>> CreateProviderAsync(
         [Body] CreateProviderInput request,
         CancellationToken cancellationToken = default);
 
     [Post("/api/Provider/UpdateProvider")]
-    Task<HttpResult<ProviderWriteResultDto>> UpdateProviderAsync(
+    Task<ApiEnvelopeDto<ProviderWriteResultDto>> UpdateProviderAsync(
         [Body] UpdateProviderInput request,
         CancellationToken cancellationToken = default);
 
@@ -116,11 +116,14 @@ public record GetMaterialProviderListInput(
     long UploadTime
 );
 
-public record CreateMaterialByNameInput(string Name);
+public record CreateMaterialByNameInput(
+    string Name,
+    int CoId);
 
 public record CreateProviderInput(
     string ProviderName,
-    int DeliveryType);
+    int DeliveryType,
+    int CoId);
 
 public record UpdateProviderInput(
     int Id,

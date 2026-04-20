@@ -61,6 +61,7 @@ public partial class ProviderService : DomainService, IProviderService
 {
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IRepository<Provider, int> _providerRepository;
+    private readonly IRepository<UserSession, Guid> _userSessionRepository;
     private readonly ISettingsService _settingsService;
 
     /// <inheritdoc />
@@ -171,11 +172,17 @@ public partial class ProviderService : DomainService, IProviderService
             throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
-        var response = await _materialPlatformApi.CreateProviderAsync(
-            new CreateProviderInput(providerName.Trim(), (int)deliveryType));
-        if (response.Success != true || response.Data == null)
+        var session = await _userSessionRepository.FirstOrDefaultAsync();
+        if (session == null)
         {
-            var errorMessage = response.Msg ?? "Remote provider create failed.";
+            throw new BusinessException("AUTH:NO_SESSION", "No active user session found.");
+        }
+
+        var response = await _materialPlatformApi.CreateProviderAsync(
+            new CreateProviderInput(providerName.Trim(), (int)deliveryType, session.CompanyId));
+        if (!response.IsSuccess || response.Data == null)
+        {
+            var errorMessage = response.Message ?? "Remote provider create failed.";
             throw new BusinessException("PROVIDER:REMOTE_CREATE_FAILED", errorMessage);
         }
 
@@ -197,9 +204,9 @@ public partial class ProviderService : DomainService, IProviderService
 
         var response = await _materialPlatformApi.UpdateProviderAsync(
             new UpdateProviderInput(id, providerName.Trim(), contactName?.Trim(), contactPhone?.Trim()));
-        if (response.Success != true || response.Data == null)
+        if (!response.IsSuccess || response.Data == null)
         {
-            var errorMessage = response.Msg ?? "Remote provider update failed.";
+            var errorMessage = response.Message ?? "Remote provider update failed.";
             throw new BusinessException("PROVIDER:REMOTE_UPDATE_FAILED", errorMessage);
         }
 

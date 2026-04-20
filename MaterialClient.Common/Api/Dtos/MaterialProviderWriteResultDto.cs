@@ -5,6 +5,8 @@ namespace MaterialClient.Common.Api.Dtos;
 public class MaterialWriteResultDto
 {
     public int? Id { get; set; }
+    public string? MaterialName { get; set; }
+    public string? Unit { get; set; }
     public int? GoodsId { get; set; }
     public string? Name { get; set; }
     public string? GoodsName { get; set; }
@@ -15,12 +17,12 @@ public class MaterialWriteResultDto
     public Material ToEntity()
     {
         var materialId = Id ?? GoodsId ?? 0;
-        var materialName = Name ?? GoodsName ?? string.Empty;
+        var materialName = MaterialName ?? Name ?? GoodsName ?? string.Empty;
         var material = materialId > 0
             ? new Material(materialId, materialName, CoId ?? 0)
             : new Material(materialName, CoId ?? 0);
 
-        material.UnitName = UnitName;
+        material.UnitName = Unit ?? UnitName;
         material.UnitRate = UnitRate ?? 1m;
         material.IsDeleted = false;
         material.AddDate = DateTime.Now;
@@ -34,6 +36,7 @@ public class ProviderWriteResultDto
 {
     public int? Id { get; set; }
     public int? ProviderId { get; set; }
+    public int? Version { get; set; }
     public int? ProviderType { get; set; }
     public string? ProviderName { get; set; }
     public string? ContactName { get; set; }

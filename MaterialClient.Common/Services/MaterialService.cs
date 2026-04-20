@@ -59,17 +59,20 @@ public class MaterialService : DomainService, IMaterialService
 {
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
+    private readonly IRepository<UserSession, Guid> _userSessionRepository;
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly ISettingsService _settingsService;
 
     public MaterialService(
         IRepository<Material, int> materialRepository,
         IRepository<MaterialUnit, int> materialUnitRepository,
+        IRepository<UserSession, Guid> userSessionRepository,
         IMaterialPlatformApi materialPlatformApi,
         ISettingsService settingsService)
     {
         _materialRepository = materialRepository;
         _materialUnitRepository = materialUnitRepository;
+        _userSessionRepository = userSessionRepository;
         _materialPlatformApi = materialPlatformApi;
         _settingsService = settingsService;
     }
@@ -181,11 +184,17 @@ public class MaterialService : DomainService, IMaterialService
             throw new ArgumentException("Material name is required.", nameof(materialName));
         }
 
-        var response = await _materialPlatformApi.CreateMaterialByNameAsync(
-            new CreateMaterialByNameInput(materialName.Trim()));
-        if (response.Success != true || response.Data == null)
+        var session = await _userSessionRepository.FirstOrDefaultAsync();
+        if (session == null)
         {
-            var errorMessage = response.Msg ?? "Remote material create failed.";
+            throw new BusinessException("AUTH:NO_SESSION", "No active user session found.");
+        }
+
+        var response = await _materialPlatformApi.CreateMaterialByNameAsync(
+            new CreateMaterialByNameInput(materialName.Trim(), session.CompanyId));
+        if (!response.IsSuccess || response.Data == null)
+        {
+            var errorMessage = response.Message ?? "Remote material create failed.";
             throw new BusinessException("MATERIAL:REMOTE_CREATE_FAILED", errorMessage);
         }
 
