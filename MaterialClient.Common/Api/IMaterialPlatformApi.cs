@@ -118,7 +118,8 @@ public record GetMaterialProviderListInput(
 
 public record CreateMaterialByNameInput(
     string Name,
-    int CoId);
+    int CoId,
+    string ProId);
 
 public record CreateProviderInput(
     string ProviderName,

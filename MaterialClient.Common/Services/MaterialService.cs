@@ -191,7 +191,10 @@ public class MaterialService : DomainService, IMaterialService
         }
 
         var response = await _materialPlatformApi.CreateMaterialByNameAsync(
-            new CreateMaterialByNameInput(materialName.Trim(), session.CompanyId));
+            new CreateMaterialByNameInput(
+                materialName.Trim(),
+                session.CompanyId,
+                session.ProjectId.ToString()));
         if (!response.IsSuccess || response.Data == null)
         {
             var errorMessage = response.Message ?? "Remote material create failed.";
