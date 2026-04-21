@@ -1,13 +1,35 @@
+using System;
+using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using MaterialClient.ViewModels;
+using ReactiveUI;
 
 namespace MaterialClient.Views.Controls;
 
 public partial class StandardModeFormView : UserControl
 {
+    private readonly SerialDisposable _vmSubscription = new();
+
     public StandardModeFormView()
     {
         InitializeComponent();
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        _vmSubscription.Disposable = null;
+
+        if (DataContext is not StandardWeighingDetailViewModel vm || MaterialSelectionPopup == null)
+        {
+            return;
+        }
+
+        _vmSubscription.Disposable = vm
+            .WhenAnyValue(x => x.IsMaterialPopupOpen)
+            .Subscribe(isOpen => MaterialSelectionPopup.IsOpen = isOpen);
     }
 
     private void MaterialSelectionButton_Click(object? sender, RoutedEventArgs e)
@@ -33,6 +55,11 @@ public partial class StandardModeFormView : UserControl
             }
 
             MaterialSelectionPopup.HorizontalOffset = (popupWidth / 2) - (buttonWidth / 2);
+
+            if (DataContext is StandardWeighingDetailViewModel vm && button.DataContext is MaterialItemRow row)
+            {
+                vm.OpenMaterialSelectionCommand.Execute(row).Subscribe();
+            }
         }
     }
 }

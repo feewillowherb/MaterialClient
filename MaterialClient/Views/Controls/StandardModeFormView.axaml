@@ -145,9 +145,7 @@
                                             HorizontalContentAlignment="Left"
                                             FontWeight="Normal"
                                             Name="MaterialSelectionButton"
-                                            Click="MaterialSelectionButton_Click"
-                                            Command="{Binding $parent[UserControl].((vm:StandardWeighingDetailViewModel)DataContext).OpenMaterialSelectionCommand}"
-                                            CommandParameter="{Binding}">
+                                            Click="MaterialSelectionButton_Click">
                                         <Button.Styles>
                                             <Style Selector="Button:pointerover">
                                                 <Setter Property="Background" Value="Transparent" />
@@ -344,8 +342,7 @@
                        Placement="Bottom"
                        IsLightDismissEnabled="True"
                        HorizontalOffset="0"
-                       VerticalOffset="0"
-                       IsOpen="{Binding IsMaterialPopupOpen, Mode=TwoWay}">
+                       VerticalOffset="0">
                     <views:MaterialsSelectionPopup x:Name="MaterialsSelectionPopupControl"
                                                    DataContext="{Binding MaterialsSelectionPopupViewModel}" />
                 </Popup>
