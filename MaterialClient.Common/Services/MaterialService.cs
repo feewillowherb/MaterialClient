@@ -171,7 +171,8 @@ public class MaterialService : DomainService, IMaterialService
             throw new ArgumentException("Material name is required.", nameof(materialName));
         }
 
-        var session = await _userSessionRepository.FirstOrDefaultAsync();
+        var sessions = await _userSessionRepository.GetListAsync();
+        var session = sessions.FirstOrDefault();
         if (session == null)
         {
             throw new BusinessException("AUTH:NO_SESSION", "No active user session found.");
@@ -188,7 +189,32 @@ public class MaterialService : DomainService, IMaterialService
             throw new BusinessException("MATERIAL:REMOTE_CREATE_FAILED", errorMessage);
         }
 
-        return MaterialGoodListResultDto.ToEntity(response.Data);
+        var material = MaterialGoodListResultDto.ToEntity(response.Data);
+
+        try
+        {
+            await UpsertMaterialAsync(material);
+        }
+        catch (Exception ex)
+        {
+            throw new BusinessException(
+                "MATERIAL:LOCAL_PERSIST_FAILED",
+                $"Remote material created but local persist failed: {ex.Message}");
+        }
+
+        return material;
+    }
+
+    private async Task UpsertMaterialAsync(Material material)
+    {
+        var existing = await _materialRepository.FindAsync(material.Id);
+        if (existing == null)
+        {
+            await _materialRepository.InsertAsync(material, true);
+            return;
+        }
+
+        await _materialRepository.UpdateAsync(material, true);
     }
 }
 

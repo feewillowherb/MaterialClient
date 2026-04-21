@@ -165,7 +165,8 @@ public partial class ProviderService : DomainService, IProviderService
             throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
-        var session = await _userSessionRepository.FirstOrDefaultAsync();
+        var sessions = await _userSessionRepository.GetListAsync();
+        var session = sessions.FirstOrDefault();
         if (session == null)
         {
             throw new BusinessException("AUTH:NO_SESSION", "No active user session found.");
@@ -179,7 +180,32 @@ public partial class ProviderService : DomainService, IProviderService
             throw new BusinessException("PROVIDER:REMOTE_CREATE_FAILED", errorMessage);
         }
 
-        return MaterialProviderListResultDto.ToEntity(response.Data);
+        var provider = MaterialProviderListResultDto.ToEntity(response.Data);
+
+        try
+        {
+            await UpsertProviderAsync(provider);
+        }
+        catch (Exception ex)
+        {
+            throw new BusinessException(
+                "PROVIDER:LOCAL_PERSIST_FAILED",
+                $"Remote provider created but local persist failed: {ex.Message}");
+        }
+
+        return provider;
+    }
+
+    private async Task UpsertProviderAsync(Provider provider)
+    {
+        var existing = await _providerRepository.FindAsync(provider.Id);
+        if (existing == null)
+        {
+            await _providerRepository.InsertAsync(provider, true);
+            return;
+        }
+
+        await _providerRepository.UpdateAsync(provider, true);
     }
 
     /// <inheritdoc />
