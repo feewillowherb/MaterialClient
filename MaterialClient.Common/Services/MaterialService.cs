@@ -61,20 +61,17 @@ public class MaterialService : DomainService, IMaterialService
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IRepository<UserSession, Guid> _userSessionRepository;
     private readonly IMaterialPlatformApi _materialPlatformApi;
-    private readonly ISettingsService _settingsService;
 
     public MaterialService(
         IRepository<Material, int> materialRepository,
         IRepository<MaterialUnit, int> materialUnitRepository,
         IRepository<UserSession, Guid> userSessionRepository,
-        IMaterialPlatformApi materialPlatformApi,
-        ISettingsService settingsService)
+        IMaterialPlatformApi materialPlatformApi)
     {
         _materialRepository = materialRepository;
         _materialUnitRepository = materialUnitRepository;
         _userSessionRepository = userSessionRepository;
         _materialPlatformApi = materialPlatformApi;
-        _settingsService = settingsService;
     }
 
     /// <inheritdoc />
@@ -85,8 +82,6 @@ public class MaterialService : DomainService, IMaterialService
         int pageSize = 10,
         IReadOnlyList<int>? selectedIds = null)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _materialRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
@@ -98,7 +93,6 @@ public class MaterialService : DomainService, IMaterialService
         }
 
         queryable = queryable.Where(m => !m.IsDeleted);
-        queryable = queryable.Where(m => m.WeighingMode == weighingMode);
 
         var totalCount = await queryable.CountAsync();
 
@@ -138,16 +132,11 @@ public class MaterialService : DomainService, IMaterialService
     [UnitOfWork]
     public async Task<List<Material>> GetAllMaterialsAsync()
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _materialRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
         
         // 只查询未删除的记录
         queryable = queryable.Where(m => !m.IsDeleted);
-
-        // 按系统称重模式过滤
-        queryable = queryable.Where(m => m.WeighingMode == weighingMode);
 
         var materials = await queryable
             .OrderBy(m => m.Name)
@@ -160,13 +149,11 @@ public class MaterialService : DomainService, IMaterialService
     [UnitOfWork]
     public async Task<List<MaterialUnit>> GetMaterialUnitsByMaterialIdAsync(int materialId)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _materialUnitRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
         // 只查询未删除的记录
-        queryable = queryable.Where(u => !u.IsDeleted && u.MaterialId == materialId && u.WeighingMode == weighingMode);
+        queryable = queryable.Where(u => !u.IsDeleted && u.MaterialId == materialId);
 
         var units = await queryable
             .OrderBy(u => u.UnitName)

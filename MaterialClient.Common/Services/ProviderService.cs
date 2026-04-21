@@ -62,19 +62,15 @@ public partial class ProviderService : DomainService, IProviderService
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<UserSession, Guid> _userSessionRepository;
-    private readonly ISettingsService _settingsService;
 
     /// <inheritdoc />
     [UnitOfWork]
     public virtual async Task<List<Provider>> GetAllProvidersAsync()
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _providerRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
         queryable = queryable.Where(p => !p.IsDeleted);
-        queryable = queryable.Where(p => p.WeighingMode == weighingMode);
 
         var providers = await queryable
             .OrderBy(p => p.ProviderName)
@@ -91,8 +87,6 @@ public partial class ProviderService : DomainService, IProviderService
         int pageSize = 10,
         IReadOnlyList<int>? selectedIds = null)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _providerRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
@@ -103,7 +97,6 @@ public partial class ProviderService : DomainService, IProviderService
         }
 
         queryable = queryable.Where(p => !p.IsDeleted);
-        queryable = queryable.Where(p => p.WeighingMode == weighingMode);
 
         var totalCount = await queryable.CountAsync();
 
