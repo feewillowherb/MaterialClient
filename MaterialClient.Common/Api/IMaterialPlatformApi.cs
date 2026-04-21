@@ -42,17 +42,17 @@ public interface IMaterialPlatformApi
     );
 
     [Post("/api/Material/CreateMaterialByName")]
-    Task<ApiEnvelopeDto<MaterialWriteResultDto>> CreateMaterialByNameAsync(
+    Task<ApiEnvelopeDto<MaterialGoodListResultDto>> CreateMaterialByNameAsync(
         [Body] CreateMaterialByNameInput request,
         CancellationToken cancellationToken = default);
 
     [Post("/api/Provider/CreateProvider")]
-    Task<ApiEnvelopeDto<ProviderWriteResultDto>> CreateProviderAsync(
+    Task<ApiEnvelopeDto<MaterialProviderListResultDto>> CreateProviderAsync(
         [Body] CreateProviderInput request,
         CancellationToken cancellationToken = default);
 
     [Post("/api/Provider/UpdateProvider")]
-    Task<ApiEnvelopeDto<ProviderWriteResultDto>> UpdateProviderAsync(
+    Task<ApiEnvelopeDto<MaterialProviderListResultDto>> UpdateProviderAsync(
         [Body] UpdateProviderInput request,
         CancellationToken cancellationToken = default);
 

@@ -201,7 +201,7 @@ public class MaterialService : DomainService, IMaterialService
             throw new BusinessException("MATERIAL:REMOTE_CREATE_FAILED", errorMessage);
         }
 
-        return response.Data.ToEntity();
+        return MaterialGoodListResultDto.ToEntity(response.Data);
     }
 }
 

@@ -186,7 +186,7 @@ public partial class ProviderService : DomainService, IProviderService
             throw new BusinessException("PROVIDER:REMOTE_CREATE_FAILED", errorMessage);
         }
 
-        return response.Data.ToEntity();
+        return MaterialProviderListResultDto.ToEntity(response.Data);
     }
 
     /// <inheritdoc />
@@ -210,6 +210,13 @@ public partial class ProviderService : DomainService, IProviderService
             throw new BusinessException("PROVIDER:REMOTE_UPDATE_FAILED", errorMessage);
         }
 
-        return response.Data.ToProviderDto();
+        return new ProviderDto
+        {
+            Id = response.Data.ProviderId,
+            ProviderType = response.Data.ProviderType ?? 0,
+            ProviderName = response.Data.ProviderName ?? string.Empty,
+            ContactName = response.Data.ContectName,
+            ContactPhone = response.Data.ContectPhone
+        };
     }
 }
