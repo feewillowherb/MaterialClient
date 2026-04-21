@@ -98,15 +98,23 @@ After refactoring, the codebase SHALL NOT contain any `if (IsSolidWasteMode)` co
 - **THEN** zero matches are found
 
 ### Requirement: View DataType compatibility
-All views that bind to the detail ViewModel SHALL use `x:DataType="vm:AttendedWeighingDetailViewModelBase"` for compiled bindings.
+All views that bind to the detail ViewModel SHALL use `x:DataType="vm:AttendedWeighingDetailViewModelBase"` for compiled bindings in shared popup/container scope. Views that are strictly mode-specific MAY use their concrete subclass DataType only inside the mode-specific view boundary.
 
-#### Scenario: StandardModeFormView resolves base class bindings
-- **WHEN** `StandardModeFormView` is rendered with a `StandardWeighingDetailViewModel` DataContext
-- **THEN** all bindings to base class properties (PlateNumber, Providers, MaterialItems, etc.) resolve correctly
+#### Scenario: Shared popup bindings compile against base type
+- **WHEN** `AttendedWeighingDetailPopup` (and any shared child controls) is compiled with Avalonia compiled bindings
+- **THEN** shared bindings resolve against `AttendedWeighingDetailViewModelBase` and do not require casting to a concrete mode subclass
 
-#### Scenario: SolidWasteModeFormView resolves base class bindings
-- **WHEN** `SolidWasteModeFormView` is rendered with a `SolidWasteWeighingDetailViewModel` DataContext
-- **THEN** all bindings to base class and subclass properties resolve correctly
+#### Scenario: Standard mode concrete bindings stay in standard view boundary
+- **WHEN** standard-only properties are bound in `StandardModeFormView`
+- **THEN** those bindings are compiled and resolved within standard view scope without affecting shared popup binding contract
+
+#### Scenario: SolidWaste mode concrete bindings stay in solid-waste view boundary
+- **WHEN** solid-waste-only properties are bound in `SolidWasteModeFormView`
+- **THEN** those bindings are compiled and resolved within solid-waste view scope without affecting shared popup binding contract
+
+#### Scenario: SolidWaste popup open does not throw cast exception
+- **WHEN** detail popup is opened with `SolidWasteWeighingDetailViewModel` as DataContext
+- **THEN** no `InvalidCastException` is thrown from compiled binding accessors and popup renders normally
 
 ### Requirement: MaterialItemRow independence
 `MaterialItemRow` SHALL be defined in its own file (`ViewModels/MaterialItemRow.cs`) and remain shared by both modes via the base class `MaterialItems` collection.
