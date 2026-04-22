@@ -50,7 +50,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private readonly ISoundDeviceService _soundDeviceService;
     private readonly ISettingsService _settingsService;
     private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
+    private readonly ISyncMaterialService _syncMaterialService;
+    private readonly IAttachmentService _attachmentService;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
+    private bool _isSyncing;
     private DispatcherTimer? _notificationFadeOutTimer;
     private readonly TextBlock _notificationTextBlockHolder = new();
     private readonly BehaviorSubject<int> _soundDeviceStatus = new(-1);
@@ -63,7 +66,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         IAttendedWeighingService attendedWeighingService,
         ISoundDeviceService soundDeviceService,
         ISettingsService settingsService,
-        ILprDeviceOnlineStatusService lprDeviceOnlineStatusService
+        ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
+        ISyncMaterialService syncMaterialService,
+        IAttachmentService attachmentService
     ) : base(serviceProvider.GetService<ILogger<AttendedWeighingViewModel>>())
     {
         _weighingMatchingService = weighingMatchingService;
@@ -73,6 +78,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _soundDeviceService = soundDeviceService;
         _settingsService = settingsService;
         _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
+        _syncMaterialService = syncMaterialService;
+        _attachmentService = attachmentService;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
 
@@ -1208,6 +1215,15 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     public string CurrentWeighingStatusText => GetStatusText(_currentWeighingStatus);
     public bool IsWeighingActive => _currentWeighingStatus != AttendedWeighingStatus.OffScale;
 
+    public bool IsSyncing
+    {
+        get => _isSyncing;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref _isSyncing, value);
+        }
+    }
+
     public bool IsCompletedWaybillSelected => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
 
@@ -2130,6 +2146,89 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             Logger?.LogError(ex, "拍照时发生错误");
         }
+    }
+
+    [ReactiveCommand]
+    private async Task SyncDataAsync()
+    {
+        IsSyncing = true;
+        var failedSteps = new List<string>();
+
+        try
+        {
+            // 1. 物料同步
+            try
+            {
+                await _syncMaterialService.SyncMaterialAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "物料同步失败");
+                failedSteps.Add("物料同步");
+            }
+
+            // 2. 物料类型同步
+            try
+            {
+                await _syncMaterialService.SyncMaterialTypeAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "物料类型同步失败");
+                failedSteps.Add("物料类型同步");
+            }
+
+            // 3. 供应商同步
+            try
+            {
+                await _syncMaterialService.SyncProviderAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "供应商同步失败");
+                failedSteps.Add("供应商同步");
+            }
+
+            // 4. 运单推送
+            try
+            {
+                await _weighingMatchingService.PushWaybillAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "运单推送失败");
+                failedSteps.Add("运单推送");
+            }
+
+            // 5. 附件上传
+            try
+            {
+                await _attachmentService.SyncPendingAttachmentsToOssAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "附件上传失败");
+                failedSteps.Add("附件上传");
+            }
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+
+        // 构建结果摘要
+        var successCount = 5 - failedSteps.Count;
+        string summary;
+        if (failedSteps.Count == 0)
+        {
+            summary = $"数据同步完成：{successCount} 项成功";
+        }
+        else
+        {
+            summary = $"数据同步完成：{successCount} 项成功，{failedSteps.Count} 项失败";
+        }
+
+        await ShowMessageBoxAsync(summary);
     }
 
     [ReactiveCommand]
