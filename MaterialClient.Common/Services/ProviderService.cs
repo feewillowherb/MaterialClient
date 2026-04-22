@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
+using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -57,20 +59,18 @@ public interface IProviderService
 [AutoConstructor]
 public partial class ProviderService : DomainService, IProviderService
 {
+    private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IRepository<Provider, int> _providerRepository;
-    private readonly ISettingsService _settingsService;
+    private readonly IRepository<UserSession, Guid> _userSessionRepository;
 
     /// <inheritdoc />
     [UnitOfWork]
     public virtual async Task<List<Provider>> GetAllProvidersAsync()
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _providerRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
         queryable = queryable.Where(p => !p.IsDeleted);
-        queryable = queryable.Where(p => p.WeighingMode == weighingMode);
 
         var providers = await queryable
             .OrderBy(p => p.ProviderName)
@@ -87,8 +87,6 @@ public partial class ProviderService : DomainService, IProviderService
         int pageSize = 10,
         IReadOnlyList<int>? selectedIds = null)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _providerRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
@@ -99,7 +97,6 @@ public partial class ProviderService : DomainService, IProviderService
         }
 
         queryable = queryable.Where(p => !p.IsDeleted);
-        queryable = queryable.Where(p => p.WeighingMode == weighingMode);
 
         var totalCount = await queryable.CountAsync();
 
@@ -168,21 +165,47 @@ public partial class ProviderService : DomainService, IProviderService
             throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-        var now = DateTime.Now;
-
-        var provider = new Provider(
-            providerType: (int)deliveryType,
-            providerName: providerName.Trim())
+        var sessions = await _userSessionRepository.GetListAsync();
+        var session = sessions.FirstOrDefault();
+        if (session == null)
         {
-            CoId = 1, // TODO update in next version
-            WeighingMode = weighingMode,
-            AddDate = now,
-            AddTime = (int)DateTimeOffset.Now.ToUnixTimeSeconds(),
-            IsDeleted = false
-        };
+            throw new BusinessException("AUTH:NO_SESSION", "No active user session found.");
+        }
 
-        return await _providerRepository.InsertAsync(provider, autoSave: true);
+        var response = await _materialPlatformApi.CreateProviderAsync(
+            new CreateProviderInput(providerName.Trim(), (int)deliveryType, session.CompanyId));
+        if (!response.IsSuccess || response.Data == null)
+        {
+            var errorMessage = response.Message ?? "Remote provider create failed.";
+            throw new BusinessException("PROVIDER:REMOTE_CREATE_FAILED", errorMessage);
+        }
+
+        var provider = MaterialProviderListResultDto.ToEntity(response.Data);
+
+        try
+        {
+            await UpsertProviderAsync(provider);
+        }
+        catch (Exception ex)
+        {
+            throw new BusinessException(
+                "PROVIDER:LOCAL_PERSIST_FAILED",
+                $"Remote provider created but local persist failed: {ex.Message}");
+        }
+
+        return provider;
+    }
+
+    private async Task UpsertProviderAsync(Provider provider)
+    {
+        var existing = await _providerRepository.FindAsync(provider.Id);
+        if (existing == null)
+        {
+            await _providerRepository.InsertAsync(provider, true);
+            return;
+        }
+
+        await _providerRepository.UpdateAsync(provider, true);
     }
 
     /// <inheritdoc />
@@ -193,31 +216,26 @@ public partial class ProviderService : DomainService, IProviderService
         string? contactName,
         string? contactPhone)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
-        var queryable = await _providerRepository.GetQueryableAsync();
-        var provider = await queryable
-            .Where(p => p.Id == id)
-            .Where(p => !p.IsDeleted)
-            .Where(p => p.WeighingMode == weighingMode)
-            .FirstOrDefaultAsync();
-
-        if (provider == null)
+        if (string.IsNullOrWhiteSpace(providerName))
         {
-            throw new ArgumentException($"Provider(id={id}) not found.", nameof(id));
+            throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
-        provider.UpdateInfo(providerName, contactName, contactPhone);
-
-        await _providerRepository.UpdateAsync(provider, autoSave: true);
+        var response = await _materialPlatformApi.UpdateProviderAsync(
+            new UpdateProviderInput(id, providerName.Trim(), contactName?.Trim(), contactPhone?.Trim()));
+        if (!response.IsSuccess || response.Data == null)
+        {
+            var errorMessage = response.Message ?? "Remote provider update failed.";
+            throw new BusinessException("PROVIDER:REMOTE_UPDATE_FAILED", errorMessage);
+        }
 
         return new ProviderDto
         {
-            Id = provider.Id,
-            ProviderType = provider.ProviderType ?? 0,
-            ProviderName = provider.ProviderName ?? string.Empty,
-            ContactName = provider.ContectName,
-            ContactPhone = provider.ContectPhone
+            Id = response.Data.ProviderId,
+            ProviderType = response.Data.ProviderType ?? 0,
+            ProviderName = response.Data.ProviderName ?? string.Empty,
+            ContactName = response.Data.ContectName,
+            ContactPhone = response.Data.ContectPhone
         };
     }
 }
