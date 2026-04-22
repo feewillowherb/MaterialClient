@@ -173,7 +173,7 @@ public partial class ProviderService : DomainService, IProviderService
         }
 
         var response = await _materialPlatformApi.CreateProviderAsync(
-            new CreateProviderInput(providerName.Trim(), (int)deliveryType, session.CompanyId));
+            new CreateProviderInput(providerName.Trim(), (int)deliveryType, session.CompanyId, session.ProjectId.ToString()));
         if (!response.IsSuccess || response.Data == null)
         {
             var errorMessage = response.Message ?? "Remote provider create failed.";
