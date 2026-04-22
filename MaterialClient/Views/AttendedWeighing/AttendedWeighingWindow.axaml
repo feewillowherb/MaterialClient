@@ -64,7 +64,7 @@
                             Foreground="White"
                             Padding="8,4"
                             Command="{Binding ExportSolidWasteCommand}"
-                            IsVisible="{Binding IsSolidWasteMode}" />
+                            IsVisible="False" />
                 </StackPanel>
 
                 <!-- Window Control Buttons -->
