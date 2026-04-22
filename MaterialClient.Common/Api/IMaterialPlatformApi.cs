@@ -124,7 +124,8 @@ public record CreateMaterialByNameInput(
 public record CreateProviderInput(
     string ProviderName,
     int DeliveryType,
-    int CoId);
+    int CoId,
+    string ProId);
 
 public record UpdateProviderInput(
     int Id,

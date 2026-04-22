@@ -56,7 +56,8 @@
                     <Button Content="数据同步"
                             Classes="transparent-button"
                             Foreground="White"
-                            Padding="8,4" />
+                            Padding="8,4"
+                            Command="{Binding SyncDataCommand}" />
                     <!-- 导出按钮：仅固废模式可见 -->
                      <Button Content="导出"
                             Classes="transparent-button"
