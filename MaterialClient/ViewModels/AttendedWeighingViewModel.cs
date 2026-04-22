@@ -2221,7 +2221,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         string summary;
         if (failedSteps.Count == 0)
         {
-            summary = $"数据同步完成：{successCount} 项成功";
+            summary = $"数据同步完成";
         }
         else
         {
