@@ -1,8 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MaterialClient.Common.Api;
+using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using Microsoft.EntityFrameworkCore;
+using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -56,16 +59,19 @@ public class MaterialService : DomainService, IMaterialService
 {
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
-    private readonly ISettingsService _settingsService;
+    private readonly IRepository<UserSession, Guid> _userSessionRepository;
+    private readonly IMaterialPlatformApi _materialPlatformApi;
 
     public MaterialService(
         IRepository<Material, int> materialRepository,
         IRepository<MaterialUnit, int> materialUnitRepository,
-        ISettingsService settingsService)
+        IRepository<UserSession, Guid> userSessionRepository,
+        IMaterialPlatformApi materialPlatformApi)
     {
         _materialRepository = materialRepository;
         _materialUnitRepository = materialUnitRepository;
-        _settingsService = settingsService;
+        _userSessionRepository = userSessionRepository;
+        _materialPlatformApi = materialPlatformApi;
     }
 
     /// <inheritdoc />
@@ -76,8 +82,6 @@ public class MaterialService : DomainService, IMaterialService
         int pageSize = 10,
         IReadOnlyList<int>? selectedIds = null)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _materialRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
@@ -89,7 +93,6 @@ public class MaterialService : DomainService, IMaterialService
         }
 
         queryable = queryable.Where(m => !m.IsDeleted);
-        queryable = queryable.Where(m => m.WeighingMode == weighingMode);
 
         var totalCount = await queryable.CountAsync();
 
@@ -129,16 +132,11 @@ public class MaterialService : DomainService, IMaterialService
     [UnitOfWork]
     public async Task<List<Material>> GetAllMaterialsAsync()
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _materialRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
         
         // 只查询未删除的记录
         queryable = queryable.Where(m => !m.IsDeleted);
-
-        // 按系统称重模式过滤
-        queryable = queryable.Where(m => m.WeighingMode == weighingMode);
 
         var materials = await queryable
             .OrderBy(m => m.Name)
@@ -151,13 +149,11 @@ public class MaterialService : DomainService, IMaterialService
     [UnitOfWork]
     public async Task<List<MaterialUnit>> GetMaterialUnitsByMaterialIdAsync(int materialId)
     {
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-
         var queryable = await _materialUnitRepository.GetQueryableAsync();
         queryable = queryable.AsNoTracking();
 
         // 只查询未删除的记录
-        queryable = queryable.Where(u => !u.IsDeleted && u.MaterialId == materialId && u.WeighingMode == weighingMode);
+        queryable = queryable.Where(u => !u.IsDeleted && u.MaterialId == materialId);
 
         var units = await queryable
             .OrderBy(u => u.UnitName)
@@ -175,39 +171,50 @@ public class MaterialService : DomainService, IMaterialService
             throw new ArgumentException("Material name is required.", nameof(materialName));
         }
 
-        var weighingMode = await _settingsService.GetWeighingModeAsync();
-        var now = DateTime.Now;
-
-        var material = new Material(
-            name: materialName.Trim(),
-            coId: 1) // TODO update in next version
+        var sessions = await _userSessionRepository.GetListAsync();
+        var session = sessions.FirstOrDefault();
+        if (session == null)
         {
-            UnitName = "个",
-            UnitRate = 1,
-            WeighingMode = weighingMode,
-            AddDate = now,
-            AddTime = (int)DateTimeOffset.Now.ToUnixTimeSeconds(),
-            IsDeleted = false
-        };
+            throw new BusinessException("AUTH:NO_SESSION", "No active user session found.");
+        }
 
-        material = await _materialRepository.InsertAsync(material, autoSave: true);
-
-        // Create default MaterialUnit to keep downstream unit loading consistent.
-        var defaultUnit = new MaterialUnit(
-            materialId: material.Id,
-            unitName: "个",
-            rate: 1m)
+        var response = await _materialPlatformApi.CreateMaterialByNameAsync(
+            new CreateMaterialByNameInput(
+                materialName.Trim(),
+                session.CompanyId,
+                session.ProjectId.ToString()));
+        if (!response.IsSuccess || response.Data == null)
         {
-            UnitCalculationType = 1, // 按数量
-            WeighingMode = weighingMode,
-            AddDate = now,
-            AddTime = (int)DateTimeOffset.Now.ToUnixTimeSeconds(),
-            IsDeleted = false
-        };
+            var errorMessage = response.Message ?? "Remote material create failed.";
+            throw new BusinessException("MATERIAL:REMOTE_CREATE_FAILED", errorMessage);
+        }
 
-        await _materialUnitRepository.InsertAsync(defaultUnit, autoSave: true);
+        var material = MaterialGoodListResultDto.ToEntity(response.Data);
+
+        try
+        {
+            await UpsertMaterialAsync(material);
+        }
+        catch (Exception ex)
+        {
+            throw new BusinessException(
+                "MATERIAL:LOCAL_PERSIST_FAILED",
+                $"Remote material created but local persist failed: {ex.Message}");
+        }
 
         return material;
+    }
+
+    private async Task UpsertMaterialAsync(Material material)
+    {
+        var existing = await _materialRepository.FindAsync(material.Id);
+        if (existing == null)
+        {
+            await _materialRepository.InsertAsync(material, true);
+            return;
+        }
+
+        await _materialRepository.UpdateAsync(material, true);
     }
 }
 
