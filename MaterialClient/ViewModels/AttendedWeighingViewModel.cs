@@ -2630,7 +2630,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 SelectViewForItem(updatedItem);
             }
 
-            await ShowMessageBoxAsync("固废运单状态已更新为首磅。");
+            await ShowMessageBoxAsync("固废运单状态已更新。");
         }
         catch (Exception ex)
         {
