@@ -58,6 +58,11 @@
                             Foreground="White"
                             Padding="8,4"
                             Command="{Binding SyncDataCommand}" />
+                    <Button Content="退出登录"
+                            Classes="transparent-button"
+                            Foreground="White"
+                            Padding="8,4"
+                            Command="{Binding LogoutCommand}" />
                     <!-- 导出按钮：仅固废模式可见 -->
                      <Button Content="导出"
                             Classes="transparent-button"

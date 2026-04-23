@@ -145,6 +145,18 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
         ShowRetryButton = false;
     }
 
+    /// <summary>
+    ///     Reset the login form for re-login scenario.
+    ///     Clears username, password, remember-me, and error state.
+    /// </summary>
+    public void ResetLoginForm()
+    {
+        Username = string.Empty;
+        Password = string.Empty;
+        RememberMe = false;
+        ResetErrorState();
+    }
+
     private void ResetErrorState()
     {
         ErrorMessage = string.Empty;
