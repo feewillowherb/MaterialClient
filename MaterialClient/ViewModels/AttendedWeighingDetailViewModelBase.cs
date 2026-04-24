@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
+using Notification = Avalonia.Controls.Notifications.Notification;
 using Avalonia.Threading;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
@@ -21,8 +22,7 @@ using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Enums;
+using Ursa.Controls;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
@@ -210,19 +210,14 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         {
             var parentWin = GetParentWindow();
 
-            var messageBox = MessageBoxManager.GetMessageBoxStandard(
-                "提示",
-                message,
-                ButtonEnum.Ok,
-                Icon.None);
-
             if (parentWin != null)
             {
-                await messageBox.ShowWindowDialogAsync(parentWin);
+                await MessageBox.ShowAsync(parentWin, message, "提示", MessageBoxIcon.None,
+                    MessageBoxButton.OK);
             }
             else
             {
-                await messageBox.ShowAsync();
+                await MessageBox.ShowAsync(message, "提示", MessageBoxIcon.None, MessageBoxButton.OK);
             }
         });
     }
@@ -237,19 +232,14 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         {
             var parentWin = GetParentWindow();
 
-            var messageBox = MessageBoxManager.GetMessageBoxStandard(
-                "提示",
-                message,
-                ButtonEnum.Ok,
-                Icon.None);
-
             if (parentWin != null)
             {
-                await messageBox.ShowWindowDialogAsync(parentWin);
+                await MessageBox.ShowAsync(parentWin, message, "提示", MessageBoxIcon.None,
+                    MessageBoxButton.OK);
             }
             else
             {
-                await messageBox.ShowAsync();
+                await MessageBox.ShowAsync(message, "提示", MessageBoxIcon.None, MessageBoxButton.OK);
             }
         }, DispatcherPriority.Normal);
     }
@@ -533,18 +523,15 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         var result = await Dispatcher.UIThread.InvokeAsync(async () =>
         {
             var parentWin = GetParentWindow();
-            var messageBox = MessageBoxManager.GetMessageBoxStandard(
-                "确认废单",
-                "确定要废除此单吗？",
-                ButtonEnum.YesNo,
-                Icon.Question);
 
             if (parentWin != null)
-                return await messageBox.ShowWindowDialogAsync(parentWin);
-            return await messageBox.ShowAsync();
+                return await MessageBox.ShowAsync(parentWin, "确定要废除此单吗？", "确认废单",
+                    MessageBoxIcon.Question, MessageBoxButton.YesNo);
+            return await MessageBox.ShowAsync("确定要废除此单吗？", "确认废单",
+                MessageBoxIcon.Question, MessageBoxButton.YesNo);
         });
 
-        if (result != ButtonResult.Yes)
+        if (result != MessageBoxResult.Yes)
             return;
 
         try
