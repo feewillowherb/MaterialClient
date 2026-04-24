@@ -21,6 +21,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
@@ -43,6 +44,7 @@ namespace MaterialClient.ViewModels;
 public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITransientDependency
 {
     private readonly IAttendedWeighingService? _attendedWeighingService;
+    private readonly IAuthenticationService _authenticationService;
     private readonly CompositeDisposable _disposables = new();
     private readonly IServiceProvider _serviceProvider;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
@@ -64,6 +66,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         IServiceProvider serviceProvider,
         ITruckScaleWeightService truckScaleWeightService,
         IAttendedWeighingService attendedWeighingService,
+        IAuthenticationService authenticationService,
         ISoundDeviceService soundDeviceService,
         ISettingsService settingsService,
         ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
@@ -75,6 +78,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _serviceProvider = serviceProvider;
         _truckScaleWeightService = truckScaleWeightService;
         _attendedWeighingService = attendedWeighingService;
+        _authenticationService = authenticationService;
         _soundDeviceService = soundDeviceService;
         _settingsService = settingsService;
         _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
@@ -2232,6 +2236,59 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     }
 
     [ReactiveCommand]
+    private async Task LogoutAsync()
+    {
+        try
+        {
+            var parentWin = GetParentWindow();
+
+            // Show confirmation dialog
+            var messageBox = MessageBoxManager.GetMessageBoxStandard(
+                "确认退出登录",
+                "确定要退出登录吗？",
+                ButtonEnum.YesNo,
+                Icon.None);
+
+            var result = await messageBox.ShowWindowDialogAsync(parentWin);
+            if (result != ButtonResult.Yes) return;
+
+            // Clear session and credentials (soft logout — license preserved)
+            await _authenticationService.LogoutAsync();
+            await _authenticationService.ClearSavedCredentialAsync();
+
+            // Publish logout event for other components to react
+            MessageBus.Current.SendMessage(new LogoutRequestedMessage());
+
+            // Hide current window
+            parentWin?.Hide();
+
+            // Resolve LoginWindow from DI and set up re-login flow
+            var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
+            if (loginWindow.DataContext is LoginWindowViewModel loginViewModel)
+            {
+                loginViewModel.ResetLoginForm();
+
+                // Subscribe to re-login success to transition back to AttendedWeighingWindow
+                loginViewModel
+                    .WhenAnyValue(vm => vm.IsLoginSuccessful)
+                    .Where(isSuccessful => isSuccessful)
+                    .Subscribe(_ =>
+                    {
+                        loginWindow.Hide();
+                        parentWin?.Show();
+                    })
+                    .DisposeWith(_disposables);
+            }
+
+            loginWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Logout failed");
+        }
+    }
+
+    [ReactiveCommand]
     private void Save()
     {
         // TODO: Implement save logic
@@ -2573,7 +2630,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 SelectViewForItem(updatedItem);
             }
 
-            await ShowMessageBoxAsync("固废运单状态已更新为首磅。");
+            await ShowMessageBoxAsync("固废运单状态已更新。");
         }
         catch (Exception ex)
         {
