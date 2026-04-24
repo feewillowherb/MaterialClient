@@ -32,8 +32,7 @@ using MaterialClient.Views.AttendedWeighing;
 using MaterialClient.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Enums;
+using Ursa.Controls;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Data;
@@ -2243,14 +2242,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             var parentWin = GetParentWindow();
 
             // Show confirmation dialog
-            var messageBox = MessageBoxManager.GetMessageBoxStandard(
-                "确认退出登录",
-                "确定要退出登录吗？",
-                ButtonEnum.YesNo,
-                Icon.None);
-
-            var result = await messageBox.ShowWindowDialogAsync(parentWin);
-            if (result != ButtonResult.Yes) return;
+            var result = parentWin != null
+                ? await MessageBox.ShowAsync(parentWin, "确定要退出登录吗？", "确认退出登录",
+                    MessageBoxIcon.Question, MessageBoxButton.YesNo)
+                : await MessageBox.ShowAsync("确定要退出登录吗？", "确认退出登录",
+                    MessageBoxIcon.Question, MessageBoxButton.YesNo);
+            if (result != MessageBoxResult.Yes) return;
 
             // Clear session and credentials (soft logout — license preserved)
             await _authenticationService.LogoutAsync();
@@ -2534,19 +2531,19 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     private async Task ShowMessageBoxAsync(string message)
     {
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        await Dispatcher.UIThread.InvokeAsync(async () =>
         {
             var parentWin = GetParentWindow();
 
-            var messageBox = MessageBoxManager.GetMessageBoxStandard(
-                "提示",
-                message,
-                ButtonEnum.Ok,
-                Icon.None);
-
-            return parentWin != null
-                ? messageBox.ShowWindowDialogAsync(parentWin)
-                : messageBox.ShowAsync();
+            if (parentWin != null)
+            {
+                await MessageBox.ShowAsync(parentWin, message, "提示", MessageBoxIcon.None,
+                    MessageBoxButton.OK);
+            }
+            else
+            {
+                await MessageBox.ShowAsync(message, "提示", MessageBoxIcon.None, MessageBoxButton.OK);
+            }
         });
     }
 
