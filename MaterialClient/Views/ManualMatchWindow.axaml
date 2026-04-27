@@ -167,6 +167,11 @@
                         <Style Selector="DataGridCell:current /template/ Rectangle#CurrencyVisual">
                             <Setter Property="IsVisible" Value="False" />
                         </Style>
+                        <!-- 选中行外框 -->
+                        <Style Selector="DataGridRow:selected /template/ Border#RowBorder">
+                            <Setter Property="BorderBrush" Value="Black" />
+                            <Setter Property="BorderThickness" Value="2" />
+                        </Style>
                     </DataGrid.Styles>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="车牌号" Width="100" Binding="{Binding PlateNumber}" />
