@@ -5,6 +5,7 @@
              xmlns:converters="using:MaterialClient.Converters"
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
+             xmlns:u="https://irihi.tech/ursa"
              RequestedThemeVariant="Light">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -297,6 +298,16 @@
             <Setter Property="CornerRadius" Value="{Binding CornerRadius, RelativeSource={RelativeSource TemplatedParent}}" />
             <Setter Property="Opacity" Value="1" />
             <Setter Property="TextElement.Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
+        </Style>
+
+        <!-- Ursa MessageBox: override SolidButton Danger PointerOver for No button -->
+        <Style Selector="u|MessageBoxWindow /template/ Button#PART_NoButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonSolidDangerBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSolidDangerBorderBrush}" />
+        </Style>
+        <Style Selector="u|MessageBoxControl /template/ Button#PART_NoButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonSolidDangerBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSolidDangerBorderBrush}" />
         </Style>
 
         <!-- Border 卡片样式 -->
