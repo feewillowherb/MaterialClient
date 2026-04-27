@@ -9,7 +9,7 @@
         x:Name="Root"
         Title="供应商管理"
         Width="680"
-        SizeToContent="Height"
+        Height="520"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="None"
@@ -17,7 +17,7 @@
         Icon="/Assets/fd-ico.ico">
 
   <Border BorderBrush="LightGray" BorderThickness="1">
-    <Grid RowDefinitions="50,Auto,50">
+    <Grid RowDefinitions="50,*,50">
 
       <!-- 标题栏 -->
       <Grid Grid.Row="0" Background="#6498FE">
@@ -39,7 +39,7 @@
       </Grid>
 
       <!-- 查询区 + 表格（表格禁用垂直滚动，高度随行数自动计算） -->
-      <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="0">
+      <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="0">
 
         <!-- 查询条件 -->
         <Grid RowDefinitions="Auto" Margin="10,10,10,5">
@@ -69,10 +69,10 @@
           </Grid>
         </Grid>
 
-        <!-- 表格：仅 Id、Name（ProviderName）；禁用垂直滚动，高度随 PageSize 自动计算 -->
+        <!-- 表格：仅展示列，无操作列 -->
         <DataGrid Grid.Row="1"
                   RowHeight="30"
-                  VerticalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
                   Margin="10,0,10,5"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
@@ -85,18 +85,6 @@
             <DataGridTextColumn Binding="{Binding ProviderName}" Header="名称" MinWidth="200" Width="*" />
             <DataGridTextColumn Binding="{Binding ContactName}" Header="联系人姓名" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding ContactPhone}" Header="联系人电话" MinWidth="140" />
-            <DataGridTemplateColumn Header="操作" MinWidth="90">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="dto:ProviderDto">
-                  <Button Content="编辑"
-                          Width="70"
-                          Height="26"
-                          Classes="primary-button"
-                          Command="{Binding DataContext.EditCommand, ElementName=Root}"
-                          CommandParameter="{Binding .}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
       </Grid>
