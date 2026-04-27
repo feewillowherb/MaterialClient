@@ -8,7 +8,7 @@
         x:DataType="viewModels:ProviderManagementViewModel"
         x:Name="Root"
         Title="供应商管理"
-        Width="680"
+        Width="1000"
         Height="520"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
