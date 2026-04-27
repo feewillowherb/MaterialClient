@@ -159,6 +159,15 @@
                           BorderThickness="1"
                           BorderBrush="#E5E7EB"
                           SelectionMode="Single">
+                    <DataGrid.Styles>
+                        <!-- 隐藏当前单元格的焦点指示器，仅保留整行选中效果 -->
+                        <Style Selector="DataGridCell:focus /template/ Grid#FocusVisual">
+                            <Setter Property="IsVisible" Value="False" />
+                        </Style>
+                        <Style Selector="DataGridCell:current /template/ Rectangle#CurrencyVisual">
+                            <Setter Property="IsVisible" Value="False" />
+                        </Style>
+                    </DataGrid.Styles>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="车牌号" Width="100" Binding="{Binding PlateNumber}" />
                         <DataGridTextColumn Header="供料单位" Width="120" Binding="{Binding ProviderName}" />
