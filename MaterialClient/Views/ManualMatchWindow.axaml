@@ -158,8 +158,7 @@
                           GridLinesVisibility="Horizontal"
                           BorderThickness="1"
                           BorderBrush="#E5E7EB"
-                          SelectionMode="Single"
-                          SelectionUnit="Row">
+                          SelectionMode="Single">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="车牌号" Width="100" Binding="{Binding PlateNumber}" />
                         <DataGridTextColumn Header="供料单位" Width="120" Binding="{Binding ProviderName}" />
