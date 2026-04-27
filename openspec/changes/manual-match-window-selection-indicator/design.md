@@ -31,6 +31,7 @@ MaterialClient 应用使用 Avalonia UI 框架，全局样式定义在 `App.axam
 - **用户**：需要清晰的选中状态反馈，减少操作错误
 - **开发团队**：需要维护全局样式的一致性
 - **UI/UX**：确保符合无障碍设计标准（WCAG AA）
+- **项目决策者**：需要直观比较不同设计方案的视觉效果（通过演示项目）
 
 ## Goals / Non-Goals
 
@@ -105,7 +106,7 @@ MaterialClient 应用使用 Avalonia UI 框架，全局样式定义在 `App.axam
 
 本节详细评估了其他可行的选中设计方案，包括各方案的优缺点、适用场景和实现复杂度。
 
-### 方案 A：主题色背景 + 左侧边框 + 白色文字（当前推荐）
+### 方案 A：主题色背景 + 左侧边框 + 白色文字（✅ 已采用）
 
 **视觉描述**：
 ```
@@ -272,7 +273,7 @@ MaterialClient 应用使用 Avalonia UI 框架，全局样式定义在 `App.axam
 
 基于 ManualMatchWindow 的使用场景（需要明确选中反馈、减少操作错误），推荐方案排序如下：
 
-1. **方案 A**（推荐）：主题色背景 + 左侧边框 - 最佳视觉对比度
+1. **方案 A**（✅ **已采用**）：主题色背景 + 左侧边框 - 最佳视觉对比度
 2. **方案 B**（备选）：浅色背景 + 左侧边框 - 温和的视觉变化
 3. **方案 C**（备选）：仅边框指示器 - 最小化改动
 4. **方案 F**（特殊情况）：局部样式 - 如仅需优化单一窗口
@@ -300,6 +301,45 @@ MaterialClient 应用使用 Avalonia UI 框架，全局样式定义在 `App.axam
 - 希望降低全局变更的风险
 
 ## Architecture
+
+### 方案演示项目架构
+
+**项目名称**：`MaterialClient.Demo`
+
+**项目定位**：独立的 Avalonia UI 演示项目，无业务逻辑，仅用于展示各设计方案的视觉效果和交互行为。
+
+**项目结构**：
+```
+MaterialClient.Demo/
+├── MaterialClient.Demo.csproj
+├── App.axaml
+├── App.axaml.cs
+├── Views/
+│   ├── DemoMainWindow.axaml          # 主窗口：方案选择器
+│   ├── SchemeAWindow.axaml            # 方案 A 演示窗口
+│   ├── SchemeBWindow.axaml            # 方案 B 演示窗口
+│   ├── SchemeCWindow.axaml            # 方案 C 演示窗口
+│   └── SchemeDWindow.axaml            # 方案 D 演示窗口
+├── ViewModels/
+│   ├── DemoMainWindowViewModel.cs
+│   └── DemoDataGenerator.cs           # 模拟数据生成器
+└── Models/
+    └── CandidateRecord.cs             # 演示数据模型
+```
+
+**核心功能**：
+1. **方案选择器主窗口**：提供导航界面，点击按钮打开对应方案的演示窗口
+2. **模拟数据**：生成 5-10 条候选记录数据，包含车牌号、供料单位、车辆重量、进场时间、相隔时间等字段
+3. **独立样式定义**：每个演示窗口内联定义该方案对应的 DataGrid 样式，避免全局冲突
+4. **交互演示**：支持鼠标悬停、点击选中、取消选中等交互操作
+5. **主题切换**：支持 Light/Dark 主题切换，验证各方案在不同主题下的效果
+
+**技术约束**：
+- 使用 Avalonia 11.x 框架
+- 不引入 MaterialClient 的业务逻辑代码
+- 不依赖 MaterialClient 的主题系统，使用内联样式
+- 支持 .NET 8+ 运行时
+- 可独立编译和运行
 
 ### 组件层次结构
 
@@ -400,6 +440,7 @@ sequenceDiagram
 | 文件路径 | 变更类型 | 变更说明 | 影响模块 |
 |---------|---------|---------|---------|
 | `MaterialClient/App.axaml` | 修改 | 更新 DataGridRow:selected 样式，添加背景色、边框和文字颜色 | 全局 DataGrid 样式系统 |
+| `MaterialClient.Demo/` (新增) | 新增项目 | 创建独立的方案演示项目，用于展示所有设计方案的视觉效果 | 无生产环境影响 |
 
 ### 详细修改内容
 

@@ -6,11 +6,18 @@
 
 ## What Changes
 
-- 增强 DataGrid 选中行的视觉对比度，使用主题色 PrimaryBlue (#4169E1) 作为选中背景
+**已选择方案：方案 A - 主题色背景 + 左侧边框 + 白色文字**
+
+增强 DataGrid 选中行的视觉对比度，使用主题色 PrimaryBlue (#4169E1) 作为选中背景
 - 添加左侧蓝色边框指示器（3px solid #4169E1），提供额外的视觉锚点
 - 调整选中行的文字颜色为白色，确保在深色背景下的可读性
 - 保持悬停状态与选中状态的清晰视觉区分
 - 确保所有主题变体（Light/Dark）下的视觉一致性
+
+**新增：方案演示项目**
+创建一个独立的 Avalonia 演示项目，用于可视化展示所有设计方案（A、B、C、D）的 UI 渲染效果和交互行为，便于方案评审和决策验证。
+
+> **方案选择说明**：经过方案对比评估（详见 design.md），选择方案 A 以获得最佳视觉对比度和用户体验。该方案提供多重视觉反馈（颜色 + 边框 + 文字），符合 WCAG AA 无障碍标准，并与应用主题系统保持一致。
 
 ## UI 原型
 
@@ -70,6 +77,7 @@ sequenceDiagram
 |---------|---------|---------|---------|
 | `MaterialClient/App.axaml` | 修改 | 更新全局 DataGrid 选中行样式 | 所有使用 DataGrid 的窗口 |
 | `MaterialClient/Views/ManualMatchWindow.axaml` | 无需修改 | 使用全局样式 | 仅影响此窗口的 DataGrid |
+| `MaterialClient.Demo/` (新增) | 新增项目 | 方案演示项目，展示所有设计方案的视觉效果 | 仅用于演示和评审 |
 
 ## Capabilities
 
