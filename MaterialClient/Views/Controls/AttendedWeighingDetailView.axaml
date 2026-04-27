@@ -101,10 +101,16 @@
         </Border>
 
         <!-- 第二、三行：按模式切换为独立 SubView -->
-        <Panel Grid.Row="1" Grid.RowSpan="2">
-            <aw:StandardModeFormView IsVisible="{Binding !IsSolidWasteMode}" />
-            <aw:SolidWasteModeFormView IsVisible="{Binding IsSolidWasteMode}" />
-        </Panel>
+        <ContentControl Grid.Row="1" Grid.RowSpan="2" Content="{Binding}">
+            <ContentControl.DataTemplates>
+                <DataTemplate DataType="vm:StandardWeighingDetailViewModel">
+                    <aw:StandardModeFormView />
+                </DataTemplate>
+                <DataTemplate DataType="vm:SolidWasteWeighingDetailViewModel">
+                    <aw:SolidWasteModeFormView />
+                </DataTemplate>
+            </ContentControl.DataTemplates>
+        </ContentControl>
 
         <!--第四行：按钮栏-->
         <Grid Grid.Row="3" Margin="0,0,0,0">
