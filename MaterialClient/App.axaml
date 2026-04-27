@@ -344,14 +344,30 @@
             <Setter Property="Height" Value="36" />
         </Style>
 
-        <!-- DataGrid 选中行样式 -->
+        <!-- DataGrid 选中行样式 (Scheme A: PrimaryBlue background) -->
         <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-            <Setter Property="Fill" Value="#C8DCFF" />
+            <Setter Property="Fill" Value="#4169E1" />
+        </Style>
+
+        <!-- DataGrid 选中行左侧边框指示器 -->
+        <Style Selector="DataGridRow:selected /template/ Border#PART_SelectedCellIndicator">
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
+        </Style>
+
+        <!-- DataGrid 选中行文字颜色 -->
+        <Style Selector="DataGridRow:selected">
+            <Setter Property="Foreground" Value="#FFFFFF" />
         </Style>
 
         <!-- DataGrid 未选中行悬停样式 -->
         <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
             <Setter Property="Fill" Value="#F0F7FF" />
+        </Style>
+
+        <!-- DataGrid 选中行悬停时保持选中样式（优先级高于悬停） -->
+        <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#4169E1" />
         </Style>
 
         <!-- DataGrid 单元格样式 -->
