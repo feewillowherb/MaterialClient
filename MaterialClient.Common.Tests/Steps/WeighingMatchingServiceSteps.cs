@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Reqnroll;
 using Shouldly;
 using MaterialClient.Common;
@@ -22,12 +23,6 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     private int _waybillsCreatedCount;
 
     private TestManager M => GetRequiredService<TestManager>();
-
-    [Given(@"the weighing configuration has match duration of (.*) hours")]
-    public void GivenTheWeighingConfigurationHasMatchDuration(int hours)
-    {
-        // Configuration is handled by the test module
-    }
 
     [Given(@"the weighing record repository is available")]
     public void GivenTheWeighingRecordRepositoryIsAvailable()
@@ -54,16 +49,26 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
                 var record = new WeighingRecord(info.Weight)
                 {
                     PlateNumber = info.PlateNumber,
-                    ProviderId = info.ProviderId
+                    ProviderId = info.ProviderId,
+                    DeliveryType = _deliveryType
                 };
 
-                // Set AddDate before inserting
-                var creationTimeValue = DateTime.Parse(info.CreatedAt);
-                record.AddDate = creationTimeValue;
-                
                 await M.WeighingRecordRepository.InsertAsync(record);
-
                 _testRecords.Add(record);
+            }
+        });
+
+        // SaveChangesAsync overrides AddDate with current time, so we must
+        // update AddDate via raw SQL after the UoW commits to set the correct timestamps.
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var dbContext = await M.WeighingRecordRepository.GetDbContextAsync();
+            foreach (var (record, info) in _testRecords.Zip(infos))
+            {
+                var creationTimeValue = DateTime.Parse(info.CreatedAt);
+                await dbContext.Database.ExecuteSqlRawAsync(
+                    "UPDATE WeighingRecords SET AddDate = {0} WHERE Id = {1}",
+                    creationTimeValue.ToString("yyyy-MM-dd HH:mm:ss"), record.Id);
             }
         });
     }
@@ -80,10 +85,14 @@ public class WeighingMatchingServiceSteps : MaterialClientDomainTestBase<Materia
     {
         await WithUnitOfWorkAsync(async () =>
         {
+            var dbContext = await M.WeighingRecordRepository.GetDbContextAsync();
+
             // Try to match each test record
             foreach (var record in _testRecords)
             {
                 await M.MatchingService.AutoMatchAsync(record.Id);
+                // Flush change tracker to ensure subsequent queries see MatchedId updates
+                await dbContext.SaveChangesAsync();
             }
 
             // Load created waybills
