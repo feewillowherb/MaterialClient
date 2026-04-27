@@ -8,7 +8,7 @@
         x:Name="Root"
         Title="材料管理"
         Width="680"
-        SizeToContent="Height"
+        Height="500"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="None"
@@ -16,7 +16,7 @@
         Icon="/Assets/fd-ico.ico">
 
   <Border BorderBrush="LightGray" BorderThickness="1">
-    <Grid RowDefinitions="50,Auto,50">
+    <Grid RowDefinitions="50,*,50">
 
       <!-- 标题栏 -->
       <Grid Grid.Row="0" Background="#6498FE">
@@ -38,7 +38,7 @@
       </Grid>
 
       <!-- 查询区 + 表格 -->
-      <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="0">
+      <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="0">
 
         <!-- 查询条件 -->
         <Grid RowDefinitions="Auto" Margin="10,10,10,5">
@@ -71,7 +71,7 @@
         <!-- 表格：仅展示列，无操作列 -->
         <DataGrid Grid.Row="1"
                   RowHeight="30"
-                  VerticalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
                   Margin="10,0,10,5"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
