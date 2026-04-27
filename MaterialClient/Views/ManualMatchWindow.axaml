@@ -106,22 +106,30 @@
                     <Grid ColumnDefinitions="Auto,*" Margin="0,5,0,0">
                         <TextBlock Text="进场照片：" FontSize="14" Foreground="Black" VerticalAlignment="Center"
                                    Margin="10,5" />
-                        <ItemsControl Grid.Column="1" ItemsSource="{Binding EntryPhotos}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="5" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
-                                        <Image
-                                            Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}"
-                                            Stretch="UniformToFill" />
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <Grid Grid.Column="1">
+                            <ItemsControl ItemsSource="{Binding EntryPhotos}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="5" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4">
+                                            <Image
+                                                Source="{Binding ., Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                                Stretch="UniformToFill" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <!-- 无进场照片时显示默认占位 -->
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="5"
+                                        IsVisible="{Binding EntryPhotos.Count, Converter={x:Static ObjectConverters.IsNull}}">
+                                <Border Background="#E5E7EB" Width="140" Height="100" CornerRadius="4" />
+                            </StackPanel>
+                        </Grid>
                     </Grid>
 
                     <!-- 运单照片 -->
