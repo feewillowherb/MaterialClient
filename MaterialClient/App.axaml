@@ -32,6 +32,7 @@
                 <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
                 <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
                 <converters:WeighingModeConverter x:Key="WeighingModeConverter" />
+                <converters:MaterialUnitDisplayConverter x:Key="MaterialUnitDisplayConverter" />
                 
                 <!-- Color Brushes -->
                 <SolidColorBrush x:Key="PrimaryBlue">#4169E1</SolidColorBrush>

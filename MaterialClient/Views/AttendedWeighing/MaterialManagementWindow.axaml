@@ -7,7 +7,7 @@
         x:DataType="viewModels:MaterialManagementViewModel"
         x:Name="Root"
         Title="材料管理"
-        Width="680"
+        Width="1000"
         Height="520"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
@@ -85,7 +85,9 @@
             <DataGridTextColumn Binding="{Binding Code}" Header="物料编码" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding Brand}" Header="品牌" MinWidth="100" />
             <DataGridTextColumn Binding="{Binding Size}" Header="规格尺寸" MinWidth="100" />
-            <DataGridTextColumn Binding="{Binding UnitName}" Header="单位" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding UpperLimit}" Header="阈值上限" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding LowerLimit}" Header="阈值下限" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding ., Converter={StaticResource MaterialUnitDisplayConverter}}" Header="换算单位" MinWidth="140" />
           </DataGrid.Columns>
         </DataGrid>
       </Grid>

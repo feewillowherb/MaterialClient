@@ -3,8 +3,8 @@
         xmlns:local="using:MaterialClient.Views.AttendedWeighing"
         xmlns:u="https://irihi.tech/ursa"
         xmlns:viewModels="clr-namespace:MaterialClient.ViewModels"
-        x:Class="MaterialClient.Views.AttendedWeighing.DataManagementDialogWindow"
-        x:DataType="viewModels:DataManagementDialogViewModel"
+        x:Class="MaterialClient.Views.AttendedWeighing.StandardDataManagementDialogWindow"
+        x:DataType="viewModels:StandardDataManagementDialogViewModel"
         Title="台账管理"
         Width="1000"
         Height="520"
@@ -36,13 +36,14 @@
                 Cursor="Hand" />
       </Grid>
 
-      <!-- 查询区 + 表格（表格禁用垂直滚动，高度随行数自动计算） -->
+      <!-- 查询区 + 表格 -->
       <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="0">
 
-        <!-- 查询条件区域：与 SolidWasteExportFilter 对齐 -->
+        <!-- 查询条件区域 -->
         <Grid RowDefinitions="Auto" Margin="10,10,10,5">
           <Grid>
             <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="Auto" />
@@ -64,10 +65,10 @@
                       Margin="5"
                       Width="110"
                       Height="30"
-                      ItemsSource="{x:Static viewModels:DataManagementDialogViewModel.WeighingTypeOptions}"
-                      SelectedItem="{Binding SelectedWeighingType}">
+                      ItemsSource="{x:Static viewModels:StandardDataManagementDialogViewModel.DeliveryTypeFilterOptions}"
+                      SelectedItem="{Binding SelectedDeliveryType}">
               <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="viewModels:WeighingTypeFilterOption">
+                <DataTemplate x:DataType="viewModels:DeliveryTypeFilterOption">
                   <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
                 </DataTemplate>
               </ComboBox.ItemTemplate>
@@ -77,11 +78,24 @@
                      Margin="5"
                      Width="110"
                      Height="30"
-                     Watermark="发货单位"
-                     Text="{Binding ProviderName}"
+                     Watermark="商品名称"
+                     Text="{Binding MaterialName}"
                      VerticalContentAlignment="Center" />
 
-            <StackPanel Grid.Column="3"
+            <ComboBox Grid.Column="3"
+                      Margin="5"
+                      Width="110"
+                      Height="30"
+                      ItemsSource="{x:Static viewModels:StandardDataManagementDialogViewModel.OrderTypeFilterOptions}"
+                      SelectedItem="{Binding SelectedOrderType}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:OrderTypeFilterOption">
+                  <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <StackPanel Grid.Column="4"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Margin="5,0">
@@ -96,13 +110,13 @@
                                 PanelFormat="yyyy-MM-dd" />
             </StackPanel>
 
-            <TextBlock Grid.Column="4"
+            <TextBlock Grid.Column="5"
                        Text="-"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,0" />
 
-            <u:DateTimePicker Grid.Column="5"
+            <u:DateTimePicker Grid.Column="6"
                               Margin="5"
                               MinWidth="150"
                               Width="170"
@@ -111,7 +125,7 @@
                               DisplayFormat="yyyy-MM-dd"
                               PanelFormat="yyyy-MM-dd" />
 
-            <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+            <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
               <Button Content="查询"
                       Width="80"
                       Height="30"
@@ -123,7 +137,7 @@
           </Grid>
         </Grid>
 
-        <!-- 表格区域：17 列与 SolidWasteExcelExportService 一致；禁用垂直滚动，高度随 PageSize 自动计算 -->
+        <!-- 表格区域：15 列标准模式专用字段 -->
         <DataGrid Grid.Row="1"
                   RowHeight="30"
                   VerticalScrollBarVisibility="Auto"
@@ -135,28 +149,26 @@
                   CanUserResizeColumns="True"
                   ItemsSource="{Binding Records}">
           <DataGrid.Columns>
-            <DataGridTextColumn Binding="{Binding VehicleNumber}" Header="车  号" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding GrossWeightTime}" Header="毛重时间" MinWidth="140" />
-            <DataGridTextColumn Binding="{Binding TareWeightTime}" Header="皮重时间" MinWidth="140" />
-            <DataGridTextColumn Binding="{Binding WeighingType}" Header="称重类型" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding ShippingUnit}" Header="发货单位" MinWidth="120" />
-            <DataGridTextColumn Binding="{Binding ReceivingUnit}" Header="收货单位" MinWidth="120" />
-            <DataGridTextColumn Binding="{Binding GoodsName}" Header="货  名" MinWidth="100" />
-            <DataGridTextColumn Binding="{Binding GrossWeight}" Header="毛  重" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding TareWeight}" Header="皮  重" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding NetWeight}" Header="净  重" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding Remark}" Header="备 注" MinWidth="100" />
-            <DataGridTextColumn Binding="{Binding Street}" Header="所属街道" MinWidth="100" />
-            <DataGridTextColumn Binding="{Binding SolidWasteType}" Header="类型" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding ManifestNumber}" Header="联单编号" MinWidth="110" />
-            <DataGridTextColumn Binding="{Binding UploadResult}" Header="上传结果" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding UploadStatus}" Header="上传状态" MinWidth="80" />
-            <DataGridTextColumn Binding="{Binding UploadTime}" Header="上传时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding PlateNumber}" Header="车牌号" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding DeliveryType}" Header="类型" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding MaterialName}" Header="商品" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding OrderType}" Header="状态" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding PlanQuantity}" Header="运单数量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding PlanWeight}" Header="运单重量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding OffsetCount}" Header="扣量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding ActualQuantity}" Header="实际数量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding ActualWeight}" Header="实际重量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding UnitConversion}" Header="单位换算" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding JoinTime}" Header="进场时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding OutTime}" Header="出场时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding ProviderName}" Header="供应商" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding OrderNo}" Header="发货单号" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding Remark}" Header="备注" MinWidth="100" />
           </DataGrid.Columns>
         </DataGrid>
       </Grid>
 
-      <!-- 分页与统计信息区域 -->
+      <!-- 分页与操作区域 -->
       <Grid Grid.Row="2"
             Margin="10,0,10,10">
         <Grid.ColumnDefinitions>
@@ -177,13 +189,6 @@
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
                     Spacing="8">
-
-          <Button Content="导出"
-                  Width="80"
-                  Height="30"
-                  Margin="8,0,0,0"
-                  Classes="primary-button"
-                  Command="{Binding ExportCommand}" />
           <Button Content="关闭"
                   Width="80"
                   Height="30"
