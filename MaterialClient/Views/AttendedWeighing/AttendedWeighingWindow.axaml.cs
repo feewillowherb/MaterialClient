@@ -8,7 +8,7 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MaterialClient.Common.Models;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -203,9 +203,22 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
     private async Task OpenLedgerManagementDialogAsync()
     {
         if (_serviceProvider == null) return;
-        var viewModel = _serviceProvider.GetRequiredService<DataManagementDialogViewModel>();
-        var dialog = new DataManagementDialogWindow(viewModel, NotificationManager);
-        await dialog.ShowDialog<bool?>(this);
+
+        var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
+        var weighingMode = await settingsService.GetWeighingModeAsync();
+
+        if (weighingMode == WeighingMode.Standard)
+        {
+            var viewModel = _serviceProvider.GetRequiredService<StandardDataManagementDialogViewModel>();
+            var dialog = new StandardDataManagementDialogWindow(viewModel);
+            await dialog.ShowDialog<bool?>(this);
+        }
+        else
+        {
+            var viewModel = _serviceProvider.GetRequiredService<DataManagementDialogViewModel>();
+            var dialog = new DataManagementDialogWindow(viewModel, NotificationManager);
+            await dialog.ShowDialog<bool?>(this);
+        }
     }
 
     protected override void OnClosed(EventArgs e)

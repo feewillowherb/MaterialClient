@@ -1,0 +1,203 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:MaterialClient.Views.AttendedWeighing"
+        xmlns:u="https://irihi.tech/ursa"
+        xmlns:viewModels="clr-namespace:MaterialClient.ViewModels"
+        x:Class="MaterialClient.Views.AttendedWeighing.StandardDataManagementDialogWindow"
+        x:DataType="viewModels:StandardDataManagementDialogViewModel"
+        Title="台账管理"
+        Width="1200"
+        Height="500"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White"
+        Icon="/Assets/fd-ico.ico">
+
+  <Border BorderBrush="LightGray" BorderThickness="1">
+    <Grid RowDefinitions="50,*,50">
+
+      <!-- 标题栏 -->
+      <Grid Grid.Row="0" Background="#6498FE">
+        <TextBlock Text="台账管理"
+                   FontSize="14"
+                   Foreground="White"
+                   VerticalAlignment="Center"
+                   Margin="15,0,0,0" />
+        <Button Content="✕"
+                Classes="transparent-button"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                FontSize="20"
+                Foreground="White"
+                Width="40"
+                Height="35"
+                Command="{Binding CloseCommand}"
+                Cursor="Hand" />
+      </Grid>
+
+      <!-- 查询区 + 表格 -->
+      <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="0">
+
+        <!-- 查询条件区域 -->
+        <Grid RowDefinitions="Auto" Margin="10,10,10,5">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0"
+                     Margin="5"
+                     Width="110"
+                     Height="30"
+                     Watermark="车牌号"
+                     Text="{Binding PlateNumber}"
+                     VerticalContentAlignment="Center" />
+
+            <ComboBox Grid.Column="1"
+                      Margin="5"
+                      Width="110"
+                      Height="30"
+                      ItemsSource="{x:Static viewModels:StandardDataManagementDialogViewModel.DeliveryTypeFilterOptions}"
+                      SelectedItem="{Binding SelectedDeliveryType}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:DeliveryTypeFilterOption">
+                  <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <TextBox Grid.Column="2"
+                     Margin="5"
+                     Width="110"
+                     Height="30"
+                     Watermark="商品名称"
+                     Text="{Binding MaterialName}"
+                     VerticalContentAlignment="Center" />
+
+            <ComboBox Grid.Column="3"
+                      Margin="5"
+                      Width="110"
+                      Height="30"
+                      ItemsSource="{x:Static viewModels:StandardDataManagementDialogViewModel.OrderTypeFilterOptions}"
+                      SelectedItem="{Binding SelectedOrderType}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:OrderTypeFilterOption">
+                  <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <StackPanel Grid.Column="4"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="5,0">
+              <TextBlock Text="进场日期："
+                         VerticalAlignment="Center"
+                         Margin="0,0,4,0" />
+              <u:DateTimePicker MinWidth="150"
+                                Width="170"
+                                Height="30"
+                                SelectedDate="{Binding StartDate}"
+                                DisplayFormat="yyyy-MM-dd"
+                                PanelFormat="yyyy-MM-dd" />
+            </StackPanel>
+
+            <TextBlock Grid.Column="5"
+                       Text="-"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,0" />
+
+            <u:DateTimePicker Grid.Column="6"
+                              Margin="5"
+                              MinWidth="150"
+                              Width="170"
+                              Height="30"
+                              SelectedDate="{Binding EndDate}"
+                              DisplayFormat="yyyy-MM-dd"
+                              PanelFormat="yyyy-MM-dd" />
+
+            <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+              <Button Content="查询"
+                      Width="80"
+                      Height="30"
+                      Margin="10,0,0,0"
+                      VerticalAlignment="Center"
+                      Classes="primary-button"
+                      Command="{Binding QueryCommand}" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+
+        <!-- 表格区域：15 列标准模式专用字段 -->
+        <DataGrid Grid.Row="1"
+                  RowHeight="30"
+                  VerticalScrollBarVisibility="Auto"
+                  Margin="10,0,10,5"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  CanUserResizeColumns="True"
+                  ItemsSource="{Binding Records}">
+          <DataGrid.Columns>
+            <DataGridTextColumn Binding="{Binding PlateNumber}" Header="车牌号" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding DeliveryType}" Header="类型" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding MaterialName}" Header="商品" MinWidth="100" />
+            <DataGridTextColumn Binding="{Binding OrderType}" Header="状态" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding PlanQuantity}" Header="运单数量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding PlanWeight}" Header="运单重量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding OffsetCount}" Header="扣量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding ActualQuantity}" Header="实际数量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding ActualWeight}" Header="实际重量" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding UnitConversion}" Header="单位换算" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding JoinTime}" Header="进场时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding OutTime}" Header="出场时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding ProviderName}" Header="供应商" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding OrderNo}" Header="发货单号" MinWidth="120" />
+            <DataGridTextColumn Binding="{Binding Remark}" Header="备注" MinWidth="100" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </Grid>
+
+      <!-- 分页与操作区域 -->
+      <Grid Grid.Row="2"
+            Margin="10,0,10,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <u:Pagination Grid.Column="0"
+                      CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
+                      TotalCount="{Binding TotalCount}"
+                      PageSize="{Binding PageSize}"
+                      Command="{Binding PageChangeCommand}" />
+
+        <Grid Grid.Column="1" />
+
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    Spacing="8">
+          <Button Content="关闭"
+                  Width="80"
+                  Height="30"
+                  Margin="8,0,0,0"
+                  Classes="primary-button"
+                  Command="{Binding ConfirmCommand}" />
+        </StackPanel>
+      </Grid>
+
+    </Grid>
+  </Border>
+</Window>
