@@ -174,24 +174,13 @@
                         </Style>
                     </DataGrid.Styles>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="车牌号" Width="100" Binding="{Binding PlateNumber}" />
-                        <DataGridTextColumn Header="供料单位" Width="120" Binding="{Binding ProviderName}" />
-                        <DataGridTextColumn Header="车辆重量（吨）" Width="100"
+                        <DataGridTextColumn Header="车牌号" Width="*" Binding="{Binding PlateNumber}" />
+                        <DataGridTextColumn Header="供料单位" Width="*" Binding="{Binding ProviderName}" />
+                        <DataGridTextColumn Header="车辆重量（吨）" Width="120"
                                             Binding="{Binding Weight, StringFormat='{}{0:F2}'}" />
-                        <DataGridTextColumn Header="进场时间" Width="150"
+                        <DataGridTextColumn Header="进场时间" Width="180"
                                             Binding="{Binding JoinTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" />
-                        <DataGridTextColumn Header="相隔时间" Width="80" Binding="{Binding SeparatedTime}" />
-                        <DataGridTemplateColumn Header="操作" Width="100">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Button Content="查看详情"
-                                            Classes="transparent-button"
-                                            Foreground="#40A9FF"
-                                            Padding="8,4"
-                                            FontSize="12" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="相隔时间" Width="120" Binding="{Binding SeparatedTime}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
