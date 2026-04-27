@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:MaterialClient.Demo.Models"
+        x:Class="MaterialClient.Demo.Views.SchemeAWindow"
+        Title="Scheme A: PrimaryBlue BG + Left Border + White Text"
+        Width="750" Height="420"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <!-- Scheme A: PrimaryBlue background + left border + white text -->
+        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#4169E1" />
+        </Style>
+
+        <Style Selector="DataGridRow:selected /template/ Border#PART_SelectedCellIndicator">
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
+        </Style>
+
+        <Style Selector="DataGridRow:selected">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <!-- Hover for unselected rows -->
+        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#F0F7FF" />
+        </Style>
+
+        <!-- Selected + hover keeps selected style -->
+        <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#4169E1" />
+        </Style>
+
+        <!-- DataGrid header style matching production -->
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#6498FE" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="4,8" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+    </Window.Styles>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Scheme A: PrimaryBlue BG + Left Border + White Text"
+                       FontSize="16" FontWeight="Bold" />
+            <TextBlock Text="Background: #4169E1 | Left Border: 3px solid #4169E1 | Text: #FFFFFF"
+                       FontSize="12" Foreground="Gray" />
+        </StackPanel>
+
+        <DataGrid Grid.Row="1"
+                  Name="DemoDataGrid"
+                  AutoGenerateColumns="False"
+                  CanUserResizeColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  SelectionMode="Single"
+                  IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="License Plate" Width="120"
+                                   Binding="{Binding LicensePlate}" />
+                <DataGridTextColumn Header="Supplier" Width="160"
+                                   Binding="{Binding Supplier}" />
+                <DataGridTextColumn Header="Weight (ton)" Width="100"
+                                   Binding="{Binding Weight}" />
+                <DataGridTextColumn Header="Entry Time" Width="150"
+                                   Binding="{Binding EntryTime, StringFormat=yyyy-MM-dd HH:mm}" />
+                <DataGridTextColumn Header="Elapsed" Width="80"
+                                   Binding="{Binding ElapsedTime}" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Button Grid.Row="2"
+                Content="Close"
+                Click="OnCloseClick"
+                HorizontalAlignment="Right"
+                Margin="0,12,0,0"
+                Padding="16,8" />
+    </Grid>
+</Window>

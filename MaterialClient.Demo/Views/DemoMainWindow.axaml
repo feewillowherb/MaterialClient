@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MaterialClient.Demo.Views.DemoMainWindow"
+        Title="DataGrid Selection Scheme Demo"
+        Width="500" Height="450"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <Style Selector="Button.scheme-btn">
+            <Setter Property="Margin" Value="0,8" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+    </Window.Styles>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="DataGrid Selection Scheme Demo"
+                   FontSize="22" FontWeight="Bold"
+                   Margin="0,0,0,8" />
+
+        <TextBlock Grid.Row="1"
+                   Text="Click a button below to preview each design scheme."
+                   FontSize="13" Foreground="Gray"
+                   Margin="0,0,0,16" />
+
+        <StackPanel Grid.Row="2" Spacing="4">
+            <Button Classes="scheme-btn"
+                    Content="Scheme A: PrimaryBlue BG + Left Border + White Text"
+                    Click="OnSchemeAClick" />
+            <TextBlock Text="Background: #4169E1, Left Border: 3px, Text: #FFFFFF"
+                       FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
+
+            <Button Classes="scheme-btn"
+                    Content="Scheme B: Light Blue BG + Left Border (keep text)"
+                    Click="OnSchemeBClick" />
+            <TextBlock Text="Background: #E0E7FF, Left Border: 4px, Text: original"
+                       FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
+
+            <Button Classes="scheme-btn"
+                    Content="Scheme C: Border Indicator Only (no BG change)"
+                    Click="OnSchemeCClick" />
+            <TextBlock Text="Background: unchanged, Left Border: 5px, Shadow"
+                       FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
+
+            <Button Classes="scheme-btn"
+                    Content="Scheme D: Checkbox / Selection Icon Column"
+                    Click="OnSchemeDClick" />
+            <TextBlock Text="Checkbox column + optional background highlight"
+                       FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
+        </StackPanel>
+
+        <Button Grid.Row="3"
+                Content="Toggle Light/Dark Theme"
+                Click="OnToggleThemeClick"
+                HorizontalAlignment="Center"
+                Margin="0,12,0,0"
+                Padding="16,8" />
+    </Grid>
+</Window>

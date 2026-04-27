@@ -5,6 +5,7 @@
              xmlns:converters="using:MaterialClient.Converters"
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
+             xmlns:u="https://irihi.tech/ursa"
              RequestedThemeVariant="Light">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -134,6 +135,26 @@
             <Setter Property="BorderBrush" Value="#4169E1" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
+        <Style Selector="Button.primary-button:disabled">
+            <Setter Property="Foreground" Value="#80FFFFFF" />
+        </Style>
+        <Style Selector="Button.primary-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#80FFFFFF" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Button.brand-primary-button">
+            <Setter Property="Background" Value="#4A85F9" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#4A85F9" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.brand-primary-button:disabled">
+            <Setter Property="Foreground" Value="#80FFFFFF" />
+        </Style>
+        <Style Selector="Button.brand-primary-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#80FFFFFF" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
         <!-- <Style Selector="Button.primary-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#3158D0"/> -->
         <!-- </Style> -->
@@ -186,6 +207,31 @@
         <Style Selector="Button.transparent-button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.titlebar-close-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.titlebar-close-button:pointerover">
+            <Setter Property="Background" Value="#DC3545" />
+        </Style>
+        <Style Selector="Button.titlebar-minimize-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.titlebar-minimize-button:pointerover">
+            <Setter Property="Background" Value="#5A7FE6" />
+        </Style>
+        <Style Selector="Button.popup-menu-item-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button.popup-menu-item-button:pointerover">
+            <Setter Property="Background" Value="#3D6BB3" />
         </Style>
         <!-- <Style Selector="Button.transparent-button:pointerover"> -->
         <!--     <Setter Property="Opacity" Value="0.8"/> -->
@@ -254,6 +300,16 @@
             <Setter Property="TextElement.Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
         </Style>
 
+        <!-- Ursa MessageBox: override SolidButton Danger PointerOver for No button -->
+        <Style Selector="u|MessageBoxWindow /template/ Button#PART_NoButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonSolidDangerBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSolidDangerBorderBrush}" />
+        </Style>
+        <Style Selector="u|MessageBoxControl /template/ Button#PART_NoButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonSolidDangerBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSolidDangerBorderBrush}" />
+        </Style>
+
         <!-- Border 卡片样式 -->
         <Style Selector="Border.card-border">
             <Setter Property="Background" Value="White" />
@@ -288,14 +344,30 @@
             <Setter Property="Height" Value="36" />
         </Style>
 
-        <!-- DataGrid 选中行样式 -->
+        <!-- DataGrid 选中行样式 (Scheme A: PrimaryBlue background) -->
         <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-            <Setter Property="Fill" Value="#C8DCFF" />
+            <Setter Property="Fill" Value="#4169E1" />
+        </Style>
+
+        <!-- DataGrid 选中行左侧边框指示器 -->
+        <Style Selector="DataGridRow:selected /template/ Border#PART_SelectedCellIndicator">
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
+        </Style>
+
+        <!-- DataGrid 选中行文字颜色 -->
+        <Style Selector="DataGridRow:selected">
+            <Setter Property="Foreground" Value="#FFFFFF" />
         </Style>
 
         <!-- DataGrid 未选中行悬停样式 -->
         <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
             <Setter Property="Fill" Value="#F0F7FF" />
+        </Style>
+
+        <!-- DataGrid 选中行悬停时保持选中样式（优先级高于悬停） -->
+        <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#4169E1" />
         </Style>
 
         <!-- DataGrid 单元格样式 -->

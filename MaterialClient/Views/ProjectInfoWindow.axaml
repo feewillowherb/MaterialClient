@@ -39,21 +39,12 @@
 
                 <Button Content="✕"
                         FontSize="18"
-                        Foreground="White"
-                        Background="Transparent"
-                        BorderThickness="0"
                         HorizontalAlignment="Right"
                         Width="40"
                         Height="40"
                         Cursor="Hand"
                         Click="OnCloseButtonClick"
-                        Classes="transparent-button">
-                    <Button.Styles>
-                        <Style Selector="Button:pointerover">
-                            <Setter Property="Background" Value="#DC3545" />
-                        </Style>
-                    </Button.Styles>
-                </Button>
+                        Classes="titlebar-close-button" />
             </Grid>
 
             <!-- Content Area -->
