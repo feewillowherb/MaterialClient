@@ -10,12 +10,17 @@ namespace MaterialClient.Common.Tests.Tests;
 /// <summary>
 ///     Tests for ISoundDeviceApi PlayAudioAsync method
 /// </summary>
+/// <summary>
+///     Tests for ISoundDeviceApi PlayAudioAsync method.
+///     These tests require a physical sound device to be connected and accessible.
+///     Skipped by default - remove Skip attribute to run with real hardware.
+/// </summary>
 public class SoundDeviceApiTests
 {
     /// <summary>
     ///     Test that PlayAudioAsync successfully plays audio on sound device
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Requires physical sound device, run manually for verification")]
     public async Task PlayAudioAsync_Should_PlayAudioSuccessfully()
     {
         // Arrange
