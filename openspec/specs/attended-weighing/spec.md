@@ -410,9 +410,21 @@
 **且** 返回绝对路径 `"D:\MaterialClient\Photos\2026\01\23"`  
 **且** 创建所有缺失的父目录
 
-## ADDED Requirements
+### 需求：台账管理对话框按模式路由
 
-### Requirement: 关闭车牌重写时称重记录创建使用锁定车牌
+系统 SHALL 根据当前 WeighingMode 决定"台账管理"按钮打开的对话框类型。
+
+#### 场景：标准模式打开标准台账对话框
+- **WHEN** 用户在 `AttendedWeighingWindow` 中点击"台账管理"按钮
+- **AND WHEN** 当前 `WeighingMode` 为 Standard
+- **THEN** 系统 SHALL 创建 `StandardDataManagementDialogViewModel` 并打开 `StandardDataManagementDialogWindow`
+
+#### 场景：固废模式打开固废台账对话框
+- **WHEN** 用户在 `AttendedWeighingWindow` 中点击"台账管理"按钮
+- **AND WHEN** 当前 `WeighingMode` 为 SolidWaste
+- **THEN** 系统 SHALL 创建 `DataManagementDialogViewModel` 并打开 `DataManagementDialogWindow`（保持现有行为不变）
+
+### 需求：关闭车牌重写时称重记录创建使用锁定车牌
 当 `WeighingConfiguration.EnablePlateRewrite = false` 时，系统在创建称重记录时 MUST 使用“当前推荐车牌”的锁定结果（基于 `finalPlateNumber` 的 `LockedAt` 规则）作为 `WeighingRecord.PlateNumber` 的初始值，从而保证同一称重周期内称重记录车牌稳定。
 
 #### Scenario: 创建称重记录时使用锁定车牌
