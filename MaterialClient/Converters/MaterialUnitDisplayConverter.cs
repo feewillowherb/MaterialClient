@@ -7,7 +7,7 @@ namespace MaterialClient.Converters;
 
 /// <summary>
 /// Build conversion unit display text like: 1个=1000吨.
-/// Falls back to "1个" when required values are missing.
+/// Falls back to "1个" when UnitName/BasicUnit are missing.
 /// </summary>
 public class MaterialUnitDisplayConverter : IValueConverter
 {
@@ -18,18 +18,16 @@ public class MaterialUnitDisplayConverter : IValueConverter
             return "1个";
         }
 
-        // Prefer nested MaterialUnit object if present.
-        var materialUnit = GetPropertyValue(value, "MaterialUnit");
-        var unitName = AsString(GetPropertyValue(materialUnit ?? value, "UnitName"));
-        var rateName = AsString(GetPropertyValue(materialUnit ?? value, "RateName"));
-        var rate = GetRateValue(materialUnit ?? value);
+        var unitName = AsString(GetPropertyValue(value, "UnitName"));
+        var basicUnit = AsString(GetPropertyValue(value, "BasicUnit"));
 
-        if (string.IsNullOrWhiteSpace(unitName) || string.IsNullOrWhiteSpace(rateName) || rate == null)
+        if (string.IsNullOrWhiteSpace(unitName) || string.IsNullOrWhiteSpace(basicUnit))
         {
             return "1个";
         }
 
-        return $"1{unitName}={FormatRate(rate.Value)}{rateName}";
+        var unitRate = GetUnitRateValue(value) ?? 1m;
+        return $"1{unitName}={FormatRate(unitRate)}{basicUnit}";
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -53,10 +51,9 @@ public class MaterialUnitDisplayConverter : IValueConverter
         return value?.ToString();
     }
 
-    private static decimal? GetRateValue(object obj)
+    private static decimal? GetUnitRateValue(object obj)
     {
-        // Try "Rate" first, then "UnitRate".
-        var rateObj = GetPropertyValue(obj, "Rate") ?? GetPropertyValue(obj, "UnitRate");
+        var rateObj = GetPropertyValue(obj, "UnitRate");
         if (rateObj == null)
         {
             return null;
