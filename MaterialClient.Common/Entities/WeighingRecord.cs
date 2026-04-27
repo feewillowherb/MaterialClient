@@ -198,6 +198,16 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     }
 
     /// <summary>
+    ///     Clear matching references, returning this record to the unmatched pool
+    /// </summary>
+    public void Unmatch()
+    {
+        MatchedId = null;
+        WaybillId = null;
+        MatchedType = null;
+    }
+
+    /// <summary>
     ///     判断两个记录是否可以配对，并返回 join/out 分配结果
     /// </summary>
     /// <param name="record1">记录1</param>

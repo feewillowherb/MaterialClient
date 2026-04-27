@@ -198,6 +198,15 @@ public class Waybill : Entity<long>, IHasExtraProperties, IMaterialClientAudited
         OrderType = OrderTypeEnum.Completed;
     }
 
+    /// <summary>
+    ///     Mark the waybill as cancelled (Esc) with the given reason
+    /// </summary>
+    public void AbortWaybill(string reason)
+    {
+        OrderType = OrderTypeEnum.Esc;
+        AbortReason = reason;
+    }
+
 
     public decimal? GetJoinWeight()
     {
