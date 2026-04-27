@@ -2,64 +2,64 @@
 
 ## 0. 方案演示项目创建
 
-- [ ] 0.1 创建 MaterialClient.Demo 项目
+- [x] 0.1 创建 MaterialClient.Demo 项目
   - 在解决方案根目录创建新的 Avalonia 项目
   - 项目名称：MaterialClient.Demo
   - 目标框架：net10.0（与 MaterialClient 主项目保持一致，见 Directory.Build.props）
   - 添加 Avalonia、Avalonia.Desktop、Avalonia.Themes.Fluent、Avalonia.Fonts.Inter NuGet 包
 
-- [ ] 0.2 配置演示项目基础结构
+- [x] 0.2 配置演示项目基础结构
   - 创建 Views/ 目录用于存放演示窗口
   - 创建 ViewModels/ 目录用于存放视图模型
   - 创建 Models/ 目录用于存放演示数据模型
   - 删除默认的 MainWindow.axaml 和相关文件
 
-- [ ] 0.3 创建演示数据模型
+- [x] 0.3 创建演示数据模型
   - 创建 Models/CandidateRecord.cs
   - 添加属性：LicensePlate（车牌号）、Supplier（供料单位）、Weight（车辆重量）、EntryTime（进场时间）、ElapsedTime（相隔时间）
   - 实现 INotifyPropertyChanged 接口
 
-- [ ] 0.4 创建模拟数据生成器
+- [x] 0.4 创建模拟数据生成器
   - 创建 ViewModels/DemoDataGenerator.cs
   - 实现 GetDemoRecords() 方法，生成 5-10 条模拟候选记录
   - 确保数据包含不同的车牌号、供料单位和时间
 
-- [ ] 0.5 创建方案选择器主窗口
+- [x] 0.5 创建方案选择器主窗口
   - 创建 Views/DemoMainWindow.axaml
   - 添加标题："DataGrid 选中方案演示"
   - 添加 4 个按钮，分别对应方案 A、B、C、D
   - 为每个按钮添加点击事件，打开对应的演示窗口
 
-- [ ] 0.6 实现方案 A 演示窗口
+- [x] 0.6 实现方案 A 演示窗口
   - 创建 Views/SchemeAWindow.axaml
   - 添加 DataGrid 控件，绑定到模拟数据
   - 内联定义方案 A 的样式（PrimaryBlue 背景 + 左侧边框 + 白色文字）
   - 支持鼠标悬停和选中交互
 
-- [ ] 0.7 实现方案 B 演示窗口
+- [x] 0.7 实现方案 B 演示窗口
   - 创建 Views/SchemeBWindow.axaml
   - 添加 DataGrid 控件，绑定到模拟数据
   - 内联定义方案 B 的样式（浅蓝背景 + 左侧边框 + 保持文字颜色）
   - 支持鼠标悬停和选中交互
 
-- [ ] 0.8 实现方案 C 演示窗口
+- [x] 0.8 实现方案 C 演示窗口
   - 创建 Views/SchemeCWindow.axaml
   - 添加 DataGrid 控件，绑定到模拟数据
   - 内联定义方案 C 的样式（仅边框指示器 + 阴影）
   - 支持鼠标悬停和选中交互
 
-- [ ] 0.9 实现方案 D 演示窗口
+- [x] 0.9 实现方案 D 演示窗口
   - 创建 Views/SchemeDWindow.axaml
   - 添加 DataGrid 控件，绑定到模拟数据
   - 添加选中图标列（使用模板列）
   - 支持鼠标悬停和选中交互
 
-- [ ] 0.10 添加主题切换功能
+- [x] 0.10 添加主题切换功能
   - 在主窗口添加主题切换按钮（Light/Dark）
   - 实现主题切换逻辑
   - 确保所有方案窗口支持主题切换
 
-- [ ] 0.11 验证演示项目可独立运行
+- [x] 0.11 验证演示项目可独立运行
   - 编译 MaterialClient.Demo 项目
   - 运行项目，验证所有方案窗口可正常打开
   - 验证交互效果（悬停、选中、主题切换）
@@ -67,22 +67,22 @@
 
 ## 1. 样式实现
 
-- [ ] 1.1 修改 App.axaml 中的 DataGrid 选中行背景色
+- [x] 1.1 修改 App.axaml 中的 DataGrid 选中行背景色
   - 定位到第 347-350 行的 `DataGridRow:selected` 样式
   - 将 `Fill` 属性值从 `#C8DCFF` 修改为 `#4169E1` (PrimaryBlue)
 
-- [ ] 1.2 添加选中行左侧边框指示器
+- [x] 1.2 添加选中行左侧边框指示器
   - 在 App.axaml 的 DataGrid 样式区域添加新的样式选择器
   - 创建 `DataGridRow:selected /template/ Border#PART_SelectedCellIndicator` 样式
   - 设置 `BorderBrush` 为 `#4169E1`
   - 设置 `BorderThickness` 为 `3,0,0,0`（左侧 3px 边框）
 
-- [ ] 1.3 添加选中行文字颜色样式
+- [x] 1.3 添加选中行文字颜色样式
   - 在 App.axaml 中添加 `DataGridRow:selected` 样式选择器
   - 设置 `Foreground` 属性为 `#FFFFFF` (白色)
   - 确保该样式在背景色样式之后定义，保证优先级
 
-- [ ] 1.4 确保选中行不受悬停影响
+- [x] 1.4 确保选中行不受悬停影响
   - 添加 `DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle` 样式
   - 设置 `Fill` 属性为 `#4169E1`（与选中状态一致）
   - 确保选中状态优先级高于悬停状态
