@@ -361,8 +361,7 @@
                         <StackPanel Spacing="12">
                             <Button Content="增加"
                                     Command="{Binding AddCameraCommand}"
-                                    Background="#4A85F9"
-                                    Foreground="White"
+                                    Classes="brand-primary-button"
                                     FontWeight="Bold"
                                     FontSize="14"
                                     Width="80"
@@ -480,8 +479,7 @@
                         <StackPanel Spacing="12">
                             <Button Content="增加"
                                     Command="{Binding AddLicensePlateRecognitionCommand}"
-                                    Background="#4A85F9"
-                                    Foreground="White"
+                                    Classes="brand-primary-button"
                                     FontWeight="Bold"
                                     FontSize="14"
                                     Width="80"
@@ -725,13 +723,12 @@
                             </Grid>
 
                             <Button Content="测试音响"
+                                    Classes="primary-button"
                                     Command="{Binding TestSoundDeviceCommand}"
                                     IsEnabled="{Binding SoundDeviceEnabled}"
                                     Margin="0,10,0,0"
                                     Padding="20,8"
                                     HorizontalAlignment="Left"
-                                    Background="#4A85F9"
-                                    Foreground="White"
                                     CornerRadius="4" />
 
                             <TextBlock Text="{Binding SoundDeviceTestResult}"
@@ -792,8 +789,7 @@
                 Grid.Column="1"
                 Content="确认保存"
                 Command="{Binding SaveCommand}"
-                Background="#4A85F9"
-                Foreground="White"
+                Classes="brand-primary-button"
                 FontWeight="Bold"
                 FontSize="14"
                 Width="120"

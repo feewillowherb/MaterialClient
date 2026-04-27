@@ -134,6 +134,26 @@
             <Setter Property="BorderBrush" Value="#4169E1" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
+        <Style Selector="Button.primary-button:disabled">
+            <Setter Property="Foreground" Value="#80FFFFFF" />
+        </Style>
+        <Style Selector="Button.primary-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#80FFFFFF" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Button.brand-primary-button">
+            <Setter Property="Background" Value="#4A85F9" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#4A85F9" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.brand-primary-button:disabled">
+            <Setter Property="Foreground" Value="#80FFFFFF" />
+        </Style>
+        <Style Selector="Button.brand-primary-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#80FFFFFF" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
         <!-- <Style Selector="Button.primary-button:pointerover"> -->
         <!--     <Setter Property="Background" Value="#3158D0"/> -->
         <!-- </Style> -->
@@ -186,6 +206,31 @@
         <Style Selector="Button.transparent-button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.titlebar-close-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.titlebar-close-button:pointerover">
+            <Setter Property="Background" Value="#DC3545" />
+        </Style>
+        <Style Selector="Button.titlebar-minimize-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Button.titlebar-minimize-button:pointerover">
+            <Setter Property="Background" Value="#5A7FE6" />
+        </Style>
+        <Style Selector="Button.popup-menu-item-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button.popup-menu-item-button:pointerover">
+            <Setter Property="Background" Value="#3D6BB3" />
         </Style>
         <!-- <Style Selector="Button.transparent-button:pointerover"> -->
         <!--     <Setter Property="Opacity" Value="0.8"/> -->

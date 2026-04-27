@@ -28,12 +28,10 @@
                 <Button Grid.Column="1"
                         Content="✕"
                         FontSize="18"
-                        Foreground="White"
-                        Background="Transparent"
-                        BorderThickness="0"
                         Padding="12,6"
                         Cursor="Hand"
-                        Command="{Binding CloseCommand}" />
+                        Command="{Binding CloseCommand}"
+                        Classes="titlebar-close-button" />
             </Grid>
         </Border>
 
