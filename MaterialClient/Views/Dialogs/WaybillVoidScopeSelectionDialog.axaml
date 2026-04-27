@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MaterialClient.ViewModels"
+             x:Class="MaterialClient.Views.Dialogs.WaybillVoidScopeSelectionDialog"
+             mc:Ignorable="d"
+             d:DesignWidth="420" d:DesignHeight="320"
+             x:DataType="vm:WaybillVoidScopeSelectionViewModel">
+
+    <StackPanel Spacing="16" Margin="24">
+
+        <TextBlock Text="废单 - 选择废除范围"
+                   FontSize="15"
+                   FontWeight="SemiBold"
+                   Foreground="#333" />
+
+        <!-- RadioButton Group -->
+        <StackPanel Spacing="12" x:Name="ScopeOptions">
+
+            <!-- Join Only Option -->
+            <RadioButton x:Name="JoinOnlyRadio"
+                         GroupName="VoidScope"
+                         Checked="OnScopeChecked"
+                         Padding="0">
+                <StackPanel Spacing="4" Margin="4">
+                    <TextBlock Text="进场称重记录" FontSize="13" Foreground="#333" />
+                    <TextBlock Text="仅废除进场称重记录，出场记录将恢复为待匹配状态"
+                               FontSize="12" Foreground="#666" />
+                </StackPanel>
+            </RadioButton>
+
+            <!-- Out Only Option -->
+            <RadioButton x:Name="OutOnlyRadio"
+                         GroupName="VoidScope"
+                         Checked="OnScopeChecked"
+                         Padding="0">
+                <StackPanel Spacing="4" Margin="4">
+                    <TextBlock Text="出场称重记录" FontSize="13" Foreground="#333" />
+                    <TextBlock Text="仅废除出场称重记录，进场记录将恢复为待匹配状态"
+                               FontSize="12" Foreground="#666" />
+                </StackPanel>
+            </RadioButton>
+
+            <!-- Both Option -->
+            <RadioButton x:Name="BothRadio"
+                         GroupName="VoidScope"
+                         Checked="OnScopeChecked"
+                         Padding="0">
+                <StackPanel Spacing="4" Margin="4">
+                    <TextBlock Text="全部废除" FontSize="13" Foreground="#333" />
+                    <TextBlock Text="同时废除进出场称重记录和运单"
+                               FontSize="12" Foreground="#666" />
+                </StackPanel>
+            </RadioButton>
+        </StackPanel>
+
+        <!-- Action Buttons -->
+        <StackPanel HorizontalAlignment="Right"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Margin="0,8,0,0">
+            <Button Content="取消"
+                    Padding="24,8"
+                    Command="{Binding CancelCommand}" />
+            <Button Content="确认"
+                    Padding="24,8"
+                    Classes="primary-button"
+                    IsEnabled="{Binding HasSelection}"
+                    Command="{Binding ConfirmCommand}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>
