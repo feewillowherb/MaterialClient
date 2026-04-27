@@ -20,6 +20,7 @@ using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
+using MaterialClient.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ursa.Controls;
@@ -44,6 +45,8 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     private protected readonly IMaterialService _materialService;
     private protected readonly IProviderService _providerService;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IWaybillVoidService _waybillVoidService;
     private protected string? _capturedBillPhotoPath;
 
     /// <summary>
@@ -60,6 +63,8 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     {
         _serviceProvider = serviceProvider;
         _weighingRecordRepository = _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>();
+        _waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
+        _waybillVoidService = _serviceProvider.GetRequiredService<IWaybillVoidService>();
         _materialService = _serviceProvider.GetRequiredService<IMaterialService>();
         _providerService = _serviceProvider.GetRequiredService<IProviderService>();
 
@@ -105,6 +110,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     [Reactive] private string? _operator;
     [Reactive] private bool _isMatchButtonVisible;
     [Reactive] private bool _isCompleteButtonVisible;
+    [Reactive] private bool _isAbolishButtonVisible;
     [Reactive] private string? _plateNumberError;
     [Reactive] private ObservableCollection<MaterialItemRow> _materialItems = new();
     [Reactive] private DeliveryType _selectedDeliveryType = DeliveryType.Receiving;
@@ -350,6 +356,8 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         // Determine button visibility based on ItemType
         IsMatchButtonVisible = _listItem.ItemType != WeighingListItemType.Waybill;
         IsCompleteButtonVisible = _listItem.ItemType == WeighingListItemType.Waybill && !_listItem.IsCompleted;
+        IsAbolishButtonVisible = !(_listItem.ItemType == WeighingListItemType.Waybill
+                                   && _listItem.OrderType == OrderTypeEnum.Completed);
 
         MaterialItems.Clear();
 
@@ -520,6 +528,19 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     [ReactiveCommand]
     private async Task AbolishAsync()
     {
+        switch (_listItem.ItemType)
+        {
+            case WeighingListItemType.WeighingRecord:
+                await AbolishWeighingRecordAsync();
+                break;
+            case WeighingListItemType.Waybill:
+                await AbolishWaybillAsync();
+                break;
+        }
+    }
+
+    private async Task AbolishWeighingRecordAsync()
+    {
         var result = await Dispatcher.UIThread.InvokeAsync(async () =>
         {
             var parentWin = GetParentWindow();
@@ -549,6 +570,41 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         catch (Exception ex)
         {
             Logger?.LogError(ex, "废单失败");
+        }
+    }
+
+    private async Task AbolishWaybillAsync()
+    {
+        var options = new OverlayDialogOptions
+        {
+            CanLightDismiss = false,
+            IsCloseButtonVisible = true,
+            CanDragMove = false
+        };
+
+        var viewModel = new WaybillVoidScopeSelectionViewModel();
+        var scope = await OverlayDialog.ShowCustomModal<WaybillVoidScopeSelectionDialog,
+            WaybillVoidScopeSelectionViewModel, WaybillVoidScope?>(viewModel, options: options);
+
+        if (scope is null)
+            return;
+
+        try
+        {
+            await _waybillVoidService.VoidWaybillAsync(_listItem.Id, scope.Value, "operator void");
+
+            // Send abolish completed message via MessageBus
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
+                itemId: _listItem.Id,
+                itemType: WeighingListItemType.Waybill,
+                orderType: _listItem.OrderType,
+                isCompleted: false,
+                operationType: DetailOperationType.Abolish));
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "废单失败");
+            await ShowMessageBoxAsync("废单操作失败，请重试");
         }
     }
 

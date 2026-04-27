@@ -4,6 +4,7 @@
         xmlns:views="using:MaterialClient.Views.Controls"
         xmlns:converters="using:MaterialClient.Converters"
         xmlns:views1="clr-namespace:MaterialClient.Views.Controls"
+        xmlns:ursa="using:Ursa.Controls"
         x:Class="MaterialClient.Views.AttendedWeighing.AttendedWeighingWindow"
         x:DataType="vm:AttendedWeighingViewModel"
         x:Name="AttendedWeighingWindowRoot"
@@ -16,6 +17,7 @@
 
     <!-- Window.Styles 已移至 App.axaml 全局样式 -->
 
+    <Panel>
     <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
 
         <!-- Top Blue Header Bar -->
@@ -678,4 +680,8 @@
         </Border>
 
     </Grid>
+
+    <!-- OverlayDialogHost for Ursa overlay dialogs -->
+    <ursa:OverlayDialogHost />
+    </Panel>
 </Window>

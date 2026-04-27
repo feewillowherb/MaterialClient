@@ -155,7 +155,8 @@
                         Classes="warning-button"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
-                        Command="{Binding AbolishCommand}" />
+                        Command="{Binding AbolishCommand}"
+                        IsVisible="{Binding IsAbolishButtonVisible}" />
             </StackPanel>
         </Grid>
     </Grid>
