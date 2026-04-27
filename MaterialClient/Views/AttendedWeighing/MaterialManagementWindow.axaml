@@ -8,7 +8,7 @@
         x:Name="Root"
         Title="材料管理"
         Width="680"
-        Height="500"
+        Height="520"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         SystemDecorations="None"
