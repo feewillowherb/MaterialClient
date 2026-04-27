@@ -135,8 +135,9 @@
                   CanUserResizeColumns="True"
                   ItemsSource="{Binding Records}">
           <DataGrid.Columns>
-            <DataGridTextColumn Binding="{Binding SerialNumber}" Header="流水号" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding VehicleNumber}" Header="车  号" MinWidth="80" />
+            <DataGridTextColumn Binding="{Binding GrossWeightTime}" Header="毛重时间" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding TareWeightTime}" Header="皮重时间" MinWidth="140" />
             <DataGridTextColumn Binding="{Binding WeighingType}" Header="称重类型" MinWidth="80" />
             <DataGridTextColumn Binding="{Binding ShippingUnit}" Header="发货单位" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding ReceivingUnit}" Header="收货单位" MinWidth="120" />
@@ -145,8 +146,6 @@
             <DataGridTextColumn Binding="{Binding TareWeight}" Header="皮  重" MinWidth="80" />
             <DataGridTextColumn Binding="{Binding NetWeight}" Header="净  重" MinWidth="80" />
             <DataGridTextColumn Binding="{Binding Remark}" Header="备 注" MinWidth="100" />
-            <DataGridTextColumn Binding="{Binding GrossWeightTime}" Header="毛重时间" MinWidth="140" />
-            <DataGridTextColumn Binding="{Binding TareWeightTime}" Header="皮重时间" MinWidth="140" />
             <DataGridTextColumn Binding="{Binding Street}" Header="所属街道" MinWidth="100" />
             <DataGridTextColumn Binding="{Binding SolidWasteType}" Header="类型" MinWidth="80" />
             <DataGridTextColumn Binding="{Binding ManifestNumber}" Header="联单编号" MinWidth="110" />
