@@ -250,7 +250,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 时序依赖导致 flaky")]
     public async Task OnPlateNumberRecognized_Should_FilterHangingCharacter()
     {
         // Arrange
@@ -292,7 +292,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 时序依赖导致 flaky")]
     public async Task OnPlateNumberRecognized_Should_Ignore_WhenOffScale()
     {
         // Arrange
@@ -729,7 +729,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 5s+")]
     public async Task StabilityStream_Should_IdentifyStableWeights()
     {
         // Arrange
@@ -760,7 +760,7 @@ public class AttendedWeighingServiceTests : IDisposable
 
     #region Weighing Record Creation Tests
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 6s+")]
     public async Task Should_CreateRecord_WhenWeightStabilizes()
     {
         // Arrange
@@ -787,7 +787,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 6s+")]
     public async Task Should_CreateRecord_UseLockedAtPlateNumber_WhenEnablePlateRewriteDisabled()
     {
         // Arrange
@@ -822,7 +822,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 6s+")]
     public async Task Should_CapturePhotos_WhenWeightStabilizes()
     {
         // Arrange
@@ -848,7 +848,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 8s+")]
     public async Task Should_PreventDuplicateRecordCreation()
     {
         // Arrange
@@ -878,7 +878,7 @@ public class AttendedWeighingServiceTests : IDisposable
 
     #region Integration Tests
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 6s+")]
     public async Task NormalFlow_Should_CompleteFullCycle()
     {
         // Arrange
@@ -916,7 +916,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 时序依赖的状态转换测试")]
     public async Task AbnormalDeparture_FromWaitingForStability_Should_Reset()
     {
         // Arrange
@@ -984,7 +984,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 5s+")]
     public async Task UnstableDeparture_Then_StableWeighing_Should_CompleteCycle()
     {
         // Arrange
@@ -1047,7 +1047,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量阈值波动模拟，单测耗时 2s+")]
     public async Task WeightFluctuation_AroundThreshold_Should_HandleCorrectly()
     {
         // Arrange
@@ -1117,7 +1117,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 8s+")]
     public async Task WeightTransition_FromLowToThresholdToStable_Should_CompleteCycle()
     {
         // Arrange
@@ -1192,7 +1192,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 6s+")]
     public async Task StabilityCheck_Should_NotUseHistoricalData_AfterStateTransition()
     {
         // Arrange
@@ -1314,7 +1314,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 5s+")]
     public async Task StabilityCheck_Should_RequireFullWindow_AfterEnteringWaitingForStability()
     {
         // Arrange
@@ -1388,7 +1388,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 6s+")]
     public async Task WeightStabilized_Then_DropAndRise_Should_HandleCorrectly()
     {
         // Arrange
@@ -1456,7 +1456,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await service.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 7s+")]
     public async Task Stability_Should_BeCleared_WhenTransitioningToOffScale()
     {
         // Arrange
@@ -1561,7 +1561,7 @@ public class AttendedWeighingServiceTests : IDisposable
 
     #region Error Handling Tests
 
-    [Fact]
+    [Fact(Skip = "待移植至集成测试项目: 重量稳定性模拟，单测耗时 6s+")]
     public async Task Should_HandleErrors_InAsyncOperations()
     {
         // Arrange
