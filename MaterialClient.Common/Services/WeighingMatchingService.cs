@@ -722,7 +722,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 : new Dictionary<int, Material>();
 
             var materialUnitsDict = materialUnitIds.Count > 0
-                ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
+                ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u =>
+                    u.Id)
                 : new Dictionary<int, MaterialUnit>();
 
             result = WeighingListItemDto.FromWeighingRecord(record, materialsDict, materialUnitsDict);
@@ -752,7 +753,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 : new Dictionary<int, Material>();
 
             var materialUnitsDict = materialUnitIds.Count > 0
-                ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
+                ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u =>
+                    u.Id)
                 : new Dictionary<int, MaterialUnit>();
 
             result = WeighingListItemDto.FromWaybill(waybill, materialsDict, materialUnitsDict);
@@ -940,7 +942,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             JoinTime = joinRecord.AddDate,
             OutTime = outRecord.AddDate,
             DeliveryType = deliveryType,
-            OrderSource = OrderSource.MannedStation,
+            OrderSource = OrderSource.UnmannedStation,
             OrderType = OrderTypeEnum.FirstWeight
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
@@ -972,7 +974,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     /// <summary>
     ///     将 SolidWaste 信息从 WeighingRecord 传递到新建 Waybill（优先 joinRecord，空值时回退 outRecord）
     /// </summary>
-    private static void CopySolidWasteInfoToWaybill(Waybill waybill, WeighingRecord joinRecord, WeighingRecord outRecord)
+    private static void CopySolidWasteInfoToWaybill(Waybill waybill, WeighingRecord joinRecord,
+        WeighingRecord outRecord)
     {
         if (joinRecord.WeighingMode != WeighingMode.SolidWaste && outRecord.WeighingMode != WeighingMode.SolidWaste)
             return;
