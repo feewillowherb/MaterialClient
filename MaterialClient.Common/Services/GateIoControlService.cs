@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reactive.Linq;
 using System.Linq;
 using System.Threading.Tasks;
 using MaterialClient.Common.Configuration;
@@ -8,8 +7,8 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Vzvision;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Common.Services;
 
@@ -59,6 +58,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     private readonly object _sync = new();
     private readonly ISettingsService _settingsService;
     private readonly IVzvisionLprService _vzvisionLprService;
+    private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<GateIoControlService>? _logger;
 
     private IDisposable? _lprSubscription;
@@ -73,10 +73,12 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     public GateIoControlService(
         ISettingsService settingsService,
         IVzvisionLprService vzvisionLprService,
+        ILocalEventBus localEventBus,
         ILogger<GateIoControlService>? logger = null)
     {
         _settingsService = settingsService;
         _vzvisionLprService = vzvisionLprService;
+        _localEventBus = localEventBus;
         _logger = logger;
     }
 
@@ -104,17 +106,14 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             if (_started)
                 return;
 
-            _lprSubscription = MessageBus.Current
-                .Listen<LicensePlateRecognizedMessage>()
-                .Subscribe(msg => _ = HandlePlateRecognizedAsync(msg));
+            _lprSubscription = _localEventBus
+                .Subscribe<LicensePlateRecognizedEventData>(async msg => _ = HandlePlateRecognizedAsync(msg));
 
-            _statusSubscription = MessageBus.Current
-                .Listen<StatusChangedMessage>()
-                .Subscribe(msg => OnStatusChanged(msg.Status));
+            _statusSubscription = _localEventBus
+                .Subscribe<StatusChangedEventData>(async msg => OnStatusChanged(msg.Status));
 
-            _settingsSavedSubscription = MessageBus.Current
-                .Listen<SettingsSavedMessage>()
-                .Subscribe(_msg =>
+            _settingsSavedSubscription = _localEventBus
+                .Subscribe<SettingsSavedEventData>(async _msg =>
                 {
                     _ = RefreshRuntimeConfigAsync();
                     // 配置保存后重新校验
@@ -135,7 +134,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
                 });
 
             _started = true;
-            _logger?.LogInformation("GateIoControlService 已启动并订阅 MessageBus");
+            _logger?.LogInformation("GateIoControlService 已启动并订阅 ILocalEventBus");
         }
     }
 
@@ -154,7 +153,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             _settingsSavedSubscription = null;
 
             _started = false;
-            _logger?.LogInformation("GateIoControlService 已停止并释放 MessageBus 订阅");
+            _logger?.LogInformation("GateIoControlService 已停止并释放 ILocalEventBus 订阅");
         }
     }
 
@@ -201,7 +200,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     /// <summary>
     ///     处理车牌识别事件
     /// </summary>
-    private async Task HandlePlateRecognizedAsync(LicensePlateRecognizedMessage message)
+    private async Task HandlePlateRecognizedAsync(LicensePlateRecognizedEventData message)
     {
         try
         {
@@ -267,14 +266,14 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
 
             if (!string.IsNullOrWhiteSpace(ghostAbandonedPlate))
             {
-                var ghostMsg = new GhostGateSessionResetMessage(
+                var ghostEventData = new GhostGateSessionResetEventData(
                     ghostAbandonedPlate,
                     message.PlateNumber,
                     message.DeviceName);
-                MessageBus.Current.SendMessage(ghostMsg);
+                _ = _localEventBus.PublishAsync(ghostEventData);
                 _logger?.LogInformation(
                     "已发布幽灵会话重置事件: AbandonedPlate={AbandonedPlate}, NewPlate={NewPlate}, Device={Device}, OccurredAtUtc={OccurredAtUtc:O}",
-                    ghostAbandonedPlate, message.PlateNumber, message.DeviceName, ghostMsg.OccurredAtUtc);
+                    ghostAbandonedPlate, message.PlateNumber, message.DeviceName, ghostEventData.OccurredAtUtc);
             }
 
             // 调用统一控制接口打开入口道闸
