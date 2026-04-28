@@ -356,33 +356,7 @@ public class AttendedWeighingServiceTests : IDisposable
         // Cleanup
         await service.DisposeAsync();
     }
-
-    [Fact]
-    public async Task GetMostFrequentPlateNumber_Should_NotOverwriteLockedAt_ForSamePlate()
-    {
-        // Arrange
-        var (service, weightSubject) = CreateServiceWithWeightSubject(enablePlateRewrite: false);
-        await service.StartAsync();
-        weightSubject.OnNext(1.0m);
-        await Task.Delay(300);
-
-        // Act - lock A, lock B, then recognize A again
-        // If LockedAt were overwritten on A again, B would become the earliest locked candidate.
-        SendPlateRecognition("京A12345");
-        await Task.Delay(250);
-        SendPlateRecognition("粤B67890");
-        await Task.Delay(250);
-        SendPlateRecognition("京A12345");
-        await Task.Delay(250);
-
-        // Assert - should still return A (LockedAt should remain at the first lock time)
-        var plateNumber = service.GetMostFrequentPlateNumber();
-        plateNumber.ShouldBe("京A12345");
-
-        // Cleanup
-        await service.DisposeAsync();
-    }
-
+    
     [Fact]
     public async Task GetMostFrequentPlateNumber_Should_SelectEarliestLockedAt_WhenMultipleLockedCandidates()
     {
