@@ -16,9 +16,9 @@ using BatchCaptureRequest = MaterialClient.Common.Services.Hikvision.BatchCaptur
 using BatchCaptureResult = MaterialClient.Common.Services.Hikvision.BatchCaptureResult;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using ReactiveUI;
 using Shouldly;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.EventBus;
 using Volo.Abp.EventBus.Local;
 using Volo.Abp.Uow;
 using Xunit;
@@ -29,21 +29,21 @@ namespace MaterialClient.Common.Tests.Tests;
 /// <summary>
 /// Unit tests for AttendedWeighingService
 ///
-/// IMPORTANT: These tests use MessageBus.Current which is a global singleton.
-/// To prevent test interference when running tests in parallel, this collection
-/// ensures tests are run sequentially. The MessageBus.Current is shared across
-/// all tests in this collection, so serial execution prevents message leakage
-/// between tests.
+/// These tests use TestLocalEventBus to simulate ABP ILocalEventBus behavior.
+/// Each test instance gets its own TestLocalEventBus, so tests are isolated
+/// without requiring sequential execution.
 /// </summary>
 [Collection("MessageBusTests")]
 public class AttendedWeighingServiceTests : IDisposable
 {
     private readonly ITestOutputHelper _output;
     private readonly List<IDisposable> _disposables = new();
+    private readonly TestLocalEventBus _testEventBus;
 
     public AttendedWeighingServiceTests(ITestOutputHelper output)
     {
         _output = output;
+        _testEventBus = new TestLocalEventBus();
     }
 
     #region Lifecycle Tests
@@ -193,9 +193,8 @@ public class AttendedWeighingServiceTests : IDisposable
         // Arrange
         var (service, _) = CreateServiceWithWeightSubject();
         await service.StartAsync();
-        var receivedMessages = new List<DeliveryTypeChangedMessage>();
-        var subscription = MessageBus.Current.Listen<DeliveryTypeChangedMessage>()
-            .Subscribe(msg => receivedMessages.Add(msg));
+        var receivedEvents = new List<DeliveryTypeChangedEventData>();
+        var subscription = _testEventBus.Subscribe<DeliveryTypeChangedEventData>(msg => receivedEvents.Add(msg));
         _disposables.Add(subscription);
 
         // Act
@@ -203,8 +202,8 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(200);
 
         // Assert
-        receivedMessages.ShouldNotBeEmpty();
-        receivedMessages.Last().DeliveryType.ShouldBe(DeliveryType.Sending);
+        receivedEvents.ShouldNotBeEmpty();
+        receivedEvents.Last().DeliveryType.ShouldBe(DeliveryType.Sending);
 
         // Cleanup
         await service.DisposeAsync();
@@ -216,9 +215,8 @@ public class AttendedWeighingServiceTests : IDisposable
         // Arrange
         var (service, _) = CreateServiceWithWeightSubject();
         await service.StartAsync();
-        var receivedMessages = new List<DeliveryTypeChangedMessage>();
-        var subscription = MessageBus.Current.Listen<DeliveryTypeChangedMessage>()
-            .Subscribe(msg => receivedMessages.Add(msg));
+        var receivedEvents = new List<DeliveryTypeChangedEventData>();
+        var subscription = _testEventBus.Subscribe<DeliveryTypeChangedEventData>(msg => receivedEvents.Add(msg));
         _disposables.Add(subscription);
 
         // Act - Set to same value
@@ -227,7 +225,7 @@ public class AttendedWeighingServiceTests : IDisposable
 
         // Assert - Should not send notification for same value
         // Note: The implementation may still send, but we test the behavior
-        receivedMessages.Count.ShouldBeLessThanOrEqualTo(1);
+        receivedEvents.Count.ShouldBeLessThanOrEqualTo(1);
 
         // Cleanup
         await service.DisposeAsync();
@@ -244,10 +242,10 @@ public class AttendedWeighingServiceTests : IDisposable
         var (service, _) = CreateServiceWithWeightSubject();
         await service.StartAsync();
 
-        // Act - 发送无效车牌消息
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "" });
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "   " });
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = null! });
+        // Act - 发送无效车牌事件
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "" });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "   " });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = null! });
         await Task.Delay(100);
 
         // Assert
@@ -267,7 +265,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(500);
 
         // Act
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345挂" });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "京A12345挂" });
         await Task.Delay(200);
 
         // Assert
@@ -288,7 +286,7 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(500);
 
         // Act
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "京A12345" });
         await Task.Delay(200);
 
         // Assert
@@ -308,7 +306,7 @@ public class AttendedWeighingServiceTests : IDisposable
         // Stay off scale (weight = 0)
 
         // Act
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "京A12345" });
         await Task.Delay(200);
 
         // Assert
@@ -328,9 +326,9 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Act
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "京A12345" });
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage { PlateNumber = "粤B67890" });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "京A12345" });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "京A12345" });
+        await _testEventBus.PublishAsync(new LicensePlateRecognizedEventData { PlateNumber = "粤B67890" });
         await Task.Delay(200);
 
         // Assert
@@ -407,16 +405,16 @@ public class AttendedWeighingServiceTests : IDisposable
 
         service.GetMostFrequentPlateNumber().ShouldBe("京A12345");
 
-        var plateMessages = new List<PlateNumberChangedMessage>();
-        var sub = MessageBus.Current.Listen<PlateNumberChangedMessage>().Subscribe(plateMessages.Add);
+        var plateEvents = new List<PlateNumberChangedEventData>();
+        var sub = _testEventBus.Subscribe<PlateNumberChangedEventData>(msg => plateEvents.Add(msg));
         _disposables.Add(sub);
 
-        MessageBus.Current.SendMessage(new GhostGateSessionResetMessage("京A12345", "粤B67890", "GateA"));
+        await _testEventBus.PublishAsync(new GhostGateSessionResetEventData("京A12345", "粤B67890", "GateA"));
         await Task.Delay(200);
 
         service.GetMostFrequentPlateNumber().ShouldBe("粤B67890");
-        plateMessages.ShouldNotBeEmpty();
-        plateMessages.Last().PlateNumber.ShouldBe("粤B67890");
+        plateEvents.ShouldNotBeEmpty();
+        plateEvents.Last().PlateNumber.ShouldBe("粤B67890");
 
         await service.DisposeAsync();
         weightSubject.Dispose();
@@ -546,9 +544,8 @@ public class AttendedWeighingServiceTests : IDisposable
         weightSubject.OnNext(1.0m);
         await Task.Delay(300);
 
-        var receivedMessages = new List<PlateNumberChangedMessage>();
-        var subscription = MessageBus.Current.Listen<PlateNumberChangedMessage>()
-            .Subscribe(msg => receivedMessages.Add(msg));
+        var receivedEvents = new List<PlateNumberChangedEventData>();
+        var subscription = _testEventBus.Subscribe<PlateNumberChangedEventData>(msg => receivedEvents.Add(msg));
         _disposables.Add(subscription);
 
         // Act
@@ -556,8 +553,8 @@ public class AttendedWeighingServiceTests : IDisposable
         await Task.Delay(300);
 
         // Assert
-        receivedMessages.ShouldNotBeEmpty();
-        receivedMessages.Last().PlateNumber.ShouldBe("京A12345");
+        receivedEvents.ShouldNotBeEmpty();
+        receivedEvents.Last().PlateNumber.ShouldBe("京A12345");
 
         // Cleanup
         await service.DisposeAsync();
@@ -1608,18 +1605,18 @@ public class AttendedWeighingServiceTests : IDisposable
     #region Helper Methods
 
     /// <summary>
-    /// 辅助方法:通过 MessageBus 发送车牌识别消息
+    /// 辅助方法:通过 TestLocalEventBus 发送车牌识别事件
     /// </summary>
     private void SendPlateRecognition(string plateNumber, VzvisionColorType? colorType = null)
     {
-        MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage
+        _testEventBus.PublishAsync(new LicensePlateRecognizedEventData
         {
             PlateNumber = plateNumber,
             ColorType = colorType,
             DeviceType = LprDeviceType.Hikvision,
             DeviceName = "TestDevice",
             Timestamp = DateTime.Now
-        });
+        }).GetAwaiter().GetResult();
     }
 
     private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithWeightSubject(
@@ -1770,13 +1767,12 @@ public class AttendedWeighingServiceTests : IDisposable
         }
 
         var logger = Substitute.For<ILogger<AttendedWeighingService>>();
-        var eventBus = Substitute.For<ILocalEventBus>();
 
         return new AttendedWeighingService(
             fileRepo,
             configuration,
             hikvisionService,
-            eventBus,
+            _testEventBus,
             logger,
             null, // IVzvisionLprService? (可选)
             settingsService,
@@ -1797,5 +1793,83 @@ public class AttendedWeighingServiceTests : IDisposable
     }
 
     #endregion
+
+    /// <summary>
+    /// 轻量级 ILocalEventBus 测试替身，在同一实例内实际派发事件到订阅者。
+    /// 每个 AttendedWeighingServiceTests 实例持有独立的 TestLocalEventBus，
+    /// 确保测试之间完全隔离。
+    /// </summary>
+    private class TestLocalEventBus : ILocalEventBus
+    {
+        private readonly ConcurrentDictionary<Type, List<Func<object, Task>>> _handlers = new();
+
+        public IDisposable Subscribe<TEvent>(Func<TEvent, Task> action) where TEvent : class
+        {
+            var type = typeof(TEvent);
+            var list = _handlers.GetOrAdd(type, _ => new List<Func<object, Task>>());
+            Func<object, Task> wrapper = obj => action((TEvent)obj!);
+            lock (list)
+            {
+                list.Add(wrapper);
+            }
+            return new DisposableAction(() =>
+            {
+                lock (list) { list.Remove(wrapper); }
+            });
+        }
+
+        public IDisposable Subscribe<TEvent>(Action<TEvent> action) where TEvent : class
+        {
+            return Subscribe<TEvent>(msg =>
+            {
+                action(msg);
+                return Task.CompletedTask;
+            });
+        }
+
+        public Task PublishAsync<TEvent>(TEvent eventData, bool onUnitOfWorkComplete = true) where TEvent : class
+        {
+            return PublishAsync(typeof(TEvent), eventData!);
+        }
+
+        public Task PublishAsync(Type eventType, object eventData, bool onUnitOfWorkComplete = true)
+        {
+            if (_handlers.TryGetValue(eventType, out var handlers))
+            {
+                Func<object, Task>[] copies;
+                lock (handlers) { copies = handlers.ToArray(); }
+                return Task.WhenAll(copies.Select(h => h(eventData)));
+            }
+            return Task.CompletedTask;
+        }
+
+        public List<EventTypeWithEventHandlerFactories> GetEventHandlerFactories(Type eventType)
+        {
+            return new List<EventTypeWithEventHandlerFactories>();
+        }
+
+        // Unused IEventBus methods - not needed for these tests
+        public IDisposable Subscribe<TEvent>(ILocalEventHandler<TEvent> handler) where TEvent : class => NullDisposable();
+        public IDisposable Subscribe<TEvent, THandler>() where TEvent : class where THandler : IEventHandler, new() => NullDisposable();
+        public IDisposable Subscribe(Type eventType, IEventHandler handler) => NullDisposable();
+        public IDisposable Subscribe<TEvent>(IEventHandlerFactory factory) where TEvent : class => NullDisposable();
+        public IDisposable Subscribe(Type eventType, IEventHandlerFactory factory) => NullDisposable();
+        public void Unsubscribe<TEvent>(Func<TEvent, Task> action) where TEvent : class { }
+        public void Unsubscribe<TEvent>(ILocalEventHandler<TEvent> handler) where TEvent : class { }
+        public void Unsubscribe(Type eventType, IEventHandler handler) { }
+        public void Unsubscribe<TEvent>(IEventHandlerFactory factory) where TEvent : class { }
+        public void Unsubscribe(Type eventType, IEventHandlerFactory factory) { }
+        public void UnsubscribeAll<TEvent>() where TEvent : class { }
+        public void UnsubscribeAll(Type eventType) { }
+
+        private static IDisposable NullDisposable() => new DisposableAction(() => { });
+
+        private class DisposableAction : IDisposable
+        {
+            private readonly Action _dispose;
+            public DisposableAction(Action dispose) => _dispose = dispose;
+            public void Dispose() => _dispose();
+        }
+    }
 }
 
