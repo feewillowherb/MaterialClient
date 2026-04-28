@@ -43,38 +43,13 @@ public class UsingDefaultConfigurationTests : MaterialClientTestBase<MaterialCli
 public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientDomainTestModule>
 {
     [Fact]
-    public void Should_Test_With_Custom_WeighingConfiguration()
-    {
-        // Scenario: Test with custom weighing configuration
-        // 在测试场景初始化时替换配置
-        var customConfig = new WeighingConfiguration
-        {
-            MinWeightThreshold = 1.0m,  // 提高最小重量阈值
-            WeightStabilityThreshold = 0.1m,
-            StabilityWindowMs = 5000,    // 更长的稳定窗口
-            StabilityCheckIntervalMs = 500,
-            MaxIntervalMinutes = 600,
-            MinWeightDiff = 2.0m
-        };
-
-        // Replace IOptions<WeighingConfiguration> in the service provider
-        var options = Options.Create(customConfig);
-        ServiceProvider.GetRequiredService<IServiceCollection>()
-            .Replace(ServiceDescriptor.Singleton(typeof(IOptions<WeighingConfiguration>), options));
-
-        // 或者直接使用配置对象进行测试
-       // var service = new YourServiceUnderTest(options);
-        // Act & Assert...
-    }
-
-    [Fact]
     public void Should_Test_With_Different_SystemSettings()
     {
         // Scenario: Test with different system settings
         var customSettings = new SystemSettings
         {
             EnableAutoStart = true,
-            CaptureStreamType = StreamType.Mainstream,  // 使用主码流
+            CaptureStreamType = StreamType.Mainstream, // 使用主码流
             Urls = "http://test-server:8080",
             LprDeviceType = LprDeviceType.Vzvision,
             MinDiffCharCount = 1
@@ -94,9 +69,9 @@ public class ReplaceIOptionsTests : MaterialClientTestBase<MaterialClientDomainT
         var strictConfig = new WeighingConfiguration
         {
             MinWeightThreshold = 0.5m,
-            WeightStabilityThreshold = 0.01m,  // 更严格的稳定性阈值
-            StabilityWindowMs = 5000,          // 更长的监控窗口
-            StabilityCheckIntervalMs = 100,    // 更频繁的检查
+            WeightStabilityThreshold = 0.01m, // 更严格的稳定性阈值
+            StabilityWindowMs = 5000, // 更长的监控窗口
+            StabilityCheckIntervalMs = 100, // 更频繁的检查
             MaxIntervalMinutes = 300,
             MinWeightDiff = 1m
         };
@@ -237,7 +212,7 @@ public class ConfigurationBestPracticesTests : MaterialClientTestBase<MaterialCl
         // Best Practice: 测试边界条件配置
         var edgeCaseConfig = new WeighingConfiguration
         {
-            MinWeightThreshold = decimal.MinValue,  // 无效配置
+            MinWeightThreshold = decimal.MinValue, // 无效配置
             WeightStabilityThreshold = 0.05m,
             StabilityWindowMs = 3000,
             StabilityCheckIntervalMs = 200,
@@ -261,7 +236,7 @@ public class ConfigurationBestPracticesTests : MaterialClientTestBase<MaterialCl
 
         var test2Config = new WeighingConfiguration
         {
-            MinWeightThreshold = 1.0m,  // 不同的值
+            MinWeightThreshold = 1.0m, // 不同的值
             WeightStabilityThreshold = 0.1m
         };
 
@@ -352,12 +327,12 @@ public class HighPrecisionWeighingScenarioModule : AbpModule
         // Scenario: 高精度称重场景
         var highPrecisionConfig = new WeighingConfiguration
         {
-            MinWeightThreshold = 0.1m,      // 更低的最小重量
-            WeightStabilityThreshold = 0.01m,  // 更高的精度要求
-            StabilityWindowMs = 6000,      // 更长的稳定时间
-            StabilityCheckIntervalMs = 100,    // 更频繁的检查
-            MaxIntervalMinutes = 120,       // 更短的时间窗口
-            MinWeightDiff = 0.5m           // 更小的重量差
+            MinWeightThreshold = 0.1m, // 更低的最小重量
+            WeightStabilityThreshold = 0.01m, // 更高的精度要求
+            StabilityWindowMs = 6000, // 更长的稳定时间
+            StabilityCheckIntervalMs = 100, // 更频繁的检查
+            MaxIntervalMinutes = 120, // 更短的时间窗口
+            MinWeightDiff = 0.5m // 更小的重量差
         };
 
         context.Services.Replace(
@@ -378,11 +353,11 @@ public class HighThroughputScenarioModule : AbpModule
         var fastThroughputConfig = new WeighingConfiguration
         {
             MinWeightThreshold = 1.0m,
-            WeightStabilityThreshold = 0.1m,  // 较宽松的稳定性
-            StabilityWindowMs = 2000,      // 更短的稳定时间
-            StabilityCheckIntervalMs = 500,    // 较少频率的检查
-            MaxIntervalMinutes = 600,       // 更长的时间窗口
-            MinWeightDiff = 2.0m           // 更大的重量差
+            WeightStabilityThreshold = 0.1m, // 较宽松的稳定性
+            StabilityWindowMs = 2000, // 更短的稳定时间
+            StabilityCheckIntervalMs = 500, // 较少频率的检查
+            MaxIntervalMinutes = 600, // 更长的时间窗口
+            MinWeightDiff = 2.0m // 更大的重量差
         };
 
         context.Services.Replace(
@@ -412,4 +387,3 @@ public class ScenarioBasedTests
 }
 
 #endregion
-
