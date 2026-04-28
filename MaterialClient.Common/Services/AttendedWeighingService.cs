@@ -15,9 +15,9 @@ using MaterialClient.Common.Services.Vzvision;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.EventBus;
 using Volo.Abp.EventBus.Local;
 using Volo.Abp.Uow;
 
@@ -177,7 +177,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
     // 订阅管理
     private IDisposable? _stateSubscription;
-    private IDisposable? _licensePlateSubscription; // MessageBus 订阅
+    private IDisposable? _licensePlateSubscription; // ILocalEventBus 订阅
     private IDisposable? _ghostGateSessionSubscription;
     private IDisposable? _settingsSavedSubscription;
 
@@ -200,62 +200,59 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         if (_stateSubscription != null) return; // 已经启动
 
-        // 订阅 MessageBus 车牌识别消息(统一事件传递)
+        // 订阅 ILocalEventBus 车牌识别事件
         if (_licensePlateSubscription == null)
         {
-            _licensePlateSubscription = MessageBus.Current
-                .Listen<LicensePlateRecognizedMessage>()
-                .Subscribe(msg =>
+            _licensePlateSubscription = _localEventBus.Subscribe<LicensePlateRecognizedEventData>(async eventData =>
+            {
+                try
                 {
-                    try
-                    {
-                        _logger?.LogInformation(
-                            "收到 LPR 事件: {Plate} 来自 {Device} (类型: {DeviceType})",
-                            msg.PlateNumber, msg.DeviceName, msg.DeviceType);
+                    _logger?.LogInformation(
+                        "收到 LPR 事件: {Plate} 来自 {Device} (类型: {DeviceType})",
+                        eventData.PlateNumber, eventData.DeviceName, eventData.DeviceType);
 
-                        // 调用现有处理逻辑
-                        OnPlateNumberRecognized(msg.PlateNumber, msg.ColorType);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex,
-                            "处理 LPR 消息失败: {Plate}",
-                            msg.PlateNumber);
-                    }
-                });
+                    // 调用现有处理逻辑
+                    OnPlateNumberRecognized(eventData.PlateNumber, eventData.ColorType);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex,
+                        "处理 LPR 事件失败: {Plate}",
+                        eventData.PlateNumber);
+                }
+            });
 
-            _logger?.LogInformation("已订阅 LicensePlateRecognizedMessage (MessageBus)");
+            _logger?.LogInformation("已订阅 LicensePlateRecognizedEventData (ILocalEventBus)");
         }
 
         if (_ghostGateSessionSubscription == null)
         {
-            _ghostGateSessionSubscription = MessageBus.Current
-                .Listen<GhostGateSessionResetMessage>()
-                .Subscribe(msg =>
+            _ghostGateSessionSubscription = _localEventBus.Subscribe<GhostGateSessionResetEventData>(async eventData =>
+            {
+                try
                 {
-                    try
-                    {
-                        RemoveAbandonedPlateFromCache(msg.AbandonedPlateNumber);
-                        var mostFrequent = GetMostFrequentPlateNumber();
-                        MessageBus.Current.SendMessage(new PlateNumberChangedMessage(mostFrequent));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex,
-                            "处理幽灵道闸会话重置消息失败: AbandonedPlate={AbandonedPlate}",
-                            msg.AbandonedPlateNumber);
-                    }
-                });
+                    RemoveAbandonedPlateFromCache(eventData.AbandonedPlateNumber);
+                    var mostFrequent = GetMostFrequentPlateNumber();
+                    await _localEventBus.PublishAsync(new PlateNumberChangedEventData(mostFrequent));
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex,
+                        "处理幽灵道闸会话重置事件失败: AbandonedPlate={AbandonedPlate}",
+                        eventData.AbandonedPlateNumber);
+                }
+            });
 
-            _logger?.LogInformation("已订阅 GhostGateSessionResetMessage (MessageBus)");
+            _logger?.LogInformation("已订阅 GhostGateSessionResetEventData (ILocalEventBus)");
         }
 
         if (_settingsSavedSubscription == null)
         {
-            _settingsSavedSubscription = MessageBus.Current
-                .Listen<SettingsSavedMessage>()
-                .Subscribe(_ => EnqueueAsyncOperation(UpdateRuntimeConfigurationAsync));
-            _logger?.LogInformation("已订阅 SettingsSavedMessage (MessageBus)");
+            _settingsSavedSubscription = _localEventBus.Subscribe<SettingsSavedEventData>(async _ =>
+            {
+                EnqueueAsyncOperation(UpdateRuntimeConfigurationAsync);
+            });
+            _logger?.LogInformation("已订阅 SettingsSavedEventData (ILocalEventBus)");
         }
 
         // Load configuration into fields
@@ -459,9 +456,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             _deliveryTypeSubject.OnNext(deliveryType);
             _logger?.LogInformation($"DeliveryType changed to {deliveryType}");
 
-            // Send MessageBus notification
-            var message = new DeliveryTypeChangedMessage(deliveryType);
-            MessageBus.Current.SendMessage(message);
+            // Send ILocalEventBus notification
+            _ = _localEventBus.PublishAsync(new DeliveryTypeChangedEventData(deliveryType));
         }
     }
 
@@ -523,8 +519,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
 
         // 获取最频繁的车牌号并发送通知
         var mostFrequent = GetMostFrequentPlateNumber();
-        var message = new PlateNumberChangedMessage(mostFrequent);
-        MessageBus.Current.SendMessage(message);
+        _ = _localEventBus.PublishAsync(new PlateNumberChangedEventData(mostFrequent));
     }
 
     /// <summary>
@@ -590,7 +585,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     {
         await StopAsync();
 
-        // 释放 MessageBus 订阅,防止内存泄漏
+        // 释放 ILocalEventBus 订阅,防止内存泄漏
         try
         {
             _licensePlateSubscription?.Dispose();
@@ -602,7 +597,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "释放 MessageBus 订阅时发生异常");
+            _logger?.LogWarning(ex, "释放 ILocalEventBus 订阅时发生异常");
         }
 
         // Safely complete and dispose internal subjects (used for state management)
@@ -1010,7 +1005,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     private void UpdateStatusAndNotify(AttendedWeighingStatus newStatus)
     {
         _statusSubject.OnNext(newStatus);
-        MessageBus.Current.SendMessage(new StatusChangedMessage(newStatus));
+        _ = _localEventBus.PublishAsync(new StatusChangedEventData(newStatus));
     }
 
     /// <summary>
@@ -1362,9 +1357,8 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
             // 保存最近创建的称重记录ID，用于后续重写车牌号
             _lastCreatedWeighingRecordIdSubject.OnNext(weighingRecord.Id);
 
-            // Notify observers that a new weighing record was created via MessageBus
-            var message = new WeighingRecordCreatedMessage(weighingRecord.Id);
-            MessageBus.Current.SendMessage(message);
+            // Notify observers that a new weighing record was created via ILocalEventBus
+            _ = _localEventBus.PublishAsync(new WeighingRecordCreatedEventData(weighingRecord.Id));
 
             // Publish TryMatchEvent for automatic matching
 
@@ -1462,11 +1456,11 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
                     _logger?.LogInformation(
                         $"Rewrote plate number for weighing record {weighingRecord.Id}, from '{oldPlateNumber ?? "None"}' to '{plateNumber}'");
 
-                    var updateMessage = new UpdatePlateNumberMessage(weighingRecord.Id, plateNumber);
-                    MessageBus.Current.SendMessage(updateMessage);
+                    var updateEventData = new UpdatePlateNumberEventData(weighingRecord.Id, plateNumber);
+                    _ = _localEventBus.PublishAsync(updateEventData);
 
                     _logger?.LogInformation(
-                        " Sent UpdatePlateNumberMessage via MessageBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                        " Sent UpdatePlateNumberEventData via ILocalEventBus for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
                         weighingRecord.Id, plateNumber);
                 }
             }
@@ -1538,8 +1532,7 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
         _plateNumberCache.Clear();
         _logger?.LogDebug("Cleared plate number cache");
 
-        // Notify observers that plate number is cleared via MessageBus
-        var message = new PlateNumberChangedMessage(null);
-        MessageBus.Current.SendMessage(message);
+        // Notify observers that plate number is cleared via ILocalEventBus
+        _ = _localEventBus.PublishAsync(new PlateNumberChangedEventData(null));
     }
 }

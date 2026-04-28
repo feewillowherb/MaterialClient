@@ -7,8 +7,8 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Common.Services.Vzvision;
 
@@ -52,6 +52,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     });
 
     private readonly ILogger<VzvisionLprService>? _logger;
+    private readonly ILocalEventBus _localEventBus;
 
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _configs = new(
         StringComparer.Ordinal);
@@ -67,8 +68,9 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     private bool _sdkSetupDone;
     private bool _started;
 
-    public VzvisionLprService(ILogger<VzvisionLprService>? logger = null)
+    public VzvisionLprService(ILocalEventBus localEventBus, ILogger<VzvisionLprService>? logger = null)
     {
+        _localEventBus = localEventBus;
         _logger = logger;
     }
 
@@ -353,7 +355,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
             var color = MapColor(plate.nColor);
             var deviceName = cfg.Name;
 
-            MessageBus.Current.SendMessage(new LicensePlateRecognizedMessage
+            _ = _localEventBus.PublishAsync(new LicensePlateRecognizedEventData
             {
                 PlateNumber = license,
                 ColorType = color,

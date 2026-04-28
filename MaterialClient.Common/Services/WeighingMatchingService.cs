@@ -8,12 +8,12 @@ using MaterialClient.Common.Providers;
 using MaterialClient.Common.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.EventBus.Local;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
@@ -137,6 +137,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRepository<LicenseInfo, Guid> _licenseInfoRepository;
     private readonly ILogger<WeighingMatchingService>? _logger;
+    private readonly ILocalEventBus _localEventBus;
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
@@ -575,12 +576,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         var waybill = await CreateWaybillAsync(matchResult.JoinRecord, matchResult.OutRecord, deliveryType);
 
-        // 发送匹配成功消息，通知 UI 选择匹配结果
-        var message = new MatchSucceededMessage(waybill.Id, currentRecord.Id);
-        MessageBus.Current.SendMessage(message);
+        // 发送匹配成功事件，通知 UI 选择匹配结果
+        await _localEventBus.PublishAsync(new MatchSucceededEventData(waybill.Id, currentRecord.Id));
 
         _logger?.LogInformation(
-            "ManualMatchAsync: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+            "ManualMatchAsync: Sent MatchSucceededEventData via ILocalEventBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
             waybill.Id, currentRecord.Id);
 
         return waybill;

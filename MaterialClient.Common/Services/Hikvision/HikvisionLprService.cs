@@ -8,8 +8,8 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Common.Services.Hikvision;
 
@@ -58,13 +58,15 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     private readonly ConcurrentDictionary<string, int> _deviceKeyToUserId = new(); // 登录会话缓存
     private readonly ILogger<HikvisionLprService>? _logger;
     private readonly ISettingsService _settingsService;
+    private readonly ILocalEventBus _localEventBus;
     private GCHandle? _callbackHandle;
     private bool _isInitialized;
     private int _listenHandle = -1;
 
-    public HikvisionLprService(ISettingsService settingsService, ILogger<HikvisionLprService>? logger = null)
+    public HikvisionLprService(ISettingsService settingsService, ILocalEventBus localEventBus, ILogger<HikvisionLprService>? logger = null)
     {
         _settingsService = settingsService;
+        _localEventBus = localEventBus;
         _logger = logger;
     }
 
@@ -345,8 +347,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             // 使用 GBK 编码提取车牌号
             var plateNumber = HikvisionEncodingHelper.GetString(plateResult.sLicense, _logger);
 
-            // 发布 MessageBus 消息(统一事件传递)
-            var message = new LicensePlateRecognizedMessage
+            // 通过 ILocalEventBus 发布车牌识别事件
+            var eventData = new LicensePlateRecognizedEventData
             {
                 PlateNumber = plateNumber,
                 ColorType = null, // 海康威视 SDK 回调中不包含颜色信息
@@ -354,11 +356,11 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
                 Timestamp = DateTime.Now
             };
-            MessageBus.Current.SendMessage(message);
+            _ = _localEventBus.PublishAsync(eventData);
 
             _logger?.LogInformation(
                 "收到车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.A, message.Timestamp);
+                eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
         }
         catch (Exception ex)
         {
@@ -391,8 +393,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 // 使用 GBK 编码提取车牌号
                 var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
 
-                // 发布 MessageBus 消息(统一事件传递)
-                var message = new LicensePlateRecognizedMessage
+                // 通过 ILocalEventBus 发布车牌识别事件
+                var eventData = new LicensePlateRecognizedEventData
                 {
                     PlateNumber = plateNumber,
                     ColorType = null, // 海康威视 SDK 回调中不包含颜色信息
@@ -400,11 +402,11 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                     DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
                     Timestamp = DateTime.Now
                 };
-                MessageBus.Current.SendMessage(message);
+                _ = _localEventBus.PublishAsync(eventData);
 
                 _logger?.LogInformation(
                     "收到 ITS 车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                    message.DeviceName, message.PlateNumber, config?.Direction ?? LicensePlateDirection.A, message.Timestamp);
+                    eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
             }
         }
         catch (Exception ex)

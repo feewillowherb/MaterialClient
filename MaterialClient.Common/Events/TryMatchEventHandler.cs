@@ -1,10 +1,10 @@
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Common.Events;
 
@@ -17,6 +17,7 @@ public partial class TryMatchEventHandler : ILocalEventHandler<TryMatchEvent>, I
     private readonly ILogger<TryMatchEventHandler>? _logger;
     private readonly IWeighingMatchingService _weighingMatchingService;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly ILocalEventBus _localEventBus;
 
 
     public async Task HandleEventAsync(TryMatchEvent eventData)
@@ -39,12 +40,12 @@ public partial class TryMatchEventHandler : ILocalEventHandler<TryMatchEvent>, I
                 var weighingRecord = await _weighingRecordRepository.FindAsync(eventData.WeighingRecordId);
                 if (weighingRecord != null && weighingRecord.WaybillId.HasValue)
                 {
-                    // 通过 ReactiveUI MessageBus 发送匹配成功消息
-                    var message = new MatchSucceededMessage(weighingRecord.WaybillId.Value, eventData.WeighingRecordId);
-                    MessageBus.Current.SendMessage(message);
+                    // 通过 ILocalEventBus 发送匹配成功事件
+                    var eventDataMsg = new MatchSucceededEventData(weighingRecord.WaybillId.Value, eventData.WeighingRecordId);
+                    await _localEventBus.PublishAsync(eventDataMsg);
 
                     _logger?.LogInformation(
-                        "TryMatchEventHandler: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+                        "TryMatchEventHandler: Sent MatchSucceededEventData via ILocalEventBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
                         weighingRecord.WaybillId.Value, eventData.WeighingRecordId);
                 }
             }

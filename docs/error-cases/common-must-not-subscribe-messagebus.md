@@ -1,5 +1,9 @@
 # 错误样例：Common 层禁止订阅 ReactiveUI MessageBus
 
+> **修复状态**：✅ 已修复（变更 `fix-messagebus-usage-in-common-preserve-business`）
+>
+> Common 层所有 `MessageBus.Current.Listen<T>()` 和 `MessageBus.Current.SendMessage<T>()` 调用已迁移到 ABP `ILocalEventBus`。ViewModel 层通过桥接 EventHandler 保持现有 MessageBus 订阅方式不变。
+
 ## 规则
 
 `MaterialClient.Common` 项目中的服务、事件处理器等非 UI 组件**禁止**通过 `MessageBus.Current.Listen<T>()` 订阅消息，也**禁止**通过 `MessageBus.Current.SendMessage()` 发布需要跨 Service 传递的消息。
