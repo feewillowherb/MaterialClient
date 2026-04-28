@@ -28,7 +28,14 @@ namespace MaterialClient.Common.Tests.Tests;
 
 /// <summary>
 /// Unit tests for AttendedWeighingService
+///
+/// IMPORTANT: These tests use MessageBus.Current which is a global singleton.
+/// To prevent test interference when running tests in parallel, this collection
+/// ensures tests are run sequentially. The MessageBus.Current is shared across
+/// all tests in this collection, so serial execution prevents message leakage
+/// between tests.
 /// </summary>
+[Collection("MessageBusTests")]
 public class AttendedWeighingServiceTests : IDisposable
 {
     private readonly ITestOutputHelper _output;
