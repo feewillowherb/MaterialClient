@@ -25,7 +25,7 @@ jobs:
       run: dotnet build MaterialClient.sln --no-restore -c Release -p:WarningLevel=0
 
     - name: Run unit tests
-      run: dotnet test MaterialClient.Common.Tests --no-build -c Release --verbosity normal
+      run: dotnet test MaterialClient.Common.Tests --no-restore -c Release --verbosity normal
 
   publish:
     needs: test
