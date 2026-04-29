@@ -31,7 +31,7 @@
     <PackageVersion Include="Volo.Abp.Data" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.TestBase" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.Authorization" Version="10.0.1" />
-    <PackageVersion Include="Volo.Abp.BackgroundJobs.Abstractions" Version="10.0.1" />
+    <PackageVersion Include="Volo.Abp.BackgroundJobs.Abstractions" Version="10.3.0" />
     <!-- System Packages -->
     <PackageVersion Include="System.Management" Version="10.0.1" />
     <PackageVersion Include="System.IO.Ports" Version="10.0.1" />
