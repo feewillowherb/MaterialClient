@@ -41,7 +41,6 @@
         <PackageReference Include="Aliyun.OSS.SDK.NetCore"/>
         <PackageReference Include="ClosedXML"/>
         <PackageReference Include="System.Drawing.Common"/>
-        <PackageReference Include="System.Text.Encoding.CodePages"/>
     </ItemGroup>
 
 
