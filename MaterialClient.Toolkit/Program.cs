@@ -14,15 +14,15 @@ internal class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        SQLitePCL.Batteries_V2.Init();
-
-        Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
-
-        // --migrate 参数走迁移流程，默认执行同步服务
-        if (args.Length > 0 && args[0].Equals("--migrate", StringComparison.OrdinalIgnoreCase))
-        {
-            return await RunMigrationAsync(args);
-        }
+        // SQLitePCL.Batteries_V2.Init();
+        //
+        // Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
+        //
+        // // --migrate 参数走迁移流程，默认执行同步服务
+        // if (args.Length > 0 && args[0].Equals("--migrate", StringComparison.OrdinalIgnoreCase))
+        // {
+        //     return await RunMigrationAsync(args);
+        // }
 
         return await RunSyncAsync(args);
     }

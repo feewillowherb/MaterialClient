@@ -4,6 +4,7 @@ using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
@@ -20,9 +21,13 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly MaterialClientDbContext _dbContext;
     private readonly ILogger<MaterialProviderSyncService> _logger;
+    private readonly IConfiguration _configuration;
 
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
+        // ── Phase 0: Login to obtain Bearer token ──
+        await LoginAsync(cancellationToken);
+
         // ── Phase A: Read local data (no transaction) ──
 
         var materials = await _dbContext.Materials
@@ -63,7 +68,7 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
                 material.Name, material.Id, material.CoId);
 
             var response = await _materialPlatformApi.CreateMaterialByNameAsync(
-                new CreateMaterialByNameInput(material.Name, material.CoId, material.ProId ?? string.Empty),
+                new CreateMaterialByNameInput(material.Name, 1846, "08DD7E19-DDF8-799B-1999-0D418C03CE20"),
                 cancellationToken);
 
             if (!response.IsSuccess || response.Data is null)
@@ -94,7 +99,7 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
                 provider.ProviderName, provider.Id, provider.CoId);
 
             var response = await _materialPlatformApi.CreateProviderAsync(
-                new CreateProviderInput(provider.ProviderName, 0, provider.CoId ?? 0, string.Empty),
+                new CreateProviderInput(provider.ProviderName, 0, 1846, "08DD7E19-DDF8-799B-1999-0D418C03CE20"),
                 cancellationToken);
 
             if (!response.IsSuccess || response.Data is null)
@@ -343,5 +348,45 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
         {
             _dbContext.DisableAuditConcepts = false;
         }
+    }
+
+    private async Task LoginAsync(CancellationToken cancellationToken)
+    {
+        var license = await _dbContext.LicenseInfos.FirstOrDefaultAsync(cancellationToken);
+        if (license == null)
+            throw new InvalidOperationException("未找到授权信息(LicenseInfo)，无法登录。请先在主程序中完成授权激活。");
+
+        var username = _configuration["Sync:Username"] ?? "18767182526";
+        var password = _configuration["Sync:Password"] ?? "fdkj123456";
+
+        _logger.LogInformation("正在使用账号 {Username} 登录...", username);
+
+        var response = await _materialPlatformApi.UserLoginAsync(
+            new LoginRequestDto
+            {
+                UserName = username,
+                UserPwd = password,
+                ProId = license.ProjectId.ToString()
+            }, cancellationToken);
+
+        if (!response.Success || response.Data == null)
+        {
+            var errorMsg = response?.Msg ?? "登录失败";
+            throw new InvalidOperationException($"登录失败: {errorMsg}");
+        }
+
+        var json = JsonSerializer.Serialize(response.Data);
+        using var doc = JsonDocument.Parse(json);
+
+        var token = doc.RootElement.TryGetProperty("token", out var tokenEl) ? tokenEl.GetString() : null;
+        if (string.IsNullOrEmpty(token))
+            throw new InvalidOperationException("登录返回数据无效，未获取到Token。");
+
+        // Set token for ToolkitBearerTokenHandler to attach to subsequent requests
+        ToolkitBearerTokenHandler.CurrentToken = token;
+
+        var trueName = doc.RootElement.TryGetProperty("trueName", out var tnEl) ? tnEl.GetString() : "未知";
+        var coId = doc.RootElement.TryGetProperty("coId", out var coEl) ? coEl.GetInt32() : 0;
+        _logger.LogInformation("登录成功，用户: {TrueName} (CoId={CoId})", trueName, coId);
     }
 }

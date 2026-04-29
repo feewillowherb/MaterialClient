@@ -28,6 +28,8 @@
         <PackageReference Include="Magicodes.IE.Csv" />
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" />
         <PackageReference Include="SQLitePCLRaw.bundle_zetetic" />
+        <PackageReference Include="Refit.HttpClientFactory" />
+        <PackageReference Include="Microsoft.Extensions.Http.Polly" />
         <PackageReference Include="Volo.Abp.Core" />
         <PackageReference Include="Volo.Abp.Autofac" />
     </ItemGroup>
@@ -37,6 +39,9 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <!-- 单文件发布时，将 appsettings.json 作为独立文件，不打包到单文件中 -->
             <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        </None>
+        <None Update="appsettings.secret.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
 
