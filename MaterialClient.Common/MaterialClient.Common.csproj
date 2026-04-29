@@ -26,6 +26,7 @@
         <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
         <PackageReference Include="Volo.Abp.Autofac"/>
         <PackageReference Include="Volo.Abp.Core"/>
+    <PackageReference Include="Volo.Abp.Data" />
         <PackageReference Include="Volo.Abp.Ddd.Domain"/>
         <PackageReference Include="Volo.Abp.Ddd.Application.Contracts"/>
         <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite"/>
