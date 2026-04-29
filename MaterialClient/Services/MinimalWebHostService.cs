@@ -19,7 +19,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
+using Volo.Abp.EventBus.Local;
 using BadHttpRequestException = Microsoft.AspNetCore.Http.BadHttpRequestException;
 
 namespace MaterialClient.Services;
@@ -33,6 +33,7 @@ public class MinimalWebHostService : IAsyncDisposable
     private readonly IConfiguration _configuration;
     private readonly Lock _lock = new();
     private readonly IServiceProvider _sharedServiceProvider;
+    private readonly ILocalEventBus _localEventBus;
     private bool _isRunning;
     private WebApplication? _webApplication;
 
@@ -49,6 +50,7 @@ public class MinimalWebHostService : IAsyncDisposable
     {
         _sharedServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _localEventBus = serviceProvider.GetRequiredService<ILocalEventBus>();
     }
 
     /// <summary>
@@ -278,7 +280,7 @@ public class MinimalWebHostService : IAsyncDisposable
 
             try
             {
-                var message = new LicensePlateRecognizedMessage
+                var eventData = new LicensePlateRecognizedEventData
                 {
                     PlateNumber = plateNumber,
                     ColorType = request.ColorType,
@@ -289,19 +291,19 @@ public class MinimalWebHostService : IAsyncDisposable
                     Timestamp = request.Timestamp ?? DateTime.Now
                 };
 
-                MessageBus.Current.SendMessage(message);
+                _ = _localEventBus.PublishAsync(eventData);
                 logger.LogInformation("测试车牌注入成功：Plate={Plate}, DeviceType={DeviceType}, DeviceName={DeviceName}",
-                    message.PlateNumber, message.DeviceType, message.DeviceName);
+                    eventData.PlateNumber, eventData.DeviceType, eventData.DeviceName);
 
                 return Results.Ok(new
                 {
                     success = true,
                     message = "完成",
-                    plateNumber = message.PlateNumber,
-                    deviceType = message.DeviceType.ToString(),
-                    deviceName = message.DeviceName,
-                    colorType = message.ColorType?.ToString(),
-                    timestamp = message.Timestamp
+                    plateNumber = eventData.PlateNumber,
+                    deviceType = eventData.DeviceType.ToString(),
+                    deviceName = eventData.DeviceName,
+                    colorType = eventData.ColorType?.ToString(),
+                    timestamp = eventData.Timestamp
                 });
             }
             catch (Exception ex)
@@ -434,8 +436,8 @@ public class MinimalWebHostService : IAsyncDisposable
                     var plateNum = form["plate_num"]; // Already decoded (京A12345)
                     if (!string.IsNullOrWhiteSpace(plateNum))
                     {
-                        // 发布 MessageBus 消息(统一事件传递)
-                        var message = new LicensePlateRecognizedMessage
+                        // 发布 ILocalEventBus 事件（统一事件传递）
+                        var eventData = new LicensePlateRecognizedEventData
                         {
                             PlateNumber = plateNum,
                             ColorType = null, // 华夏智信回调中不包含颜色信息
@@ -443,7 +445,7 @@ public class MinimalWebHostService : IAsyncDisposable
                             DeviceName = "Huaxiazhixin", // 可以从配置获取设备名称
                             Timestamp = DateTime.Now
                         };
-                        MessageBus.Current.SendMessage(message);
+                        _ = _localEventBus.PublishAsync(eventData);
 
                         logger.LogInformation($"华夏智信识别车牌号：{plateNum}");
 
