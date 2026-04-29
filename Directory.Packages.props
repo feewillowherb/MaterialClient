@@ -11,7 +11,7 @@
     <!-- Source Generators -->
     <PackageVersion Include="AutoConstructor" Version="5.6.0" />
     <!-- Core Framework Packages -->
-    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
+    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.0-beta3" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="10.0.1" />
