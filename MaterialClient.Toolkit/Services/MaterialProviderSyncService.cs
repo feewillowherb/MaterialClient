@@ -38,6 +38,10 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
             .Where(p => !p.IsDeleted)
             .ToListAsync(cancellationToken);
 
+        // Query ALL records (including soft-deleted) for deletion in Phase B
+        var allMaterials = await _dbContext.Materials.ToListAsync(cancellationToken);
+        var allProviders = await _dbContext.Providers.ToListAsync(cancellationToken);
+
         if (materials.Count == 0 && providers.Count == 0)
         {
             _logger.LogInformation("No data to sync. Both Materials and Providers tables are empty.");
@@ -73,14 +77,35 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
 
             if (!response.IsSuccess || response.Data is null)
             {
-                _logger.LogError("Failed to create material '{Name}' (Id={Id}) on server. Code={Code}, Message={Message}",
-                    material.Name, material.Id, response.Code, response.Message);
-                throw new InvalidOperationException(
-                    $"Failed to create material '{material.Name}' (Id={material.Id}) on server: {response.Message}");
+                _logger.LogWarning("Failed to create material '{Name}' (Id={Id}) on server (Code={Code}), trying to lookup from server list.",
+                    material.Name, material.Id, response.Code);
+
+                var materialList = await _materialPlatformApi.GetMaterialGoodListAsync(
+                    new GetMaterialGoodListInput("08DD7E19-DDF8-799B-1999-0D418C03CE20", 0),
+                    cancellationToken);
+
+                var existing = materialList.FirstOrDefault(m =>
+                    string.Equals(m.GoodsName, material.Name, StringComparison.OrdinalIgnoreCase));
+
+                if (existing == null)
+                {
+                    _logger.LogError("Material '{Name}' not found on server after create failure.",
+                        material.Name);
+                    throw new InvalidOperationException(
+                        $"Failed to create or find material '{material.Name}' (Id={material.Id}) on server: {response.Message}");
+                }
+
+                materialIdMap[material.Id] = existing.GoodsId;
+                if (materialDtos.All(m => m.GoodsId != existing.GoodsId))
+                    materialDtos.Add(existing);
+                _logger.LogInformation("Material '{Name}' found on server with GoodsId={GoodsId} (lookup).",
+                    material.Name, existing.GoodsId);
+                continue;
             }
 
             materialIdMap[material.Id] = response.Data.GoodsId;
-            materialDtos.Add(response.Data);
+            if (materialDtos.All(m => m.GoodsId != response.Data.GoodsId))
+                materialDtos.Add(response.Data);
             _logger.LogInformation("Material '{Name}' created on server with GoodsId={GoodsId}.",
                 material.Name, response.Data.GoodsId);
         }
@@ -104,14 +129,36 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
 
             if (!response.IsSuccess || response.Data is null)
             {
-                _logger.LogError("Failed to create provider '{ProviderName}' (Id={Id}) on server. Code={Code}, Message={Message}",
-                    provider.ProviderName, provider.Id, response.Code, response.Message);
-                throw new InvalidOperationException(
-                    $"Failed to create provider '{provider.ProviderName}' (Id={provider.Id}) on server: {response.Message}");
+                _logger.LogWarning("Failed to create provider '{ProviderName}' (Id={Id}) on server (Code={Code}), trying to lookup from server list.",
+                    provider.ProviderName, provider.Id, response.Code);
+
+                // Fallback: query server provider list to find existing provider by name
+                var providerList = await _materialPlatformApi.MaterialProviderListAsync(
+                    new GetMaterialProviderListInput("08DD7E19-DDF8-799B-1999-0D418C03CE20", 0),
+                    cancellationToken);
+
+                var existing = providerList.FirstOrDefault(p =>
+                    string.Equals(p.ProviderName, provider.ProviderName, StringComparison.OrdinalIgnoreCase));
+
+                if (existing == null)
+                {
+                    _logger.LogError("Provider '{ProviderName}' not found on server after create failure.",
+                        provider.ProviderName);
+                    throw new InvalidOperationException(
+                        $"Failed to create or find provider '{provider.ProviderName}' (Id={provider.Id}) on server: {response.Message}");
+                }
+
+                providerIdMap[provider.Id] = existing.ProviderId;
+                if (providerDtos.All(p => p.ProviderId != existing.ProviderId))
+                    providerDtos.Add(existing);
+                _logger.LogInformation("Provider '{ProviderName}' found on server with ProviderId={ProviderId} (lookup).",
+                    provider.ProviderName, existing.ProviderId);
+                continue;
             }
 
             providerIdMap[provider.Id] = response.Data.ProviderId;
-            providerDtos.Add(response.Data);
+            if (providerDtos.All(p => p.ProviderId != response.Data.ProviderId))
+                providerDtos.Add(response.Data);
             _logger.LogInformation("Provider '{ProviderName}' created on server with ProviderId={ProviderId}.",
                 provider.ProviderName, response.Data.ProviderId);
         }
@@ -129,17 +176,9 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
         {
             _logger.LogInformation("Phase B: Starting database transaction for entity replacement and FK updates.");
 
-            // Replace Material entities
-            _dbContext.Materials.RemoveRange(materials);
-            var serverMaterials = materialDtos.Select(MaterialGoodListResultDto.ToEntity).ToList();
-            _dbContext.Materials.AddRange(serverMaterials);
-            _logger.LogInformation("Replaced {Count} Material entities with server data.", serverMaterials.Count);
-
-            // Replace Provider entities
-            _dbContext.Providers.RemoveRange(providers);
-            var serverProviders = providerDtos.Select(MaterialProviderListResultDto.ToEntity).ToList();
-            _dbContext.Providers.AddRange(serverProviders);
-            _logger.LogInformation("Replaced {Count} Provider entities with server data.", serverProviders.Count);
+            // Step 1: Remove ALL old entities (including soft-deleted) to avoid Id conflicts
+            _dbContext.Materials.RemoveRange(allMaterials);
+            _dbContext.Providers.RemoveRange(allProviders);
 
             // Clear MaterialUnit table (references old local MaterialId)
             var materialUnits = await _dbContext.MaterialUnits.ToListAsync(cancellationToken);
@@ -160,6 +199,31 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            // Clear change tracker to release deleted entity references
+            _dbContext.ChangeTracker.Clear();
+
+            // Step 2: Add new server entities
+            var serverMaterials = materialDtos.Select(MaterialGoodListResultDto.ToEntity).ToList();
+            _dbContext.Materials.AddRange(serverMaterials);
+            _logger.LogInformation("Replaced {Count} Material entities with server data.", serverMaterials.Count);
+
+            var serverProviders = providerDtos.Select(MaterialProviderListResultDto.ToEntity).ToList();
+            _dbContext.Providers.AddRange(serverProviders);
+            _logger.LogInformation("Replaced {Count} Provider entities with server data.", serverProviders.Count);
+
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                var inner = ex.InnerException;
+                while (inner?.InnerException != null) inner = inner.InnerException;
+                throw new InvalidOperationException(
+                    $"Failed to save server entities: {(inner ?? ex).Message}", ex);
+            }
+            _dbContext.ChangeTracker.Clear();
 
             // Update WaybillMaterial.MaterialId
             var waybillMaterials = await _dbContext.WaybillMaterials.ToListAsync(cancellationToken);

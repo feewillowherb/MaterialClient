@@ -223,7 +223,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
 
             var request = new GetMaterialProviderListInput(
                 licenseInfo.ProjectId.ToString(),
-                timestamp
+                0
             );
 
             _logger.LogInformation("开始获取供应商数据，项目ID: {ProjectId}, 时间戳: {Timestamp}",

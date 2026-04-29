@@ -2195,7 +2195,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             // 4. 运单推送
             try
             {
-                await _weighingMatchingService.PushWaybillAsync(CancellationToken.None);
+                //await _weighingMatchingService.PushWaybillAsync(CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -2206,7 +2206,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             // 5. 附件上传
             try
             {
-                await _attachmentService.SyncPendingAttachmentsToOssAsync();
+                //await _attachmentService.SyncPendingAttachmentsToOssAsync();
             }
             catch (Exception ex)
             {
