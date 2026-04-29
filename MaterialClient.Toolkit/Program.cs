@@ -17,24 +17,80 @@ internal class Program
         SQLitePCL.Batteries_V2.Init();
 
         Console.WriteLine(SQLitePCL.raw.sqlite3_libversion().utf8_to_string());
-        
+
+        // --migrate 参数走迁移流程，默认执行同步服务
+        if (args.Length > 0 && args[0].Equals("--migrate", StringComparison.OrdinalIgnoreCase))
+        {
+            return await RunMigrationAsync(args);
+        }
+
+        return await RunSyncAsync(args);
+    }
+
+    private static async Task<int> RunSyncAsync(string[] args)
+    {
+        IAbpApplicationWithInternalServiceProvider? abpApplication = null;
+
+        try
+        {
+            var configuration = BuildConfiguration();
+            var targetConnectionString = GetConnectionString(configuration);
+            var dbPath = ExtractDatabasePath(targetConnectionString);
+            var dbExists = !string.IsNullOrEmpty(dbPath) && File.Exists(dbPath);
+
+            Console.WriteLine($"目标数据库: {targetConnectionString}");
+            if (!dbExists)
+            {
+                Console.WriteLine($"数据库文件不存在，将在初始化时创建: {dbPath ?? "未知路径"}");
+            }
+
+            Console.WriteLine("初始化ABP框架...");
+
+            abpApplication = await CreateAbpApplicationAsync(configuration);
+
+            if (!dbExists)
+            {
+                var migrateResult = await EnsureDatabaseCreatedAsync(abpApplication);
+                if (migrateResult != 0) return migrateResult;
+            }
+
+            Console.WriteLine("开始同步 Material 和 Provider 到服务端...");
+
+            var syncService = abpApplication.ServiceProvider
+                .GetRequiredService<IMaterialProviderSyncService>();
+
+            await syncService.SyncAsync();
+
+            Console.WriteLine("同步完成！");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"错误: {ex.Message}");
+            Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
+            return 1;
+        }
+        finally
+        {
+            if (abpApplication != null)
+            {
+                await abpApplication.ShutdownAsync();
+                abpApplication.Dispose();
+            }
+        }
+    }
+
+    private static async Task<int> RunMigrationAsync(string[] args)
+    {
         IAbpApplicationWithInternalServiceProvider? abpApplication = null;
 
         try
         {
             // 1. 读取配置
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables()
-                .Build();
+            var configuration = BuildConfiguration();
 
             // 2. 获取目标数据库连接字符串（MaterialClient.db）
-            var targetConnectionString = configuration.GetConnectionString("Default")
-                                        ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-                                        ?? "Data Source=MaterialClient.db";
-
-            // 从连接字符串中提取数据库文件路径
+            var targetConnectionString = GetConnectionString(configuration);
             var dbPath = ExtractDatabasePath(targetConnectionString);
             var dbExists = !string.IsNullOrEmpty(dbPath) && File.Exists(dbPath);
 
@@ -47,43 +103,19 @@ internal class Program
             Console.WriteLine("初始化ABP框架...");
 
             // 3. 创建并初始化ABP应用
-            abpApplication = await AbpApplicationFactory.CreateAsync<MaterialClientToolkitModule>(options =>
-            {
-                options.Services.ReplaceConfiguration(configuration);
-                options.UseAutofac();
-            });
-
-            await abpApplication.InitializeAsync();
+            abpApplication = await CreateAbpApplicationAsync(configuration);
 
             // 3.5. 如果数据库不存在，执行 Code First 迁移创建数据库和表结构
             if (!dbExists)
             {
-                Console.WriteLine("数据库不存在，正在创建数据库和表结构...");
-                try
-                {
-                    var unitOfWorkManager = abpApplication.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-                    var dbContextProvider = abpApplication.ServiceProvider
-                        .GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
-
-                    using var uow = unitOfWorkManager.Begin(true, false);
-                    await using var dbContext = await dbContextProvider.GetDbContextAsync();
-                    await dbContext.Database.MigrateAsync();
-                    await uow.CompleteAsync();
-                    Console.WriteLine("数据库和表结构创建成功！");
-                }
-                catch (Exception ex)
-                {
-                    var dbLogger = abpApplication.ServiceProvider.GetService<ILogger<Program>>();
-                    dbLogger?.LogError(ex, "创建数据库和表结构失败");
-                    Console.WriteLine($"错误: 创建数据库失败 - {ex.Message}");
-                    return 1;
-                }
+                var migrateResult = await EnsureDatabaseCreatedAsync(abpApplication);
+                if (migrateResult != 0) return migrateResult;
             }
 
             // 4. 提示用户输入源数据库密码
             Console.Write("请输入encrypted_material.db的密码: ");
             var password = Console.ReadLine();
-            
+
             if (string.IsNullOrWhiteSpace(password))
             {
                 Console.WriteLine("错误: 密码不能为空");
@@ -120,7 +152,7 @@ internal class Program
 
             // 7. 从ABP容器获取服务
             var csvMapperService = abpApplication.ServiceProvider.GetRequiredService<CsvMapperService>();
-            var targetDbContext = abpApplication.ServiceProvider.GetRequiredService<MaterialClient.EFCore.MaterialClientDbContext>();
+            var targetDbContext = abpApplication.ServiceProvider.GetRequiredService<MaterialClientDbContext>();
             var logger = abpApplication.ServiceProvider.GetService<ILogger<DatabaseMigrationService>>();
 
             var migrationService = new DatabaseMigrationService(
@@ -156,7 +188,6 @@ internal class Program
         }
         finally
         {
-            // 清理ABP应用
             if (abpApplication != null)
             {
                 await abpApplication.ShutdownAsync();
@@ -165,20 +196,71 @@ internal class Program
         }
     }
 
-    /// <summary>
-    /// 从连接字符串中提取数据库文件路径
-    /// </summary>
+    private static IConfiguration BuildConfiguration()
+    {
+        return new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables()
+            .Build();
+    }
+
+    private static string GetConnectionString(IConfiguration configuration)
+    {
+        return configuration.GetConnectionString("Default")
+               ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+               ?? "Data Source=MaterialClient.db";
+    }
+
+    private static async Task<IAbpApplicationWithInternalServiceProvider> CreateAbpApplicationAsync(
+        IConfiguration configuration)
+    {
+        var abpApplication = await AbpApplicationFactory.CreateAsync<MaterialClientToolkitModule>(options =>
+        {
+            options.Services.ReplaceConfiguration(configuration);
+            options.UseAutofac();
+        });
+
+        await abpApplication.InitializeAsync();
+        return abpApplication;
+    }
+
+    private static async Task<int> EnsureDatabaseCreatedAsync(
+        IAbpApplicationWithInternalServiceProvider abpApplication)
+    {
+        Console.WriteLine("数据库不存在，正在创建数据库和表结构...");
+        try
+        {
+            var unitOfWorkManager = abpApplication.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+            var dbContextProvider = abpApplication.ServiceProvider
+                .GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
+
+            using var uow = unitOfWorkManager.Begin(true, false);
+            await using var dbContext = await dbContextProvider.GetDbContextAsync();
+            await dbContext.Database.MigrateAsync();
+            await uow.CompleteAsync();
+            Console.WriteLine("数据库和表结构创建成功！");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            var dbLogger = abpApplication.ServiceProvider.GetService<ILogger<Program>>();
+            dbLogger?.LogError(ex, "创建数据库和表结构失败");
+            Console.WriteLine($"错误: 创建数据库失败 - {ex.Message}");
+            return 1;
+        }
+    }
+
     private static string? ExtractDatabasePath(string connectionString)
     {
-        // 解析 "Data Source=MaterialClient.db" 格式的连接字符串
         var parts = connectionString.Split(';');
         foreach (var part in parts)
         {
             var keyValue = part.Split('=', 2);
-            if (keyValue.Length == 2 && keyValue[0].Trim().Equals("Data Source", StringComparison.OrdinalIgnoreCase))
+            if (keyValue.Length == 2 &&
+                keyValue[0].Trim().Equals("Data Source", StringComparison.OrdinalIgnoreCase))
             {
                 var path = keyValue[1].Trim();
-                // 如果是相对路径，转换为绝对路径
                 if (!Path.IsPathRooted(path))
                 {
                     path = Path.Combine(Directory.GetCurrentDirectory(), path);
