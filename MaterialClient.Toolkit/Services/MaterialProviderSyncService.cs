@@ -176,39 +176,39 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
         {
             _logger.LogInformation("Phase B: Starting database transaction for entity replacement and FK updates.");
 
-            // Step 1: Remove ALL old entities (including soft-deleted) to avoid Id conflicts
-            _dbContext.Materials.RemoveRange(allMaterials);
-            _dbContext.Providers.RemoveRange(allProviders);
-
-            // Clear MaterialUnit table (references old local MaterialId)
-            var materialUnits = await _dbContext.MaterialUnits.ToListAsync(cancellationToken);
-            if (materialUnits.Count > 0)
-            {
-                _dbContext.MaterialUnits.RemoveRange(materialUnits);
-                _logger.LogInformation("Cleared {Count} MaterialUnit records (old MaterialId references invalidated).",
-                    materialUnits.Count);
-            }
-
-            // Clear MaterialType table (local classification data to be re-pulled from server)
-            var materialTypes = await _dbContext.MaterialTypes.ToListAsync(cancellationToken);
-            if (materialTypes.Count > 0)
-            {
-                _dbContext.MaterialTypes.RemoveRange(materialTypes);
-                _logger.LogInformation("Cleared {Count} MaterialType records (to be re-pulled from server).",
-                    materialTypes.Count);
-            }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            // Clear change tracker to release deleted entity references
+            // Step 1: Clear change tracker and delete all old data via raw SQL
             _dbContext.ChangeTracker.Clear();
 
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM MaterialUnits", cancellationToken);
+            _logger.LogInformation("Cleared MaterialUnits table.");
+
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM MaterialTypes", cancellationToken);
+            _logger.LogInformation("Cleared MaterialTypes table.");
+
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM Providers", cancellationToken);
+            _logger.LogInformation("Cleared Providers table.");
+
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM Materials", cancellationToken);
+            _logger.LogInformation("Cleared Materials table.");
+
             // Step 2: Add new server entities
-            var serverMaterials = materialDtos.Select(MaterialGoodListResultDto.ToEntity).ToList();
+            var serverMaterials = materialDtos
+                .Select(MaterialGoodListResultDto.ToEntity)
+                .GroupBy(m => m.Id)
+                .Select(g => g.First())
+                .ToList();
             _dbContext.Materials.AddRange(serverMaterials);
             _logger.LogInformation("Replaced {Count} Material entities with server data.", serverMaterials.Count);
 
-            var serverProviders = providerDtos.Select(MaterialProviderListResultDto.ToEntity).ToList();
+            var serverProviders = providerDtos
+                .Select(MaterialProviderListResultDto.ToEntity)
+                .GroupBy(p => p.Id)
+                .Select(g => g.First())
+                .ToList();
             _dbContext.Providers.AddRange(serverProviders);
             _logger.LogInformation("Replaced {Count} Provider entities with server data.", serverProviders.Count);
 
