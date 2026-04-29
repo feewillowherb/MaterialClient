@@ -33,6 +33,8 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
 {
     private readonly IOptions<StreetsConfig> _streetsConfig;
     private readonly IOptions<SolidWasteTypeConfig> _solidWasteTypeConfig;
+    private readonly IRecommendationService _recommendationService;
+    private readonly ISettingsService _settingsService;
 
     [Reactive] private string? _solidWasteOrderNumber;
     [Reactive] private ObservableCollection<string> _streets = new();
@@ -53,11 +55,16 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
 
     public override bool IsSolidWasteMode => true;
 
-    public SolidWasteWeighingDetailViewModel(IServiceProvider serviceProvider)
+    public SolidWasteWeighingDetailViewModel(
+        IServiceProvider serviceProvider,
+        IRecommendationService recommendationService,
+        ISettingsService settingsService)
         : base(serviceProvider, serviceProvider.GetService<ILogger<SolidWasteWeighingDetailViewModel>>())
     {
         _streetsConfig = _serviceProvider.GetRequiredService<IOptions<StreetsConfig>>();
         _solidWasteTypeConfig = _serviceProvider.GetRequiredService<IOptions<SolidWasteTypeConfig>>();
+        _recommendationService = recommendationService;
+        _settingsService = settingsService;
 
         ProviderLoadPageAsync = LoadProvidersPageAsync;
         MaterialLoadPageAsync = LoadMaterialsPageAsync;
@@ -133,6 +140,9 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
 
         // Load SolidWaste data from ExtraProperties
         await LoadSolidWasteDataAsync();
+
+        // Apply recommendation data to fill missing fields
+        await ApplyRecommendationAsync();
     }
 
     private async Task LoadConfigurationDataAsync()
@@ -278,6 +288,76 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
         catch (Exception ex)
         {
             Logger?.LogError(ex, "加载固废模式数据失败");
+        }
+    }
+
+    private async Task ApplyRecommendationAsync()
+    {
+        // Check if we need to fill missing fields
+        var hasProviderId = SelectedProviderId.HasValue;
+        var hasMaterialId = SelectedSolidWasteMaterial != null;
+        var needsRecommendation = !hasProviderId || !hasMaterialId;
+
+        WaybillRecommendationDto? recommendation = null;
+        if (needsRecommendation)
+        {
+            try
+            {
+                var settings = await _settingsService.GetSettingsAsync();
+                var enableLatestRecommendation = settings.SystemSettings.EnableLatestRecommendation;
+
+                if (enableLatestRecommendation)
+                {
+                    recommendation = await _recommendationService.GetLatestRecommendationAsync();
+                }
+                else if (!string.IsNullOrWhiteSpace(PlateNumber))
+                {
+                    recommendation = await _recommendationService.GetRecommendationByPlateNumberAsync(PlateNumber);
+                }
+
+                if (recommendation != null)
+                {
+                    Logger?.LogInformation(
+                        "获取到推荐数据: MaterialId={MaterialId}, ProviderId={ProviderId}, MaterialUnitId={MaterialUnitId}",
+                        recommendation.MaterialId, recommendation.ProviderId, recommendation.MaterialUnitId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "获取推荐数据失败");
+            }
+        }
+
+        // Apply recommendation data to fill missing fields
+        if (recommendation != null)
+        {
+            if (!hasProviderId && recommendation.ProviderId.HasValue)
+            {
+                SelectedProviderId = recommendation.ProviderId.Value;
+                _listItem.ProviderId = recommendation.ProviderId.Value;
+
+                var provider = Providers.FirstOrDefault(p => p.Id == recommendation.ProviderId.Value);
+                if (provider != null)
+                {
+                    SelectedProviderItem = SelectionItem.FromProvider(new ProviderDto
+                    {
+                        Id = provider.Id,
+                        ProviderName = provider.ProviderName
+                    });
+                }
+            }
+
+            if (!hasMaterialId && recommendation.MaterialId.HasValue)
+            {
+                var material = SolidWasteMaterials.FirstOrDefault(m => m.Id == recommendation.MaterialId.Value);
+                if (material != null)
+                {
+                    SelectedSolidWasteMaterial = material;
+                    SelectedMaterialItem = SelectionItem.FromMaterial(material);
+
+                    // Material change will trigger auto unit selection (via existing WhenAnyValue subscription)
+                }
+            }
         }
     }
 
