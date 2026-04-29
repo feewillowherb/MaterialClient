@@ -24,7 +24,7 @@
     <PackageVersion Include="Refit.HttpClientFactory" Version="9.0.2" />
     <!-- Volo ABP Framework -->
     <PackageVersion Include="Volo.Abp.Autofac" Version="10.0.1" />
-    <PackageVersion Include="Volo.Abp.Core" Version="10.0.1" />
+    <PackageVersion Include="Volo.Abp.Core" Version="10.3.0" />
     <PackageVersion Include="Volo.Abp.Ddd.Domain" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.Ddd.Application.Contracts" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.EntityFrameworkCore.Sqlite" Version="10.0.1" />
@@ -33,7 +33,7 @@
     <PackageVersion Include="Volo.Abp.Authorization" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.BackgroundJobs.Abstractions" Version="10.0.1" />
     <!-- System Packages -->
-    <PackageVersion Include="System.Management" Version="10.0.1" />
+    <PackageVersion Include="System.Management" Version="10.0.2" />
     <PackageVersion Include="System.IO.Ports" Version="10.0.1" />
     <PackageVersion Include="System.Text.Encoding.CodePages" Version="10.0.0" />
     <PackageVersion Include="System.Reactive" Version="7.0.0-preview.1" />
