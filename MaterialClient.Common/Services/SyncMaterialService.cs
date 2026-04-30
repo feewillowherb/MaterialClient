@@ -3,8 +3,10 @@ using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp;
 using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services;
@@ -29,6 +31,7 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
     private readonly IRepository<MaterialUnit, int> _materialUnitRepository;
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<WorkSettingsEntity, int> _workSettingRepository;
+    private readonly IDataFilter _dataFilter;
 
 
     [UnitOfWork]
@@ -77,12 +80,15 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
 
             var list = materialList.Select(MaterialGoodListResultDto.ToEntity).ToList();
 
-            var q = await _materialRepository.GetQueryableAsync();
-
-            var existingMaterialIds = await q
-                .Select(x => x.Id)
-                .Where(x => list.Select(l => l.Id).Contains(x))
-                .ToListAsync();
+            List<int> existingMaterialIds;
+            using (_dataFilter.Disable<ISoftDelete>())
+            {
+                var q = await _materialRepository.GetQueryableAsync();
+                existingMaterialIds = await q
+                    .Select(x => x.Id)
+                    .Where(x => list.Select(l => l.Id).Contains(x))
+                    .ToListAsync();
+            }
 
             var materialsToUpdate = list.Where(x => existingMaterialIds.Contains(x.Id)).ToList();
             var materialsToInsert = list.Where(x => !existingMaterialIds.Contains(x.Id)).ToList();
@@ -164,12 +170,15 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
 
             var list = materialTypeList.Select(MaterialGoodTypeListResultDto.ToEntity).ToList();
 
-            var q = await _materialTypeRepository.GetQueryableAsync();
-
-            var existingTypeIds = await q
-                .Select(x => x.Id)
-                .Where(x => list.Select(l => l.Id).Contains(x))
-                .ToListAsync();
+            List<int> existingTypeIds;
+            using (_dataFilter.Disable<ISoftDelete>())
+            {
+                var q = await _materialTypeRepository.GetQueryableAsync();
+                existingTypeIds = await q
+                    .Select(x => x.Id)
+                    .Where(x => list.Select(l => l.Id).Contains(x))
+                    .ToListAsync();
+            }
 
             var typesToUpdate = list.Where(x => existingTypeIds.Contains(x.Id)).ToList();
             var typesToInsert = list.Where(x => !existingTypeIds.Contains(x.Id)).ToList();
@@ -248,12 +257,15 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
 
             var list = providerList.Select(MaterialProviderListResultDto.ToEntity).ToList();
 
-            var q = await _providerRepository.GetQueryableAsync();
-
-            var existingProviderIds = await q
-                .Select(x => x.Id)
-                .Where(x => list.Select(l => l.Id).Contains(x))
-                .ToListAsync();
+            List<int> existingProviderIds;
+            using (_dataFilter.Disable<ISoftDelete>())
+            {
+                var q = await _providerRepository.GetQueryableAsync();
+                existingProviderIds = await q
+                    .Select(x => x.Id)
+                    .Where(x => list.Select(l => l.Id).Contains(x))
+                    .ToListAsync();
+            }
 
             var providersToUpdate = list.Where(x => existingProviderIds.Contains(x.Id)).ToList();
             var providersToInsert = list.Where(x => !existingProviderIds.Contains(x.Id)).ToList();
@@ -310,13 +322,16 @@ public partial class SyncMaterialService : DomainService, ISyncMaterialService
                 return;
             }
 
-            var unitQuery = await _materialUnitRepository.GetQueryableAsync();
-
-            // 查询已存在的物料单位ID
-            var existingUnitIds = await unitQuery
-                .Where(u => allUnits.Select(au => au.Id).Contains(u.Id))
-                .Select(u => u.Id)
-                .ToListAsync();
+            List<int> existingUnitIds;
+            using (_dataFilter.Disable<ISoftDelete>())
+            {
+                var unitQuery = await _materialUnitRepository.GetQueryableAsync();
+                // 查询已存在的物料单位ID（包含软删除数据，避免重复主键插入）
+                existingUnitIds = await unitQuery
+                    .Where(u => allUnits.Select(au => au.Id).Contains(u.Id))
+                    .Select(u => u.Id)
+                    .ToListAsync();
+            }
 
             var unitsToUpdate = allUnits.Where(u => existingUnitIds.Contains(u.Id)).ToList();
             var unitsToInsert = allUnits.Where(u => !existingUnitIds.Contains(u.Id)).ToList();
