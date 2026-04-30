@@ -60,4 +60,9 @@ public class SystemSettings
     ///     启用最新推荐数据（使用缓存数据而非数据库查询）
     /// </summary>
     public bool EnableLatestRecommendation { get; set; } = false;
+
+    /// <summary>
+    ///     启用 LPR 主动抓拍功能（通用总开关，默认关闭）
+    /// </summary>
+    public bool EnableTriggerLprCapture { get; set; } = false;
 }
