@@ -935,6 +935,11 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.AddDate, todayCount);
         var orderId = Waybill.GenerateOrderId();
+        var orderSource = joinRecord.WeighingMode == WeighingMode.SolidWaste ||
+                          outRecord.WeighingMode == WeighingMode.SolidWaste
+            ? OrderSource.MannedStation
+            : OrderSource.UnmannedStation;
+
         var waybill = new Waybill(orderId, orderNo)
         {
             ProviderId = joinRecord.ProviderId ?? outRecord.ProviderId,
@@ -942,7 +947,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             JoinTime = joinRecord.AddDate,
             OutTime = outRecord.AddDate,
             DeliveryType = deliveryType,
-            OrderSource = OrderSource.UnmannedStation,
+            OrderSource = orderSource,
             OrderType = OrderTypeEnum.FirstWeight
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
