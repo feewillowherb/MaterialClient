@@ -81,9 +81,10 @@ public partial class StandardService : IStandardService, ITransientDependency
             queryable = queryable.Where(w =>
                 w.JoinTime != null && w.JoinTime >= filter.StartDate.Value);
 
-        if (filter.EndDate.HasValue)
+        var effectiveEndDate = filter.GetEffectiveEndDate();
+        if (effectiveEndDate.HasValue)
             queryable = queryable.Where(w =>
-                w.JoinTime != null && w.JoinTime <= filter.EndDate.Value.AddDays(1));
+                w.JoinTime != null && w.JoinTime < effectiveEndDate.Value);
 
         if (!string.IsNullOrWhiteSpace(filter.MaterialName))
         {
