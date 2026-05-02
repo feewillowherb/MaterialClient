@@ -101,6 +101,20 @@ openspec/
 - 订阅方使用 `MessageBus.Current.Listen<XxxMessage>().ObserveOn(RxApp.MainThreadScheduler).Subscribe(...).DisposeWith(_disposables)` 管理生命周期。
 - View code-behind 中的 MessageBus 订阅同样使用 `CompositeDisposable` + `DisposeWith`，在 `OnClosed` 中统一 Dispose。
 
+### ABP LocalEventBus 事件约定（跨层通信）
+
+- 用于基础设施层与后台服务之间的跨层异步通信，不替代 ViewModel 间通信（ReactiveUI MessageBus）。
+- ETO（Event Transfer Object）类型定义在 `MaterialClient.Common/Events/` 目录下，使用 `class` + primary constructor，命名以 `Eto` 结尾（如 `SessionRefreshRequiredEto`）。
+- 发布方使用 `ILocalEventBus`（通过构造函数注入），fire-and-forget 模式：`_ = _localEventBus.PublishAsync(new XxxEto(...))`。
+- 订阅方使用独立的 `ILocalEventHandler<XxxEto>` 实现类，标注 `[AutoConstructor]` + `ITransientDependency`，由 ABP 自动发现和注册。参考实现：`TryMatchEventHandler`。
+
+### Token 失效自动刷新模式
+
+- HTTP 管道层（`DelegatingHandler`）检测 401 Unauthorized 响应，通过 `ILocalEventBus` 发布 `SessionRefreshRequiredEto`（fire-and-forget）。
+- 401 响应正常传播到调用方，不进行同步重试或异常吞没。
+- 后台轮询服务（`AsyncPeriodicBackgroundWorkerBase`）订阅刷新事件，使用保存的凭证调用 `AuthenticationService.LoginAsync` 重新登录。
+- 重新登录成功后，下次轮询周期自动使用新 token，无需人工干预。
+
 ### 实施计划语言（NON-NEGOTIABLE）
 
 - 实施计划文档（如 plan.md、`.cursor/plans/*.plan.md`）必须使用英文撰写。
