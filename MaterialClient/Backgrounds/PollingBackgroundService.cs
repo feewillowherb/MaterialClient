@@ -22,7 +22,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
         IServiceScopeFactory serviceScopeFactory)
         : base(timer, serviceScopeFactory)
     {
-        // 设置定时器间隔为 1 分钟
+        // 设置定时器间隔为 10 分钟
         Timer.Period = (int)TimeSpan.FromMinutes(10).TotalMilliseconds;
     }
 
@@ -40,19 +40,19 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
             }
 
             await WithUow(VerifyAuthAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncMaterialAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncMaterialTypeAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(SyncProviderAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(PushWaybillAsync, workerContext.ServiceProvider, workerContext.CancellationToken);
-            
+
             if (workerContext.CancellationToken.IsCancellationRequested) return;
             await WithUow(UploadWaybillAttachmentsAsync, workerContext.ServiceProvider,
                 workerContext.CancellationToken);
