@@ -3,7 +3,7 @@ using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Models;
 
-public class StandardExportFilter
+public class StandardExportFilter : IDateRangeFilter
 {
     public WeighingMode WeighingMode { get; set; }
 

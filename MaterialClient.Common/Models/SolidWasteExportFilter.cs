@@ -2,7 +2,7 @@ using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Models;
 
-public class SolidWasteExportFilter
+public class SolidWasteExportFilter : IDateRangeFilter
 {
     /// <summary>
     ///     AddDate 起始日期

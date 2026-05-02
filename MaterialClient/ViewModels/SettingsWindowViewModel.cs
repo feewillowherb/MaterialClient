@@ -58,6 +58,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enablePrinter;
     [Reactive] private string _selectedPrinterName = string.Empty;
     [Reactive] private bool _enableLatestRecommendation;
+    [Reactive] private bool _enableTriggerLprCapture;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -212,6 +213,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.EnablePrinter = EnablePrinter;
             systemSettings.SelectedPrinterName = SelectedPrinterName;
             systemSettings.EnableLatestRecommendation = EnableLatestRecommendation;
+            systemSettings.EnableTriggerLprCapture = EnableTriggerLprCapture;
 
             var settings = new SettingsEntity(
                 new ScaleSettings
@@ -697,6 +699,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             EnablePrinter = settings.SystemSettings.EnablePrinter;
             SelectedPrinterName = settings.SystemSettings.SelectedPrinterName;
             EnableLatestRecommendation = settings.SystemSettings.EnableLatestRecommendation;
+            EnableTriggerLprCapture = settings.SystemSettings.EnableTriggerLprCapture;
 
             // Ensure the loaded printer is in the available list (might be disconnected)
             if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&

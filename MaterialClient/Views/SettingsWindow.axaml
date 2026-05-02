@@ -557,7 +557,7 @@
                                        Margin="0,6,0,0"
                                        TextWrapping="Wrap" />
 
-                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12"
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
                                   ColumnSpacing="12" Margin="0,12,0,0">
                                 <TextBlock Text="接收车牌识别地址:"
                                            Grid.Row="0"
@@ -589,26 +589,34 @@
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
 
-                                <TextBlock Text="启用车牌重写:"
-                                           Grid.Row="2"
-                                           Grid.Column="0"
-                                           VerticalAlignment="Center"
-                                           Foreground="Black"
-                                           MinWidth="120" />
-                                <ToggleSwitch IsChecked="{Binding EnablePlateRewrite}"
-                                              Grid.Row="2"
-                                              Grid.Column="1"
-                                              OnContent="启用"
-                                              OffContent="关闭" />
+                                <CheckBox Content="启用 LPR 主动抓拍"
+                                          IsChecked="{Binding EnableTriggerLprCapture}"
+                                          Grid.Row="2"
+                                          Grid.Column="0"
+                                          Grid.ColumnSpan="2"
+                                          VerticalAlignment="Center"
+                                          Foreground="Black" />
 
-                                <TextBlock Text="启用最新车牌:"
+                                <TextBlock Text="启用车牌重写:"
                                            Grid.Row="3"
                                            Grid.Column="0"
                                            VerticalAlignment="Center"
                                            Foreground="Black"
                                            MinWidth="120" />
-                                <ToggleSwitch IsChecked="{Binding EnableLatestPlateNumber}"
+                                <ToggleSwitch IsChecked="{Binding EnablePlateRewrite}"
                                               Grid.Row="3"
+                                              Grid.Column="1"
+                                              OnContent="启用"
+                                              OffContent="关闭" />
+
+                                <TextBlock Text="启用最新车牌:"
+                                           Grid.Row="4"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <ToggleSwitch IsChecked="{Binding EnableLatestPlateNumber}"
+                                              Grid.Row="4"
                                               Grid.Column="1"
                                               OnContent="启用"
                                               OffContent="关闭" />
