@@ -69,8 +69,9 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
         if (filter.StartDate.HasValue)
             queryable = queryable.Where(w => w.AddDate >= filter.StartDate.Value);
 
-        if (filter.EndDate.HasValue)
-            queryable = queryable.Where(w => w.AddDate <= filter.EndDate.Value);
+        var effectiveEndDate = filter.GetEffectiveEndDate();
+        if (effectiveEndDate.HasValue)
+            queryable = queryable.Where(w => w.AddDate < effectiveEndDate.Value);
 
         if (!string.IsNullOrWhiteSpace(filter.PlateNumber))
             queryable = queryable.Where(w =>

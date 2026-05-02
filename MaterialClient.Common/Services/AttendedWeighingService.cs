@@ -1254,30 +1254,31 @@ public partial class AttendedWeighingService : IAttendedWeighingService, ISingle
     ///     触发 Vzvision（臻识 SDK）抓拍（进入 WaitingForStability 状态时）
     /// </summary>
     private Task TriggerCaptureOnWaitingForStabilityAsync() =>
-        TriggerVzvisionCaptureForAllAsync("WaitingForStability");
+        TriggerLprCaptureForAllAsync("WaitingForStability");
 
     /// <summary>
     ///     触发 Vzvision 抓拍（进入 WeightStabilized 状态时）
     /// </summary>
     private Task TriggerCaptureOnWeightStabilizedAsync() =>
-        TriggerVzvisionCaptureForAllAsync("WeightStabilized");
+        TriggerLprCaptureForAllAsync("WeightStabilized");
 
     /// <summary>
     ///     触发 Vzvision 抓拍（进入 OffScale 状态时）
     /// </summary>
     private Task TriggerCaptureOnOffScaleAsync() =>
-        TriggerVzvisionCaptureForAllAsync("OffScale");
+        TriggerLprCaptureForAllAsync("OffScale");
 
-    private async Task TriggerVzvisionCaptureForAllAsync(string phase)
+    private async Task TriggerLprCaptureForAllAsync(string phase)
     {
-        _logger.LogWarning("Attempting to trigger Vzvision capture for phase: {Phase}", phase);
-        return;
-
+        var settings = await _settingsService.GetSettingsAsync();
+        if (!settings.SystemSettings.EnableTriggerLprCapture)
+        {
+            _logger.LogInformation("LPR 主动抓拍已禁用，跳过抓拍 ({Phase})", phase);
+            return;
+        }
 
         try
         {
-            var settings = await _settingsService.GetSettingsAsync();
-
             if (settings.SystemSettings.LprDeviceType != LprDeviceType.Vzvision)
                 return;
 
