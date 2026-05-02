@@ -1,76 +1,94 @@
-## ADDED Requirements
+## Purpose
 
-### Requirement: Automatic token refresh on 401 error
-当材料平台 API 返回 401 Unauthorized 错误时，系统 SHALL 自动触发重新登录流程以获取新的访问令牌，并使用新令牌重试原始请求。
+当材料平台 API 调用返回 401 Unauthorized 错误时，系统自动触发会话刷新机制，允许后台轮询任务在下个周期恢复执行，无需手动干预。
 
-#### Scenario: Successful token refresh and request retry
-- **WHEN** 同步运单的 API 调用返回 401 Unauthorized 错误
-- **AND** 用户已保存登录凭证（用户名和密码）
-- **THEN** 系统自动调用认证服务重新登录
-- **AND** 使用新获取的 token 重试原始 API 请求
-- **AND** 请求成功完成
+## Requirements
 
-#### Scenario: Token refresh with saved credentials
-- **WHEN** API 调用因 token 失效返回 401 错误
-- **AND** 数据库中存在有效的 UserCredential 记录
-- **THEN** 系统使用保存的凭证自动重新登录
-- **AND** 不需要用户手动干预
+### Requirement: 系统检测到 API 401 响应时发送会话刷新事件
 
-#### Scenario: Token refresh fails when no saved credentials
-- **WHEN** API 调用返回 401 错误
-- **AND** 用户未保存登录凭证（UserCredential 为空）
-- **THEN** 系统不执行自动重新登录
-- **AND** 返回原始错误信息给调用方
-- **AND** 记录警告日志说明无法自动刷新 token
+`MaterialPlatformBearerTokenHandler` SHALL 在检测到 HTTP 401 响应时，通过 ABP LocalEventBus 发布 `SessionRefreshRequiredEto` 事件。
 
-### Requirement: Retry attempt limit
-为防止无限循环，系统 SHALL 限制每个请求的 token 刷新重试次数最多为 1 次。
+#### Scenario: API 调用返回 401 时发布刷新事件
 
-#### Scenario: Single retry on 401 error
-- **WHEN** API 调用返回 401 错误
-- **THEN** 系统执行一次 token 刷新并重试请求
-- **AND** 即使重试后仍然返回 401，也不再继续重试
+- **WHEN** `MaterialPlatformBearerTokenHandler.SendAsync` 收到响应状态码为 401
+- **THEN** 系统通过 `ILocalEventBus.Publish` 发布 `SessionRefreshRequiredEto`
 
-#### Scenario: Retry with valid new token
-- **WHEN** token 刷新成功获取新的有效 token
-- **AND** 使用新 token 重试请求
-- **THEN** 请求正常执行
-- **AND** 不消耗重试次数（因为这不是 401 错误）
+#### Scenario: API 调用返回非 401 错误时不发布刷新事件
 
-### Requirement: Session token update
-成功重新登录后，系统 SHALL 更新数据库中 UserSession 实体的 AccessToken 字段，确保后续 API 请求使用新的认证令牌。
+- **WHEN** `MaterialPlatformBearerTokenHandler.SendAsync` 收到响应状态码为 500 或其他非 401 错误
+- **THEN** 系统不发布 `SessionRefreshRequiredEto`
 
-#### Scenario: Session token is updated after re-login
-- **WHEN** 系统因 401 错误触发重新登录
-- **AND** 重新登录成功返回新的 token
-- **THEN** UserSession.AccessToken 被更新为新值
-- **AND** LastActivityTime 被更新为当前时间
-- **AND** 后续 API 调用使用新 token
+#### Scenario: API 调用成功时不发布刷新事件
 
-### Requirement: Detailed error logging
-当 token 刷新或请求重试失败时，系统 SHALL 记录详细的错误日志，包含运单 ID、订单号、失败原因和堆栈信息。
+- **WHEN** `MaterialPlatformBearerTokenHandler.SendAsync` 收到响应状态码为 200 或其他成功状态码
+- **THEN** 系统不发布 `SessionRefreshRequiredEto`
 
-#### Scenario: Logging on token refresh failure
-- **WHEN** 重新登录操作失败（如网络错误、密码错误等）
-- **THEN** 记录错误日志包含：
-  - 运单 ID 和订单号
-  - 重新登录失败的异常信息
-  - 原始 401 错误的上下文
+### Requirement: 会话刷新事件携带必要的上下文信息
 
-#### Scenario: Logging on retry failure
-- **WHEN** token 刷新成功但重试请求仍然失败
-- **THEN** 记录警告日志包含：
-  - 运单 ID 和订单号
-  - 重试失败的错误信息
-  - 表明已使用新 token 进行重试
+`SessionRefreshRequiredEto` SHALL 包含发生认证失败的 API 端点、时间戳和原始状态码，供订阅方使用。
 
-### Requirement: Apply to both sync methods
-token 刷新机制 SHALL 同时应用于新增运单同步（SyncNewWaybillAsync）和修改运单同步（SyncUpdatedWaybillAsync）两个方法。
+#### Scenario: 刷新事件包含 API 端点信息
 
-#### Scenario: Token refresh on new waybill sync
-- **WHEN** SyncNewWaybillAsync 方法调用 API 返回 401 错误
-- **THEN** 执行 token 刷新和重试逻辑
+- **WHEN** 创建 `SessionRefreshRequiredEto`
+- **THEN** 事件包含 `ApiEndpoint` 属性，值为请求的 URI 路径（如 `/api/Order/SynchronizationOrder`）
 
-#### Scenario: Token refresh on updated waybill sync
-- **WHEN** SyncUpdatedWaybillAsync 方法调用 API 返回 401 错误
-- **THEN** 执行 token 刷新和重试逻辑
+#### Scenario: 刷新事件包含时间戳
+
+- **WHEN** 创建 `SessionRefreshRequiredEto`
+- **THEN** 事件包含 `OccurredAtUtc` 属性，值为当前 UTC 时间
+
+#### Scenario: 刷新事件包含状态码
+
+- **WHEN** 创建 `SessionRefreshRequiredEto`
+- **THEN** 事件包含 `StatusCode` 属性，值为 HTTP 状态码 401
+
+### Requirement: 后台轮询任务订阅会话刷新事件并尝试重新登录
+
+后台轮询服务（如 `PollingBackgroundService`）SHOULD 订阅 `SessionRefreshRequiredEto`，收到事件后尝试使用保存的凭证重新登录。
+
+#### Scenario: 轮询服务收到刷新事件后触发重新登录
+
+- **WHEN** `PollingBackgroundService` 收到 `SessionRefreshRequiredEto`
+- **THEN** 调用 `AuthenticationService.LoginAsync` 使用保存的凭证重新登录
+
+#### Scenario: 重新登录成功后更新会话
+
+- **WHEN** 重新登录成功并返回新的 `UserSession`
+- **THEN** 新的会话信息被保存到数据库，后续 API 调用使用新 token
+
+#### Scenario: 重新登录失败时记录错误日志
+
+- **WHEN** 重新登录失败（如凭证无效、网络错误）
+- **THEN** 记录错误日志，包含失败原因
+
+### Requirement: 401 响应正常传播到调用方
+
+`MaterialPlatformBearerTokenHandler` SHALL 不阻止 401 响应传播，允许当前 API 调用正常失败并抛出异常。
+
+#### Scenario: 401 响应传递给调用方
+
+- **WHEN** API 返回 401 且 `MaterialPlatformBearerTokenHandler` 发布了刷新事件
+- **THEN** 原始 401 响应仍然返回给调用方，调用方收到 `Refit.ApiException` 或其他 HTTP 异常
+
+#### Scenario: 当前同步任务允许失败
+
+- **WHEN** `WeighingMatchingService.SyncNewWaybillAsync` 因 401 失败
+- **THEN** 方法捕获异常并返回 false，记录警告日志，不阻塞后台任务队列
+
+### Requirement: 事件 ETO 定义在约定目录
+
+`SessionRefreshRequiredEto` SHALL 定义在 `MaterialClient.Common/Events/` 目录下，使用 `class` + primary constructor 格式。
+
+#### Scenario: 事件类位置和格式
+
+- **WHEN** 定义 `SessionRefreshRequiredEto`
+- **THEN** 文件路径为 `MaterialClient.Common/Events/SessionRefreshRequiredEto.cs`，使用 class 和 primary constructor
+
+### Requirement: Bearer Token 处理器使用独立工作单元
+
+`MaterialPlatformBearerTokenHandler` SHALL 使用独立的 UnitOfWork 获取 session，避免污染调用方的事务。
+
+#### Scenario: 独立 UOW 不影响调用方
+
+- **WHEN** `MaterialPlatformBearerTokenHandler.SendAsync` 创建 UOW 读取 session
+- **THEN** UOW 使用 `Begin(true, false)` 参数，确保独立事务且不污染调用方

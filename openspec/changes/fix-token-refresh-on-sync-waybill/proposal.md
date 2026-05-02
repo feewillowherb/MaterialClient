@@ -1,43 +1,73 @@
 ## Why
 
-材料客户端在同步运单到材料平台时，当访问令牌（token）因超时失效后返回 401 Unauthorized 错误。当前系统没有自动重新登录获取新 token 的机制，导致后续同步操作全部失败，需要用户手动重新登录才能恢复。这降低了系统的可靠性并影响了用户体验。
+当前材料客户端在调用材料平台 API 时，当 token 因超时失效后返回 401 Unauthorized 错误，系统直接抛出异常而无法自动恢复。这导致同步运单等关键操作频繁失败，影响业务连续性。
 
 ## What Changes
 
-- **自动 token 刷新机制**：在 `MaterialPlatformBearerTokenHandler` 中捕获 401 响应，自动触发重新登录流程
-- **请求重试**：使用新获取的 token 重新执行失败的 HTTP 请求
-- **重试次数限制**：为防止无限循环，使用请求选项跟踪重试状态，最多重试 1 次
-- **改进错误日志**：在重试失败时记录详细日志以便排查问题
-- **会话更新**：确保 `UserSession` 实体中的 `AccessToken` 在重新登录后得到更新
-- **零代码侵入**：服务层代码（如 `WeighingMatchingService`）无需任何修改，自动获得 token 刷新能力
+- **新增**：Token 失效检测与自动刷新机制
+  - 捕获 API 调用中的 401 Unauthorized 异常
+  - 发送异步刷新 Session 的事件通知
+  - 允许当前轮询任务失败，不阻塞后台任务队列
+  - 期望在下次轮询时获得有效授权
+
+- **非侵入式设计**：授权失败检查不应入侵业务代码，通过通用机制处理
+
+- **风险控制**：设置重试次数限制防止无限循环
 
 ## Capabilities
 
 ### New Capabilities
-- `token-refresh-on-auth-failure`: 在 API 调用遇到 401 错误时自动重新登录并重试请求的能力
+- `token-refresh-on-auth-failure`: 当 API 调用返回 401 Unauthorized 时，自动触发 token 刷新机制，允许后台任务在下个轮询周期恢复执行
 
 ### Modified Capabilities
-无。这是实现层面的改进，不改变现有功能的业务需求。
+None
 
 ## Impact
 
-### 受影响的代码
-- `MaterialClient.Common/Api/MaterialPlatformBearerTokenHandler.cs`：
-  - 添加 `IAuthenticationService` 依赖注入
-  - 增强 `SendAsync` 方法：检查 401 响应并执行 token 刷新
-  - 添加重试状态跟踪逻辑（使用 `HttpRequestMessage.Options`）
-- `MaterialClient.Common/Services/WeighingMatchingService.cs`：**无需修改**
-- `MaterialClient.Common/Entities/UserSession.cs`：已有 `UpdateAccessToken` 方法，将被用于更新 token
-- `MaterialClient.Common/Services/Authentication/AuthenticationService.cs`：已有 `LoginAsync` 和 `GetSavedCredentialAsync` 方法，将被用于重新登录
+**Affected Code**:
+- `MaterialClient.Common.Services.WeighingMatchingService.SyncNewWaybillAsync`
+- `MaterialClient.Common.Services.IMaterialPlatformApi` 及其实现
+- 需要新增认证失败事件和 Session 刷新处理逻辑
 
-### 新增依赖
-无新增依赖。使用现有的 `IAuthenticationService` 和 `IRepository<UserSession, Guid>`。
+**Dependencies**:
+- Refit API 异常处理
+- ABP LocalEventBus 用于事件通信
 
-### 新增依赖
-无新增依赖。使用现有的 `IAuthenticationService` 和 `IRepository<UserSession, Guid>`。
+**Systems**:
+- 材料平台 API 调用层
+- 后台轮询任务调度系统
+- Session 管理
 
-### 向后兼容性
-完全向后兼容。这是内部实现的改进，不影响公共 API 或用户界面。
+## 用户交互流程
 
-### 性能影响
-最小。仅在 token 失效时（预计很少发生）才会执行重新登录操作。
+当 token 失效时，系统自动处理重新登录，用户无需任何操作：
+
+```mermaid
+sequenceDiagram
+    participant API as Material Platform API
+    participant Handler as BearerTokenHandler
+    participant EventBus as LocalEventBus
+    participant Polling as PollingBackgroundService
+    participant Auth as AuthenticationService
+
+    API->>Handler: 返回 401 Unauthorized
+    Handler->>Handler: 检测到 401 状态码
+    Handler->>EventBus: 发布 SessionRefreshRequiredEvent
+    Handler-->>API: 原始 401 响应传播
+    Note over API,Handler: 当前请求失败（预期行为）
+
+    EventBus->>Polling: 异步通知刷新事件
+    Polling->>Auth: 调用 LoginAsync(保存的凭证)
+    Auth->>API: 重新登录
+    API-->>Auth: 返回新 token
+    Auth-->>Polling: 更新 UserSession 完成
+    Note over Polling: 下次轮询将使用新 token
+```
+
+## 代码变更表
+
+| 文件路径 | 变更类型 | 变更原因 | 影响范围 |
+|---------|---------|---------|---------|
+| `MaterialClient.Common/Events/SessionRefreshRequiredEvent.cs` | 新增 | 定义认证失败事件（ABP Event） | 事件系统 |
+| `MaterialClient.Common/Api/MaterialPlatformBearerTokenHandler.cs` | 修改 | 添加 401 检测和事件发布 | 所有 API 调用 |
+| `MaterialClient/Backgrounds/PollingBackgroundService.cs` | 修改 | 添加事件订阅和重新登录逻辑 | 后台任务恢复 |
