@@ -15,7 +15,7 @@ public class SolidWasteExcelExportTests
     public void MapToExportRow_NormalMapping_AllFieldsCorrect()
     {
         var waybill = CreateTestWaybill();
-        waybill.SetProperty("SolidWasteInfo.MaterialId", 10);
+        waybill.MaterialId = 10;
         waybill.SetProperty("SolidWasteInfo.Street", "瓜沥镇");
         waybill.SetProperty("SolidWasteInfo.SolidWasteType", "村、社区");
         waybill.SetProperty("SolidWasteInfo.SolidWasteOrderNumber", "2414822");
@@ -99,7 +99,7 @@ public class SolidWasteExcelExportTests
     public void MapToExportRow_MissingMaterial_ReturnsEmptyGoodsName()
     {
         var waybill = CreateTestWaybill();
-        waybill.SetProperty("SolidWasteInfo.MaterialId", 999);
+        waybill.MaterialId = 999;
 
         var materialDict = new Dictionary<int, string> { { 10, "装修垃圾" } };
         var row = SolidWasteService.SolidWasteMapToExportRow(
