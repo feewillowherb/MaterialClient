@@ -18,7 +18,6 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
-using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 
@@ -196,9 +195,8 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
                     ? SelectionItem.FromProvider(new ProviderDto { Id = SelectedProviderId.Value, ProviderName = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value)?.ProviderName ?? string.Empty })
                     : null;
 
-                // Read MaterialId and WaybillQuantity
-                var materialId = record.GetProperty<int?>("SolidWasteInfo.MaterialId");
-                var waybillQuantity = record.GetProperty<decimal?>("SolidWasteInfo.WaybillQuantity");
+                // Read MaterialId from Materials list
+                var materialId = record.Materials.FirstOrDefault()?.MaterialId;
 
                 if (materialId.HasValue)
                 {
@@ -245,15 +243,8 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
                     })
                     : null;
 
-                // Read MaterialId and WaybillQuantity
-                var materialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
-                var waybillQuantity = waybill.GetProperty<decimal?>("SolidWasteInfo.WaybillQuantity");
-
-                // If not in ExtraProperties, try reading from standard fields
-                if (!materialId.HasValue && waybill.MaterialId.HasValue)
-                {
-                    materialId = waybill.MaterialId;
-                }
+                // Read MaterialId from entity field directly
+                var materialId = waybill.MaterialId;
 
                 if (materialId.HasValue)
                 {
