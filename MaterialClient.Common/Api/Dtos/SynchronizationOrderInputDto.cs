@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using MaterialClient.Common.Entities;
+using WeighingModeEnum = MaterialClient.Common.Entities.Enums.WeighingMode;
 
 namespace MaterialClient.Common.Api.Dtos;
 
@@ -245,6 +246,16 @@ public class SynchronizationOrderInputDto
     public bool? IsConfirm { get; set; }
 
     /// <summary>
+    ///     称重模式标识，null/0 表示标准模式（默认，向后兼容），1 表示固废模式
+    /// </summary>
+    public int? WeighingMode { get; set; }
+
+    /// <summary>
+    ///     固废信息对象，仅在 WeighingMode=1 时需要
+    /// </summary>
+    public SolidWasteInfoDto? SolidWasteInfo { get; set; }
+
+    /// <summary>
     ///     将 DateTime? 转换为 Unix 时间戳（秒）
     /// </summary>
     private static int? DateTimeToUnixTimestamp(DateTime? dateTime)
@@ -361,6 +372,26 @@ public class SynchronizationOrderInputDto
                 UpdateDate = waybill.UpdateDate,
                 AddDate = waybill.AddDate
             });
+
+        // 固废模式：映射称重模式和固废信息
+        if (waybill.WeighingMode == WeighingModeEnum.SolidWaste)
+        {
+            dto.WeighingMode = (int)WeighingModeEnum.SolidWaste;
+
+            var solidWasteOrderNumber = waybill.GetSolidWasteOrderNumber();
+            if (solidWasteOrderNumber != null && solidWasteOrderNumber.Length > 100)
+                throw new ArgumentException(
+                    $"固废联单编号长度不能超过100个字符，当前长度为{solidWasteOrderNumber.Length}。",
+                    nameof(solidWasteOrderNumber));
+
+            dto.SolidWasteInfo = new SolidWasteInfoDto
+            {
+                SolidWasteType = waybill.GetSolidWasteType(),
+                Street = waybill.GetSolidWasteStreet(),
+                SolidWasteOrderNumber = solidWasteOrderNumber,
+                Shipper = waybill.GetSolidWasteShipper()
+            };
+        }
 
         return dto;
     }
@@ -557,4 +588,30 @@ public class OrderGoodsDto
             DeleteStatus = 0
         };
     }
+}
+
+/// <summary>
+///     固废信息数据
+/// </summary>
+public class SolidWasteInfoDto
+{
+    /// <summary>
+    ///     固废类型
+    /// </summary>
+    public string? SolidWasteType { get; set; }
+
+    /// <summary>
+    ///     街道/位置
+    /// </summary>
+    public string? Street { get; set; }
+
+    /// <summary>
+    ///     固废联单编号，最大100字符
+    /// </summary>
+    public string? SolidWasteOrderNumber { get; set; }
+
+    /// <summary>
+    ///     发货单位
+    /// </summary>
+    public string? Shipper { get; set; }
 }
