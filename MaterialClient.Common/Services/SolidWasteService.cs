@@ -2,7 +2,6 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using Microsoft.EntityFrameworkCore;
-using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
@@ -102,7 +101,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             waybills = waybills
                 .Where(w =>
                 {
-                    var mid = w.GetProperty<int?>("SolidWasteInfo.MaterialId");
+                    var mid = w.MaterialId;
                     return mid.HasValue && matchedMaterialIds.Contains(mid.Value);
                 })
                 .ToList();
@@ -129,7 +128,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
     private async Task<Dictionary<int, string>> SolidWasteBuildMaterialDictAsync(List<Waybill> waybills)
     {
         var materialIds = waybills
-            .Select(w => w.GetProperty<int?>("SolidWasteInfo.MaterialId"))
+            .Select(w => w.MaterialId)
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
@@ -152,7 +151,7 @@ public partial class SolidWasteService : ISolidWasteService, ITransientDependenc
             ? pn
             : string.Empty;
 
-        var materialId = waybill.GetProperty<int?>("SolidWasteInfo.MaterialId");
+        var materialId = waybill.MaterialId;
         var goodsName = materialId.HasValue &&
                         materialDict.TryGetValue(materialId.Value, out var mn)
             ? mn
