@@ -468,7 +468,7 @@
                                            Foreground="Black"
                                            FontSize="14" />
                                 <Slider Value="{Binding JpegQuality}"
-                                        Minimum="1"
+                                        Minimum="5"
                                         Maximum="100"
                                         TickFrequency="5"
                                         IsSnapToTickEnabled="True"
