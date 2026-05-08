@@ -104,10 +104,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         if (ok && returnedSize > 0)
         {
-            // 将缓存区数据写入文件
-            File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
-            // Apply JPEG compression after successful capture (result always true regardless of compression outcome)
-            JpegCompressionUtil.TryCompressJpeg(saveFullPath, jpegQuality, _logger);
+            var captureBytes = buffer.Take((int)returnedSize).ToArray();
+            var compressedBytes = JpegCompressionUtil.TryCompressJpegBytes(captureBytes, jpegQuality, _logger);
+            File.WriteAllBytes(saveFullPath, compressedBytes ?? captureBytes);
             return true;
         }
 
@@ -155,10 +154,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
         if (ok && returnedSize > 0)
         {
-            // 将缓存区数据写入文件
-            File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
-            // Apply JPEG compression after successful capture (result always true regardless of compression outcome)
-            JpegCompressionUtil.TryCompressJpeg(saveFullPath, jpegQuality, _logger);
+            var captureBytes = buffer.Take((int)returnedSize).ToArray();
+            var compressedBytes = JpegCompressionUtil.TryCompressJpegBytes(captureBytes, jpegQuality, _logger);
+            File.WriteAllBytes(saveFullPath, compressedBytes ?? captureBytes);
             return true;
         }
 
@@ -295,7 +293,8 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             {
                 // 同步调用拍照方法
                 uint lastError = 0;
-                result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError);
+                result.Success = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath, out lastError,
+                    jpegQuality: jpegQuality);
                 result.HcNetSdkError = lastError;
 
                 if (!result.Success)
@@ -307,18 +306,11 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                     // 验证文件
                     if (File.Exists(request.SaveFullPath))
                     {
-                        var fileInfo = new FileInfo(request.SaveFullPath);
-                        result.FileSize = fileInfo.Length;
-                        if (fileInfo.Length == 0)
+                        result.FileSize = new FileInfo(request.SaveFullPath).Length;
+                        if (result.FileSize == 0)
                         {
                             result.Success = false;
                             result.ErrorMessage = "文件大小为0";
-                        }
-                        else
-                        {
-                            // Apply JPEG compression after successful capture
-                            JpegCompressionUtil.TryCompressJpeg(request.SaveFullPath, jpegQuality, _logger);
-                            result.FileSize = new FileInfo(request.SaveFullPath).Length;
                         }
                     }
                     else

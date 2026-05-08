@@ -6,13 +6,53 @@ namespace MaterialClient.Common.Utils;
 
 /// <summary>
 ///     JPEG post-capture compression utility.
-///     Loads a JPEG file, re-encodes it at the specified quality, and overwrites the original.
-///     Fail-safe: never throws — returns false on any error, preserving the original file.
+///     All compression is performed in memory using MemoryStream to avoid GDI+ file save issues.
+///     Fail-safe: never throws — returns false on any error, preserving the original data.
 /// </summary>
 public static class JpegCompressionUtil
 {
     /// <summary>
-    ///     Try to compress a JPEG file by re-encoding at the specified quality.
+    ///     Try to compress JPEG bytes in memory by re-encoding at the specified quality.
+    ///     Quality >= 100 returns the original bytes immediately (skip, zero overhead).
+    ///     On any exception, logs a warning and returns null (caller should use original bytes).
+    /// </summary>
+    /// <param name="jpegBytes">Original JPEG bytes.</param>
+    /// <param name="quality">Target JPEG quality (1-100). Values >= 100 skip compression.</param>
+    /// <param name="logger">Optional logger for warnings on failure.</param>
+    /// <returns>Compressed JPEG bytes, or null if compression failed (use original bytes).</returns>
+    public static byte[]? TryCompressJpegBytes(byte[] jpegBytes, int quality, ILogger? logger)
+    {
+        if (quality >= 100)
+            return jpegBytes;
+
+        try
+        {
+            using var ms = new MemoryStream(jpegBytes);
+            using var originalBitmap = new Bitmap(ms);
+
+            var jpegCodec = GetJpegCodecInfo();
+            if (jpegCodec == null)
+            {
+                logger?.LogWarning("JPEG codec not found, skipping compression");
+                return null;
+            }
+
+            using var encoderParams = new EncoderParameters(1);
+            encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, (long)quality);
+
+            using var outputMs = new MemoryStream();
+            originalBitmap.Save(outputMs, jpegCodec, encoderParams);
+            return outputMs.ToArray();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "JPEG compression failed, using original bytes");
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     Try to compress a JPEG file by reading it into memory, re-encoding, and overwriting.
     ///     Quality >= 100 returns true immediately (skip, zero overhead).
     ///     On any exception, logs a warning and returns false; the original file remains intact.
     /// </summary>
@@ -27,26 +67,12 @@ public static class JpegCompressionUtil
 
         try
         {
-            using var originalBitmap = new Bitmap(filePath);
-
-            // Get JPEG codec and encoder parameters
-            var jpegCodec = GetJpegCodecInfo();
-            if (jpegCodec == null)
-            {
-                logger?.LogWarning("JPEG codec not found, skipping compression: {FilePath}", filePath);
+            var originalBytes = File.ReadAllBytes(filePath);
+            var compressedBytes = TryCompressJpegBytes(originalBytes, quality, logger);
+            if (compressedBytes == null)
                 return false;
-            }
 
-            using var encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, (long)quality);
-
-            // GDI+ cannot save to the file that the Bitmap was loaded from;
-            // write to a temp file first, then replace the original.
-            var tempPath = filePath + ".tmp";
-            originalBitmap.Save(tempPath, jpegCodec, encoderParams);
-            originalBitmap.Dispose();
-            File.Delete(filePath);
-            File.Move(tempPath, filePath);
+            File.WriteAllBytes(filePath, compressedBytes);
             return true;
         }
         catch (Exception ex)
