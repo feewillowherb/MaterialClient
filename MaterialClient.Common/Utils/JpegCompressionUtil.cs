@@ -40,7 +40,13 @@ public static class JpegCompressionUtil
             using var encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, (long)quality);
 
-            originalBitmap.Save(filePath, jpegCodec, encoderParams);
+            // GDI+ cannot save to the file that the Bitmap was loaded from;
+            // write to a temp file first, then replace the original.
+            var tempPath = filePath + ".tmp";
+            originalBitmap.Save(tempPath, jpegCodec, encoderParams);
+            originalBitmap.Dispose();
+            File.Delete(filePath);
+            File.Move(tempPath, filePath);
             return true;
         }
         catch (Exception ex)
