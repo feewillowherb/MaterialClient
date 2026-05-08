@@ -20,13 +20,15 @@ public interface IHikvisionService
 {
     void AddOrUpdateDevice(HikvisionDeviceConfig config);
     bool IsOnline(HikvisionDeviceConfig config);
-    bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90);
+    bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90,
+        int jpegQuality = 100);
 
     bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError,
-        int quality = 90);
+        int quality = 90, int jpegQuality = 100);
 
     bool TryOpenRealStream(HikvisionDeviceConfig config, int channel);
-    bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath);
+    bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
+        int jpegQuality = 100);
     Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests);
     Task<List<BatchCaptureResult>> TestCaptureAsync();
     /// <summary>
@@ -67,7 +69,8 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         return EnsureLogin(config, out _);
     }
 
-    public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90)
+    public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, int quality = 90,
+        int jpegQuality = 100)
     {
         ArgumentNullException.ThrowIfNull(config);
         if (string.IsNullOrWhiteSpace(saveFullPath))
@@ -103,6 +106,8 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         {
             // 将缓存区数据写入文件
             File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
+            // Apply JPEG compression after successful capture (result always true regardless of compression outcome)
+            JpegCompressionUtil.TryCompressJpeg(saveFullPath, jpegQuality, _logger);
             return true;
         }
 
@@ -114,7 +119,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     }
 
     public bool CaptureJpeg(HikvisionDeviceConfig config, int channel, string saveFullPath, out uint lastError,
-        int quality = 90)
+        int quality = 90, int jpegQuality = 100)
     {
         lastError = 0;
         ArgumentNullException.ThrowIfNull(config);
@@ -152,6 +157,8 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         {
             // 将缓存区数据写入文件
             File.WriteAllBytes(saveFullPath, buffer.Take((int)returnedSize).ToArray());
+            // Apply JPEG compression after successful capture (result always true regardless of compression outcome)
+            JpegCompressionUtil.TryCompressJpeg(saveFullPath, jpegQuality, _logger);
             return true;
         }
 
@@ -175,9 +182,10 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         return IsOnline(config);
     }
 
-    public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath)
+    public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
+        int jpegQuality = 100)
     {
-        return CaptureJpegFromStream(config, channel, saveFullPath, out _);
+        return CaptureJpegFromStream(config, channel, saveFullPath, out _, jpegQuality);
     }
 
     public async Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchAsync(List<BatchCaptureRequest> requests)
@@ -187,16 +195,18 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         // Get settings to determine which capture method to use
         // Default to Substream if settings service is not available
         var streamType = StreamType.Substream;
+        var jpegQuality = 100; // default: no compression
         if (_settingsService != null)
         {
             var settings = await _settingsService.GetSettingsAsync();
             streamType = settings.SystemSettings.CaptureStreamType;
+            jpegQuality = settings.SystemSettings.JpegQuality;
         }
 
         // Route to appropriate method based on stream type
         if (streamType == StreamType.Substream)
         {
-            return await CaptureJpegBatchInternalAsync(requests);
+            return await CaptureJpegBatchInternalAsync(requests, jpegQuality);
         }
 
         // Mainstream capture (existing implementation)
@@ -238,6 +248,12 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                             result.Success = false;
                             result.ErrorMessage = "文件大小为0";
                         }
+                        else
+                        {
+                            // Apply JPEG compression after successful capture
+                            JpegCompressionUtil.TryCompressJpeg(request.SaveFullPath, jpegQuality, _logger);
+                            result.FileSize = new FileInfo(request.SaveFullPath).Length;
+                        }
                     }
                     else
                     {
@@ -258,7 +274,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         return results;
     }
 
-    private Task<List<BatchCaptureResult>> CaptureJpegBatchInternalAsync(List<BatchCaptureRequest> requests)
+    private Task<List<BatchCaptureResult>> CaptureJpegBatchInternalAsync(List<BatchCaptureRequest> requests, int jpegQuality = 100)
     {
         if (requests == null || requests.Count == 0) return Task.FromResult(new List<BatchCaptureResult>());
 
@@ -297,6 +313,12 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                         {
                             result.Success = false;
                             result.ErrorMessage = "文件大小为0";
+                        }
+                        else
+                        {
+                            // Apply JPEG compression after successful capture
+                            JpegCompressionUtil.TryCompressJpeg(request.SaveFullPath, jpegQuality, _logger);
+                            result.FileSize = new FileInfo(request.SaveFullPath).Length;
                         }
                     }
                     else
@@ -444,7 +466,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     }
 
     public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
-        out int playM4Error)
+        out int playM4Error, int jpegQuality = 100)
     {
         playM4Error = 0;
         ArgumentNullException.ThrowIfNull(config);
@@ -632,6 +654,10 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             else
             {
                 sw.Stop();
+
+                // Apply JPEG compression after successful capture
+                JpegCompressionUtil.TryCompressJpeg(saveFullPath, jpegQuality, _logger);
+
                 var fileSize = File.Exists(saveFullPath) ? new FileInfo(saveFullPath).Length : 0;
                 _logger?.LogInformation(
                     "Stream capture successful: IP={Ip}, Channel={Channel}, FileSize={Size}, Duration={Ms}ms",
