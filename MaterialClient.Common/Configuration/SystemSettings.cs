@@ -65,4 +65,10 @@ public class SystemSettings
     ///     启用 LPR 主动抓拍功能（通用总开关，默认关闭）
     /// </summary>
     public bool EnableTriggerLprCapture { get; set; } = false;
+
+    /// <summary>
+    ///     JPEG 抓拍压缩质量（1-100），默认 75。
+    ///     值 >= 100 时跳过压缩，保留原始文件。
+    /// </summary>
+    public int JpegQuality { get; set; } = 75;
 }

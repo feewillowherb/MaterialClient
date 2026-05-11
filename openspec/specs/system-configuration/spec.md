@@ -110,6 +110,46 @@
   - 以保守默认值返回 `false`（假定自启已禁用）
   - 不抛出异常，继续应用流程
 
+### 需求：JPEG 质量配置属性
+
+系统 MUST 在 `SystemSettings` 类中提供 `JpegQuality` 整数属性，默认值为 75。该属性用于控制 Hikvision 相机抓拍的 JPEG 压缩质量。
+
+#### 场景：默认值
+
+- **当** 创建新的 `SystemSettings` 实例且未显式设置 `JpegQuality`
+- **则** `JpegQuality` MUST 为 75
+
+#### 场景：持久化值
+
+- **当** 用户将 `JpegQuality` 设置为 1 到 100 之间的值并保存设置
+- **则** 系统 MUST 通过 `ISettingsService` 持久化该值，并在下次应用程序启动时恢复
+
+### 需求：设置窗口中的 JPEG 质量控件
+
+系统 MUST 在设置窗口的相机设置区域（流类型选择器下方）显示一个 Slider 控件，允许用户调整 JPEG 压缩质量。
+
+#### 场景：滑块范围和步长
+
+- **当** 设置窗口显示
+- **则** JPEG 质量 Slider MUST 最小值为 1，最大值为 100，步长为 5
+
+#### 场景：滑块绑定到视图模型
+
+- **当** 用户调整 JPEG 质量 Slider
+- **则** `SettingsWindowViewModel` 中的 `JpegQuality` 响应式属性 MUST 通过 ReactiveUI 绑定立即更新
+
+#### 场景：当前值显示
+
+- **当** 设置窗口显示
+- **则** 一个 TextBlock MUST 在 Slider 旁边显示当前 `JpegQuality` 值
+
+#### 场景：保存和加载
+
+- **当** 用户在设置窗口中点击保存
+- **则** `systemSettings.JpegQuality` MUST 从 ViewModel 的 `JpegQuality` 属性设置
+- **当** 设置加载时
+- **则** ViewModel 的 `JpegQuality` MUST 从 `settings.SystemSettings.JpegQuality` 设置
+
 ### 需求：Windows 自启服务接口
 
 系统应提供 `IWindowsAutoStartService` 接口，用于管理 Windows 自启功能。
