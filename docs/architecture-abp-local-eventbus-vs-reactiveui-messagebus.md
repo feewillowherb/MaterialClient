@@ -21,24 +21,45 @@
 ## 2. Avalonia 里是否有「EventBus」？能否用 `ILocalEventBus` 取代？
 
 - **Avalonia 本身**不提供与 ABP `ILocalEventBus` 对等的应用级事件总线；常见做法是在 UI 栈上叠 **ReactiveUI** 的 `MessageBus`，或自研/MVVM 工具包事件。
-- 本仓库的 **ViewModel 间通信**约定使用 ReactiveUI **`MessageBus`**（见 `AGENTS.md`），而不是 Avalonia 控件级路由事件。
+- 本仓库的 **ViewModel 间通信**约定使用 ReactiveUI `**MessageBus`**（见 `AGENTS.md`），而不是 Avalonia 控件级路由事件。
 - **ABP `ILocalEventBus`** 用于 **基础设施 / 应用服务层**与后台组件之间的跨层异步通信（ETO / `*EventData`），与 UI 解耦。
 
 因此：「用 ABP `ILocalEventBus` 取代 Avalonia 的 EventBus」在命名上容易混淆——实际取代的是 **Common 层里曾错误使用的 `MessageBus`**，而不是 Avalonia 框架自带对象；**UI 层仍保留 `MessageBus`**，并通过桥接消费来自 `ILocalEventBus` 的业务事件。
 
 ## 3. `ILocalEventBus` 与 `MessageBus` 的区别（对照表）
 
-| 维度 | ABP `ILocalEventBus` | ReactiveUI `MessageBus.Current` |
-|------|----------------------|----------------------------------|
-| **归属** | Volo.Abp 应用内本地事件总线 | ReactiveUI 静态消息总线 |
-| **典型用途（本项目）** | Common 服务、HTTP 处理器、后台逻辑之间发布 `*EventData` / ETO | ViewModel、部分 View code-behind 之间发布 `*Message` |
-| **订阅模型** | 实现 `ILocalEventHandler<TEvent>`，由容器注册、ABP 派发 | `Listen<T>()` 返回 `IObservable<T>`，通常 `ObserveOn` 到 UI 线程后 `Subscribe`，`DisposeWith` 管理生命周期 |
-| **与 DI** | 强：处理器可注入服务 | 弱：静态入口，不按作用域隔离 |
-| **测试与并行** | 测试可用替换的 `ILocalEventBus`（如 `TestLocalEventBus`），隔离性好 | 全局单例，多实例并行测试易互相干扰（Common 层已禁止直接依赖的原因之一） |
-| **线程** | 处理器在 ABP 调度上下文中异步执行；**非托管 SDK 回调中禁止再 `ObserveOn` UI 线程**（见 `AGENTS.md`） | `SendMessage` 线程安全；UI 更新侧在 ViewModel 中用 `ObserveOn(RxApp.MainThreadScheduler)` |
-| **项目规则** | Common 层跨服务通知应走此通道 | ViewModel 间通信必须走此通道 |
 
-## 4. 数据流（简化）
+| 维度            | ABP `ILocalEventBus`                                                    | ReactiveUI `MessageBus.Current`                                                            |
+| ------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **归属**        | Volo.Abp 应用内本地事件总线                                                      | ReactiveUI 静态消息总线                                                                          |
+| **典型用途（本项目）** | Common 服务、HTTP 处理器、后台逻辑之间发布 `*EventData` / ETO                          | ViewModel、部分 View code-behind 之间发布 `*Message`                                              |
+| **订阅模型**      | 实现 `ILocalEventHandler<TEvent>`，由容器注册、ABP 派发                            | `Listen<T>()` 返回 `IObservable<T>`，通常 `ObserveOn` 到 UI 线程后 `Subscribe`，`DisposeWith` 管理生命周期 |
+| **与 DI**      | 强：处理器可注入服务                                                              | 弱：静态入口，不按作用域隔离                                                                             |
+| **测试与并行**     | 测试可用替换的 `ILocalEventBus`（如 `TestLocalEventBus`），隔离性好                    | 全局单例，多实例并行测试易互相干扰（Common 层已禁止直接依赖的原因之一）                                                    |
+| **线程**        | 处理器在 ABP 调度上下文中异步执行；**非托管 SDK 回调中禁止再 `ObserveOn` UI 线程**（见 `AGENTS.md`） | `SendMessage` 线程安全；UI 更新侧在 ViewModel 中用 `ObserveOn(RxApp.MainThreadScheduler)`             |
+| **项目规则**      | Common 层跨服务通知应走此通道                                                      | ViewModel 间通信必须走此通道                                                                        |
+
+
+## 4. Common 与 ViewModel 若不共用统一事件基础设施的坏处
+
+此处「统一」指：**同一语义的通知只经一条管道、一种载荷约定到达消费者**（可以是单一总线，也可以是「Common 用 A、UI 用 B」但由**明确、唯一的桥接**衔接）。若 Common 与 ViewModel 各自随意选用或混用多套机制（例如 Common 既发 `ILocalEventBus` 又发 `MessageBus`，或同一业务同时定义 `*EventData` 与 `*Message` 却无单一映射），通常会带来：
+
+1. **传播路径不透明**
+  排查「谁触发了这次 UI 刷新」时要在多条链路上跳转；新人难以建立心智模型，易出现「改了一处发布，漏了另一处订阅」。
+2. **重复类型与重复发布**
+  同一业务事件维护两套类型名与字段（`*EventData` / `*Message`），或两处 `Publish`/`SendMessage`，增加不一致与遗漏同步的概率。
+3. **测试与并行困难**
+  `MessageBus` 为进程内全局静态时，多个测试或服务实例并行时易 **串扰**；而 `ILocalEventBus` 若可替换则隔离更好。两套并存时，测试既要 mock 总线又要防静态泄漏，成本上升。
+4. **生命周期与泄漏风险不对称**
+  Common 中若直接 `MessageBus.Listen` 而 `Dispose` 路径不清晰，易出现 **服务级订阅泄漏**；UI 侧若只订其中一条管道，另一条管道上的监听者可能永远收不到或重复收到。
+5. **线程与关闭顺序隐患**
+  不同库对回调线程、异步完成的约定不同；应用退出时若一条路径依赖 UI 线程、另一条在后台线程，容易出现 **关闭阶段死锁或超时**（尤其与非托管 SDK 回调叠加时）。
+6. **演进成本高**
+  后续若要统一为单一基础设施或调整载荷，需在多条路径上同时改发布方与订阅方，回归面大。
+
+本仓库当前做法：**Common 统一走 `ILocalEventBus`**，**ViewModel 统一走 `MessageBus`**，二者之间仅通过 `**EventBusToMessageBusBridge` 中有限、可列举的处理器** 连接——这是在「未全局统一为单一总线」的前提下，把上述坏处 **收敛到可控、可审计的一小层**。
+
+## 5. 数据流（简化）
 
 ```mermaid
 flowchart LR
@@ -57,17 +78,19 @@ flowchart LR
   end
 ```
 
-## 5. 能否让 ViewModel 只订阅 `ILocalEventBus`，从而删除桥接？
+
+
+## 6. 能否让 ViewModel 只订阅 `ILocalEventBus`，从而删除桥接？
 
 **理论上可以，但不建议作为默认方向**，原因包括：
 
 1. **项目宪章**：`AGENTS.md` 规定 ViewModel 间通信用 `MessageBus`，ABP `ILocalEventHandler` 用于跨层（基础设施 ↔ 后台），职责边界清晰。
-2. **UI 线程**：ViewModel  today 统一在 `Listen` 后 `ObserveOn(RxApp.MainThreadScheduler)`；若改为 `ILocalEventHandler`，每个处理器内仍需切回 UI 线程，且容易在错误层级误用 `ObserveOn`（尤其在关闭窗口时与 SDK 回调结合时有死锁风险）。
+2. **UI 线程**：ViewModel 中统一在 `Listen` 后 `ObserveOn(RxApp.MainThreadScheduler)`；若改为 `ILocalEventHandler`，每个处理器内仍需切回 UI 线程，且容易在错误层级误用 `ObserveOn`（尤其在关闭窗口时与 SDK 回调结合时有死锁风险）。
 3. **生命周期**：Rx 订阅与 ViewModel 的 `CompositeDisposable` 模式成熟；在 VM 中直接注册多个 ABP 处理器需要额外设计，避免泄漏与重复注册。
 
 若未来要删除桥接，需要 **成体系迁移**：所有对应 `*Message` 的消费者改为从 `ILocalEventBus` 消费，并重新定义线程与生命周期策略——属于架构变更，而非「删一个多余文件」。
 
-## 6. 相关代码位置
+## 7. 相关代码位置
 
 - 桥接实现：`MaterialClient/Events/EventBusToMessageBusBridge.cs`（类名以 `*EventToMessageBusBridge` 结尾）。
 - Common 层发布示例：`AttendedWeighingService`、`HikvisionLprService`、`VzvisionLprService`、`GateIoControlService`、`MaterialPlatformBearerTokenHandler` 等中的 `_localEventBus.PublishAsync(...)`。
