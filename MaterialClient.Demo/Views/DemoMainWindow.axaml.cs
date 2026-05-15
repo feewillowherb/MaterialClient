@@ -38,4 +38,9 @@ public partial class DemoMainWindow : Window
             ? ThemeVariant.Dark
             : ThemeVariant.Light;
     }
+
+    private void OnWeighingSystemClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        new WeighingSystemWindow().ShowDialog(this);
+    }
 }

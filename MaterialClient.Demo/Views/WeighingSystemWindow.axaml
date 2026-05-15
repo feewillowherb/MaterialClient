@@ -1,0 +1,462 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:MaterialClient.Demo.Models"
+        x:Class="MaterialClient.Demo.Views.WeighingSystemWindow"
+        Title="凡东城管地磅系统"
+        Width="1280" Height="800"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="#0F172A"
+        ExtendClientAreaToDecorationsHint="True">
+
+    <Window.Styles>
+        <!-- Title bar menu buttons -->
+        <Style Selector="Button.header-menu-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Button.header-menu-btn:pointerover">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#334155" />
+        </Style>
+
+        <!-- Title bar window control buttons -->
+        <Style Selector="Button.titlebar-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Width" Value="46" />
+        </Style>
+        <Style Selector="Button.titlebar-btn:pointerover">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#475569" />
+        </Style>
+
+        <!-- Close button -->
+        <Style Selector="Button.titlebar-close-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Width" Value="46" />
+        </Style>
+        <Style Selector="Button.titlebar-close-btn:pointerover">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#EF4444" />
+        </Style>
+
+        <!-- Tab buttons -->
+        <Style Selector="Button.tab-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#475569" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+        <Style Selector="Button.tab-btn:pointerover">
+            <Setter Property="Foreground" Value="#1E293B" />
+        </Style>
+        <Style Selector="Button.tab-btn.active">
+            <Setter Property="Foreground" Value="#4169E1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderBrush" Value="#4169E1" />
+            <Setter Property="BorderThickness" Value="0,0,0,2" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <!-- Filter/search buttons -->
+        <Style Selector="Button.search-btn">
+            <Setter Property="Background" Value="#4169E1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Height" Value="28" />
+        </Style>
+        <Style Selector="Button.search-btn:pointerover">
+            <Setter Property="Background" Value="#3457C7" />
+        </Style>
+
+        <Style Selector="Button.reset-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#64748B" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Height" Value="28" />
+        </Style>
+        <Style Selector="Button.reset-btn:pointerover">
+            <Setter Property="Background" Value="#F1F5F9" />
+        </Style>
+
+        <!-- Approval action button -->
+        <Style Selector="Button.approval-btn">
+            <Setter Property="Background" Value="#4169E1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+        <Style Selector="Button.approval-btn:pointerover">
+            <Setter Property="Background" Value="#3457C7" />
+        </Style>
+
+        <!-- Pagination buttons -->
+        <Style Selector="Button.page-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#475569" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Height" Value="24" />
+        </Style>
+        <Style Selector="Button.page-btn:pointerover">
+            <Setter Property="Background" Value="#F1F5F9" />
+        </Style>
+
+        <!-- DataGrid styling -->
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="4,8" />
+            <Setter Property="Height" Value="32" />
+        </Style>
+
+        <Style Selector="DataGridRow">
+            <Setter Property="FontFamily" Value="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+        </Style>
+
+        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#F1F5F9" />
+        </Style>
+
+        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#E0E7FF" />
+        </Style>
+
+        <Style Selector="DataGridRow:selected">
+            <Setter Property="Foreground" Value="#1E40AF" />
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4,4" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- Filter input -->
+        <Style Selector="TextBox.filter-input">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+    </Window.Styles>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="72" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="36" />
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: Header / Title Bar -->
+        <Border Grid.Row="0" Background="#1E293B"
+                PointerPressed="TitleBar_OnPointerPressed"
+                Cursor="Arrow">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,0" VerticalAlignment="Center">
+                <!-- Logo & Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border Width="32" Height="32" Background="#4169E1" CornerRadius="4"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="凡" Foreground="White" FontWeight="Bold" FontSize="14"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="凡东城管地磅系统" Foreground="White" FontWeight="Medium" FontSize="14"
+                               VerticalAlignment="Center"
+                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                    <TextBlock Text="FINDONG MATERIAL SYSTEM" Foreground="#64748B" FontSize="10"
+                               VerticalAlignment="Center" Margin="4,0,0,0" />
+                </StackPanel>
+
+                <!-- Navigation Menu -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button Classes="header-menu-btn" Content="系统设置" />
+                    <Button Classes="header-menu-btn" Content="项目信息" />
+                    <Button Classes="header-menu-btn" Content="数据同步" />
+                    <Button Classes="header-menu-btn" Content="退出登录" />
+                </StackPanel>
+
+                <!-- Window Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0"
+                            VerticalAlignment="Center">
+                    <Button Classes="titlebar-btn" Click="OnMinimizeClick" Content="─" />
+                    <Button Classes="titlebar-close-btn" Click="OnCloseClick" Content="✕" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Row 1: Weighing Status -->
+        <Border Grid.Row="1" Background="#1E293B" Opacity="1"
+                BorderBrush="#334155" BorderThickness="0,0,0,1">
+            <Border Background="#1E293B" Opacity="0.5">
+                <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Margin="24,0">
+                    <!-- Left decorative element -->
+                    <Border Width="256" Height="48" Background="#334155" CornerRadius="4"
+                            BorderBrush="#475569" BorderThickness="1" />
+
+                    <!-- Weight Display -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Spacing="8">
+                        <TextBlock Text="0.00" FontSize="48" FontWeight="Bold"
+                                   Foreground="#22D3EE"
+                                   FontFamily="Consolas, 'Liberation Mono', 'Courier New'"
+                                   VerticalAlignment="Bottom" />
+                        <TextBlock Text="吨" FontSize="18" Foreground="#64748B"
+                                   VerticalAlignment="Bottom" Margin="0,0,0,8" />
+                    </StackPanel>
+
+                    <!-- Status Text -->
+                    <TextBlock Grid.Column="2" Text="称重已结束" Foreground="#4ADE80"
+                               FontSize="18" FontWeight="Medium" VerticalAlignment="Center"
+                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Row 2: Main Content Area -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,288">
+            <!-- Left Sidebar: Vehicle Records -->
+            <Border Grid.Column="0" Background="#F8FAFC"
+                    BorderBrush="#E2E8F0" BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+                    <!-- Tab Bar -->
+                    <Border Grid.Row="0" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Classes="tab-btn active" Name="TabAll" Content="全部记录" Click="OnTabClick" />
+                            <Button Classes="tab-btn" Name="TabNormal" Content="正常" Click="OnTabClick" />
+                            <Button Classes="tab-btn" Name="TabAbnormal" Content="异常" Click="OnTabClick" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Filters -->
+                    <Border Grid.Row="1" Margin="12,12,12,0"
+                            BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                            Padding="0,0,0,12">
+                    <StackPanel Spacing="8">
+                        <!-- Date Range -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="称重时间" FontSize="12" Foreground="#475569"
+                                       Width="56" VerticalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <TextBox Classes="filter-input" Width="130" />
+                            <TextBox Classes="filter-input" Width="130" />
+                        </StackPanel>
+                        <!-- License Plate Search -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="车牌号码" FontSize="12" Foreground="#475569"
+                                       Width="56" VerticalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <TextBox Classes="filter-input" Width="192" />
+                            <Button Classes="search-btn" Content="搜索" />
+                            <Button Classes="reset-btn" Content="重置" />
+                        </StackPanel>
+                    </StackPanel>
+                    </Border>
+
+                    <!-- DataGrid Table Header Label -->
+                    <Border Grid.Row="2" Background="#1E293B" Padding="12,0">
+                        <Grid ColumnDefinitions="100,140,80,80,*">
+                            <TextBlock Text="车牌" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <TextBlock Grid.Column="1" Text="称重时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <TextBlock Grid.Column="2" Text="重量" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <TextBlock Grid.Column="3" Text="状态" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <TextBlock Grid.Column="4" Text="操作" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Vehicle Records List -->
+                    <ItemsControl Grid.Row="3" Name="VehicleList" Margin="0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:WeighingRecord">
+                                <Border Background="Transparent"
+                                        BorderBrush="#F1F5F9" BorderThickness="0,0,0,1"
+                                        Padding="12,6"
+                                        PointerPressed="OnRecordClick"
+                                        Tag="{Binding}">
+                                    <Border.Styles>
+                                        <Style Selector="Border.record-row:pointerover">
+                                            <Setter Property="Background" Value="#F1F5F9" />
+                                        </Style>
+                                    </Border.Styles>
+                                    <Grid ColumnDefinitions="100,140,80,80,*">
+                                        <TextBlock Text="{Binding LicensePlate}" FontSize="12" FontWeight="Medium"
+                                                   Foreground="#1E293B" VerticalAlignment="Center"
+                                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <TextBlock Grid.Column="1" Text="{Binding WeighingTime}" FontSize="12"
+                                                   Foreground="#475569" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                                   Foreground="#1E293B">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0:F2} 吨">
+                                                    <Binding Path="Weight" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                        <!-- Status Badge -->
+                                        <Panel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <Border Background="#DCFCE7" CornerRadius="3" Padding="6,2"
+                                                    IsVisible="{Binding IsNormal}">
+                                                <TextBlock Text="正常" FontSize="11" Foreground="#15803D"
+                                                           FontWeight="Medium"
+                                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            </Border>
+                                            <Border Background="#FEE2E2" CornerRadius="3" Padding="6,2"
+                                                    IsVisible="{Binding !IsNormal}">
+                                                <TextBlock Text="异常" FontSize="11" Foreground="#DC2626"
+                                                           FontWeight="Medium"
+                                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            </Border>
+                                        </Panel>
+                                        <!-- Action Button -->
+                                        <Button Grid.Column="4" Classes="approval-btn" Content="审批"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Pagination Footer -->
+                    <Border Grid.Row="4" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0"
+                            Padding="12,0">
+                        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center" Height="32">
+                            <TextBlock Grid.Column="0" Text="共 2596 条  第 1 / 433 页" FontSize="11"
+                                       Foreground="#64748B" VerticalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Button Classes="page-btn" Content="上一页"
+                                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                <Button Classes="page-btn" Content="下一页"
+                                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Right Sidebar: Photos -->
+            <Border Grid.Column="1" Background="#F8FAFC">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Photo Header -->
+                    <Border Grid.Row="0" Background="#4169E1" Height="36">
+                        <TextBlock Text="照片" Foreground="White" FontSize="13"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontWeight="Medium"
+                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                    </Border>
+
+                    <!-- Photo Areas -->
+                    <StackPanel Grid.Row="1" Margin="8" Spacing="8">
+                        <!-- Photo 1: License Plate Capture -->
+                        <StackPanel Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="车牌识别抓拍" FontSize="11" Foreground="#64748B"
+                                           FontWeight="Medium" VerticalAlignment="Center"
+                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                <TextBlock Grid.Column="1" Text="16:30:30" FontSize="11" Foreground="#94A3B8"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Border Height="120" Background="#CBD5E1" CornerRadius="4"
+                                    BorderBrush="#94A3B8" BorderThickness="1">
+                                <TextBlock Text="🚛" FontSize="28" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" Foreground="#64748B" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Photo 2: Camera Capture -->
+                        <StackPanel Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="摄像头抓拍" FontSize="11" Foreground="#64748B"
+                                           FontWeight="Medium" VerticalAlignment="Center"
+                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                <TextBlock Grid.Column="1" Text="16:37:50" FontSize="11" Foreground="#94A3B8"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Border Height="120" Background="#CBD5E1" CornerRadius="4"
+                                    BorderBrush="#94A3B8" BorderThickness="1">
+                                <TextBlock Text="🚛" FontSize="28" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" Foreground="#64748B" />
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Row 3: Status Bar -->
+        <Border Grid.Row="3" Background="#1E293B"
+                BorderBrush="#334155" BorderThickness="0,1,0,0"
+                Padding="16,0">
+            <ItemsControl Name="DeviceStatusList" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="24" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:DeviceStatus">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Ellipse Width="8" Height="8">
+                                <Ellipse.Fill>
+                                    <SolidColorBrush Color="{Binding DotColor}" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <TextBlock Text="{Binding DeviceName}" FontSize="12" Foreground="#94A3B8"
+                                       VerticalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            <TextBlock Text="{Binding StatusText}" FontSize="12"
+                                       VerticalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter">
+                                <TextBlock.Foreground>
+                                    <SolidColorBrush Color="{Binding StatusColor}" />
+                                </TextBlock.Foreground>
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+    </Grid>
+</Window>

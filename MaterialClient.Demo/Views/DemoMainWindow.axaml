@@ -56,6 +56,12 @@
                     Click="OnSchemeDClick" />
             <TextBlock Text="Checkbox column + optional background highlight"
                        FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
+
+            <Button Classes="scheme-btn"
+                    Content="称重系统布局 (material-weighing-system)"
+                    Click="OnWeighingSystemClick" />
+            <TextBlock Text="全屏深色主题工业地磅系统布局还原"
+                       FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
         </StackPanel>
 
         <Button Grid.Row="3"
