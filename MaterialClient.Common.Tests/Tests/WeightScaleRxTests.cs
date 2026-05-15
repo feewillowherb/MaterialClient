@@ -4,6 +4,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Caching.Memory;
@@ -185,7 +186,7 @@ public class WeightScaleRxTests
     /// <summary>
     /// 创建AttendedWeighingService实例，使用NSubstitute Mock所有依赖项
     /// </summary>
-    private AttendedWeighingService CreateAttendedWeighingService(
+    private IAttendedWeighingService CreateAttendedWeighingService(
         ITruckScaleWeightService truckScaleWeightService)
     {
         // Mock所有依赖项 - 无需关心具体实现
@@ -218,27 +219,36 @@ public class WeightScaleRxTests
         var uowManager = Substitute.For<IUnitOfWorkManager>();
         uowManager.Begin(Arg.Any<AbpUnitOfWorkOptions>(), Arg.Any<bool>()).Returns(mockUow);
 
-        var logger = Substitute.For<ILogger<AttendedWeighingService>>();
-
         var eventBus = Substitute.For<Volo.Abp.EventBus.Local.ILocalEventBus>();
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
-        // 创建服务实例
+        var stateManagerLogger = Substitute.For<ILogger<WeighingStateManager>>();
+        var plateLogger = Substitute.For<ILogger<PlateNumberService>>();
+        var pipelineLogger = Substitute.For<ILogger<WeighingStreamPipeline>>();
+        var captureLogger = Substitute.For<ILogger<WeighingCaptureService>>();
+        var recordLogger = Substitute.For<ILogger<WeighingRecordService>>();
+        var serviceLogger = Substitute.For<ILogger<AttendedWeighingService>>();
+
+        var stateManager = new WeighingStateManager(eventBus, stateManagerLogger);
+        var plateNumberService = new PlateNumberService(recommendPlateService, eventBus, plateLogger);
+        var streamPipeline = new WeighingStreamPipeline(pipelineLogger);
+        var captureService = new WeighingCaptureService(hikvisionService, null, settingsService, captureLogger);
+        var recordService = new WeighingRecordService(
+            weighingRecordRepo, fileRepo, attachmentRepo, uowManager, settingsService,
+            plateNumberService, eventBus, recordLogger);
+
         return new AttendedWeighingService(
-            fileRepo,
-            configuration,
-            hikvisionService,
-            eventBus,
-            logger,
-            null, // IVzvisionLprService? (可选)
-            settingsService,
-            null, // ISoundDeviceService? (可选)
-            recommendPlateService,
+            stateManager,
+            plateNumberService,
+            streamPipeline,
+            captureService,
+            recordService,
             truckScaleWeightService,
-            uowManager,
-            attachmentRepo,
-            weighingRecordRepo
-        );
+            serviceLogger,
+            configuration,
+            eventBus,
+            settingsService,
+            null);
     }
 }

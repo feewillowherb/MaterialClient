@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Configuration;
@@ -6,6 +5,8 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.AttendedWeighing;
+using MaterialClient.Common.Services.AttendedWeighing.Records;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
@@ -1619,7 +1620,7 @@ public class AttendedWeighingServiceTests : IDisposable
         }).GetAwaiter().GetResult();
     }
 
-    private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithWeightSubject(
+    private (IAttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithWeightSubject(
         bool enableLatestPlateNumber = false,
         bool enablePlateRewrite = true)
     {
@@ -1635,7 +1636,7 @@ public class AttendedWeighingServiceTests : IDisposable
         return (service, weightSubject);
     }
 
-    private (AttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithLowPriorityColors(
+    private (IAttendedWeighingService service, Subject<decimal> weightSubject) CreateServiceWithLowPriorityColors(
         VzvisionColorType[] lowPriorityColors,
         bool enableLatestPlateNumber = false,
         bool enablePlateRewrite = true)
@@ -1653,7 +1654,7 @@ public class AttendedWeighingServiceTests : IDisposable
         return (service, weightSubject);
     }
 
-    private (AttendedWeighingService service, Subject<decimal> weightSubject,
+    private (IAttendedWeighingService service, Subject<decimal> weightSubject,
         IRepository<WeighingRecord, long> mockRepo, IUnitOfWork mockUow) CreateServiceWithMocks(
         bool enablePlateRewrite = true)
     {
@@ -1678,7 +1679,7 @@ public class AttendedWeighingServiceTests : IDisposable
         return (service, weightSubject, mockRepo, mockUow);
     }
 
-    private (AttendedWeighingService service, Subject<decimal> weightSubject,
+    private (IAttendedWeighingService service, Subject<decimal> weightSubject,
         IRepository<WeighingRecord, long> mockRepo, IUnitOfWork mockUow,
         IHikvisionService mockHikvision) CreateServiceWithMocksAndHikvision(
         bool enablePlateRewrite = true)
@@ -1709,7 +1710,7 @@ public class AttendedWeighingServiceTests : IDisposable
         return (service, weightSubject, mockRepo, mockUow, mockHikvision);
     }
 
-    private AttendedWeighingService CreateAttendedWeighingService(
+    private IAttendedWeighingService CreateAttendedWeighingService(
         ITruckScaleWeightService truckScaleWeightService,
         IRepository<WeighingRecord, long>? mockRepo = null,
         IUnitOfWorkManager? mockUowManager = null,
@@ -1766,22 +1767,34 @@ public class AttendedWeighingServiceTests : IDisposable
             uowManager.Begin(Arg.Any<AbpUnitOfWorkOptions>(), Arg.Any<bool>()).Returns(mockUow);
         }
 
-        var logger = Substitute.For<ILogger<AttendedWeighingService>>();
+        var stateManagerLogger = Substitute.For<ILogger<WeighingStateManager>>();
+        var plateLogger = Substitute.For<ILogger<PlateNumberService>>();
+        var pipelineLogger = Substitute.For<ILogger<WeighingStreamPipeline>>();
+        var captureLogger = Substitute.For<ILogger<WeighingCaptureService>>();
+        var recordLogger = Substitute.For<ILogger<WeighingRecordService>>();
+        var serviceLogger = Substitute.For<ILogger<AttendedWeighingService>>();
+
+        var stateManager = new WeighingStateManager(_testEventBus, stateManagerLogger);
+        var plateNumberService = new PlateNumberService(recommendPlateService, _testEventBus, plateLogger);
+        var streamPipeline = new WeighingStreamPipeline(pipelineLogger);
+        var captureService = new WeighingCaptureService(
+            hikvisionService, null, settingsService, captureLogger);
+        var recordService = new WeighingRecordService(
+            weighingRecordRepo, fileRepo, attachmentRepo, uowManager, settingsService,
+            plateNumberService, _testEventBus, recordLogger);
 
         return new AttendedWeighingService(
-            fileRepo,
-            configuration,
-            hikvisionService,
-            _testEventBus,
-            logger,
-            null, // IVzvisionLprService? (可选)
-            settingsService,
-            null, // ISoundDeviceService? (可选)
-            recommendPlateService,
+            stateManager,
+            plateNumberService,
+            streamPipeline,
+            captureService,
+            recordService,
             truckScaleWeightService,
-            uowManager,
-            attachmentRepo,
-            weighingRecordRepo);
+            serviceLogger,
+            configuration,
+            _testEventBus,
+            settingsService,
+            null); // ISoundDeviceService (optional)
     }
 
     public void Dispose()
@@ -1794,82 +1807,5 @@ public class AttendedWeighingServiceTests : IDisposable
 
     #endregion
 
-    /// <summary>
-    /// 轻量级 ILocalEventBus 测试替身，在同一实例内实际派发事件到订阅者。
-    /// 每个 AttendedWeighingServiceTests 实例持有独立的 TestLocalEventBus，
-    /// 确保测试之间完全隔离。
-    /// </summary>
-    private class TestLocalEventBus : ILocalEventBus
-    {
-        private readonly ConcurrentDictionary<Type, List<Func<object, Task>>> _handlers = new();
-
-        public IDisposable Subscribe<TEvent>(Func<TEvent, Task> action) where TEvent : class
-        {
-            var type = typeof(TEvent);
-            var list = _handlers.GetOrAdd(type, _ => new List<Func<object, Task>>());
-            Func<object, Task> wrapper = obj => action((TEvent)obj!);
-            lock (list)
-            {
-                list.Add(wrapper);
-            }
-            return new DisposableAction(() =>
-            {
-                lock (list) { list.Remove(wrapper); }
-            });
-        }
-
-        public IDisposable Subscribe<TEvent>(Action<TEvent> action) where TEvent : class
-        {
-            return Subscribe<TEvent>(msg =>
-            {
-                action(msg);
-                return Task.CompletedTask;
-            });
-        }
-
-        public Task PublishAsync<TEvent>(TEvent eventData, bool onUnitOfWorkComplete = true) where TEvent : class
-        {
-            return PublishAsync(typeof(TEvent), eventData!);
-        }
-
-        public Task PublishAsync(Type eventType, object eventData, bool onUnitOfWorkComplete = true)
-        {
-            if (_handlers.TryGetValue(eventType, out var handlers))
-            {
-                Func<object, Task>[] copies;
-                lock (handlers) { copies = handlers.ToArray(); }
-                return Task.WhenAll(copies.Select(h => h(eventData)));
-            }
-            return Task.CompletedTask;
-        }
-
-        public List<EventTypeWithEventHandlerFactories> GetEventHandlerFactories(Type eventType)
-        {
-            return new List<EventTypeWithEventHandlerFactories>();
-        }
-
-        // Unused IEventBus methods - not needed for these tests
-        public IDisposable Subscribe<TEvent>(ILocalEventHandler<TEvent> handler) where TEvent : class => NullDisposable();
-        public IDisposable Subscribe<TEvent, THandler>() where TEvent : class where THandler : IEventHandler, new() => NullDisposable();
-        public IDisposable Subscribe(Type eventType, IEventHandler handler) => NullDisposable();
-        public IDisposable Subscribe<TEvent>(IEventHandlerFactory factory) where TEvent : class => NullDisposable();
-        public IDisposable Subscribe(Type eventType, IEventHandlerFactory factory) => NullDisposable();
-        public void Unsubscribe<TEvent>(Func<TEvent, Task> action) where TEvent : class { }
-        public void Unsubscribe<TEvent>(ILocalEventHandler<TEvent> handler) where TEvent : class { }
-        public void Unsubscribe(Type eventType, IEventHandler handler) { }
-        public void Unsubscribe<TEvent>(IEventHandlerFactory factory) where TEvent : class { }
-        public void Unsubscribe(Type eventType, IEventHandlerFactory factory) { }
-        public void UnsubscribeAll<TEvent>() where TEvent : class { }
-        public void UnsubscribeAll(Type eventType) { }
-
-        private static IDisposable NullDisposable() => new DisposableAction(() => { });
-
-        private class DisposableAction : IDisposable
-        {
-            private readonly Action _dispose;
-            public DisposableAction(Action dispose) => _dispose = dispose;
-            public void Dispose() => _dispose();
-        }
-    }
 }
 
