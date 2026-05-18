@@ -90,6 +90,10 @@ ScaffoldingReadMe.txt
 # ---- Installer output ----
 Installer/
 
+# ---- BMAD Method ----
+_bmad/config.user.toml
+_bmad/custom/config.user.toml
+
 # ---- Claude / MCP Temporary Directories ----
 tempclaude-*
 tmpclaude-*
