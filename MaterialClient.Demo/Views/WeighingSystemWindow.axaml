@@ -4,10 +4,11 @@
         x:Class="MaterialClient.Demo.Views.WeighingSystemWindow"
         Title="凡东城管地磅系统"
         Width="1280" Height="800"
+        MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen"
-        SystemDecorations="None"
-        Background="#0F172A"
-        ExtendClientAreaToDecorationsHint="True">
+        SystemDecorations="BorderOnly"
+        CanResize="True"
+        Background="#0F172A">
 
     <Window.Styles>
         <!-- Title bar menu buttons -->
@@ -171,7 +172,9 @@
     </Window.Styles>
 
     <Grid>
-        <Grid.RowDefinitions>
+        <!-- Content -->
+        <Grid x:Name="ContentGrid">
+            <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="72" />
             <RowDefinition Height="*" />
@@ -458,5 +461,6 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </Border>
+    </Grid>
     </Grid>
 </Window>

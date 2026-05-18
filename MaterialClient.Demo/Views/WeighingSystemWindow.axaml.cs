@@ -36,17 +36,14 @@ public partial class WeighingSystemWindow : Window
     {
         if (sender is not Button clickedTab) return;
 
-        // Remove active class from all tabs
         TabAll.Classes.Remove("active");
         TabNormal.Classes.Remove("active");
         TabAbnormal.Classes.Remove("active");
 
-        // Add active class to clicked tab
         clickedTab.Classes.Add("active");
     }
 
     private void OnRecordClick(object? sender, PointerPressedEventArgs e)
     {
-        // Visual feedback for record selection could be added here
     }
 }
