@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using MaterialClient.Common.Services.Hikvision;
 using Xunit;
 using Xunit.Abstractions;
@@ -479,6 +481,305 @@ public class HikvisionServiceTests
 
         int successCount = results.Count(r => r.Success);
         _output.WriteLine($"Integration test completed: {successCount}/{results.Length} captures successful");
+    }
+
+    #endregion
+
+    #region Fallback & Session Lifecycle Tests
+
+    /// <summary>
+    /// Test 4.1: Mainstream capture succeeds, no fallback triggered, FallbackUsed=false.
+    /// </summary>
+    [Fact(Skip = "Requires physical Hikvision device")]
+    public async Task MainstreamCapture_Succeeds_NoFallback_FallbackUsedFalse()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.3.245",
+            Username = "admin",
+            Password = "12345",
+            Port = 8000,
+            StreamType = 0,
+            Channels = [1]
+        };
+
+        service.AddOrUpdateDevice(config);
+
+        var captureDir = Path.Combine(AppContext.BaseDirectory, "captures", "fallback_test");
+        Directory.CreateDirectory(captureDir);
+        var fileName = $"mainstream_ok_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+        var fullPath = Path.Combine(captureDir, fileName);
+
+        var request = new BatchCaptureRequest
+        {
+            Config = config,
+            Channel = 1,
+            SaveFullPath = fullPath,
+            DeviceKey = $"{config.Ip}:{config.Port}"
+        };
+
+        // Use the service method that triggers mainstream path
+        // This test requires CaptureStreamType = Mainstream in settings
+        var results = await service.CaptureJpegFromStreamBatchAsync([request]);
+        var result = Assert.Single(results);
+
+        Assert.True(result.Success, $"Expected success but got: {result.ErrorMessage}");
+        Assert.False(result.FallbackUsed, "FallbackUsed should be false when mainstream capture succeeds");
+    }
+
+    /// <summary>
+    /// Test 4.2: Mainstream capture fails, fallback succeeds, FallbackUsed=true.
+    /// </summary>
+    [Fact(Skip = "Requires physical Hikvision device with PlayM4 failure")]
+    public async Task MainstreamCapture_Fails_FallbackSucceeds_FallbackUsedTrue()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.3.245",
+            Username = "admin",
+            Password = "12345",
+            Port = 8000,
+            StreamType = 0,
+            Channels = [1]
+        };
+
+        service.AddOrUpdateDevice(config);
+
+        var captureDir = Path.Combine(AppContext.BaseDirectory, "captures", "fallback_test");
+        Directory.CreateDirectory(captureDir);
+        var fileName = $"mainstream_fail_fallback_ok_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+        var fullPath = Path.Combine(captureDir, fileName);
+
+        var request = new BatchCaptureRequest
+        {
+            Config = config,
+            Channel = 1,
+            SaveFullPath = fullPath,
+            DeviceKey = $"{config.Ip}:{config.Port}"
+        };
+
+        var results = await service.CaptureJpegFromStreamBatchAsync([request]);
+        var result = Assert.Single(results);
+
+        // When mainstream fails but fallback succeeds
+        Assert.True(result.Success, $"Expected success via fallback but got: {result.ErrorMessage}");
+        Assert.True(result.FallbackUsed, "FallbackUsed should be true when fallback was used");
+    }
+
+    /// <summary>
+    /// Test 4.3: Mainstream capture fails, fallback also fails, error messages merged.
+    /// </summary>
+    [Fact(Skip = "Requires physical Hikvision device")]
+    public async Task MainstreamAndFallbackBothFail_MergedErrorMessages()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.3.245",
+            Username = "admin",
+            Password = "12345",
+            Port = 8000,
+            StreamType = 0,
+            Channels = [1]
+        };
+
+        service.AddOrUpdateDevice(config);
+
+        var captureDir = Path.Combine(AppContext.BaseDirectory, "captures", "fallback_test");
+        Directory.CreateDirectory(captureDir);
+        var fileName = $"both_fail_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+        var fullPath = Path.Combine(captureDir, fileName);
+
+        var request = new BatchCaptureRequest
+        {
+            Config = config,
+            Channel = 1,
+            SaveFullPath = fullPath,
+            DeviceKey = $"{config.Ip}:{config.Port}"
+        };
+
+        var results = await service.CaptureJpegFromStreamBatchAsync([request]);
+        var result = Assert.Single(results);
+
+        Assert.False(result.Success);
+        Assert.False(result.FallbackUsed);
+        // Error message should contain both mainstream and fallback error info
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("HCNetSDK错误", result.ErrorMessage);
+        Assert.Contains("降级失败", result.ErrorMessage);
+    }
+
+    /// <summary>
+    /// Test 4.4: LogoutAndClearCache removes cache entry.
+    /// Uses userId=-1 to avoid calling NET_DVR_Logout (no SDK needed).
+    /// </summary>
+    [Fact]
+    public void LogoutAndClearCache_InvalidUserId_RemovesCacheEntry()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.1.1",
+            Port = 8000,
+            Username = "admin",
+            Password = "pass"
+        };
+
+        // Access internal cache via reflection
+        var cache = GetDeviceKeyCache(service);
+        var key = $"{config.Ip}:{config.Port}:{config.Username}";
+
+        // Pre-populate with invalid userId (-1) — won't trigger NET_DVR_Logout
+        cache[key] = -1;
+        Assert.True(cache.ContainsKey(key));
+
+        // Invoke LogoutAndClearCache
+        InvokeLogoutAndClearCache(service, config);
+
+        // Cache entry should be removed
+        Assert.False(cache.ContainsKey(key));
+    }
+
+    /// <summary>
+    /// Test 4.4 (SDK variant): LogoutAndClearCache calls NET_DVR_Logout and removes cache entry.
+    /// </summary>
+    [Fact(Skip = "Requires Hikvision SDK runtime")]
+    public void LogoutAndClearCache_ValidUserId_CallsLogoutAndRemovesCache()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.1.1",
+            Port = 8000,
+            Username = "admin",
+            Password = "pass"
+        };
+
+        var cache = GetDeviceKeyCache(service);
+        var key = $"{config.Ip}:{config.Port}:{config.Username}";
+
+        // Pre-populate with a valid userId — will call NET_DVR_Logout
+        cache[key] = 42;
+        Assert.True(cache.ContainsKey(key));
+
+        // Invoke LogoutAndClearCache
+        InvokeLogoutAndClearCache(service, config);
+
+        // Cache entry should be removed even if Logout returns false (invalid session)
+        Assert.False(cache.ContainsKey(key));
+    }
+
+    /// <summary>
+    /// Test 4.5: EnsureLogin logs out cached valid userId before re-login.
+    /// </summary>
+    [Fact(Skip = "Requires Hikvision SDK runtime")]
+    public void EnsureLogin_CachedValidUserId_LogoutsBeforeReLogin()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.1.1",
+            Port = 8000,
+            Username = "admin",
+            Password = "pass"
+        };
+
+        var cache = GetDeviceKeyCache(service);
+        var key = $"{config.Ip}:{config.Port}:{config.Username}";
+
+        // Pre-populate cache with a valid userId
+        cache[key] = 42;
+
+        // Call EnsureLogin via reflection
+        var method = typeof(HikvisionService).GetMethod("EnsureLogin",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        var parameters = new object[] { config, 0 };
+        var result = (bool)method!.Invoke(service, parameters)!;
+
+        // After EnsureLogin, the old userId (42) should have been logged out
+        // and a new login attempted. The cache should contain the new userId.
+        // If login fails (no device), cache won't have the key (login returns -1, not stored).
+        if (result)
+        {
+            Assert.True(cache.ContainsKey(key));
+            Assert.NotEqual(42, cache[key]); // Should be a different userId
+        }
+
+        _output.WriteLine($"EnsureLogin result: {result}, New userId: {parameters[1]}");
+    }
+
+    /// <summary>
+    /// Test 4.6: Session cleanup still executes when capture throws an exception.
+    /// Uses the substream path with a config that will fail at login,
+    /// verifying that LogoutAndClearCache runs in the finally block.
+    /// </summary>
+    [Fact]
+    public async Task CaptureThrowsException_SessionCleanupStillExecutes()
+    {
+        var service = new HikvisionService();
+        var config = new HikvisionDeviceConfig
+        {
+            Ip = "192.168.1.1",
+            Port = 8000,
+            Username = "admin",
+            Password = "pass"
+        };
+
+        var cache = GetDeviceKeyCache(service);
+        var key = $"{config.Ip}:{config.Port}:{config.Username}";
+
+        // Pre-populate cache with invalid userId (-1)
+        // This ensures LogoutAndClearCache will try to remove it in finally
+        cache[key] = -1;
+
+        var request = new BatchCaptureRequest
+        {
+            Config = config,
+            Channel = 1,
+            SaveFullPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.jpg"),
+            DeviceKey = $"{config.Ip}:{config.Port}"
+        };
+
+        // This will fail (no device), but the finally block should still clean up
+        var results = await service.CaptureJpegFromStreamBatchAsync([request]);
+        var result = Assert.Single(results);
+
+        // Capture should fail (no device available)
+        Assert.False(result.Success);
+
+        // Cache should have been cleaned by LogoutAndClearCache in finally block
+        // Note: The capture methods call EnsureLogin which may modify the cache,
+        // but LogoutAndClearCache in finally should always clean it up.
+        Assert.False(cache.ContainsKey(key),
+            "Cache entry should be removed by LogoutAndClearCache even when capture fails");
+    }
+
+    /// <summary>
+    /// Verifies that BatchCaptureResult.FallbackUsed defaults to false.
+    /// </summary>
+    [Fact]
+    public void BatchCaptureResult_FallbackUsed_DefaultIsFalse()
+    {
+        var result = new BatchCaptureResult();
+        Assert.False(result.FallbackUsed);
+    }
+
+    private static ConcurrentDictionary<string, int> GetDeviceKeyCache(HikvisionService service)
+    {
+        var field = typeof(HikvisionService).GetField("deviceKeyToUserId",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(field);
+        return (ConcurrentDictionary<string, int>)field!.GetValue(service)!;
+    }
+
+    private static void InvokeLogoutAndClearCache(HikvisionService service, HikvisionDeviceConfig config)
+    {
+        var method = typeof(HikvisionService).GetMethod("LogoutAndClearCache",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(method);
+        method!.Invoke(service, [config]);
     }
 
     #endregion

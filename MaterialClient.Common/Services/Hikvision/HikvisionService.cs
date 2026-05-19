@@ -207,7 +207,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             return await CaptureJpegBatchInternalAsync(requests, jpegQuality);
         }
 
-        // Mainstream capture (existing implementation)
+        // Mainstream capture with auto-fallback to device-side JPEG
         // 同步处理多个设备
         var results = requests.Select(request =>
         {
@@ -218,12 +218,13 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 HcNetSdkError = 0,
                 PlayM4Error = 0,
                 ErrorMessage = null,
-                FileSize = 0
+                FileSize = 0,
+                FallbackUsed = false
             };
 
             try
             {
-                // 同步调用拍照方法
+                // 同步调用主码流拍照方法
                 var playM4Error = 0;
                 result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
                     out playM4Error);
@@ -232,7 +233,54 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 if (!result.Success)
                 {
                     result.HcNetSdkError = GetLastErrorCode();
-                    result.ErrorMessage = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
+                    var mainstreamError = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
+
+                    // 降级到设备侧JPEG抓拍
+                    _logger?.LogWarning(
+                        "主码流抓拍失败，尝试降级: IP={Ip}, Channel={Channel}, HcNetSdkError={HcNetSdkError}, PlayM4Error={PlayM4Error}",
+                        request.Config.Ip, request.Channel, result.HcNetSdkError, result.PlayM4Error);
+
+                    var fallbackSuccess = CaptureJpeg(request.Config, request.Channel, request.SaveFullPath,
+                        out uint fallbackLastError, jpegQuality: jpegQuality);
+
+                    if (fallbackSuccess)
+                    {
+                        result.Success = true;
+                        result.FallbackUsed = true;
+                        result.HcNetSdkError = 0;
+                        result.ErrorMessage = null;
+
+                        _logger?.LogWarning(
+                            "降级抓拍成功: IP={Ip}, Channel={Channel}",
+                            request.Config.Ip, request.Channel);
+
+                        // 验证降级文件
+                        if (File.Exists(request.SaveFullPath))
+                        {
+                            result.FileSize = new FileInfo(request.SaveFullPath).Length;
+                            if (result.FileSize == 0)
+                            {
+                                result.Success = false;
+                                result.ErrorMessage = "降级文件大小为0";
+                            }
+                        }
+                        else
+                        {
+                            result.Success = false;
+                            result.ErrorMessage = "降级文件未创建";
+                        }
+                    }
+                    else
+                    {
+                        // 主码流和降级均失败 - 合并错误信息
+                        var fallbackError = $"降级失败(HCNetSDK错误: {fallbackLastError})";
+                        result.ErrorMessage = $"{mainstreamError}; {fallbackError}";
+                        result.HcNetSdkError = fallbackLastError;
+
+                        _logger?.LogWarning(
+                            "降级抓拍也失败: IP={Ip}, Channel={Channel}, MainstreamError={MainstreamError}, FallbackError={FallbackError}",
+                            request.Config.Ip, request.Channel, mainstreamError, fallbackError);
+                    }
                 }
                 else
                 {
@@ -264,6 +312,10 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             {
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                LogoutAndClearCache(request.Config);
             }
 
             return result;
@@ -324,6 +376,10 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             {
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                LogoutAndClearCache(request.Config);
             }
 
             return result;
@@ -775,12 +831,30 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     {
         var key = BuildDeviceKey(config);
 
-        userId = deviceKeyToUserId.AddOrUpdate(
-            key,
-            _ => Login(config),
-            (_, existingUserId) => existingUserId >= 0 ? existingUserId : Login(config));
+        // Pre-login logout: if cached userId is valid, logout before fresh login
+        if (deviceKeyToUserId.TryRemove(key, out var cachedUserId) && cachedUserId >= 0)
+        {
+            NET_DVR.NET_DVR_Logout(cachedUserId);
+            _logger?.LogDebug("登录前登出旧会话: Key={Key}, UserId={UserId}", key, cachedUserId);
+        }
+
+        userId = Login(config);
+        if (userId >= 0)
+        {
+            deviceKeyToUserId[key] = userId;
+        }
 
         return userId >= 0;
+    }
+
+    private void LogoutAndClearCache(HikvisionDeviceConfig config)
+    {
+        var key = BuildDeviceKey(config);
+        if (deviceKeyToUserId.TryRemove(key, out var userId) && userId >= 0)
+        {
+            NET_DVR.NET_DVR_Logout(userId);
+            _logger?.LogDebug("已登出并清除缓存: Key={Key}, UserId={UserId}", key, userId);
+        }
     }
 
     private int Login(HikvisionDeviceConfig config)
@@ -883,6 +957,7 @@ public sealed class BatchCaptureResult
     public int PlayM4Error { get; set; }
     public string? ErrorMessage { get; set; }
     public long FileSize { get; set; }
+    public bool FallbackUsed { get; set; }
 }
 
 internal static class NET_DVR
