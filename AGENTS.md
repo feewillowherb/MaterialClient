@@ -143,6 +143,28 @@
 - 每个类、方法、模块都应只有一个明确的职责。
 - 职责边界应清晰，避免一个组件同时处理数据访问、业务逻辑、UI 渲染等不同层面的职责。
 
+## MaterialClient.Urban 特殊约定
+
+### 项目概述
+- **项目**：`MaterialClient.Urban` — 城管专用单窗口桌面客户端
+- **特点**：启动即进入唯一称重主界面，无登录/授权页面
+- **配置**：`WeighingMode.UrbanMode = 201`，`ProductCode.Urban = 5030`
+- **授权**：使用 `IStaticLicenseChecker` 后台检查（TODO: 当前默认返回成功）
+- **UI 来源**：从 `MaterialClient.Demo/Views/WeighingSystemWindow.axaml` 迁移
+
+### 架构约束
+- **无 Generic Host**：使用 Avalonia `ApplicationLifetime`，不注册 ABP 容器
+- **无登录模块**：不引用 Account 模块，无 Session 管理
+- **顶栏菜单**：仅保留"系统设置"，移除"退出登录"、"数据同步"、"项目信息"
+- **静态授权**：`StaticLicenseChecker` 在 `App.OnFrameworkInitializationCompleted` 后台调用，仅记录日志
+
+### Lrp 附件（UrbanMode 专用）
+- **AttachType.Lrp = 5**：车牌识别图片附件类型
+- **保存条件**：仅 `WeighingMode == UrbanMode (201)` 时保存
+- **支持设备**：HikvisionLprService、VzvisionLprService
+- **压缩质量**：`JpegCompressionUtil.LrpCompressionQuality = 90`
+- **存储路径**：`Lrp/{plate}_{timestamp}.jpg`（相对于应用目录）
+
 ## 治理规则
 
 - Constitution 优先于所有其他实践；修改需要文档、批准和迁移计划。
