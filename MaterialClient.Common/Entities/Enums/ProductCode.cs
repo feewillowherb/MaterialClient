@@ -17,5 +17,11 @@ public enum ProductCode
     ///     固废模式
     /// </summary>
     [Description("城管固废称重验收系统客户端软件")]
-    SolidWaste = 5010
+    SolidWaste = 5010,
+
+    /// <summary>
+    ///     城管专用产品代码（Urban 桌面端）
+    /// </summary>
+    [Description("城管固废称重验收系统客户端软件")]
+    Urban = 5030
 }

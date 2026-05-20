@@ -71,4 +71,21 @@ public class SystemSettings
     ///     值 >= 100 时跳过压缩，保留原始文件。
     /// </summary>
     public int JpegQuality { get; set; } = 75;
+
+    // ========== Urban 配置 ==========
+
+    /// <summary>
+    ///     Urban 模式标识
+    /// </summary>
+    public bool IsUrbanMode { get; set; } = false;
+
+    /// <summary>
+    ///     Urban 产品代码（5030）
+    /// </summary>
+    public int UrbanProductCode { get; set; } = 5030;
+
+    /// <summary>
+    ///     静态授权文件路径
+    /// </summary>
+    public string LicenseFilePath { get; set; } = "license.lic";
 }

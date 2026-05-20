@@ -25,5 +25,10 @@ public enum AttachType : short
     /// <summary>
     ///     票据照片
     /// </summary>
-    [Description("票据照片")] TicketPhoto = 3
+    [Description("票据照片")] TicketPhoto = 3,
+
+    /// <summary>
+    ///     车牌识别图片（Lrp），仅 UrbanMode = 201 时保存
+    /// </summary>
+    [Description("车牌识别图片")] Lrp = 5
 }
