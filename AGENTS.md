@@ -1,24 +1,13 @@
 # Agent 行为准则
 
-## OpenSpec 工作流（可选）
+## OpenSpec 已迁移
 
-若采用规范驱动流程，可参考：
+本项目的 OpenSpec 规范驱动流程已迁移至 **MaterialMonospec** 主仓库统一管理。
 
-- **探索** (`/opsx:explore`)：理解问题与上下文
-- **提案** (`/opsx:propose`)：产出 proposal、design、tasks、spec delta
-- **实施** (`/opsx:apply`)：按 Spec/Design 实施代码
-- **归档** (`/opsx:archive`)：变更完成后归档
-
-```
-openspec/
-├── specs/          ← 功能规范
-├── changes/        ← 待实施变更的规范化定义
-└── project.md      ← 项目约定和技术栈
-```
-
-- 查看活跃变更：`openspec list`
-- 查看功能规范：`openspec list --specs`
-- 验证变更：`openspec validate [change-id] --strict`
+- **OpenSpec 工作目录**：`MaterialMonospec/openspec/`
+- **所有变更提案、设计、规范、任务** 均在主仓库的 `openspec/` 目录中创建和管理
+- 本项目（MaterialClient）仅负责代码实现，不再维护独立的 openspec 目录
+- 详见主仓库 `AGENTS.md` 中的「OpenSpec 生成位置约束」
 
 ## 项目约定（服务注册）
 
