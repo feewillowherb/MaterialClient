@@ -62,6 +62,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     private GCHandle? _callbackHandle;
     private bool _isInitialized;
     private int _listenHandle = -1;
+    private WeighingMode _cachedWeighingMode = WeighingMode.Standard;
 
     public HikvisionLprService(ISettingsService settingsService, ILocalEventBus localEventBus, ILogger<HikvisionLprService>? logger = null)
     {
@@ -136,6 +137,9 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             // 从 SystemSettings.Urls 获取监听地址和端口
             var settings = await _settingsService.GetSettingsAsync();
             var urls = settings.SystemSettings.Urls;
+
+            // 缓存当前称重模式（用于 Lrp 附件保存判断）
+            _cachedWeighingMode = settings.SystemSettings.DefaultWeighingMode;
             
             if (string.IsNullOrWhiteSpace(urls))
             {
@@ -347,6 +351,9 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             // 使用 GBK 编码提取车牌号
             var plateNumber = HikvisionEncodingHelper.GetString(plateResult.sLicense, _logger);
 
+            // 提取 Lrp 图片（仅 UrbanMode）
+            var lrpPath = TrySaveLrpAttachment(plateResult.pBuffer, plateResult.dwPicLen, plateNumber);
+
             // 通过 ILocalEventBus 发布车牌识别事件
             var eventData = new LicensePlateRecognizedEventData
             {
@@ -354,7 +361,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 ColorType = null, // 海康威视 SDK 回调中不包含颜色信息
                 DeviceType = LprDeviceType.Hikvision,
                 DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
+                LrpImagePath = lrpPath
             };
             _ = _localEventBus.PublishAsync(eventData);
 
@@ -393,6 +401,9 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 // 使用 GBK 编码提取车牌号
                 var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
 
+                // 提取 Lrp 图片（仅 UrbanMode）
+                var lrpPath = TrySaveLrpAttachment(plateInfo.pBuffer, plateInfo.dwPicLen, plateNumber);
+
                 // 通过 ILocalEventBus 发布车牌识别事件
                 var eventData = new LicensePlateRecognizedEventData
                 {
@@ -400,7 +411,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                     ColorType = null, // 海康威视 SDK 回调中不包含颜色信息
                     DeviceType = LprDeviceType.Hikvision,
                     DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
-                    Timestamp = DateTime.Now
+                    Timestamp = DateTime.Now,
+                    LrpImagePath = lrpPath
                 };
                 _ = _localEventBus.PublishAsync(eventData);
 
@@ -412,6 +424,54 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         catch (Exception ex)
         {
             _logger?.LogError(ex, "处理 ITS 车牌识别结果失败");
+        }
+    }
+
+    /// <summary>
+    ///     尝试保存 Lrp 车牌识别图片（仅 UrbanMode = 201 时保存）
+    ///     从海康威视 SDK 回调的 pBuffer 提取图片数据，压缩后保存到磁盘
+    /// </summary>
+    /// <param name="pBuffer">SDK 回调中的图片数据指针</param>
+    /// <param name="picLen">图片数据长度</param>
+    /// <param name="plateNumber">车牌号（用于文件名）</param>
+    /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
+    private string? TrySaveLrpAttachment(IntPtr pBuffer, int picLen, string plateNumber)
+    {
+        // 仅 UrbanMode = 201 时保存 Lrp 附件
+        if (_cachedWeighingMode != WeighingMode.UrbanMode)
+            return null;
+
+        if (pBuffer == IntPtr.Zero || picLen <= 0)
+            return null;
+
+        try
+        {
+            // 从非托管内存复制图片字节
+            var imageBytes = new byte[picLen];
+            Marshal.Copy(pBuffer, imageBytes, 0, picLen);
+
+            // 使用 JpegCompressionUtil 压缩（Lrp 专用质量）
+            var compressedBytes = JpegCompressionUtil.TryCompressJpegBytes(
+                imageBytes, JpegCompressionUtil.LrpCompressionQuality, _logger);
+            var finalBytes = compressedBytes ?? imageBytes;
+
+            // 保存到 Lrp 目录
+            var lrpDir = PathManager.EnsureDirectoryExists("Lrp");
+            var safePlate = string.IsNullOrWhiteSpace(plateNumber) ? "unknown" : plateNumber;
+            var fileName = $"{safePlate}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+            var filePath = Path.Combine(lrpDir, fileName);
+            File.WriteAllBytes(filePath, finalBytes);
+
+            var relativePath = PathManager.ToRelativePath(filePath);
+            _logger?.LogInformation("已保存 Lrp 附件: {Path} ({Size} bytes, 原始 {Original} bytes)",
+                relativePath, finalBytes.Length, imageBytes.Length);
+
+            return relativePath;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "保存 Lrp 附件失败: Plate={Plate}", plateNumber);
+            return null;
         }
     }
 

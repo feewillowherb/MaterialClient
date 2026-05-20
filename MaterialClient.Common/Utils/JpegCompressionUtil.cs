@@ -12,6 +12,12 @@ namespace MaterialClient.Common.Utils;
 public static class JpegCompressionUtil
 {
     /// <summary>
+    ///     Lrp 图片压缩质量（90），保持车牌识别清晰度同时减少存储空间。
+    ///     适用于 UrbanMode = 201 的车牌识别图片压缩。
+    /// </summary>
+    public const int LrpCompressionQuality = 90;
+
+    /// <summary>
     ///     Try to compress JPEG bytes in memory by re-encoding at the specified quality.
     ///     Quality >= 100 returns the original bytes immediately (skip, zero overhead).
     ///     On any exception, logs a warning and returns null (caller should use original bytes).

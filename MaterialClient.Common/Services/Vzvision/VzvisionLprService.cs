@@ -6,6 +6,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus.Local;
@@ -53,6 +54,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
 
     private readonly ILogger<VzvisionLprService>? _logger;
     private readonly ILocalEventBus _localEventBus;
+    private readonly ISettingsService _settingsService;
 
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _configs = new(
         StringComparer.Ordinal);
@@ -67,9 +69,11 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
 
     private bool _sdkSetupDone;
     private bool _started;
+    private WeighingMode _cachedWeighingMode = WeighingMode.Standard;
 
-    public VzvisionLprService(ILocalEventBus localEventBus, ILogger<VzvisionLprService>? logger = null)
+    public VzvisionLprService(ISettingsService settingsService, ILocalEventBus localEventBus, ILogger<VzvisionLprService>? logger = null)
     {
+        _settingsService = settingsService;
         _localEventBus = localEventBus;
         _logger = logger;
     }
@@ -92,6 +96,18 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     public async Task<bool> StartAsync()
     {
         await Task.CompletedTask;
+
+        // 缓存当前称重模式（用于 Lrp 附件保存判断）
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            _cachedWeighingMode = settings.SystemSettings.DefaultWeighingMode;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "读取称重模式设置失败，使用默认值");
+        }
+
         lock (_sync)
         {
             if (_started)
@@ -325,8 +341,6 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
         IntPtr pImgPlateClip)
     {
         _ = pUserData;
-        _ = pImgFull;
-        _ = pImgPlateClip;
         _ = eResultType;
 
         if (uNumPlates == 0 || pResult == IntPtr.Zero)
@@ -355,13 +369,17 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
             var color = MapColor(plate.nColor);
             var deviceName = cfg.Name;
 
+            // 提取 Lrp 图片（仅 UrbanMode），从 pImgFull 提取全场景图
+            var lrpPath = TrySaveVzLrpAttachment(pImgFull, license);
+
             _ = _localEventBus.PublishAsync(new LicensePlateRecognizedEventData
             {
                 PlateNumber = license,
                 ColorType = color,
                 DeviceType = LprDeviceType.Vzvision,
                 DeviceName = deviceName,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
+                LrpImagePath = lrpPath
             });
         }
         catch (Exception ex)
@@ -370,6 +388,83 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
         }
 
         return 0;
+    }
+
+    /// <summary>
+    ///     尝试保存 Vzvision Lrp 车牌识别图片（仅 UrbanMode = 201 时保存）
+    ///     从 Vzvision SDK 回调的 pImgFull 提取图片数据，压缩后保存到磁盘
+    /// </summary>
+    /// <param name="pImgFull">Vzvision SDK 回调中的全场景图信息指针</param>
+    /// <param name="plateNumber">车牌号（用于文件名）</param>
+    /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
+    private string? TrySaveVzLrpAttachment(IntPtr pImgFull, string plateNumber)
+    {
+        // 仅 UrbanMode = 201 时保存 Lrp 附件
+        if (_cachedWeighingMode != WeighingMode.UrbanMode)
+            return null;
+
+        if (pImgFull == IntPtr.Zero)
+            return null;
+
+        try
+        {
+            // 从 VZ_LPRC_IMAGE_INFO 结构提取图片数据
+            var imgInfo = Marshal.PtrToStructure<VzvisionSdk.VZ_LPRC_IMAGE_INFO>(pImgFull);
+            if (imgInfo.pBuffer == IntPtr.Zero)
+                return null;
+
+            // 计算图片数据大小（宽 × 高 × 字节深度，简单估算）
+            // Vzvision SDK 通常返回 JPEG 格式的图片数据
+            var bufferSize = (int)(imgInfo.uWidth * imgInfo.uHeight * 3); // 最大可能大小
+            if (bufferSize <= 0 || bufferSize > 10 * 1024 * 1024) // 安全限制：最大 10MB
+                return null;
+
+            var imageBytes = new byte[bufferSize];
+            Marshal.Copy(imgInfo.pBuffer, imageBytes, 0, bufferSize);
+
+            // 尝试找到 JPEG 结束标记 (FFD9) 以确定实际数据长度
+            var actualLength = FindJpegEndMarker(imageBytes);
+            if (actualLength > 0)
+            {
+                Array.Resize(ref imageBytes, actualLength);
+            }
+
+            // 使用 JpegCompressionUtil 压缩（Lrp 专用质量）
+            var compressedBytes = JpegCompressionUtil.TryCompressJpegBytes(
+                imageBytes, JpegCompressionUtil.LrpCompressionQuality, _logger);
+            var finalBytes = compressedBytes ?? imageBytes;
+
+            // 保存到 Lrp 目录
+            var lrpDir = PathManager.EnsureDirectoryExists("Lrp");
+            var safePlate = string.IsNullOrWhiteSpace(plateNumber) ? "unknown" : plateNumber;
+            var fileName = $"{safePlate}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+            var filePath = Path.Combine(lrpDir, fileName);
+            File.WriteAllBytes(filePath, finalBytes);
+
+            var relativePath = PathManager.ToRelativePath(filePath);
+            _logger?.LogInformation("已保存 Vzvision Lrp 附件: {Path} ({Size} bytes)",
+                relativePath, finalBytes.Length);
+
+            return relativePath;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "保存 Vzvision Lrp 附件失败: Plate={Plate}", plateNumber);
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     查找 JPEG 结束标记 (FFD9) 以确定实际数据长度
+    /// </summary>
+    private static int FindJpegEndMarker(byte[] data)
+    {
+        for (var i = data.Length - 1; i >= 1; i--)
+        {
+            if (data[i - 1] == 0xFF && data[i] == 0xD9)
+                return i + 1;
+        }
+        return -1;
     }
 
     private static VzvisionColorType MapColor(int nColor)
