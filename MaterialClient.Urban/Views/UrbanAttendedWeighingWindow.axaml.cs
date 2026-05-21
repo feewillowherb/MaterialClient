@@ -3,10 +3,11 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using MaterialClient.Urban.ViewModels;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Urban.Views;
 
-public partial class UrbanAttendedWeighingWindow : Window
+public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
 {
     /// <summary>
     ///     Creates the window (for ABP DI mode - ViewModel resolved from container)
@@ -40,10 +41,10 @@ public partial class UrbanAttendedWeighingWindow : Window
             BeginMoveDrag(e);
     }
 
-    private void OnMinimizeClick(object? sender, RoutedEventArgs e)
+    private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
         => WindowState = WindowState.Minimized;
 
-    private void OnCloseClick(object? sender, RoutedEventArgs e)
+    private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
         => Close();
 
     private void OnTabClick(object? sender, RoutedEventArgs e)

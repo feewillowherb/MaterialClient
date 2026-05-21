@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
@@ -7,6 +8,8 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Local;
 
@@ -27,29 +30,13 @@ public record DeviceStatusDisplay(string DeviceName, bool IsOnline)
 ///     Subscribes to weighing pipeline events via ILocalEventBus to drive UI updates
 ///     Uses Common.Entities.WeighingRecord directly (no local duplicate model)
 /// </summary>
-public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable
+public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
 {
     private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IAttendedWeighingService _attendedWeighingService;
     private readonly ILogger<UrbanAttendedWeighingViewModel> _logger;
-    private readonly List<IDisposable> _subscriptions = [];
-
-    private ObservableCollection<WeighingRecord> _weighingRecords = [];
-    private ObservableCollection<DeviceStatusDisplay> _deviceStatuses = [];
-    private WeighingRecord? _selectedRecord;
-    private string _currentWeight = "0.00";
-    private string _weightStatus = "等待上磅";
-    private string _weightStatusColor = "#94A3B8";
-
-    // Filter / search state
-    private string _activeTab = "全部";
-    private string _searchText = "";
-    private DateTime? _startTime;
-    private DateTime? _endTime;
-    private int _currentPage = 1;
-    private int _totalPages = 1;
-    private int _totalCount;
+    private readonly CompositeDisposable _subscriptions = [];
 
     private const int PageSize = 20;
 
@@ -71,34 +58,44 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable
     public void Initialize()
     {
         // Subscribe to WeighingRecordCreatedEventData to refresh list
-        var recordCreatedSub = _localEventBus
-            .Subscribe<WeighingRecordCreatedEventData>(async eventData =>
-            {
-                try
+        _subscriptions.Add(
+            _localEventBus
+                .Subscribe<WeighingRecordCreatedEventData>(async eventData =>
                 {
-                    await ReloadRecordsAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to handle WeighingRecordCreatedEventData");
-                }
-            });
-        _subscriptions.Add(recordCreatedSub);
+                    try
+                    {
+                        await ReloadRecordsAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to handle WeighingRecordCreatedEventData");
+                    }
+                }));
 
         // Subscribe to StatusChangedEventData to update status text
-        var statusChangedSub = _localEventBus
-            .Subscribe<StatusChangedEventData>(async eventData =>
-            {
-                try
+        _subscriptions.Add(
+            _localEventBus
+                .Subscribe<StatusChangedEventData>(async eventData =>
                 {
-                    UpdateStatusDisplay(eventData.Status);
-                }
-                catch (Exception ex)
+                    try
+                    {
+                        UpdateStatusDisplay(eventData.Status);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to handle StatusChangedEventData");
+                    }
+                }));
+
+        // Subscribe to ActiveTab changes to trigger record reload
+        _subscriptions.Add(
+            this.WhenAnyValue(x => x.ActiveTab)
+                .Skip(1) // Skip initial value
+                .Subscribe(tabName =>
                 {
-                    _logger.LogError(ex, "Failed to handle StatusChangedEventData");
-                }
-            });
-        _subscriptions.Add(statusChangedSub);
+                    CurrentPage = 1;
+                    _ = ReloadRecordsAsync();
+                }));
 
         _logger.LogInformation("UrbanAttendedWeighingViewModel event subscriptions initialized");
     }
@@ -119,127 +116,80 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable
     /// <summary>
     ///     Weighing records list (using Common.Entities.WeighingRecord)
     /// </summary>
-    public ObservableCollection<WeighingRecord> WeighingRecords
-    {
-        get => _weighingRecords;
-        set => this.RaiseAndSetIfChanged(ref _weighingRecords, value);
-    }
+    [Reactive]
+    public ObservableCollection<WeighingRecord> WeighingRecords { get; set; } = [];
 
     /// <summary>
     ///     Device status list
     /// </summary>
-    public ObservableCollection<DeviceStatusDisplay> DeviceStatuses
-    {
-        get => _deviceStatuses;
-        set => this.RaiseAndSetIfChanged(ref _deviceStatuses, value);
-    }
+    [Reactive]
+    public ObservableCollection<DeviceStatusDisplay> DeviceStatuses { get; set; } = [];
 
     /// <summary>
     ///     Currently selected weighing record
     /// </summary>
-    public WeighingRecord? SelectedRecord
-    {
-        get => _selectedRecord;
-        set => this.RaiseAndSetIfChanged(ref _selectedRecord, value);
-    }
+    [Reactive]
+    public WeighingRecord? SelectedRecord { get; set; }
 
     /// <summary>
     ///     Current weight display
     /// </summary>
-    public string CurrentWeight
-    {
-        get => _currentWeight;
-        set => this.RaiseAndSetIfChanged(ref _currentWeight, value);
-    }
+    [Reactive]
+    public string CurrentWeight { get; set; } = "0.00";
 
     /// <summary>
     ///     Weight status text
     /// </summary>
-    public string WeightStatus
-    {
-        get => _weightStatus;
-        set => this.RaiseAndSetIfChanged(ref _weightStatus, value);
-    }
+    [Reactive]
+    public string WeightStatus { get; set; } = "等待上磅";
 
     /// <summary>
     ///     Weight status color
     /// </summary>
-    public string WeightStatusColor
-    {
-        get => _weightStatusColor;
-        set => this.RaiseAndSetIfChanged(ref _weightStatusColor, value);
-    }
+    [Reactive]
+    public string WeightStatusColor { get; set; } = "#94A3B8";
 
     /// <summary>
     ///     Currently active tab (All/Normal/Abnormal)
     /// </summary>
-    public string ActiveTab
-    {
-        get => _activeTab;
-        set
-        {
-            var changed = _activeTab != value;
-            this.RaiseAndSetIfChanged(ref _activeTab, value);
-            if (changed)
-            {
-                _ = ReloadRecordsAsync();
-            }
-        }
-    }
+    [Reactive]
+    public string ActiveTab { get; set; } = "全部";
 
     /// <summary>
     ///     Search keyword (plate number fuzzy query)
     /// </summary>
-    public string SearchText
-    {
-        get => _searchText;
-        set => this.RaiseAndSetIfChanged(ref _searchText, value);
-    }
+    [Reactive]
+    public string SearchText { get; set; } = "";
 
     /// <summary>
     ///     Query start time
     /// </summary>
-    public DateTime? StartTime
-    {
-        get => _startTime;
-        set => this.RaiseAndSetIfChanged(ref _startTime, value);
-    }
+    [Reactive]
+    public DateTime? StartTime { get; set; }
 
     /// <summary>
     ///     Query end time
     /// </summary>
-    public DateTime? EndTime
-    {
-        get => _endTime;
-        set => this.RaiseAndSetIfChanged(ref _endTime, value);
-    }
+    [Reactive]
+    public DateTime? EndTime { get; set; }
 
     /// <summary>
     ///     Current page number
     /// </summary>
-    public int CurrentPage
-    {
-        get => _currentPage;
-        set => this.RaiseAndSetIfChanged(ref _currentPage, value);
-    }
+    [Reactive]
+    public int CurrentPage { get; set; } = 1;
 
     /// <summary>
     ///     Total page count
     /// </summary>
-    public int TotalPages
-    {
-        get => _totalPages;
-        set => this.RaiseAndSetIfChanged(ref _totalPages, value);
-    }
+    [Reactive]
+    public int TotalPages { get; set; } = 1;
 
     /// <summary>
     ///     Total record count
     /// </summary>
-    public int TotalCount
-    {
-        get => _totalCount;
-        set => this.RaiseAndSetIfChanged(ref _totalCount, value);
-    }
+    [Reactive]
+    public int TotalCount { get; set; }
 
     #endregion
 
@@ -251,8 +201,6 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable
     public void SetFilterTab(string tab)
     {
         ActiveTab = tab;
-        CurrentPage = 1;
-        _ = ReloadRecordsAsync();
     }
 
     /// <summary>
@@ -394,18 +342,6 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable
 
     public void Dispose()
     {
-        foreach (var subscription in _subscriptions)
-        {
-            try
-            {
-                subscription.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to dispose event subscription");
-            }
-        }
-
-        _subscriptions.Clear();
+        _subscriptions.Dispose();
     }
 }
