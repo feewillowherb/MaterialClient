@@ -51,6 +51,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
     private readonly IPlateNumberService _plateNumberService;
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<WeighingRecordService> _logger;
+    private readonly IWeighingPipelineStrategy _pipelineStrategy;
 
     public WeighingRecordService(
         IRepository<WeighingRecord, long> weighingRecordRepository,
@@ -60,7 +61,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         ISettingsService settingsService,
         IPlateNumberService plateNumberService,
         ILocalEventBus localEventBus,
-        ILogger<WeighingRecordService> logger)
+        ILogger<WeighingRecordService> logger,
+        IWeighingPipelineStrategy? pipelineStrategy = null)
     {
         _weighingRecordRepository = weighingRecordRepository;
         _attachmentFileRepository = attachmentFileRepository;
@@ -70,6 +72,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         _plateNumberService = plateNumberService;
         _localEventBus = localEventBus;
         _logger = logger;
+        _pipelineStrategy = pipelineStrategy ?? new DefaultWeighingPipelineStrategy(
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultWeighingPipelineStrategy>());
     }
 
     /// <inheritdoc />
@@ -214,14 +218,30 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             {
                 await _weighingRecordRepository.UpdateAsync(weighingRecord);
                 await uow.CompleteAsync();
-                await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+
+                if (!_pipelineStrategy.ShouldSkipWaybillMatching())
+                {
+                    await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+                }
+                else
+                {
+                    _logger.LogDebug("UrbanMode: 跳过 TryMatchEvent 发布 for record {Id}", weighingRecord.Id);
+                }
             }
             else
             {
                 await uow.CompleteAsync();
                 _logger.LogDebug("Plate number and delivery type unchanged for weighing record {Id}",
                     recordId.Value);
-                await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+
+                if (!_pipelineStrategy.ShouldSkipWaybillMatching())
+                {
+                    await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
+                }
+                else
+                {
+                    _logger.LogDebug("UrbanMode: 跳过 TryMatchEvent 发布 for record {Id}", weighingRecord.Id);
+                }
             }
         }
         catch (Exception ex)

@@ -32,6 +32,7 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
     private readonly ISettingsService _settingsService;
     private readonly ISoundDeviceService? _soundDeviceService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
+    private readonly IWeighingPipelineStrategy _pipelineStrategy;
 
     // Configuration fields
     private decimal _minWeightThreshold;
@@ -64,6 +65,7 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
         IConfiguration configuration,
         ILocalEventBus localEventBus,
         ISettingsService settingsService,
+        IWeighingPipelineStrategy? pipelineStrategy = null,
         ISoundDeviceService? soundDeviceService = null)
     {
         _stateManager = stateManager;
@@ -76,6 +78,8 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
         _configuration = configuration;
         _localEventBus = localEventBus;
         _settingsService = settingsService;
+        _pipelineStrategy = pipelineStrategy ?? new DefaultWeighingPipelineStrategy(
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultWeighingPipelineStrategy>());
         _soundDeviceService = soundDeviceService;
     }
 
@@ -434,6 +438,10 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
         AttendedWeighingStatus newStatus,
         decimal weight)
     {
+        // Strategy extension point for mode-specific behavior
+        EnqueueAsyncOperation(async () =>
+            await _pipelineStrategy.OnStatusTransitionAsync(previousStatus, newStatus, weight));
+
         // Play audio announcements
         EnqueueAsyncOperation(async () =>
         {
