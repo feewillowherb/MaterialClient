@@ -27,6 +27,30 @@ namespace MaterialClient.Urban;
 )]
 public class MaterialClientUrbanModule : AbpModule
 {
+    public override void PreConfigureServices(ServiceConfigurationContext context)
+    {
+        // Load additional configuration files (matching MaterialClient pattern)
+        var existingConfig = context.Services.GetConfiguration();
+        if (existingConfig != null)
+        {
+            var appDirectory = AppContext.BaseDirectory;
+            var configBuilder = new ConfigurationBuilder();
+
+            // Add existing configuration (includes appsettings.json loaded by ABP)
+            configBuilder.AddConfiguration(existingConfig);
+
+            // Add appsettings.secret.json if it exists (optional, will override appsettings.json values)
+            var secretConfigPath = Path.Combine(appDirectory, "appsettings.secret.json");
+            if (File.Exists(secretConfigPath))
+            {
+                configBuilder.AddJsonFile(secretConfigPath, optional: true, reloadOnChange: true);
+            }
+
+            var enhancedConfig = configBuilder.Build();
+            context.Services.ReplaceConfiguration(enhancedConfig);
+        }
+    }
+
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         var services = context.Services;
