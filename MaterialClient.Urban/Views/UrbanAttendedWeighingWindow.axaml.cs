@@ -41,6 +41,32 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
             BeginMoveDrag(e);
     }
 
+    private void ResizeGrip_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+
+        var edge = ResolveResizeEdge(sender);
+        if (edge is null)
+            return;
+
+        BeginResizeDrag(edge.Value, e);
+    }
+
+    private static WindowEdge? ResolveResizeEdge(object? sender) =>
+        sender switch
+        {
+            Border { Name: "ResizeNorth" } => WindowEdge.North,
+            Border { Name: "ResizeSouth" } => WindowEdge.South,
+            Border { Name: "ResizeWest" } => WindowEdge.West,
+            Border { Name: "ResizeEast" } => WindowEdge.East,
+            Border { Name: "ResizeNorthWest" } => WindowEdge.NorthWest,
+            Border { Name: "ResizeNorthEast" } => WindowEdge.NorthEast,
+            Border { Name: "ResizeSouthWest" } => WindowEdge.SouthWest,
+            Border { Name: "ResizeSouthEast" } => WindowEdge.SouthEast,
+            _ => null,
+        };
+
     private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
         => WindowState = WindowState.Minimized;
 

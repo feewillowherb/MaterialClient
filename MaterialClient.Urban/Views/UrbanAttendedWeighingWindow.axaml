@@ -8,13 +8,13 @@
         Width="1280" Height="800"
         MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen"
-        SystemDecorations="None"
+        SystemDecorations="BorderOnly"
         CanResize="True"
         Icon="/Assets/fd-ico.ico"
         Background="{DynamicResource BackgroundGray}">
 
     <Grid>
-        <Grid x:Name="ContentGrid">
+        <Grid x:Name="ContentGrid" ZIndex="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="48" />
                 <RowDefinition Height="72" />
@@ -308,5 +308,33 @@
                 </ItemsControl>
             </Border>
         </Grid>
+
+        <!-- Wider resize grips; requires BorderOnly so Win32 WS_THICKFRAME is enabled -->
+        <Border x:Name="ResizeNorth" Height="6" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeSouth" Height="6" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeWest" Width="6" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeWestEast"
+                Margin="0,6,0,6" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeEast" Width="6" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeWestEast"
+                Margin="0,6,0,6" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeNorthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
+                Background="Transparent" Cursor="TopLeftCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeNorthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Background="Transparent" Cursor="TopRightCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeSouthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Background="Transparent" Cursor="BottomLeftCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeSouthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Background="Transparent" Cursor="BottomRightCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
     </Grid>
 </Window>
