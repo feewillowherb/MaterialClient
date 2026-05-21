@@ -6,12 +6,12 @@ using MaterialClient.Urban.ViewModels;
 
 namespace MaterialClient.Urban.Views;
 
-public partial class WeighingSystemWindow : Window
+public partial class UrbanAttendedWeighingWindow : Window
 {
     /// <summary>
-    ///     Creates the window with a default ViewModel (for design-time or standalone mode)
+    ///     Creates the window (for ABP DI mode - ViewModel resolved from container)
     /// </summary>
-    public WeighingSystemWindow()
+    public UrbanAttendedWeighingWindow()
     {
         InitializeComponent();
     }
@@ -19,7 +19,7 @@ public partial class WeighingSystemWindow : Window
     /// <summary>
     ///     Creates the window with a pre-configured ViewModel (for DI mode)
     /// </summary>
-    public WeighingSystemWindow(WeighingSystemViewModel viewModel)
+    public UrbanAttendedWeighingWindow(UrbanAttendedWeighingViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
@@ -32,7 +32,7 @@ public partial class WeighingSystemWindow : Window
     /// <summary>
     ///     Gets the current ViewModel
     /// </summary>
-    public WeighingSystemViewModel? ViewModel => DataContext as WeighingSystemViewModel;
+    public UrbanAttendedWeighingViewModel? ViewModel => DataContext as UrbanAttendedWeighingViewModel;
 
     private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {

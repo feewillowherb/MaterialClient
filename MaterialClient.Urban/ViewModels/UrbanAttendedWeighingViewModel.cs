@@ -5,8 +5,6 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
-using MaterialClient.Common.Services.AttendedWeighing;
-using MaterialClient.Urban.Models;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Volo.Abp.Domain.Repositories;
@@ -15,19 +13,30 @@ using Volo.Abp.EventBus.Local;
 namespace MaterialClient.Urban.ViewModels;
 
 /// <summary>
-///     称重系统主界面 ViewModel
-///     通过 ILocalEventBus 订阅称重管线事件，驱动 UI 更新
+///     Device status display model (inline, replaces deleted Models/DeviceStatus.cs)
 /// </summary>
-public class WeighingSystemViewModel : ReactiveObject, IDisposable
+public record DeviceStatusDisplay(string DeviceName, bool IsOnline)
+{
+    public string StatusText => IsOnline ? "在线" : "离线";
+    public string StatusColor => IsOnline ? "#4ADE80" : "#EF4444";
+    public string DotColor => IsOnline ? "#4ADE80" : "#EF4444";
+}
+
+/// <summary>
+///     Urban attended weighing ViewModel
+///     Subscribes to weighing pipeline events via ILocalEventBus to drive UI updates
+///     Uses Common.Entities.WeighingRecord directly (no local duplicate model)
+/// </summary>
+public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable
 {
     private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IAttendedWeighingService _attendedWeighingService;
-    private readonly ILogger<WeighingSystemViewModel> _logger;
+    private readonly ILogger<UrbanAttendedWeighingViewModel> _logger;
     private readonly List<IDisposable> _subscriptions = [];
 
     private ObservableCollection<WeighingRecord> _weighingRecords = [];
-    private ObservableCollection<DeviceStatus> _deviceStatuses = [];
+    private ObservableCollection<DeviceStatusDisplay> _deviceStatuses = [];
     private WeighingRecord? _selectedRecord;
     private string _currentWeight = "0.00";
     private string _weightStatus = "等待上磅";
@@ -44,11 +53,11 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
 
     private const int PageSize = 20;
 
-    public WeighingSystemViewModel(
+    public UrbanAttendedWeighingViewModel(
         ILocalEventBus localEventBus,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IAttendedWeighingService attendedWeighingService,
-        ILogger<WeighingSystemViewModel> logger)
+        ILogger<UrbanAttendedWeighingViewModel> logger)
     {
         _localEventBus = localEventBus;
         _weighingRecordRepository = weighingRecordRepository;
@@ -57,11 +66,11 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     初始化事件订阅（在 UI 线程安全的上下文中调用）
+    ///     Initialize event subscriptions (call in UI-thread-safe context)
     /// </summary>
     public void Initialize()
     {
-        // 3.1 订阅 WeighingRecordCreatedEventData 刷新列表
+        // Subscribe to WeighingRecordCreatedEventData to refresh list
         var recordCreatedSub = _localEventBus
             .Subscribe<WeighingRecordCreatedEventData>(async eventData =>
             {
@@ -71,12 +80,12 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "处理 WeighingRecordCreatedEventData 失败");
+                    _logger.LogError(ex, "Failed to handle WeighingRecordCreatedEventData");
                 }
             });
         _subscriptions.Add(recordCreatedSub);
 
-        // 3.2 订阅 StatusChangedEventData 更新状态文案
+        // Subscribe to StatusChangedEventData to update status text
         var statusChangedSub = _localEventBus
             .Subscribe<StatusChangedEventData>(async eventData =>
             {
@@ -86,19 +95,16 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "处理 StatusChangedEventData 失败");
+                    _logger.LogError(ex, "Failed to handle StatusChangedEventData");
                 }
             });
         _subscriptions.Add(statusChangedSub);
 
-        // 3.3 订阅重量更新（通过 IAttendedWeighingService 的状态机间接获取）
-        // CurrentWeight 通过设备回调在 AttendedWeighingService 内部更新
-        // 这里通过 ILocalEventBus 订阅 PlateNumberChangedEventData 等事件来同步
-        _logger.LogInformation("WeighingSystemViewModel 事件订阅初始化完成");
+        _logger.LogInformation("UrbanAttendedWeighingViewModel event subscriptions initialized");
     }
 
     /// <summary>
-    ///     设置当前重量（由外部调用，如从设备回调中更新）
+    ///     Set current weight (called from device callback)
     /// </summary>
     public void UpdateCurrentWeight(decimal weight)
     {
@@ -111,7 +117,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     #region Properties
 
     /// <summary>
-    ///     称重记录列表
+    ///     Weighing records list (using Common.Entities.WeighingRecord)
     /// </summary>
     public ObservableCollection<WeighingRecord> WeighingRecords
     {
@@ -120,16 +126,16 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     设备状态列表
+    ///     Device status list
     /// </summary>
-    public ObservableCollection<DeviceStatus> DeviceStatuses
+    public ObservableCollection<DeviceStatusDisplay> DeviceStatuses
     {
         get => _deviceStatuses;
         set => this.RaiseAndSetIfChanged(ref _deviceStatuses, value);
     }
 
     /// <summary>
-    ///     当前选中的称重记录
+    ///     Currently selected weighing record
     /// </summary>
     public WeighingRecord? SelectedRecord
     {
@@ -138,7 +144,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     当前重量显示
+    ///     Current weight display
     /// </summary>
     public string CurrentWeight
     {
@@ -147,7 +153,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     称重状态文本
+    ///     Weight status text
     /// </summary>
     public string WeightStatus
     {
@@ -156,7 +162,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     称重状态颜色
+    ///     Weight status color
     /// </summary>
     public string WeightStatusColor
     {
@@ -165,14 +171,16 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     当前激活的 Tab（全部/正常/异常）
+    ///     Currently active tab (All/Normal/Abnormal)
     /// </summary>
     public string ActiveTab
     {
         get => _activeTab;
         set
         {
-            if (this.RaiseAndSetIfChanged(ref _activeTab, value))
+            var changed = _activeTab != value;
+            this.RaiseAndSetIfChanged(ref _activeTab, value);
+            if (changed)
             {
                 _ = ReloadRecordsAsync();
             }
@@ -180,7 +188,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     搜索关键词（车牌号模糊查询）
+    ///     Search keyword (plate number fuzzy query)
     /// </summary>
     public string SearchText
     {
@@ -189,7 +197,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     查询开始时间
+    ///     Query start time
     /// </summary>
     public DateTime? StartTime
     {
@@ -198,7 +206,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     查询结束时间
+    ///     Query end time
     /// </summary>
     public DateTime? EndTime
     {
@@ -207,7 +215,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     当前页码
+    ///     Current page number
     /// </summary>
     public int CurrentPage
     {
@@ -216,7 +224,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     总页数
+    ///     Total page count
     /// </summary>
     public int TotalPages
     {
@@ -225,7 +233,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     总记录数
+    ///     Total record count
     /// </summary>
     public int TotalCount
     {
@@ -238,7 +246,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     #region Public Methods
 
     /// <summary>
-    ///     3.4 Tab 筛选：切换筛选 Tab
+    ///     Tab filter: switch filter tab
     /// </summary>
     public void SetFilterTab(string tab)
     {
@@ -248,7 +256,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     3.5 搜索：执行搜索
+    ///     Search: execute search
     /// </summary>
     public void Search()
     {
@@ -257,7 +265,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     3.6 分页：上一页
+    ///     Pagination: previous page
     /// </summary>
     public void PreviousPage()
     {
@@ -269,7 +277,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     3.6 分页：下一页
+    ///     Pagination: next page
     /// </summary>
     public void NextPage()
     {
@@ -281,15 +289,15 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    ///     加载设备状态（占位，后续接入真实设备状态）
+    ///     Load device statuses (placeholder for real device status)
     /// </summary>
     public void LoadDeviceStatuses()
     {
         DeviceStatuses =
         [
-            new() { DeviceName = "地磅设备", IsOnline = true },
-            new() { DeviceName = "摄像头", IsOnline = true },
-            new() { DeviceName = "车牌识别", IsOnline = false },
+            new("地磅设备", true),
+            new("摄像头", true),
+            new("车牌识别", false),
         ];
     }
 
@@ -298,7 +306,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
     #region Private Methods
 
     /// <summary>
-    ///     从本地仓储重新加载称重记录（带筛选、搜索、分页）
+    ///     Reload weighing records from local repository (with filter, search, pagination)
     /// </summary>
     private async Task ReloadRecordsAsync()
     {
@@ -307,7 +315,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
             var query = (await _weighingRecordRepository.GetQueryableAsync())
                 .Where(r => r.WeighingMode == WeighingMode.UrbanMode);
 
-            // 3.4 Tab 筛选
+            // Tab filter
             query = ActiveTab switch
             {
                 "正常" => query.Where(r => r.SyncStatus != SyncStatus.Failed),
@@ -315,13 +323,13 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
                 _ => query // "全部"
             };
 
-            // 3.5 搜索：车牌号模糊查询
+            // Search: plate number fuzzy query
             if (!string.IsNullOrWhiteSpace(SearchText))
             {
                 query = query.Where(r => r.PlateNumber != null && r.PlateNumber.Contains(SearchText));
             }
 
-            // 3.5 搜索：时间范围查询
+            // Search: time range query
             if (StartTime.HasValue)
             {
                 query = query.Where(r => r.AddDate >= StartTime.Value);
@@ -332,19 +340,19 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
                 query = query.Where(r => r.AddDate <= EndTime.Value);
             }
 
-            // 计算总数
+            // Calculate total count
             var totalCount = query.Count();
             TotalCount = totalCount;
             TotalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / PageSize) : 1;
 
-            // 3.6 分页查询
+            // Paginated query
             var records = query
                 .OrderByDescending(r => r.AddDate)
                 .Skip((CurrentPage - 1) * PageSize)
                 .Take(PageSize)
                 .ToList();
 
-            // 在 UI 线程更新集合
+            // Update collection on UI thread
             RxApp.MainThreadScheduler.Schedule(() =>
             {
                 WeighingRecords = new ObservableCollection<WeighingRecord>(records);
@@ -352,12 +360,12 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "重新加载称重记录失败");
+            _logger.LogError(ex, "Failed to reload weighing records");
         }
     }
 
     /// <summary>
-    ///     3.2 根据称重状态更新状态文案和颜色
+    ///     Update status text and color based on weighing status
     /// </summary>
     private void UpdateStatusDisplay(AttendedWeighingStatus status)
     {
@@ -394,7 +402,7 @@ public class WeighingSystemViewModel : ReactiveObject, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "释放事件订阅失败");
+                _logger.LogWarning(ex, "Failed to dispose event subscription");
             }
         }
 

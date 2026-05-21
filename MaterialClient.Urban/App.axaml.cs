@@ -1,95 +1,73 @@
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
-using MaterialClient.Common.Services.AttendedWeighing;
-using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using Volo.Abp;
 
 namespace MaterialClient.Urban;
 
 public class App : Application
 {
-    private IAttendedWeighingService? _attendedWeighingService;
-    private WeighingSystemViewModel? _viewModel;
+    private IAbpApplicationWithInternalServiceProvider? _abpApplication;
+    private UrbanAttendedWeighingViewModel? _viewModel;
 
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override void OnFrameworkInitializationCompleted()
+    public override async void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Build service collection for Urban mode (no ABP container, manual DI)
-            var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
-
-            // Register IWeighingPipelineStrategy → UrbanWeighingPipelineStrategy
-            services.AddSingleton<IWeighingPipelineStrategy, UrbanWeighingPipelineStrategy>();
-
-            // Register IUrbanWeighingService
-            services.AddSingleton<IUrbanWeighingService, UrbanWeighingService>();
-
-            // Note: Other services (IAttendedWeighingService, repositories, etc.)
-            // are expected to be registered by the ABP module initialization
-            // from MaterialClient.Common. For standalone Urban mode, the
-            // ViewModel receives them via constructor injection.
-
-            // Urban: Perform static license check in background (no UI exposure)
-            _ = Task.Run(async () =>
+            try
             {
-                try
+                // Create and initialize ABP application with Autofac (matching MaterialClient pattern)
+                _abpApplication = await AbpApplicationFactory.CreateAsync<MaterialClientUrbanModule>(options =>
                 {
-                    var checker = new StaticLicenseChecker();
-                    var settings = new SystemSettings();
-                    var result = await checker.CheckLicenseAsync(settings.LicenseFilePath);
-                    Console.WriteLine($"[Urban] 静态授权检查: {(result.IsSuccess ? "通过" : "失败")} - {result.Message}");
-                }
-                catch (Exception ex)
+                    options.UseAutofac();
+                });
+
+                await _abpApplication.InitializeAsync();
+
+                // Resolve window from ABP container
+                var window = _abpApplication.ServiceProvider.GetRequiredService<UrbanAttendedWeighingWindow>();
+                _viewModel = window.ViewModel;
+
+                desktop.MainWindow = window;
+
+                // Start ViewModel initialization after window is shown
+                desktop.MainWindow.Opened += (_, _) =>
                 {
-                    Console.Error.WriteLine($"[Urban] 静态授权检查异常: {ex.Message}");
-                }
-            });
-
-            // Urban: Directly open the weighing main window (no login, no authorization UI)
-            var window = new WeighingSystemWindow();
-
-            // Create ViewModel and wire up events
-            // Note: In production, these dependencies come from ABP DI.
-            // For now, we pass through the window's DataContext setup
-            _viewModel = window.DataContext as WeighingSystemViewModel;
-            _viewModel?.Initialize();
-
-            desktop.MainWindow = window;
-
-            // Start the attended weighing service after window is shown
-            desktop.MainWindow.Opened += async (_, _) =>
-            {
-                try
-                {
-                    // The IAttendedWeighingService is resolved from the window's DataContext
-                    // which should have received it via DI
-                    if (_viewModel != null)
+                    try
                     {
-                        _viewModel.LoadDeviceStatuses();
-                        Console.WriteLine("[Urban] ViewModel 初始化完成，设备状态已加载");
+                        _viewModel?.Initialize();
+                        _viewModel?.LoadDeviceStatuses();
+                        var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+                        logger?.LogInformation("Urban ViewModel initialized, device statuses loaded");
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine($"[Urban] 启动称重服务失败: {ex.Message}");
-                }
-            };
+                    catch (Exception ex)
+                    {
+                        var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+                        logger?.LogError(ex, "Failed to initialize ViewModel");
+                    }
+                };
 
-            // Register exit handler for resource cleanup
-            desktop.Exit += OnApplicationExit;
+                // Register exit handler for resource cleanup
+                desktop.Exit += OnApplicationExit;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Urban] ABP initialization error: {ex.Message}");
+                desktop.Shutdown();
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -97,21 +75,65 @@ public class App : Application
 
     private async void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
+        var logger = _abpApplication?.ServiceProvider.GetService<ILogger<App>>();
+        logger?.LogInformation("Application exit event triggered, starting cleanup...");
+        var totalSw = Stopwatch.StartNew();
+
         try
         {
-            _viewModel?.Dispose();
-
-            if (_attendedWeighingService != null)
+            var shutdownTask = Task.Run(async () =>
             {
-                await _attendedWeighingService.StopAsync();
-                await _attendedWeighingService.DisposeAsync();
-            }
+                // 1. Dispose ViewModel (release event subscriptions)
+                _viewModel?.Dispose();
+                logger?.LogInformation("ViewModel disposed");
 
-            Console.WriteLine("[Urban] 资源清理完成");
+                // 2. Close hardware devices explicitly (before ABP shutdown)
+                if (_abpApplication != null)
+                {
+                    try
+                    {
+                        var deviceManager = _abpApplication.ServiceProvider.GetService<IDeviceManagerService>();
+                        if (deviceManager != null)
+                        {
+                            await deviceManager.CloseAsync();
+                            logger?.LogInformation("Hardware devices closed");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "Error closing hardware devices");
+                    }
+                }
+
+                // 3. Shutdown ABP application
+                if (_abpApplication != null)
+                {
+                    var sw = Stopwatch.StartNew();
+                    logger?.LogInformation("Shutting down ABP application...");
+                    try
+                    {
+                        await _abpApplication.ShutdownAsync();
+                        _abpApplication.Dispose();
+                        _abpApplication = null;
+                        logger?.LogInformation("ABP application shut down ({ElapsedMs}ms)", sw.ElapsedMilliseconds);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "Error shutting down ABP application");
+                    }
+                }
+
+                logger?.LogInformation("Resource cleanup completed (total {TotalMs}ms)", totalSw.ElapsedMilliseconds);
+            });
+
+            if (!shutdownTask.Wait(TimeSpan.FromSeconds(10)))
+            {
+                logger?.LogWarning("Resource cleanup timed out (10s), forcing exit");
+            }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Urban] 资源清理异常: {ex.Message}");
+            logger?.LogError(ex, "Error during application exit, forcing exit");
         }
     }
 }
