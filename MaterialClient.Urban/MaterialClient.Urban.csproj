@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <RootNamespace>MaterialClient.Urban</RootNamespace>
     <Description>城管专用桌面客户端 - 单窗口称重管理系统</Description>
@@ -55,5 +55,7 @@
     <None Include="appsettings.secret.json" Condition="Exists('appsettings.secret.json')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- 窗口图标资源 -->
+    <AvaloniaResource Include="Assets\fd-ico.ico" />
   </ItemGroup>
 </Project>
