@@ -105,6 +105,11 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
 
     /// <summary>
+    ///     同步状态（用于 UrbanMode 上传管线，默认 Pending）
+    /// </summary>
+    public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
+
+    /// <summary>
     ///     物料集合（从 JSON 反序列化）
     /// </summary>
     [NotMapped]
