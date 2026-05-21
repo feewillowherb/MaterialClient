@@ -19,8 +19,8 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
 
-namespace MaterialClient.Urban;
-
+namespace MaterialClient.Urban
+{
 [DependsOn(
     typeof(MaterialClientCommonModule),
     typeof(AbpAutofacModule)
@@ -46,6 +46,11 @@ public class MaterialClientUrbanModule : AbpModule
                 configBuilder.AddJsonFile(secretConfigPath, optional: true, reloadOnChange: true);
             }
 
+            #if DEBUG
+            // Add User Secrets as the last source (highest priority, overrides all config files)
+            configBuilder.AddUserSecrets<MaterialClientUrbanModule>();
+            #endif
+
             var enhancedConfig = configBuilder.Build();
             context.Services.ReplaceConfiguration(enhancedConfig);
         }
@@ -59,12 +64,11 @@ public class MaterialClientUrbanModule : AbpModule
         // Configure Serilog logging with daily rotation (matching MaterialClient pattern)
         ConfigureSerilog(services, configuration);
 
+        // Register IHttpClientFactory for services that depend on it (e.g., SoundDeviceService)
+        services.AddHttpClient();
+
         // Register IWeighingPipelineStrategy -> UrbanWeighingPipelineStrategy
         services.AddSingleton<IWeighingPipelineStrategy, UrbanWeighingPipelineStrategy>();
-
-        // Register Urban window (singleton) and ViewModel (transient - resolved per window)
-        services.AddSingleton<UrbanAttendedWeighingWindow>();
-        services.AddTransient<UrbanAttendedWeighingViewModel>();
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
@@ -156,4 +160,5 @@ public class MaterialClientUrbanModule : AbpModule
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
     }
+}
 }

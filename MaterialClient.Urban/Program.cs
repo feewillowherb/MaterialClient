@@ -1,11 +1,12 @@
 using Avalonia;
+using Avalonia.ReactiveUI;
 using System;
 using System.Globalization;
 using System.Threading;
 
 namespace MaterialClient.Urban;
 
-class Program
+internal sealed class Program
 {
     private const string MutexName = "MaterialClient_Urban_SingleInstance_Mutex";
 
@@ -39,5 +40,6 @@ class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace();
+            .LogToTrace()
+            .UseReactiveUI();
 }
