@@ -8,19 +8,31 @@ namespace MaterialClient.Urban.Views;
 
 public partial class WeighingSystemWindow : Window
 {
-    private readonly WeighingSystemViewModel _viewModel;
-
+    /// <summary>
+    ///     Creates the window with a default ViewModel (for design-time or standalone mode)
+    /// </summary>
     public WeighingSystemWindow()
     {
-        _viewModel = new WeighingSystemViewModel();
-        DataContext = _viewModel;
         InitializeComponent();
-        _viewModel.LoadMockData();
+    }
+
+    /// <summary>
+    ///     Creates the window with a pre-configured ViewModel (for DI mode)
+    /// </summary>
+    public WeighingSystemWindow(WeighingSystemViewModel viewModel)
+    {
+        InitializeComponent();
+        DataContext = viewModel;
 
         // Bind data to controls
-        VehicleList.ItemsSource = _viewModel.WeighingRecords;
-        DeviceStatusList.ItemsSource = _viewModel.DeviceStatuses;
+        VehicleList.ItemsSource = viewModel.WeighingRecords;
+        DeviceStatusList.ItemsSource = viewModel.DeviceStatuses;
     }
+
+    /// <summary>
+    ///     Gets the current ViewModel
+    /// </summary>
+    public WeighingSystemViewModel? ViewModel => DataContext as WeighingSystemViewModel;
 
     private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -37,12 +49,20 @@ public partial class WeighingSystemWindow : Window
     private void OnTabClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button clickedTab) return;
+        if (ViewModel == null) return;
 
         TabAll.Classes.Remove("active");
         TabNormal.Classes.Remove("active");
         TabAbnormal.Classes.Remove("active");
 
         clickedTab.Classes.Add("active");
+
+        // Trigger filter based on clicked tab
+        var tabText = clickedTab.Content?.ToString();
+        if (tabText != null)
+        {
+            ViewModel.SetFilterTab(tabText);
+        }
     }
 
     private void OnRecordClick(object? sender, PointerPressedEventArgs e)
