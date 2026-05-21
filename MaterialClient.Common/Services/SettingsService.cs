@@ -29,6 +29,12 @@ public interface ISettingsService
     Task<WeighingMode> GetWeighingModeAsync();
 
     /// <summary>
+    ///     Get the ProductCode derived from the current WeighingMode setting.
+    ///     Standard -> ProductCode.Standard (5000), SolidWaste -> ProductCode.SolidWaste (5010), UrbanMode -> ProductCode.Urban (5030)
+    /// </summary>
+    Task<ProductCode> GetProductCodeAsync();
+
+    /// <summary>
     ///     Persist default weighing mode from the given product code (e.g. after successful auth).
     /// </summary>
     /// <param name="productCode">Product code chosen for authorization</param>
@@ -154,6 +160,20 @@ public class SettingsService : DomainService, ISettingsService
     }
 
     /// <summary>
+    ///     Get the ProductCode derived from the current WeighingMode setting.
+    /// </summary>
+    public async Task<ProductCode> GetProductCodeAsync()
+    {
+        var weighingMode = await GetWeighingModeAsync();
+        return weighingMode switch
+        {
+            WeighingMode.SolidWaste => ProductCode.SolidWaste,
+            WeighingMode.UrbanMode => ProductCode.Urban,
+            _ => ProductCode.Standard
+        };
+    }
+
+    /// <summary>
     ///     Persist default weighing mode from the given product code (e.g. after successful auth).
     /// </summary>
     [UnitOfWork]
@@ -161,7 +181,12 @@ public class SettingsService : DomainService, ISettingsService
     {
         var settings = await GetSettingsAsync();
         var systemSettings = settings.SystemSettings;
-        systemSettings.DefaultWeighingMode = productCode == ProductCode.SolidWaste ? WeighingMode.SolidWaste : WeighingMode.Standard;
+        systemSettings.DefaultWeighingMode = productCode switch
+        {
+            ProductCode.SolidWaste => WeighingMode.SolidWaste,
+            ProductCode.Urban => WeighingMode.UrbanMode,
+            _ => WeighingMode.Standard
+        };
         settings.SystemSettings = systemSettings;
         await SaveSettingsAsync(settings);
     }
