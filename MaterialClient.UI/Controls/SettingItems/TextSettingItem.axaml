@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MaterialClient.UI.Controls.SettingItems.TextSettingItem"
+             x:Name="Root">
+    <Grid RowDefinitions="Auto,Auto" Margin="0,8">
+        <TextBlock Grid.Row="0" Text="{Binding Label, ElementName=Root}"
+                   FontSize="13" Foreground="#333" VerticalAlignment="Center"
+                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+        <TextBox Grid.Row="1" Text="{Binding Value, ElementName=Root}"
+                 Margin="0,4,0,0" Width="300" HorizontalAlignment="Left" />
+    </Grid>
+</UserControl>

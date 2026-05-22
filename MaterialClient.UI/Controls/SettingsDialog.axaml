@@ -1,0 +1,92 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.UI.ViewModels"
+        xmlns:abstractions="using:MaterialClient.UI.Abstractions"
+        x:Class="MaterialClient.UI.Controls.SettingsDialog"
+        x:DataType="vm:SettingsViewModel"
+        Title="系统设置"
+        Width="800" Height="600"
+        MinWidth="600" MinHeight="400"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White"
+        CanResize="True">
+
+    <Panel>
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Title Bar -->
+        <Border Grid.Row="0" Background="#4169E1" Padding="16,8"
+                PointerPressed="TitleBar_OnPointerPressed">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="系统设置" Foreground="White" FontSize="16" FontWeight="Medium"
+                           VerticalAlignment="Center"
+                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
+                    <Button Classes="titlebar-minimize-button" Content="─" Click="OnMinimizeButtonClick"
+                            Width="36" Height="32" />
+                    <Button Classes="titlebar-close-button" Content="✕" Click="OnCloseButtonClick"
+                            Width="36" Height="32" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Content Area: Navigation + Settings Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="180,*">
+            <!-- Left Navigation Sidebar -->
+            <Border Grid.Column="0" Background="#F8F9FA" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0">
+                <ListBox Name="SectionListBox"
+                         ItemsSource="{Binding Sections}"
+                         SelectedItem="{Binding SelectedSection}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="abstractions:ISettingsSection">
+                            <TextBlock Text="{Binding DisplayName}" FontSize="14" Padding="16,10"
+                                       VerticalAlignment="Center"
+                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <!-- Right Content Panel -->
+            <ScrollViewer Grid.Column="1" Padding="24,16">
+                <StackPanel>
+                    <ContentControl Name="SectionContent" />
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Bottom Save Bar -->
+        <Border Grid.Row="2" Background="#F8F9FA" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0"
+                Padding="16,12">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                <Button Classes="secondary-button" Content="取消" Click="OnCloseButtonClick"
+                        Width="80" Height="32"
+                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                <Button Classes="primary-button" Content="保存设置" Command="{Binding SaveCommand}"
+                        Width="100" Height="32"
+                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+            </StackPanel>
+        </Border>
+    </Grid>
+
+    <!-- Resize grips for BorderOnly-style resizing -->
+    <Border x:Name="ResizeNorth" Height="6" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+            Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
+            PointerPressed="ResizeGrip_OnPointerPressed" />
+    <Border x:Name="ResizeSouth" Height="6" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
+            Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
+            PointerPressed="ResizeGrip_OnPointerPressed" />
+    <Border x:Name="ResizeWest" Width="6" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+            Background="Transparent" Cursor="SizeWestEast"
+            Margin="0,6,0,6" ZIndex="100"
+            PointerPressed="ResizeGrip_OnPointerPressed" />
+    <Border x:Name="ResizeEast" Width="6" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+            Background="Transparent" Cursor="SizeWestEast"
+            Margin="0,6,0,6" ZIndex="100"
+            PointerPressed="ResizeGrip_OnPointerPressed" />
+    </Panel>
+
+</Window>

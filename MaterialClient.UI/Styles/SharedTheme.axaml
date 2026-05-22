@@ -1,0 +1,110 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ========== Named Color Resources ========== -->
+    <Style>
+        <Style.Resources>
+            <SolidColorBrush x:Key="PrimaryBlue">#4169E1</SolidColorBrush>
+            <SolidColorBrush x:Key="LightBlue">#4C82FC</SolidColorBrush>
+            <SolidColorBrush x:Key="SecondaryGray">#E5E7EB</SolidColorBrush>
+            <SolidColorBrush x:Key="SuccessGreen">#20C9A6</SolidColorBrush>
+            <SolidColorBrush x:Key="WarningOrange">#F5AA19</SolidColorBrush>
+            <SolidColorBrush x:Key="DangerRed">#DC3545</SolidColorBrush>
+            <SolidColorBrush x:Key="BackgroundGray">#F8F9FA</SolidColorBrush>
+            <SolidColorBrush x:Key="BorderGray">#E5E7EB</SolidColorBrush>
+            <SolidColorBrush x:Key="TextPrimary">#333333</SolidColorBrush>
+            <SolidColorBrush x:Key="TextSecondary">#666666</SolidColorBrush>
+
+            <!-- Device status indicator colors -->
+            <SolidColorBrush x:Key="OnlineGreen">#22C55E</SolidColorBrush>
+            <SolidColorBrush x:Key="OfflineRed">#EF4444</SolidColorBrush>
+        </Style.Resources>
+    </Style>
+
+    <!-- ========== Shared Button Style Classes ========== -->
+
+    <!-- Button primary-button style -->
+    <Style Selector="Button.primary-button">
+        <Setter Property="Background" Value="#4169E1" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderBrush" Value="#4169E1" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.primary-button:disabled">
+        <Setter Property="Foreground" Value="#80FFFFFF" />
+    </Style>
+    <Style Selector="Button.primary-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="#80FFFFFF" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- Button secondary-button style -->
+    <Style Selector="Button.secondary-button">
+        <Setter Property="Background" Value="#E5E7EB" />
+        <Setter Property="Foreground" Value="#333" />
+        <Setter Property="BorderBrush" Value="#E5E7EB" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <!-- Button titlebar-close-button style -->
+    <Style Selector="Button.titlebar-close-button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.titlebar-close-button:pointerover">
+        <Setter Property="Background" Value="#DC3545" />
+    </Style>
+
+    <!-- Button titlebar-minimize-button style -->
+    <Style Selector="Button.titlebar-minimize-button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.titlebar-minimize-button:pointerover">
+        <Setter Property="Background" Value="#5A7FE6" />
+    </Style>
+
+    <!-- Button popup-menu-item-button style -->
+    <Style Selector="Button.popup-menu-item-button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.popup-menu-item-button:pointerover">
+        <Setter Property="Background" Value="#3D6BB3" />
+    </Style>
+
+    <!-- Button tab-button style -->
+    <Style Selector="Button.tab-button">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="Foreground" Value="#666" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.tab-button.active">
+        <Setter Property="Background" Value="#F0F7FF" />
+        <Setter Property="Foreground" Value="#4169E1" />
+        <Setter Property="BorderBrush" Value="#4169E1" />
+    </Style>
+
+    <!-- ========== Shared Border/Card Style Classes ========== -->
+
+    <!-- Border card-border style -->
+    <Style Selector="Border.card-border">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="BorderBrush" Value="#E5E7EB" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <!-- Border section-border style -->
+    <Style Selector="Border.section-border">
+        <Setter Property="Background" Value="#F8F9FA" />
+        <Setter Property="BorderBrush" Value="#E5E7EB" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+</Styles>

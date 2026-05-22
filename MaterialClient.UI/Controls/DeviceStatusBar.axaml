@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:MaterialClient.UI.Models"
+             x:Class="MaterialClient.UI.Controls.DeviceStatusBar"
+             x:Name="Root">
+
+    <ItemsControl Name="PART_ItemsControl"
+                  VerticalAlignment="Center">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="24" />
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="models:DeviceStatusItem">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8">
+                        <Ellipse.Fill>
+                            <SolidColorBrush Color="{Binding StatusColor}" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <TextBlock Text="{Binding Name}" FontSize="12" Foreground="#666666"
+                               VerticalAlignment="Center"
+                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                    <TextBlock Text="{Binding StatusText}" FontSize="12"
+                               VerticalAlignment="Center"
+                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter">
+                        <TextBlock.Foreground>
+                            <SolidColorBrush Color="{Binding StatusColor}" />
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                </StackPanel>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+</UserControl>
