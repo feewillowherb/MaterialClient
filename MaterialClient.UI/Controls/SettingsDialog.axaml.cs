@@ -2,8 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using MaterialClient.UI.ViewModels;
 using MaterialClient.UI.Abstractions;
+using MaterialClient.UI.ViewModels;
 using ReactiveUI;
 
 namespace MaterialClient.UI.Controls;
@@ -13,6 +13,9 @@ namespace MaterialClient.UI.Controls;
 /// </summary>
 public partial class SettingsDialog : Window
 {
+    private SettingsViewModel? _viewModel;
+    private IDisposable? _selectedSectionSubscription;
+
     public SettingsDialog()
     {
         InitializeComponent();
@@ -22,27 +25,37 @@ public partial class SettingsDialog : Window
     {
         base.OnDataContextChanged(e);
 
+        _selectedSectionSubscription?.Dispose();
+        _selectedSectionSubscription = null;
+
         if (DataContext is SettingsViewModel vm)
         {
-            // Listen for selected section changes
-            vm.WhenAnyValue(x => x.SelectedSection)
+            _viewModel = vm;
+            _selectedSectionSubscription = vm.WhenAnyValue(x => x.SelectedSection)
                 .Subscribe(OnSelectedSectionChanged);
 
-            // Show initial section
-            if (vm.SelectedSection is not null)
-            {
-                OnSelectedSectionChanged(vm.SelectedSection);
-            }
+            RefreshSectionContent();
         }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _selectedSectionSubscription?.Dispose();
+        _selectedSectionSubscription = null;
+        base.OnClosed(e);
     }
 
     private void OnSelectedSectionChanged(ISettingsSection? section)
     {
+        RefreshSectionContent();
+    }
+
+    private void RefreshSectionContent()
+    {
         var contentControl = this.FindControl<ContentControl>("SectionContent");
-        if (contentControl is not null && section is not null)
-        {
-            contentControl.Content = section.CreateView();
-        }
+        if (contentControl is null || _viewModel is null) return;
+
+        contentControl.Content = _viewModel.CreateSelectedSectionView();
     }
 
     private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)

@@ -4,37 +4,41 @@ using MaterialClient.UI.Abstractions;
 using MaterialClient.UI.Controls.SettingItems;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views.Settings;
+namespace MaterialClient.UI.Settings.Sections;
 
-public class PrinterSection : ISettingsSection, ITransientDependency
+public class SystemSection : ISettingsSection, ITransientDependency
 {
     private readonly ISettingsService _settingsService;
 
-    public PrinterSection(ISettingsService settingsService) => _settingsService = settingsService;
+    public SystemSection(ISettingsService settingsService) => _settingsService = settingsService;
 
-    public string DisplayName => "打印机";
+    public string DisplayName => "系统";
     public bool IsDirty { get; private set; }
 
-    private string _printerName = "";
+    private bool _enableAutoStart;
+    private bool _enablePrinter;
 
     public Control CreateView()
     {
         var panel = new StackPanel { Margin = new(0, 0, 0, 16) };
-        panel.Children.Add(new TextSettingItem { Label = "打印机名称", Value = _printerName });
+        panel.Children.Add(new ToggleSettingItem { Label = "开机自启动", Value = _enableAutoStart });
+        panel.Children.Add(new ToggleSettingItem { Label = "启用打印机", Value = _enablePrinter });
         return panel;
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
         var settings = await _settingsService.GetSettingsAsync();
-        _printerName = settings.SystemSettings.SelectedPrinterName;
+        _enableAutoStart = settings.SystemSettings.EnableAutoStart;
+        _enablePrinter = settings.SystemSettings.EnablePrinter;
         IsDirty = false;
     }
 
     public async Task SaveAsync(CancellationToken ct = default)
     {
         var settings = await _settingsService.GetSettingsAsync();
-        settings.SystemSettings.SelectedPrinterName = _printerName;
+        settings.SystemSettings.EnableAutoStart = _enableAutoStart;
+        settings.SystemSettings.EnablePrinter = _enablePrinter;
         await _settingsService.SaveSettingsAsync(settings);
         IsDirty = false;
     }

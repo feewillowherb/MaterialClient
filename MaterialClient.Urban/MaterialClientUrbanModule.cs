@@ -1,5 +1,6 @@
 using System.Text;
 using MaterialClient.Common;
+using MaterialClient.UI;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
@@ -23,6 +24,7 @@ namespace MaterialClient.Urban
 {
 [DependsOn(
     typeof(MaterialClientCommonModule),
+    typeof(MaterialClientUiModule),
     typeof(AbpAutofacModule)
 )]
 public class MaterialClientUrbanModule : AbpModule

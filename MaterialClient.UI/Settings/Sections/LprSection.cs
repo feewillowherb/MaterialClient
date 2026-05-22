@@ -4,7 +4,7 @@ using MaterialClient.UI.Abstractions;
 using MaterialClient.UI.Controls.SettingItems;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views.Settings;
+namespace MaterialClient.UI.Settings.Sections;
 
 public class LprSection : ISettingsSection, ITransientDependency
 {

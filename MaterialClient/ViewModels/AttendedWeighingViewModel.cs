@@ -18,6 +18,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using MaterialClient.Common.Configuration;
+using MaterialClient.UI;
 using MaterialClient.UI.Controls;
 using MaterialClient.UI.Models;
 using MaterialClient.UI.ViewModels;
@@ -219,6 +220,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _ = CheckLprOnlineStatusAsync();
         StartLprStatusCheckTimer();
         _ = StartAllDevicesAsync();
+        SyncDeviceStatuses();
         // InitializeSoundDeviceStatusPolling(); // Disabled: sound column status not needed in current version
 
         // Initialize state from service
@@ -281,14 +283,18 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     private void SyncDeviceStatuses()
     {
-        DeviceStatuses =
-        [
-            new("地磅设备", IsScaleOnline),
-            new("摄像头", IsCameraOnline),
-            new("高拍仪", IsUsbCameraOnline),
-            new("打印机", IsPrinterOnline),
-            new("车牌识别", IsLprOnline),
-        ];
+        var items = DeviceStatusCatalog.BuildItems(
+            IsScaleOnline,
+            IsCameraOnline,
+            IsUsbCameraOnline,
+            IsPrinterOnline,
+            IsLprOnline);
+
+        DeviceStatuses.Clear();
+        foreach (var item in items)
+        {
+            DeviceStatuses.Add(item);
+        }
 
         // Release sound column device status polling subscription
         _statusPollingDisposable?.Dispose();
@@ -2357,6 +2363,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     settingsWindow.Show();
                 return;
             }
+
+            await settingsViewModel.PrepareForDisplayAsync();
 
             var dialog = new SettingsDialog { DataContext = settingsViewModel };
             if (parentWin != null)

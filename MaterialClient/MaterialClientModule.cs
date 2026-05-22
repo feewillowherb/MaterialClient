@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using MaterialClient.Backgrounds;
 using MaterialClient.Common;
+using MaterialClient.UI;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
@@ -33,6 +34,7 @@ namespace MaterialClient
 {
 [DependsOn(
     typeof(MaterialClientCommonModule),
+    typeof(MaterialClientUiModule),
     typeof(AbpAutofacModule),
     typeof(AbpBackgroundWorkersModule)
 )]

@@ -14,21 +14,14 @@
         <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="models:DeviceStatusItem">
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <Ellipse Width="8" Height="8">
-                        <Ellipse.Fill>
-                            <SolidColorBrush Color="{Binding StatusColor}" />
-                        </Ellipse.Fill>
-                    </Ellipse>
+                    <Ellipse Width="8" Height="8" Fill="{Binding StatusBrush}" />
                     <TextBlock Text="{Binding Name}" FontSize="12" Foreground="#666666"
                                VerticalAlignment="Center"
                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                     <TextBlock Text="{Binding StatusText}" FontSize="12"
+                               Foreground="{Binding StatusBrush}"
                                VerticalAlignment="Center"
-                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter">
-                        <TextBlock.Foreground>
-                            <SolidColorBrush Color="{Binding StatusColor}" />
-                        </TextBlock.Foreground>
-                    </TextBlock>
+                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                 </StackPanel>
             </DataTemplate>
         </ItemsControl.ItemTemplate>

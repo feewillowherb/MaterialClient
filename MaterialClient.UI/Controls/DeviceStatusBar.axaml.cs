@@ -27,17 +27,28 @@ public partial class DeviceStatusBar : UserControl
         set => SetValue(ItemsSourceProperty, value);
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ApplyItemsSource(ItemsSource);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
 
         if (change.Property == ItemsSourceProperty)
         {
-            var itemsControl = this.FindControl<ItemsControl>("PART_ItemsControl");
-            if (itemsControl is not null)
-            {
-                itemsControl.ItemsSource = change.NewValue as IEnumerable<DeviceStatusItem>;
-            }
+            ApplyItemsSource(change.NewValue as IEnumerable<DeviceStatusItem>);
+        }
+    }
+
+    private void ApplyItemsSource(IEnumerable<DeviceStatusItem>? items)
+    {
+        var itemsControl = this.FindControl<ItemsControl>("PART_ItemsControl");
+        if (itemsControl is not null)
+        {
+            itemsControl.ItemsSource = items;
         }
     }
 }

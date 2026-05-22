@@ -4,41 +4,41 @@ using MaterialClient.UI.Abstractions;
 using MaterialClient.UI.Controls.SettingItems;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views.Settings;
+namespace MaterialClient.UI.Settings.Sections;
 
-public class SystemSection : ISettingsSection, ITransientDependency
+public class SoundDeviceSection : ISettingsSection, ITransientDependency
 {
     private readonly ISettingsService _settingsService;
 
-    public SystemSection(ISettingsService settingsService) => _settingsService = settingsService;
+    public SoundDeviceSection(ISettingsService settingsService) => _settingsService = settingsService;
 
-    public string DisplayName => "系统";
+    public string DisplayName => "音频设备";
     public bool IsDirty { get; private set; }
 
-    private bool _enableAutoStart;
-    private bool _enablePrinter;
+    private string _soundIp = "";
+    private bool _enabled;
 
     public Control CreateView()
     {
         var panel = new StackPanel { Margin = new(0, 0, 0, 16) };
-        panel.Children.Add(new ToggleSettingItem { Label = "开机自启动", Value = _enableAutoStart });
-        panel.Children.Add(new ToggleSettingItem { Label = "启用打印机", Value = _enablePrinter });
+        panel.Children.Add(new ToggleSettingItem { Label = "启用音柱", Value = _enabled });
+        panel.Children.Add(new TextSettingItem { Label = "音柱 IP", Value = _soundIp });
         return panel;
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
         var settings = await _settingsService.GetSettingsAsync();
-        _enableAutoStart = settings.SystemSettings.EnableAutoStart;
-        _enablePrinter = settings.SystemSettings.EnablePrinter;
+        _soundIp = settings.SoundDeviceSettings.SoundIP;
+        _enabled = settings.SoundDeviceSettings.Enabled;
         IsDirty = false;
     }
 
     public async Task SaveAsync(CancellationToken ct = default)
     {
         var settings = await _settingsService.GetSettingsAsync();
-        settings.SystemSettings.EnableAutoStart = _enableAutoStart;
-        settings.SystemSettings.EnablePrinter = _enablePrinter;
+        settings.SoundDeviceSettings.SoundIP = _soundIp;
+        settings.SoundDeviceSettings.Enabled = _enabled;
         await _settingsService.SaveSettingsAsync(settings);
         IsDirty = false;
     }

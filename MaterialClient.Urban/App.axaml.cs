@@ -49,9 +49,9 @@ public class App : Application
                     try
                     {
                         _viewModel?.Initialize();
-                        _viewModel?.LoadDeviceStatuses();
+                        _ = StartDevicesAndStatusMonitoringAsync();
                         var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
-                        logger?.LogInformation("Urban ViewModel initialized, device statuses loaded");
+                        logger?.LogInformation("Urban ViewModel initialized, device status monitoring started");
                     }
                     catch (Exception ex)
                     {
@@ -71,6 +71,31 @@ public class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task StartDevicesAndStatusMonitoringAsync()
+    {
+        if (_abpApplication == null || _viewModel == null) return;
+
+        try
+        {
+            var deviceManager = _abpApplication.ServiceProvider.GetService<IDeviceManagerService>();
+            if (deviceManager != null)
+            {
+                await deviceManager.StartAsync();
+            }
+
+            var attendedWeighingService =
+                _abpApplication.ServiceProvider.GetRequiredService<IAttendedWeighingService>();
+            await attendedWeighingService.StartAsync();
+
+            _viewModel.StartDeviceStatusMonitoring();
+        }
+        catch (Exception ex)
+        {
+            var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+            logger?.LogError(ex, "Failed to start devices or device status monitoring");
+        }
     }
 
     private async void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)

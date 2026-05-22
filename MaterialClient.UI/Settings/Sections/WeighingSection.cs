@@ -4,7 +4,7 @@ using MaterialClient.UI.Abstractions;
 using MaterialClient.UI.Controls.SettingItems;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views.Settings;
+namespace MaterialClient.UI.Settings.Sections;
 
 public class WeighingSection : ISettingsSection, ITransientDependency
 {
@@ -27,7 +27,7 @@ public class WeighingSection : ISettingsSection, ITransientDependency
             Minimum = 0,
             Maximum = 50,
             Step = 0.5,
-            Value = (double)_minWeightThreshold,
+            Value = _minWeightThreshold,
         });
         panel.Children.Add(new SliderSettingItem
         {

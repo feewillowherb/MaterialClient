@@ -102,17 +102,19 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
         // TODO: Load photos for selected record
     }
 
-    private void OnSystemSettingsClick(object? sender, RoutedEventArgs e)
+    private async void OnSystemSettingsClick(object? sender, RoutedEventArgs e)
     {
         if (_serviceProvider == null) return;
 
         var settingsViewModel = _serviceProvider.GetService<SettingsViewModel>();
         if (settingsViewModel == null) return;
 
+        await settingsViewModel.PrepareForDisplayAsync();
+
         var dialog = new SettingsDialog
         {
             DataContext = settingsViewModel,
         };
-        dialog.Show(this);
+        await dialog.ShowDialog(this);
     }
 }

@@ -6,7 +6,9 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.UI;
 using MaterialClient.UI.Models;
+using MaterialClient.UI.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -26,6 +28,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IAttendedWeighingService _attendedWeighingService;
+    private readonly SharedDeviceStatusTracker _deviceStatusTracker;
     private readonly ILogger<UrbanAttendedWeighingViewModel> _logger;
     private readonly CompositeDisposable _subscriptions = [];
 
@@ -35,11 +38,13 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         ILocalEventBus localEventBus,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IAttendedWeighingService attendedWeighingService,
+        SharedDeviceStatusTracker deviceStatusTracker,
         ILogger<UrbanAttendedWeighingViewModel> logger)
     {
         _localEventBus = localEventBus;
         _weighingRecordRepository = weighingRecordRepository;
         _attendedWeighingService = attendedWeighingService;
+        _deviceStatusTracker = deviceStatusTracker;
         _logger = logger;
     }
 
@@ -114,7 +119,8 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     ///     Device status list (using shared DeviceStatusItem from MaterialClient.UI)
     /// </summary>
     [Reactive]
-    public ObservableCollection<DeviceStatusItem> DeviceStatuses { get; set; } = [];
+    public ObservableCollection<DeviceStatusItem> DeviceStatuses { get; set; } =
+        new(DeviceStatusCatalog.BuildItems(false, false, false, false, false));
 
     /// <summary>
     ///     Currently selected weighing record
@@ -228,17 +234,30 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     }
 
     /// <summary>
-    ///     Load device statuses using shared DeviceStatusItem.
-    ///     Urban shows: scale, camera, LPR device.
+    ///     Start device status polling (same catalog as MaterialClient main app).
     /// </summary>
-    public void LoadDeviceStatuses()
+    public void StartDeviceStatusMonitoring()
     {
-        DeviceStatuses =
-        [
-            new("地磅设备", true),
-            new("摄像头", true),
-            new("车牌识别", false),
-        ];
+        if (_deviceStatusTrackerStarted) return;
+
+        _deviceStatusTracker.StatusesChanged += OnDeviceStatusesChanged;
+        OnDeviceStatusesChanged(_deviceStatusTracker.GetCurrentStatuses());
+        _deviceStatusTracker.StartMonitoring();
+        _deviceStatusTrackerStarted = true;
+    }
+
+    private bool _deviceStatusTrackerStarted;
+
+    private void OnDeviceStatusesChanged(DeviceStatusItem[] items)
+    {
+        RxApp.MainThreadScheduler.Schedule(() =>
+        {
+            DeviceStatuses.Clear();
+            foreach (var item in items)
+            {
+                DeviceStatuses.Add(item);
+            }
+        });
     }
 
     #endregion
@@ -334,6 +353,8 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
 
     public void Dispose()
     {
+        _deviceStatusTracker.StatusesChanged -= OnDeviceStatusesChanged;
+        _deviceStatusTracker.Dispose();
         _subscriptions.Dispose();
     }
 }
