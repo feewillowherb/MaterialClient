@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Demo", "Mate
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Urban", "MaterialClient.Urban\MaterialClient.Urban.csproj", "{C0AFA4A6-25F3-4466-B140-B9DF72B59524}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.UI", "MaterialClient.UI\MaterialClient.UI.csproj", "{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -88,6 +90,18 @@ Global
 		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|x64.Build.0 = Release|Any CPU
 		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|x86.ActiveCfg = Release|Any CPU
 		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|x86.Build.0 = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x64.Build.0 = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x86.Build.0 = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x64.ActiveCfg = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x64.Build.0 = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x86.ActiveCfg = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
