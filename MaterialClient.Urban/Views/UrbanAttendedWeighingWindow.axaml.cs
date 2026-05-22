@@ -98,7 +98,10 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
 
     private void OnRecordClick(object? sender, PointerPressedEventArgs e)
     {
-        // TODO: Load photos for selected record
+        if (sender is not Border { Tag: MaterialClient.Common.Entities.WeighingRecord record })
+            return;
+
+        ViewModel?.SelectRecord(record);
     }
 
     private async void OnSystemSettingsClick(object? sender, RoutedEventArgs e)

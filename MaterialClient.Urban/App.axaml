@@ -7,8 +7,9 @@
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
 
-        <!-- Import shared theme from MaterialClient.UI -->
+        <!-- Import shared theme and converters from MaterialClient.UI -->
         <StyleInclude Source="avares://MaterialClient.UI/Styles/SharedTheme.axaml" />
+        <StyleInclude Source="avares://MaterialClient.UI/Styles/SharedConverters.axaml" />
 
         <!-- ========== Urban-specific styles (not in SharedTheme) ========== -->
 

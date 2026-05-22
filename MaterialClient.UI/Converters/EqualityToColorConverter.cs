@@ -4,7 +4,7 @@ using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 
-namespace MaterialClient.Converters;
+namespace MaterialClient.UI.Converters;
 
 /// <summary>
 ///     比较两个对象是否相等，相等返回选中颜色，不相等返回透明

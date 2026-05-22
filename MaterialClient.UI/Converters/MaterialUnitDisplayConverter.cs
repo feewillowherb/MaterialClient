@@ -3,7 +3,7 @@ using System.Globalization;
 using Avalonia.Data.Converters;
 using MaterialClient.Common.Entities;
 
-namespace MaterialClient.Converters;
+namespace MaterialClient.UI.Converters;
 
 /// <summary>
 /// Build conversion unit display text like: 1个=1000吨.

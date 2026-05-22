@@ -28,6 +28,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IAttendedWeighingService _attendedWeighingService;
+    private readonly IAttachmentService _attachmentService;
     private readonly SharedDeviceStatusTracker _deviceStatusTracker;
     private readonly ILogger<UrbanAttendedWeighingViewModel> _logger;
     private readonly CompositeDisposable _subscriptions = [];
@@ -38,12 +39,14 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         ILocalEventBus localEventBus,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IAttendedWeighingService attendedWeighingService,
+        IAttachmentService attachmentService,
         SharedDeviceStatusTracker deviceStatusTracker,
         ILogger<UrbanAttendedWeighingViewModel> logger)
     {
         _localEventBus = localEventBus;
         _weighingRecordRepository = weighingRecordRepository;
         _attendedWeighingService = attendedWeighingService;
+        _attachmentService = attachmentService;
         _deviceStatusTracker = deviceStatusTracker;
         _logger = logger;
     }
@@ -107,7 +110,19 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
                     }
                 }));
 
+        _subscriptions.Add(
+            this.WhenAnyValue(x => x.SelectedRecord)
+                .Subscribe(record => _ = UpdatePhotoPathsAsync(record)));
+
         _logger.LogInformation("UrbanAttendedWeighingViewModel event subscriptions initialized");
+    }
+
+    /// <summary>
+    ///     Select a weighing record and load its photo paths for the sidebar.
+    /// </summary>
+    public void SelectRecord(WeighingRecord? record)
+    {
+        SelectedRecord = record;
     }
 
     /// <summary>
@@ -201,6 +216,30 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     /// </summary>
     [Reactive]
     public int TotalCount { get; set; }
+
+    /// <summary>
+    ///     License plate recognition (Lrp) photo path for binding
+    /// </summary>
+    [Reactive]
+    public string? LprPhotoPath { get; set; }
+
+    /// <summary>
+    ///     Camera capture photo path for binding (first entry photo)
+    /// </summary>
+    [Reactive]
+    public string? CameraPhotoPath { get; set; }
+
+    /// <summary>
+    ///     Lrp photo capture time display
+    /// </summary>
+    [Reactive]
+    public string LprPhotoTime { get; set; } = "";
+
+    /// <summary>
+    ///     Camera photo capture time display
+    /// </summary>
+    [Reactive]
+    public string CameraPhotoTime { get; set; } = "";
 
     #endregion
 
@@ -343,6 +382,74 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to reload weighing records");
+        }
+    }
+
+    /// <summary>
+    ///     Load Lrp and camera photo paths from attachments for the selected record.
+    /// </summary>
+    private async Task UpdatePhotoPathsAsync(WeighingRecord? record)
+    {
+        if (record == null)
+        {
+            RxApp.MainThreadScheduler.Schedule(() =>
+            {
+                LprPhotoPath = null;
+                CameraPhotoPath = null;
+                LprPhotoTime = "";
+                CameraPhotoTime = "";
+            });
+            return;
+        }
+
+        try
+        {
+            var attachmentsByRecord =
+                await _attachmentService.GetAttachmentsByWeighingRecordIdsAsync([record.Id]);
+
+            string? lprPath = null;
+            string? cameraPath = null;
+            DateTime? lprTime = null;
+            DateTime? cameraTime = null;
+
+            if (attachmentsByRecord.TryGetValue(record.Id, out var files))
+            {
+                foreach (var file in files)
+                {
+                    if (string.IsNullOrEmpty(file.LocalPath))
+                        continue;
+
+                    if (file.AttachType == AttachType.Lrp)
+                    {
+                        lprPath = file.LocalPath;
+                        lprTime = file.AddDate;
+                    }
+                    else if (file.AttachType == AttachType.EntryPhoto && cameraPath == null)
+                    {
+                        cameraPath = file.LocalPath;
+                        cameraTime = file.AddDate;
+                    }
+                }
+            }
+
+            RxApp.MainThreadScheduler.Schedule(() =>
+            {
+                LprPhotoPath = lprPath;
+                CameraPhotoPath = cameraPath;
+                LprPhotoTime = lprTime.HasValue ? lprTime.Value.ToString("HH:mm:ss") : "";
+                CameraPhotoTime = cameraTime.HasValue ? cameraTime.Value.ToString("HH:mm:ss") : "";
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load photo paths for record {RecordId}", record.Id);
+            RxApp.MainThreadScheduler.Schedule(() =>
+            {
+                LprPhotoPath = null;
+                CameraPhotoPath = null;
+                LprPhotoTime = "";
+                CameraPhotoTime = "";
+            });
         }
     }
 

@@ -5,7 +5,7 @@ using System.Reflection;
 using Avalonia.Data.Converters;
 using MaterialClient.Common.Entities.Enums;
 
-namespace MaterialClient.Converters;
+namespace MaterialClient.UI.Converters;
 
 /// <summary>
 ///     Weighing mode converter for displaying enum values as text from <see cref="DescriptionAttribute"/>.

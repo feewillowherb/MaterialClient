@@ -4,14 +4,14 @@ using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 
-namespace MaterialClient.Converters;
+namespace MaterialClient.UI.Converters;
 
 /// <summary>
 ///     Converts Bitmap? to IImage for Image.Source: returns the bitmap when non-null, otherwise the default car placeholder.
 /// </summary>
 public class NullableBitmapToImageConverter : IValueConverter
 {
-    private const string DefaultCarImage = "avares://MaterialClient/Assets/Car_Default.png";
+    private const string DefaultCarImage = "avares://MaterialClient.UI/Assets/Car_Default.png";
     private static Bitmap? _defaultBitmap;
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)

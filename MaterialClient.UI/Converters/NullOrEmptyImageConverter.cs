@@ -6,7 +6,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using MaterialClient.Common.Utils;
 
-namespace MaterialClient.Converters;
+namespace MaterialClient.UI.Converters;
 
 /// <summary>
 ///     将 null 或空字符串的图片路径转换为 null（用于 BillPhoto 等不需要默认图片的场景）
@@ -26,7 +26,7 @@ public class NullOrEmptyImageConverter : IValueConverter
             // 如果是资源路径，直接处理
             if (path.StartsWith("avares://") || path.StartsWith("/Assets/"))
             {
-                var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient{path}") : new Uri(path);
+                var uri = path.StartsWith("/") ? new Uri($"avares://MaterialClient.UI{path}") : new Uri(path);
                 var stream = AssetLoader.Open(uri);
                 return new Bitmap(stream);
             }

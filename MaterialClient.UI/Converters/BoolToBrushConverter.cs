@@ -22,11 +22,13 @@ public class BoolToBrushConverter : IValueConverter
 
         var colorStr = boolValue ? colors[0] : colors[1];
 
+        // 处理命名颜色
         if (colorStr.Equals("White", StringComparison.OrdinalIgnoreCase))
             return new SolidColorBrush(Colors.White);
         if (colorStr.Equals("Transparent", StringComparison.OrdinalIgnoreCase))
             return new SolidColorBrush(Colors.Transparent);
 
+        // 尝试解析为颜色代码
         try
         {
             return new SolidColorBrush(Color.Parse(colorStr));
@@ -38,5 +40,7 @@ public class BoolToBrushConverter : IValueConverter
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+    {
+        throw new NotImplementedException();
+    }
 }

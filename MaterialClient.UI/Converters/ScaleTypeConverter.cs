@@ -14,11 +14,16 @@ public class ScaleTypeConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is ScaleType scaleType)
+        {
             return scaleType.GetDescription();
+        }
 
         return value?.ToString();
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+    {
+        throw new NotImplementedException();
+    }
 }
+

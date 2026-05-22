@@ -245,13 +245,13 @@
                                         <TextBlock Text="车牌识别抓拍" FontSize="11" Foreground="#666666"
                                                    FontWeight="Medium" VerticalAlignment="Center"
                                                    FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                        <TextBlock Grid.Column="1" Text="" FontSize="11" Foreground="#94A3B8"
-                                                   VerticalAlignment="Center" Name="LrpPhotoTime" />
+                                        <TextBlock Grid.Column="1" Text="{Binding LprPhotoTime}" FontSize="11" Foreground="#94A3B8"
+                                                   VerticalAlignment="Center" />
                                     </Grid>
                                     <Border Height="120" Background="#E5E7EB" CornerRadius="4"
-                                            BorderBrush="#CBD5E1" BorderThickness="1" Name="LrpPhotoBorder">
-                                        <TextBlock Text="🚛" FontSize="28" HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" Foreground="#666666" />
+                                            BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                                        <Image Source="{Binding LprPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                               Stretch="UniformToFill" />
                                     </Border>
                                 </StackPanel>
 
@@ -261,13 +261,13 @@
                                         <TextBlock Text="摄像头抓拍" FontSize="11" Foreground="#666666"
                                                    FontWeight="Medium" VerticalAlignment="Center"
                                                    FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                        <TextBlock Grid.Column="1" Text="" FontSize="11" Foreground="#94A3B8"
-                                                   VerticalAlignment="Center" Name="CameraPhotoTime" />
+                                        <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11" Foreground="#94A3B8"
+                                                   VerticalAlignment="Center" />
                                     </Grid>
                                     <Border Height="120" Background="#E5E7EB" CornerRadius="4"
-                                            BorderBrush="#CBD5E1" BorderThickness="1" Name="CameraPhotoBorder">
-                                        <TextBlock Text="🚛" FontSize="28" HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" Foreground="#666666" />
+                                            BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                                        <Image Source="{Binding CameraPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                               Stretch="UniformToFill" />
                                     </Border>
                                 </StackPanel>
                             </StackPanel>

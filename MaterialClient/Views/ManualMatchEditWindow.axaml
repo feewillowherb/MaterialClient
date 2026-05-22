@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:MaterialClient.ViewModels"
-        xmlns:converters="using:MaterialClient.Converters"
+        xmlns:converters="using:MaterialClient.UI.Converters"
         mc:Ignorable="d"
         x:Class="MaterialClient.Views.ManualMatchEditWindow"
         x:DataType="vm:ManualMatchEditWindowViewModel"

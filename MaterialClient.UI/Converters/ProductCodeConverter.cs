@@ -4,7 +4,7 @@ using Avalonia.Data.Converters;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Extensions;
 
-namespace MaterialClient.Converters;
+namespace MaterialClient.UI.Converters;
 
 /// <summary>
 ///     Product code converter for displaying enum values as text

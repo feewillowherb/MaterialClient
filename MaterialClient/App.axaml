@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="MaterialClient.App"
              xmlns:local="using:MaterialClient"
-             xmlns:converters="using:MaterialClient.Converters"
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              xmlns:u="https://irihi.tech/ursa"
@@ -18,25 +17,9 @@
         <u-semi:SemiTheme Locale="zh-CN" />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
 
-        <!-- Import shared theme from MaterialClient.UI -->
+        <!-- Import shared theme and converters from MaterialClient.UI -->
         <StyleInclude Source="avares://MaterialClient.UI/Styles/SharedTheme.axaml" />
-
-        <!-- Converters (app-specific, not shared) -->
-        <Style>
-            <Style.Resources>
-                <converters:EqualityToColorConverter x:Key="EqualityToColorConverter" />
-                <converters:NullOrEmptyImageConverter x:Key="NullOrEmptyImageConverter" />
-                <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
-                <converters:CarNullOrEmptyImageConverter x:Key="CarNullOrEmptyImageConverter" />
-                <converters:NullableBitmapToImageConverter x:Key="NullableBitmapToImageConverter" />
-                <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
-                <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
-                <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
-                <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
-                <converters:WeighingModeConverter x:Key="WeighingModeConverter" />
-                <converters:MaterialUnitDisplayConverter x:Key="MaterialUnitDisplayConverter" />
-            </Style.Resources>
-        </Style>
+        <StyleInclude Source="avares://MaterialClient.UI/Styles/SharedConverters.axaml" />
 
         <!-- ========== App-specific styles (not in SharedTheme) ========== -->
 
