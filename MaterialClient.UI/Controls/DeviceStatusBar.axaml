@@ -1,30 +1,44 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="using:MaterialClient.UI.Models"
+             xmlns:controls="using:MaterialClient.UI.Controls"
              x:Class="MaterialClient.UI.Controls.DeviceStatusBar"
              x:Name="Root">
 
-    <ItemsControl Name="PART_ItemsControl"
-                  VerticalAlignment="Center">
-        <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="24" />
-            </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="models:DeviceStatusItem">
-                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <Ellipse Width="8" Height="8" Fill="{Binding StatusBrush}" />
-                    <TextBlock Text="{Binding Name}" FontSize="12" Foreground="#666666"
-                               VerticalAlignment="Center"
-                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                    <TextBlock Text="{Binding StatusText}" FontSize="12"
-                               Foreground="{Binding StatusBrush}"
-                               VerticalAlignment="Center"
-                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                </StackPanel>
-            </DataTemplate>
-        </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <Panel>
+        <ItemsControl Name="PART_ItemsControl"
+                      VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="24" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:DeviceStatusItem">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Ellipse Width="8" Height="8" Fill="{Binding StatusBrush}" />
+                        <TextBlock Text="{Binding Name}" FontSize="12" Foreground="#666666"
+                                   VerticalAlignment="Center"
+                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                        <TextBlock Text="{Binding StatusText}" FontSize="12"
+                                   Foreground="{Binding StatusBrush}"
+                                   VerticalAlignment="Center"
+                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Popup x:Name="CameraDetailPopup"
+               Placement="Bottom"
+               IsLightDismissEnabled="False"
+               HorizontalOffset="0"
+               VerticalOffset="2"
+               PointerEntered="CameraDetailPopup_OnPointerEntered"
+               PointerExited="CameraDetailPopup_OnPointerExited">
+            <controls:CameraStatusDetailPopup x:Name="DetailPopupContent"
+                CameraStatusDetails="{Binding CameraStatusDetails, ElementName=Root}" />
+        </Popup>
+    </Panel>
 
 </UserControl>

@@ -728,6 +728,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 IsCameraOnline = anyOnline;
                 CameraStatuses.Clear();
                 foreach (var status in cameraStatusList) CameraStatuses.Add(status);
+                SyncCameraStatusDetails();
             });
         }
         catch
@@ -736,7 +737,21 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             {
                 IsCameraOnline = false;
                 CameraStatuses.Clear();
+                SyncCameraStatusDetails();
             });
+        }
+    }
+
+    private void SyncCameraStatusDetails()
+    {
+        CameraStatusDetails.Clear();
+        foreach (var status in CameraStatuses)
+        {
+            CameraStatusDetails.Add(new CameraStatusDetailItem(
+                status.Name,
+                status.Ip,
+                status.Port,
+                status.IsOnline));
         }
     }
 
@@ -1218,6 +1233,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     [Reactive] private Bitmap? _usbCameraPreview;
 
     [Reactive] private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
+
+    /// <summary>
+    ///     Per-camera rows for DeviceStatusBar hover popup (MaterialClient.UI).
+    /// </summary>
+    [Reactive]
+    public ObservableCollection<CameraStatusDetailItem> CameraStatusDetails { get; set; } = [];
 
     /// <summary>
     ///     Aggregated device status items for the shared DeviceStatusBar control.

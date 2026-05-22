@@ -80,26 +80,6 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         }, DispatcherPriority.Background);
     }
 
-    private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)
-    {
-        // Camera status popup removed with shared DeviceStatusBar migration
-    }
-
-    private async void CameraStatusPanel_OnPointerExited(object? sender, PointerEventArgs e)
-    {
-        // Camera status popup removed with shared DeviceStatusBar migration
-    }
-
-    private void CameraStatusPopup_OnPointerEntered(object? sender, PointerEventArgs e)
-    {
-        // Camera status popup removed with shared DeviceStatusBar migration
-    }
-
-    private async void CameraStatusPopup_OnPointerExited(object? sender, PointerEventArgs e)
-    {
-        // Camera status popup removed with shared DeviceStatusBar migration
-    }
-
     private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e);

@@ -394,7 +394,8 @@
                 BorderBrush="#E5E7EB"
                 BorderThickness="0,1,0,0"
                 Padding="16,8">
-            <ui:DeviceStatusBar ItemsSource="{Binding DeviceStatuses}" />
+            <ui:DeviceStatusBar ItemsSource="{Binding DeviceStatuses}"
+                                CameraStatusDetails="{Binding CameraStatusDetails}" />
         </Border>
 
     </Grid>
