@@ -44,6 +44,13 @@
         <Setter Property="Foreground" Value="White" />
         <Setter Property="BorderBrush" Value="#4A85F9" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="12,6" />
+    </Style>
+    <Style Selector="Button.brand-primary-button /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.brand-primary-button:disabled">
         <Setter Property="Foreground" Value="#80FFFFFF" />
