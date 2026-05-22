@@ -34,8 +34,6 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         DataContext = serviceProvider?.GetService(typeof(AttendedWeighingViewModel)) as AttendedWeighingViewModel;
 
         // Set PlacementTarget for Popups
-        if (CameraStatusPopup != null && CameraStatusPanel != null)
-            CameraStatusPopup.PlacementTarget = CameraStatusPanel;
         if (DataManagementMenuPopup != null && DataManagementButton != null)
             DataManagementMenuPopup.PlacementTarget = DataManagementButton;
 
@@ -84,62 +82,22 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
 
     private void CameraStatusPanel_OnPointerEntered(object? sender, PointerEventArgs e)
     {
-        // Cancel any pending close operation
-        _closePopupCts?.Cancel();
-        _closePopupCts = null;
-
-        if (CameraStatusPopup != null) CameraStatusPopup.IsOpen = true;
+        // Camera status popup removed with shared DeviceStatusBar migration
     }
 
     private async void CameraStatusPanel_OnPointerExited(object? sender, PointerEventArgs e)
     {
-        // Only start closing timer if popup is open and mouse is not over popup
-        if (CameraStatusPopup?.IsOpen == true && !_isMouseOverPopup)
-        {
-            _closePopupCts?.Cancel();
-            _closePopupCts = new CancellationTokenSource();
-
-            try
-            {
-                // Wait a bit to allow mouse to move to popup
-                await Task.Delay(150, _closePopupCts.Token);
-                // Only close if mouse is still not over popup
-                if (!_isMouseOverPopup && CameraStatusPopup != null) CameraStatusPopup.IsOpen = false;
-            }
-            catch (TaskCanceledException)
-            {
-                // Cancelled, mouse moved to popup
-            }
-        }
+        // Camera status popup removed with shared DeviceStatusBar migration
     }
 
     private void CameraStatusPopup_OnPointerEntered(object? sender, PointerEventArgs e)
     {
-        _isMouseOverPopup = true;
-
-        // Cancel any pending close operation when mouse enters popup
-        _closePopupCts?.Cancel();
-        _closePopupCts = null;
+        // Camera status popup removed with shared DeviceStatusBar migration
     }
 
     private async void CameraStatusPopup_OnPointerExited(object? sender, PointerEventArgs e)
     {
-        _isMouseOverPopup = false;
-
-        // Delay closing when mouse leaves popup
-        _closePopupCts?.Cancel();
-        _closePopupCts = new CancellationTokenSource();
-
-        try
-        {
-            await Task.Delay(150, _closePopupCts.Token);
-            // Only close if mouse is still not over popup
-            if (!_isMouseOverPopup && CameraStatusPopup != null) CameraStatusPopup.IsOpen = false;
-        }
-        catch (TaskCanceledException)
-        {
-            // Cancelled, mouse moved back
-        }
+        // Camera status popup removed with shared DeviceStatusBar migration
     }
 
     private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)

@@ -2,13 +2,18 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using MaterialClient.UI.Controls;
+using MaterialClient.UI.ViewModels;
 using MaterialClient.Urban.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Urban.Views;
 
 public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
 {
+    private IServiceProvider? _serviceProvider;
+
     /// <summary>
     ///     Creates the window (for ABP DI mode - ViewModel resolved from container)
     /// </summary>
@@ -20,14 +25,14 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
     /// <summary>
     ///     Creates the window with a pre-configured ViewModel (for DI mode)
     /// </summary>
-    public UrbanAttendedWeighingWindow(UrbanAttendedWeighingViewModel viewModel)
+    public UrbanAttendedWeighingWindow(UrbanAttendedWeighingViewModel viewModel, IServiceProvider serviceProvider)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _serviceProvider = serviceProvider;
 
         // Bind data to controls
         VehicleList.ItemsSource = viewModel.WeighingRecords;
-        DeviceStatusList.ItemsSource = viewModel.DeviceStatuses;
     }
 
     /// <summary>
@@ -95,5 +100,19 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
     private void OnRecordClick(object? sender, PointerPressedEventArgs e)
     {
         // TODO: Load photos for selected record
+    }
+
+    private void OnSystemSettingsClick(object? sender, RoutedEventArgs e)
+    {
+        if (_serviceProvider == null) return;
+
+        var settingsViewModel = _serviceProvider.GetService<SettingsViewModel>();
+        if (settingsViewModel == null) return;
+
+        var dialog = new SettingsDialog
+        {
+            DataContext = settingsViewModel,
+        };
+        dialog.Show(this);
     }
 }

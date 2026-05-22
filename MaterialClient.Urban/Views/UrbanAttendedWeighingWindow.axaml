@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:entities="using:MaterialClient.Common.Entities"
         xmlns:viewModels="using:MaterialClient.Urban.ViewModels"
+        xmlns:ui="using:MaterialClient.UI.Controls"
+        xmlns:uiModels="using:MaterialClient.UI.Models"
         x:Class="MaterialClient.Urban.Views.UrbanAttendedWeighingWindow"
         x:DataType="viewModels:UrbanAttendedWeighingViewModel"
         Title="凡东城管地磅系统"
@@ -44,7 +46,7 @@
                     <!-- Navigation Menu - Urban: only "System Settings" -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"
                                 HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Button Classes="popup-menu-item-button" Content="系统设置" />
+                        <Button Classes="popup-menu-item-button" Content="系统设置" Click="OnSystemSettingsClick" />
                     </StackPanel>
 
                     <!-- Window Controls -->
@@ -274,38 +276,11 @@
                 </Border>
             </Grid>
 
-            <!-- Row 3: Status Bar (BackgroundGray) -->
+            <!-- Row 3: Status Bar (using shared DeviceStatusBar) -->
             <Border Grid.Row="3" Background="{DynamicResource BackgroundGray}"
                     BorderBrush="#E5E7EB" BorderThickness="0,1,0,0"
                     Padding="16,0">
-                <ItemsControl Name="DeviceStatusList" VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="24" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="viewModels:DeviceStatusDisplay">
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8">
-                                    <Ellipse.Fill>
-                                        <SolidColorBrush Color="{Binding DotColor}" />
-                                    </Ellipse.Fill>
-                                </Ellipse>
-                                <TextBlock Text="{Binding DeviceName}" FontSize="12" Foreground="#666666"
-                                           VerticalAlignment="Center"
-                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                <TextBlock Text="{Binding StatusText}" FontSize="12"
-                                           VerticalAlignment="Center"
-                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter">
-                                    <TextBlock.Foreground>
-                                        <SolidColorBrush Color="{Binding StatusColor}" />
-                                    </TextBlock.Foreground>
-                                </TextBlock>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <ui:DeviceStatusBar ItemsSource="{Binding DeviceStatuses}" />
             </Border>
         </Grid>
 
