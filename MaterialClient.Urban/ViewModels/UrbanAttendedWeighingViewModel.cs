@@ -6,6 +6,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.UI.Models;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -14,16 +15,6 @@ using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Urban.ViewModels;
-
-/// <summary>
-///     Device status display model (inline, replaces deleted Models/DeviceStatus.cs)
-/// </summary>
-public record DeviceStatusDisplay(string DeviceName, bool IsOnline)
-{
-    public string StatusText => IsOnline ? "在线" : "离线";
-    public string StatusColor => IsOnline ? "#4ADE80" : "#EF4444";
-    public string DotColor => IsOnline ? "#4ADE80" : "#EF4444";
-}
 
 /// <summary>
 ///     Urban attended weighing ViewModel
@@ -120,10 +111,10 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     public ObservableCollection<WeighingRecord> WeighingRecords { get; set; } = [];
 
     /// <summary>
-    ///     Device status list
+    ///     Device status list (using shared DeviceStatusItem from MaterialClient.UI)
     /// </summary>
     [Reactive]
-    public ObservableCollection<DeviceStatusDisplay> DeviceStatuses { get; set; } = [];
+    public ObservableCollection<DeviceStatusItem> DeviceStatuses { get; set; } = [];
 
     /// <summary>
     ///     Currently selected weighing record
@@ -237,7 +228,8 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     }
 
     /// <summary>
-    ///     Load device statuses (placeholder for real device status)
+    ///     Load device statuses using shared DeviceStatusItem.
+    ///     Urban shows: scale, camera, LPR device.
     /// </summary>
     public void LoadDeviceStatuses()
     {

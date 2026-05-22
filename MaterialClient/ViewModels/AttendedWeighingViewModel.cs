@@ -18,6 +18,9 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using MaterialClient.Common.Configuration;
+using MaterialClient.UI.Controls;
+using MaterialClient.UI.Models;
+using MaterialClient.UI.ViewModels;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
@@ -85,6 +88,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _attachmentService = attachmentService;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
+
+        // Setup device status sync for shared DeviceStatusBar
+        this.WhenAnyValue(
+                x => x.IsScaleOnline,
+                x => x.IsCameraOnline,
+                x => x.IsUsbCameraOnline,
+                x => x.IsPrinterOnline,
+                x => x.IsLprOnline)
+            .Subscribe(_ => SyncDeviceStatuses())
+            .DisposeWith(_disposables);
 
         // Setup property change notifications
         this.WhenAnyValue(x => x.SelectedListItem)
@@ -260,6 +273,22 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _notificationFadeOutTimer?.Stop();
         _notificationFadeOutTimer = null;
         _disposables.Dispose();
+    }
+
+    /// <summary>
+    ///     Sync the DeviceStatuses collection from individual device status properties.
+    ///     Called via ReactiveUI subscription whenever any device status changes.
+    /// </summary>
+    private void SyncDeviceStatuses()
+    {
+        DeviceStatuses =
+        [
+            new("地磅设备", IsScaleOnline),
+            new("摄像头", IsCameraOnline),
+            new("高拍仪", IsUsbCameraOnline),
+            new("打印机", IsPrinterOnline),
+            new("车牌识别", IsLprOnline),
+        ];
 
         // Release sound column device status polling subscription
         _statusPollingDisposable?.Dispose();
@@ -1183,6 +1212,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     [Reactive] private Bitmap? _usbCameraPreview;
 
     [Reactive] private ObservableCollection<CameraStatusViewModel> _cameraStatuses = new();
+
+    /// <summary>
+    ///     Aggregated device status items for the shared DeviceStatusBar control.
+    ///     Updated whenever individual device status properties change.
+    /// </summary>
+    [Reactive]
+    private ObservableCollection<DeviceStatusItem> _deviceStatuses = new(
+    [
+        new DeviceStatusItem("地磅设备", false),
+        new DeviceStatusItem("摄像头", false),
+        new DeviceStatusItem("高拍仪", false),
+        new DeviceStatusItem("打印机", false),
+        new DeviceStatusItem("车牌识别", false),
+    ]);
 
     public bool HasCameraStatuses => CameraStatuses.Count > 0;
 
@@ -2303,12 +2346,23 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         try
         {
             var parentWin = GetParentWindow();
-            var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
+            var settingsViewModel = _serviceProvider.GetService<SettingsViewModel>();
+            if (settingsViewModel == null)
+            {
+                // Fallback to legacy SettingsWindow if SettingsViewModel not available
+                var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
+                if (parentWin != null)
+                    await settingsWindow.ShowDialog(parentWin);
+                else
+                    settingsWindow.Show();
+                return;
+            }
 
+            var dialog = new SettingsDialog { DataContext = settingsViewModel };
             if (parentWin != null)
-                await settingsWindow.ShowDialog(parentWin);
+                await dialog.ShowDialog(parentWin);
             else
-                settingsWindow.Show();
+                dialog.Show();
         }
         catch (Exception ex)
         {
