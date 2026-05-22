@@ -19,8 +19,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Polly;
-using Refit;
 using Serilog;
 using Serilog.Events;
 using Volo.Abp;
@@ -77,40 +75,7 @@ public class MaterialClientModule : AbpModule
         // 配置 Serilog 日志
         ConfigureSerilog(services, configuration);
 
-        // Register Refit API Client with retry policy and timeout
-        var basePlatformUrl = configuration["BasePlatform:BaseUrl"]
-                              ?? "http://localhost:5000";
-
-        services.AddRefitClient<IBasePlatformApi>()
-            .ConfigureHttpClient(c =>
-            {
-                c.BaseAddress = new Uri(basePlatformUrl);
-                c.Timeout = TimeSpan.FromSeconds(30);
-            })
-            .AddTransientHttpErrorPolicy(policy =>
-                policy.WaitAndRetryAsync(
-                    3,
-                    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
-                ));
-
-        // Register Material Platform Refit API Client with bearer token handler
-        var materialPlatformUrl = configuration["MaterialPlatform:BaseUrl"]
-                                  ?? basePlatformUrl;
-
-        services.AddTransient<MaterialPlatformBearerTokenHandler>();
-
-        services.AddRefitClient<IMaterialPlatformApi>()
-            .ConfigureHttpClient(c =>
-            {
-                c.BaseAddress = new Uri(materialPlatformUrl);
-                c.Timeout = TimeSpan.FromSeconds(30);
-            })
-            .AddHttpMessageHandler<MaterialPlatformBearerTokenHandler>()
-            .AddTransientHttpErrorPolicy(policy =>
-                policy.WaitAndRetryAsync(
-                    3,
-                    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
-                ));
+        services.AddMaterialClientRefitClients(configuration);
 
         // Register Windows
         // MainWindow is singleton as it's the main application window

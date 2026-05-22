@@ -1,5 +1,6 @@
 using System.Text;
 using MaterialClient.Common;
+using MaterialClient.Common.Api;
 using MaterialClient.UI;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
@@ -68,6 +69,9 @@ public class MaterialClientUrbanModule : AbpModule
 
         // Register IHttpClientFactory for services that depend on it (e.g., SoundDeviceService)
         services.AddHttpClient();
+
+        // Refit API clients (IBasePlatformApi, IMaterialPlatformApi — required by AttachmentService, etc.)
+        services.AddMaterialClientRefitClients(configuration);
 
         // Register IWeighingPipelineStrategy -> UrbanWeighingPipelineStrategy
         services.AddSingleton<IWeighingPipelineStrategy, UrbanWeighingPipelineStrategy>();
