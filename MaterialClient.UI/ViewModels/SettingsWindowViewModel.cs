@@ -40,6 +40,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private readonly ISoundDeviceService _soundDeviceService;
     private readonly ILprDeviceResolver _lprDeviceResolver;
+    private readonly IUsbCameraService? _usbCameraService;
     private readonly IDisposable _lprMessageSubscription;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
@@ -47,8 +48,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     // Camera configs
     [Reactive] private ObservableCollection<CameraConfigViewModel> _cameraConfigs = new();
 
-    // Document scanner settings
+    // Document camera (高拍仪) settings
+    [Reactive] private bool _documentCameraEnabled;
     [Reactive] private string? _documentScannerUsbDevice;
+    [Reactive] private string? _documentCameraTestResult;
 
     // System settings
     [Reactive] private bool _enableAutoStart;
@@ -158,7 +161,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ITicketPrintingService ticketPrintingService,
         ILogger<SettingsWindowViewModel> logger,
         ISoundDeviceService soundDeviceService,
-        ILprDeviceResolver lprDeviceResolver)
+        ILprDeviceResolver lprDeviceResolver,
+        IUsbCameraService? usbCameraService = null)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
@@ -167,6 +171,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _logger = logger;
         _soundDeviceService = soundDeviceService;
         _lprDeviceResolver = lprDeviceResolver;
+        _usbCameraService = usbCameraService;
 
         // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
         _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
@@ -211,6 +216,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.CaptureStreamType = CaptureStreamType;
             systemSettings.Urls = Urls;
             systemSettings.LprDeviceType = LprDeviceType;
+            systemSettings.DocumentCameraEnabled = DocumentCameraEnabled;
             systemSettings.EnablePrinter = EnablePrinter;
             systemSettings.SelectedPrinterName = SelectedPrinterName;
             systemSettings.EnableLatestRecommendation = EnableLatestRecommendation;
@@ -574,6 +580,45 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     }
 
     [ReactiveCommand]
+    private async Task TestDocumentCameraAsync()
+    {
+        DocumentCameraTestResult = null;
+
+        if (!DocumentCameraEnabled)
+        {
+            DocumentCameraTestResult = "请先启用高拍仪";
+            return;
+        }
+
+        if (_usbCameraService == null)
+        {
+            DocumentCameraTestResult = "高拍仪服务未注册";
+            return;
+        }
+
+        try
+        {
+            var isAvailable = await _usbCameraService.IsAvailableAsync();
+            if (isAvailable)
+            {
+                var device = await _usbCameraService.GetFirstAvailableDeviceAsync();
+                DocumentCameraTestResult = string.IsNullOrWhiteSpace(device)
+                    ? "测试成功：检测到可用设备"
+                    : $"测试成功：{device}";
+            }
+            else
+            {
+                DocumentCameraTestResult = "测试失败：未检测到可用 USB 摄像头";
+            }
+        }
+        catch (Exception ex)
+        {
+            DocumentCameraTestResult = $"测试失败: {ex.Message}";
+            _logger.LogError(ex, "Document camera test failed");
+        }
+    }
+
+    [ReactiveCommand]
     private async Task TestSoundDeviceAsync()
     {
         try
@@ -690,7 +735,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
                 AvailableSerialPorts.Insert(0, ScaleSerialPort);
 
-            // Load document scanner settings
+            // Load document camera settings
+            DocumentCameraEnabled = settings.SystemSettings.DocumentCameraEnabled;
             DocumentScannerUsbDevice = settings.DocumentScannerConfig.UsbDevice;
 
             // Load system settings

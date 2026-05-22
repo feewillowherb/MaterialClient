@@ -150,6 +150,7 @@
             <ListBoxItem Tag="ScaleSettings" x:Name="ScaleSettingsNavItem">地磅设置</ListBoxItem>
             <ListBoxItem Tag="WeighingSettings" x:Name="WeighingSettingsNavItem">称重设置</ListBoxItem>
             <ListBoxItem Tag="CameraSettings" x:Name="CameraSettingsNavItem">摄像头设置</ListBoxItem>
+            <ListBoxItem Tag="DocumentCameraSettings" x:Name="DocumentCameraSettingsNavItem">高拍仪设置</ListBoxItem>
             <ListBoxItem Tag="LprSettings" x:Name="LprSettingsNavItem">车牌识别设置</ListBoxItem>
             <ListBoxItem Tag="SystemSettings" x:Name="SystemSettingsNavItem">系统设置</ListBoxItem>
             <ListBoxItem Tag="SoundSettings" x:Name="SoundSettingsNavItem">音响设备设置</ListBoxItem>
@@ -495,6 +496,56 @@
                                        Foreground="Gray"
                                        FontSize="12"
                                        Opacity="0.7" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Document Camera (高拍仪) Settings Group -->
+                    <Border x:Name="DocumentCameraSettings"
+                            Classes="section-header"
+                            Padding="0,0,0,0">
+                        <Canvas>
+                            <TextBlock Text="高拍仪设置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="80"
+                                       TextAlignment="Center" />
+                        </Canvas>
+                    </Border>
+                    <Border Padding="20" Margin="0,0,0,0">
+                        <StackPanel Spacing="12">
+                            <CheckBox Content="启用高拍仪"
+                                      IsChecked="{Binding DocumentCameraEnabled}" />
+
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
+                                  ColumnSpacing="12">
+                                <TextBlock Text="USB 设备标识:"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <TextBox Text="{Binding DocumentScannerUsbDevice}"
+                                         Grid.Row="0"
+                                         Grid.Column="1"
+                                         Watermark="可选，留空则自动选择首个设备"
+                                         IsEnabled="{Binding DocumentCameraEnabled}" />
+                            </Grid>
+
+                            <Button Content="测试高拍仪"
+                                    Classes="primary-button"
+                                    Command="{Binding TestDocumentCameraCommand}"
+                                    IsEnabled="{Binding DocumentCameraEnabled}"
+                                    Padding="20,8"
+                                    HorizontalAlignment="Left"
+                                    CornerRadius="4" />
+
+                            <TextBlock Text="{Binding DocumentCameraTestResult}"
+                                       Foreground="Blue"
+                                       TextWrapping="Wrap"
+                                       FontSize="12" />
                         </StackPanel>
                     </Border>
 

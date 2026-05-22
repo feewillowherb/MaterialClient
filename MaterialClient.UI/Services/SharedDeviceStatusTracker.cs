@@ -20,12 +20,13 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
     private readonly ILogger<SharedDeviceStatusTracker> _logger;
     private readonly List<IDisposable> _timers = [];
 
+    private DeviceStatusBarOptions _visibility = DeviceStatusBarOptions.CoreOnly;
     private bool _isScaleOnline;
     private bool _isCameraOnline;
     private bool _isUsbCameraOnline;
     private bool _isPrinterOnline;
     private bool _isLprOnline;
-    private bool _isPrinterEnabled;
+    private bool _isSoundDeviceOnline;
     private string _printerName = "";
 
     public SharedDeviceStatusTracker(
@@ -44,8 +45,36 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
 
     public event Action<DeviceStatusItem[]>? StatusesChanged;
 
+    public async Task RefreshVisibilityFromSettingsAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            _visibility = DeviceStatusCatalog.FromSettings(
+                settings.SystemSettings.DocumentCameraEnabled,
+                settings.SystemSettings.EnablePrinter,
+                settings.SoundDeviceSettings.Enabled);
+            _printerName = settings.SystemSettings.SelectedPrinterName ?? string.Empty;
+
+            if (!_visibility.DocumentCameraEnabled)
+                _isUsbCameraOnline = false;
+            if (!_visibility.PrinterEnabled)
+                _isPrinterOnline = false;
+            if (!_visibility.SoundDeviceEnabled)
+                _isSoundDeviceOnline = false;
+
+            NotifyChanged();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to refresh device status bar visibility from settings");
+        }
+    }
+
     public void StartMonitoring()
     {
+        _ = RefreshVisibilityFromSettingsAsync();
+
         _timers.Add(new Timer(_ =>
         {
             try
@@ -63,6 +92,7 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
 
         _timers.Add(new Timer(_ =>
         {
+            if (!_visibility.DocumentCameraEnabled) return;
             Task.Run(async () =>
             {
                 try
@@ -76,11 +106,9 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
             });
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5)));
 
-        _ = LoadPrinterSettingsAsync();
-
         _timers.Add(new Timer(_ =>
         {
-            if (!_isPrinterEnabled) return;
+            if (!_visibility.PrinterEnabled) return;
             Task.Run(async () =>
             {
                 try
@@ -109,16 +137,42 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
             });
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30)));
 
+        _timers.Add(new Timer(_ =>
+        {
+            if (!_visibility.SoundDeviceEnabled) return;
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var soundService = _serviceProvider.GetService<ISoundDeviceService>();
+                    if (soundService == null)
+                    {
+                        UpdateSound(false);
+                        return;
+                    }
+
+                    var isOnline = await soundService.IsOnlineAsync();
+                    UpdateSound(isOnline);
+                }
+                catch
+                {
+                    UpdateSound(false);
+                }
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(8)));
+
         NotifyChanged();
     }
 
     public DeviceStatusItem[] GetCurrentStatuses() =>
         DeviceStatusCatalog.BuildItems(
+            _visibility,
             _isScaleOnline,
             _isCameraOnline,
             _isUsbCameraOnline,
             _isPrinterOnline,
-            _isLprOnline);
+            _isLprOnline,
+            _isSoundDeviceOnline);
 
     private void NotifyChanged() => StatusesChanged?.Invoke(GetCurrentStatuses());
 
@@ -157,28 +211,21 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
         NotifyChanged();
     }
 
-    private async Task LoadPrinterSettingsAsync()
+    private void UpdateSound(bool online)
     {
-        try
-        {
-            var settings = await _settingsService.GetSettingsAsync();
-            _isPrinterEnabled = settings.SystemSettings.EnablePrinter;
-            _printerName = settings.SystemSettings.SelectedPrinterName ?? string.Empty;
-
-            if (_isPrinterEnabled)
-                await CheckPrinterStatusOnceAsync();
-            else
-                UpdatePrinter(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load printer settings for status bar");
-            UpdatePrinter(false);
-        }
+        if (_isSoundDeviceOnline == online) return;
+        _isSoundDeviceOnline = online;
+        NotifyChanged();
     }
 
     private async Task CheckPrinterStatusOnceAsync()
     {
+        if (!_visibility.PrinterEnabled)
+        {
+            UpdatePrinter(false);
+            return;
+        }
+
         var printingService = _serviceProvider.GetService<ITicketPrintingService>();
         if (printingService == null || string.IsNullOrWhiteSpace(_printerName))
         {
@@ -194,6 +241,12 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
 
     private async Task CheckUsbCameraOnlineStatusAsync()
     {
+        if (!_visibility.DocumentCameraEnabled)
+        {
+            UpdateUsbCamera(false);
+            return;
+        }
+
         var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
         if (usbCameraService == null)
         {
@@ -281,6 +334,7 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
         {
             timer.Dispose();
         }
+
         _timers.Clear();
     }
 }

@@ -42,6 +42,11 @@ public class SystemSettings
     public WeighingMode DefaultWeighingMode { get; set; } = WeighingMode.Standard;
 
     /// <summary>
+    ///     Enable document camera (高拍仪 / USB camera) functionality and status bar indicator
+    /// </summary>
+    public bool DocumentCameraEnabled { get; set; } = false;
+
+    /// <summary>
     ///     Enable printer functionality
     /// </summary>
     public bool EnablePrinter { get; set; } = false;

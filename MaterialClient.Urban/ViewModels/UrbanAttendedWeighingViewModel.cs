@@ -93,6 +93,20 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
                     _ = ReloadRecordsAsync();
                 }));
 
+        _subscriptions.Add(
+            MessageBus.Current.Listen<SettingsSavedMessage>()
+                .Subscribe(async _ =>
+                {
+                    try
+                    {
+                        await RefreshDeviceStatusBarAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to refresh device status bar after settings save");
+                    }
+                }));
+
         _logger.LogInformation("UrbanAttendedWeighingViewModel event subscriptions initialized");
     }
 
@@ -120,7 +134,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     /// </summary>
     [Reactive]
     public ObservableCollection<DeviceStatusItem> DeviceStatuses { get; set; } =
-        new(DeviceStatusCatalog.BuildItems(false, false, false, false, false));
+        new(DeviceStatusCatalog.BuildItems(DeviceStatusBarOptions.CoreOnly, false, false, false, false, false));
 
     /// <summary>
     ///     Currently selected weighing record
@@ -241,9 +255,18 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         if (_deviceStatusTrackerStarted) return;
 
         _deviceStatusTracker.StatusesChanged += OnDeviceStatusesChanged;
-        OnDeviceStatusesChanged(_deviceStatusTracker.GetCurrentStatuses());
+        _ = RefreshDeviceStatusBarAsync();
         _deviceStatusTracker.StartMonitoring();
         _deviceStatusTrackerStarted = true;
+    }
+
+    /// <summary>
+    ///     Reload optional-device visibility after settings save.
+    /// </summary>
+    public async Task RefreshDeviceStatusBarAsync()
+    {
+        await _deviceStatusTracker.RefreshVisibilityFromSettingsAsync();
+        OnDeviceStatusesChanged(_deviceStatusTracker.GetCurrentStatuses());
     }
 
     private bool _deviceStatusTrackerStarted;

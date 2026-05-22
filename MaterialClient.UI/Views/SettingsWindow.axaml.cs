@@ -76,6 +76,8 @@ public partial class SettingsWindow : Window, ITransientDependency
             _navigationItems["WeighingSettings"] = weighingNav;
         if (this.FindControl<ListBoxItem>("CameraSettingsNavItem") is { } cameraNav)
             _navigationItems["CameraSettings"] = cameraNav;
+        if (this.FindControl<ListBoxItem>("DocumentCameraSettingsNavItem") is { } documentCameraNav)
+            _navigationItems["DocumentCameraSettings"] = documentCameraNav;
         if (this.FindControl<ListBoxItem>("LprSettingsNavItem") is { } lprNav)
             _navigationItems["LprSettings"] = lprNav;
         if (this.FindControl<ListBoxItem>("SystemSettingsNavItem") is { } systemNav)
@@ -92,6 +94,8 @@ public partial class SettingsWindow : Window, ITransientDependency
             _sectionElements["WeighingSettings"] = weighingBorder;
         if (this.FindControl<Border>("CameraSettings") is { } cameraBorder)
             _sectionElements["CameraSettings"] = cameraBorder;
+        if (this.FindControl<Border>("DocumentCameraSettings") is { } documentCameraBorder)
+            _sectionElements["DocumentCameraSettings"] = documentCameraBorder;
         if (this.FindControl<Border>("LprSettings") is { } lprBorder)
             _sectionElements["LprSettings"] = lprBorder;
         if (this.FindControl<Border>("SystemSettings") is { } systemBorder)

@@ -100,6 +100,14 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .Subscribe(_ => SyncDeviceStatuses())
             .DisposeWith(_disposables);
 
+        this.WhenAnyValue(
+                x => x.IsSoundDeviceOnline,
+                x => x.DocumentCameraEnabled,
+                x => x.IsPrinterEnabled,
+                x => x.IsSoundDeviceEnabled)
+            .Subscribe(_ => SyncDeviceStatuses())
+            .DisposeWith(_disposables);
+
         // Setup property change notifications
         this.WhenAnyValue(x => x.SelectedListItem)
             .Subscribe(async item =>
@@ -118,7 +126,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     this.RaisePropertyChanged(nameof(ShouldShowPreview));
 
                     // 根据ShouldShowPreview决定是否启动预览
-                    if (IsUsbCameraOnline && ShouldShowPreview)
+                    if (DocumentCameraEnabled && IsUsbCameraOnline && ShouldShowPreview)
                         _ = StartUsbCameraPreviewAsync();
                     else
                         _ = StopUsbCameraPreviewAsync();
@@ -162,7 +170,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 // 当从 MainView 切换到 DetailView 时，如果条件满足，启动预览
                 else
                 {
-                    if (IsUsbCameraOnline && ShouldShowPreview) await StartUsbCameraPreviewAsync();
+                    if (DocumentCameraEnabled && IsUsbCameraOnline && ShouldShowPreview)
+                        await StartUsbCameraPreviewAsync();
                 }
             })
             .DisposeWith(_disposables);
@@ -214,14 +223,13 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
         StartScaleStatusCheckTimer();
         _ = CheckCameraStatusOnceAsync();
-        StartUsbCameraStatusCheckTimer();
-        _ = LoadPrinterSettingsAsync();
+        _ = LoadDeviceVisibilitySettingsAsync();
         StartPrinterStatusCheckTimer();
         _ = CheckLprOnlineStatusAsync();
         StartLprStatusCheckTimer();
+        StartUsbCameraStatusCheckTimer();
         _ = StartAllDevicesAsync();
         SyncDeviceStatuses();
-        // InitializeSoundDeviceStatusPolling(); // Disabled: sound column status not needed in current version
 
         // Initialize state from service
         if (_attendedWeighingService != null)
@@ -251,12 +259,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .DisposeWith(_disposables);
 
         // 监听 USB 摄像头在线状态变化、ShouldShowPreview变化和IsShowingMainView变化，自动启动/停止预览
-        this.WhenAnyValue(x => x.IsUsbCameraOnline, x => x.ShouldShowPreview, x => x.IsShowingMainView)
+        this.WhenAnyValue(
+                x => x.DocumentCameraEnabled,
+                x => x.IsUsbCameraOnline,
+                x => x.ShouldShowPreview,
+                x => x.IsShowingMainView)
             .DistinctUntilChanged()
             .Subscribe(async tuple =>
             {
-                var (isOnline, shouldShow, isShowingMainView) = tuple;
-                if (isOnline && shouldShow && !isShowingMainView)
+                var (documentCameraEnabled, isOnline, shouldShow, isShowingMainView) = tuple;
+                if (documentCameraEnabled && isOnline && shouldShow && !isShowingMainView)
                     // 摄像头上线且应该显示预览且不在 MainView，启动预览
                     await StartUsbCameraPreviewAsync();
                 else
@@ -283,22 +295,25 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     private void SyncDeviceStatuses()
     {
+        var visibility = DeviceStatusCatalog.FromSettings(
+            DocumentCameraEnabled,
+            IsPrinterEnabled,
+            IsSoundDeviceEnabled);
+
         var items = DeviceStatusCatalog.BuildItems(
+            visibility,
             IsScaleOnline,
             IsCameraOnline,
             IsUsbCameraOnline,
             IsPrinterOnline,
-            IsLprOnline);
+            IsLprOnline,
+            IsSoundDeviceOnline);
 
         DeviceStatuses.Clear();
         foreach (var item in items)
         {
             DeviceStatuses.Add(item);
         }
-
-        // Release sound column device status polling subscription
-        _statusPollingDisposable?.Dispose();
-        _soundDeviceStatus?.Dispose();
     }
 
     /// <summary>
@@ -369,29 +384,52 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         }
     }
 
-    private async Task LoadPrinterSettingsAsync()
+    private async Task LoadDeviceVisibilitySettingsAsync()
     {
         try
         {
             var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
             var settings = await settingsService.GetSettingsAsync();
 
+            DocumentCameraEnabled = settings.SystemSettings.DocumentCameraEnabled;
             IsPrinterEnabled = settings.SystemSettings.EnablePrinter;
             PrinterName = settings.SystemSettings.SelectedPrinterName ?? string.Empty;
+
+            var soundEnabled = settings.SoundDeviceSettings.Enabled;
+            if (soundEnabled && _statusPollingDisposable == null)
+                InitializeSoundDeviceStatusPolling();
+            else if (!soundEnabled)
+            {
+                _statusPollingDisposable?.Dispose();
+                _statusPollingDisposable = null;
+                _soundDeviceStatus.OnNext(-1);
+            }
+
+            this.RaisePropertyChanged(nameof(IsSoundDeviceEnabled));
+
+            if (DocumentCameraEnabled)
+                await CheckUsbCameraOnlineStatusAsync();
+            else
+                Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
 
             if (IsPrinterEnabled)
                 await CheckPrinterStatusOnceAsync();
             else
                 Dispatcher.UIThread.Post(() => { IsPrinterOnline = false; });
+
+            SyncDeviceStatuses();
         }
         catch (Exception ex)
         {
-            Logger?.LogWarning(ex, "Failed to load printer settings");
+            Logger?.LogWarning(ex, "Failed to load device visibility settings");
             Dispatcher.UIThread.Post(() =>
             {
+                DocumentCameraEnabled = false;
                 IsPrinterEnabled = false;
                 IsPrinterOnline = false;
+                IsUsbCameraOnline = false;
             });
+            SyncDeviceStatuses();
         }
     }
 
@@ -445,6 +483,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     {
         var usbCameraStatusTimer = new Timer(_ =>
         {
+            if (!DocumentCameraEnabled) return;
+
             Task.Run(async () =>
             {
                 try
@@ -463,6 +503,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     private async Task CheckUsbCameraOnlineStatusAsync()
     {
+        if (!DocumentCameraEnabled)
+        {
+            Dispatcher.UIThread.Post(() => { IsUsbCameraOnline = false; });
+            return;
+        }
+
         try
         {
             var usbCameraService = _serviceProvider.GetService<IUsbCameraService>();
@@ -533,6 +579,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     private void InitializeSoundDeviceStatusPolling()
     {
+        if (!IsSoundDeviceEnabled) return;
+
+        _statusPollingDisposable?.Dispose();
         // Timer(0, 8s) = first poll immediately, then every 8 seconds (Interval would wait 8s for first)
         _statusPollingDisposable = Observable
             .Timer(TimeSpan.Zero, TimeSpan.FromSeconds(8))
@@ -548,6 +597,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     this.RaisePropertyChanged(nameof(IsSoundDeviceOnline));
                     this.RaisePropertyChanged(nameof(SoundDeviceStatusColor));
                     this.RaisePropertyChanged(nameof(SoundDeviceStatusText));
+                    SyncDeviceStatuses();
                 },
                 ex => Logger?.LogError(ex, "Error in sound device status polling"));
     }
@@ -556,6 +606,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     {
         try
         {
+            if (!DocumentCameraEnabled)
+                return;
+
             // 如果处于 MainView，则不启动预览
             if (IsShowingMainView)
             {
@@ -1022,11 +1075,10 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 try
                 {
                     await CheckCameraStatusOnceAsync();
-                    await LoadPrinterSettingsAsync();
+                    await LoadDeviceVisibilitySettingsAsync();
                     await CheckLprOnlineStatusAsync();
-                    this.RaisePropertyChanged(nameof(IsSoundDeviceEnabled));
                     Logger?.LogInformation(
-                        "AttendedWeighingViewModel: Camera status check completed after settings save");
+                        "AttendedWeighingViewModel: Device status bar refreshed after settings save");
                 }
                 catch (Exception ex)
                 {
@@ -1220,6 +1272,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     [Reactive] private bool _isUsbCameraOnline;
 
+    [Reactive] private bool _documentCameraEnabled;
+
     [Reactive] private bool _isPrinterEnabled;
 
     [Reactive] private bool _isPrinterOnline;
@@ -1246,13 +1300,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     [Reactive]
     private ObservableCollection<DeviceStatusItem> _deviceStatuses = new(
-    [
-        new DeviceStatusItem("地磅设备", false),
-        new DeviceStatusItem("摄像头", false),
-        new DeviceStatusItem("高拍仪", false),
-        new DeviceStatusItem("打印机", false),
-        new DeviceStatusItem("车牌识别", false),
-    ]);
+        DeviceStatusCatalog.BuildItems(DeviceStatusBarOptions.CoreOnly, false, false, false, false, false));
 
     public bool HasCameraStatuses => CameraStatuses.Count > 0;
 

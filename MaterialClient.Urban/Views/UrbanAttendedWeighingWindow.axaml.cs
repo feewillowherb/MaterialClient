@@ -109,6 +109,9 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
         {
             var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
             await settingsWindow.ShowDialog(this);
+
+            if (ViewModel != null)
+                await ViewModel.RefreshDeviceStatusBarAsync();
         }
         catch (Exception ex)
         {
