@@ -12,8 +12,10 @@
 
     <Window.Resources>
         <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
+        <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
         <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
         <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
+        <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
     </Window.Resources>
 
     <Window.Styles>
