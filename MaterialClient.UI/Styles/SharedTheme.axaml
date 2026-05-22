@@ -38,6 +38,21 @@
         <Setter Property="Opacity" Value="1" />
     </Style>
 
+    <!-- Button brand-primary-button style (settings window) -->
+    <Style Selector="Button.brand-primary-button">
+        <Setter Property="Background" Value="#4A85F9" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderBrush" Value="#4A85F9" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.brand-primary-button:disabled">
+        <Setter Property="Foreground" Value="#80FFFFFF" />
+    </Style>
+    <Style Selector="Button.brand-primary-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="#80FFFFFF" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
     <!-- Button secondary-button style -->
     <Style Selector="Button.secondary-button">
         <Setter Property="Background" Value="#E5E7EB" />

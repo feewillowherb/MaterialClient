@@ -2373,25 +2373,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         try
         {
             var parentWin = GetParentWindow();
-            var settingsViewModel = _serviceProvider.GetService<SettingsViewModel>();
-            if (settingsViewModel == null)
-            {
-                // Fallback to legacy SettingsWindow if SettingsViewModel not available
-                var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
-                if (parentWin != null)
-                    await settingsWindow.ShowDialog(parentWin);
-                else
-                    settingsWindow.Show();
-                return;
-            }
-
-            await settingsViewModel.PrepareForDisplayAsync();
-
-            var dialog = new SettingsDialog { DataContext = settingsViewModel };
+            var settingsWindow = _serviceProvider.GetRequiredService<MaterialClient.UI.Views.SettingsWindow>();
             if (parentWin != null)
-                await dialog.ShowDialog(parentWin);
+                await settingsWindow.ShowDialog(parentWin);
             else
-                dialog.Show();
+                settingsWindow.Show();
         }
         catch (Exception ex)
         {

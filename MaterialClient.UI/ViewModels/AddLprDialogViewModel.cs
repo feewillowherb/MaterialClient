@@ -5,7 +5,7 @@ using MaterialClient.Common.Entities.Enums;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
-namespace MaterialClient.ViewModels;
+namespace MaterialClient.UI.ViewModels;
 
 /// <summary>
 ///     ViewModel for Add LPR Dialog

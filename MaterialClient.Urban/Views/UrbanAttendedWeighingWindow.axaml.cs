@@ -2,8 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using MaterialClient.UI.Controls;
-using MaterialClient.UI.ViewModels;
+using MaterialClient.UI.Views;
 using MaterialClient.Urban.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.DependencyInjection;
@@ -106,15 +105,14 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
     {
         if (_serviceProvider == null) return;
 
-        var settingsViewModel = _serviceProvider.GetService<SettingsViewModel>();
-        if (settingsViewModel == null) return;
-
-        await settingsViewModel.PrepareForDisplayAsync();
-
-        var dialog = new SettingsDialog
+        try
         {
-            DataContext = settingsViewModel,
-        };
-        await dialog.ShowDialog(this);
+            var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
+            await settingsWindow.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
     }
 }

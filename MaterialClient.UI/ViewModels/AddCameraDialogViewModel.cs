@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
-namespace MaterialClient.ViewModels;
+namespace MaterialClient.UI.ViewModels;
 
 /// <summary>
 ///     ViewModel for Add Camera Dialog

@@ -20,13 +20,13 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
-using MaterialClient.Views.Dialogs;
+using MaterialClient.UI.Views.Dialogs;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.ViewModels;
+namespace MaterialClient.UI.ViewModels;
 
 /// <summary>
 ///     Settings window ViewModel

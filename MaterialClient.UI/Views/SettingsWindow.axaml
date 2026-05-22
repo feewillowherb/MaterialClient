@@ -1,15 +1,20 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:MaterialClient.ViewModels"
-        xmlns:converters="using:MaterialClient.Converters"
-        x:Class="MaterialClient.Views.SettingsWindow"
+        xmlns:vm="using:MaterialClient.UI.ViewModels"
+        xmlns:converters="using:MaterialClient.UI.Converters"
+        x:Class="MaterialClient.UI.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
         Title="系统设置"
         Width="940" Height="600"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="None"
-        Icon="/Assets/fd-ico.ico"
         CanResize="False">
+
+    <Window.Resources>
+        <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
+        <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
+        <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
+    </Window.Resources>
 
     <Window.Styles>
         <!-- Navigation ListBox Styles -->

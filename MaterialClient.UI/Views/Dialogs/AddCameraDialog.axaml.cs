@@ -1,16 +1,16 @@
 using Avalonia.Controls;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 
-namespace MaterialClient.Views.Dialogs;
+namespace MaterialClient.UI.Views.Dialogs;
 
-public partial class AddLprDialog : Window
+public partial class AddCameraDialog : Window
 {
-    public AddLprDialog()
+    public AddCameraDialog()
     {
         InitializeComponent();
     }
 
-    public AddLprDialog(AddLprDialogViewModel viewModel) : this()
+    public AddCameraDialog(AddCameraDialogViewModel viewModel) : this()
     {
         DataContext = viewModel;
         

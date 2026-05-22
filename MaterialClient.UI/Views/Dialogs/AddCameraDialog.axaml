@@ -1,13 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:MaterialClient.ViewModels"
-        x:Class="MaterialClient.Views.Dialogs.AddCameraDialog"
+        xmlns:vm="using:MaterialClient.UI.ViewModels"
+        x:Class="MaterialClient.UI.Views.Dialogs.AddCameraDialog"
         x:DataType="vm:AddCameraDialogViewModel"
         Title="添加摄像头"
         Width="500" Height="450"
-        WindowStartupLocation="CenterOwner"
-        Icon="/Assets/fd-ico.ico">
-    
+        WindowStartupLocation="CenterOwner">
+
     <Grid RowDefinitions="*,Auto" Margin="20">
         <StackPanel Grid.Row="0" Spacing="16">
             <TextBlock Text="摄像头配置"
