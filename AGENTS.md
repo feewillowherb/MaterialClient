@@ -165,6 +165,16 @@
 - **压缩质量**：`JpegCompressionUtil.LrpCompressionQuality = 90`
 - **存储路径**：`Lrp/{plate}_{timestamp}.jpg`（相对于应用目录）
 
+### Urban 称重记录扩展模式（Variant Extension Pattern）
+- **扩展实体**：`MaterialClient.Common/Entities/Urban/UrbanWeighingExtension.cs`
+- **关系**：`WeighingRecord` ← 1:0..1 → `UrbanWeighingExtension`（通过 FK `WeighingRecordId`）
+- **用途**：存储 Urban 专用字段（`SyncStatus`、`RetryCount`、LastErrorTime`），与共享实体 `WeighingRecord` 解耦
+- **约束**：`WeighingRecordId` 唯一索引 + `(SyncStatus, WeighingRecordId)` 复合索引
+- **创建时机**：`WeighingRecordService.CreateWeighingRecordAsync()` 在 `WeighingMode == UrbanMode` 时同一事务内创建
+- **查询模式**：Urban ViewModel 使用 `.Include(r => r.UrbanExtension)` LEFT JOIN 模式
+- **XAML 绑定**：通过 `SyncStatusMatchConverter` 转换器访问 `UrbanExtension.SyncStatus`
+- **扩展指引**：SolidWaste 等其他模式如需变体专属字段，参照此模式创建 `SolidWasteWeighingExtension` 实体
+
 ## 治理规则
 
 - Constitution 优先于所有其他实践；修改需要文档、批准和迁移计划。
