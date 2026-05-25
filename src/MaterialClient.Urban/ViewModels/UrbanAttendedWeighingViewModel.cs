@@ -8,6 +8,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.Urban;
 using MaterialClient.UI;
 using MaterialClient.UI.Models;
 using MaterialClient.UI.Services;
@@ -27,7 +28,7 @@ namespace MaterialClient.Urban.ViewModels;
 public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
 {
     private readonly ILocalEventBus _localEventBus;
-    private readonly IWeighingRecordService _weighingRecordService;
+    private readonly IUrbanWeighingExtensionService _urbanWeighingExtensionService;
     private readonly IAttendedWeighingService _attendedWeighingService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IAttachmentService _attachmentService;
@@ -39,7 +40,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     public UrbanAttendedWeighingViewModel(
         ILocalEventBus localEventBus,
-        IWeighingRecordService weighingRecordService,
+        IUrbanWeighingExtensionService urbanWeighingExtensionService,
         IAttendedWeighingService attendedWeighingService,
         ITruckScaleWeightService truckScaleWeightService,
         IAttachmentService attachmentService,
@@ -47,7 +48,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         ILogger<UrbanAttendedWeighingViewModel> logger)
     {
         _localEventBus = localEventBus;
-        _weighingRecordService = weighingRecordService;
+        _urbanWeighingExtensionService = urbanWeighingExtensionService;
         _attendedWeighingService = attendedWeighingService;
         _truckScaleWeightService = truckScaleWeightService;
         _attachmentService = attachmentService;
@@ -126,6 +127,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     _logger.LogDebug("Urban UI Weight Update: {Weight}", weight);
                     CurrentWeight = weight;
                 }));
+
+        _ = ReloadRecordsAsync();
 
         _logger.LogInformation("UrbanAttendedWeighingViewModel event subscriptions initialized");
     }
@@ -326,16 +329,20 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     {
         try
         {
-            var result = await _weighingRecordService.GetPagedUrbanWeighingRecordsAsync(
+            var result = await _urbanWeighingExtensionService.GetPagedWithRecordsAsync(
                 CurrentPage, PageSize, ActiveTab, SearchText, StartTime, EndTime);
 
             TotalCount = (int)result.TotalCount;
             TotalPages = TotalCount > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 1;
 
-            // Update collection on UI thread
+            // Update in place so ItemsSource / bindings keep the same collection instance
             RxApp.MainThreadScheduler.Schedule(() =>
             {
-                WeighingRecords = new ObservableCollection<WeighingRecord>(result.Items);
+                WeighingRecords.Clear();
+                foreach (var record in result.Items)
+                {
+                    WeighingRecords.Add(record);
+                }
             });
         }
         catch (Exception ex)

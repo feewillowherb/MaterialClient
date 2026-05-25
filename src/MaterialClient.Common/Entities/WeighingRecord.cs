@@ -106,9 +106,9 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
 
     /// <summary>
-    ///     Urban-specific extension navigation property (1:0..1 relationship).
-    ///     <c>null</c> for non-Urban records (Standard, SolidWaste).
+    ///     Urban extension loaded in memory for UI/query (not mapped; association via Domain Service / join).
     /// </summary>
+    [NotMapped]
     public UrbanWeighingExtension? UrbanExtension { get; set; }
 
     /// <summary>

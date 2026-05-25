@@ -233,23 +233,12 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         // Configure WorkSettingsEntity
         modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
 
-        // Configure UrbanWeighingExtension (1:0..1 relationship with WeighingRecord)
+        // UrbanWeighingExtension: logical WeighingRecordId only (no FK / no navigation mapping)
         modelBuilder.Entity<UrbanWeighingExtension>(entity =>
         {
             entity.ConfigureByConvention();
-
-            // Foreign key to WeighingRecord
             entity.Property(e => e.WeighingRecordId).IsRequired();
-
-            // 1:0..1 relationship: WeighingRecord has at most one UrbanWeighingExtension
-            entity.HasOne(e => e.WeighingRecord)
-                .WithOne(r => r.UrbanExtension)
-                .HasForeignKey<UrbanWeighingExtension>(e => e.WeighingRecordId);
-
-            // Unique constraint on WeighingRecordId (ensures 1:0..1)
             entity.HasIndex(e => e.WeighingRecordId).IsUnique();
-
-            // Composite index on (SyncStatus, WeighingRecordId) for background worker query performance
             entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
         });
     }

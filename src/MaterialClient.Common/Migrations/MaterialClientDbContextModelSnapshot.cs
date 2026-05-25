@@ -1004,22 +1004,6 @@ namespace MaterialClient.Common.Migrations
 
                     b.ToTable("WorkSettings");
                 });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.Urban.UrbanWeighingExtension", b =>
-                {
-                    b.HasOne("MaterialClient.Common.Entities.WeighingRecord", "WeighingRecord")
-                        .WithOne("UrbanExtension")
-                        .HasForeignKey("MaterialClient.Common.Entities.Urban.UrbanWeighingExtension", "WeighingRecordId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("WeighingRecord");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.WeighingRecord", b =>
-                {
-                    b.Navigation("UrbanExtension");
-                });
 #pragma warning restore 612, 618
         }
     }

@@ -24,12 +24,6 @@ namespace MaterialClient.Common.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_UrbanWeighingExtensions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_UrbanWeighingExtensions_WeighingRecords_WeighingRecordId",
-                        column: x => x.WeighingRecordId,
-                        principalTable: "WeighingRecords",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -42,17 +36,6 @@ namespace MaterialClient.Common.Migrations
                 table: "UrbanWeighingExtensions",
                 column: "WeighingRecordId",
                 unique: true);
-
-            // Disabled: WeighingRecords never had SyncStatus; backfill must use a constant (e.g. 0 = Pending).
-            // New Urban records get UrbanWeighingExtension at creation time in application code.
-            // migrationBuilder.Sql(
-            //     @"INSERT INTO UrbanWeighingExtensions (Id, WeighingRecordId, SyncStatus, RetryCount, LastErrorTime)
-            //       SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-' || '4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))), Id, 0, 0, NULL
-            //       FROM WeighingRecords
-            //       WHERE WeighingMode = 201
-            //         AND NOT EXISTS (
-            //           SELECT 1 FROM UrbanWeighingExtensions ue WHERE ue.WeighingRecordId = WeighingRecords.Id
-            //         )");
         }
 
         /// <inheritdoc />

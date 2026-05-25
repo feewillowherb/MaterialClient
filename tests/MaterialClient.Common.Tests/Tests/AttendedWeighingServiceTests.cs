@@ -8,6 +8,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.AttendedWeighing.Records;
+using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
@@ -1781,7 +1782,7 @@ public class AttendedWeighingServiceTests : IDisposable
         var captureService = new WeighingCaptureService(
             hikvisionService, null, settingsService, captureLogger);
         var recordService = new WeighingRecordService(
-            weighingRecordRepo, Substitute.For<IRepository<UrbanWeighingExtension, Guid>>(), fileRepo, attachmentRepo, uowManager, settingsService,
+            weighingRecordRepo, Substitute.For<IUrbanWeighingExtensionService>(), fileRepo, attachmentRepo, uowManager, settingsService,
             plateNumberService, _testEventBus, recordLogger);
 
         return new AttendedWeighingService(

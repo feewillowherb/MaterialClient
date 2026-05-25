@@ -147,7 +147,8 @@
                             </Border>
 
                             <!-- Vehicle Records List (using Common.Entities.WeighingRecord) -->
-                            <ItemsControl Grid.Row="3" Name="VehicleList" Margin="0">
+                            <ItemsControl Grid.Row="3" Name="VehicleList" Margin="0"
+                                          ItemsSource="{Binding WeighingRecords}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="entities:WeighingRecord">
                                         <Border Background="Transparent"

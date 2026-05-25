@@ -35,9 +35,6 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
         WeighingBase.AddHandler(WeighingWindowBase.MinimizeButtonClickEvent, OnMinimizeButtonClick);
         WeighingBase.AddHandler(WeighingWindowBase.CloseButtonClickEvent, OnCloseButtonClick);
         WeighingBase.AddHandler(WeighingWindowBase.TitleBarPointerPressedEvent, OnTitleBarPointerPressed);
-
-        // Bind data to controls
-        VehicleList.ItemsSource = viewModel.WeighingRecords;
     }
 
     /// <summary>

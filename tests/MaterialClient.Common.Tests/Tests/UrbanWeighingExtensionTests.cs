@@ -76,13 +76,10 @@ public class UrbanWeighingExtensionTests
     }
 
     [Fact]
-    public void UrbanWeighingExtension_NavigationProperty_Should_Be_Nullable()
+    public void UrbanWeighingExtension_WeighingRecordId_Should_Default_To_Zero()
     {
-        // Arrange & Act
         var extension = new UrbanWeighingExtension();
-
-        // Assert - navigation property is null by default (not set through constructor)
-        extension.WeighingRecord.ShouldBeNull();
+        extension.WeighingRecordId.ShouldBe(0);
     }
 
     #endregion

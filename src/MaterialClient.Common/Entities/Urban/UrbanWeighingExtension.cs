@@ -5,13 +5,12 @@ namespace MaterialClient.Common.Entities.Urban;
 
 /// <summary>
 ///     Urban-specific extension entity for weighing records.
-///     Maintains a 1:0..1 relationship with <see cref="WeighingRecord" />,
-///     storing Urban-variant-specific fields such as sync status, retry count, and error tracking.
+///     Associated to <see cref="WeighingRecord" /> by <see cref="WeighingRecordId" /> only (no DB FK / no EF navigation).
 /// </summary>
 public class UrbanWeighingExtension : Entity<Guid>
 {
     /// <summary>
-    ///     Foreign key referencing the parent <see cref="WeighingRecord" />.
+    ///     Parent <see cref="WeighingRecord" /> identifier (logical association, not a database foreign key).
     /// </summary>
     public long WeighingRecordId { get; set; }
 
@@ -31,9 +30,4 @@ public class UrbanWeighingExtension : Entity<Guid>
     ///     Timestamp of the last upload failure, or <c>null</c> if no failure has occurred.
     /// </summary>
     public DateTime? LastErrorTime { get; set; }
-
-    /// <summary>
-    ///     Navigation property back to the parent <see cref="WeighingRecord" />.
-    /// </summary>
-    public WeighingRecord WeighingRecord { get; set; } = null!;
 }
