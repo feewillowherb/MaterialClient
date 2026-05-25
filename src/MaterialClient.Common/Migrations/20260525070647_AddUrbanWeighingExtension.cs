@@ -43,15 +43,16 @@ namespace MaterialClient.Common.Migrations
                 column: "WeighingRecordId",
                 unique: true);
 
-            // Data migration: copy SyncStatus from WeighingRecords for Urban mode records (WeighingMode = 201)
-            migrationBuilder.Sql(
-                @"INSERT INTO UrbanWeighingExtensions (Id, WeighingRecordId, SyncStatus, RetryCount, LastErrorTime)
-                  SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-' || '4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))), Id, SyncStatus, 0, NULL
-                  FROM WeighingRecords
-                  WHERE WeighingMode = 201
-                    AND NOT EXISTS (
-                      SELECT 1 FROM UrbanWeighingExtensions ue WHERE ue.WeighingRecordId = WeighingRecords.Id
-                    )");
+            // Disabled: WeighingRecords never had SyncStatus; backfill must use a constant (e.g. 0 = Pending).
+            // New Urban records get UrbanWeighingExtension at creation time in application code.
+            // migrationBuilder.Sql(
+            //     @"INSERT INTO UrbanWeighingExtensions (Id, WeighingRecordId, SyncStatus, RetryCount, LastErrorTime)
+            //       SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-' || '4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))), Id, 0, 0, NULL
+            //       FROM WeighingRecords
+            //       WHERE WeighingMode = 201
+            //         AND NOT EXISTS (
+            //           SELECT 1 FROM UrbanWeighingExtensions ue WHERE ue.WeighingRecordId = WeighingRecords.Id
+            //         )");
         }
 
         /// <inheritdoc />
