@@ -4,6 +4,7 @@ using MaterialClient.Common.Models;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
@@ -13,6 +14,12 @@ namespace MaterialClient.Common.Services;
 /// </summary>
 public interface IOssUploadService
 {
+    /// <summary>
+    ///     校验OSS配置并确保客户端可用
+    /// </summary>
+    /// <returns>可用的 OSS 客户端</returns>
+    OssClient EnsureOssClient();
+
     /// <summary>
     ///     上传单个文件到OSS
     /// </summary>
@@ -34,23 +41,47 @@ public interface IOssUploadService
 /// </summary>
 public class OssUploadService : IOssUploadService, ITransientDependency
 {
-    private readonly AliyunOssConfig _config;
+    private readonly IOptions<AliyunOssConfig> _options;
     private readonly ILogger<OssUploadService>? _logger;
-    private readonly OssClient _ossClient;
+    private OssClient? _ossClient;
 
     public OssUploadService(IOptions<AliyunOssConfig> options, ILogger<OssUploadService>? logger)
     {
-        _config = options.Value;
+        _options = options;
         _logger = logger;
-        _ossClient = new OssClient(
-            _config.RegionId,
-            _config.Key,
-            _config.Secret);
+    }
+
+    /// <inheritdoc />
+    public OssClient EnsureOssClient()
+    {
+        var config = _options.Value;
+        if (!config.IsValid())
+        {
+            var missingFields = new List<string>();
+            if (string.IsNullOrWhiteSpace(config.RegionId)) missingFields.Add(nameof(config.RegionId));
+            if (string.IsNullOrWhiteSpace(config.Key)) missingFields.Add(nameof(config.Key));
+            if (string.IsNullOrWhiteSpace(config.Secret)) missingFields.Add(nameof(config.Secret));
+            if (string.IsNullOrWhiteSpace(config.BucketName)) missingFields.Add(nameof(config.BucketName));
+
+            var missing = missingFields.Count > 0 ? string.Join(", ", missingFields) : "Unknown";
+            throw new BusinessException("OSS:INVALID_CONFIG", $"OSS配置无效，缺少字段: {missing}");
+        }
+
+        _ossClient ??= new OssClient(
+            config.RegionId,
+            config.Key,
+            config.Secret);
+
+        return _ossClient;
     }
 
     /// <inheritdoc />
     public async Task<string?> UploadFileAsync(string localPath, string ossObjectKey)
     {
+        var ossClient = EnsureOssClient();
+        var config = _options.Value;
+        var bucketName = config.BucketName;
+
         try
         {
             // Normalize before File API usage (localPath may be stored as relative path in DB).
@@ -61,12 +92,10 @@ public class OssUploadService : IOssUploadService, ITransientDependency
                 return null;
             }
 
-            var bucketName = _config.BucketName;
-
-            await Task.Run(() => { _ossClient.PutObject(bucketName, ossObjectKey, localPath); });
+            await Task.Run(() => { ossClient.PutObject(bucketName, ossObjectKey, localPath); });
 
             // 构建OSS完整URL
-            var ossUrl = _config.GetOssUrl(ossObjectKey);
+            var ossUrl = config.GetOssUrl(ossObjectKey);
             _logger?.LogInformation("文件上传成功: {LocalPath} -> {OssUrl}", localPath, ossUrl);
             return ossUrl;
         }
@@ -86,7 +115,9 @@ public class OssUploadService : IOssUploadService, ITransientDependency
         if (attachments == null || attachments.Count == 0)
             return result;
 
-        var bucketName = _config.BucketName;
+        var ossClient = EnsureOssClient();
+        var config = _options.Value;
+        var bucketName = config.BucketName;
 
         foreach (var item in attachments)
             try
@@ -117,11 +148,11 @@ public class OssUploadService : IOssUploadService, ITransientDependency
 
                 await Task.Run(() =>
                     {
-                        _ossClient.PutObject(bucketName, ossObjectKey, normalizedLocalPath);
+                        ossClient.PutObject(bucketName, ossObjectKey, normalizedLocalPath);
                     });
 
                 // 构建OSS完整URL
-                var ossUrl = _config.GetOssUrl(ossObjectKey);
+                var ossUrl = config.GetOssUrl(ossObjectKey);
                 result[item.Attachment.Id] = ossUrl;
 
                 _logger?.LogInformation(

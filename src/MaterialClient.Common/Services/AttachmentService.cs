@@ -8,6 +8,7 @@ using MaterialClient.Common.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.ChangeTracking;
 using Volo.Abp.Domain.Repositories;
@@ -279,6 +280,9 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     {
         try
         {
+            // Fail fast on invalid OSS configuration before querying/upload pipeline.
+            _ossUploadService.EnsureOssClient();
+
             // 查询运单的所有附件
             var attachments = await _waybillAttachmentRepository.GetListAsync(
                 x => x.WaybillId == waybillId
@@ -348,6 +352,9 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
     {
         try
         {
+            // Fail fast on invalid OSS configuration before scanning and upload batch.
+            _ossUploadService.EnsureOssClient();
+
             // 获取查询对象
             var waybillQuery = await _waybillRepository.GetQueryableAsync();
             var waybillAttachmentQuery = await _waybillAttachmentRepository.GetQueryableAsync();

@@ -17,6 +17,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Exclude temporary build outputs under project-local artifacts from Compile items. -->
+        <Compile Remove="artifacts\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
             <PrivateAssets>all</PrivateAssets>

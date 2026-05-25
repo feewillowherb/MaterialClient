@@ -124,7 +124,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
                 .Subscribe(weight =>
                 {
                     _logger.LogDebug("Urban UI Weight Update: {Weight}", weight);
-                    CurrentWeight = weight.ToString("N0");
+                    CurrentWeight = weight;
                 }));
 
         _logger.LogInformation("UrbanAttendedWeighingViewModel event subscriptions initialized");
@@ -145,7 +145,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     {
         RxApp.MainThreadScheduler.Schedule(() =>
         {
-            CurrentWeight = weight.ToString("N0");
+            CurrentWeight = weight;
         });
     }
 
@@ -171,10 +171,10 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     public WeighingRecord? SelectedRecord { get; set; }
 
     /// <summary>
-    ///     Current weight display
+    ///     Current weight value
     /// </summary>
     [Reactive]
-    public string CurrentWeight { get; set; } = "0.00";
+    public decimal CurrentWeight { get; set; } = 0.00m;
 
     /// <summary>
     ///     Weight status text
