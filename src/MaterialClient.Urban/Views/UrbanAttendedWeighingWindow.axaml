@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:entities="using:MaterialClient.Common.Entities"
+        xmlns:converters="using:MaterialClient.Urban.Converters"
         xmlns:viewModels="using:MaterialClient.Urban.ViewModels"
         xmlns:ui="using:MaterialClient.UI.Controls"
         xmlns:uiModels="using:MaterialClient.UI.Models"
@@ -14,6 +15,13 @@
         CanResize="True"
         Icon="/Assets/fd-ico.ico"
         Background="{DynamicResource BackgroundGray}">
+
+    <Window.Resources>
+        <!-- Converter: SyncStatus == Failed -->
+        <converters:SyncStatusMatchConverter x:Key="IsFailedConverter" TargetStatus="Failed" />
+        <!-- Converter: SyncStatus != Failed (shown as normal) -->
+        <converters:SyncStatusMatchConverter x:Key="IsNotFailedConverter" TargetStatus="Failed" Invert="True" />
+    </Window.Resources>
 
     <Grid>
         <ui:WeighingWindowBase x:Name="WeighingBase">
@@ -163,15 +171,19 @@
                                                 <!-- TotalWeight (was Weight), decimal format -->
                                                 <TextBlock Grid.Column="2" Text="{Binding TotalWeight, StringFormat='{}{0:F2} 吨'}" FontSize="12" VerticalAlignment="Center"
                                                            Foreground="#333333" />
-                                                <!-- Status Badge based on SyncStatus -->
+                                                <!-- Status Badge based on UrbanExtension.SyncStatus -->
                                                 <Panel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                    <Border Background="#DCFCE7" CornerRadius="3" Padding="6,2">
-                                                        <Border.IsVisible>
-                                                            <MultiBinding>
-                                                                <Binding Path="SyncStatus" />
-                                                            </MultiBinding>
-                                                        </Border.IsVisible>
+                                                    <!-- Normal status badge (green): shown when extension exists and SyncStatus != Failed -->
+                                                    <Border Background="#DCFCE7" CornerRadius="3" Padding="6,2"
+                                                            IsVisible="{Binding UrbanExtension.SyncStatus, Converter={StaticResource IsNotFailedConverter}, FallbackValue=False}">
                                                         <TextBlock Text="正常" FontSize="11" Foreground="#15803D"
+                                                                   FontWeight="Medium"
+                                                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                                    </Border>
+                                                    <!-- Failed status badge (red): shown when SyncStatus == Failed -->
+                                                    <Border Background="#FEE2E2" CornerRadius="3" Padding="6,2"
+                                                            IsVisible="{Binding UrbanExtension.SyncStatus, Converter={StaticResource IsFailedConverter}, FallbackValue=False}">
+                                                        <TextBlock Text="异常" FontSize="11" Foreground="#DC2626"
                                                                    FontWeight="Medium"
                                                                    FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                                     </Border>

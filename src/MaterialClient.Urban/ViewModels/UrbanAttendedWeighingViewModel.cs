@@ -4,12 +4,14 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.UI;
 using MaterialClient.UI.Models;
 using MaterialClient.UI.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -347,13 +349,14 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         try
         {
             var query = (await _weighingRecordRepository.GetQueryableAsync())
+                .Include(r => r.UrbanExtension)
                 .Where(r => r.WeighingMode == WeighingMode.UrbanMode);
 
-            // Tab filter
+            // Tab filter: filter by extension.SyncStatus (LEFT JOIN semantics via Include)
             query = ActiveTab switch
             {
-                "正常" => query.Where(r => r.SyncStatus != SyncStatus.Failed),
-                "异常" => query.Where(r => r.SyncStatus == SyncStatus.Failed),
+                "正常" => query.Where(r => r.UrbanExtension != null && r.UrbanExtension.SyncStatus != SyncStatus.Failed),
+                "异常" => query.Where(r => r.UrbanExtension != null && r.UrbanExtension.SyncStatus == SyncStatus.Failed),
                 _ => query // "全部"
             };
 
