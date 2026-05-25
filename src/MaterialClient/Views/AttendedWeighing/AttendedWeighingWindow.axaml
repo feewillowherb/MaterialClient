@@ -20,23 +20,18 @@
     <!-- Window.Styles 已移至 App.axaml 全局样式 -->
 
     <Panel>
-    <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
+        <ui:WeighingWindowBase x:Name="WeighingBase">
 
-        <!-- Top Blue Header Bar -->
-        <Border Grid.Row="0"
-                Background="#4169E1"
-                Padding="16,6,0,6"
-                PointerPressed="TitleBar_OnPointerPressed"
-                Cursor="Arrow">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                <!-- Logo and Title -->
+            <!-- HeaderLeftContent: Logo -->
+            <ui:WeighingWindowBase.HeaderLeftContent>
                 <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                     <Image Source="/Assets/Indexlogo.png" Width="210" Height="32" Stretch="Uniform" />
                 </StackPanel>
+            </ui:WeighingWindowBase.HeaderLeftContent>
 
-                <!-- Menu Items (Center) -->
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
+            <!-- MenuItems: Menu buttons + DataManagement Popup -->
+            <ui:WeighingWindowBase.MenuItems>
+                <StackPanel Orientation="Horizontal"
                             Spacing="32"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
@@ -74,333 +69,300 @@
                             Padding="8,4"
                             Command="{Binding ExportSolidWasteCommand}"
                             IsVisible="False" />
+
+                    <!-- 数据管理三行弹出菜单 -->
+                    <Popup x:Name="DataManagementMenuPopup"
+                           Placement="Bottom"
+                           IsLightDismissEnabled="True"
+                           VerticalOffset="2"
+                           HorizontalOffset="0">
+                        <Border Background="#2E5A9E"
+                                CornerRadius="4"
+                                Padding="0,4"
+                                MinWidth="140">
+                            <StackPanel Spacing="0">
+                                <Button
+                                        Padding="12,10"
+                                        Click="OnMaterialManagementClick"
+                                        Classes="popup-menu-item-button">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="&#x25C6;"
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"
+                                                   Opacity="0.9" />
+                                        <TextBlock Text="材料管理" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                        Padding="12,10"
+                                        Click="OnSupplyManagementClick"
+                                        Classes="popup-menu-item-button">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="&#x25CF;"
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"
+                                                   Opacity="0.9" />
+                                        <TextBlock Text="供应管理" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                        Padding="12,10"
+                                        Click="OnLedgerManagementClick"
+                                        Classes="popup-menu-item-button">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="&#x25A4;"
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"
+                                                   Opacity="0.9" />
+                                        <TextBlock Text="台账管理" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                 </StackPanel>
+            </ui:WeighingWindowBase.MenuItems>
 
-                <!-- Window Control Buttons -->
-                <StackPanel Grid.Column="2"
-                            Orientation="Horizontal"
-                            Spacing="0"
-                            VerticalAlignment="Top"
-                            HorizontalAlignment="Right"
-                            Margin="0,-4,0,0">
-                    <!-- Minimize Button -->
-                    <Button Content="─"
-                            FontSize="16"
-                            Width="40"
-                            Height="40"
-                            Cursor="Hand"
-                            Click="OnMinimizeButtonClick"
-                            Classes="titlebar-minimize-button" />
-
-                    <!-- Close Button -->
-                    <Button Content="✕"
-                            FontSize="18"
-                            Width="40"
-                            Height="40"
-                            Cursor="Hand"
-                            Click="OnCloseButtonClick"
-                            Classes="titlebar-close-button" />
-                </StackPanel>
-
-                <!-- 数据管理三行弹出菜单 -->
-                <Popup x:Name="DataManagementMenuPopup"
-                       Placement="Bottom"
-                       IsLightDismissEnabled="True"
-                       VerticalOffset="2"
-                       HorizontalOffset="0">
-                    <Border Background="#2E5A9E"
-                            CornerRadius="4"
-                            Padding="0,4"
-                            MinWidth="140">
-                        <StackPanel Spacing="0">
-                            <Button
-                                    Padding="12,10"
-                                    Click="OnMaterialManagementClick"
-                                    Classes="popup-menu-item-button">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Text="&#x25C6;"
-                                               FontSize="14"
-                                               VerticalAlignment="Center"
-                                               Opacity="0.9" />
-                                    <TextBlock Text="材料管理" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button
-                                    Padding="12,10"
-                                    Click="OnSupplyManagementClick"
-                                    Classes="popup-menu-item-button">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Text="&#x25CF;"
-                                               FontSize="14"
-                                               VerticalAlignment="Center"
-                                               Opacity="0.9" />
-                                    <TextBlock Text="供应管理" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button
-                                    Padding="12,10"
-                                    Click="OnLedgerManagementClick"
-                                    Classes="popup-menu-item-button">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Text="&#x25A4;"
-                                               FontSize="14"
-                                               VerticalAlignment="Center"
-                                               Opacity="0.9" />
-                                    <TextBlock Text="台账管理" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </Border>
-                </Popup>
-            </Grid>
-        </Border>
-
-        <!-- Blue Gradient Weight Display Area -->
-        <Grid Grid.Row="1" Background="#4A85F9">
-            <!-- Background Image Layer -->
-            <Border>
-                <Border.Background>
-                    <ImageBrush Source="/Assets/Indexbanner.png"
-                                Stretch="UniformToFill"
-                                AlignmentX="Center"
-                                AlignmentY="Center" />
-                </Border.Background>
-            </Border>
-
-            <!-- Content Layer with Margin -->
-            <Grid ColumnDefinitions="Auto,*,Auto"
-                  Margin="24,32"
-                  HorizontalAlignment="Stretch"
-                  VerticalAlignment="Stretch">
-                <!-- Weight Display Center -->
-                <Grid Grid.Column="1"
-                      HorizontalAlignment="Center"
-                      ColumnDefinitions="Auto,Auto,Auto,Auto"
-                      RowDefinitions="Auto">
-                    <!-- Province Selector -->
-                    <Border Grid.Row="0"
-                            Background="#5A7FE6"
-                            CornerRadius="8"
-                            Padding="20,12"
-                            VerticalAlignment="Center"
-                            MinWidth="180">
-                        <Border.RenderTransform>
-                            <TranslateTransform X="-60" />
-                        </Border.RenderTransform>
-                        <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}"
-                                   Foreground="White"
-                                   FontSize="16" />
+            <!-- WeightAreaContent: Blue gradient weight display -->
+            <ui:WeighingWindowBase.WeightAreaContent>
+                <Grid Background="#4A85F9">
+                    <!-- Background Image Layer -->
+                    <Border>
+                        <Border.Background>
+                            <ImageBrush Source="/Assets/Indexbanner.png"
+                                        Stretch="UniformToFill"
+                                        AlignmentX="Center"
+                                        AlignmentY="Center" />
+                        </Border.Background>
                     </Border>
 
-                    <!-- DeliveryType Selector, Weight Value and Unit with Outer Border -->
-                    <Border Grid.Column="1"
-                            Grid.Row="0"
-                            Grid.ColumnSpan="3"
-                            Background="#5A7FE6"
-                            CornerRadius="8"
-                            BorderThickness="0"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Center"
-                            Padding="0">
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                            <!-- DeliveryType Selector -->
-                            <Border Grid.Column="0"
-                                    Background="Transparent"
+                    <!-- Content Layer with Margin -->
+                    <Grid ColumnDefinitions="Auto,*,Auto"
+                          Margin="24,32"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch">
+                        <!-- Weight Display Center -->
+                        <Grid Grid.Column="1"
+                              HorizontalAlignment="Center"
+                              ColumnDefinitions="Auto,Auto,Auto,Auto"
+                              RowDefinitions="Auto">
+                            <!-- Province Selector -->
+                            <Border Grid.Row="0"
+                                    Background="#5A7FE6"
                                     CornerRadius="8"
-                                    VerticalAlignment="Center">
-                                <StackPanel Orientation="Vertical">
-                                    <views1:AnimatedDeliveryTypeRadioButton Text="收料"
-                                                                            GroupName="DeliveryType"
-                                                                            IsChecked="{Binding IsReceiving}"
-                                                                            Command="{Binding SetReceivingCommand}"
-                                                                            IsWeighingActive="{Binding IsWeighingActive}"
-                                                                            CornerRadius="8,8,0,0"
-                                                                            ContentPadding="20,10" />
-                                    <views1:AnimatedDeliveryTypeRadioButton Text="发料"
-                                                                            GroupName="DeliveryType"
-                                                                            IsChecked="{Binding IsSending}"
-                                                                            Command="{Binding SetSendingCommand}"
-                                                                            IsWeighingActive="{Binding IsWeighingActive}"
-                                                                            CornerRadius="0,0,8,8"
-                                                                            ContentPadding="20,10" />
-                                </StackPanel>
+                                    Padding="20,12"
+                                    VerticalAlignment="Center"
+                                    MinWidth="180">
+                                <Border.RenderTransform>
+                                    <TranslateTransform X="-60" />
+                                </Border.RenderTransform>
+                                <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}"
+                                           Foreground="White"
+                                           FontSize="16" />
                             </Border>
 
-                            <!-- Weight Value -->
-                            <TextBlock Grid.Column="2"
-                                       Text="{Binding CurrentWeight, StringFormat='{}{0:F2}'}"
-                                       Foreground="White"
-                                       FontSize="64"
-                                       FontWeight="Bold"
-                                       VerticalAlignment="Center"
-                                       HorizontalAlignment="Center"
-                                       Margin="70,0,70,0" />
+                            <!-- DeliveryType Selector, Weight Value and Unit with Outer Border -->
+                            <Border Grid.Column="1"
+                                    Grid.Row="0"
+                                    Grid.ColumnSpan="3"
+                                    Background="#5A7FE6"
+                                    CornerRadius="8"
+                                    BorderThickness="0"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    Padding="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <!-- DeliveryType Selector -->
+                                    <Border Grid.Column="0"
+                                            Background="Transparent"
+                                            CornerRadius="8"
+                                            VerticalAlignment="Center">
+                                        <StackPanel Orientation="Vertical">
+                                            <views1:AnimatedDeliveryTypeRadioButton Text="收料"
+                                                                                    GroupName="DeliveryType"
+                                                                                    IsChecked="{Binding IsReceiving}"
+                                                                                    Command="{Binding SetReceivingCommand}"
+                                                                                    IsWeighingActive="{Binding IsWeighingActive}"
+                                                                                    CornerRadius="8,8,0,0"
+                                                                                    ContentPadding="20,10" />
+                                            <views1:AnimatedDeliveryTypeRadioButton Text="发料"
+                                                                                    GroupName="DeliveryType"
+                                                                                    IsChecked="{Binding IsSending}"
+                                                                                    Command="{Binding SetSendingCommand}"
+                                                                                    IsWeighingActive="{Binding IsWeighingActive}"
+                                                                                    CornerRadius="0,0,8,8"
+                                                                                    ContentPadding="20,10" />
+                                        </StackPanel>
+                                    </Border>
 
-                            <!-- Separator and Unit -->
-                            <StackPanel Grid.Column="3"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center"
-                                        Margin="8,0,16,0">
-                                <Border Width="1"
-                                        Height="30"
-                                        Background="White"
-                                        Opacity="0.3"
-                                        Margin="0,0,8,0"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Text="吨"
-                                           Foreground="White"
-                                           FontSize="24"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- Delivery Type Change Notification (overlapped with Border, offset vertically) -->
-                    <TextBlock Grid.Row="0"
-                               Grid.Column="1"
-                               Grid.ColumnSpan="3"
-                               Inlines="{Binding DeliveryTypeNotificationInlines}"
-                               Opacity="{Binding DeliveryTypeNotificationOpacity}"
-                               FontSize="14"
-                               HorizontalAlignment="Left"
-                               VerticalAlignment="Top"
-                               Margin="0,0,0,0">
-                        <TextBlock.RenderTransform>
-                            <TranslateTransform Y="90" />
-                        </TextBlock.RenderTransform>
-                        <TextBlock.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" />
-                            </Transitions>
-                        </TextBlock.Transitions>
-                    </TextBlock>
-                </Grid>
-
-                <!-- Right Side Info -->
-                <TextBlock Grid.Column="2"
-                           Text="{Binding CurrentWeighingStatusText}"
-                           Foreground="White"
-                           FontSize="18"
-                           FontWeight="Bold"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
-                           Margin="-150,0,0,0" />
-
-                <!-- Loading Animation Dots -->
-                <views1:LoadingDotsAnimation Grid.Column="2"
-                                             IsActive="{Binding IsWeighingActive}"
-                                             Foreground="White"
-                                             FontSize="18"
-                                             FontWeight="Bold"
-                                             VerticalAlignment="Center"
-                                             HorizontalAlignment="Left"
-                                             Margin="-75,0,0,0" />
-            </Grid>
-        </Grid>
-
-        <!-- Main Content Area (White Background, Three Columns) -->
-        <Grid Grid.Row="2" Background="White" ColumnDefinitions="280,*,360" Margin="0">
-
-            <!-- Left Column: Record List -->
-            <views:WeighingRecordListView Grid.Column="0" DataContext="{Binding}" />
-
-            <!-- Middle Column: Material Info and Photos (动态切换视图) -->
-            <Grid Grid.Column="1">
-                <!-- 主视图 -->
-                <views:AttendedWeighingMainView DataContext="{Binding}"
-                                                IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingMainView}" />
-
-                <!-- 详情视图 -->
-                <views:AttendedWeighingDetailView DataContext="{Binding DetailViewModel}"
-                                                  IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingDetailView}" />
-            </Grid>
-
-            <!-- Right Column: Camera Views and Bill -->
-            <Border Grid.Column="2"
-                    Background="#F8F9FA"
-                    BorderBrush="#E5E7EB"
-                    BorderThickness="1,0,0,0"
-                    Padding="10">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                    <!-- Photo Grid View -->
-                    <views1:PhotoGridView Grid.RowSpan="2" DataContext="{Binding PhotoGridViewModel}" />
-
-                    <!-- Bill Scan Section -->
-                    <TextBlock Grid.Row="2"
-                               Text="单据扫描"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,12,0,8" />
-
-                    <Border Grid.Row="3"
-                            Classes="card-border"
-                            Height="240"
-                            Padding="12">
-                        <Grid RowDefinitions="*,Auto">
-                            <Border Background="#F0F0F0"
-                                    CornerRadius="4"
-                                    BorderBrush="#D1D5DB"
-                                    BorderThickness="1"
-                                    Margin="0,0,0,0">
-                                <Grid>
-                                    <!-- USB 摄像头预览 -->
-                                    <Image Source="{Binding UsbCameraPreview}"
-                                           Stretch="UniformToFill"
-                                           HorizontalAlignment="Stretch"
-                                           VerticalAlignment="Stretch"
-                                           IsVisible="{Binding ShouldShowPreview}" />
-                                    <!-- 静态照片显示（当没有预览时显示） -->
-                                    <Image
-                                        Source="{Binding BillPhotoPath, Converter={StaticResource NullOrEmptyImageConverter}}"
-                                        Stretch="UniformToFill"
-                                        HorizontalAlignment="Stretch"
-                                        VerticalAlignment="Stretch"
-                                        IsVisible="{Binding !ShouldShowPreview}" />
-                                    <!-- 无预览且无照片时的占位文本 -->
-                                    <TextBlock Text="高拍仪未连接"
-                                               FontSize="14"
-                                               Foreground="#999"
-                                               HorizontalAlignment="Center"
+                                    <!-- Weight Value -->
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding CurrentWeight, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               FontSize="64"
+                                               FontWeight="Bold"
                                                VerticalAlignment="Center"
-                                               IsVisible="{Binding !IsUsbCameraOnline}" />
+                                               HorizontalAlignment="Center"
+                                               Margin="70,0,70,0" />
+
+                                    <!-- Separator and Unit -->
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Margin="8,0,16,0">
+                                        <Border Width="1"
+                                                Height="30"
+                                                Background="White"
+                                                Opacity="0.3"
+                                                Margin="0,0,8,0"
+                                                VerticalAlignment="Center" />
+                                        <TextBlock Text="吨"
+                                                   Foreground="White"
+                                                   FontSize="24"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
                                 </Grid>
                             </Border>
 
-                            <Button Grid.Row="1"
-                                    Content="{Binding BillPhotoButtonText}"
-                                    Classes="success-button"
-                                    CornerRadius="6"
-                                    Width="80"
-                                    Height="28"
-                                    FontSize="12"
-                                    Padding="0"
-                                    HorizontalAlignment="Center"
-                                    VerticalContentAlignment="Center"
-                                    HorizontalContentAlignment="Center"
-                                    Margin="0,5,0,0"
-                                    Command="{Binding TakeBillPhotoCommand}"
-                                    IsVisible="{Binding IsShowingDetailView}"
-                                    IsEnabled="{Binding IsUsbCameraOnline}" />
+                            <!-- Delivery Type Change Notification (overlapped with Border, offset vertically) -->
+                            <TextBlock Grid.Row="0"
+                                       Grid.Column="1"
+                                       Grid.ColumnSpan="3"
+                                       Inlines="{Binding DeliveryTypeNotificationInlines}"
+                                       Opacity="{Binding DeliveryTypeNotificationOpacity}"
+                                       FontSize="14"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Top"
+                                       Margin="0,0,0,0">
+                                <TextBlock.RenderTransform>
+                                    <TranslateTransform Y="90" />
+                                </TextBlock.RenderTransform>
+                                <TextBlock.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.5" />
+                                    </Transitions>
+                                </TextBlock.Transitions>
+                            </TextBlock>
+                        </Grid>
+
+                        <!-- Right Side Info -->
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding CurrentWeighingStatusText}"
+                                   Foreground="White"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Right"
+                                   Margin="-150,0,0,0" />
+
+                        <!-- Loading Animation Dots -->
+                        <views1:LoadingDotsAnimation Grid.Column="2"
+                                                     IsActive="{Binding IsWeighingActive}"
+                                                     Foreground="White"
+                                                     FontSize="18"
+                                                     FontWeight="Bold"
+                                                     VerticalAlignment="Center"
+                                                     HorizontalAlignment="Left"
+                                                     Margin="-75,0,0,0" />
+                    </Grid>
+                </Grid>
+            </ui:WeighingWindowBase.WeightAreaContent>
+
+            <!-- MainContent: Three-column main grid -->
+            <ui:WeighingWindowBase.MainContent>
+                <Grid Background="White" ColumnDefinitions="280,*,360" Margin="0">
+
+                    <!-- Left Column: Record List -->
+                    <views:WeighingRecordListView Grid.Column="0" DataContext="{Binding}" />
+
+                    <!-- Middle Column: Material Info and Photos (动态切换视图) -->
+                    <Grid Grid.Column="1">
+                        <!-- 主视图 -->
+                        <views:AttendedWeighingMainView DataContext="{Binding}"
+                                                        IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingMainView}" />
+
+                        <!-- 详情视图 -->
+                        <views:AttendedWeighingDetailView DataContext="{Binding DetailViewModel}"
+                                                          IsVisible="{Binding #AttendedWeighingWindowRoot.((vm:AttendedWeighingViewModel)DataContext).IsShowingDetailView}" />
+                    </Grid>
+
+                    <!-- Right Column: Camera Views and Bill -->
+                    <Border Grid.Column="2"
+                            Background="#F8F9FA"
+                            BorderBrush="#E5E7EB"
+                            BorderThickness="1,0,0,0"
+                            Padding="10">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+                            <!-- Photo Grid View -->
+                            <views1:PhotoGridView Grid.RowSpan="2" DataContext="{Binding PhotoGridViewModel}" />
+
+                            <!-- Bill Scan Section -->
+                            <TextBlock Grid.Row="2"
+                                       Text="单据扫描"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,12,0,8" />
+
+                            <Border Grid.Row="3"
+                                    Classes="card-border"
+                                    Height="240"
+                                    Padding="12">
+                                <Grid RowDefinitions="*,Auto">
+                                    <Border Background="#F0F0F0"
+                                            CornerRadius="4"
+                                            BorderBrush="#D1D5DB"
+                                            BorderThickness="1"
+                                            Margin="0,0,0,0">
+                                        <Grid>
+                                            <!-- USB 摄像头预览 -->
+                                            <Image Source="{Binding UsbCameraPreview}"
+                                                   Stretch="UniformToFill"
+                                                   HorizontalAlignment="Stretch"
+                                                   VerticalAlignment="Stretch"
+                                                   IsVisible="{Binding ShouldShowPreview}" />
+                                            <!-- 静态照片显示（当没有预览时显示） -->
+                                            <Image
+                                                Source="{Binding BillPhotoPath, Converter={StaticResource NullOrEmptyImageConverter}}"
+                                                Stretch="UniformToFill"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch"
+                                                IsVisible="{Binding !ShouldShowPreview}" />
+                                            <!-- 无预览且无照片时的占位文本 -->
+                                            <TextBlock Text="高拍仪未连接"
+                                                       FontSize="14"
+                                                       Foreground="#999"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding !IsUsbCameraOnline}" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Button Grid.Row="1"
+                                            Content="{Binding BillPhotoButtonText}"
+                                            Classes="success-button"
+                                            CornerRadius="6"
+                                            Width="80"
+                                            Height="28"
+                                            FontSize="12"
+                                            Padding="0"
+                                            HorizontalAlignment="Center"
+                                            VerticalContentAlignment="Center"
+                                            HorizontalContentAlignment="Center"
+                                            Margin="0,5,0,0"
+                                            Command="{Binding TakeBillPhotoCommand}"
+                                            IsVisible="{Binding IsShowingDetailView}"
+                                            IsEnabled="{Binding IsUsbCameraOnline}" />
+                                </Grid>
+                            </Border>
                         </Grid>
                     </Border>
+
                 </Grid>
-            </Border>
+            </ui:WeighingWindowBase.MainContent>
 
-        </Grid>
+        </ui:WeighingWindowBase>
 
-        <!-- Status Bar (using shared DeviceStatusBar from MaterialClient.UI) -->
-        <Border Grid.Row="3"
-                Background="#F5F5F5"
-                BorderBrush="#E5E7EB"
-                BorderThickness="0,1,0,0"
-                Padding="16,8">
-            <ui:DeviceStatusBar ItemsSource="{Binding DeviceStatuses}"
-                                CameraStatusDetails="{Binding CameraStatusDetails}" />
-        </Border>
-
-    </Grid>
-
-    <!-- OverlayDialogHost for Ursa overlay dialogs -->
-    <ursa:OverlayDialogHost />
+        <!-- OverlayDialogHost for Ursa overlay dialogs -->
+        <ursa:OverlayDialogHost />
     </Panel>
 </Window>

@@ -10,6 +10,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
+using MaterialClient.UI.Controls;
 using MaterialClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.DependencyInjection;
@@ -32,6 +33,11 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         InitializeComponent();
         if (Design.IsDesignMode) return;
         DataContext = serviceProvider?.GetService(typeof(AttendedWeighingViewModel)) as AttendedWeighingViewModel;
+
+        // Subscribe to WeighingWindowBase routed events
+        WeighingBase.AddHandler(WeighingWindowBase.MinimizeButtonClickEvent, OnMinimizeButtonClick);
+        WeighingBase.AddHandler(WeighingWindowBase.CloseButtonClickEvent, OnCloseButtonClick);
+        WeighingBase.AddHandler(WeighingWindowBase.TitleBarPointerPressedEvent, OnTitleBarPointerPressed);
 
         // Set PlacementTarget for Popups
         if (DataManagementMenuPopup != null && DataManagementButton != null)
@@ -80,19 +86,16 @@ public partial class AttendedWeighingWindow : Window, ITransientDependency
         }, DispatcherPriority.Background);
     }
 
-    private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e);
-    }
-
     private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
+        => WindowState = WindowState.Minimized;
 
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
+        => Close();
+
+    private void OnTitleBarPointerPressed(object? sender, RoutedEventArgs e)
     {
-        Close();
+        if (e is WeighingWindowBase.TitleBarPointerPressedRoutedEventArgs args)
+            BeginMoveDrag(args.PointerArgs);
     }
 
     private void OnDataManagementMenuClick(object? sender, RoutedEventArgs e)

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using MaterialClient.UI.Controls;
 using MaterialClient.UI.Views;
 using MaterialClient.Urban.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,11 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
         DataContext = viewModel;
         _serviceProvider = serviceProvider;
 
+        // Subscribe to WeighingWindowBase routed events
+        WeighingBase.AddHandler(WeighingWindowBase.MinimizeButtonClickEvent, OnMinimizeButtonClick);
+        WeighingBase.AddHandler(WeighingWindowBase.CloseButtonClickEvent, OnCloseButtonClick);
+        WeighingBase.AddHandler(WeighingWindowBase.TitleBarPointerPressedEvent, OnTitleBarPointerPressed);
+
         // Bind data to controls
         VehicleList.ItemsSource = viewModel.WeighingRecords;
     }
@@ -39,10 +45,16 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
     /// </summary>
     public UrbanAttendedWeighingViewModel? ViewModel => DataContext as UrbanAttendedWeighingViewModel;
 
-    private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
+
+    private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
+        => Close();
+
+    private void OnTitleBarPointerPressed(object? sender, RoutedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            BeginMoveDrag(e);
+        if (e is WeighingWindowBase.TitleBarPointerPressedRoutedEventArgs args)
+            BeginMoveDrag(args.PointerArgs);
     }
 
     private void ResizeGrip_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -70,12 +82,6 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
             Border { Name: "ResizeSouthEast" } => WindowEdge.SouthEast,
             _ => null,
         };
-
-    private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
-        => WindowState = WindowState.Minimized;
-
-    private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
-        => Close();
 
     private void OnTabClick(object? sender, RoutedEventArgs e)
     {
