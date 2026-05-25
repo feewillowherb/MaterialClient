@@ -24,7 +24,7 @@ namespace MaterialClient.Urban.ViewModels;
 ///     Subscribes to weighing pipeline events via ILocalEventBus to drive UI updates
 ///     Uses Common.Entities.WeighingRecord directly (no local duplicate model)
 /// </summary>
-public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
+public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
 {
     private readonly ILocalEventBus _localEventBus;
     private readonly IWeighingRecordService _weighingRecordService;
@@ -143,10 +143,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     /// </summary>
     public void UpdateCurrentWeight(decimal weight)
     {
-        RxApp.MainThreadScheduler.Schedule(() =>
-        {
-            CurrentWeight = weight;
-        });
+        RxApp.MainThreadScheduler.Schedule(() => { CurrentWeight = weight; });
     }
 
     #region Properties
@@ -154,105 +151,88 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     /// <summary>
     ///     Weighing records list (using Common.Entities.WeighingRecord)
     /// </summary>
-    [Reactive]
-    public ObservableCollection<WeighingRecord> WeighingRecords { get; set; } = [];
+    [Reactive] private ObservableCollection<WeighingRecord> _weighingRecords = [];
 
     /// <summary>
     ///     Device status list (using shared DeviceStatusItem from MaterialClient.UI)
     /// </summary>
-    [Reactive]
-    public ObservableCollection<DeviceStatusItem> DeviceStatuses { get; set; } =
+    [Reactive] private ObservableCollection<DeviceStatusItem> _deviceStatuses =
         new(DeviceStatusCatalog.BuildItems(DeviceStatusBarOptions.CoreOnly, false, false, false, false, false));
 
     /// <summary>
     ///     Currently selected weighing record
     /// </summary>
-    [Reactive]
-    public WeighingRecord? SelectedRecord { get; set; }
+    [Reactive] private WeighingRecord? _selectedRecord;
 
     /// <summary>
     ///     Current weight value
     /// </summary>
-    [Reactive]
-    public decimal CurrentWeight { get; set; } = 0.00m;
+    [Reactive] private decimal _currentWeight;
 
     /// <summary>
     ///     Weight status text
     /// </summary>
-    [Reactive]
-    public string WeightStatus { get; set; } = "等待上磅";
+    [Reactive] private string _weightStatus = "等待上磅";
 
     /// <summary>
     ///     Weight status color
     /// </summary>
-    [Reactive]
-    public string WeightStatusColor { get; set; } = "#94A3B8";
+    [Reactive] private string _weightStatusColor = "#94A3B8";
 
     /// <summary>
     ///     Currently active tab (All/Normal/Abnormal)
     /// </summary>
-    [Reactive]
-    public string ActiveTab { get; set; } = "全部";
+    [Reactive] private string _activeTab = "全部";
 
     /// <summary>
     ///     Search keyword (plate number fuzzy query)
     /// </summary>
-    [Reactive]
-    public string SearchText { get; set; } = "";
+    [Reactive] private string _searchText = "";
 
     /// <summary>
     ///     Query start time
     /// </summary>
-    [Reactive]
-    public DateTime? StartTime { get; set; }
+    [Reactive] private DateTime? _startTime;
 
     /// <summary>
     ///     Query end time
     /// </summary>
-    [Reactive]
-    public DateTime? EndTime { get; set; }
+    [Reactive] private DateTime? _endTime;
 
     /// <summary>
     ///     Current page number
     /// </summary>
-    [Reactive]
-    public int CurrentPage { get; set; } = 1;
+    [Reactive] private int _currentPage = 1;
 
     /// <summary>
     ///     Total page count
     /// </summary>
-    [Reactive]
-    public int TotalPages { get; set; } = 1;
+    [Reactive] private int _totalPages = 1;
 
     /// <summary>
     ///     Total record count
     /// </summary>
-    [Reactive]
-    public int TotalCount { get; set; }
+    [Reactive] private int _totalCount;
 
     /// <summary>
     ///     License plate recognition (Lrp) photo path for binding
     /// </summary>
-    [Reactive]
-    public string? LprPhotoPath { get; set; }
+    [Reactive] private string? _lprPhotoPath;
 
     /// <summary>
     ///     Camera capture photo path for binding (first entry photo)
     /// </summary>
-    [Reactive]
-    public string? CameraPhotoPath { get; set; }
+    [Reactive] private string? _cameraPhotoPath;
 
     /// <summary>
     ///     Lrp photo capture time display
     /// </summary>
-    [Reactive]
-    public string LprPhotoTime { get; set; } = "";
+    [Reactive] private string _lprPhotoTime = "";
 
     /// <summary>
     ///     Camera photo capture time display
     /// </summary>
-    [Reactive]
-    public string CameraPhotoTime { get; set; } = "";
+    [Reactive] private string _cameraPhotoTime = "";
 
     #endregion
 
