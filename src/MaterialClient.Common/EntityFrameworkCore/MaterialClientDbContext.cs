@@ -1,6 +1,7 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Modeling;
@@ -39,6 +40,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     // Settings DbSet
     public DbSet<SettingsEntity> Settings { get; set; }
     public DbSet<WorkSettingsEntity> WorkSettings { get; set; }
+
+    // Urban extension DbSet
+    public DbSet<UrbanWeighingExtension> UrbanWeighingExtensions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -228,6 +232,26 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
         // Configure WorkSettingsEntity
         modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
+
+        // Configure UrbanWeighingExtension (1:0..1 relationship with WeighingRecord)
+        modelBuilder.Entity<UrbanWeighingExtension>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            // Foreign key to WeighingRecord
+            entity.Property(e => e.WeighingRecordId).IsRequired();
+
+            // 1:0..1 relationship: WeighingRecord has at most one UrbanWeighingExtension
+            entity.HasOne(e => e.WeighingRecord)
+                .WithOne(r => r.UrbanExtension)
+                .HasForeignKey<UrbanWeighingExtension>(e => e.WeighingRecordId);
+
+            // Unique constraint on WeighingRecordId (ensures 1:0..1)
+            entity.HasIndex(e => e.WeighingRecordId).IsUnique();
+
+            // Composite index on (SyncStatus, WeighingRecordId) for background worker query performance
+            entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
+        });
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

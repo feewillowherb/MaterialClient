@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Providers;
 using Volo.Abp.Auditing;
 using Volo.Abp.Data;
@@ -105,9 +106,10 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
 
     /// <summary>
-    ///     同步状态（用于 UrbanMode 上传管线，默认 Pending）
+    ///     Urban-specific extension navigation property (1:0..1 relationship).
+    ///     <c>null</c> for non-Urban records (Standard, SolidWaste).
     /// </summary>
-    public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
+    public UrbanWeighingExtension? UrbanExtension { get; set; }
 
     /// <summary>
     ///     物料集合（从 JSON 反序列化）
