@@ -72,9 +72,7 @@ public class MaterialClientUrbanModule : AbpModule
 
         // Refit API clients (IBasePlatformApi, IMaterialPlatformApi — required by AttachmentService, etc.)
         services.AddMaterialClientRefitClients(configuration);
-
-        // Register IWeighingPipelineStrategy -> UrbanWeighingPipelineStrategy
-        services.AddSingleton<IWeighingPipelineStrategy, UrbanWeighingPipelineStrategy>();
+        
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)

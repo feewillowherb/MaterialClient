@@ -1,6 +1,7 @@
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.AttendedWeighing;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Urban.Services;
 
@@ -8,14 +9,11 @@ namespace MaterialClient.Urban.Services;
 ///     城管称重管线策略
 ///     UrbanMode 下跳过运单匹对（TryMatchEvent）和 waybill 匹对逻辑
 /// </summary>
-public class UrbanWeighingPipelineStrategy : IWeighingPipelineStrategy
+[AutoConstructor]
+public partial class UrbanWeighingPipelineStrategy : IWeighingPipelineStrategy, ISingletonDependency
 {
     private readonly ILogger<UrbanWeighingPipelineStrategy> _logger;
 
-    public UrbanWeighingPipelineStrategy(ILogger<UrbanWeighingPipelineStrategy> logger)
-    {
-        _logger = logger;
-    }
 
     /// <inheritdoc />
     public bool ShouldSkipWaybillMatching()
