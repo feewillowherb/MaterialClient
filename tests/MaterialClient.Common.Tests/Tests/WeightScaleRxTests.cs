@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
@@ -235,7 +236,7 @@ public class WeightScaleRxTests
         var streamPipeline = new WeighingStreamPipeline(pipelineLogger);
         var captureService = new WeighingCaptureService(hikvisionService, null, settingsService, captureLogger);
         var recordService = new WeighingRecordService(
-            weighingRecordRepo, fileRepo, attachmentRepo, uowManager, settingsService,
+            weighingRecordRepo, Substitute.For<IRepository<UrbanWeighingExtension, Guid>>(), fileRepo, attachmentRepo, uowManager, settingsService,
             plateNumberService, eventBus, recordLogger);
 
         return new AttendedWeighingService(
