@@ -4,19 +4,17 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.UI;
 using MaterialClient.UI.Models;
 using MaterialClient.UI.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Urban.ViewModels;
@@ -29,7 +27,7 @@ namespace MaterialClient.Urban.ViewModels;
 public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
 {
     private readonly ILocalEventBus _localEventBus;
-    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IWeighingRecordService _weighingRecordService;
     private readonly IAttendedWeighingService _attendedWeighingService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IAttachmentService _attachmentService;
@@ -41,7 +39,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
 
     public UrbanAttendedWeighingViewModel(
         ILocalEventBus localEventBus,
-        IRepository<WeighingRecord, long> weighingRecordRepository,
+        IWeighingRecordService weighingRecordService,
         IAttendedWeighingService attendedWeighingService,
         ITruckScaleWeightService truckScaleWeightService,
         IAttachmentService attachmentService,
@@ -49,7 +47,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         ILogger<UrbanAttendedWeighingViewModel> logger)
     {
         _localEventBus = localEventBus;
-        _weighingRecordRepository = weighingRecordRepository;
+        _weighingRecordService = weighingRecordService;
         _attendedWeighingService = attendedWeighingService;
         _truckScaleWeightService = truckScaleWeightService;
         _attachmentService = attachmentService;
@@ -342,57 +340,22 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     #region Private Methods
 
     /// <summary>
-    ///     Reload weighing records from local repository (with filter, search, pagination)
+    ///     Reload weighing records via service (with filter, search, pagination)
     /// </summary>
     private async Task ReloadRecordsAsync()
     {
         try
         {
-            var query = (await _weighingRecordRepository.GetQueryableAsync())
-                .Include(r => r.UrbanExtension)
-                .Where(r => r.WeighingMode == WeighingMode.UrbanMode);
+            var result = await _weighingRecordService.GetPagedUrbanWeighingRecordsAsync(
+                CurrentPage, PageSize, ActiveTab, SearchText, StartTime, EndTime);
 
-            // Tab filter: filter by extension.SyncStatus (LEFT JOIN semantics via Include)
-            query = ActiveTab switch
-            {
-                "正常" => query.Where(r => r.UrbanExtension != null && r.UrbanExtension.SyncStatus != SyncStatus.Failed),
-                "异常" => query.Where(r => r.UrbanExtension != null && r.UrbanExtension.SyncStatus == SyncStatus.Failed),
-                _ => query // "全部"
-            };
-
-            // Search: plate number fuzzy query
-            if (!string.IsNullOrWhiteSpace(SearchText))
-            {
-                query = query.Where(r => r.PlateNumber != null && r.PlateNumber.Contains(SearchText));
-            }
-
-            // Search: time range query
-            if (StartTime.HasValue)
-            {
-                query = query.Where(r => r.AddDate >= StartTime.Value);
-            }
-
-            if (EndTime.HasValue)
-            {
-                query = query.Where(r => r.AddDate <= EndTime.Value);
-            }
-
-            // Calculate total count
-            var totalCount = query.Count();
-            TotalCount = totalCount;
-            TotalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / PageSize) : 1;
-
-            // Paginated query
-            var records = query
-                .OrderByDescending(r => r.AddDate)
-                .Skip((CurrentPage - 1) * PageSize)
-                .Take(PageSize)
-                .ToList();
+            TotalCount = (int)result.TotalCount;
+            TotalPages = TotalCount > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 1;
 
             // Update collection on UI thread
             RxApp.MainThreadScheduler.Schedule(() =>
             {
-                WeighingRecords = new ObservableCollection<WeighingRecord>(records);
+                WeighingRecords = new ObservableCollection<WeighingRecord>(result.Items);
             });
         }
         catch (Exception ex)

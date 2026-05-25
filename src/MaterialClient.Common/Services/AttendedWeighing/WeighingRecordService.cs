@@ -4,7 +4,9 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Local;
@@ -36,6 +38,12 @@ public interface IWeighingRecordService
     ///     重写车牌并重置周期
     /// </summary>
     Task RewriteAndResetCycleAsync(WeighingStateManager stateManager, IPlateNumberService plateNumberService);
+
+    /// <summary>
+    ///     分页查询 Urban 称重记录，支持标签过滤、车牌号搜索、时间范围过滤
+    /// </summary>
+    Task<PagedResultDto<WeighingRecord>> GetPagedUrbanWeighingRecordsAsync(
+        int pageIndex, int pageSize, string? tabFilter, string? searchText, DateTime? startTime, DateTime? endTime);
 }
 
 /// <summary>
@@ -277,6 +285,57 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         await TryReWritePlateNumberAsync(stateManager);
         plateNumberService.ClearCache();
         stateManager.ResetCycle();
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public virtual async Task<PagedResultDto<WeighingRecord>> GetPagedUrbanWeighingRecordsAsync(
+        int pageIndex, int pageSize, string? tabFilter, string? searchText, DateTime? startTime, DateTime? endTime)
+    {
+        var queryable = await _weighingRecordRepository.GetQueryableAsync();
+
+        // Filter by UrbanMode and Include UrbanExtension
+        queryable = queryable
+            .Include(r => r.UrbanExtension)
+            .Where(r => r.WeighingMode == WeighingMode.UrbanMode);
+
+        // Tab filter: filter by UrbanExtension.SyncStatus
+        queryable = tabFilter switch
+        {
+            "正常" => queryable.Where(r =>
+                r.UrbanExtension != null && r.UrbanExtension.SyncStatus != SyncStatus.Failed),
+            "异常" => queryable.Where(r =>
+                r.UrbanExtension != null && r.UrbanExtension.SyncStatus == SyncStatus.Failed),
+            _ => queryable // "全部" or null
+        };
+
+        // Search text: plate number fuzzy query
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            queryable = queryable.Where(r =>
+                r.PlateNumber != null && r.PlateNumber.Contains(searchText));
+        }
+
+        // Time range filter
+        if (startTime.HasValue)
+        {
+            queryable = queryable.Where(r => r.AddDate >= startTime.Value);
+        }
+
+        if (endTime.HasValue)
+        {
+            queryable = queryable.Where(r => r.AddDate <= endTime.Value);
+        }
+
+        // Pagination
+        var totalCount = await queryable.CountAsync();
+        var records = await queryable
+            .OrderByDescending(r => r.AddDate)
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResultDto<WeighingRecord>(totalCount, records);
     }
 
     private async Task<WeighingConfiguration> GetConfigurationAsync()
