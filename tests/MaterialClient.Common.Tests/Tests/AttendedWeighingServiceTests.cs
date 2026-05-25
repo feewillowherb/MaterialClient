@@ -3,6 +3,7 @@ using System.Reactive.Subjects;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
@@ -1780,7 +1781,7 @@ public class AttendedWeighingServiceTests : IDisposable
         var captureService = new WeighingCaptureService(
             hikvisionService, null, settingsService, captureLogger);
         var recordService = new WeighingRecordService(
-            weighingRecordRepo, fileRepo, attachmentRepo, uowManager, settingsService,
+            weighingRecordRepo, Substitute.For<IRepository<UrbanWeighingExtension, Guid>>(), fileRepo, attachmentRepo, uowManager, settingsService,
             plateNumberService, _testEventBus, recordLogger);
 
         return new AttendedWeighingService(

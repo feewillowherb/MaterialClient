@@ -1,6 +1,7 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
@@ -44,6 +45,7 @@ public interface IWeighingRecordService
 public class WeighingRecordService : IWeighingRecordService, ISingletonDependency
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IRepository<UrbanWeighingExtension, Guid> _urbanWeighingExtensionRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
@@ -55,6 +57,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
     public WeighingRecordService(
         IRepository<WeighingRecord, long> weighingRecordRepository,
+        IRepository<UrbanWeighingExtension, Guid> urbanWeighingExtensionRepository,
         IRepository<AttachmentFile, int> attachmentFileRepository,
         IRepository<WeighingRecordAttachment, int> weighingRecordAttachmentRepository,
         IUnitOfWorkManager unitOfWorkManager,
@@ -65,6 +68,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         IWeighingPipelineStrategy? pipelineStrategy = null)
     {
         _weighingRecordRepository = weighingRecordRepository;
+        _urbanWeighingExtensionRepository = urbanWeighingExtensionRepository;
         _attachmentFileRepository = attachmentFileRepository;
         _weighingRecordAttachmentRepository = weighingRecordAttachmentRepository;
         _unitOfWorkManager = unitOfWorkManager;
@@ -94,6 +98,22 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             weighingRecord.SetWeighingMode(weighingMode);
 
             await _weighingRecordRepository.InsertAsync(weighingRecord);
+
+            // Create UrbanWeighingExtension for Urban mode records (transactional)
+            if (weighingMode == WeighingMode.UrbanMode)
+            {
+                var extension = new UrbanWeighingExtension
+                {
+                    WeighingRecordId = weighingRecord.Id,
+                    SyncStatus = SyncStatus.Pending,
+                    RetryCount = 0,
+                    LastErrorTime = null
+                };
+                await _urbanWeighingExtensionRepository.InsertAsync(extension);
+
+                _logger.LogDebug("Created UrbanWeighingExtension for record {Id}", weighingRecord.Id);
+            }
+
             await uow.CompleteAsync();
 
             _logger.LogInformation(
