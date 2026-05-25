@@ -24,7 +24,7 @@ namespace MaterialClient.Urban.ViewModels;
 ///     Subscribes to weighing pipeline events via ILocalEventBus to drive UI updates
 ///     Uses Common.Entities.WeighingRecord directly (no local duplicate model)
 /// </summary>
-public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
+public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
 {
     private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
@@ -143,10 +143,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     /// </summary>
     public void UpdateCurrentWeight(decimal weight)
     {
-        RxApp.MainThreadScheduler.Schedule(() =>
-        {
-            CurrentWeight = weight;
-        });
+        RxApp.MainThreadScheduler.Schedule(() => { CurrentWeight = weight; });
     }
 
     #region Properties
@@ -173,8 +170,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     /// <summary>
     ///     Current weight value
     /// </summary>
-    [Reactive]
-    public decimal CurrentWeight { get; set; } = 0.00m;
+    [Reactive] private decimal _currentWeight;
 
     /// <summary>
     ///     Weight status text
