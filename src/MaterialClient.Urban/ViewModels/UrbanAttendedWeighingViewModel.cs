@@ -6,6 +6,7 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Hardware;
 using MaterialClient.UI;
 using MaterialClient.UI.Models;
 using MaterialClient.UI.Services;
@@ -28,6 +29,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
     private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IAttendedWeighingService _attendedWeighingService;
+    private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IAttachmentService _attachmentService;
     private readonly SharedDeviceStatusTracker _deviceStatusTracker;
     private readonly ILogger<UrbanAttendedWeighingViewModel> _logger;
@@ -39,6 +41,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         ILocalEventBus localEventBus,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IAttendedWeighingService attendedWeighingService,
+        ITruckScaleWeightService truckScaleWeightService,
         IAttachmentService attachmentService,
         SharedDeviceStatusTracker deviceStatusTracker,
         ILogger<UrbanAttendedWeighingViewModel> logger)
@@ -46,6 +49,7 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         _localEventBus = localEventBus;
         _weighingRecordRepository = weighingRecordRepository;
         _attendedWeighingService = attendedWeighingService;
+        _truckScaleWeightService = truckScaleWeightService;
         _attachmentService = attachmentService;
         _deviceStatusTracker = deviceStatusTracker;
         _logger = logger;
@@ -113,6 +117,15 @@ public class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITran
         _subscriptions.Add(
             this.WhenAnyValue(x => x.SelectedRecord)
                 .Subscribe(record => _ = UpdatePhotoPathsAsync(record)));
+
+        _subscriptions.Add(
+            _truckScaleWeightService.WeightUpdates
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(weight =>
+                {
+                    _logger.LogDebug("Urban UI Weight Update: {Weight}", weight);
+                    CurrentWeight = weight.ToString("N0");
+                }));
 
         _logger.LogInformation("UrbanAttendedWeighingViewModel event subscriptions initialized");
     }
