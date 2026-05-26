@@ -37,6 +37,11 @@ public interface IWeighingRecordService
     ///     重写车牌并重置周期
     /// </summary>
     Task RewriteAndResetCycleAsync(WeighingStateManager stateManager, IPlateNumberService plateNumberService);
+
+    /// <summary>
+    ///     更新称重记录的车牌号和重量，并重置关联的 UrbanWeighingExtension 同步状态为 Pending
+    /// </summary>
+    Task UpdateWeighingRecordAsync(long weighingRecordId, string plateNumber, decimal totalWeight);
 }
 
 /// <summary>
@@ -279,6 +284,28 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         await TryReWritePlateNumberAsync(stateManager);
         plateNumberService.ClearCache();
         stateManager.ResetCycle();
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public virtual async Task UpdateWeighingRecordAsync(long weighingRecordId, string plateNumber, decimal totalWeight)
+    {
+        var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
+
+        record.PlateNumber = plateNumber;
+        record.TotalWeight = totalWeight;
+
+        await _weighingRecordRepository.UpdateAsync(record);
+
+        var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(weighingRecordId);
+        if (extension != null)
+        {
+            await _urbanWeighingExtensionService.UpdateSyncStatusAsync(extension.Id, Entities.Enums.SyncStatus.Pending);
+        }
+
+        _logger.LogInformation(
+            "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending",
+            weighingRecordId, plateNumber, totalWeight);
     }
 
     private async Task<WeighingConfiguration> GetConfigurationAsync()
