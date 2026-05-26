@@ -12,8 +12,8 @@ using Volo.Abp.EntityFrameworkCore;
 namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    [Migration("20260525092443_AddUrbanWeighingExtension")]
-    partial class AddUrbanWeighingExtension
+    [Migration("20260526024454_Add_UrbanWeighingExtension")]
+    partial class Add_UrbanWeighingExtension
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -493,6 +493,9 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsAnomaly")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("LastErrorTime")
                         .HasColumnType("TEXT");
 
@@ -506,6 +509,8 @@ namespace MaterialClient.Common.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsAnomaly");
 
                     b.HasIndex("WeighingRecordId")
                         .IsUnique();

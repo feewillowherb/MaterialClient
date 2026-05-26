@@ -490,6 +490,9 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsAnomaly")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("LastErrorTime")
                         .HasColumnType("TEXT");
 
@@ -503,6 +506,8 @@ namespace MaterialClient.Common.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsAnomaly");
 
                     b.HasIndex("WeighingRecordId")
                         .IsUnique();

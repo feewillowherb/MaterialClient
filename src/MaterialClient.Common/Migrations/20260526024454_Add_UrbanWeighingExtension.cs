@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MaterialClient.Common.Migrations
 {
     /// <inheritdoc />
-    public partial class AddUrbanWeighingExtension : Migration
+    public partial class Add_UrbanWeighingExtension : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -19,12 +19,18 @@ namespace MaterialClient.Common.Migrations
                     WeighingRecordId = table.Column<long>(type: "INTEGER", nullable: false),
                     SyncStatus = table.Column<int>(type: "INTEGER", nullable: false),
                     RetryCount = table.Column<int>(type: "INTEGER", nullable: false),
-                    LastErrorTime = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    LastErrorTime = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    IsAnomaly = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_UrbanWeighingExtensions", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UrbanWeighingExtensions_IsAnomaly",
+                table: "UrbanWeighingExtensions",
+                column: "IsAnomaly");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UrbanWeighingExtensions_SyncStatus_WeighingRecordId",
