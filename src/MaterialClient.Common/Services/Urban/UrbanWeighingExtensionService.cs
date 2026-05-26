@@ -90,8 +90,9 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
         joined = input.TabFilter switch
         {
+            // 与列表 DTO 一致：无扩展行时 IsAnomaly 视为 false，归入「正常」
             "正常" => joined.Where(x =>
-                x.Extension != null && !x.Extension.IsAnomaly),
+                x.Extension == null || !x.Extension.IsAnomaly),
             "异常" => joined.Where(x =>
                 x.Extension != null && x.Extension.IsAnomaly),
             _ => joined

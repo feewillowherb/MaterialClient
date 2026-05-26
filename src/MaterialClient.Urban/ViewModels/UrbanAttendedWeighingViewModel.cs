@@ -41,6 +41,10 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     private const int PageSize = 20;
 
+    private const string TabAll = "全部";
+    private const string TabNormal = "正常";
+    private const string TabAbnormal = "异常";
+
     public UrbanAttendedWeighingViewModel(
         ILocalEventBus localEventBus,
         IUrbanWeighingExtensionService urbanWeighingExtensionService,
@@ -102,15 +106,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     {
                         _logger.LogError(ex, "Failed to handle StatusChangedEventData");
                     }
-                }));
-
-        _subscriptions.Add(
-            this.WhenAnyValue(x => x.ActiveTab)
-                .Skip(1)
-                .Subscribe(tabName =>
-                {
-                    CurrentPage = 1;
-                    _ = ReloadRecordsAsync();
                 }));
 
         _subscriptions.Add(
@@ -187,7 +182,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     [Reactive] private string? _mostFrequentPlateNumber;
 
-    [Reactive] private string _activeTab = "全部";
+    [Reactive] private string _activeTab = TabAll;
 
     public string CurrentWeighingStatusText =>
         AttendedWeighingStatusDisplay.GetStatusText(CurrentWeighingStatus);
@@ -220,7 +215,9 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     public void SetFilterTab(string tab)
     {
-        ActiveTab = tab;
+        ActiveTab = NormalizeTabName(tab);
+        CurrentPage = 1;
+        _ = ReloadRecordsAsync();
     }
 
     public void Search()
@@ -327,6 +324,25 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     #region Private Methods
 
+    private static string NormalizeTabName(string tab) =>
+        tab switch
+        {
+            TabNormal => TabNormal,
+            TabAbnormal => TabAbnormal,
+            _ => TabAll
+        };
+
+    /// <summary>
+    ///     将 UI 标签页映射为查询过滤（全部/全部记录 → null，不过滤 IsAnomaly）
+    /// </summary>
+    private static string? ToQueryTabFilter(string activeTab) =>
+        activeTab switch
+        {
+            TabNormal => TabNormal,
+            TabAbnormal => TabAbnormal,
+            _ => null
+        };
+
     private async Task ReloadRecordsAsync()
     {
         try
@@ -335,7 +351,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
             {
                 PageIndex = CurrentPage,
                 PageSize = PageSize,
-                TabFilter = ActiveTab,
+                TabFilter = ToQueryTabFilter(ActiveTab),
                 SearchText = SearchText,
                 StartTime = StartTime,
                 EndTime = EndTime

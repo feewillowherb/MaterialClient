@@ -103,21 +103,22 @@ public class UrbanWeighingExtensionQueryTests
     }
 
     [Fact]
-    public void TabFilter_Normal_Should_Exclude_Records_Without_Extension()
+    public void TabFilter_Normal_Should_Include_Records_Without_Extension_As_Normal()
     {
         var records = new List<WeighingRecord>
         {
             CreateUrbanRecord(1, "京A12345", isAnomaly: false),
             new WeighingRecord(15.0m, "粤B12345") { UrbanExtension = null },
-            CreateUrbanRecord(3, "沪C12345", isAnomaly: false)
+            CreateUrbanRecord(3, "沪C12345", isAnomaly: true)
         };
 
         var results = records
-            .Where(r => r.UrbanExtension != null && !r.UrbanExtension.IsAnomaly)
+            .Where(r => r.UrbanExtension == null || !r.UrbanExtension.IsAnomaly)
             .ToList();
 
         results.Count.ShouldBe(2);
-        results.All(r => r.PlateNumber != "粤B12345").ShouldBeTrue();
+        results.Any(r => r.PlateNumber == "粤B12345").ShouldBeTrue();
+        results.All(r => r.UrbanExtension?.IsAnomaly != true).ShouldBeTrue();
     }
 
     [Fact]
