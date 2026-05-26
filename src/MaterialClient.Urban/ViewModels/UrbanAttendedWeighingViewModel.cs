@@ -166,11 +166,16 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
         try
         {
-            var dialogViewModel = new WeighingRecordEditDialogViewModel
+            var dialogViewModel = new WeighingRecordEditDialogViewModel(
+                _serviceProvider.GetRequiredService<IAttachmentService>(),
+                _serviceProvider,
+                _serviceProvider.GetRequiredService<ILogger<WeighingRecordEditDialogViewModel>>())
             {
                 PlateNumber = item.PlateNumber ?? string.Empty,
                 TotalWeight = item.TotalWeight.ToString("F2")
             };
+
+            await dialogViewModel.LoadPhotosAsync(item.WeighingRecordId);
 
             var dialog = new WeighingRecordEditDialog(dialogViewModel);
             var window = GetWindow();
