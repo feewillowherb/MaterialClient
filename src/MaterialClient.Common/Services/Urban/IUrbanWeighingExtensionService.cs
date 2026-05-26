@@ -41,4 +41,9 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     ///     更新扩展同步状态。
     /// </summary>
     Task UpdateSyncStatusAsync(Guid extensionId, SyncStatus syncStatus, DateTime? lastErrorTime = null);
+
+    /// <summary>
+    ///     更新扩展的异常标记。
+    /// </summary>
+    Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly);
 }

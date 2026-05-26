@@ -30,4 +30,10 @@ public class UrbanWeighingExtension : Entity<Guid>
     ///     Timestamp of the last upload failure, or <c>null</c> if no failure has occurred.
     /// </summary>
     public DateTime? LastErrorTime { get; set; }
+
+    /// <summary>
+    ///     Indicates whether this weighing record is flagged as anomalous data.
+    ///     Set during record creation by <see cref="Services.IUrbanAnomalyDetector" />.
+    /// </summary>
+    public bool IsAnomaly { get; set; } = false;
 }

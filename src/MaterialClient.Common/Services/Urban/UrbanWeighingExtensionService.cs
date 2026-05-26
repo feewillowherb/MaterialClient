@@ -92,9 +92,9 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         joined = tabFilter switch
         {
             "正常" => joined.Where(x =>
-                x.Extension != null && x.Extension.SyncStatus != SyncStatus.Failed),
+                x.Extension != null && !x.Extension.IsAnomaly),
             "异常" => joined.Where(x =>
-                x.Extension != null && x.Extension.SyncStatus == SyncStatus.Failed),
+                x.Extension != null && x.Extension.IsAnomaly),
             _ => joined
         };
 
@@ -161,6 +161,15 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             extension.LastErrorTime = null;
         }
 
+        await _extensionRepository.UpdateAsync(extension, autoSave: true);
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public virtual async Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly)
+    {
+        var extension = await _extensionRepository.GetAsync(extensionId);
+        extension.IsAnomaly = isAnomaly;
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 }

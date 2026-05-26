@@ -240,6 +240,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.WeighingRecordId).IsRequired();
             entity.HasIndex(e => e.WeighingRecordId).IsUnique();
             entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
+            entity.HasIndex(e => e.IsAnomaly);
         });
     }
 
