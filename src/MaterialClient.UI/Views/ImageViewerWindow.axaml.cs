@@ -3,10 +3,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.UI.Views;
 
 public partial class ImageViewerWindow : Window, ITransientDependency
 {

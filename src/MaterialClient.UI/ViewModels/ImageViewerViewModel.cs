@@ -1,7 +1,7 @@
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.ViewModels;
+namespace MaterialClient.UI.ViewModels;
 
 public partial class ImageViewerViewModel : ViewModelBase,ITransientDependency
 {

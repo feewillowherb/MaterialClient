@@ -31,6 +31,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
+using MaterialClient.UI.Views;
 using MaterialClient.Views;
 using MaterialClient.Views.AttendedWeighing;
 using MaterialClient.Views.Dialogs;
