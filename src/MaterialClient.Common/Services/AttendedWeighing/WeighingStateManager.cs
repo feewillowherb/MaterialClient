@@ -20,6 +20,7 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     private readonly ILogger<WeighingStateManager> _logger;
 
     private AttendedWeighingStatus _previousStatus = AttendedWeighingStatus.OffScale;
+    private string? _currentCycleLrpImagePath;
 
     public WeighingStateManager(
         ILocalEventBus localEventBus,
@@ -98,12 +99,28 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     public long? GetLastCreatedWeighingRecordId() => _lastCreatedWeighingRecordIdSubject.Value;
 
     /// <summary>
+    ///     设置当前称重周期内的 LRP 图片相对路径（由 LPR 识别事件更新）
+    /// </summary>
+    public void SetCurrentCycleLrpImagePath(string? relativePath)
+    {
+        _currentCycleLrpImagePath = relativePath;
+        if (!string.IsNullOrWhiteSpace(relativePath))
+            _logger.LogDebug("Current cycle LRP image path set: {Path}", relativePath);
+    }
+
+    /// <summary>
+    ///     获取当前称重周期内的 LRP 图片相对路径
+    /// </summary>
+    public string? GetCurrentCycleLrpImagePath() => _currentCycleLrpImagePath;
+
+    /// <summary>
     ///     重置称重周期（清除记录 ID 标记，为新的称重周期做准备）
     /// </summary>
     public void ResetCycle()
     {
         _lastCreatedWeighingRecordIdSubject.OnNext(null);
-        _logger.LogDebug("Weighing cycle reset: record ID cleared");
+        _currentCycleLrpImagePath = null;
+        _logger.LogDebug("Weighing cycle reset: record ID and LRP path cleared");
     }
 
     /// <summary>

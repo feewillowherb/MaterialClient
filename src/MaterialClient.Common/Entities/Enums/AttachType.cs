@@ -30,5 +30,10 @@ public enum AttachType : short
     /// <summary>
     ///     车牌识别图片（Lrp），仅 UrbanMode = 201 时保存
     /// </summary>
-    [Description("车牌识别图片")] Lrp = 5
+    [Description("车牌识别图片")] Lrp = 5,
+
+    /// <summary>
+    ///     城管海康称重抓拍图片，仅 UrbanMode = 201 时保存
+    /// </summary>
+    [Description("城管相机抓拍")] UrbanPhoto = 6
 }

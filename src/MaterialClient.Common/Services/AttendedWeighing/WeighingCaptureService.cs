@@ -72,7 +72,11 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
 
             var requests = new List<BatchCaptureRequest>();
             var now = DateTime.Now;
-            var basePath = AttachmentPathUtils.GetLocalStorageAbsolutePath(AttachType.EntryPhoto, now);
+            var weighingMode = await _settingsService.GetWeighingModeAsync();
+            var captureAttachType = weighingMode == WeighingMode.UrbanMode
+                ? AttachType.UrbanPhoto
+                : AttachType.EntryPhoto;
+            var basePath = AttachmentPathUtils.GetLocalStorageAbsolutePath(captureAttachType, now);
 
             foreach (var cameraConfig in cameraConfigs)
             {

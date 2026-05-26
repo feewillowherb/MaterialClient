@@ -105,6 +105,9 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
                         eventData.PlateNumber, eventData.DeviceName, eventData.DeviceType);
 
                     _plateNumberService.OnPlateNumberRecognized(eventData.PlateNumber, eventData.ColorType);
+
+                    if (!string.IsNullOrWhiteSpace(eventData.LrpImagePath))
+                        _stateManager.SetCurrentCycleLrpImagePath(eventData.LrpImagePath);
                 }
                 catch (Exception ex)
                 {

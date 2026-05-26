@@ -138,6 +138,9 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
                 await SaveCapturePhotosAsync(weighingRecord.Id, photoPaths);
             else
                 _logger.LogWarning("Weighing record {Id} has no associated photos", weighingRecord.Id);
+
+            if (weighingMode == WeighingMode.UrbanMode)
+                await SaveLrpAttachmentAsync(weighingRecord.Id, stateManager.GetCurrentCycleLrpImagePath());
         }
         catch (Exception ex)
         {
@@ -152,6 +155,11 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         {
             if (photoPaths.Count == 0) return;
 
+            var weighingMode = await _settingsService.GetWeighingModeAsync();
+            var attachType = weighingMode == WeighingMode.UrbanMode
+                ? AttachType.UrbanPhoto
+                : AttachType.UnmatchedEntryPhoto;
+
             using var uow = _unitOfWorkManager.Begin();
 
             foreach (var photoPath in photoPaths)
@@ -165,7 +173,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
                     var fileName = Path.GetFileName(photoPath);
                     var relativePath = PathManager.ToRelativePath(photoPath);
-                    var attachmentFile = new AttachmentFile(fileName, relativePath, AttachType.UnmatchedEntryPhoto);
+                    var attachmentFile = new AttachmentFile(fileName, relativePath, attachType);
 
                     await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 
@@ -178,12 +186,47 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
                 }
 
             await uow.CompleteAsync();
-            _logger.LogInformation("Saved {Count} photos to weighing record {Id}", photoPaths.Count,
-                weighingRecordId);
+            _logger.LogInformation("Saved {Count} photos ({AttachType}) to weighing record {Id}", photoPaths.Count,
+                attachType, weighingRecordId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while saving captured photos");
+        }
+    }
+
+    private async Task SaveLrpAttachmentAsync(long weighingRecordId, string? lrpRelativePath)
+    {
+        if (string.IsNullOrWhiteSpace(lrpRelativePath))
+        {
+            _logger.LogDebug("No LRP image path for weighing record {Id}, skipping Lrp attachment", weighingRecordId);
+            return;
+        }
+
+        try
+        {
+            if (!AttachmentPathUtils.FileExists(lrpRelativePath))
+            {
+                _logger.LogWarning("LRP photo file does not exist: {PhotoPath}", lrpRelativePath);
+                return;
+            }
+
+            using var uow = _unitOfWorkManager.Begin();
+
+            var fileName = Path.GetFileName(lrpRelativePath);
+            var attachmentFile = new AttachmentFile(fileName, lrpRelativePath, AttachType.Lrp);
+            await _attachmentFileRepository.InsertAsync(attachmentFile, true);
+
+            var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
+            await _weighingRecordAttachmentRepository.InsertAsync(weighingRecordAttachment, true);
+
+            await uow.CompleteAsync();
+            _logger.LogInformation("Saved Lrp attachment to weighing record {Id}: {Path}", weighingRecordId,
+                lrpRelativePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while saving Lrp attachment for record {Id}", weighingRecordId);
         }
     }
 
