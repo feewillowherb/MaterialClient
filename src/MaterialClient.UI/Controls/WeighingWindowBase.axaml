@@ -9,6 +9,7 @@
         <!-- Row 0: Header Bar (PrimaryBlue) -->
         <Border Grid.Row="0"
                 Background="{DynamicResource PrimaryBlue}"
+                Padding="16,6,0,6"
                 x:Name="PART_HeaderBar"
                 PointerPressed="TitleBar_OnPointerPressed"
                 Cursor="Arrow">
@@ -29,10 +30,18 @@
                             Margin="0,-4,0,0">
                     <Button x:Name="PART_MinimizeButton"
                             Content="─"
+                            FontSize="16"
+                            Width="40"
+                            Height="40"
+                            Cursor="Hand"
                             Classes="titlebar-minimize-button"
                             Click="OnMinimizeButtonClick" />
                     <Button x:Name="PART_CloseButton"
                             Content="✕"
+                            FontSize="18"
+                            Width="40"
+                            Height="40"
+                            Cursor="Hand"
                             Classes="titlebar-close-button"
                             Click="OnCloseButtonClick" />
                 </StackPanel>
