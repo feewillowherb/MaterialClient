@@ -2,6 +2,9 @@ using System.Collections.ObjectModel;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
@@ -14,6 +17,7 @@ using MaterialClient.UI.Models;
 using MaterialClient.UI.Services;
 using MaterialClient.UI.ViewModels;
 using MaterialClient.UI.Views;
+using MaterialClient.Urban.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -150,13 +154,51 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     }
 
     /// <summary>
-    ///     审批称重记录（占位，后续对接 Urban 审批流程）
+    ///     审批称重记录：编辑车牌/重量并更新记录，重置同步状态为 Pending
     /// </summary>
     [ReactiveCommand]
-    private void ApproveRecord(UrbanWeighingListItemDto item)
+    private async Task ApproveRecordAsync(UrbanWeighingListItemDto? item)
     {
-        _logger.LogInformation("Approve record requested: WeighingRecordId={RecordId}, Plate={Plate}",
-            item.WeighingRecordId, item.PlateNumber);
+        if (item == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dialogViewModel = new WeighingRecordEditDialogViewModel
+            {
+                PlateNumber = item.PlateNumber ?? string.Empty,
+                TotalWeight = item.TotalWeight.ToString("F2")
+            };
+
+            var dialog = new WeighingRecordEditDialog(dialogViewModel);
+            var window = GetWindow();
+            var result = await dialog.ShowDialog<EditResult?>(window);
+
+            if (result != null)
+            {
+                var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
+                await weighingRecordService.UpdateWeighingRecordAsync(
+                    item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
+                await ReloadRecordsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to approve weighing record {Id}", item.WeighingRecordId);
+        }
+    }
+
+    private static Window GetWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.MainWindow
+                   ?? throw new InvalidOperationException("Cannot find main window");
+        }
+
+        throw new InvalidOperationException("Application is not running in desktop mode");
     }
 
     /// <summary>
@@ -220,10 +262,21 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         _ = ReloadRecordsAsync();
     }
 
-    public void Search()
+    [ReactiveCommand]
+    private Task SearchAsync()
     {
         CurrentPage = 1;
-        _ = ReloadRecordsAsync();
+        return ReloadRecordsAsync();
+    }
+
+    [ReactiveCommand]
+    private Task ResetSearchAsync()
+    {
+        StartTime = null;
+        EndTime = null;
+        SearchText = string.Empty;
+        CurrentPage = 1;
+        return ReloadRecordsAsync();
     }
 
     public void PreviousPage()

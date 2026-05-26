@@ -14,17 +14,7 @@ public partial class WeighingRecordEditDialog : Window
     {
         DataContext = viewModel;
 
-        if (viewModel != null)
-        {
-            viewModel.SaveCommand.Subscribe(_ =>
-            {
-                Close(viewModel.Result);
-            });
-
-            viewModel.CancelCommand.Subscribe(_ =>
-            {
-                Close(null);
-            });
-        }
+        viewModel.SaveCommand.Subscribe(_ => Close(viewModel.Result));
+        viewModel.CancelCommand.Subscribe(_ => Close(null));
     }
 }

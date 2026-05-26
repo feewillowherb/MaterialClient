@@ -15,7 +15,6 @@
                        Foreground="Black"
                        Margin="0,0,0,8" />
 
-            <!-- PlateNumber -->
             <Grid ColumnDefinitions="Auto,*">
                 <TextBlock Text="车牌号:"
                            Grid.Column="0"
@@ -26,7 +25,6 @@
                          Grid.Column="1" />
             </Grid>
 
-            <!-- TotalWeight -->
             <Grid ColumnDefinitions="Auto,*">
                 <TextBlock Text="重量(吨):"
                            Grid.Column="0"
