@@ -249,11 +249,15 @@
                                             <TextBlock Grid.Column="1" Text="{Binding LprPhotoTime}" FontSize="11" Foreground="#94A3B8"
                                                        VerticalAlignment="Center" />
                                         </Grid>
-                                        <Border Height="120" Background="#E5E7EB" CornerRadius="4"
-                                                BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
-                                            <Image Source="{Binding LprPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
-                                                   Stretch="UniformToFill" />
-                                        </Border>
+                                        <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                Command="{Binding OpenLprImageViewerCommand}"
+                                                CommandParameter="{Binding LprPhotoPath}">
+                                            <Border Height="120" Background="#E5E7EB" CornerRadius="4"
+                                                    BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                                                <Image Source="{Binding LprPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                                       Stretch="UniformToFill" />
+                                            </Border>
+                                        </Button>
                                     </StackPanel>
 
                                     <!-- Photo 2: Camera Capture -->
@@ -265,11 +269,15 @@
                                             <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11" Foreground="#94A3B8"
                                                        VerticalAlignment="Center" />
                                         </Grid>
-                                        <Border Height="120" Background="#E5E7EB" CornerRadius="4"
-                                                BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
-                                            <Image Source="{Binding CameraPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
-                                                   Stretch="UniformToFill" />
-                                        </Border>
+                                        <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                Command="{Binding OpenCameraImageViewerCommand}"
+                                                CommandParameter="{Binding CameraPhotoPath}">
+                                            <Border Height="120" Background="#E5E7EB" CornerRadius="4"
+                                                    BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                                                <Image Source="{Binding CameraPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                                       Stretch="UniformToFill" />
+                                            </Border>
+                                        </Button>
                                     </StackPanel>
                                 </StackPanel>
                             </ScrollViewer>

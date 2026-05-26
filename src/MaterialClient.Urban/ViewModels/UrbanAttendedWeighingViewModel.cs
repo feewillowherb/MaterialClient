@@ -12,6 +12,9 @@ using MaterialClient.Common.Services.Urban;
 using MaterialClient.UI;
 using MaterialClient.UI.Models;
 using MaterialClient.UI.Services;
+using MaterialClient.UI.ViewModels;
+using MaterialClient.UI.Views;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -33,6 +36,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     private readonly IAttachmentService _attachmentService;
     private readonly SharedDeviceStatusTracker _deviceStatusTracker;
     private readonly ILogger<UrbanAttendedWeighingViewModel> _logger;
+    private readonly IServiceProvider _serviceProvider;
     private readonly CompositeDisposable _subscriptions = [];
 
     private const int PageSize = 20;
@@ -44,7 +48,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         ITruckScaleWeightService truckScaleWeightService,
         IAttachmentService attachmentService,
         SharedDeviceStatusTracker deviceStatusTracker,
-        ILogger<UrbanAttendedWeighingViewModel> logger)
+        ILogger<UrbanAttendedWeighingViewModel> logger,
+        IServiceProvider serviceProvider)
     {
         _localEventBus = localEventBus;
         _urbanWeighingExtensionService = urbanWeighingExtensionService;
@@ -53,6 +58,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         _attachmentService = attachmentService;
         _deviceStatusTracker = deviceStatusTracker;
         _logger = logger;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -243,6 +249,52 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 DeviceStatuses.Add(item);
             }
         });
+    }
+
+    #endregion
+
+    #region Image Viewer Commands
+
+    /// <summary>
+    ///     打开车牌识别抓拍图片查看器
+    /// </summary>
+    [ReactiveCommand]
+    private void OpenLprImageViewer(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+
+        try
+        {
+            var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
+            viewModel.SetImage(path, "车牌识别抓拍");
+            var window = new ImageViewerWindow(viewModel);
+            window.Show();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "打开车牌识别图片查看器失败");
+        }
+    }
+
+    /// <summary>
+    ///     打开摄像头抓拍图片查看器
+    /// </summary>
+    [ReactiveCommand]
+    private void OpenCameraImageViewer(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+
+        try
+        {
+            var viewModel = _serviceProvider.GetRequiredService<ImageViewerViewModel>();
+            viewModel.SetImage(path, "摄像头抓拍");
+            var window = new ImageViewerWindow(viewModel);
+            window.Show();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "打开摄像头图片查看器失败");
+        }
     }
 
     #endregion
