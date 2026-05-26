@@ -6,6 +6,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.EFCore;
+using MaterialClient.Common.Services;
 using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
@@ -72,7 +73,9 @@ public class MaterialClientUrbanModule : AbpModule
 
         // Refit API clients (IBasePlatformApi, IMaterialPlatformApi — required by AttachmentService, etc.)
         services.AddMaterialClientRefitClients(configuration);
-        
+
+        // Register Urban anomaly detector as Singleton
+        services.AddSingleton<IUrbanAnomalyDetector, UrbanAnomalyDetector>();
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)

@@ -35,3 +35,24 @@ public class SyncStatusMatchConverter : IValueConverter
         throw new NotSupportedException();
     }
 }
+
+/// <summary>
+///     Inverts a boolean value for visibility bindings.
+///     Used to show elements when a bound boolean is <c>false</c>.
+/// </summary>
+public class BoolInvertConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool b)
+            return !b;
+
+        // If value is null (e.g., UrbanExtension is null), hide the badge
+        return false;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
