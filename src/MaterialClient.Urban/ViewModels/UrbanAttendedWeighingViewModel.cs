@@ -138,7 +138,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     /// <summary>
     ///     Select a list row and load its photo paths for the sidebar.
     /// </summary>
-    public void SelectListItem(UrbanWeighingListItemDto? item)
+    [ReactiveCommand]
+    private void SelectListItem(UrbanWeighingListItemDto? item)
     {
         SelectedListItem = item;
     }
