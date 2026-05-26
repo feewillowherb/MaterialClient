@@ -11,7 +11,7 @@
         Width="1280" Height="800"
         MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen"
-        SystemDecorations="BorderOnly"
+        SystemDecorations="None"
         CanResize="True"
         Icon="/Assets/fd-ico.ico"
         Background="{DynamicResource BackgroundGray}">
@@ -292,7 +292,7 @@
 
         </ui:WeighingWindowBase>
 
-        <!-- Wider resize grips; requires BorderOnly so Win32 WS_THICKFRAME is enabled -->
+        <!-- Frameless resize grips (SystemDecorations=None); use BeginResizeDrag in code-behind -->
         <Border x:Name="ResizeNorth" Height="6" VerticalAlignment="Top" HorizontalAlignment="Stretch"
                 Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
                 PointerPressed="ResizeGrip_OnPointerPressed" />

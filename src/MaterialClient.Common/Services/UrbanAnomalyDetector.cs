@@ -1,5 +1,6 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
@@ -10,7 +11,7 @@ namespace MaterialClient.Common.Services;
 ///     2. TotalWeight exceeds UpperLimit by DeviationPercentage → anomaly
 ///     3. TotalWeight is below LowerLimit by DeviationPercentage → anomaly
 /// </summary>
-public class UrbanAnomalyDetector : IUrbanAnomalyDetector
+public class UrbanAnomalyDetector : IUrbanAnomalyDetector, ISingletonDependency
 {
     /// <inheritdoc />
     public bool IsAnomaly(WeighingRecord record, UrbanAnomalyDetectionConfig config)
