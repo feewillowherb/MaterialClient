@@ -1,9 +1,8 @@
-using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 
-namespace MaterialClient.Views.Controls;
+namespace MaterialClient.UI.Controls;
 
 public partial class LoadingDotsAnimation : UserControl
 {
@@ -22,8 +21,7 @@ public partial class LoadingDotsAnimation : UserControl
     public LoadingDotsAnimation()
     {
         InitializeComponent();
-        
-        // Listen to IsActive property changes
+
         this.GetObservable(IsActiveProperty)
             .Subscribe(OnIsActiveChanged);
     }
@@ -49,7 +47,6 @@ public partial class LoadingDotsAnimation : UserControl
             Interval = TimeSpan.FromSeconds(1)
         };
 
-        // Ensure single subscription
         _animationTimer.Tick -= OnAnimationTick;
         _animationTimer.Tick += OnAnimationTick;
 
@@ -91,8 +88,7 @@ public partial class LoadingDotsAnimation : UserControl
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
-        
-        // Clean up timer when control is removed
+
         if (_animationTimer != null)
         {
             _animationTimer.Stop();

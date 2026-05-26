@@ -28,6 +28,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Utils;
@@ -1182,17 +1183,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .DisposeWith(_disposables);
     }
 
-    private static string GetStatusText(AttendedWeighingStatus status)
-    {
-        return status switch
-        {
-            AttendedWeighingStatus.OffScale => "称重已结束",
-            AttendedWeighingStatus.WaitingForStability => "等待稳定",
-            AttendedWeighingStatus.WeightStabilized => "重量已稳定",
-            AttendedWeighingStatus.WaitingForDeparture => "等待下磅",
-            _ => "未知状态"
-        };
-    }
+    private static string GetStatusText(AttendedWeighingStatus status) =>
+        AttendedWeighingStatusDisplay.GetStatusText(status);
 
     /// <summary>
     ///     从列表项加载照片（统一接口）

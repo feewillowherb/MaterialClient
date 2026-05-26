@@ -66,6 +66,16 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     /// </summary>
     public void Initialize()
     {
+        MostFrequentPlateNumber = _attendedWeighingService.GetMostFrequentPlateNumber();
+        CurrentWeighingStatus = _attendedWeighingService.GetCurrentStatus();
+        this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
+        this.RaisePropertyChanged(nameof(IsWeighingActive));
+
+        _subscriptions.Add(
+            MessageBus.Current.Listen<PlateNumberChangedMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(message => MostFrequentPlateNumber = message.PlateNumber));
+
         _subscriptions.Add(
             _localEventBus
                 .Subscribe<WeighingRecordCreatedEventData>(async eventData =>
@@ -139,7 +149,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     ///     Select a list row and load its photo paths for the sidebar.
     /// </summary>
     [ReactiveCommand]
-    private void SelectListItem(UrbanWeighingListItemDto? item)
+    private void SelectListItem(UrbanWeighingListItemDto item)
     {
         SelectedListItem = item;
     }
@@ -163,11 +173,16 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     [Reactive] private decimal _currentWeight;
 
-    [Reactive] private string _weightStatus = "等待上磅";
+    [Reactive] private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
 
-    [Reactive] private string _weightStatusColor = "#94A3B8";
+    [Reactive] private string? _mostFrequentPlateNumber;
 
     [Reactive] private string _activeTab = "全部";
+
+    public string CurrentWeighingStatusText =>
+        AttendedWeighingStatusDisplay.GetStatusText(CurrentWeighingStatus);
+
+    public bool IsWeighingActive => CurrentWeighingStatus != AttendedWeighingStatus.OffScale;
 
     [Reactive] private string _searchText = "";
 
@@ -405,22 +420,9 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     {
         RxApp.MainThreadScheduler.Schedule(() =>
         {
-            switch (status)
-            {
-                case AttendedWeighingStatus.OffScale:
-                    WeightStatus = "等待上磅";
-                    WeightStatusColor = "#94A3B8";
-                    break;
-                case AttendedWeighingStatus.WaitingForStability:
-                    WeightStatus = "正在称重";
-                    WeightStatusColor = "#FBBF24";
-                    break;
-                case AttendedWeighingStatus.WeightStabilized:
-                case AttendedWeighingStatus.WaitingForDeparture:
-                    WeightStatus = "称重已结束";
-                    WeightStatusColor = "#4ADE80";
-                    break;
-            }
+            CurrentWeighingStatus = status;
+            this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
+            this.RaisePropertyChanged(nameof(IsWeighingActive));
         });
     }
 
