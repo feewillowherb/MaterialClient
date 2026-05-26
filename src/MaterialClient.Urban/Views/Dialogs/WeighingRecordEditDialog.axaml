@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.Urban.ViewModels"
+        x:Class="MaterialClient.Urban.Views.Dialogs.WeighingRecordEditDialog"
+        x:DataType="vm:WeighingRecordEditDialogViewModel"
+        Title="审批称重记录"
+        Width="400" Height="280"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="*,Auto" Margin="20">
+        <StackPanel Grid.Row="0" Spacing="16">
+            <TextBlock Text="称重记录审批"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="Black"
+                       Margin="0,0,0,8" />
+
+            <!-- PlateNumber -->
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Text="车牌号:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="80" />
+                <TextBox Text="{Binding PlateNumber}"
+                         Grid.Column="1" />
+            </Grid>
+
+            <!-- TotalWeight -->
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Text="重量(吨):"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="80" />
+                <TextBox Text="{Binding TotalWeight}"
+                         Grid.Column="1"
+                         Watermark="0.00" />
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="12"
+                    Margin="0,20,0,0">
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Padding="24,8"
+                    CornerRadius="4" />
+            <Button Content="确定"
+                    Command="{Binding SaveCommand}"
+                    Classes="primary-button"
+                    Padding="24,8"
+                    CornerRadius="4" />
+        </StackPanel>
+    </Grid>
+</Window>
