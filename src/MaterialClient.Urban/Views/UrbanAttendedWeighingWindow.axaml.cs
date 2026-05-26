@@ -101,10 +101,10 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
 
     private void OnRecordClick(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Border { Tag: MaterialClient.Common.Entities.WeighingRecord record })
+        if (sender is not Border { Tag: MaterialClient.Common.Dtos.Urban.UrbanWeighingListItemDto item })
             return;
 
-        ViewModel?.SelectRecord(record);
+        ViewModel?.SelectListItem(item);
     }
 
     private async void OnSystemSettingsClick(object? sender, RoutedEventArgs e)

@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using MaterialClient.Common.Entities;
+using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
@@ -23,7 +23,6 @@ namespace MaterialClient.Urban.ViewModels;
 /// <summary>
 ///     Urban attended weighing ViewModel
 ///     Subscribes to weighing pipeline events via ILocalEventBus to drive UI updates
-///     Uses Common.Entities.WeighingRecord directly (no local duplicate model)
 /// </summary>
 public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposable, ITransientDependency
 {
@@ -61,7 +60,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     /// </summary>
     public void Initialize()
     {
-        // Subscribe to WeighingRecordCreatedEventData to refresh list
         _subscriptions.Add(
             _localEventBus
                 .Subscribe<WeighingRecordCreatedEventData>(async eventData =>
@@ -76,7 +74,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                 }));
 
-        // Subscribe to StatusChangedEventData to update status text
         _subscriptions.Add(
             _localEventBus
                 .Subscribe<StatusChangedEventData>(async eventData =>
@@ -91,10 +88,9 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                 }));
 
-        // Subscribe to ActiveTab changes to trigger record reload
         _subscriptions.Add(
             this.WhenAnyValue(x => x.ActiveTab)
-                .Skip(1) // Skip initial value
+                .Skip(1)
                 .Subscribe(tabName =>
                 {
                     CurrentPage = 1;
@@ -116,8 +112,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 }));
 
         _subscriptions.Add(
-            this.WhenAnyValue(x => x.SelectedRecord)
-                .Subscribe(record => _ = UpdatePhotoPathsAsync(record)));
+            this.WhenAnyValue(x => x.SelectedListItem)
+                .Subscribe(item => _ = UpdatePhotoPathsAsync(item?.WeighingRecordId)));
 
         _subscriptions.Add(
             _truckScaleWeightService.WeightUpdates
@@ -134,11 +130,11 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     }
 
     /// <summary>
-    ///     Select a weighing record and load its photo paths for the sidebar.
+    ///     Select a list row and load its photo paths for the sidebar.
     /// </summary>
-    public void SelectRecord(WeighingRecord? record)
+    public void SelectListItem(UrbanWeighingListItemDto? item)
     {
-        SelectedRecord = record;
+        SelectedListItem = item;
     }
 
     /// <summary>
@@ -151,116 +147,56 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     #region Properties
 
-    /// <summary>
-    ///     Weighing records list (using Common.Entities.WeighingRecord)
-    /// </summary>
-    [Reactive] private ObservableCollection<WeighingRecord> _weighingRecords = [];
+    [Reactive] private ObservableCollection<UrbanWeighingListItemDto> _listItems = [];
 
-    /// <summary>
-    ///     Device status list (using shared DeviceStatusItem from MaterialClient.UI)
-    /// </summary>
     [Reactive] private ObservableCollection<DeviceStatusItem> _deviceStatuses =
         new(DeviceStatusCatalog.BuildItems(DeviceStatusBarOptions.CoreOnly, false, false, false, false, false));
 
-    /// <summary>
-    ///     Currently selected weighing record
-    /// </summary>
-    [Reactive] private WeighingRecord? _selectedRecord;
+    [Reactive] private UrbanWeighingListItemDto? _selectedListItem;
 
-    /// <summary>
-    ///     Current weight value
-    /// </summary>
     [Reactive] private decimal _currentWeight;
 
-    /// <summary>
-    ///     Weight status text
-    /// </summary>
     [Reactive] private string _weightStatus = "等待上磅";
 
-    /// <summary>
-    ///     Weight status color
-    /// </summary>
     [Reactive] private string _weightStatusColor = "#94A3B8";
 
-    /// <summary>
-    ///     Currently active tab (All/Normal/Abnormal)
-    /// </summary>
     [Reactive] private string _activeTab = "全部";
 
-    /// <summary>
-    ///     Search keyword (plate number fuzzy query)
-    /// </summary>
     [Reactive] private string _searchText = "";
 
-    /// <summary>
-    ///     Query start time
-    /// </summary>
     [Reactive] private DateTime? _startTime;
 
-    /// <summary>
-    ///     Query end time
-    /// </summary>
     [Reactive] private DateTime? _endTime;
 
-    /// <summary>
-    ///     Current page number
-    /// </summary>
     [Reactive] private int _currentPage = 1;
 
-    /// <summary>
-    ///     Total page count
-    /// </summary>
     [Reactive] private int _totalPages = 1;
 
-    /// <summary>
-    ///     Total record count
-    /// </summary>
     [Reactive] private int _totalCount;
 
-    /// <summary>
-    ///     License plate recognition (Lrp) photo path for binding
-    /// </summary>
     [Reactive] private string? _lprPhotoPath;
 
-    /// <summary>
-    ///     Camera capture photo path for binding (first entry photo)
-    /// </summary>
     [Reactive] private string? _cameraPhotoPath;
 
-    /// <summary>
-    ///     Lrp photo capture time display
-    /// </summary>
     [Reactive] private string _lprPhotoTime = "";
 
-    /// <summary>
-    ///     Camera photo capture time display
-    /// </summary>
     [Reactive] private string _cameraPhotoTime = "";
 
     #endregion
 
     #region Public Methods
 
-    /// <summary>
-    ///     Tab filter: switch filter tab
-    /// </summary>
     public void SetFilterTab(string tab)
     {
         ActiveTab = tab;
     }
 
-    /// <summary>
-    ///     Search: execute search
-    /// </summary>
     public void Search()
     {
         CurrentPage = 1;
         _ = ReloadRecordsAsync();
     }
 
-    /// <summary>
-    ///     Pagination: previous page
-    /// </summary>
     public void PreviousPage()
     {
         if (CurrentPage > 1)
@@ -270,9 +206,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         }
     }
 
-    /// <summary>
-    ///     Pagination: next page
-    /// </summary>
     public void NextPage()
     {
         if (CurrentPage < TotalPages)
@@ -282,9 +215,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         }
     }
 
-    /// <summary>
-    ///     Start device status polling (same catalog as MaterialClient main app).
-    /// </summary>
     public void StartDeviceStatusMonitoring()
     {
         if (_deviceStatusTrackerStarted) return;
@@ -295,9 +225,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         _deviceStatusTrackerStarted = true;
     }
 
-    /// <summary>
-    ///     Reload optional-device visibility after settings save.
-    /// </summary>
     public async Task RefreshDeviceStatusBarAsync()
     {
         await _deviceStatusTracker.RefreshVisibilityFromSettingsAsync();
@@ -322,26 +249,31 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     #region Private Methods
 
-    /// <summary>
-    ///     Reload weighing records via service (with filter, search, pagination)
-    /// </summary>
     private async Task ReloadRecordsAsync()
     {
         try
         {
-            var result = await _urbanWeighingExtensionService.GetPagedWithRecordsAsync(
-                CurrentPage, PageSize, ActiveTab, SearchText, StartTime, EndTime);
+            var input = new GetUrbanWeighingListInput
+            {
+                PageIndex = CurrentPage,
+                PageSize = PageSize,
+                TabFilter = ActiveTab,
+                SearchText = SearchText,
+                StartTime = StartTime,
+                EndTime = EndTime
+            };
+
+            var result = await _urbanWeighingExtensionService.GetPagedListItemsAsync(input);
 
             TotalCount = (int)result.TotalCount;
             TotalPages = TotalCount > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 1;
 
-            // Update in place so ItemsSource / bindings keep the same collection instance
             RxApp.MainThreadScheduler.Schedule(() =>
             {
-                WeighingRecords.Clear();
-                foreach (var record in result.Items)
+                ListItems.Clear();
+                foreach (var item in result.Items)
                 {
-                    WeighingRecords.Add(record);
+                    ListItems.Add(item);
                 }
             });
         }
@@ -351,12 +283,9 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         }
     }
 
-    /// <summary>
-    ///     Load Lrp and camera photo paths from attachments for the selected record.
-    /// </summary>
-    private async Task UpdatePhotoPathsAsync(WeighingRecord? record)
+    private async Task UpdatePhotoPathsAsync(long? weighingRecordId)
     {
-        if (record == null)
+        if (!weighingRecordId.HasValue)
         {
             RxApp.MainThreadScheduler.Schedule(() =>
             {
@@ -371,14 +300,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         try
         {
             var attachmentsByRecord =
-                await _attachmentService.GetAttachmentsByWeighingRecordIdsAsync([record.Id]);
+                await _attachmentService.GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId.Value]);
 
             string? lprPath = null;
             string? cameraPath = null;
             DateTime? lprTime = null;
             DateTime? cameraTime = null;
 
-            if (attachmentsByRecord.TryGetValue(record.Id, out var files))
+            if (attachmentsByRecord.TryGetValue(weighingRecordId.Value, out var files))
             {
                 foreach (var file in files)
                 {
@@ -408,7 +337,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load photo paths for record {RecordId}", record.Id);
+            _logger.LogError(ex, "Failed to load photo paths for record {RecordId}", weighingRecordId);
             RxApp.MainThreadScheduler.Schedule(() =>
             {
                 LprPhotoPath = null;
@@ -419,9 +348,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         }
     }
 
-    /// <summary>
-    ///     Update status text and color based on weighing status
-    /// </summary>
     private void UpdateStatusDisplay(AttendedWeighingStatus status)
     {
         RxApp.MainThreadScheduler.Schedule(() =>

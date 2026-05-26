@@ -1,3 +1,4 @@
+using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
@@ -72,14 +73,12 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task<PagedResultDto<WeighingRecord>> GetPagedWithRecordsAsync(
-        int pageIndex,
-        int pageSize,
-        string? tabFilter,
-        string? searchText,
-        DateTime? startTime,
-        DateTime? endTime)
+    public virtual async Task<PagedResultDto<UrbanWeighingListItemDto>> GetPagedListItemsAsync(
+        GetUrbanWeighingListInput input)
     {
+        var pageIndex = input.PageIndex < 1 ? 1 : input.PageIndex;
+        var pageSize = input.PageSize < 1 ? 20 : input.PageSize;
+
         var recordQueryable = await _weighingRecordRepository.GetQueryableAsync();
         var extensionQueryable = await _extensionRepository.GetQueryableAsync();
 
@@ -89,7 +88,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             from e in extGroup.DefaultIfEmpty()
             select new { Record = r, Extension = e };
 
-        joined = tabFilter switch
+        joined = input.TabFilter switch
         {
             "正常" => joined.Where(x =>
                 x.Extension != null && !x.Extension.IsAnomaly),
@@ -98,20 +97,20 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             _ => joined
         };
 
-        if (!string.IsNullOrWhiteSpace(searchText))
+        if (!string.IsNullOrWhiteSpace(input.SearchText))
         {
             joined = joined.Where(x =>
-                x.Record.PlateNumber != null && x.Record.PlateNumber.Contains(searchText));
+                x.Record.PlateNumber != null && x.Record.PlateNumber.Contains(input.SearchText));
         }
 
-        if (startTime.HasValue)
+        if (input.StartTime.HasValue)
         {
-            joined = joined.Where(x => x.Record.AddDate >= startTime.Value);
+            joined = joined.Where(x => x.Record.AddDate >= input.StartTime.Value);
         }
 
-        if (endTime.HasValue)
+        if (input.EndTime.HasValue)
         {
-            joined = joined.Where(x => x.Record.AddDate <= endTime.Value);
+            joined = joined.Where(x => x.Record.AddDate <= input.EndTime.Value);
         }
 
         var totalCount = await joined.CountAsync();
@@ -121,13 +120,17 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             .Take(pageSize)
             .ToListAsync();
 
-        var records = rows.Select(x =>
+        var items = rows.Select(x => new UrbanWeighingListItemDto
         {
-            x.Record.UrbanExtension = x.Extension;
-            return x.Record;
+            WeighingRecordId = x.Record.Id,
+            PlateNumber = x.Record.PlateNumber,
+            AddDate = x.Record.AddDate,
+            TotalWeight = x.Record.TotalWeight,
+            IsAnomaly = x.Extension?.IsAnomaly ?? false,
+            SyncStatus = x.Extension?.SyncStatus
         }).ToList();
 
-        return new PagedResultDto<WeighingRecord>(totalCount, records);
+        return new PagedResultDto<UrbanWeighingListItemDto>(totalCount, items);
     }
 
     /// <inheritdoc />

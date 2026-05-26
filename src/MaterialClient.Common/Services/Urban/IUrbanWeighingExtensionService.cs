@@ -1,6 +1,6 @@
-using MaterialClient.Common.Entities;
-using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Urban;
+using MaterialClient.Common.Entities.Enums;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.DependencyInjection;
 
@@ -22,15 +22,9 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     Task<UrbanWeighingExtension?> GetByWeighingRecordIdAsync(long weighingRecordId);
 
     /// <summary>
-    ///     分页查询 Urban 称重记录并关联扩展（LEFT JOIN 语义，扩展挂到 <see cref="WeighingRecord.UrbanExtension" />）。
+    ///     分页查询 Urban 称重列表项（LEFT JOIN 投影为 DTO，不返回实体）。
     /// </summary>
-    Task<PagedResultDto<WeighingRecord>> GetPagedWithRecordsAsync(
-        int pageIndex,
-        int pageSize,
-        string? tabFilter,
-        string? searchText,
-        DateTime? startTime,
-        DateTime? endTime);
+    Task<PagedResultDto<UrbanWeighingListItemDto>> GetPagedListItemsAsync(GetUrbanWeighingListInput input);
 
     /// <summary>
     ///     查询待上传的扩展行（后台同步 worker 使用）。
