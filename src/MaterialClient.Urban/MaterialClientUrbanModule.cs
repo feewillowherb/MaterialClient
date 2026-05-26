@@ -73,9 +73,7 @@ public class MaterialClientUrbanModule : AbpModule
 
         // Refit API clients (IBasePlatformApi, IMaterialPlatformApi — required by AttachmentService, etc.)
         services.AddMaterialClientRefitClients(configuration);
-
-        // Register Urban anomaly detector as Singleton
-        services.AddSingleton<IUrbanAnomalyDetector, UrbanAnomalyDetector>();
+        
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
