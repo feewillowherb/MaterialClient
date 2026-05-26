@@ -4,6 +4,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Utils;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -54,6 +55,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<WeighingRecordService> _logger;
     private readonly IWeighingPipelineStrategy _pipelineStrategy;
+    private readonly IUrbanAnomalyDetector _anomalyDetector;
+    private readonly IConfiguration _configuration;
 
     public WeighingRecordService(
         IRepository<WeighingRecord, long> weighingRecordRepository,
@@ -65,6 +68,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         IPlateNumberService plateNumberService,
         ILocalEventBus localEventBus,
         ILogger<WeighingRecordService> logger,
+        IUrbanAnomalyDetector anomalyDetector,
+        IConfiguration configuration,
         IWeighingPipelineStrategy? pipelineStrategy = null)
     {
         _weighingRecordRepository = weighingRecordRepository;
@@ -76,6 +81,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         _plateNumberService = plateNumberService;
         _localEventBus = localEventBus;
         _logger = logger;
+        _anomalyDetector = anomalyDetector;
+        _configuration = configuration;
         _pipelineStrategy = pipelineStrategy ?? new DefaultWeighingPipelineStrategy(
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultWeighingPipelineStrategy>());
     }
@@ -101,7 +108,12 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
             if (weighingMode == WeighingMode.UrbanMode)
             {
-                await _urbanWeighingExtensionService.CreateForRecordAsync(weighingRecord.Id);
+                var extension = await _urbanWeighingExtensionService.CreateForRecordAsync(weighingRecord.Id);
+
+                // Anomaly detection
+                var anomalyConfig = GetAnomalyDetectionConfig();
+                extension.IsAnomaly = _anomalyDetector.IsAnomaly(weighingRecord, anomalyConfig);
+                await _urbanWeighingExtensionService.UpdateAnomalyFlagAsync(extension.Id, extension.IsAnomaly);
             }
 
             await uow.CompleteAsync();
@@ -280,6 +292,25 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         {
             _logger.LogWarning(ex, "Failed to load configuration, using default values");
             return new WeighingConfiguration();
+        }
+    }
+
+    /// <summary>
+    ///     Reads UrbanAnomalyDetection config from IConfiguration.
+    ///     Falls back to defaults and logs a warning on failure.
+    /// </summary>
+    private UrbanAnomalyDetectionConfig GetAnomalyDetectionConfig()
+    {
+        try
+        {
+            var config = new UrbanAnomalyDetectionConfig();
+            _configuration.GetSection("UrbanAnomalyDetection").Bind(config);
+            return config;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read UrbanAnomalyDetection config, using default values");
+            return new UrbanAnomalyDetectionConfig();
         }
     }
 }
