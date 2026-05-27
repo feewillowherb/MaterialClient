@@ -8,6 +8,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.Hardware;
@@ -155,6 +156,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     /// <summary>
     ///     审批称重记录：编辑车牌/重量并更新记录，重置同步状态为 Pending
+    ///     验证车牌号格式，只有有效的中国车牌号才能保存
     /// </summary>
     [ReactiveCommand]
     private async Task ApproveRecordAsync(UrbanWeighingListItemDto? item)
@@ -183,6 +185,33 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
             if (result != null)
             {
+                // Validate license plate before proceeding
+                if (string.IsNullOrWhiteSpace(result.PlateNumber))
+                {
+                    var errorDialog = new MessageBox
+                    {
+                        Title = "验证错误",
+                        Message = "车牌号不能为空",
+                        ShowInTaskbar = false,
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    };
+                    await errorDialog.ShowDialog(GetWindow());
+                    return;
+                }
+
+                if (!PlateNumberValidator.IsValidChinesePlateNumber(result.PlateNumber))
+                {
+                    var errorDialog = new MessageBox
+                    {
+                        Title = "验证错误",
+                        Message = "车牌号格式无效，请输入有效的中国车牌号",
+                        ShowInTaskbar = false,
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    };
+                    await errorDialog.ShowDialog(GetWindow());
+                    return;
+                }
+
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
                 await weighingRecordService.UpdateWeighingRecordAsync(
                     item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
