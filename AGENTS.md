@@ -167,6 +167,11 @@
 - **授权**：使用 `IStaticLicenseChecker` 后台检查（TODO: 当前默认返回成功）
 - **UI 来源**：从 `MaterialClient.Demo/Views/WeighingSystemWindow.axaml` 迁移
 
+### UI 主题（与 MaterialClient 一致）
+- **NuGet**：`Semi.Avalonia`、`Irihi.Ursa`、`Irihi.Ursa.Themes.Semi`、`Irihi.Avalonia.Shared`（版本与主程序 Central Package Management 一致）
+- **App.axaml**：须加载 `semi:SemiTheme` + `u-semi:SemiTheme`（`Locale="zh-CN"`），并包含与主程序相同的 Ursa `MessageBox` 样式及 `MaterialClient.UI` 的 `SharedTheme` / `SharedConverters`
+- **禁止**仅引用 `Irihi.Ursa` 而不加载 Semi 主题（会导致 MessageBox 等 Ursa 控件尺寸/样式异常）
+
 ### 架构约束
 - **无 Generic Host**：使用 Avalonia `ApplicationLifetime`，不注册 ABP 容器
 - **无登录模块**：不引用 Account 模块，无 Session 管理
