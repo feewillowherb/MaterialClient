@@ -23,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Ursa.Controls;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus.Local;
 
@@ -156,7 +157,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     /// <summary>
     ///     审批称重记录：编辑车牌/重量并更新记录，重置同步状态为 Pending
-    ///     验证车牌号格式，只有有效的中国车牌号才能保存
     /// </summary>
     [ReactiveCommand]
     private async Task ApproveRecordAsync(UrbanWeighingListItemDto? item)
@@ -185,30 +185,17 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
             if (result != null)
             {
-                // Validate license plate before proceeding
                 if (string.IsNullOrWhiteSpace(result.PlateNumber))
                 {
-                    var errorDialog = new MessageBox
-                    {
-                        Title = "验证错误",
-                        Message = "车牌号不能为空",
-                        ShowInTaskbar = false,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner
-                    };
-                    await errorDialog.ShowDialog(GetWindow());
+                    await MessageBox.ShowAsync(window, "车牌号不能为空", "验证错误",
+                        MessageBoxIcon.Warning, MessageBoxButton.OK);
                     return;
                 }
 
                 if (!PlateNumberValidator.IsValidChinesePlateNumber(result.PlateNumber))
                 {
-                    var errorDialog = new MessageBox
-                    {
-                        Title = "验证错误",
-                        Message = "车牌号格式无效，请输入有效的中国车牌号",
-                        ShowInTaskbar = false,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner
-                    };
-                    await errorDialog.ShowDialog(GetWindow());
+                    await MessageBox.ShowAsync(window, "车牌号不符合规范请修改", "验证错误",
+                        MessageBoxIcon.Warning, MessageBoxButton.OK);
                     return;
                 }
 

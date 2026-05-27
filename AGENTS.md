@@ -9,6 +9,21 @@
 - 本项目（MaterialClient）仅负责代码实现，不再维护独立的 openspec 目录
 - 详见主仓库 `AGENTS.md` 中的「OpenSpec 生成位置约束」
 
+## 项目约定（构建验证）
+
+当 `bin/`、`obj/` 下 DLL 被正在运行的应用或测试宿主占用导致 MSB3027 复制失败时，使用**固定**独立输出目录验证编译，勿写入临时随机路径。
+
+- **独立输出目录**：仓库根目录下的 `.build-verify/`（已列入 `.gitignore`，勿提交）
+- **命令示例**（在 MaterialClient 仓库根执行）：
+  ```bash
+  dotnet build MaterialClient.sln -o .build-verify
+  ```
+  或针对单个项目：
+  ```bash
+  dotnet build src/MaterialClient.Urban/MaterialClient.Urban.csproj -o .build-verify
+  ```
+- **约定**：Agent 与本地脚本需要「避开文件锁仅做编译验证」时，一律使用 `-o .build-verify`，不要改用其他目录名。
+
 ## 项目约定（服务注册）
 
 - **服务注册**：优先采用 **ABP 集成式 + 隐式 + AutoConstructor**。服务实现类实现 ABP 依赖接口（如 `ITransientDependency`、`ISingletonDependency`）并标注 `[AutoConstructor]`，由 ABP 按约定扫描注册，无需在 Module 或扩展方法中显式注册。参考实现：`SoundDeviceService`（实现 `ISoundDeviceService, ISingletonDependency` + `[AutoConstructor]`）。仅在确有"集成一组服务"的跨模块需求时再考虑扩展方法集中注册。
