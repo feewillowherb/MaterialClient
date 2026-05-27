@@ -5,6 +5,7 @@
         xmlns:viewModels="using:MaterialClient.Urban.ViewModels"
         xmlns:ui="using:MaterialClient.UI.Controls"
         xmlns:uiModels="using:MaterialClient.UI.Models"
+        xmlns:u="https://irihi.tech/ursa"
         x:Class="MaterialClient.Urban.Views.UrbanAttendedWeighingWindow"
         x:DataType="viewModels:UrbanAttendedWeighingViewModel"
         x:Name="UrbanAttendedWeighingWindowRoot"
@@ -159,8 +160,17 @@
                                         <TextBlock Text="称重时间" FontSize="12" Foreground="#475569"
                                                    Width="56" VerticalAlignment="Center"
                                                    FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                        <TextBox Classes="filter-input" Width="130" />
-                                        <TextBox Classes="filter-input" Width="130" />
+                                        <u:DateTimePicker Classes="filter-input" Width="130"
+                                                        DisplayFormat="MM-dd HH:mm"
+                                                        PanelFormat="yyyy-MM-dd HH:mm"
+                                                        SelectedDate="{Binding StartTime}" />
+                                        <TextBlock Text="至" FontSize="12" Foreground="#475569"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <u:DateTimePicker Classes="filter-input" Width="130"
+                                                        DisplayFormat="MM-dd HH:mm"
+                                                        PanelFormat="yyyy-MM-dd HH:mm"
+                                                        SelectedDate="{Binding EndTime}" />
                                     </StackPanel>
                                     <!-- License Plate Search -->
                                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

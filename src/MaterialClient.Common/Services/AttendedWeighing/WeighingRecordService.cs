@@ -40,6 +40,7 @@ public interface IWeighingRecordService
 
     /// <summary>
     ///     更新称重记录的车牌号和重量，并重置关联的 UrbanWeighingExtension 同步状态为 Pending
+    ///     同时更新异常标志以反映编辑后的记录状态
     /// </summary>
     Task UpdateWeighingRecordAsync(long weighingRecordId, string plateNumber, decimal totalWeight);
 }
@@ -344,11 +345,23 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         if (extension != null)
         {
             await _urbanWeighingExtensionService.UpdateSyncStatusAsync(extension.Id, Entities.Enums.SyncStatus.Pending);
-        }
 
-        _logger.LogInformation(
-            "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending",
-            weighingRecordId, plateNumber, totalWeight);
+            // Anomaly detection integration: recalculate anomaly flag after record edit
+            // This ensures the anomaly status stays in sync with the edited record data
+            var anomalyConfig = GetAnomalyDetectionConfig();
+            var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig);
+            await _urbanWeighingExtensionService.UpdateAnomalyFlagAsync(extension.Id, isAnomaly);
+
+            _logger.LogInformation(
+                "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending, IsAnomaly={IsAnomaly}",
+                weighingRecordId, plateNumber, totalWeight, isAnomaly);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending (no extension found)",
+                weighingRecordId, plateNumber, totalWeight);
+        }
     }
 
     private async Task<WeighingConfiguration> GetConfigurationAsync()
