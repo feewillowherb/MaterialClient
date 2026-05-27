@@ -18,6 +18,9 @@ public class LicensePlateRecognizedEventToMessageBusBridge : ILocalEventHandler<
         {
             PlateNumber = eventData.PlateNumber,
             ColorType = eventData.ColorType,
+            VehicleColor = eventData.VehicleColor,
+            VehicleType = eventData.VehicleType,
+            PlateColor = eventData.PlateColor,
             DeviceType = eventData.DeviceType,
             DeviceName = eventData.DeviceName,
             Timestamp = eventData.Timestamp

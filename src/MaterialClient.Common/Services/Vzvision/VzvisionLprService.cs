@@ -4,6 +4,7 @@ using System.Text;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Utils;
@@ -367,6 +368,8 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
             }
 
             var color = MapColor(plate.nColor);
+            var vehicleColor = MapVehicleColor(plate.nCarColor);
+            var vehicleType = MapVehicleType(plate.nType);
             var deviceName = cfg.Name;
 
             // 提取 Lrp 图片（仅 UrbanMode），从 pImgFull 提取全场景图
@@ -376,6 +379,9 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
             {
                 PlateNumber = license,
                 ColorType = color,
+                VehicleColor = vehicleColor,
+                VehicleType = vehicleType,
+                PlateColor = color.GetDescription(),
                 DeviceType = LprDeviceType.Vzvision,
                 DeviceName = deviceName,
                 Timestamp = DateTime.Now,
@@ -479,6 +485,34 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
             5 => VzvisionColorType.Green,
             _ => VzvisionColorType.Unknown
         };
+    }
+
+    /// <summary>
+    ///     映射车身颜色枚举值为可读字符串
+    /// </summary>
+    /// <param name="nCarColor">车身颜色枚举值</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapVehicleColor(byte nCarColor)
+    {
+        if (!Enum.IsDefined(typeof(VzvisionVehicleColorType), nCarColor))
+            return null;
+
+        var vehicleColorType = (VzvisionVehicleColorType)nCarColor;
+        return vehicleColorType.GetDescription();
+    }
+
+    /// <summary>
+    ///     映射车型枚举值为可读字符串
+    /// </summary>
+    /// <param name="nType">车型枚举值</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapVehicleType(int nType)
+    {
+        if (!Enum.IsDefined(typeof(VzvisionVehicleType), nType))
+            return null;
+
+        var vehicleType = (VzvisionVehicleType)nType;
+        return vehicleType.GetDescription();
     }
 
     private static string DecodeLicense(byte[]? license)

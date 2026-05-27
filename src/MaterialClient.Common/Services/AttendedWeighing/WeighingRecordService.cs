@@ -107,6 +107,18 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             var weighingRecord = new WeighingRecord(weight, plateNumber);
             weighingRecord.DeliveryType = currentDeliveryType;
 
+            // 获取并设置车辆信息
+            var (vehicleColor, vehicleType, plateColor) = stateManager.GetCurrentCycleVehicleInfo();
+            weighingRecord.VehicleColor = vehicleColor;
+            weighingRecord.VehicleType = vehicleType;
+            weighingRecord.PlateColor = plateColor;
+
+            if (!string.IsNullOrWhiteSpace(vehicleColor) || !string.IsNullOrWhiteSpace(vehicleType) ||
+                !string.IsNullOrWhiteSpace(plateColor))
+                _logger.LogDebug(
+                    "Vehicle info attached to record: VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}",
+                    vehicleColor, vehicleType, plateColor);
+
             var weighingMode = await _settingsService.GetWeighingModeAsync();
             weighingRecord.SetWeighingMode(weighingMode);
 

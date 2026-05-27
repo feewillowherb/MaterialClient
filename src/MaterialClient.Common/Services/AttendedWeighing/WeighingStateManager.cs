@@ -21,6 +21,9 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
 
     private AttendedWeighingStatus _previousStatus = AttendedWeighingStatus.OffScale;
     private string? _currentCycleLrpImagePath;
+    private string? _currentCycleVehicleColor;
+    private string? _currentCycleVehicleType;
+    private string? _currentCyclePlateColor;
 
     public WeighingStateManager(
         ILocalEventBus localEventBus,
@@ -114,13 +117,44 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     public string? GetCurrentCycleLrpImagePath() => _currentCycleLrpImagePath;
 
     /// <summary>
+    ///     设置当前称重周期内的车辆信息
+    /// </summary>
+    /// <param name="vehicleColor">车身颜色</param>
+    /// <param name="vehicleType">车型</param>
+    /// <param name="plateColor">车牌号颜色</param>
+    public void SetCurrentCycleVehicleInfo(string? vehicleColor, string? vehicleType, string? plateColor)
+    {
+        _currentCycleVehicleColor = vehicleColor;
+        _currentCycleVehicleType = vehicleType;
+        _currentCyclePlateColor = plateColor;
+
+        if (!string.IsNullOrWhiteSpace(vehicleColor) || !string.IsNullOrWhiteSpace(vehicleType) ||
+            !string.IsNullOrWhiteSpace(plateColor))
+            _logger.LogDebug(
+                "Current cycle vehicle info set: VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}",
+                vehicleColor, vehicleType, plateColor);
+    }
+
+    /// <summary>
+    ///     获取当前称重周期内的车辆信息
+    /// </summary>
+    /// <returns>包含车身颜色、车型、车牌号颜色的元组</returns>
+    public (string? vehicleColor, string? vehicleType, string? plateColor) GetCurrentCycleVehicleInfo()
+    {
+        return (_currentCycleVehicleColor, _currentCycleVehicleType, _currentCyclePlateColor);
+    }
+
+    /// <summary>
     ///     重置称重周期（清除记录 ID 标记，为新的称重周期做准备）
     /// </summary>
     public void ResetCycle()
     {
         _lastCreatedWeighingRecordIdSubject.OnNext(null);
         _currentCycleLrpImagePath = null;
-        _logger.LogDebug("Weighing cycle reset: record ID and LRP path cleared");
+        _currentCycleVehicleColor = null;
+        _currentCycleVehicleType = null;
+        _currentCyclePlateColor = null;
+        _logger.LogDebug("Weighing cycle reset: record ID, LRP path, and vehicle info cleared");
     }
 
     /// <summary>

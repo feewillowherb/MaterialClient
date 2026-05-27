@@ -23,6 +23,21 @@ public class LicensePlateRecognizedMessage
     public VzvisionColorType? ColorType { get; set; }
 
     /// <summary>
+    ///     可选的车身颜色（从设备抓拍信息获取）
+    /// </summary>
+    public string? VehicleColor { get; set; }
+
+    /// <summary>
+    ///     可选的车型（从设备抓拍信息获取）
+    /// </summary>
+    public string? VehicleType { get; set; }
+
+    /// <summary>
+    ///     可选的车牌号颜色（从设备抓拍信息获取）
+    /// </summary>
+    public string? PlateColor { get; set; }
+
+    /// <summary>
     ///     识别车牌的设备类型
     /// </summary>
     public LprDeviceType DeviceType { get; set; }

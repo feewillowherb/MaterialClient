@@ -108,6 +108,10 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
 
                     if (!string.IsNullOrWhiteSpace(eventData.LrpImagePath))
                         _stateManager.SetCurrentCycleLrpImagePath(eventData.LrpImagePath);
+
+                    // 存储车辆信息到状态管理器
+                    _stateManager.SetCurrentCycleVehicleInfo(eventData.VehicleColor, eventData.VehicleType,
+                        eventData.PlateColor);
                 }
                 catch (Exception ex)
                 {

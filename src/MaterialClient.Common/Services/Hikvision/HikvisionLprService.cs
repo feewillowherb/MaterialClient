@@ -5,6 +5,7 @@ using System.Text;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
@@ -351,6 +352,11 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             // 使用 GBK 编码提取车牌号
             var plateNumber = HikvisionEncodingHelper.GetString(plateResult.sLicense, _logger);
 
+            // 提取车辆信息
+            var vehicleColor = MapVehicleColor(plateResult.byColor);
+            var vehicleType = MapVehicleType(plateResult.byVehicleType);
+            var plateColor = MapPlateColor(plateResult.struPlateInfo);
+
             // 提取 Lrp 图片（仅 UrbanMode）
             var lrpPath = TrySaveLrpAttachment(plateResult.pBuffer, plateResult.dwPicLen, plateNumber);
 
@@ -358,7 +364,10 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             var eventData = new LicensePlateRecognizedEventData
             {
                 PlateNumber = plateNumber,
-                ColorType = null, // 海康威视 SDK 回调中不包含颜色信息
+                ColorType = null, // 海康威视使用 PlateColor 字符串字段
+                VehicleColor = vehicleColor,
+                VehicleType = vehicleType,
+                PlateColor = plateColor,
                 DeviceType = LprDeviceType.Hikvision,
                 DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
                 Timestamp = DateTime.Now,
@@ -401,6 +410,11 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 // 使用 GBK 编码提取车牌号
                 var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
 
+                // 提取车辆信息
+                var vehicleColor = MapVehicleColor(plateInfo.byColor);
+                var vehicleType = MapVehicleType(plateInfo.byVehicleType);
+                var plateColor = MapPlateColor(plateInfo.struPlateInfoEx);
+
                 // 提取 Lrp 图片（仅 UrbanMode）
                 var lrpPath = TrySaveLrpAttachment(plateInfo.pBuffer, plateInfo.dwPicLen, plateNumber);
 
@@ -408,7 +422,10 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 var eventData = new LicensePlateRecognizedEventData
                 {
                     PlateNumber = plateNumber,
-                    ColorType = null, // 海康威视 SDK 回调中不包含颜色信息
+                    ColorType = null, // 海康威视使用 PlateColor 字符串字段
+                    VehicleColor = vehicleColor,
+                    VehicleType = vehicleType,
+                    PlateColor = plateColor,
                     DeviceType = LprDeviceType.Hikvision,
                     DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
                     Timestamp = DateTime.Now,
@@ -756,5 +773,51 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     private static string BuildDeviceKey(LicensePlateRecognitionConfig config)
     {
         return $"{config.Ip}:{config.Port}";
+    }
+
+    /// <summary>
+    ///     映射车身颜色枚举值为可读字符串
+    /// </summary>
+    /// <param name="byColor">车身颜色枚举值</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapVehicleColor(int byColor)
+    {
+        if (!Enum.IsDefined(typeof(HikvisionVehicleColorType), byColor))
+            return null;
+
+        var vehicleColorType = (HikvisionVehicleColorType)byColor;
+        return vehicleColorType.GetDescription();
+    }
+
+    /// <summary>
+    ///     映射车型枚举值为可读字符串
+    /// </summary>
+    /// <param name="byVehicleType">车型枚举值</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapVehicleType(int byVehicleType)
+    {
+        if (!Enum.IsDefined(typeof(HikvisionVehicleType), byVehicleType))
+            return null;
+
+        var vehicleType = (HikvisionVehicleType)byVehicleType;
+        return vehicleType.GetDescription();
+    }
+
+    /// <summary>
+    ///     映射车牌颜色枚举值为可读字符串
+    /// </summary>
+    /// <param name="plateInfoEx">车牌扩展信息</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapPlateColor(HikvisionSdk.NET_DVR_PLATE_INFO_EX plateInfoEx)
+    {
+        if (plateInfoEx.byColor == null || plateInfoEx.byColor.Length == 0)
+            return null;
+
+        var colorValue = plateInfoEx.byColor[0];
+        if (!Enum.IsDefined(typeof(HikvisionPlateColorType), colorValue))
+            return null;
+
+        var plateColorType = (HikvisionPlateColorType)colorValue;
+        return plateColorType.GetDescription();
     }
 }

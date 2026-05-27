@@ -66,6 +66,20 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     /// </summary>
     public string? PlateNumber { get; set; }
 
+    /// <summary>
+    ///     车身颜色
+    /// </summary>
+    public string? VehicleColor { get; set; }
+
+    /// <summary>
+    ///     车型
+    /// </summary>
+    public string? VehicleType { get; set; }
+
+    /// <summary>
+    ///     车牌号颜色
+    /// </summary>
+    public string? PlateColor { get; set; }
 
     /// <summary>
     ///     供应商Id
