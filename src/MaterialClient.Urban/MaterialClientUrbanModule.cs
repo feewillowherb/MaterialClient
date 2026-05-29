@@ -6,7 +6,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.EFCore;
-using MaterialClient.Common.Services;
+using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
@@ -14,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Polly;
+using Refit;
 using Serilog;
 using Serilog.Events;
 using Volo.Abp;
@@ -73,6 +75,15 @@ public class MaterialClientUrbanModule : AbpModule
 
         // Refit API clients (IBasePlatformApi, IMaterialPlatformApi — required by AttachmentService, etc.)
         services.AddMaterialClientRefitClients(configuration);
+
+        // Register IUrbanManagementApi Refit client
+        var urbanManagementUrl = configuration["UrbanManagement:BaseUrl"] ?? "http://localhost:5000";
+        services.AddRefitClient<IUrbanManagementApi>()
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri(urbanManagementUrl);
+                c.Timeout = TimeSpan.FromSeconds(30);
+            });
         
     }
 

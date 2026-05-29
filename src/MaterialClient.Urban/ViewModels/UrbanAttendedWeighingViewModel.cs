@@ -18,6 +18,7 @@ using MaterialClient.UI.Models;
 using MaterialClient.UI.Services;
 using MaterialClient.UI.ViewModels;
 using MaterialClient.UI.Views;
+using MaterialClient.Urban.Services;
 using MaterialClient.Urban.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -202,6 +203,20 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
                 await weighingRecordService.UpdateWeighingRecordAsync(
                     item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
+
+                // Submit to UrbanManagement server after local save
+                try
+                {
+                    var serverUploadService = _serviceProvider.GetRequiredService<IUrbanServerUploadService>();
+                    await serverUploadService.SubmitRecordAsync(item.WeighingRecordId);
+                }
+                catch (Exception uploadEx)
+                {
+                    _logger.LogWarning(uploadEx,
+                        "Server upload failed for record {RecordId} (non-blocking, will retry via background worker)",
+                        item.WeighingRecordId);
+                }
+
                 await ReloadRecordsAsync();
             }
         }
