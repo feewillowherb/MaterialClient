@@ -83,6 +83,7 @@
 
 ### Record 替代 Tuple（NON-NEGOTIABLE）
 
+- 与 MaterialMonospec 主仓库「跨子仓库 C# 编码约定」一致；本子仓库细则以下列条文为准。
 - 禁止使用 tuple（如 `(string, int)` 或 `ValueTuple`）作为返回值或参数类型。
 - 应使用 `record` 类型替代，例如 `record UserInfo(string Name, int Age)`。
 - 适用于方法返回值、方法参数、局部变量和字段定义。
