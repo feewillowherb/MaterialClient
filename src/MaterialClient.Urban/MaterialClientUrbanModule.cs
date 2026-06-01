@@ -21,6 +21,7 @@ using Serilog.Events;
 using Volo.Abp;
 using Volo.Abp.Autofac;
 using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EventBus;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
 
@@ -84,7 +85,12 @@ public class MaterialClientUrbanModule : AbpModule
                 c.BaseAddress = new Uri(urbanManagementUrl);
                 c.Timeout = TimeSpan.FromSeconds(30);
             });
-        
+
+        // Configure SignalR client options
+        services.Configure<SignalRClientOptions>(configuration.GetSection("SignalR"));
+
+        // Confirm ILocalEventBus is available (ABP registers this automatically)
+        // DeviceStatusEventHandler uses ITransientDependency for auto-registration
     }
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
@@ -168,10 +174,45 @@ public class MaterialClientUrbanModule : AbpModule
         {
             logger?.LogWarning(ex, "Static license check failed (non-blocking)");
         }
+
+        // Start SignalR client connection (non-blocking)
+        try
+        {
+            var signalRClient = context.ServiceProvider.GetService<IDeviceStatusSignalRClient>();
+            if (signalRClient != null)
+            {
+                _ = signalRClient.StartAsync();
+                logger?.LogInformation("SignalR client connection initiated");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "SignalR client start failed (non-blocking)");
+        }
     }
 
     public override async Task OnApplicationShutdownAsync(ApplicationShutdownContext context)
     {
+        // Stop SignalR client gracefully
+        try
+        {
+            var signalRClient = context.ServiceProvider.GetService<IDeviceStatusSignalRClient>();
+            if (signalRClient != null)
+            {
+                await signalRClient.StopAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Non-blocking: do not prevent shutdown
+        }
+
+        // Dispose SignalR client
+        if (context.ServiceProvider.GetService<IDeviceStatusSignalRClient>() is IAsyncDisposable asyncDisposable)
+        {
+            await asyncDisposable.DisposeAsync();
+        }
+
         // Flush and close Serilog
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
