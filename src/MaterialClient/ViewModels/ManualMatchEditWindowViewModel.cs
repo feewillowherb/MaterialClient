@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.ViewModels;
 
@@ -23,6 +24,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
     private readonly IMaterialService? _materialService;
     private readonly IProviderService? _providerService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILocalEventBus _localEventBus;
 
     public ManualMatchEditWindowViewModel(
         WeighingRecord currentRecord,
@@ -35,6 +37,7 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
         MatchedRecord = matchedRecord;
         DeliveryType = deliveryType;
         _serviceProvider = serviceProvider;
+        _localEventBus = serviceProvider.GetRequiredService<ILocalEventBus>();
 
         _materialService = serviceProvider.GetService<IMaterialService>();
         _providerService = serviceProvider.GetService<IProviderService>();
@@ -387,17 +390,14 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
             // 调用 ManualMatchAsync 执行匹配和创建运单
             var waybill = await matchingService.ManualMatchAsync(CurrentRecord, MatchedRecord, DeliveryType);
 
-            // 发送匹配成功消息
-            var message = new MatchSucceededMessage(waybill.Id, CurrentRecord.Id);
-            MessageBus.Current.SendMessage(message);
+            await _localEventBus.PublishAsync(new MatchSucceededEventData(waybill.Id, CurrentRecord.Id));
             Logger?.LogInformation(
-                "SaveAsync: Sent MatchSucceededMessage via MessageBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+                "SaveAsync: Sent MatchSucceededEventData via ILocalEventBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
                 waybill.Id, CurrentRecord.Id);
 
-            // 触发保存完成消息（via MessageBus）
-            MessageBus.Current.SendMessage(new ManualMatchSaveCompletedMessage(waybill.Id));
+            await _localEventBus.PublishAsync(new ManualMatchSaveCompletedEventData(waybill.Id));
             Logger?.LogInformation(
-                "SaveAsync: Sent ManualMatchSaveCompletedMessage via MessageBus for WaybillId {WaybillId}",
+                "SaveAsync: Sent ManualMatchSaveCompletedEventData via ILocalEventBus for WaybillId {WaybillId}",
                 waybill.Id);
 
             return true;

@@ -83,9 +83,11 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         this.RaisePropertyChanged(nameof(IsWeighingActive));
 
         _subscriptions.Add(
-            MessageBus.Current.Listen<PlateNumberChangedMessage>()
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(message => MostFrequentPlateNumber = message.PlateNumber));
+            _localEventBus.Subscribe<PlateNumberChangedEventData>(eventData =>
+            {
+                RxApp.MainThreadScheduler.Schedule(() => MostFrequentPlateNumber = eventData.PlateNumber);
+                return Task.CompletedTask;
+            }));
 
         _subscriptions.Add(
             _localEventBus
@@ -116,18 +118,17 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 }));
 
         _subscriptions.Add(
-            MessageBus.Current.Listen<SettingsSavedMessage>()
-                .Subscribe(async _ =>
+            _localEventBus.Subscribe<SettingsSavedEventData>(async _ =>
+            {
+                try
                 {
-                    try
-                    {
-                        await RefreshDeviceStatusBarAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to refresh device status bar after settings save");
-                    }
-                }));
+                    await RefreshDeviceStatusBarAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to refresh device status bar after settings save");
+                }
+            }));
 
         _subscriptions.Add(
             this.WhenAnyValue(x => x.SelectedListItem)

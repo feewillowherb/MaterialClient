@@ -43,6 +43,7 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.ViewModels;
 
@@ -59,6 +60,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private readonly ISyncMaterialService _syncMaterialService;
     private readonly IAttachmentService _attachmentService;
+    private readonly ILocalEventBus _localEventBus;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
     private bool _isSyncing;
     private DispatcherTimer? _notificationFadeOutTimer;
@@ -76,7 +78,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         ISettingsService settingsService,
         ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
         ISyncMaterialService syncMaterialService,
-        IAttachmentService attachmentService
+        IAttachmentService attachmentService,
+        ILocalEventBus localEventBus
     ) : base(serviceProvider.GetService<ILogger<AttendedWeighingViewModel>>())
     {
         _weighingMatchingService = weighingMatchingService;
@@ -89,6 +92,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
         _syncMaterialService = syncMaterialService;
         _attachmentService = attachmentService;
+        _localEventBus = localEventBus;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
 
@@ -241,20 +245,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             IsReceiving = _attendedWeighingService.CurrentDeliveryType == DeliveryType.Receiving;
         }
 
-        // Start MessageBus subscriptions
-        StartStatusChangedMessageBusSubscription();
-        StartPlateNumberChangedMessageBusSubscription();
-        StartWeighingRecordCreatedMessageBusSubscription();
-        StartDeliveryTypeChangedMessageBusSubscription();
-        StartMatchSucceededMessageBusSubscription();
-        StartSaveCompletedMessageBusSubscription();
-        StartUpdatePlateNumberMessageBusSubscription();
-        StartSettingsSavedMessageBusSubscription();
-
-        // Subscribe to detail operation messages (replacing direct event subscriptions)
-        StartDetailOperationCompletedMessageBusSubscription();
-        StartDetailCloseRequestedMessageBusSubscription();
-        StartManualMatchSaveCompletedMessageBusSubscription();
+        StartStatusChangedEventSubscription();
+        StartPlateNumberChangedEventSubscription();
+        StartWeighingRecordCreatedEventSubscription();
+        StartDeliveryTypeChangedEventSubscription();
+        StartMatchSucceededEventSubscription();
+        StartSaveCompletedEventSubscription();
+        StartUpdatePlateNumberEventSubscription();
+        StartSettingsSavedEventSubscription();
+        StartDetailOperationCompletedEventSubscription();
+        StartDetailCloseRequestedEventSubscription();
+        StartManualMatchSaveCompletedEventSubscription();
 
         this.WhenAnyValue(x => x.PrinterName)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(PrinterTooltip)))
@@ -819,58 +820,62 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
 
     /// <summary>
-    ///     订阅状态变化消息（通过 ReactiveUI MessageBus）
+    ///     订阅状态变化事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartStatusChangedMessageBusSubscription()
+    private void StartStatusChangedEventSubscription()
     {
-        MessageBus.Current.Listen<StatusChangedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(message =>
+        _localEventBus.Subscribe<StatusChangedEventData>(eventData =>
             {
-                _currentWeighingStatus = message.Status;
-                this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
-                this.RaisePropertyChanged(nameof(IsWeighingActive));
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _currentWeighingStatus = eventData.Status;
+                    this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
+                    this.RaisePropertyChanged(nameof(IsWeighingActive));
+                });
+                return Task.CompletedTask;
             })
             .DisposeWith(_disposables);
     }
 
     /// <summary>
-    ///     订阅车牌号变化消息（通过 ReactiveUI MessageBus）
+    ///     订阅车牌号变化事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartPlateNumberChangedMessageBusSubscription()
+    private void StartPlateNumberChangedEventSubscription()
     {
-        MessageBus.Current.Listen<PlateNumberChangedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(message => { MostFrequentPlateNumber = message.PlateNumber; })
+        _localEventBus.Subscribe<PlateNumberChangedEventData>(eventData =>
+            {
+                Dispatcher.UIThread.Post(() => { MostFrequentPlateNumber = eventData.PlateNumber; });
+                return Task.CompletedTask;
+            })
             .DisposeWith(_disposables);
     }
 
     /// <summary>
-    ///     订阅称重记录创建消息（通过 ReactiveUI MessageBus）
+    ///     订阅称重记录创建事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartWeighingRecordCreatedMessageBusSubscription()
+    private void StartWeighingRecordCreatedEventSubscription()
     {
-        MessageBus.Current.Listen<WeighingRecordCreatedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async message =>
+        _localEventBus.Subscribe<WeighingRecordCreatedEventData>(async eventData =>
             {
-                Logger?.LogInformation("接收到新称重记录创建事件, ID: {WeighingRecordId}", message.WeighingRecordId);
+                Logger?.LogInformation("接收到新称重记录创建事件, ID: {WeighingRecordId}", eventData.WeighingRecordId);
                 await RefreshAsync();
             })
             .DisposeWith(_disposables);
     }
 
     /// <summary>
-    ///     订阅收发料类型变化消息（通过 ReactiveUI MessageBus）
+    ///     订阅收发料类型变化事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartDeliveryTypeChangedMessageBusSubscription()
+    private void StartDeliveryTypeChangedEventSubscription()
     {
-        MessageBus.Current.Listen<DeliveryTypeChangedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(message =>
+        _localEventBus.Subscribe<DeliveryTypeChangedEventData>(eventData =>
             {
-                IsReceiving = message.DeliveryType == DeliveryType.Receiving;
-                ShowDeliveryTypeChangedNotification(message.DeliveryType);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    IsReceiving = eventData.DeliveryType == DeliveryType.Receiving;
+                    ShowDeliveryTypeChangedNotification(eventData.DeliveryType);
+                });
+                return Task.CompletedTask;
             })
             .DisposeWith(_disposables);
     }
@@ -916,17 +921,15 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     }
 
     /// <summary>
-    ///     订阅匹配成功消息（通过 ReactiveUI MessageBus）
+    ///     订阅匹配成功事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartMatchSucceededMessageBusSubscription()
+    private void StartMatchSucceededEventSubscription()
     {
-        MessageBus.Current.Listen<MatchSucceededMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async message =>
+        _localEventBus.Subscribe<MatchSucceededEventData>(async eventData =>
             {
                 Logger?.LogInformation(
-                    "AttendedWeighingViewModel: Received MatchSucceededMessage for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
-                    message.WaybillId, message.WeighingRecordId);
+                    "AttendedWeighingViewModel: Received MatchSucceededEventData for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
+                    eventData.WaybillId, eventData.WeighingRecordId);
 
                 try
                 {
@@ -937,7 +940,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     var matchedItem = ListItems
                         .FirstOrDefault(item =>
                             item.ItemType == WeighingListItemType.Waybill &&
-                            item.Id == message.WaybillId);
+                            item.Id == eventData.WaybillId);
 
                     if (matchedItem != null)
                     {
@@ -954,37 +957,35 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
                         Logger?.LogInformation(
                             "AttendedWeighingViewModel: Selected matched Waybill {WaybillId}",
-                            message.WaybillId);
+                            eventData.WaybillId);
                     }
                     else
                     {
                         Logger?.LogWarning(
                             "AttendedWeighingViewModel: Matched Waybill {WaybillId} not found in current list",
-                            message.WaybillId);
+                            eventData.WaybillId);
                     }
                 }
                 catch (Exception ex)
                 {
                     Logger?.LogError(ex,
                         "AttendedWeighingViewModel: Error while handling MatchSucceededMessage for WaybillId {WaybillId}",
-                        message.WaybillId);
+                        eventData.WaybillId);
                 }
             })
             .DisposeWith(_disposables);
     }
 
     /// <summary>
-    ///     订阅保存完成消息（通过 ReactiveUI MessageBus）
+    ///     订阅保存完成事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartSaveCompletedMessageBusSubscription()
+    private void StartSaveCompletedEventSubscription()
     {
-        MessageBus.Current.Listen<SaveCompletedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async message =>
+        _localEventBus.Subscribe<SaveCompletedEventData>(async eventData =>
             {
                 Logger?.LogInformation(
-                    "AttendedWeighingViewModel: Received SaveCompletedMessage for ItemId {ItemId}, ItemType {ItemType}",
-                    message.ItemId, message.ItemType);
+                    "AttendedWeighingViewModel: Received SaveCompletedEventData for ItemId {ItemId}, ItemType {ItemType}",
+                    eventData.ItemId, eventData.ItemType);
 
                 try
                 {
@@ -994,8 +995,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     // 查找保存的列表项
                     var savedItem = ListItems
                         .FirstOrDefault(item =>
-                            item.ItemType == message.ItemType &&
-                            item.Id == message.ItemId);
+                            item.ItemType == eventData.ItemType &&
+                            item.Id == eventData.ItemId);
 
                     if (savedItem != null)
                     {
@@ -1011,37 +1012,35 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
                         Logger?.LogInformation(
                             "AttendedWeighingViewModel: Selected saved item {ItemId} of type {ItemType}",
-                            message.ItemId, message.ItemType);
+                            eventData.ItemId, eventData.ItemType);
                     }
                     else
                     {
                         Logger?.LogWarning(
                             "AttendedWeighingViewModel: Saved item {ItemId} of type {ItemType} not found in current list",
-                            message.ItemId, message.ItemType);
+                            eventData.ItemId, eventData.ItemType);
                     }
                 }
                 catch (Exception ex)
                 {
                     Logger?.LogError(ex,
-                        "AttendedWeighingViewModel: Error while handling SaveCompletedMessage for ItemId {ItemId}",
-                        message.ItemId);
+                        "AttendedWeighingViewModel: Error while handling SaveCompletedEventData for ItemId {ItemId}",
+                        eventData.ItemId);
                 }
             })
             .DisposeWith(_disposables);
     }
 
     /// <summary>
-    ///     订阅更新车牌号消息（通过 ReactiveUI MessageBus）
+    ///     订阅更新车牌号事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartUpdatePlateNumberMessageBusSubscription()
+    private void StartUpdatePlateNumberEventSubscription()
     {
-        MessageBus.Current.Listen<UpdatePlateNumberMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async message =>
+        _localEventBus.Subscribe<UpdatePlateNumberEventData>(async eventData =>
             {
                 Logger?.LogInformation(
-                    "AttendedWeighingViewModel: Received UpdatePlateNumberMessage for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
-                    message.WeighingRecordId, message.PlateNumber);
+                    "AttendedWeighingViewModel: Received UpdatePlateNumberEventData for WeighingRecordId {RecordId}, PlateNumber {PlateNumber}",
+                    eventData.WeighingRecordId, eventData.PlateNumber);
 
                 try
                 {
@@ -1050,29 +1049,27 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
                     Logger?.LogInformation(
                         "AttendedWeighingViewModel: Refreshed list after plate number update for WeighingRecordId {RecordId}",
-                        message.WeighingRecordId);
+                        eventData.WeighingRecordId);
                 }
                 catch (Exception ex)
                 {
                     Logger?.LogError(ex,
-                        "AttendedWeighingViewModel: Error while handling UpdatePlateNumberMessage for WeighingRecordId {RecordId}",
-                        message.WeighingRecordId);
+                        "AttendedWeighingViewModel: Error while handling UpdatePlateNumberEventData for WeighingRecordId {RecordId}",
+                        eventData.WeighingRecordId);
                 }
             })
             .DisposeWith(_disposables);
     }
 
     /// <summary>
-    ///     订阅设置已保存消息（通过 ReactiveUI MessageBus）
+    ///     订阅设置已保存事件（通过 ILocalEventBus）
     /// </summary>
-    private void StartSettingsSavedMessageBusSubscription()
+    private void StartSettingsSavedEventSubscription()
     {
-        MessageBus.Current.Listen<SettingsSavedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async _ =>
+        _localEventBus.Subscribe<SettingsSavedEventData>(async _ =>
             {
                 Logger?.LogInformation(
-                    "AttendedWeighingViewModel: Received SettingsSavedMessage, checking camera status");
+                    "AttendedWeighingViewModel: Received SettingsSavedEventData, checking camera status");
 
                 try
                 {
@@ -1095,14 +1092,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     ///     Subscribe to detail operation completed messages (replacing direct event subscriptions).
     ///     Dispatches to the appropriate handler based on OperationType.
     /// </summary>
-    private void StartDetailOperationCompletedMessageBusSubscription()
+    private void StartDetailOperationCompletedEventSubscription()
     {
-        MessageBus.Current.Listen<DetailOperationCompletedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async message =>
+        _localEventBus.Subscribe<DetailOperationCompletedEventData>(async message =>
             {
                 Logger?.LogInformation(
-                    "AttendedWeighingViewModel: Received DetailOperationCompletedMessage, OperationType={OperationType}, ItemId={ItemId}",
+                    "AttendedWeighingViewModel: Received DetailOperationCompletedEventData, OperationType={OperationType}, ItemId={ItemId}",
                     message.OperationType, message.ItemId);
 
                 try
@@ -1126,7 +1121,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 catch (Exception ex)
                 {
                     Logger?.LogError(ex,
-                        "AttendedWeighingViewModel: Error handling DetailOperationCompletedMessage for ItemId {ItemId}",
+                        "AttendedWeighingViewModel: Error handling DetailOperationCompletedEventData for ItemId {ItemId}",
                         message.ItemId);
                 }
             })
@@ -1136,13 +1131,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     Subscribe to detail close requested messages (replacing CloseRequested event).
     /// </summary>
-    private void StartDetailCloseRequestedMessageBusSubscription()
+    private void StartDetailCloseRequestedEventSubscription()
     {
-        MessageBus.Current.Listen<DetailCloseRequestedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async _ =>
+        _localEventBus.Subscribe<DetailCloseRequestedEventData>(async _ =>
             {
-                Logger?.LogInformation("AttendedWeighingViewModel: Received DetailCloseRequestedMessage");
+                Logger?.LogInformation("AttendedWeighingViewModel: Received DetailCloseRequestedEventData");
 
                 try
                 {
@@ -1150,7 +1143,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 }
                 catch (Exception ex)
                 {
-                    Logger?.LogError(ex, "AttendedWeighingViewModel: Error handling DetailCloseRequestedMessage");
+                    Logger?.LogError(ex, "AttendedWeighingViewModel: Error handling DetailCloseRequestedEventData");
                 }
             })
             .DisposeWith(_disposables);
@@ -1159,14 +1152,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     Subscribe to manual match save completed messages (replacing ManualMatchSaveCompleted event).
     /// </summary>
-    private void StartManualMatchSaveCompletedMessageBusSubscription()
+    private void StartManualMatchSaveCompletedEventSubscription()
     {
-        MessageBus.Current.Listen<ManualMatchSaveCompletedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async message =>
+        _localEventBus.Subscribe<ManualMatchSaveCompletedEventData>(async message =>
             {
                 Logger?.LogInformation(
-                    "AttendedWeighingViewModel: Received ManualMatchSaveCompletedMessage, WaybillId={WaybillId}",
+                    "AttendedWeighingViewModel: Received ManualMatchSaveCompletedEventData, WaybillId={WaybillId}",
                     message.WaybillId);
 
                 try
@@ -1176,7 +1167,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 catch (Exception ex)
                 {
                     Logger?.LogError(ex,
-                        "AttendedWeighingViewModel: Error handling ManualMatchSaveCompletedMessage for WaybillId {WaybillId}",
+                        "AttendedWeighingViewModel: Error handling ManualMatchSaveCompletedEventData for WaybillId {WaybillId}",
                         message.WaybillId);
                 }
             })
@@ -1717,24 +1708,24 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         DetailViewModel = null;
     }
 
-    private async Task OnDetailSaveCompleted(DetailOperationCompletedMessage msg)
+    private async Task OnDetailSaveCompleted(DetailOperationCompletedEventData msg)
     {
         await NavigateToItemAsync(msg);
     }
 
-    private async Task OnDetailAbolishCompleted(DetailOperationCompletedMessage msg)
+    private async Task OnDetailAbolishCompleted(DetailOperationCompletedEventData msg)
     {
         // Abolish操作删除了item，所以导航到下一个未匹配项
         await RefreshAsync();
         await SelectUnmatchedNextItemAsync();
     }
 
-    private async Task OnDetailMatchCompleted(DetailOperationCompletedMessage msg)
+    private async Task OnDetailMatchCompleted(DetailOperationCompletedEventData msg)
     {
         await NavigateToItemAsync(msg);
     }
 
-    private async Task OnDetailCompleteCompleted(DetailOperationCompletedMessage msg)
+    private async Task OnDetailCompleteCompleted(DetailOperationCompletedEventData msg)
     {
         if (IsSolidWasteMode)
         {
@@ -1748,12 +1739,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         }
     }
 
-    private async Task OnDetailManualMatchSaveCompleted(ManualMatchSaveCompletedMessage msg)
+    private async Task OnDetailManualMatchSaveCompleted(ManualMatchSaveCompletedEventData msg)
     {
-        // Navigate to the saved waybill using a DetailOperationCompletedMessage-like navigation
+        // Navigate to the saved waybill using DetailOperationCompletedEventData-like navigation
         if (msg.WaybillId.HasValue)
         {
-            await NavigateToItemAsync(new DetailOperationCompletedMessage(
+            await NavigateToItemAsync(new DetailOperationCompletedEventData(
                 itemId: msg.WaybillId.Value,
                 itemType: WeighingListItemType.Waybill,
                 orderType: OrderTypeEnum.FirstWeight,
@@ -1772,7 +1763,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     统一的导航逻辑：根据操作上下文导航到目标项
     /// </summary>
-    private async Task NavigateToItemAsync(DetailOperationCompletedMessage args)
+    private async Task NavigateToItemAsync(DetailOperationCompletedEventData args)
     {
         try
         {
@@ -1833,7 +1824,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     判断是否需要切换tab
     /// </summary>
-    private bool ShouldSwitchTab(DetailOperationCompletedMessage args)
+    private bool ShouldSwitchTab(DetailOperationCompletedEventData args)
     {
         // 如果显示全部记录，永不切换tab
         if (IsShowAllRecords)
@@ -1864,7 +1855,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     切换到合适的tab以显示目标项
     /// </summary>
-    private void SwitchToAppropriateTab(DetailOperationCompletedMessage args)
+    private void SwitchToAppropriateTab(DetailOperationCompletedEventData args)
     {
         if (args.IsCompleted)
         {
@@ -2364,8 +2355,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             await _authenticationService.LogoutAsync();
             await _authenticationService.ClearSavedCredentialAsync();
 
-            // Publish logout event for other components to react
-            MessageBus.Current.SendMessage(new LogoutRequestedMessage());
+            await _localEventBus.PublishAsync(new LogoutRequestedEventData());
 
             // Hide current window
             parentWin?.Hide();

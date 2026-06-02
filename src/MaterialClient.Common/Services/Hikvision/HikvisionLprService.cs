@@ -672,7 +672,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     }
 
     /// <summary>
-    ///     主动触发海康威视设备的车牌识别；识别结果通过 MessageBus 的 LicensePlateRecognizedMessage 交付。
+    ///     主动触发海康威视设备的车牌识别；识别结果通过 ILocalEventBus 的 LicensePlateRecognizedEventData 交付。
     /// </summary>
     /// <param name="config">设备配置</param>
     public async Task TriggerCaptureAsync(LicensePlateRecognitionConfig config)
@@ -692,7 +692,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             throw new InvalidOperationException($"设备登录失败: {config.Name}");
         }
 
-        // 2. 触发抓拍；结果由设备回调发布到 MessageBus
+        // 2. 触发抓拍；结果由设备回调发布到 ILocalEventBus
         var snapCfg = new HikvisionSdk.NET_DVR_SNAPCFG
         {
             dwSize = (uint)Marshal.SizeOf<HikvisionSdk.NET_DVR_SNAPCFG>(),

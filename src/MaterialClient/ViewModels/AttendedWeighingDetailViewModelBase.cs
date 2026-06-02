@@ -27,6 +27,7 @@ using Ursa.Controls;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.ViewModels;
 
@@ -44,6 +45,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     private protected readonly IServiceProvider _serviceProvider;
     private protected readonly IMaterialService _materialService;
     private protected readonly IProviderService _providerService;
+    private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IWaybillVoidService _waybillVoidService;
@@ -67,6 +69,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         _waybillVoidService = _serviceProvider.GetRequiredService<IWaybillVoidService>();
         _materialService = _serviceProvider.GetRequiredService<IMaterialService>();
         _providerService = _serviceProvider.GetRequiredService<IProviderService>();
+        _localEventBus = _serviceProvider.GetRequiredService<ILocalEventBus>();
 
         // Subscribe to weight changes -> update GoodsWeight
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -455,12 +458,8 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
                 }
             }
 
-            // Send save completed message
-            var message = new SaveCompletedMessage(_listItem.Id, _listItem.ItemType);
-            MessageBus.Current.SendMessage(message);
-
-            // Send detail operation completed message via MessageBus
-            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
+            await _localEventBus.PublishAsync(new SaveCompletedEventData(_listItem.Id, _listItem.ItemType));
+            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
                 itemId: _listItem.Id,
                 itemType: _listItem.ItemType,
                 orderType: _listItem.OrderType,
@@ -511,8 +510,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
                 }
             }
 
-            // Send complete operation completed message via MessageBus
-            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
+            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
                 itemId: _listItem.Id,
                 itemType: WeighingListItemType.Waybill,
                 orderType: OrderTypeEnum.Completed,
@@ -559,8 +557,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         {
             await _weighingRecordRepository.DeleteAsync(_listItem.Id);
 
-            // Send abolish completed message via MessageBus
-            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
+            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
                 itemId: _listItem.Id,
                 itemType: _listItem.ItemType,
                 orderType: _listItem.OrderType,
@@ -593,8 +590,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         {
             await _waybillVoidService.VoidWaybillAsync(_listItem.Id, scope.Value, "operator void");
 
-            // Send abolish completed message via MessageBus
-            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
+            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
                 itemId: _listItem.Id,
                 itemType: WeighingListItemType.Waybill,
                 orderType: _listItem.OrderType,
@@ -611,7 +607,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     [ReactiveCommand]
     private void Close()
     {
-        MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
+        _ = _localEventBus.PublishAsync(new DetailCloseRequestedEventData());
     }
 
     [ReactiveCommand]
@@ -647,8 +643,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
             {
                 if (matchWindow.SavedWaybillId.HasValue)
                 {
-                    // Send manual match save completed message via MessageBus
-                    MessageBus.Current.SendMessage(new ManualMatchSaveCompletedMessage(
+                    await _localEventBus.PublishAsync(new ManualMatchSaveCompletedEventData(
                         waybillId: matchWindow.SavedWaybillId.Value));
                 }
             }

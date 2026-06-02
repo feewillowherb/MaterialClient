@@ -20,7 +20,7 @@ public interface IGateIoControlService
 
 /// <summary>
 ///     道闸 I/O 控制服务。
-///     通过 MessageBus 订阅识别事件和称重状态变化，实现会话状态管理和状态同步。
+///     通过 ILocalEventBus 订阅识别事件和称重状态变化，实现会话状态管理和状态同步。
 ///     支持双控制模式架构（LRP SDK 和 COM 直接控制）。
 /// </summary>
 public sealed class GateIoControlService : IGateIoControlService, ISingletonDependency

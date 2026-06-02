@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -12,6 +13,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.UI.ViewModels;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.UI.Views;
 
@@ -36,11 +38,16 @@ public partial class SettingsWindow : Window, ITransientDependency
 
         DataContext = viewModel;
 
-        // Subscribe to close requested messages via MessageBus
-        MessageBus.Current.Listen<DetailCloseRequestedMessage>()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(_ => Close())
-            .DisposeWith(_disposables);
+        var localEventBus = serviceProvider?.GetService(typeof(ILocalEventBus)) as ILocalEventBus;
+        if (localEventBus != null)
+        {
+            localEventBus.Subscribe<DetailCloseRequestedEventData>(_ =>
+                {
+                    Dispatcher.UIThread.Post(Close);
+                    return Task.CompletedTask;
+                })
+                .DisposeWith(_disposables);
+        }
 
         // Subscribe to LprDeviceType changes to update column visibility
         if (viewModel != null)
@@ -254,10 +261,10 @@ public partial class SettingsWindow : Window, ITransientDependency
 
     protected override void OnClosed(EventArgs e)
     {
-        // Dispose MessageBus subscriptions
+        // Dispose event subscriptions
         _disposables.Dispose();
 
-        // Dispose ViewModel (MessageBus subscription)
+        // Dispose ViewModel subscriptions
         if (DataContext is SettingsWindowViewModel viewModel)
         {
             (viewModel as IDisposable)?.Dispose();

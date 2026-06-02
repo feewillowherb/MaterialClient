@@ -9,7 +9,7 @@ namespace MaterialClient.Common.Services;
 /// <remarks>
 ///     Defines the active capture standard for all LPR device types.
 ///     Support varies by vendor: Hikvision (supported), Vzvision (supported), Huaxiazhixin (not supported).
-///     Recognition results are delivered only via MessageBus <see cref="Events.LicensePlateRecognizedMessage"/>.
+///     Recognition results are delivered via ILocalEventBus <see cref="Events.LicensePlateRecognizedEventData"/>.
 /// </remarks>
 public interface ILprDevice
 {
@@ -17,7 +17,7 @@ public interface ILprDevice
     ///     Triggers a single license plate recognition capture for the given device.
     /// </summary>
     /// <param name="config">Device configuration.</param>
-    /// <returns>A task that completes when the trigger has been sent; recognition result is delivered via MessageBus.</returns>
+    /// <returns>A task that completes when the trigger has been sent; recognition result is delivered via ILocalEventBus.</returns>
     /// <remarks>
     ///     Implementations must: login/auth, send trigger command, then return.
     ///     Throw <see cref="NotSupportedException"/> when the device does not support active capture.

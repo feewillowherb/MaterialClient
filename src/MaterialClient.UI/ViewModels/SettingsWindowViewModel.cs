@@ -25,6 +25,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.UI.ViewModels;
 
@@ -41,6 +42,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ISoundDeviceService _soundDeviceService;
     private readonly ILprDeviceResolver _lprDeviceResolver;
     private readonly IUsbCameraService? _usbCameraService;
+    private readonly ILocalEventBus _localEventBus;
     private readonly IDisposable _lprMessageSubscription;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
@@ -162,6 +164,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ILogger<SettingsWindowViewModel> logger,
         ISoundDeviceService soundDeviceService,
         ILprDeviceResolver lprDeviceResolver,
+        ILocalEventBus localEventBus,
         IUsbCameraService? usbCameraService = null)
     {
         _settingsService = settingsService;
@@ -171,19 +174,20 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _logger = logger;
         _soundDeviceService = soundDeviceService;
         _lprDeviceResolver = lprDeviceResolver;
+        _localEventBus = localEventBus;
         _usbCameraService = usbCameraService;
 
-        // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
-        _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
-            .Subscribe(msg =>
+        // Subscribe to LPR recognition events and update the matching row's LastCapturePlateNumber
+        _lprMessageSubscription = _localEventBus.Subscribe<LicensePlateRecognizedEventData>(eventData =>
             {
                 Dispatcher.UIThread.Post(() =>
                 {
                     var item = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
-                        string.Equals(c.Name, msg.DeviceName, StringComparison.Ordinal));
+                        string.Equals(c.Name, eventData.DeviceName, StringComparison.Ordinal));
                     if (item != null)
-                        item.LastCapturePlateNumber = msg.PlateNumber ?? string.Empty;
+                        item.LastCapturePlateNumber = eventData.PlateNumber ?? string.Empty;
                 });
+                return Task.CompletedTask;
             });
 
         // Subscribe to LprDeviceType changes to notify LPR-related visibility properties
@@ -292,11 +296,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Restart truck scale service with new settings
             await _truckScaleWeightService.RestartAsync();
 
-            // Notify that settings have been saved
-            MessageBus.Current.SendMessage(new SettingsSavedMessage());
-
-            // Close window after saving
-            MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
+            await _localEventBus.PublishAsync(new SettingsSavedEventData());
+            await _localEventBus.PublishAsync(new DetailCloseRequestedEventData());
         }
         catch
         {
@@ -307,8 +308,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [ReactiveCommand]
     private void Cancel()
     {
-        // Raise close requested event
-        MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
+        _ = _localEventBus.PublishAsync(new DetailCloseRequestedEventData());
     }
 
     [ReactiveCommand]
@@ -931,7 +931,7 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     [Reactive] private bool _isOnline;
 
     /// <summary>
-    ///     最近一次测试抓拍的车牌号（来自 MessageBus）
+    ///     最近一次测试抓拍的车牌号（来自 ILocalEventBus）
     /// </summary>
     [Reactive] private string _lastCapturePlateNumber = string.Empty;
 
