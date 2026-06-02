@@ -15,6 +15,7 @@ public interface IUrbanManagementApi
     [Post("/api/urban/weighing-records")]
     Task<UrbanApiResponse<UrbanWeighingRecordResult>> SubmitWeighingRecordAsync(
         [Body] UrbanWeighingRecordSubmitDto dto);
+
 }
 
 /// <summary>

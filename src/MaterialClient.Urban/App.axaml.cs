@@ -5,8 +5,10 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MaterialClient.Common.Services;
+using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
@@ -17,6 +19,7 @@ public class App : Application
 {
     private IAbpApplicationWithInternalServiceProvider? _abpApplication;
     private UrbanAttendedWeighingViewModel? _viewModel;
+    private IMinimalWebHostService? _minimalWebHostService;
 
     public override void Initialize()
     {
@@ -49,6 +52,8 @@ public class App : Application
                     try
                     {
                         _viewModel?.Initialize();
+                        _minimalWebHostService = _abpApplication.ServiceProvider.GetService<IMinimalWebHostService>();
+                        _ = StartUrbanWebHostAsync();
                         _ = StartDevicesAndStatusMonitoringAsync();
                         var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
                         logger?.LogInformation("Urban ViewModel initialized, device status monitoring started");
@@ -71,6 +76,37 @@ public class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task StartUrbanWebHostAsync()
+    {
+        if (_abpApplication == null)
+        {
+            return;
+        }
+
+        var configuration = _abpApplication.ServiceProvider.GetRequiredService<IConfiguration>();
+        var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+
+        var enableOnStartup = configuration.GetValue("UrbanWebHost:EnableOnStartup", true);
+        if (!enableOnStartup)
+        {
+            logger?.LogInformation("Urban minimal web host startup is disabled by configuration.");
+            return;
+        }
+
+        try
+        {
+            if (_minimalWebHostService != null && !_minimalWebHostService.IsRunning)
+            {
+                await _minimalWebHostService.StartAsync();
+            }
+
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Failed to start urban minimal web host");
+        }
     }
 
     private async Task StartDevicesAndStatusMonitoringAsync()
@@ -112,7 +148,21 @@ public class App : Application
                 _viewModel?.Dispose();
                 logger?.LogInformation("ViewModel disposed");
 
-                // 2. Close hardware devices explicitly (before ABP shutdown)
+                // 2. Stop web host first to avoid pending web callbacks during shutdown
+                if (_minimalWebHostService != null)
+                {
+                    try
+                    {
+                        await _minimalWebHostService.StopAsync();
+                        logger?.LogInformation("Urban minimal web host stopped");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "Error stopping urban minimal web host");
+                    }
+                }
+
+                // 3. Close hardware devices explicitly (before ABP shutdown)
                 if (_abpApplication != null)
                 {
                     try
@@ -130,7 +180,7 @@ public class App : Application
                     }
                 }
 
-                // 3. Shutdown ABP application
+                // 4. Shutdown ABP application
                 if (_abpApplication != null)
                 {
                     var sw = Stopwatch.StartNew();
