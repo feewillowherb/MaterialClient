@@ -195,13 +195,14 @@ public partial class MinimalWebHostService : IMinimalWebHostService
                 {
                     PlateNumber = plateNumber,
                     ColorType = request.ColorType,
-                    DeviceType = request.DeviceType ?? LprDeviceType.Huaxiazhixin,
+                    DeviceType = request.DeviceType ?? LprDeviceType.Hikvision,
                     DeviceName = string.IsNullOrWhiteSpace(request.DeviceName) ? "TestApi" : request.DeviceName.Trim(),
                     Timestamp = request.Timestamp ?? DateTime.Now
                 };
 
                 _ = _localEventBus.PublishAsync(eventData);
-                _logger.LogInformation("Test plate injected: Plate={Plate}, DeviceType={DeviceType}, DeviceName={DeviceName}",
+                _logger.LogInformation(
+                    "Test plate injected: Plate={Plate}, DeviceType={DeviceType}, DeviceName={DeviceName}",
                     eventData.PlateNumber, eventData.DeviceType, eventData.DeviceName);
 
                 return Results.Ok(new
@@ -224,6 +225,7 @@ public partial class MinimalWebHostService : IMinimalWebHostService
     }
 
     private record SetWeightRequest(decimal Weight);
+
     private record SetTestPlateRequest(
         string? PlateNumber,
         LprDeviceType? DeviceType,
