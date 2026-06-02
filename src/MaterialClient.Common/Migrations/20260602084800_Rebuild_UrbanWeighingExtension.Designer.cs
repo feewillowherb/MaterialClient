@@ -12,8 +12,8 @@ using Volo.Abp.EntityFrameworkCore;
 namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    [Migration("20260526024454_Add_UrbanWeighingExtension")]
-    partial class Add_UrbanWeighingExtension
+    [Migration("20260602084800_Rebuild_UrbanWeighingExtension")]
+    partial class Rebuild_UrbanWeighingExtension
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -943,6 +943,9 @@ namespace MaterialClient.Common.Migrations
                     b.Property<string>("MaterialsJson")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PlateColor")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PlateNumber")
                         .HasColumnType("TEXT");
 
@@ -957,6 +960,12 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<int?>("UpdateTime")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("VehicleColor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VehicleType")
+                        .HasColumnType("TEXT");
 
                     b.Property<long?>("WaybillId")
                         .HasColumnType("INTEGER");

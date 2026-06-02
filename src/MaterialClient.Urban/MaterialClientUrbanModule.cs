@@ -3,6 +3,7 @@ using MaterialClient.Common;
 using MaterialClient.Common.Api;
 using MaterialClient.UI;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.EFCore;
@@ -161,6 +162,8 @@ public class MaterialClientUrbanModule : AbpModule
             logger?.LogError(ex, "Database migration failed");
         }
 
+        await EnsureUrbanDefaultWeighingModeAsync(context.ServiceProvider, logger);
+
         // Execute static license check (non-blocking on failure)
         try
         {
@@ -216,6 +219,48 @@ public class MaterialClientUrbanModule : AbpModule
         // Flush and close Serilog
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
+    }
+
+    private static async Task EnsureUrbanDefaultWeighingModeAsync(
+        IServiceProvider serviceProvider,
+        ILogger<MaterialClientUrbanModule>? logger)
+    {
+        try
+        {
+            var settingsService = serviceProvider.GetRequiredService<ISettingsService>();
+            var settings = await settingsService.GetSettingsAsync();
+            var systemSettings = settings.SystemSettings;
+
+            var changed = false;
+            if (systemSettings.DefaultWeighingMode != WeighingMode.UrbanMode)
+            {
+                systemSettings.DefaultWeighingMode = WeighingMode.UrbanMode;
+                changed = true;
+            }
+
+            if (!systemSettings.IsUrbanMode)
+            {
+                systemSettings.IsUrbanMode = true;
+                changed = true;
+            }
+
+            if (!changed)
+            {
+                logger?.LogInformation("Urban default weighing mode already configured.");
+                return;
+            }
+
+            settings.SystemSettings = systemSettings;
+            await settingsService.SaveSettingsAsync(settings);
+
+            logger?.LogInformation("Urban default weighing mode set to {Mode} (IsUrbanMode={IsUrbanMode}).",
+                systemSettings.DefaultWeighingMode,
+                systemSettings.IsUrbanMode);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Failed to ensure Urban default weighing mode; startup will continue.");
+        }
     }
 }
 }

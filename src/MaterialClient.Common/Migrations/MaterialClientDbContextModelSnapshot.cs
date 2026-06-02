@@ -940,6 +940,9 @@ namespace MaterialClient.Common.Migrations
                     b.Property<string>("MaterialsJson")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PlateColor")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PlateNumber")
                         .HasColumnType("TEXT");
 
@@ -954,6 +957,12 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<int?>("UpdateTime")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("VehicleColor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VehicleType")
+                        .HasColumnType("TEXT");
 
                     b.Property<long?>("WaybillId")
                         .HasColumnType("INTEGER");

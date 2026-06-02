@@ -6,11 +6,29 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MaterialClient.Common.Migrations
 {
     /// <inheritdoc />
-    public partial class Add_UrbanWeighingExtension : Migration
+    public partial class Rebuild_UrbanWeighingExtension : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<string>(
+                name: "PlateColor",
+                table: "WeighingRecords",
+                type: "TEXT",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "VehicleColor",
+                table: "WeighingRecords",
+                type: "TEXT",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "VehicleType",
+                table: "WeighingRecords",
+                type: "TEXT",
+                nullable: true);
+
             migrationBuilder.CreateTable(
                 name: "UrbanWeighingExtensions",
                 columns: table => new
@@ -49,6 +67,18 @@ namespace MaterialClient.Common.Migrations
         {
             migrationBuilder.DropTable(
                 name: "UrbanWeighingExtensions");
+
+            migrationBuilder.DropColumn(
+                name: "PlateColor",
+                table: "WeighingRecords");
+
+            migrationBuilder.DropColumn(
+                name: "VehicleColor",
+                table: "WeighingRecords");
+
+            migrationBuilder.DropColumn(
+                name: "VehicleType",
+                table: "WeighingRecords");
         }
     }
 }
