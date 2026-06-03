@@ -15,7 +15,7 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
     /// <summary>
     ///     固定测试项目 ID（与 LicenseService.VerifyAuthorizationCodeTestAsync 的 testProjectId 一致）
     /// </summary>
-    private static readonly Guid TestProId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private static readonly Guid TestProId = Guid.Parse("C7F4F03C-4ED2-40FE-8898-D79331A3942D");
 
     /// <summary>
     ///     固定测试项目名称
