@@ -104,23 +104,22 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 AttachmentIds = null // Server-side attachments created separately via FileService
             };
 
-            var response = await _urbanManagementApi.SubmitWeighingRecordAsync(dto);
+            var response = await _urbanManagementApi.ReceiveWeighingRecordAsync(dto);
 
-            if (response.Success)
+            if (response.RecordId > 0)
             {
-                // Update local extension to synced
                 if (extension != null)
                 {
                     await _extensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Synced);
                 }
 
                 _logger.LogInformation("Record {RecordId} submitted to server successfully. ServerId={ServerId}",
-                    weighingRecordId, response.Data?.Id);
+                    weighingRecordId, response.RecordId);
             }
             else
             {
-                _logger.LogWarning("Record {RecordId} submission failed: {Msg}",
-                    weighingRecordId, response.Msg);
+                _logger.LogWarning("Record {RecordId} submission returned invalid server record id",
+                    weighingRecordId);
             }
         }
         catch (Exception ex)

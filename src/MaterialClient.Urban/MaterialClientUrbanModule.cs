@@ -21,8 +21,10 @@ using Polly;
 using Refit;
 using Serilog;
 using Serilog.Events;
+using MaterialClient.Urban.Backgrounds;
 using Volo.Abp;
 using Volo.Abp.Autofac;
+using Volo.Abp.BackgroundWorkers;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EventBus;
 using Volo.Abp.Modularity;
@@ -33,7 +35,8 @@ namespace MaterialClient.Urban
 [DependsOn(
     typeof(MaterialClientCommonModule),
     typeof(MaterialClientUiModule),
-    typeof(AbpAutofacModule)
+    typeof(AbpAutofacModule),
+    typeof(AbpBackgroundWorkersModule)
 )]
 public class MaterialClientUrbanModule : AbpModule
 {
@@ -249,6 +252,19 @@ public class MaterialClientUrbanModule : AbpModule
         catch (Exception ex)
         {
             logger?.LogWarning(ex, "SignalR client start failed (non-blocking)");
+        }
+
+        var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
+        var pollingEnabled = configuration.GetValue("BackgroundServices:Polling", true);
+        if (pollingEnabled)
+        {
+            await context.AddBackgroundWorkerAsync<PollingBackgroundService>();
+            logger?.LogInformation("Urban PollingBackgroundService registered (BackgroundServices:Polling=true).");
+        }
+        else
+        {
+            logger?.LogInformation(
+                "Urban PollingBackgroundService is disabled by configuration (BackgroundServices:Polling=false).");
         }
     }
 
