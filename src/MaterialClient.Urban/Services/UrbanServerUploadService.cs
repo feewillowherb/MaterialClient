@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
@@ -6,7 +8,6 @@ using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Dtos;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -30,24 +31,24 @@ public interface IUrbanServerUploadService : ITransientDependency
 public class UrbanServerUploadService : IUrbanServerUploadService
 {
     private readonly IUrbanManagementApi _urbanManagementApi;
+    private readonly IUrbanAttachmentSyncService _attachmentSyncService;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanWeighingExtensionService _extensionService;
-    private readonly IRepository<WeighingRecordAttachment, int> _attachmentRepository;
     private readonly ILicenseService _licenseService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
         IUrbanManagementApi urbanManagementApi,
+        IUrbanAttachmentSyncService attachmentSyncService,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IUrbanWeighingExtensionService extensionService,
-        IRepository<WeighingRecordAttachment, int> attachmentRepository,
         ILicenseService licenseService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
+        _attachmentSyncService = attachmentSyncService;
         _weighingRecordRepository = weighingRecordRepository;
         _extensionService = extensionService;
-        _attachmentRepository = attachmentRepository;
         _licenseService = licenseService;
         _logger = logger;
     }
@@ -61,24 +62,24 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
             var extension = await _extensionService.GetByWeighingRecordIdAsync(weighingRecordId);
 
-            // Get attachment file IDs (local int IDs; server uses Guid)
-            var attachmentQueryable = await _attachmentRepository.GetQueryableAsync();
-            var localAttachmentIds = await attachmentQueryable
-                .Where(a => a.WeighingRecordId == weighingRecordId)
-                .Select(a => a.AttachmentFileId)
-                .ToListAsync();
-
-            // Read LicenseInfo for project fields
             var licenseInfo = await _licenseService.GetCurrentLicenseAsync();
 
             if (licenseInfo == null)
             {
-                _logger.LogWarning("LicenseInfo not available, ProId/ProName/BuildLicenseNo/FdBuildLicenseNo will be null for record {RecordId}", weighingRecordId);
+                _logger.LogWarning(
+                    "LicenseInfo not available, ProId/ProName/BuildLicenseNo/FdBuildLicenseNo will be null for record {RecordId}",
+                    weighingRecordId);
             }
             else if (licenseInfo.ProName == null || licenseInfo.BuildLicenseNo == null)
             {
-                _logger.LogDebug("LicenseInfo exists but some project fields are empty for record {RecordId}", weighingRecordId);
+                _logger.LogDebug(
+                    "LicenseInfo exists but some project fields are empty for record {RecordId}",
+                    weighingRecordId);
             }
+
+            var buildLicenseNo = licenseInfo?.BuildLicenseNo ?? string.Empty;
+            var attachmentIds =
+                (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
@@ -101,7 +102,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 ClientSyncTime = null,
                 ClientRetryCount = extension?.RetryCount,
                 ClientLastErrorTime = extension?.LastErrorTime,
-                AttachmentIds = null // Server-side attachments created separately via FileService
+                AttachmentIds = attachmentIds.Count > 0 ? attachmentIds : null
             };
 
             var response = await _urbanManagementApi.ReceiveWeighingRecordAsync(dto);
@@ -113,12 +114,16 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                     await _extensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Synced);
                 }
 
-                _logger.LogInformation("Record {RecordId} submitted to server successfully. ServerId={ServerId}",
-                    weighingRecordId, response.RecordId);
+                _logger.LogInformation(
+                    "Record {RecordId} submitted to server successfully. ServerId={ServerId}, AttachmentCount={AttachmentCount}",
+                    weighingRecordId,
+                    response.RecordId,
+                    attachmentIds.Count);
             }
             else
             {
-                _logger.LogWarning("Record {RecordId} submission returned invalid server record id",
+                _logger.LogWarning(
+                    "Record {RecordId} submission returned invalid server record id",
                     weighingRecordId);
             }
         }

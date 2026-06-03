@@ -9,6 +9,13 @@
 - 本项目（MaterialClient）仅负责代码实现，不再维护独立的 openspec 目录
 - 详见主仓库 `AGENTS.md` 中的「OpenSpec 生成位置约束」
 
+## MaterialClient.Urban 上云与附件
+
+- **服务端地址**：`appsettings.json` → `UrbanManagement:BaseUrl`（指向 UrbanManagement 站点，例如 `http://localhost:5000`）。
+- **称重上云**：`PollingBackgroundService` → `IUrbanServerUploadService.SubmitRecordAsync`。
+- **附件上云**：同一次 `SubmitRecordAsync` 内先调用 `POST /api/app/urban-attachment/upload`（按 `Lrp` / `UrbanPhoto` 分组 Base64），再将返回的 `attachmentIds` 填入 `Receive` 请求。
+- **本地路径**：读取 `AttachmentFile.LocalPath` 前使用 `PathManager.ToAbsolutePath`（与主程序附件规范一致）。
+
 ## 项目约定（构建验证）
 
 当 `bin/`、`obj/` 下 DLL 被正在运行的应用或测试宿主占用导致 MSB3027 复制失败时，使用**固定**独立输出目录验证编译，勿写入临时随机路径。

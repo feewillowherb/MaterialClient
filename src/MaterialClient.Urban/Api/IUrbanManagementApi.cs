@@ -16,6 +16,13 @@ public interface IUrbanManagementApi
     [Post("/api/app/urban-weighing-record/receive")]
     Task<UrbanWeighingRecordReceiveResult> ReceiveWeighingRecordAsync(
         [Body] UrbanWeighingRecordSubmitDto dto);
+
+    /// <summary>
+    ///     Upload attachments (对应 <see cref="UrbanManagement.Core.Services.IUrbanAttachmentAppService.UploadAsync"/>)
+    /// </summary>
+    [Post("/api/app/urban-attachment/upload")]
+    Task<UrbanAttachmentUploadResponseDto> UploadAttachmentsAsync(
+        [Body] UrbanAttachmentUploadRequestDto dto);
 }
 
 /// <summary>
