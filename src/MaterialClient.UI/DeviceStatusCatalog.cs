@@ -55,4 +55,23 @@ public static class DeviceStatusCatalog
         bool printerEnabled,
         bool soundDeviceEnabled) =>
         new(documentCameraEnabled, printerEnabled, soundDeviceEnabled);
+
+    /// <summary>
+    ///     Maps a status bar display name to the server-side device type used by UrbanManagement.
+    ///     Document camera (高拍仪) is UI-only and has no server device type.
+    /// </summary>
+    public static bool TryMapToServerDeviceType(string displayName, out string deviceType)
+    {
+        deviceType = displayName switch
+        {
+            ScaleName => "Scale",
+            CameraName => "Camera",
+            LprName => "LPR",
+            PrinterName => "Printer",
+            SoundDeviceName => "Sound",
+            _ => string.Empty
+        };
+
+        return deviceType.Length > 0;
+    }
 }

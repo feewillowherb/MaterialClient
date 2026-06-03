@@ -1,3 +1,4 @@
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
@@ -5,6 +6,7 @@ using MaterialClient.UI.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.UI.Services;
 
@@ -17,6 +19,7 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly ISettingsService _settingsService;
     private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
+    private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<SharedDeviceStatusTracker> _logger;
     private readonly List<IDisposable> _timers = [];
 
@@ -34,12 +37,14 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
         ITruckScaleWeightService truckScaleWeightService,
         ISettingsService settingsService,
         ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
+        ILocalEventBus localEventBus,
         ILogger<SharedDeviceStatusTracker> logger)
     {
         _serviceProvider = serviceProvider;
         _truckScaleWeightService = truckScaleWeightService;
         _settingsService = settingsService;
         _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
+        _localEventBus = localEventBus;
         _logger = logger;
     }
 
@@ -57,11 +62,11 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
             _printerName = settings.SystemSettings.SelectedPrinterName ?? string.Empty;
 
             if (!_visibility.DocumentCameraEnabled)
-                _isUsbCameraOnline = false;
+                UpdateUsbCamera(false);
             if (!_visibility.PrinterEnabled)
-                _isPrinterOnline = false;
+                UpdatePrinter(false);
             if (!_visibility.SoundDeviceEnabled)
-                _isSoundDeviceOnline = false;
+                UpdateSound(false);
 
             NotifyChanged();
         }
@@ -176,46 +181,35 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
 
     private void NotifyChanged() => StatusesChanged?.Invoke(GetCurrentStatuses());
 
-    private void UpdateScale(bool online)
+    private void UpdateScale(bool online) => UpdateDeviceOnline(DeviceStatusCatalog.ScaleName, online, v => _isScaleOnline = v, () => _isScaleOnline);
+
+    private void UpdateCamera(bool online) => UpdateDeviceOnline(DeviceStatusCatalog.CameraName, online, v => _isCameraOnline = v, () => _isCameraOnline);
+
+    private void UpdateUsbCamera(bool online) => UpdateDeviceOnline(DeviceStatusCatalog.UsbCameraName, online, v => _isUsbCameraOnline = v, () => _isUsbCameraOnline);
+
+    private void UpdatePrinter(bool online) => UpdateDeviceOnline(DeviceStatusCatalog.PrinterName, online, v => _isPrinterOnline = v, () => _isPrinterOnline);
+
+    private void UpdateLpr(bool online) => UpdateDeviceOnline(DeviceStatusCatalog.LprName, online, v => _isLprOnline = v, () => _isLprOnline);
+
+    private void UpdateSound(bool online) => UpdateDeviceOnline(DeviceStatusCatalog.SoundDeviceName, online, v => _isSoundDeviceOnline = v, () => _isSoundDeviceOnline);
+
+    private void UpdateDeviceOnline(string displayName, bool online, Action<bool> setOnline, Func<bool> getOnline)
     {
-        if (_isScaleOnline == online) return;
-        _isScaleOnline = online;
+        if (getOnline() == online) return;
+        setOnline(online);
+        PublishDeviceStatusChanged(displayName, online);
         NotifyChanged();
     }
 
-    private void UpdateCamera(bool online)
+    private void PublishDeviceStatusChanged(string displayName, bool isOnline)
     {
-        if (_isCameraOnline == online) return;
-        _isCameraOnline = online;
-        NotifyChanged();
-    }
+        if (!DeviceStatusCatalog.TryMapToServerDeviceType(displayName, out var deviceType))
+        {
+            return;
+        }
 
-    private void UpdateUsbCamera(bool online)
-    {
-        if (_isUsbCameraOnline == online) return;
-        _isUsbCameraOnline = online;
-        NotifyChanged();
-    }
-
-    private void UpdatePrinter(bool online)
-    {
-        if (_isPrinterOnline == online) return;
-        _isPrinterOnline = online;
-        NotifyChanged();
-    }
-
-    private void UpdateLpr(bool online)
-    {
-        if (_isLprOnline == online) return;
-        _isLprOnline = online;
-        NotifyChanged();
-    }
-
-    private void UpdateSound(bool online)
-    {
-        if (_isSoundDeviceOnline == online) return;
-        _isSoundDeviceOnline = online;
-        NotifyChanged();
+        var status = isOnline ? "Online" : "Offline";
+        _ = _localEventBus.PublishAsync(new DeviceStatusChangedEventData(deviceType, status));
     }
 
     private async Task CheckPrinterStatusOnceAsync()
