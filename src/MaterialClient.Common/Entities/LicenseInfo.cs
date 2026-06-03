@@ -26,13 +26,19 @@ public class LicenseInfo : Entity<Guid>
         Guid projectId,
         Guid? authToken,
         DateTime authEndTime,
-        string machineCode)
+        string machineCode,
+        string? proName = null,
+        string? buildLicenseNo = null,
+        string? fdBuildLicenseNo = null)
         : base(id)
     {
         ProjectId = projectId;
         AuthToken = authToken;
         AuthEndTime = authEndTime;
         MachineCode = machineCode;
+        ProName = proName;
+        BuildLicenseNo = buildLicenseNo;
+        FdBuildLicenseNo = fdBuildLicenseNo;
         CreatedAt = DateTime.Now;
         UpdatedAt = DateTime.Now;
     }
@@ -53,6 +59,24 @@ public class LicenseInfo : Entity<Guid>
     /// </summary>
     [Required]
     public DateTime AuthEndTime { get; set; }
+
+    /// <summary>
+    ///     项目名称
+    /// </summary>
+    [MaxLength(256)]
+    public string? ProName { get; set; }
+
+    /// <summary>
+    ///     施工许可证号（接入码）
+    /// </summary>
+    [MaxLength(128)]
+    public string? BuildLicenseNo { get; set; }
+
+    /// <summary>
+    ///     对接码
+    /// </summary>
+    [MaxLength(128)]
+    public string? FdBuildLicenseNo { get; set; }
 
     /// <summary>
     ///     机器码（用于验证授权是否匹配当前机器）
@@ -86,11 +110,15 @@ public class LicenseInfo : Entity<Guid>
     /// <summary>
     ///     更新授权信息
     /// </summary>
-    public void Update(Guid? authToken, DateTime authEndTime, string machineCode)
+    public void Update(Guid? authToken, DateTime authEndTime, string machineCode,
+        string? proName = null, string? buildLicenseNo = null, string? fdBuildLicenseNo = null)
     {
         AuthToken = authToken;
         AuthEndTime = authEndTime;
         MachineCode = machineCode;
+        ProName = proName;
+        BuildLicenseNo = buildLicenseNo;
+        FdBuildLicenseNo = fdBuildLicenseNo;
         UpdatedAt = DateTime.Now;
     }
 }

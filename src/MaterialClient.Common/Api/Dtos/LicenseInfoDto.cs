@@ -24,4 +24,19 @@ public class LicenseInfoDto
     ///     机器码
     /// </summary>
     public string? MachineCode { get; set; }
+
+    /// <summary>
+    ///     项目名称
+    /// </summary>
+    public string? ProName { get; set; }
+
+    /// <summary>
+    ///     施工许可证号（接入码）
+    /// </summary>
+    public string? BuildLicenseNo { get; set; }
+
+    /// <summary>
+    ///     对接码
+    /// </summary>
+    public string? FdBuildLicenseNo { get; set; }
 }
