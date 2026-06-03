@@ -32,6 +32,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
 {
     private readonly IUrbanManagementApi _urbanManagementApi;
     private readonly IUrbanAttachmentSyncService _attachmentSyncService;
+    private readonly IAttachmentService _attachmentService;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
@@ -40,6 +41,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     public UrbanServerUploadService(
         IUrbanManagementApi urbanManagementApi,
         IUrbanAttachmentSyncService attachmentSyncService,
+        IAttachmentService attachmentService,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
@@ -47,6 +49,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     {
         _urbanManagementApi = urbanManagementApi;
         _attachmentSyncService = attachmentSyncService;
+        _attachmentService = attachmentService;
         _weighingRecordRepository = weighingRecordRepository;
         _extensionService = extensionService;
         _licenseService = licenseService;
@@ -80,6 +83,15 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             var buildLicenseNo = licenseInfo?.BuildLicenseNo ?? string.Empty;
             var attachmentIds =
                 (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
+
+            var hadLocalUrbanAttachments = await HasLocalUrbanAttachmentsAsync(weighingRecordId);
+            if (hadLocalUrbanAttachments && attachmentIds.Count == 0)
+            {
+                _logger.LogWarning(
+                    "Record {RecordId} has local Lrp/UrbanPhoto attachments but none were uploaded; keeping Pending for retry",
+                    weighingRecordId);
+                return;
+            }
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
@@ -131,5 +143,16 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         {
             _logger.LogError(ex, "Failed to submit record {RecordId} to server", weighingRecordId);
         }
+    }
+
+    private async Task<bool> HasLocalUrbanAttachmentsAsync(long weighingRecordId)
+    {
+        var map = await _attachmentService.GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId]);
+        if (!map.TryGetValue(weighingRecordId, out var files) || files.Count == 0)
+        {
+            return false;
+        }
+
+        return files.Exists(f => f.AttachType is AttachType.Lrp or AttachType.UrbanPhoto);
     }
 }
