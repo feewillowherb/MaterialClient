@@ -3,9 +3,11 @@ using MaterialClient.Common;
 using MaterialClient.Common.Api;
 using MaterialClient.UI;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.EFCore;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Services;
@@ -172,6 +174,62 @@ public class MaterialClientUrbanModule : AbpModule
             var result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
             logger?.LogInformation("Static license check: {Status} - {Message}",
                 result.IsSuccess ? "Passed" : "Failed", result.Message);
+
+            if (result.IsSuccess)
+            {
+                // Write license data to LicenseInfo entity
+                try
+                {
+                    var uowManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                    var licenseRepository = context.ServiceProvider.GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
+
+                    using var uow = uowManager.Begin(true, false);
+                    var queryable = await licenseRepository.GetQueryableAsync();
+                    var existing = await queryable.FirstOrDefaultAsync();
+
+                    if (existing == null)
+                    {
+                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                        var licenseInfo = new LicenseInfo(
+                            Guid.NewGuid(),
+                            result.ProId,
+                            null, // AuthToken
+                            result.AuthEndTime,
+                            machineCode,
+                            result.ProName,
+                            result.BuildLicenseNo,
+                            result.FdBuildLicenseNo);
+                        await licenseRepository.InsertAsync(licenseInfo);
+                    }
+                    else
+                    {
+                        existing.ProjectId = result.ProId;
+                        existing.AuthEndTime = result.AuthEndTime;
+                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                        existing.Update(
+                            null, // AuthToken
+                            result.AuthEndTime,
+                            machineCode,
+                            result.ProName,
+                            result.BuildLicenseNo,
+                            result.FdBuildLicenseNo);
+                        await licenseRepository.UpdateAsync(existing);
+                    }
+
+                    await uow.CompleteAsync();
+                    logger?.LogInformation("Static license data written to LicenseInfo: ProId={ProId}, ProName={ProName}",
+                        result.ProId, result.ProName);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex, "Failed to write static license data to LicenseInfo (non-blocking)");
+                }
+            }
+            else
+            {
+                logger?.LogWarning("Static license check returned failure, skipping LicenseInfo write: {Message}",
+                    result.Message);
+            }
         }
         catch (Exception ex)
         {

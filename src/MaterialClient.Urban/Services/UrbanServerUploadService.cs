@@ -1,6 +1,8 @@
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
+using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Dtos;
@@ -8,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
 
 namespace MaterialClient.Urban.Services;
 
@@ -30,6 +33,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly IRepository<WeighingRecordAttachment, int> _attachmentRepository;
+    private readonly ILicenseService _licenseService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
@@ -37,16 +41,19 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IUrbanWeighingExtensionService extensionService,
         IRepository<WeighingRecordAttachment, int> attachmentRepository,
+        ILicenseService licenseService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
         _weighingRecordRepository = weighingRecordRepository;
         _extensionService = extensionService;
         _attachmentRepository = attachmentRepository;
+        _licenseService = licenseService;
         _logger = logger;
     }
 
     /// <inheritdoc />
+    [UnitOfWork]
     public async Task SubmitRecordAsync(long weighingRecordId)
     {
         try
@@ -61,6 +68,18 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 .Select(a => a.AttachmentFileId)
                 .ToListAsync();
 
+            // Read LicenseInfo for project fields
+            var licenseInfo = await _licenseService.GetCurrentLicenseAsync();
+
+            if (licenseInfo == null)
+            {
+                _logger.LogWarning("LicenseInfo not available, ProId/ProName/BuildLicenseNo/FdBuildLicenseNo will be null for record {RecordId}", weighingRecordId);
+            }
+            else if (licenseInfo.ProName == null || licenseInfo.BuildLicenseNo == null)
+            {
+                _logger.LogDebug("LicenseInfo exists but some project fields are empty for record {RecordId}", weighingRecordId);
+            }
+
             var dto = new UrbanWeighingRecordSubmitDto
             {
                 ClientRecordId = record.Id,
@@ -72,10 +91,11 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 PlateColor = null,
                 VehicleType = null,
                 DeviceId = null,
-                BuildLicenseNo = null,
+                BuildLicenseNo = licenseInfo?.BuildLicenseNo,
+                FdBuildLicenseNo = licenseInfo?.FdBuildLicenseNo,
                 SiteType = null,
-                ProId = null,
-                ProName = null,
+                ProId = licenseInfo?.ProjectId.ToString(),
+                ProName = licenseInfo?.ProName,
                 IsAnomaly = extension?.IsAnomaly ?? false,
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),
                 ClientSyncTime = null,
