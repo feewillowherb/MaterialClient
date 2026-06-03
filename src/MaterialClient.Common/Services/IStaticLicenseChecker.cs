@@ -21,10 +21,56 @@ public class LicenseCheckResult
     public DateTime CheckedAt { get; init; } = DateTime.Now;
 
     /// <summary>
-    ///     创建成功结果
+    ///     项目ID
+    /// </summary>
+    public Guid ProId { get; init; }
+
+    /// <summary>
+    ///     项目名称
+    /// </summary>
+    public string? ProName { get; init; }
+
+    /// <summary>
+    ///     施工许可证号
+    /// </summary>
+    public string? BuildLicenseNo { get; init; }
+
+    /// <summary>
+    ///     对接码
+    /// </summary>
+    public string? FdBuildLicenseNo { get; init; }
+
+    /// <summary>
+    ///     授权过期时间
+    /// </summary>
+    public DateTime AuthEndTime { get; init; }
+
+    /// <summary>
+    ///     创建成功结果（无授权数据）
     /// </summary>
     public static LicenseCheckResult Success(string message = "授权检查通过")
         => new() { IsSuccess = true, Message = message };
+
+    /// <summary>
+    ///     创建成功结果（携带授权数据）
+    /// </summary>
+    public static LicenseCheckResult Success(
+        string message,
+        Guid proId,
+        string? proName,
+        string? buildLicenseNo,
+        string? fdBuildLicenseNo,
+        DateTime authEndTime)
+        => new()
+        {
+            IsSuccess = true,
+            Message = message,
+            ProId = proId,
+            ProName = proName,
+            BuildLicenseNo = buildLicenseNo,
+            FdBuildLicenseNo = fdBuildLicenseNo,
+            AuthEndTime = authEndTime
+        };
 
     /// <summary>
     ///     创建失败结果
