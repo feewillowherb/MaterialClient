@@ -6,6 +6,7 @@ using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Urban;
+using MaterialClient.Common.Utils;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Dtos;
 using Microsoft.Extensions.Logging;
@@ -97,7 +98,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             {
                 ClientRecordId = record.Id,
                 PlateNumber = record.PlateNumber,
-                TotalWeight = record.TotalWeight,
+                TotalWeight = MaterialMath.ConvertTonToKg(record.TotalWeight),
                 WeighingTime = record.AddDate,
                 SyncType = 0,
                 VehicleColor = null,

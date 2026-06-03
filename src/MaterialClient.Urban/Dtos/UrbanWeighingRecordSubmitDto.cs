@@ -12,7 +12,9 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("plateNumber")] public string? PlateNumber { get; set; }
 
-    [JsonPropertyName("totalWeight")] public decimal TotalWeight { get; set; }
+    /// <summary>总重量，单位：千克（kg）；由本地吨值经 <c>MaterialMath.ConvertTonToKg</c> 换算。</summary>
+    [JsonPropertyName("totalWeight")]
+    public decimal TotalWeight { get; set; }
 
     [JsonPropertyName("weighingTime")] public DateTime WeighingTime { get; set; }
 
