@@ -1,14 +1,17 @@
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus;
+using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Events;
 
 /// <summary>
 ///     Handles DeviceStatusChangedEventData events and forwards them
 ///     to the server via SignalR.
+///     Reads ProId and ProName from LicenseInfo to fill into the device status message.
 ///     Implements client-side throttling: max 1 message per device type per second.
 /// </summary>
 [AutoConstructor]
@@ -18,6 +21,7 @@ public partial class DeviceStatusEventHandler :
 {
     private readonly ILogger<DeviceStatusEventHandler> _logger;
     private readonly IDeviceStatusSignalRClient _signalRClient;
+    private readonly ILicenseService _licenseService;
 
     /// <summary>
     ///     Tracks last send time per device type for throttling.
@@ -39,6 +43,7 @@ public partial class DeviceStatusEventHandler :
     /// </summary>
     private static readonly TimeSpan MinSendInterval = TimeSpan.FromSeconds(1);
 
+    [UnitOfWork]
     public async Task HandleEventAsync(DeviceStatusChangedEventData eventData)
     {
         _logger.LogDebug(
@@ -56,10 +61,33 @@ public partial class DeviceStatusEventHandler :
             eventData = latestStatus;
         }
 
+        // Read ProId and ProName from LicenseInfo
+        string proId = string.Empty;
+        string proName = string.Empty;
+        try
+        {
+            var licenseInfo = await _licenseService.GetCurrentLicenseAsync();
+            if (licenseInfo != null)
+            {
+                proId = licenseInfo.ProjectId.ToString();
+                proName = licenseInfo.ProName ?? string.Empty;
+            }
+            else
+            {
+                _logger.LogDebug("DeviceStatusEventHandler: LicenseInfo not available, ProId/ProName will be empty");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DeviceStatusEventHandler: Failed to read LicenseInfo, ProId/ProName will be empty");
+        }
+
         // Build device status message
         var message = new DeviceStatusMessage
         {
             ClientId = Environment.MachineName,
+            ProId = proId,
+            ProName = proName,
             DeviceType = eventData.DeviceType,
             Status = eventData.Status,
             Timestamp = DateTime.UtcNow,
