@@ -3,6 +3,8 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Vzvision;
+using MaterialClient.UI;
+using MaterialClient.UI.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -38,6 +40,7 @@ public partial class MinimalWebHostService : IMinimalWebHostService
 
     private static string SetScaleWeightApiPath = "/api/scale/weight";
     private static string SetTestPlateApiPath = "/api/lpr/test-plate";
+    private static string DeviceOnlineStatusApiPath = "/api/device/online-status";
 
     public bool IsRunning
     {
@@ -138,7 +141,7 @@ public partial class MinimalWebHostService : IMinimalWebHostService
         {
             service = "MaterialClient.Urban Diagnostic API",
             version = "1.0",
-            endpoints = new[] { SetScaleWeightApiPath, SetTestPlateApiPath }
+            endpoints = new[] { SetScaleWeightApiPath, SetTestPlateApiPath, DeviceOnlineStatusApiPath }
         }));
 
         app.MapPost(SetScaleWeightApiPath, async (SetWeightRequest? request) =>
@@ -222,6 +225,89 @@ public partial class MinimalWebHostService : IMinimalWebHostService
                 return Results.InternalServerError(new { success = false, message = ex.Message });
             }
         });
+
+        // GET /api/device/online-status — Device online status query API
+        app.MapGet(DeviceOnlineStatusApiPath, () =>
+        {
+            try
+            {
+                var tracker = _serviceProvider.GetService<SharedDeviceStatusTracker>();
+                if (tracker == null)
+                {
+                    // Task 5.5: Graceful degradation — return isOnline: false for all device types
+                    return Results.Ok(new
+                    {
+                        devices = BuildDegradedDeviceStatuses()
+                    });
+                }
+
+                var currentStatuses = tracker.GetCurrentStatuses();
+                var devices = currentStatuses
+                    .Where(s => DeviceStatusCatalog.TryMapToServerDeviceType(s.Name, out _))
+                    .Select(s =>
+                    {
+                        DeviceStatusCatalog.TryMapToServerDeviceType(s.Name, out var deviceType);
+                        return new
+                        {
+                            deviceType,
+                            isOnline = s.IsOnline,
+                            deviceName = s.Name
+                        };
+                    })
+                    .ToList();
+
+                // Task 5.4: Ensure all required device types are covered
+                var coveredTypes = devices.Select(d => d.deviceType).ToHashSet();
+                var requiredTypes = new[] { "Scale", "Camera", "Lpr", "Printer" };
+                foreach (var requiredType in requiredTypes)
+                {
+                    if (!coveredTypes.Contains(requiredType))
+                    {
+                        var displayName = requiredType switch
+                        {
+                            "Scale" => DeviceStatusCatalog.ScaleName,
+                            "Camera" => DeviceStatusCatalog.CameraName,
+                            "Lpr" => DeviceStatusCatalog.LprName,
+                            "Printer" => DeviceStatusCatalog.PrinterName,
+                            _ => requiredType
+                        };
+
+                        devices.Add(new
+                        {
+                            deviceType = requiredType,
+                            isOnline = false,
+                            deviceName = displayName
+                        });
+                    }
+                }
+
+                return Results.Ok(new { devices });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to query device online status");
+                // Task 5.5: Graceful degradation — return HTTP 200 with all isOnline: false
+                return Results.Ok(new
+                {
+                    devices = BuildDegradedDeviceStatuses()
+                });
+            }
+        });
+    }
+
+    /// <summary>
+    /// Builds a degraded device status response with all devices offline.
+    /// Task 5.5: Returns HTTP 200 with isOnline: false instead of 5xx errors.
+    /// </summary>
+    private static object[] BuildDegradedDeviceStatuses()
+    {
+        return new object[]
+        {
+            new { deviceType = "Scale", isOnline = false, deviceName = DeviceStatusCatalog.ScaleName },
+            new { deviceType = "Camera", isOnline = false, deviceName = DeviceStatusCatalog.CameraName },
+            new { deviceType = "Lpr", isOnline = false, deviceName = DeviceStatusCatalog.LprName },
+            new { deviceType = "Printer", isOnline = false, deviceName = DeviceStatusCatalog.PrinterName }
+        };
     }
 
     private record SetWeightRequest(decimal Weight);
