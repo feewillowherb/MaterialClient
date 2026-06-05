@@ -24,4 +24,14 @@ public class UrbanWeighingListItemDto
     ///     Upload sync status; null when no extension row exists.
     /// </summary>
     public SyncStatus? SyncStatus { get; init; }
+
+    /// <summary>
+    ///     Short anomaly reason text, null/empty when record is normal.
+    /// </summary>
+    public string? AnomalyReason { get; init; }
+
+    /// <summary>
+    ///     Record upload time (when available), null means not uploaded yet.
+    /// </summary>
+    public DateTime? UploadTime { get; init; }
 }

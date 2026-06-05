@@ -32,4 +32,21 @@ public class UrbanAnomalyDetector : IUrbanAnomalyDetector, ISingletonDependency
 
         return false;
     }
+
+    /// <inheritdoc />
+    public string? GetAnomalyReason(WeighingRecord record, UrbanAnomalyDetectionConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(record.PlateNumber))
+            return "车牌为空";
+
+        var upperThreshold = config.UpperLimit * (1 + config.DeviationPercentage / 100m);
+        if (record.TotalWeight > upperThreshold)
+            return "超上限";
+
+        var lowerThreshold = config.LowerLimit * (1 - config.DeviationPercentage / 100m);
+        if (record.TotalWeight < lowerThreshold)
+            return "低下限";
+
+        return null;
+    }
 }

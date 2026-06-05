@@ -30,6 +30,7 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
 
     [Reactive] private string _plateNumber = string.Empty;
     [Reactive] private string _totalWeight = string.Empty;
+    [Reactive] private string _weighingDate = string.Empty;
     [Reactive] private string? _lprPhotoPath;
     [Reactive] private string? _cameraPhotoPath;
     [Reactive] private string _lprPhotoTime = "";

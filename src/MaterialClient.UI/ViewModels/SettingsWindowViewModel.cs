@@ -65,6 +65,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableLatestRecommendation;
     [Reactive] private bool _enableTriggerLprCapture;
     [Reactive] private int _jpegQuality = 75;
+    [Reactive] private bool _showUrbanAnomalyDetectionSettings;
+    [Reactive] private decimal _urbanAnomalyUpperLimit = 30.0m;
+    [Reactive] private decimal _urbanAnomalyLowerLimit = 2.0m;
+    [Reactive] private decimal _urbanAnomalyDeviationPercentage = 10.0m;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -226,6 +230,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.EnableLatestRecommendation = EnableLatestRecommendation;
             systemSettings.EnableTriggerLprCapture = EnableTriggerLprCapture;
             systemSettings.JpegQuality = JpegQuality;
+            systemSettings.UrbanAnomalyDetection = new UrbanAnomalyDetectionConfig
+            {
+                UpperLimit = UrbanAnomalyUpperLimit,
+                LowerLimit = UrbanAnomalyLowerLimit,
+                DeviationPercentage = UrbanAnomalyDeviationPercentage
+            };
 
             var settings = new SettingsEntity(
                 new ScaleSettings
@@ -749,6 +759,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             EnableLatestRecommendation = settings.SystemSettings.EnableLatestRecommendation;
             EnableTriggerLprCapture = settings.SystemSettings.EnableTriggerLprCapture;
             JpegQuality = settings.SystemSettings.JpegQuality;
+            var urbanAnomalyConfig = settings.SystemSettings.UrbanAnomalyDetection ?? new UrbanAnomalyDetectionConfig();
+            UrbanAnomalyUpperLimit = urbanAnomalyConfig.UpperLimit;
+            UrbanAnomalyLowerLimit = urbanAnomalyConfig.LowerLimit;
+            UrbanAnomalyDeviationPercentage = urbanAnomalyConfig.DeviationPercentage;
+            ShowUrbanAnomalyDetectionSettings =
+                await _settingsService.GetWeighingModeAsync() == WeighingMode.UrbanMode;
 
             // Ensure the loaded printer is in the available list (might be disconnected)
             if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&

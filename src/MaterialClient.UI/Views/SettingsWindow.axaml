@@ -708,6 +708,49 @@
                                               OnContent="启用"
                                               OffContent="关闭" />
                             </Grid>
+
+                            <Border BorderBrush="#E5E7EB"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="12"
+                                    Margin="0,8,0,0"
+                                    IsVisible="{Binding ShowUrbanAnomalyDetectionSettings}">
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
+                                      RowSpacing="10" ColumnSpacing="12">
+                                    <TextBlock Text="Urban异常上限(吨):"
+                                               Grid.Row="0"
+                                               Grid.Column="0"
+                                               VerticalAlignment="Center"
+                                               Foreground="Black"
+                                               MinWidth="140" />
+                                    <TextBox Text="{Binding UrbanAnomalyUpperLimit}"
+                                             Grid.Row="0"
+                                             Grid.Column="1"
+                                             Watermark="30.0" />
+
+                                    <TextBlock Text="Urban异常下限(吨):"
+                                               Grid.Row="1"
+                                               Grid.Column="0"
+                                               VerticalAlignment="Center"
+                                               Foreground="Black"
+                                               MinWidth="140" />
+                                    <TextBox Text="{Binding UrbanAnomalyLowerLimit}"
+                                             Grid.Row="1"
+                                             Grid.Column="1"
+                                             Watermark="2.0" />
+
+                                    <TextBlock Text="偏差百分比(%):"
+                                               Grid.Row="2"
+                                               Grid.Column="0"
+                                               VerticalAlignment="Center"
+                                               Foreground="Black"
+                                               MinWidth="140" />
+                                    <TextBox Text="{Binding UrbanAnomalyDeviationPercentage}"
+                                             Grid.Row="2"
+                                             Grid.Column="1"
+                                             Watermark="10.0" />
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </Border>
 

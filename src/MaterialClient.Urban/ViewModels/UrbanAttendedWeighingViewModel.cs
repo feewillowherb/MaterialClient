@@ -167,6 +167,11 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
             return;
         }
 
+        if (!item.IsAnomaly)
+        {
+            return;
+        }
+
         try
         {
             var dialogViewModel = new WeighingRecordEditDialogViewModel(
@@ -175,7 +180,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 _serviceProvider.GetRequiredService<ILogger<WeighingRecordEditDialogViewModel>>())
             {
                 PlateNumber = item.PlateNumber ?? string.Empty,
-                TotalWeight = item.TotalWeight.ToString("F2")
+                TotalWeight = item.TotalWeight.ToString("F2"),
+                WeighingDate = item.AddDate.ToString("yyyy-MM-dd HH:mm:ss")
             };
 
             await dialogViewModel.LoadPhotosAsync(item.WeighingRecordId);
@@ -197,6 +203,13 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 {
                     await MessageBox.ShowAsync(window, "车牌号不符合规范请修改", "验证错误",
                         MessageBoxIcon.Warning, MessageBoxButton.OK);
+                    return;
+                }
+
+                var confirmResult = await MessageBox.ShowAsync(window, "确认提交审批修改吗？", "确认审批",
+                    MessageBoxIcon.Question, MessageBoxButton.YesNo);
+                if (confirmResult != MessageBoxResult.Yes)
+                {
                     return;
                 }
 

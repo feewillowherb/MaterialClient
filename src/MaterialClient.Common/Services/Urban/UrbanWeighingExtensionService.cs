@@ -1,8 +1,10 @@
 using MaterialClient.Common.Dtos.Urban;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
@@ -17,15 +19,21 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 {
     private readonly IRepository<UrbanWeighingExtension, Guid> _extensionRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IUrbanAnomalyDetector _anomalyDetector;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<UrbanWeighingExtensionService> _logger;
 
     public UrbanWeighingExtensionService(
         IRepository<UrbanWeighingExtension, Guid> extensionRepository,
         IRepository<WeighingRecord, long> weighingRecordRepository,
+        IUrbanAnomalyDetector anomalyDetector,
+        IConfiguration configuration,
         ILogger<UrbanWeighingExtensionService> logger)
     {
         _extensionRepository = extensionRepository;
         _weighingRecordRepository = weighingRecordRepository;
+        _anomalyDetector = anomalyDetector;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -121,6 +129,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             .Take(pageSize)
             .ToListAsync();
 
+        var anomalyConfig = GetAnomalyDetectionConfig();
         var items = rows.Select(x => new UrbanWeighingListItemDto
         {
             WeighingRecordId = x.Record.Id,
@@ -128,7 +137,11 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             AddDate = x.Record.AddDate,
             TotalWeight = x.Record.TotalWeight,
             IsAnomaly = x.Extension?.IsAnomaly ?? false,
-            SyncStatus = x.Extension?.SyncStatus
+            SyncStatus = x.Extension?.SyncStatus,
+            AnomalyReason = (x.Extension?.IsAnomaly ?? false)
+                ? _anomalyDetector.GetAnomalyReason(x.Record, anomalyConfig)
+                : null,
+            UploadTime = x.Extension?.SyncStatus == SyncStatus.Synced ? x.Record.UpdateDate ?? x.Record.AddDate : null
         }).ToList();
 
         return new PagedResultDto<UrbanWeighingListItemDto>(totalCount, items);
@@ -175,5 +188,20 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         var extension = await _extensionRepository.GetAsync(extensionId);
         extension.IsAnomaly = isAnomaly;
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
+    }
+
+    private UrbanAnomalyDetectionConfig GetAnomalyDetectionConfig()
+    {
+        try
+        {
+            var config = new UrbanAnomalyDetectionConfig();
+            _configuration.GetSection("UrbanAnomalyDetection").Bind(config);
+            return config;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read UrbanAnomalyDetection config, using default values");
+            return new UrbanAnomalyDetectionConfig();
+        }
     }
 }

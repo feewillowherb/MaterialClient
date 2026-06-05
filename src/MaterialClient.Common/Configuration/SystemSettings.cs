@@ -93,4 +93,9 @@ public class SystemSettings
     ///     静态授权文件路径
     /// </summary>
     public string LicenseFilePath { get; set; } = "license.lic";
+
+    /// <summary>
+    ///     Urban 异常检测阈值配置（单位：吨）。
+    /// </summary>
+    public UrbanAnomalyDetectionConfig UrbanAnomalyDetection { get; set; } = new();
 }

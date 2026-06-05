@@ -81,6 +81,18 @@
                              MinWidth="140"
                              Watermark="0.00" />
                 </Grid>
+
+                <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
+                    <TextBlock Text="称重日期:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="80" />
+                    <TextBox Text="{Binding WeighingDate}"
+                             Grid.Column="1"
+                             MinWidth="140"
+                             IsReadOnly="True" />
+                </Grid>
             </StackPanel>
         </Grid>
 
