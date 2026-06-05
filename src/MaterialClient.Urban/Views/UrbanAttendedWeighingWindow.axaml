@@ -284,7 +284,7 @@
                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     Command="{Binding #UrbanAttendedWeighingWindowRoot.DataContext.ApproveRecordCommand}"
                                                     CommandParameter="{Binding}"
-                                                    IsEnabled="{Binding IsAnomaly}"
+                                                    IsVisible="{Binding IsAnomaly}"
                                                     FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         </Grid>
                                     </DataTemplate>
