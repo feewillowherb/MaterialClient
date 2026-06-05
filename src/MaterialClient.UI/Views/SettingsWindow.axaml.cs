@@ -93,6 +93,8 @@ public partial class SettingsWindow : Window, ITransientDependency
             _navigationItems["SoundSettings"] = soundNav;
         if (this.FindControl<ListBoxItem>("PrinterSettingsNavItem") is { } printerNav)
             _navigationItems["PrinterSettings"] = printerNav;
+        if (this.FindControl<ListBoxItem>("AnomalySettingsNavItem") is { } anomalyNav)
+            _navigationItems["AnomalySettings"] = anomalyNav;
 
         // Map section borders
         if (this.FindControl<Border>("ScaleSettings") is { } scaleBorder)
@@ -111,6 +113,8 @@ public partial class SettingsWindow : Window, ITransientDependency
             _sectionElements["SoundSettings"] = soundBorder;
         if (this.FindControl<Border>("PrinterSettings") is { } printerBorder)
             _sectionElements["PrinterSettings"] = printerBorder;
+        if (this.FindControl<Border>("AnomalySettings") is { } anomalyBorder)
+            _sectionElements["AnomalySettings"] = anomalyBorder;
 
         // Subscribe to scroll events
         if (this.FindControl<ScrollViewer>("ContentScrollViewer") is { } scrollViewer)
