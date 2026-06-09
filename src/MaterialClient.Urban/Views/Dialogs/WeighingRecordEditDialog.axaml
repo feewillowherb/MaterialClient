@@ -60,6 +60,19 @@
                         HorizontalAlignment="Center"
                         MinWidth="220">
                 <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
+                    <TextBlock Text="称重日期:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="80" />
+                    <TextBlock Text="{Binding WeighingDate}"
+                               Grid.Column="1"
+                               MinWidth="140"
+                               VerticalAlignment="Center"
+                               Foreground="Black" />
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
                     <TextBlock Text="车牌号:"
                                Grid.Column="0"
                                VerticalAlignment="Center"
@@ -80,18 +93,6 @@
                              Grid.Column="1"
                              MinWidth="140"
                              Watermark="0.00" />
-                </Grid>
-
-                <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
-                    <TextBlock Text="称重日期:"
-                               Grid.Column="0"
-                               VerticalAlignment="Center"
-                               Foreground="Black"
-                               Width="80" />
-                    <TextBox Text="{Binding WeighingDate}"
-                             Grid.Column="1"
-                             MinWidth="140"
-                             IsReadOnly="True" />
                 </Grid>
             </StackPanel>
         </Grid>
