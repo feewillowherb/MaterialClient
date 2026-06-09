@@ -5,32 +5,11 @@ namespace MaterialClient.Common.Services;
 
 /// <summary>
 ///     静态授权检查服务
-///     硬编码测试授权数据，返回固定的 ProId/ProName/BuildLicenseNo/FdBuildLicenseNo
-///     TODO: 当前实现返回硬编码测试数据，后续完善实际授权逻辑
+///     从 RSA.xml 文件中读取加密授权数据，使用 RSA 私钥解密验证
 /// </summary>
 public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
 {
     private readonly ILogger<StaticLicenseChecker>? _logger;
-
-    /// <summary>
-    ///     固定测试项目 ID（与 LicenseService.VerifyAuthorizationCodeTestAsync 的 testProjectId 一致）
-    /// </summary>
-    private static readonly Guid TestProId = Guid.Parse("C7F4F03C-4ED2-40FE-8898-D79331A3942D");
-
-    /// <summary>
-    ///     固定测试项目名称
-    /// </summary>
-    private const string TestProName = "测试项目-StaticLicense";
-
-    /// <summary>
-    ///     固定测试施工许可证号
-    /// </summary>
-    private const string TestBuildLicenseNo = "TEST-BUILD-LICENSE-001";
-
-    /// <summary>
-    ///     固定测试对接码
-    /// </summary>
-    private const string TestFdBuildLicenseNo = "TEST-FD-BUILD-LICENSE-001";
 
     public StaticLicenseChecker(ILogger<StaticLicenseChecker>? logger = null)
     {
@@ -39,10 +18,10 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
 
     /// <summary>
     ///     检查授权文件
-    ///     当前实现返回硬编码测试数据，与 LicenseService.VerifyAuthorizationCodeTestAsync 模式一致
+    ///     从 RSA.xml 文件读取并解密授权数据，验证授权有效期
     /// </summary>
-    /// <param name="licenseFilePath">授权文件路径</param>
-    /// <returns>授权检查结果（含硬编码测试数据）</returns>
+    /// <param name="licenseFilePath">授权文件路径（RSA.xml）</param>
+    /// <returns>授权检查结果</returns>
     public async Task<LicenseCheckResult> CheckLicenseAsync(string licenseFilePath)
     {
         await Task.CompletedTask;
@@ -51,29 +30,46 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
         {
             _logger?.LogInformation("开始静态授权检查: LicenseFilePath={Path}", licenseFilePath);
 
-            var fileExists = File.Exists(licenseFilePath);
-            if (!fileExists)
+            // 2.2 文件缺失场景
+            if (!File.Exists(licenseFilePath))
             {
-                _logger?.LogDebug("授权文件不存在，使用硬编码测试数据: {Path}", licenseFilePath);
+                _logger?.LogWarning("授权文件不存在: {Path}", licenseFilePath);
+                return LicenseCheckResult.Fail("授权文件不存在");
             }
 
-            var testAuthEndTime = DateTime.Now.AddYears(1);
+            // 调用 RsaLicenseDecryptor 读取并解密授权数据
+            var decryptResult = RsaLicenseDecryptor.ReadAndDecrypt(licenseFilePath);
 
+            // 2.3 授权过期场景
+            if (decryptResult.IsExpired)
+            {
+                var expiredMessage =
+                    $"授权已过期，过期时间: {decryptResult.AuthEndTime:yyyy-MM-dd}，已过期 {Math.Abs(decryptResult.DaysRemaining)} 天";
+                _logger?.LogWarning("授权已过期: AuthEndTime={AuthEndTime}, DaysOverdue={DaysOverdue}",
+                    decryptResult.AuthEndTime, Math.Abs(decryptResult.DaysRemaining));
+                return LicenseCheckResult.Fail(expiredMessage);
+            }
+
+            // 2.4 授权有效场景
+            var successMessage =
+                $"授权检查通过，过期时间: {decryptResult.AuthEndTime:yyyy-MM-dd}，剩余 {decryptResult.DaysRemaining} 天";
             _logger?.LogInformation(
-                "静态授权检查完成: FileExists={Exists}, Result=Success, ProId={ProId}, ProName={ProName}, AuthEndTime={AuthEndTime}",
-                fileExists, TestProId, TestProName, testAuthEndTime);
+                "静态授权检查完成: Result=Success, ProId={ProId}, BuildLicenseNo={BuildLicenseNo}, AuthEndTime={AuthEndTime}, DaysRemaining={DaysRemaining}",
+                decryptResult.ProId, decryptResult.BuildLicenseNo, decryptResult.AuthEndTime,
+                decryptResult.DaysRemaining);
 
             return LicenseCheckResult.Success(
-                "授权检查通过（静态测试数据）",
-                TestProId,
-                TestProName,
-                TestBuildLicenseNo,
-                TestFdBuildLicenseNo,
-                testAuthEndTime);
+                successMessage,
+                decryptResult.ProId,
+                null, // ProName: RSA.xml 中不存在，保持为 null
+                decryptResult.BuildLicenseNo,
+                null, // FdBuildLicenseNo: RSA.xml 中不存在，保持为 null
+                decryptResult.AuthEndTime);
         }
+        // 2.5 异常兜底
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "静态授权检查异常");
+            _logger?.LogError(ex, "静态授权检查异常: {Message}", ex.Message);
             return LicenseCheckResult.Fail($"授权检查异常: {ex.Message}");
         }
     }
