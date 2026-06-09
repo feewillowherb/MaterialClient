@@ -48,6 +48,15 @@ public interface ILicenseService
     ///     删除当前授权信息（用于项目ID变更时）
     /// </summary>
     Task ClearLicenseAsync();
+
+    /// <summary>
+    ///     用服务端返回的项目字段更新本地授权信息（仅覆盖非空值）。
+    /// </summary>
+    Task<bool> SyncProjectFieldsFromServerAsync(
+        string? proName,
+        string? buildLicenseNo,
+        string? fdBuildLicenseNo,
+        DateTime? authEndTime);
 }
 
 /// <summary>
@@ -212,5 +221,56 @@ public partial class LicenseService : DomainService, ILicenseService
     {
         var license = await GetCurrentLicenseAsync();
         if (license != null) await _licenseRepository.DeleteAsync(license);
+    }
+
+    [UnitOfWork]
+    public async Task<bool> SyncProjectFieldsFromServerAsync(
+        string? proName,
+        string? buildLicenseNo,
+        string? fdBuildLicenseNo,
+        DateTime? authEndTime)
+    {
+        var license = await GetCurrentLicenseAsync();
+        if (license == null)
+        {
+            return false;
+        }
+
+        var updated = false;
+
+        if (!string.IsNullOrWhiteSpace(proName) && !string.Equals(license.ProName, proName, StringComparison.Ordinal))
+        {
+            license.ProName = proName;
+            updated = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(buildLicenseNo) &&
+            !string.Equals(license.BuildLicenseNo, buildLicenseNo, StringComparison.Ordinal))
+        {
+            license.BuildLicenseNo = buildLicenseNo;
+            updated = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(fdBuildLicenseNo) &&
+            !string.Equals(license.FdBuildLicenseNo, fdBuildLicenseNo, StringComparison.Ordinal))
+        {
+            license.FdBuildLicenseNo = fdBuildLicenseNo;
+            updated = true;
+        }
+
+        if (authEndTime.HasValue && license.AuthEndTime != authEndTime.Value)
+        {
+            license.AuthEndTime = authEndTime.Value;
+            updated = true;
+        }
+
+        if (!updated)
+        {
+            return false;
+        }
+
+        license.UpdatedAt = DateTime.Now;
+        await _licenseRepository.UpdateAsync(license);
+        return true;
     }
 }

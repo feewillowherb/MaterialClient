@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Models;
+using MaterialClient.Common.Services.Authentication;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
@@ -40,6 +41,7 @@ public interface IDeviceStatusSignalRClient : ISingletonDependency
 public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDisposable
 {
     private readonly ILogger<DeviceStatusSignalRClient> _logger;
+    private readonly ILicenseService _licenseService;
     private readonly SignalRClientOptions _options;
 
     private HubConnection? _connection;
@@ -52,9 +54,11 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 
     public DeviceStatusSignalRClient(
         ILogger<DeviceStatusSignalRClient> logger,
+        ILicenseService licenseService,
         IOptions<SignalRClientOptions> options)
     {
         _logger = logger;
+        _licenseService = licenseService;
         _options = options.Value;
 
         // Validate and clamp configuration
@@ -133,6 +137,8 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             _logger.LogInformation(
                 "DeviceStatusSignalRClient: Connected successfully. ConnectionId={ConnectionId}",
                 _connection.ConnectionId);
+
+            await SyncProjectLicenseFromServerAsync();
         }
         catch (TimeoutException ex)
         {
@@ -331,8 +337,8 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                         _reconnectAttempts);
                     _reconnectAttempts = 0;
 
-                    // Flush queued messages
                     await FlushMessageQueueAsync();
+                    await SyncProjectLicenseFromServerAsync();
                     return;
                 }
             }
@@ -389,8 +395,57 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 
         _reconnectAttempts = 0;
 
-        // Flush queued messages
         await FlushMessageQueueAsync();
+        await SyncProjectLicenseFromServerAsync();
+    }
+
+    private async Task SyncProjectLicenseFromServerAsync()
+    {
+        if (_connection?.State != HubConnectionState.Connected)
+        {
+            return;
+        }
+
+        try
+        {
+            var license = await _licenseService.GetCurrentLicenseAsync();
+            if (license == null)
+            {
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: Skip project license sync because no local license exists.");
+                return;
+            }
+
+            var projectInfo = await _connection.InvokeAsync<ClientProjectLicenseInfoDto?>(
+                "GetClientProjectLicenseInfo",
+                license.ProjectId.ToString());
+
+            if (projectInfo == null)
+            {
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: Server returned no project license info for ProId={ProId}",
+                    license.ProjectId);
+                return;
+            }
+
+            var updated = await _licenseService.SyncProjectFieldsFromServerAsync(
+                projectInfo.ProName,
+                projectInfo.BuildLicenseNo,
+                projectInfo.FdBuildLicenseNo,
+                projectInfo.AuthEndTime);
+
+            if (updated)
+            {
+                _logger.LogInformation(
+                    "DeviceStatusSignalRClient: Synced project license info from server. ProId={ProId}, ProName={ProName}",
+                    license.ProjectId, projectInfo.ProName);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "DeviceStatusSignalRClient: Failed to sync project license info from server.");
+        }
     }
 
     public async ValueTask DisposeAsync()
