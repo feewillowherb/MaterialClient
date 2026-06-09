@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services.Authentication;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Common.Services;
 
@@ -42,6 +44,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 {
     private readonly ILogger<DeviceStatusSignalRClient> _logger;
     private readonly ILicenseService _licenseService;
+    private readonly ILocalEventBus _localEventBus;
     private readonly SignalRClientOptions _options;
 
     private HubConnection? _connection;
@@ -55,10 +58,12 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     public DeviceStatusSignalRClient(
         ILogger<DeviceStatusSignalRClient> logger,
         ILicenseService licenseService,
+        ILocalEventBus localEventBus,
         IOptions<SignalRClientOptions> options)
     {
         _logger = logger;
         _licenseService = licenseService;
+        _localEventBus = localEventBus;
         _options = options.Value;
 
         // Validate and clamp configuration
@@ -337,8 +342,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                         _reconnectAttempts);
                     _reconnectAttempts = 0;
 
-                    await FlushMessageQueueAsync();
-                    await SyncProjectLicenseFromServerAsync();
+                    await OnConnectionRestoredAsync();
                     return;
                 }
             }
@@ -395,7 +399,13 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 
         _reconnectAttempts = 0;
 
+        await OnConnectionRestoredAsync();
+    }
+
+    private async Task OnConnectionRestoredAsync()
+    {
         await FlushMessageQueueAsync();
+        await _localEventBus.PublishAsync(new SignalRConnectionRestoredEventData());
         await SyncProjectLicenseFromServerAsync();
     }
 

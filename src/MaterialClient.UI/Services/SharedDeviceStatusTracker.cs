@@ -20,8 +20,10 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
     private readonly ISettingsService _settingsService;
     private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private readonly ILocalEventBus _localEventBus;
+    private readonly ISharedDeviceStatusTrackerRegistry _trackerRegistry;
     private readonly ILogger<SharedDeviceStatusTracker> _logger;
     private readonly List<IDisposable> _timers = [];
+    private bool _isMonitoring;
 
     private DeviceStatusBarOptions _visibility = DeviceStatusBarOptions.CoreOnly;
     private bool _isScaleOnline;
@@ -38,6 +40,7 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
         ISettingsService settingsService,
         ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
         ILocalEventBus localEventBus,
+        ISharedDeviceStatusTrackerRegistry trackerRegistry,
         ILogger<SharedDeviceStatusTracker> logger)
     {
         _serviceProvider = serviceProvider;
@@ -45,6 +48,7 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
         _settingsService = settingsService;
         _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
         _localEventBus = localEventBus;
+        _trackerRegistry = trackerRegistry;
         _logger = logger;
     }
 
@@ -78,6 +82,11 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
 
     public void StartMonitoring()
     {
+        if (_isMonitoring) return;
+
+        _isMonitoring = true;
+        _trackerRegistry.Register(this);
+
         _ = RefreshVisibilityFromSettingsAsync();
 
         _timers.Add(new Timer(_ =>
@@ -178,6 +187,32 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
             _isPrinterOnline,
             _isLprOnline,
             _isSoundDeviceOnline);
+
+    /// <summary>
+    ///     Publishes the current online/offline state for all server-mapped devices.
+    ///     Used after SignalR reconnect to refresh server-side cache immediately.
+    /// </summary>
+    public void RepublishCurrentStatuses()
+    {
+        PublishDeviceStatusChanged(DeviceStatusCatalog.ScaleName, _isScaleOnline);
+        PublishDeviceStatusChanged(DeviceStatusCatalog.CameraName, _isCameraOnline);
+        PublishDeviceStatusChanged(DeviceStatusCatalog.LprName, _isLprOnline);
+
+        if (_visibility.DocumentCameraEnabled)
+        {
+            PublishDeviceStatusChanged(DeviceStatusCatalog.UsbCameraName, _isUsbCameraOnline);
+        }
+
+        if (_visibility.PrinterEnabled)
+        {
+            PublishDeviceStatusChanged(DeviceStatusCatalog.PrinterName, _isPrinterOnline);
+        }
+
+        if (_visibility.SoundDeviceEnabled)
+        {
+            PublishDeviceStatusChanged(DeviceStatusCatalog.SoundDeviceName, _isSoundDeviceOnline);
+        }
+    }
 
     private void NotifyChanged() => StatusesChanged?.Invoke(GetCurrentStatuses());
 
@@ -324,6 +359,9 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
 
     public void Dispose()
     {
+        _trackerRegistry.Unregister(this);
+        _isMonitoring = false;
+
         foreach (var timer in _timers)
         {
             timer.Dispose();
