@@ -1,0 +1,82 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.UI.ViewModels"
+        xmlns:converters="using:MaterialClient.UI.Converters"
+        x:Class="MaterialClient.UI.Views.ImageViewerWindow"
+        x:DataType="vm:ImageViewerViewModel"
+        Title="查看图片"
+        Width="1200" Height="800"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="#1E1E1E">
+
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <Border Grid.Row="0"
+                x:Name="TitleBarBorder"
+                Background="#2D2D2D"
+                Padding="16,12"
+                BorderBrush="#3D3D3D"
+                BorderThickness="0,0,0,1"
+                PointerPressed="TitleBar_OnPointerPressed"
+                Cursor="Arrow">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Text="{Binding ImageTitle, TargetNullValue='图片查看'}"
+                           FontSize="16"
+                           Foreground="White"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1"
+                        x:Name="MaximizeButton"
+                        Content="⛶"
+                        FontSize="18"
+                        Foreground="White"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        Cursor="Hand"
+                        Click="MaximizeButton_OnClick"
+                        ToolTip.Tip="最大化 (F11 或双击)" />
+                <Button Grid.Column="2"
+                        Content="✕"
+                        FontSize="18"
+                        Foreground="White"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="12,6"
+                        Cursor="Hand"
+                        Command="{Binding CloseCommand}" />
+            </Grid>
+        </Border>
+
+        <!-- Image Container -->
+        <ScrollViewer x:Name="ImageScrollViewer"
+                      Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="#1E1E1E">
+            <Grid x:Name="ImageContainerGrid"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Margin="20"
+                  DoubleTapped="ImageArea_OnDoubleTapped"
+                  PointerWheelChanged="ImageArea_OnPointerWheelChanged"
+                  PointerPressed="ImageArea_OnPointerPressed"
+                  PointerMoved="ImageArea_OnPointerMoved"
+                  PointerReleased="ImageArea_OnPointerReleased"
+                  PointerCaptureLost="ImageArea_OnPointerCaptureLost">
+                <Image x:Name="ImageControl"
+                       Source="{Binding ImagePath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                       Stretch="Uniform"
+                       MaxWidth="1100"
+                       MaxHeight="700" />
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>

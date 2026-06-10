@@ -1,0 +1,116 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.Urban.ViewModels"
+        x:Class="MaterialClient.Urban.Views.Dialogs.WeighingRecordEditDialog"
+        x:DataType="vm:WeighingRecordEditDialogViewModel"
+        Title="审批称重记录"
+        Width="640" Height="480"
+        MinWidth="560" MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <StyleInclude Source="avares://MaterialClient.UI/Styles/SharedConverters.axaml" />
+    </Window.Styles>
+
+    <Grid RowDefinitions="*,Auto" Margin="20">
+        <Grid Grid.Row="0" ColumnDefinitions="*,*">
+            <!-- Photo previews -->
+            <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="12">
+                <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="车牌识别抓拍" FontSize="11" Foreground="#666666"
+                                   FontWeight="Medium" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding LprPhotoTime}" FontSize="11"
+                                   Foreground="#94A3B8" VerticalAlignment="Center" />
+                    </Grid>
+                    <Button Background="Transparent" BorderThickness="0" Padding="0"
+                            Command="{Binding OpenLprImageViewerCommand}"
+                            CommandParameter="{Binding LprPhotoPath}">
+                        <Border Height="120" Background="#E5E7EB" CornerRadius="4"
+                                BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                            <Image Source="{Binding LprPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                   Stretch="UniformToFill" />
+                        </Border>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="摄像头抓拍" FontSize="11" Foreground="#666666"
+                                   FontWeight="Medium" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11"
+                                   Foreground="#94A3B8" VerticalAlignment="Center" />
+                    </Grid>
+                    <Button Background="Transparent" BorderThickness="0" Padding="0"
+                            Command="{Binding OpenCameraImageViewerCommand}"
+                            CommandParameter="{Binding CameraPhotoPath}">
+                        <Border Height="120" Background="#E5E7EB" CornerRadius="4"
+                                BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                            <Image Source="{Binding CameraPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                   Stretch="UniformToFill" />
+                        </Border>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Plate and weight -->
+            <StackPanel Grid.Column="1"
+                        Spacing="16"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        MinWidth="220">
+                <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
+                    <TextBlock Text="称重日期:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="80" />
+                    <TextBlock Text="{Binding WeighingDate}"
+                               Grid.Column="1"
+                               MinWidth="140"
+                               VerticalAlignment="Center"
+                               Foreground="Black" />
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
+                    <TextBlock Text="车牌号:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="80" />
+                    <TextBox Text="{Binding PlateNumber}"
+                             Grid.Column="1"
+                             MinWidth="140" />
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
+                    <TextBlock Text="重量(吨):"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="80" />
+                    <TextBox Text="{Binding TotalWeight}"
+                             Grid.Column="1"
+                             MinWidth="140"
+                             Watermark="0.00" />
+                </Grid>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="12"
+                    Margin="0,20,0,0">
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Padding="24,8"
+                    CornerRadius="4" />
+            <Button Content="确定"
+                    Command="{Binding SaveCommand}"
+                    Classes="primary-button"
+                    Padding="24,8"
+                    CornerRadius="4" />
+        </StackPanel>
+    </Grid>
+</Window>

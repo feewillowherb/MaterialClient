@@ -1,14 +1,21 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient", "MaterialClient\MaterialClient.csproj", "{EA9B6137-247F-42CA-823A-1A9C182AB4E1}"
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient", "src\MaterialClient\MaterialClient.csproj", "{EA9B6137-247F-42CA-823A-1A9C182AB4E1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Common", "MaterialClient.Common\MaterialClient.Common.csproj", "{139138C2-0E2F-43D5-AC04-16F7B5BE1F42}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Common", "src\MaterialClient.Common\MaterialClient.Common.csproj", "{139138C2-0E2F-43D5-AC04-16F7B5BE1F42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Common.Tests", "MaterialClient.Common.Tests\MaterialClient.Common.Tests.csproj", "{773F21A6-62E6-41BB-9B56-CBC385C12B6D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Common.Tests", "tests\MaterialClient.Common.Tests\MaterialClient.Common.Tests.csproj", "{773F21A6-62E6-41BB-9B56-CBC385C12B6D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Toolkit", "MaterialClient.Toolkit\MaterialClient.Toolkit.csproj", "{40C443DB-CA4F-4788-887D-75BC30A5FAFF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Toolkit", "src\MaterialClient.Toolkit\MaterialClient.Toolkit.csproj", "{40C443DB-CA4F-4788-887D-75BC30A5FAFF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Demo", "MaterialClient.Demo\MaterialClient.Demo.csproj", "{E92C7A8D-ACA5-4551-A571-50089FFCFF35}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Demo", "src\MaterialClient.Demo\MaterialClient.Demo.csproj", "{E92C7A8D-ACA5-4551-A571-50089FFCFF35}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.Urban", "src\MaterialClient.Urban\MaterialClient.Urban.csproj", "{C0AFA4A6-25F3-4466-B140-B9DF72B59524}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaterialClient.UI", "src\MaterialClient.UI\MaterialClient.UI.csproj", "{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,6 +81,30 @@ Global
 		{E92C7A8D-ACA5-4551-A571-50089FFCFF35}.Release|x64.Build.0 = Release|Any CPU
 		{E92C7A8D-ACA5-4551-A571-50089FFCFF35}.Release|x86.ActiveCfg = Release|Any CPU
 		{E92C7A8D-ACA5-4551-A571-50089FFCFF35}.Release|x86.Build.0 = Release|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Debug|x64.Build.0 = Debug|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Debug|x86.Build.0 = Debug|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|x64.ActiveCfg = Release|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|x64.Build.0 = Release|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|x86.ActiveCfg = Release|Any CPU
+		{C0AFA4A6-25F3-4466-B140-B9DF72B59524}.Release|x86.Build.0 = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x64.Build.0 = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Debug|x86.Build.0 = Debug|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x64.ActiveCfg = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x64.Build.0 = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x86.ActiveCfg = Release|Any CPU
+		{B8A3C7D2-9E4F-4A1B-8D5C-6F7E8A9B0C1D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

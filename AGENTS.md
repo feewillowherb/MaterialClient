@@ -1,24 +1,36 @@
 # Agent 行为准则
 
-## OpenSpec 工作流（可选）
+## OpenSpec 已迁移
 
-若采用规范驱动流程，可参考：
+本项目的 OpenSpec 规范驱动流程已迁移至 **MaterialMonospec** 主仓库统一管理。
 
-- **探索** (`/opsx:explore`)：理解问题与上下文
-- **提案** (`/opsx:propose`)：产出 proposal、design、tasks、spec delta
-- **实施** (`/opsx:apply`)：按 Spec/Design 实施代码
-- **归档** (`/opsx:archive`)：变更完成后归档
+- **OpenSpec 工作目录**：`MaterialMonospec/openspec/`
+- **所有变更提案、设计、规范、任务** 均在主仓库的 `openspec/` 目录中创建和管理
+- 本项目（MaterialClient）仅负责代码实现，不再维护独立的 openspec 目录
+- 详见主仓库 `AGENTS.md` 中的「OpenSpec 生成位置约束」
 
-```
-openspec/
-├── specs/          ← 功能规范
-├── changes/        ← 待实施变更的规范化定义
-└── project.md      ← 项目约定和技术栈
-```
+## MaterialClient.Urban 上云与附件
 
-- 查看活跃变更：`openspec list`
-- 查看功能规范：`openspec list --specs`
-- 验证变更：`openspec validate [change-id] --strict`
+- **服务端地址**：`appsettings.json` → `UrbanManagement:BaseUrl`（指向 UrbanManagement 站点，例如 `http://localhost:5000`）。
+- **称重上云**：`PollingBackgroundService` → `IUrbanServerUploadService.SubmitRecordAsync`。
+- **重量单位**：本地 `WeighingRecord.TotalWeight` 为**吨**；上云 `Receive` 的 `totalWeight` 为**千克**（`MaterialMath.ConvertTonToKg`）。UrbanManagement 存库与政府同步均按 kg。
+- **附件上云**：同一次 `SubmitRecordAsync` 内先调用 `POST /api/app/urban-attachment/upload`（按 `Lrp` / `UrbanPhoto` 分组 Base64），再将返回的 `attachmentIds` 填入 `Receive` 请求。
+- **本地路径**：读取 `AttachmentFile.LocalPath` 前使用 `PathManager.ToAbsolutePath`（与主程序附件规范一致）。
+
+## 项目约定（构建验证）
+
+当 `bin/`、`obj/` 下 DLL 被正在运行的应用或测试宿主占用导致 MSB3027 复制失败时，使用**固定**独立输出目录验证编译，勿写入临时随机路径。
+
+- **独立输出目录**：仓库根目录下的 `.build-verify/`（已列入 `.gitignore`，勿提交）
+- **命令示例**（在 MaterialClient 仓库根执行）：
+  ```bash
+  dotnet build MaterialClient.sln -o .build-verify
+  ```
+  或针对单个项目：
+  ```bash
+  dotnet build src/MaterialClient.Urban/MaterialClient.Urban.csproj -o .build-verify
+  ```
+- **约定**：Agent 与本地脚本需要「避开文件锁仅做编译验证」时，一律使用 `-o .build-verify`，不要改用其他目录名。
 
 ## 项目约定（服务注册）
 
@@ -79,6 +91,7 @@ openspec/
 
 ### Record 替代 Tuple（NON-NEGOTIABLE）
 
+- 与 MaterialMonospec 主仓库「跨子仓库 C# 编码约定」一致；本子仓库细则以下列条文为准。
 - 禁止使用 tuple（如 `(string, int)` 或 `ValueTuple`）作为返回值或参数类型。
 - 应使用 `record` 类型替代，例如 `record UserInfo(string Name, int Age)`。
 - 适用于方法返回值、方法参数、局部变量和字段定义。
@@ -153,6 +166,43 @@ openspec/
 - 任何代码都要有明确的职责，不能出现职责混乱。
 - 每个类、方法、模块都应只有一个明确的职责。
 - 职责边界应清晰，避免一个组件同时处理数据访问、业务逻辑、UI 渲染等不同层面的职责。
+
+## MaterialClient.Urban 特殊约定
+
+### 项目概述
+- **项目**：`MaterialClient.Urban` — 城管专用单窗口桌面客户端
+- **特点**：启动即进入唯一称重主界面，无登录/授权页面
+- **配置**：`WeighingMode.UrbanMode = 201`，`ProductCode.Urban = 5030`
+- **授权**：使用 `IStaticLicenseChecker` 后台检查（TODO: 当前默认返回成功）
+- **UI 来源**：从 `MaterialClient.Demo/Views/WeighingSystemWindow.axaml` 迁移
+
+### UI 主题（与 MaterialClient 一致）
+- **NuGet**：`Semi.Avalonia`、`Irihi.Ursa`、`Irihi.Ursa.Themes.Semi`、`Irihi.Avalonia.Shared`（版本与主程序 Central Package Management 一致）
+- **App.axaml**：须加载 `semi:SemiTheme` + `u-semi:SemiTheme`（`Locale="zh-CN"`），并包含与主程序相同的 Ursa `MessageBox` 样式及 `MaterialClient.UI` 的 `SharedTheme` / `SharedConverters`
+- **禁止**仅引用 `Irihi.Ursa` 而不加载 Semi 主题（会导致 MessageBox 等 Ursa 控件尺寸/样式异常）
+
+### 架构约束
+- **无 Generic Host**：使用 Avalonia `ApplicationLifetime`，不注册 ABP 容器
+- **无登录模块**：不引用 Account 模块，无 Session 管理
+- **顶栏菜单**：仅保留"系统设置"，移除"退出登录"、"数据同步"、"项目信息"
+- **静态授权**：`StaticLicenseChecker` 在 `App.OnFrameworkInitializationCompleted` 后台调用，仅记录日志
+
+### Lrp 附件（UrbanMode 专用）
+- **AttachType.Lrp = 5**：车牌识别图片附件类型
+- **保存条件**：仅 `WeighingMode == UrbanMode (201)` 时保存
+- **支持设备**：HikvisionLprService、VzvisionLprService
+- **压缩质量**：`JpegCompressionUtil.LrpCompressionQuality = 90`
+- **存储路径**：`Lrp/{plate}_{timestamp}.jpg`（相对于应用目录）
+
+### Urban 称重记录扩展模式（Variant Extension Pattern）
+- **扩展实体**：`MaterialClient.Common/Entities/Urban/UrbanWeighingExtension.cs`
+- **关系**：`WeighingRecord` ← 1:0..1 → `UrbanWeighingExtension`（通过 FK `WeighingRecordId`）
+- **用途**：存储 Urban 专用字段（`SyncStatus`、`RetryCount`、LastErrorTime`），与共享实体 `WeighingRecord` 解耦
+- **约束**：`WeighingRecordId` 唯一索引 + `(SyncStatus, WeighingRecordId)` 复合索引
+- **创建时机**：`WeighingRecordService.CreateWeighingRecordAsync()` 在 `WeighingMode == UrbanMode` 时同一事务内创建
+- **查询模式**：Urban ViewModel 使用 `.Include(r => r.UrbanExtension)` LEFT JOIN 模式
+- **XAML 绑定**：通过 `SyncStatusMatchConverter` 转换器访问 `UrbanExtension.SyncStatus`
+- **扩展指引**：SolidWaste 等其他模式如需变体专属字段，参照此模式创建 `SolidWasteWeighingExtension` 实体
 
 ## 治理规则
 

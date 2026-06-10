@@ -1,0 +1,410 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dtos="using:MaterialClient.Common.Dtos.Urban"
+        xmlns:converters="using:MaterialClient.Urban.Converters"
+        xmlns:viewModels="using:MaterialClient.Urban.ViewModels"
+        xmlns:ui="using:MaterialClient.UI.Controls"
+        xmlns:uiModels="using:MaterialClient.UI.Models"
+        xmlns:u="https://irihi.tech/ursa"
+        x:Class="MaterialClient.Urban.Views.UrbanAttendedWeighingWindow"
+        x:DataType="viewModels:UrbanAttendedWeighingViewModel"
+        x:Name="UrbanAttendedWeighingWindowRoot"
+        Title="凡东城管地磅系统"
+        Width="1280" Height="800"
+        MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        CanResize="True"
+        Icon="/Assets/fd-ico.ico"
+        Background="{DynamicResource BackgroundGray}">
+
+    <Window.Resources>
+        <converters:BoolInvertConverter x:Key="BoolInvertConverter" />
+        <converters:SyncStatusMatchConverter x:Key="SyncFailedConverter" TargetStatus="Failed" />
+    </Window.Resources>
+
+    <Grid>
+        <ui:WeighingWindowBase x:Name="WeighingBase">
+
+            <!-- HeaderLeftContent: Logo and Title -->
+            <ui:WeighingWindowBase.HeaderLeftContent>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Border Width="32" Height="32" Background="White" CornerRadius="4"
+                            VerticalAlignment="Center" Opacity="0.9">
+                        <TextBlock Text="凡" Foreground="{DynamicResource PrimaryBlue}" FontWeight="Bold" FontSize="14"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="凡东城管地磅系统" Foreground="White" FontWeight="Medium" FontSize="14"
+                               VerticalAlignment="Center"
+                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                    <TextBlock Text="FINDONG MATERIAL SYSTEM" Foreground="#B0C4DE" FontSize="10"
+                               VerticalAlignment="Center" Margin="4,0,0,0" />
+                </StackPanel>
+            </ui:WeighingWindowBase.HeaderLeftContent>
+
+            <!-- MenuItems: Single System Settings button -->
+            <ui:WeighingWindowBase.MenuItems>
+                <StackPanel Orientation="Horizontal" Spacing="4"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button Classes="popup-menu-item-button" Content="系统设置" Click="OnSystemSettingsClick" />
+                </StackPanel>
+            </ui:WeighingWindowBase.MenuItems>
+
+            <!-- WeightAreaContent: aligned with Attended (gradient background retained) -->
+            <ui:WeighingWindowBase.WeightAreaContent>
+                <Border>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                            <GradientStop Color="#4169E1" Offset="0" />
+                            <GradientStop Color="#4A85F9" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid ColumnDefinitions="Auto,*,Auto"
+                          Margin="24,32"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch">
+                        <Border Grid.Column="0"
+                                Background="#5A7FE6"
+                                CornerRadius="8"
+                                Padding="20,12"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                Margin="32,0,0,0"
+                                MinWidth="180">
+                            <TextBlock Text="{Binding MostFrequentPlateNumber, TargetNullValue='--'}"
+                                       Foreground="White"
+                                       FontSize="16" />
+                        </Border>
+
+                        <Grid Grid.Column="1"
+                              HorizontalAlignment="Center"
+                              ColumnDefinitions="Auto"
+                              RowDefinitions="Auto">
+                            <Border Grid.Row="0"
+                                    Background="#5A7FE6"
+                                    CornerRadius="8"
+                                    BorderThickness="0"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    Padding="24,12">
+                                <Grid ColumnDefinitions="Auto,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding CurrentWeight, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               FontSize="64"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center" />
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Margin="16,0,0,0">
+                                        <Border Width="1"
+                                                Height="30"
+                                                Background="White"
+                                                Opacity="0.3"
+                                                Margin="0,0,8,0"
+                                                VerticalAlignment="Center" />
+                                        <TextBlock Text="吨"
+                                                   Foreground="White"
+                                                   FontSize="24"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding CurrentWeighingStatusText}"
+                                   Foreground="White"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Right"
+                                   Margin="-150,0,0,0" />
+
+                        <ui:LoadingDotsAnimation Grid.Column="2"
+                                                 IsActive="{Binding IsWeighingActive}"
+                                                 Foreground="White"
+                                                 FontSize="18"
+                                                 FontWeight="Bold"
+                                                 VerticalAlignment="Center"
+                                                 HorizontalAlignment="Left"
+                                                 Margin="-75,0,0,0" />
+                    </Grid>
+                </Border>
+            </ui:WeighingWindowBase.WeightAreaContent>
+
+            <!-- MainContent: Two-column layout (vehicle records + photo sidebar) -->
+            <ui:WeighingWindowBase.MainContent>
+                <Grid ColumnDefinitions="*,360">
+                    <!-- Left: Vehicle Records -->
+                    <Border Grid.Column="0" Classes="card-border" Margin="8,8,4,8">
+                        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+                            <!-- Tab Bar -->
+                            <Border Grid.Row="0" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Classes="tab-button active" Name="TabAll" Content="全部记录" Click="OnTabClick" />
+                                    <Button Classes="tab-button" Name="TabNormal" Content="正常" Click="OnTabClick" />
+                                    <Button Classes="tab-button" Name="TabAbnormal" Content="异常" Click="OnTabClick" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Filters -->
+                            <Border Grid.Row="1" Margin="12,12,12,0"
+                                    BorderBrush="#E5E7EB" BorderThickness="0,0,0,1"
+                                    Padding="0,0,0,12">
+                                <StackPanel Spacing="8">
+                                    <!-- Date Range -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="称重时间" FontSize="12" Foreground="#475569"
+                                                   Width="56" VerticalAlignment="Center"
+                                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <u:DateTimePicker Classes="filter-input" Width="130"
+                                                        DisplayFormat="MM-dd HH:mm"
+                                                        PanelFormat="yyyy-MM-dd HH:mm"
+                                                        SelectedDate="{Binding StartTime}" />
+                                        <TextBlock Text="至" FontSize="12" Foreground="#475569"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <u:DateTimePicker Classes="filter-input" Width="130"
+                                                        DisplayFormat="MM-dd HH:mm"
+                                                        PanelFormat="yyyy-MM-dd HH:mm"
+                                                        SelectedDate="{Binding EndTime}" />
+                                    </StackPanel>
+                                    <!-- License Plate Search -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="车牌号码" FontSize="12" Foreground="#475569"
+                                                   Width="56" VerticalAlignment="Center"
+                                                   FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <TextBox Classes="filter-input" Width="192" />
+                                        <Button Classes="primary-button" Content="搜索" />
+                                        <Button Classes="secondary-button" Content="重置" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- DataGrid Table Header Label -->
+                            <Border Grid.Row="2" Background="{DynamicResource PrimaryBlue}" Padding="12,0">
+                                <Grid ColumnDefinitions="96,126,88,74,88,90,*">
+                                    <TextBlock Text="车牌" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="1" Text="称重时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="2" Text="上传时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="3" Text="重量" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="4" Text="状态" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="5" Text="异常原因" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="6" Text="操作" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Vehicle Records List (DTO binding) -->
+                            <ListBox Grid.Row="3" Name="VehicleList" Margin="0"
+                                     ItemsSource="{Binding ListItems}"
+                                     SelectedItem="{Binding SelectedListItem, Mode=TwoWay}"
+                                     Background="Transparent"
+                                     BorderThickness="0">
+                                <ListBox.Styles>
+                                    <Style Selector="ListBox">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                    </Style>
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                        <Setter Property="BorderBrush" Value="#F1F5F9" />
+                                        <Setter Property="Padding" Value="12,6" />
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected">
+                                        <Setter Property="Background" Value="#E3F2FD" />
+                                    </Style>
+                                </ListBox.Styles>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="dtos:UrbanWeighingListItemDto">
+                                        <Grid ColumnDefinitions="96,126,88,74,88,90,*">
+                                            <!-- PlateNumber -->
+                                            <TextBlock Text="{Binding PlateNumber}" FontSize="12" FontWeight="Medium"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <!-- AddDate -->
+                                            <TextBlock Grid.Column="1" Text="{Binding AddDate, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
+                                                       Foreground="#666666" VerticalAlignment="Center" />
+                                            <!-- UploadTime -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding UploadTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}', TargetNullValue=--}"
+                                                       FontSize="12"
+                                                       Foreground="#666666"
+                                                       VerticalAlignment="Center" />
+                                            <!-- TotalWeight -->
+                                            <TextBlock Grid.Column="3" Text="{Binding TotalWeight, StringFormat='{}{0:F2} 吨'}" FontSize="12" VerticalAlignment="Center"
+                                                       Foreground="#333333" />
+                                            <!-- Primary badge: data quality (IsAnomaly) -->
+                                            <StackPanel Grid.Column="4" VerticalAlignment="Center"
+                                                        HorizontalAlignment="Center" Spacing="2">
+                                                <Border Background="#DCFCE7" CornerRadius="3" Padding="6,2"
+                                                        IsVisible="{Binding IsAnomaly, Converter={StaticResource BoolInvertConverter}}">
+                                                    <TextBlock Text="正常" FontSize="11" Foreground="#15803D"
+                                                               FontWeight="Medium"
+                                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                                </Border>
+                                                <Border Background="#FEE2E2" CornerRadius="3" Padding="6,2"
+                                                        IsVisible="{Binding IsAnomaly}">
+                                                    <TextBlock Text="异常" FontSize="11" Foreground="#DC2626"
+                                                               FontWeight="Medium"
+                                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                                </Border>
+                                                <TextBlock Text="同步失败" FontSize="10" Foreground="#B45309"
+                                                           IsVisible="{Binding SyncStatus, Converter={StaticResource SyncFailedConverter}}"
+                                                           HorizontalAlignment="Center"
+                                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="5"
+                                                       Text="{Binding AnomalyReason, TargetNullValue=--}"
+                                                       FontSize="12"
+                                                       Foreground="#334155"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <!-- Action Button -->
+                                            <Button Grid.Column="6" Classes="primary-button" Content="审批"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                    Command="{Binding #UrbanAttendedWeighingWindowRoot.DataContext.ApproveRecordCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    IsVisible="{Binding IsAnomaly}"
+                                                    FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- Pagination Footer -->
+                            <Border Grid.Row="4" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0"
+                                    Padding="12,0">
+                                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center" Height="32">
+                                    <TextBlock Grid.Column="0" FontSize="11"
+                                               Foreground="#666666" VerticalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}共 {0} 条  第 {1} / {2} 页">
+                                                <Binding Path="TotalCount" />
+                                                <Binding Path="CurrentPage" />
+                                                <Binding Path="TotalPages" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <Button Classes="secondary-button" Content="上一页"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <Button Classes="secondary-button" Content="下一页"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right Sidebar: Photos (360px) -->
+                    <Border Grid.Column="1" Classes="section-border" Margin="4,8,8,8">
+                        <Grid RowDefinitions="Auto,*">
+                            <!-- Photo Header -->
+                            <Border Grid.Row="0" Background="{DynamicResource PrimaryBlue}" Height="36" CornerRadius="8,8,0,0">
+                                <TextBlock Text="照片" Foreground="White" FontSize="13"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           FontWeight="Medium"
+                                           FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                            </Border>
+
+                            <!-- Photo Areas -->
+                            <ScrollViewer Grid.Row="1">
+                                <StackPanel Margin="8" Spacing="8">
+                                    <!-- Photo 1: License Plate Capture -->
+                                    <StackPanel Spacing="4">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="车牌识别抓拍" FontSize="11" Foreground="#666666"
+                                                       FontWeight="Medium" VerticalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="1" Text="{Binding LprPhotoTime}" FontSize="11" Foreground="#94A3B8"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                Command="{Binding OpenLprImageViewerCommand}"
+                                                CommandParameter="{Binding LprPhotoPath}">
+                                            <Border Height="120" Background="#E5E7EB" CornerRadius="4"
+                                                    BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                                                <Image Source="{Binding LprPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                                       Stretch="UniformToFill" />
+                                            </Border>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <!-- Photo 2: Camera Capture -->
+                                    <StackPanel Spacing="4">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="摄像头抓拍" FontSize="11" Foreground="#666666"
+                                                       FontWeight="Medium" VerticalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11" Foreground="#94A3B8"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                Command="{Binding OpenCameraImageViewerCommand}"
+                                                CommandParameter="{Binding CameraPhotoPath}">
+                                            <Border Height="120" Background="#E5E7EB" CornerRadius="4"
+                                                    BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
+                                                <Image Source="{Binding CameraPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
+                                                       Stretch="UniformToFill" />
+                                            </Border>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </ui:WeighingWindowBase.MainContent>
+
+        </ui:WeighingWindowBase>
+
+        <!-- Frameless resize grips (SystemDecorations=None); use BeginResizeDrag in code-behind -->
+        <Border x:Name="ResizeNorth" Height="6" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeSouth" Height="6" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeWest" Width="6" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeWestEast"
+                Margin="0,6,0,6" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeEast" Width="6" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                Background="Transparent" Cursor="SizeWestEast"
+                Margin="0,6,0,6" ZIndex="100"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeNorthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
+                Background="Transparent" Cursor="TopLeftCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeNorthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Background="Transparent" Cursor="TopRightCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeSouthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Background="Transparent" Cursor="BottomLeftCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+        <Border x:Name="ResizeSouthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Background="Transparent" Cursor="BottomRightCorner" ZIndex="101"
+                PointerPressed="ResizeGrip_OnPointerPressed" />
+    </Grid>
+</Window>

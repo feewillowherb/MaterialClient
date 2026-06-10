@@ -1,0 +1,79 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>MaterialClient.Common</RootNamespace>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <Description>物料客户端共享库 - 核心业务逻辑、数据访问和领域服务</Description>
+        <!-- 强制禁用单一文件发布，即使命令行参数传入也会被覆盖 -->
+        <PublishSingleFile Condition="'$(OutputType)' != 'Exe' And '$(OutputType)' != 'WinExe'">false</PublishSingleFile>
+        <!-- 或者完全跳过类库的发布（推荐） -->
+        <IsPublishable>false</IsPublishable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+            <_Parameter1>MaterialClient.Common.Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Exclude temporary build outputs under project-local artifacts from Compile items. -->
+        <Compile Remove="artifacts\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client"/>
+        <PackageReference Include="Refit.HttpClientFactory"/>
+        <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
+        <PackageReference Include="Volo.Abp.Autofac"/>
+        <PackageReference Include="Volo.Abp.Core"/>
+        <PackageReference Include="Volo.Abp.Ddd.Domain"/>
+        <PackageReference Include="Volo.Abp.Ddd.Application.Contracts"/>
+        <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite"/>
+        <PackageReference Include="System.Management"/>
+        <PackageReference Include="System.IO.Ports"/>
+        <PackageReference Include="System.Reactive"/>
+        <PackageReference Include="ReactiveUI"/>
+        <PackageReference Include="Serilog"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="Serilog.Extensions.Logging"/>
+        <PackageReference Include="Yitter.IdGenerator"/>
+        <PackageReference Include="FlashCap"/>
+        <PackageReference Include="Aliyun.OSS.SDK.NetCore"/>
+        <PackageReference Include="ClosedXML"/>
+        <PackageReference Include="System.Drawing.Common"/>
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <!--   将 HCNetSDK 根目录下的 dll 和 lib 直接输出到输出目录根目录 -->
+        <None Include="HCNetSDK\*.dll" CopyToOutputDirectory="PreserveNewest">
+            <Link>%(Filename)%(Extension)</Link>
+        </None>
+        <None Include="HCNetSDK\*.lib" CopyToOutputDirectory="PreserveNewest">
+            <Link>%(Filename)%(Extension)</Link>
+        </None>
+        <!--   HCNetSDKCom 文件夹保持相对路径结构（与 HCNetSDK.dll 同级） -->
+        <None Include="HCNetSDK\HCNetSDKCom\**\*.*" CopyToOutputDirectory="PreserveNewest">
+            <Link>HCNetSDKCom\%(RecursiveDir)%(Filename)%(Extension)</Link>
+        </None>
+    </ItemGroup>
+
+    <!-- Add VzSDK native libraries and files to the output directory -->
+    <ItemGroup>
+        <!-- Copy all DLLs in VzSDK root directly to output root (flattened) -->
+        <None Include="VzSDK\*.dll" CopyToOutputDirectory="PreserveNewest">
+            <Link>%(Filename)%(Extension)</Link>
+        </None>
+        <!-- Copy all other files (configs, ini, subfolders) preserving directory structure -->
+        <None Include="VzSDK\**\*.*" CopyToOutputDirectory="PreserveNewest">
+            <Link>VzSDK\%(RecursiveDir)%(Filename)%(Extension)</Link>
+        </None>
+    </ItemGroup>
+
+</Project>

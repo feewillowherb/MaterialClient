@@ -1,0 +1,317 @@
+using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
+using Microsoft.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore.Modeling;
+
+namespace MaterialClient.EFCore;
+
+public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
+{
+    /// <summary>
+    /// 禁用审计概念应用（用于数据迁移等场景，CSV数据已包含审计信息）
+    /// </summary>
+    public bool DisableAuditConcepts { get; set; }
+
+    public MaterialClientDbContext(DbContextOptions<MaterialClientDbContext> options)
+        : base(options)
+    {
+    }
+
+    // DbSets
+    public DbSet<Material> Materials { get; set; }
+    public DbSet<MaterialType> MaterialTypes { get; set; }
+    public DbSet<MaterialUnit> MaterialUnits { get; set; }
+    public DbSet<Provider> Providers { get; set; }
+    public DbSet<Waybill> Waybills { get; set; }
+    public DbSet<WeighingRecord> WeighingRecords { get; set; }
+    public DbSet<AttachmentFile> AttachmentFiles { get; set; }
+    public DbSet<WaybillAttachment> WaybillAttachments { get; set; }
+    public DbSet<WeighingRecordAttachment> WeighingRecordAttachments { get; set; }
+    public DbSet<WaybillMaterial> WaybillMaterials { get; set; }
+
+    // Authentication DbSets
+    public DbSet<LicenseInfo> LicenseInfos { get; set; }
+    public DbSet<UserCredential> UserCredentials { get; set; }
+    public DbSet<UserSession> UserSessions { get; set; }
+
+    // Settings DbSet
+    public DbSet<SettingsEntity> Settings { get; set; }
+    public DbSet<WorkSettingsEntity> WorkSettings { get; set; }
+
+    // Urban extension DbSet
+    public DbSet<UrbanWeighingExtension> UrbanWeighingExtensions { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Ignore configuration classes - they are not entities, only used for JSON serialization
+        modelBuilder.Ignore<CameraConfig>();
+        modelBuilder.Ignore<LicensePlateRecognitionConfig>();
+        modelBuilder.Ignore<ScaleSettings>();
+        modelBuilder.Ignore<WeighingConfiguration>();
+        modelBuilder.Ignore<DocumentScannerConfig>();
+        modelBuilder.Ignore<SystemSettings>();
+        modelBuilder.Ignore<WeighingRecordMaterial>(); // Stored as JSON in WeighingRecord
+        modelBuilder.Ignore<SoundDeviceSettings>();
+
+        // Configure Material relationships
+        modelBuilder.Entity<Material>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.Name).IsRequired();
+            entity.Property(e => e.UnitRate).IsRequired().HasDefaultValue(1);
+        });
+
+        // Configure MaterialType relationships
+        modelBuilder.Entity<MaterialType>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.TypeName).HasMaxLength(200);
+            entity.Property(e => e.TypeCode).HasMaxLength(50);
+            entity.Property(e => e.Remark).HasMaxLength(500);
+            entity.Property(e => e.ParentId).IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.CoId).IsRequired();
+            entity.Property(e => e.UpperLimit).HasPrecision(18, 2).HasDefaultValue(0);
+            entity.Property(e => e.LowerLimit).HasPrecision(18, 2).HasDefaultValue(0);
+
+            // 创建索引以提高查询性能
+            entity.HasIndex(e => e.TypeCode);
+            entity.HasIndex(e => e.ParentId);
+            entity.HasIndex(e => e.CoId);
+            entity.HasIndex(e => e.IsDeleted);
+        });
+
+        // Configure MaterialUnit relationships
+        modelBuilder.Entity<MaterialUnit>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.UnitName).IsRequired();
+            entity.Property(e => e.Rate).IsRequired();
+        });
+
+        // Configure Provider relationships
+        modelBuilder.Entity<Provider>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.ProviderName).IsRequired();
+        });
+
+        // Configure Waybill relationships
+        modelBuilder.Entity<Waybill>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.OrderNo).IsRequired();
+            entity.Property(e => e.WeighingMode).HasDefaultValue(WeighingMode.Standard);
+
+            // 为称重模式添加索引以提升查询性能
+            entity.HasIndex(e => e.WeighingMode);
+        });
+
+        // Configure WeighingRecord relationships
+        modelBuilder.Entity<WeighingRecord>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.TotalWeight).IsRequired();
+            entity.Property(e => e.WeighingMode).HasDefaultValue(WeighingMode.Standard);
+
+            // MaterialsJson stores the list of materials as JSON
+            entity.Property(e => e.MaterialsJson);
+
+            // Ignore the computed Materials property (it's derived from MaterialsJson)
+            entity.Ignore(e => e.Materials);
+
+            // 为称重模式添加索引以提升查询性能
+            entity.HasIndex(e => e.WeighingMode);
+        });
+
+        // Configure AttachmentFile relationships
+        modelBuilder.Entity<AttachmentFile>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.FileName).IsRequired();
+            entity.Property(e => e.LocalPath).IsRequired();
+            entity.Property(e => e.LastSyncTime);
+        });
+
+        // Configure WaybillAttachment relationships
+        modelBuilder.Entity<WaybillAttachment>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            // Composite unique constraint
+            entity.HasIndex(e => new { e.WaybillId, e.AttachmentFileId })
+                .IsUnique();
+        });
+
+        // Configure WeighingRecordAttachment relationships
+        modelBuilder.Entity<WeighingRecordAttachment>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+
+            // Composite unique constraint
+            entity.HasIndex(e => new { e.WeighingRecordId, e.AttachmentFileId })
+                .IsUnique();
+        });
+
+        // Configure LicenseInfo
+        modelBuilder.Entity<LicenseInfo>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.AuthEndTime).IsRequired();
+            entity.Property(e => e.MachineCode).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+
+            // Only one license should exist at a time
+            entity.HasIndex(e => e.ProjectId);
+        });
+
+        // Configure UserCredential
+        modelBuilder.Entity<UserCredential>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EncryptedPassword).IsRequired().HasMaxLength(512);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+
+            // One credential per project
+            entity.HasIndex(e => e.ProjectId).IsUnique();
+        });
+
+        // Configure UserSession
+        modelBuilder.Entity<UserSession>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.ProjectId).IsRequired();
+            entity.Property(e => e.LicenseInfoId).IsRequired();
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.TrueName).HasMaxLength(100);
+            entity.Property(e => e.ClientId).IsRequired();
+            entity.Property(e => e.AccessToken).IsRequired().HasMaxLength(512);
+            entity.Property(e => e.ProductName).HasMaxLength(200);
+            entity.Property(e => e.CompanyName).HasMaxLength(200);
+            entity.Property(e => e.ApiUrl).HasMaxLength(500);
+            entity.Property(e => e.LoginTime).IsRequired();
+            entity.Property(e => e.LastActivityTime).IsRequired();
+
+            // One active session per project
+            entity.HasIndex(e => e.ProjectId).IsUnique();
+        });
+
+        // Configure SettingsEntity
+        modelBuilder.Entity<SettingsEntity>(entity =>
+        {
+            entity.ConfigureByConvention();
+
+            entity.Property(e => e.ScaleSettingsJson).IsRequired();
+            entity.Property(e => e.DocumentScannerConfigJson).IsRequired();
+            entity.Property(e => e.SystemSettingsJson).IsRequired();
+            entity.Property(e => e.CameraConfigsJson).IsRequired();
+            entity.Property(e => e.LicensePlateRecognitionConfigsJson).IsRequired();
+            entity.Property(e => e.WeighingConfigurationJson).IsRequired();
+        });
+
+        // Configure WorkSettingsEntity
+        modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
+
+        // UrbanWeighingExtension: logical WeighingRecordId only (no FK / no navigation mapping)
+        modelBuilder.Entity<UrbanWeighingExtension>(entity =>
+        {
+            entity.ConfigureByConvention();
+            entity.Property(e => e.WeighingRecordId).IsRequired();
+            entity.HasIndex(e => e.WeighingRecordId).IsUnique();
+            entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
+            entity.HasIndex(e => e.IsAnomaly);
+        });
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        if (!DisableAuditConcepts)
+        {
+            ApplyAuditConcepts();
+        }
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        if (!DisableAuditConcepts)
+        {
+            ApplyAuditConcepts();
+        }
+        return base.SaveChanges();
+    }
+
+    private void ApplyAuditConcepts()
+    {
+        var now = DateTime.Now;
+        var unixTimestamp = (int)(now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+
+        // 获取当前用户ID和用户名
+        int? currentUserId = null;
+        string? currentUserName = null;
+
+        // 直接从 UserSessions 获取第一个会话（当前活跃会话）
+        var userSession = UserSessions
+            .AsNoTracking()
+            .FirstOrDefault();
+
+        if (userSession != null)
+        {
+            // 使用真实姓名，如果没有则使用用户名
+            currentUserName = !string.IsNullOrWhiteSpace(userSession.Username)
+                ? userSession.Username
+                : userSession.TrueName;
+
+            // 将 long 类型的业务用户ID转换为 int
+            var businessUserId = userSession.UserId;
+            if (businessUserId <= int.MaxValue && businessUserId >= int.MinValue)
+                currentUserId = (int)businessUserId;
+            else
+                // 如果超出 int 范围，使用取模策略
+                currentUserId = (int)(businessUserId % int.MaxValue);
+        }
+
+        foreach (var entry in ChangeTracker.Entries<IMaterialClientAuditedObject>())
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreateUserId = currentUserId;
+                    entry.Entity.Creator = currentUserName;
+                    entry.Entity.AddTime = unixTimestamp;
+                    entry.Entity.AddDate = now;
+                    entry.Entity.LastEditUserId = currentUserId;
+                    entry.Entity.LastEditor = currentUserName;
+                    entry.Entity.UpdateTime = unixTimestamp;
+                    entry.Entity.UpdateDate = now;
+                    break;
+
+                case EntityState.Modified:
+                    entry.Entity.LastEditUserId = currentUserId;
+                    entry.Entity.LastEditor = currentUserName;
+                    entry.Entity.UpdateTime = unixTimestamp;
+                    entry.Entity.UpdateDate = now;
+                    break;
+            }
+    }
+}

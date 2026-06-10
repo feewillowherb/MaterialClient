@@ -13,6 +13,8 @@ Thumbs.db
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+_build_verify/
+.build-verify/
 
 # ---- .NET ----
 project.lock.json

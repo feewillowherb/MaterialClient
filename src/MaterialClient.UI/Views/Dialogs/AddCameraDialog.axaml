@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.UI.ViewModels"
+        x:Class="MaterialClient.UI.Views.Dialogs.AddCameraDialog"
+        x:DataType="vm:AddCameraDialogViewModel"
+        Title="添加摄像头"
+        Width="500" Height="450"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="*,Auto" Margin="20">
+        <StackPanel Grid.Row="0" Spacing="16">
+            <TextBlock Text="摄像头配置"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="Black"
+                       Margin="0,0,0,8" />
+            
+            <!-- Name -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="名称:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding Name}"
+                         Grid.Column="1"
+                         Watermark="camera_1" />
+            </Grid>
+            
+            <!-- IP -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="IP地址:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding Ip}"
+                         Grid.Column="1"
+                         Watermark="192.168.3.245" />
+            </Grid>
+            
+            <!-- Port -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="端口:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding Port}"
+                         Grid.Column="1"
+                         Watermark="8000" />
+            </Grid>
+            
+            <!-- Channel -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="通道:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding Channel}"
+                         Grid.Column="1"
+                         Watermark="1" />
+            </Grid>
+            
+            <!-- Username -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="用户名:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding UserName}"
+                         Grid.Column="1"
+                         Watermark="admin" />
+            </Grid>
+            
+            <!-- Password -->
+            <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="密码:"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Foreground="Black"
+                           Width="100" />
+                <TextBox Text="{Binding Password}"
+                         Grid.Column="1"
+                         Watermark="fdkj112233"
+                         PasswordChar="*" />
+            </Grid>
+        </StackPanel>
+        
+        <StackPanel Grid.Row="1" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    Spacing="12"
+                    Margin="0,20,0,0">
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Padding="24,8"
+                    CornerRadius="4" />
+            <Button Content="确定"
+                    Command="{Binding SaveCommand}"
+                    Classes="primary-button"
+                    Padding="24,8"
+                    CornerRadius="4" />
+        </StackPanel>
+    </Grid>
+</Window>

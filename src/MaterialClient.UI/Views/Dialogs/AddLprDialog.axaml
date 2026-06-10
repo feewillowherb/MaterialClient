@@ -1,0 +1,215 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.UI.ViewModels"
+        x:Class="MaterialClient.UI.Views.Dialogs.AddLprDialog"
+        x:DataType="vm:AddLprDialogViewModel"
+        Title="添加车牌识别设备"
+        Width="450" Height="450"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="*,Auto" Margin="20">
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="16">
+                <TextBlock Text="车牌识别配置"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="Black"
+                           Margin="0,0,0,8" />
+
+                <!-- Name -->
+                <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                    <TextBlock Text="设备名称:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="100" />
+                    <TextBox Text="{Binding Name}"
+                             Grid.Column="1"
+                             Watermark="camera_1" />
+                </Grid>
+
+                <!-- IP -->
+                <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                    <TextBlock Text="设备IP:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="100" />
+                    <TextBox Text="{Binding Ip}"
+                             Grid.Column="1"
+                             Watermark="192.168.3.245" />
+                </Grid>
+
+                <!-- Direction -->
+                <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                    <TextBlock Text="进出方向:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="100" />
+                    <ComboBox SelectedIndex="{Binding DirectionIndex}"
+                              Grid.Column="1">
+                        <ComboBoxItem Content="进场" />
+                        <ComboBoxItem Content="出场" />
+                    </ComboBox>
+                </Grid>
+
+                <!-- Gate I/O -->
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <Separator Margin="0,8" />
+                    <TextBlock Text="道闸 I/O 联动"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="Black" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="启用I/O:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <CheckBox IsChecked="{Binding EnableGateIo}"
+                                  Grid.Column="1"
+                                  Content="启用软件控制道闸打开" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="I/O通道:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding IoChannel}"
+                                 Grid.Column="1"
+                                 Watermark="0" />
+                    </Grid>
+
+                    <TextBlock Text="说明：需要在抓拍机配置的[外设管理]-[输出配置]中解除所有[车牌识别触发]与[输出口]绑定,并将[开关量输入1]与[开关量输出1]绑定。
+                    [开光量输入1]对应I/O通道0,[开光量输入2]对应I/O通道1"
+                               Foreground="Gray"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!-- Hikvision Fields -->
+                <StackPanel IsVisible="{Binding ShowHikvisionLprFields}" Spacing="16" Margin="0,16,0,0">
+                    <Separator Margin="0,8" />
+                    <TextBlock Text="海康威视设备配置"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="Black" />
+
+                    <!-- UserName -->
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="用户名:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding UserName}"
+                                 Grid.Column="1"
+                                 Watermark="admin" />
+                    </Grid>
+
+                    <!-- Password -->
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="密码:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding Password}"
+                                 Grid.Column="1"
+                                 Watermark="请输入密码"
+                                 PasswordChar="●" />
+                    </Grid>
+
+                    <!-- Port -->
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="端口:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding Port}"
+                                 Grid.Column="1"
+                                 Watermark="8000" />
+                    </Grid>
+
+                    <!-- Channel -->
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="通道:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding Channel}"
+                                 Grid.Column="1"
+                                 IsEnabled="False"
+                                 Background="LightGray"
+                                 ToolTip.Tip="通道号固定为 1,无需修改" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Vzvision (臻识 SDK)：用户名、密码、端口，无通道 -->
+                <StackPanel IsVisible="{Binding ShowVzvisionLprFields}" Spacing="16" Margin="0,16,0,0">
+                    <Separator Margin="0,8" />
+                    <TextBlock Text="臻识设备（Vz SDK）连接"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="Black" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="用户名:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding UserName}"
+                                 Grid.Column="1"
+                                 Watermark="admin" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="密码:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding Password}"
+                                 Grid.Column="1"
+                                 Watermark="请输入密码"
+                                 PasswordChar="●" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                        <TextBlock Text="端口:"
+                                   Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Foreground="Black"
+                                   Width="100" />
+                        <TextBox Text="{Binding Port}"
+                                 Grid.Column="1"
+                                 Watermark="80" />
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="12"
+                    Margin="0,20,0,0">
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Padding="24,8"
+                    CornerRadius="4" />
+            <Button Content="确定"
+                    Command="{Binding SaveCommand}"
+                    Classes="primary-button"
+                    Padding="24,8"
+                    CornerRadius="4" />
+        </StackPanel>
+    </Grid>
+</Window>

@@ -25,7 +25,7 @@ jobs:
       run: dotnet build MaterialClient.sln --no-restore -c Release -p:WarningLevel=0
 
     - name: Run unit tests
-      run: dotnet test MaterialClient.Common.Tests --no-restore -c Release --verbosity normal
+      run: dotnet test tests/MaterialClient.Common.Tests/MaterialClient.Common.Tests.csproj --no-restore -c Release --verbosity normal
 
   publish:
     needs: test
@@ -41,10 +41,10 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Publish
-      run: dotnet publish MaterialClient\MaterialClient.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true
+      run: dotnet publish src/MaterialClient/MaterialClient.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
         name: MaterialClient-win-x64
-        path: MaterialClient\bin\Release\net10.0\win-x64\publish\*
+        path: src/MaterialClient/bin/Release/net10.0/win-x64/publish/*

@@ -1,0 +1,39 @@
+using System.ComponentModel;
+
+namespace MaterialClient.Common.Entities.Enums;
+
+/// <summary>
+///     附件类型
+/// </summary>
+public enum AttachType : short
+{
+    /// <summary>
+    ///     进场照片
+    /// </summary>
+    [Description("未匹配榜单照片")] UnmatchedEntryPhoto = 0,
+
+    /// <summary>
+    ///     进场照片
+    /// </summary>
+    [Description("进场照片")] EntryPhoto = 1,
+
+    /// <summary>
+    ///     出场照片
+    /// </summary>
+    [Description("出场照片")] ExitPhoto = 2,
+
+    /// <summary>
+    ///     票据照片
+    /// </summary>
+    [Description("票据照片")] TicketPhoto = 3,
+
+    /// <summary>
+    ///     车牌识别图片（Lrp），仅 UrbanMode = 201 时保存
+    /// </summary>
+    [Description("车牌识别图片")] Lrp = 5,
+
+    /// <summary>
+    ///     城管海康称重抓拍图片，仅 UrbanMode = 201 时保存
+    /// </summary>
+    [Description("城管相机抓拍")] UrbanPhoto = 6
+}

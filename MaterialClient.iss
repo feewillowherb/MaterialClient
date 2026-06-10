@@ -6,7 +6,7 @@
 #define MyAppPublisher "FindongSoft"
 #define MyAppURL "http://www.example.com/"
 #define MyAppExeName "MaterialClient.exe"
-#define SourceDir "MaterialClient\bin\Release\net10.0\win-x64\publish"
+#define SourceDir "src\MaterialClient\bin\Release\net10.0\win-x64\publish"
 #define OutputDir "Installer"
 
 [Setup]
@@ -23,7 +23,7 @@ DisableProgramGroupPage=yes
 LicenseFile=
 OutputDir={#OutputDir}
 OutputBaseFilename={#MyAppName}_Setup_{#MyAppVersion}
-SetupIconFile=MaterialClient\Assets\fd-ico.ico
+SetupIconFile=src\MaterialClient\Assets\fd-ico.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

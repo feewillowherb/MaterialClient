@@ -1,0 +1,135 @@
+diff --git a/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml b/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml
+index e7e7dd7..73b40ac 100644
+--- a/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml
++++ b/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml
+@@ -8,13 +8,13 @@
+         Width="1280" Height="800"
+         MinWidth="900" MinHeight="600"
+         WindowStartupLocation="CenterScreen"
+-        SystemDecorations="None"
++        SystemDecorations="BorderOnly"
+         CanResize="True"
+         Icon="/Assets/fd-ico.ico"
+         Background="{DynamicResource BackgroundGray}">
+ 
+     <Grid>
+-        <Grid x:Name="ContentGrid">
++        <Grid x:Name="ContentGrid" ZIndex="0">
+             <Grid.RowDefinitions>
+                 <RowDefinition Height="48" />
+                 <RowDefinition Height="72" />
+@@ -308,5 +308,33 @@
+                 </ItemsControl>
+             </Border>
+         </Grid>
++
++        <!-- Wider resize grips; requires BorderOnly so Win32 WS_THICKFRAME is enabled -->
++        <Border x:Name="ResizeNorth" Height="6" VerticalAlignment="Top" HorizontalAlignment="Stretch"
++                Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
++        <Border x:Name="ResizeSouth" Height="6" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
++                Background="Transparent" Cursor="SizeNorthSouth" ZIndex="100"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
++        <Border x:Name="ResizeWest" Width="6" HorizontalAlignment="Left" VerticalAlignment="Stretch"
++                Background="Transparent" Cursor="SizeWestEast"
++                Margin="0,6,0,6" ZIndex="100"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
++        <Border x:Name="ResizeEast" Width="6" HorizontalAlignment="Right" VerticalAlignment="Stretch"
++                Background="Transparent" Cursor="SizeWestEast"
++                Margin="0,6,0,6" ZIndex="100"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
++        <Border x:Name="ResizeNorthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
++                Background="Transparent" Cursor="TopLeftCorner" ZIndex="101"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
++        <Border x:Name="ResizeNorthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
++                Background="Transparent" Cursor="TopRightCorner" ZIndex="101"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
++        <Border x:Name="ResizeSouthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
++                Background="Transparent" Cursor="BottomLeftCorner" ZIndex="101"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
++        <Border x:Name="ResizeSouthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
++                Background="Transparent" Cursor="BottomRightCorner" ZIndex="101"
++                PointerPressed="ResizeGrip_OnPointerPressed" />
+     </Grid>
+ </Window>
+diff --git a/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml.cs b/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml.cs
+index 0362fb0..b7c75d6 100644
+--- a/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml.cs
++++ b/MaterialClient.Urban/Views/UrbanAttendedWeighingWindow.axaml.cs
+@@ -9,30 +9,20 @@ namespace MaterialClient.Urban.Views;
+ 
+ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
+ {
+-    /// <summary>
+-    ///     Creates the window (for ABP DI mode - ViewModel resolved from container)
+-    /// </summary>
+     public UrbanAttendedWeighingWindow()
+     {
+         InitializeComponent();
+     }
+ 
+-    /// <summary>
+-    ///     Creates the window with a pre-configured ViewModel (for DI mode)
+-    /// </summary>
+     public UrbanAttendedWeighingWindow(UrbanAttendedWeighingViewModel viewModel)
+     {
+         InitializeComponent();
+         DataContext = viewModel;
+ 
+-        // Bind data to controls
+         VehicleList.ItemsSource = viewModel.WeighingRecords;
+         DeviceStatusList.ItemsSource = viewModel.DeviceStatuses;
+     }
+ 
+-    /// <summary>
+-    ///     Gets the current ViewModel
+-    /// </summary>
+     public UrbanAttendedWeighingViewModel? ViewModel => DataContext as UrbanAttendedWeighingViewModel;
+ 
+     private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+@@ -41,6 +31,32 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
+             BeginMoveDrag(e);
+     }
+ 
++    private void ResizeGrip_OnPointerPressed(object? sender, PointerPressedEventArgs e)
++    {
++        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
++            return;
++
++        var edge = ResolveResizeEdge(sender);
++        if (edge is null)
++            return;
++
++        BeginResizeDrag(edge.Value, e);
++    }
++
++    private static WindowEdge? ResolveResizeEdge(object? sender) =>
++        sender switch
++        {
++            Border { Name: "ResizeNorth" } => WindowEdge.North,
++            Border { Name: "ResizeSouth" } => WindowEdge.South,
++            Border { Name: "ResizeWest" } => WindowEdge.West,
++            Border { Name: "ResizeEast" } => WindowEdge.East,
++            Border { Name: "ResizeNorthWest" } => WindowEdge.NorthWest,
++            Border { Name: "ResizeNorthEast" } => WindowEdge.NorthEast,
++            Border { Name: "ResizeSouthWest" } => WindowEdge.SouthWest,
++            Border { Name: "ResizeSouthEast" } => WindowEdge.SouthEast,
++            _ => null,
++        };
++
+     private void OnMinimizeButtonClick(object? sender, RoutedEventArgs e)
+         => WindowState = WindowState.Minimized;
+ 
+@@ -58,12 +74,9 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
+ 
+         clickedTab.Classes.Add("active");
+ 
+-        // Trigger filter based on clicked tab
+         var tabText = clickedTab.Content?.ToString();
+         if (tabText != null)
+-        {
+             ViewModel.SetFilterTab(tabText);
+-        }
+     }
+ 
+     private void OnRecordClick(object? sender, PointerPressedEventArgs e)

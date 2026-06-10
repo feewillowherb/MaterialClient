@@ -1,0 +1,823 @@
+using System;
+using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
+using System.Text;
+using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
+using MaterialClient.Common.Extensions;
+using MaterialClient.Common.Services;
+using MaterialClient.Common.Utils;
+using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
+
+namespace MaterialClient.Common.Services.Hikvision;
+
+/// <summary>
+///     海康威视车牌识别服务接口
+///     支持多设备管理，可动态添加/更新设备和检查设备在线状态
+/// </summary>
+public interface IHikvisionLprService
+{
+    /// <summary>
+    ///     添加或更新设备配置
+    ///     如果设备已存在则更新配置，否则添加新设备
+    /// </summary>
+    /// <param name="config">设备配置</param>
+    void AddOrUpdateDevice(LicensePlateRecognitionConfig config);
+
+    /// <summary>
+    ///     检查设备是否在线
+    ///     尝试连接设备并验证连接状态
+    /// </summary>
+    /// <param name="config">设备配置</param>
+    /// <returns>设备是否在线</returns>
+    bool IsOnline(LicensePlateRecognitionConfig config);
+
+    /// <summary>
+    ///     启动监听服务
+    ///     从 SystemSettings.Urls 获取监听地址和端口，启动监听服务，可接收多个海康设备的车牌识别数据
+    /// </summary>
+    /// <returns>启动是否成功</returns>
+    Task<bool> StartAsync();
+
+    /// <summary>
+    ///     停止监听服务
+    /// </summary>
+    Task StopAsync();
+}
+
+/// <summary>
+///     海康威视车牌识别服务实现
+///     通过 HCNetSDK 与海康设备通信，接收车牌识别结果
+///     支持被动捕获（设备推送）和主动捕获（应用触发）
+/// </summary>
+public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonDependency, IAsyncDisposable
+{
+    private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _deviceConfigs = new();
+    private readonly ConcurrentDictionary<string, int> _deviceKeyToUserId = new(); // 登录会话缓存
+    private readonly ILogger<HikvisionLprService>? _logger;
+    private readonly ISettingsService _settingsService;
+    private readonly ILocalEventBus _localEventBus;
+    private GCHandle? _callbackHandle;
+    private bool _isInitialized;
+    private int _listenHandle = -1;
+    private WeighingMode _cachedWeighingMode = WeighingMode.Standard;
+
+    public HikvisionLprService(ISettingsService settingsService, ILocalEventBus localEventBus, ILogger<HikvisionLprService>? logger = null)
+    {
+        _settingsService = settingsService;
+        _localEventBus = localEventBus;
+        _logger = logger;
+    }
+
+    /// <summary>
+    ///     海康威视设备支持主动抓拍
+    /// </summary>
+    public bool SupportsActiveCapture => true;
+
+    /// <summary>
+    ///     添加或更新设备配置
+    /// </summary>
+    public void AddOrUpdateDevice(LicensePlateRecognitionConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        if (!config.IsValid())
+        {
+            throw new ArgumentException("设备配置无效", nameof(config));
+        }
+
+        _deviceConfigs.AddOrUpdate(config.Ip, config, (_, __) => config);
+        _logger?.LogInformation("设备配置已添加/更新: IP={Ip}, Name={Name}, Direction={Direction}",
+            config.Ip, config.Name, config.Direction);
+    }
+
+    /// <summary>
+    ///     检查设备是否在线
+    /// </summary>
+    public bool IsOnline(LicensePlateRecognitionConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        EnsureInitialized();
+
+        var success = TryLogin(config, out var userId);
+
+        if (success)
+        {
+            // 登录成功后登出，释放资源
+            HikvisionSdk.NET_DVR_Logout(userId);
+            _logger?.LogDebug("设备在线检查成功: IP={Ip}", config.Ip);
+        }
+        else
+        {
+            _logger?.LogWarning("设备离线: IP={Ip}", config.Ip);
+        }
+
+        return success;
+    }
+
+    /// <summary>
+    ///     启动监听服务
+    /// </summary>
+    public async Task<bool> StartAsync()
+    {
+        await Task.CompletedTask; // 保持方法签名为异步
+
+        // 检查是否已经启动
+        if (_listenHandle >= 0)
+        {
+            _logger?.LogWarning("监听服务已经启动，无需重复启动");
+            return false;
+        }
+
+        try
+        {
+            // 从 SystemSettings.Urls 获取监听地址和端口
+            var settings = await _settingsService.GetSettingsAsync();
+            var urls = settings.SystemSettings.Urls;
+
+            // 缓存当前称重模式（用于 Lrp 附件保存判断）
+            _cachedWeighingMode = settings.SystemSettings.DefaultWeighingMode;
+            
+            if (string.IsNullOrWhiteSpace(urls))
+            {
+                _logger?.LogError("SystemSettings.Urls 为空，无法启动监听服务");
+                return false;
+            }
+
+            // 解析 URL，提取 IP 和端口
+            var (listenLocalIp, listenLocalPort) = ParseUrl(urls);
+            
+            if (string.IsNullOrWhiteSpace(listenLocalIp))
+            {
+                _logger?.LogError("无法从 SystemSettings.Urls 解析 IP 地址: {Urls}", urls);
+                return false;
+            }
+
+            if (listenLocalPort <= 0 || listenLocalPort > 65535)
+            {
+                _logger?.LogError("从 SystemSettings.Urls 解析的端口无效: {Port}, Urls={Urls}", listenLocalPort, urls);
+                return false;
+            }
+
+            // 确保 SDK 已初始化
+            EnsureInitialized();
+
+            // 创建回调委托
+            HikvisionSdk.MSGCallBack callback = MessageCallback;
+
+            // CRITICAL: 使用 GCHandle 钉住委托，防止垃圾回收
+            // 非托管 SDK 只存储函数指针，GC 无法知道它仍在使用
+            _callbackHandle = GCHandle.Alloc(callback);
+
+            // 启动监听
+            _listenHandle = HikvisionSdk.NET_DVR_StartListen_V30(listenLocalIp, (ushort)listenLocalPort,
+                callback, IntPtr.Zero);
+
+            if (_listenHandle < 0)
+            {
+                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+                _logger?.LogError("启动监听失败: IP={Ip}, Port={Port}, ErrorCode={ErrorCode}, ErrorDesc={ErrorDesc}",
+                    listenLocalIp, listenLocalPort, errorCode, GetErrorDescription(errorCode));
+
+                // 释放 GCHandle
+                if (_callbackHandle.HasValue)
+                {
+                    _callbackHandle.Value.Free();
+                    _callbackHandle = null;
+                }
+
+                _listenHandle = -1;
+                return false;
+            }
+
+            _logger?.LogInformation("监听服务启动成功: IP={Ip}, Port={Port}, ListenHandle={Handle}",
+                listenLocalIp, listenLocalPort, _listenHandle);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "启动监听服务时发生异常");
+
+            // 清理资源
+            if (_callbackHandle.HasValue)
+            {
+                _callbackHandle.Value.Free();
+                _callbackHandle = null;
+            }
+
+            _listenHandle = -1;
+            return false;
+        }
+    }
+
+    /// <summary>
+    ///     解析 URL，提取 IP 地址和端口
+    /// </summary>
+    private (string ip, int port) ParseUrl(string url)
+    {
+        try
+        {
+            // 如果没有协议前缀，自动添加 http://
+            var urlToParse = url.Trim();
+            if (!urlToParse.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !urlToParse.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                urlToParse = "http://" + urlToParse;
+            }
+
+            var uri = new Uri(urlToParse);
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : 80; // 默认端口 80
+
+            // 如果 host 是 localhost，转换为 0.0.0.0（监听所有接口）
+            if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                host = "0.0.0.0";
+            }
+
+            return (host, port);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "解析 URL 失败: {Url}", url);
+            return (string.Empty, 0);
+        }
+    }
+
+    /// <summary>
+    ///     停止监听服务
+    /// </summary>
+    public async Task StopAsync()
+    {
+        await Task.CompletedTask; // 保持方法签名为异步
+
+        if (_listenHandle < 0)
+        {
+            _logger?.LogWarning("监听服务未启动，无需停止");
+            return;
+        }
+
+        try
+        {
+            // 停止监听
+            var success = HikvisionSdk.NET_DVR_StopListen_V30(_listenHandle);
+
+            if (!success)
+            {
+                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+                _logger?.LogWarning("停止监听失败: ListenHandle={Handle}, ErrorCode={ErrorCode}, ErrorDesc={ErrorDesc}",
+                    _listenHandle, errorCode, GetErrorDescription(errorCode));
+            }
+            else
+            {
+                _logger?.LogInformation("监听服务已停止: ListenHandle={Handle}", _listenHandle);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "停止监听服务时发生异常: ListenHandle={Handle}", _listenHandle);
+        }
+        finally
+        {
+            // CRITICAL: 释放 GCHandle，允许委托被垃圾回收
+            // 必须在 SDK 停止调用回调之后才能释放
+            if (_callbackHandle.HasValue)
+            {
+                _callbackHandle.Value.Free();
+                _callbackHandle = null;
+            }
+
+            _listenHandle = -1;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+    }
+
+    /// <summary>
+    ///     消息回调函数
+    ///     CRITICAL: 整个回调必须用 try-catch 包裹，防止未处理异常导致进程崩溃
+    /// </summary>
+    private void MessageCallback(int lCommand, IntPtr pAlarmer, IntPtr pAlarmInfo, uint dwBufLen, IntPtr pUser)
+    {
+        try
+        {
+            // 根据命令类型分发到不同的处理方法
+            switch (lCommand)
+            {
+                case HikvisionSdk.COMM_UPLOAD_PLATE_RESULT:
+                    HandlePlateResult(pAlarmer, pAlarmInfo, dwBufLen);
+                    break;
+
+                case HikvisionSdk.COMM_ITS_PLATE_RESULT:
+                    HandleItsPlateResult(pAlarmer, pAlarmInfo, dwBufLen);
+                    break;
+
+                default:
+                    // 忽略其他消息
+                    _logger?.LogDebug("收到未处理的消息: Command={Command}", lCommand);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            // 必须捕获所有异常，防止非托管回调崩溃进程
+            _logger?.LogError(ex, "消息回调异常: Command={Command}", lCommand);
+        }
+    }
+
+    /// <summary>
+    ///     处理车牌识别结果 (COMM_UPLOAD_PLATE_RESULT)
+    /// </summary>
+    private void HandlePlateResult(IntPtr pAlarmer, IntPtr pAlarmInfo, uint dwBufLen)
+    {
+        try
+        {
+            // 解析报警器信息（包含设备 IP）
+            var alarmer = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_ALARMER>(pAlarmer);
+            var deviceIp = Encoding.ASCII.GetString(alarmer.sDeviceIP).TrimEnd('\0');
+
+            // 查找设备配置
+            _deviceConfigs.TryGetValue(deviceIp, out var config);
+
+            // 解析车牌识别结果
+            var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(pAlarmInfo);
+
+            // 使用 GBK 编码提取车牌号
+            var plateNumber = HikvisionEncodingHelper.GetString(plateResult.sLicense, _logger);
+
+            // 提取车辆信息
+            var vehicleColor = MapVehicleColor(plateResult.byColor);
+            var vehicleType = MapVehicleType(plateResult.byVehicleType);
+            var plateColor = MapPlateColor(plateResult.struPlateInfo);
+
+            // 提取 Lrp 图片（仅 UrbanMode）
+            var lrpPath = TrySaveLrpAttachment(plateResult.pBuffer, plateResult.dwPicLen, plateNumber);
+
+            // 通过 ILocalEventBus 发布车牌识别事件
+            var eventData = new LicensePlateRecognizedEventData
+            {
+                PlateNumber = plateNumber,
+                ColorType = null, // 海康威视使用 PlateColor 字符串字段
+                VehicleColor = vehicleColor,
+                VehicleType = vehicleType,
+                PlateColor = plateColor,
+                DeviceType = LprDeviceType.Hikvision,
+                DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
+                Timestamp = DateTime.Now,
+                LrpImagePath = lrpPath
+            };
+            _ = _localEventBus.PublishAsync(eventData);
+
+            _logger?.LogInformation(
+                "收到车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
+                eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "处理车牌识别结果失败");
+        }
+    }
+
+    /// <summary>
+    ///     处理 ITS 车牌识别结果 (COMM_ITS_PLATE_RESULT)
+    /// </summary>
+    private void HandleItsPlateResult(IntPtr pAlarmer, IntPtr pAlarmInfo, uint dwBufLen)
+    {
+        try
+        {
+            // 解析报警器信息（包含设备 IP）
+            var alarmer = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_ALARMER>(pAlarmer);
+            var deviceIp = Encoding.ASCII.GetString(alarmer.sDeviceIP).TrimEnd('\0');
+
+            // 查找设备配置
+            _deviceConfigs.TryGetValue(deviceIp, out var config);
+
+            // 解析 ITS 车牌识别结果
+            var itsResult = Marshal.PtrToStructure<HikvisionSdk.NET_ITS_PLATE_RESULT>(pAlarmInfo);
+
+            // 遍历所有车牌识别结果
+            for (var i = 0; i < itsResult.dwResultNum && i < itsResult.struPlateInfo.Length; i++)
+            {
+                var plateInfo = itsResult.struPlateInfo[i];
+
+                // 使用 GBK 编码提取车牌号
+                var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
+
+                // 提取车辆信息
+                var vehicleColor = MapVehicleColor(plateInfo.byColor);
+                var vehicleType = MapVehicleType(plateInfo.byVehicleType);
+                var plateColor = MapPlateColor(plateInfo.struPlateInfoEx);
+
+                // 提取 Lrp 图片（仅 UrbanMode）
+                var lrpPath = TrySaveLrpAttachment(plateInfo.pBuffer, plateInfo.dwPicLen, plateNumber);
+
+                // 通过 ILocalEventBus 发布车牌识别事件
+                var eventData = new LicensePlateRecognizedEventData
+                {
+                    PlateNumber = plateNumber,
+                    ColorType = null, // 海康威视使用 PlateColor 字符串字段
+                    VehicleColor = vehicleColor,
+                    VehicleType = vehicleType,
+                    PlateColor = plateColor,
+                    DeviceType = LprDeviceType.Hikvision,
+                    DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
+                    Timestamp = DateTime.Now,
+                    LrpImagePath = lrpPath
+                };
+                _ = _localEventBus.PublishAsync(eventData);
+
+                _logger?.LogInformation(
+                    "收到 ITS 车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
+                    eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "处理 ITS 车牌识别结果失败");
+        }
+    }
+
+    /// <summary>
+    ///     尝试保存 Lrp 车牌识别图片（仅 UrbanMode = 201 时保存）
+    ///     从海康威视 SDK 回调的 pBuffer 提取图片数据，压缩后保存到磁盘
+    /// </summary>
+    /// <param name="pBuffer">SDK 回调中的图片数据指针</param>
+    /// <param name="picLen">图片数据长度</param>
+    /// <param name="plateNumber">车牌号（用于文件名）</param>
+    /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
+    private string? TrySaveLrpAttachment(IntPtr pBuffer, int picLen, string plateNumber)
+    {
+        // 仅 UrbanMode = 201 时保存 Lrp 附件
+        if (_cachedWeighingMode != WeighingMode.UrbanMode)
+            return null;
+
+        if (pBuffer == IntPtr.Zero || picLen <= 0)
+            return null;
+
+        try
+        {
+            // 从非托管内存复制图片字节
+            var imageBytes = new byte[picLen];
+            Marshal.Copy(pBuffer, imageBytes, 0, picLen);
+
+            // 使用 JpegCompressionUtil 压缩（Lrp 专用质量）
+            var compressedBytes = JpegCompressionUtil.TryCompressJpegBytes(
+                imageBytes, JpegCompressionUtil.LrpCompressionQuality, _logger);
+            var finalBytes = compressedBytes ?? imageBytes;
+
+            // 保存到 Lrp 目录
+            var lrpDir = PathManager.EnsureDirectoryExists("Lrp");
+            var safePlate = string.IsNullOrWhiteSpace(plateNumber) ? "unknown" : plateNumber;
+            var fileName = $"{safePlate}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+            var filePath = Path.Combine(lrpDir, fileName);
+            File.WriteAllBytes(filePath, finalBytes);
+
+            var relativePath = PathManager.ToRelativePath(filePath);
+            _logger?.LogInformation("已保存 Lrp 附件: {Path} ({Size} bytes, 原始 {Original} bytes)",
+                relativePath, finalBytes.Length, imageBytes.Length);
+
+            return relativePath;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "保存 Lrp 附件失败: Plate={Plate}", plateNumber);
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     确保 SDK 已初始化
+    /// </summary>
+    private void EnsureInitialized()
+    {
+        if (_isInitialized)
+        {
+            return;
+        }
+
+        lock (this)
+        {
+            if (_isInitialized)
+            {
+                return;
+            }
+
+            if (!HikvisionSdk.NET_DVR_Init())
+            {
+                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+                throw new InvalidOperationException(
+                    $"SDK 初始化失败: ErrorCode={errorCode}, ErrorDesc={GetErrorDescription(errorCode)}");
+            }
+
+            _isInitialized = true;
+            _logger?.LogInformation("海康威视 SDK 初始化成功");
+
+            // 注册进程退出处理
+            AppDomain.CurrentDomain.ProcessExit += (_, __) => Cleanup();
+        }
+    }
+
+    /// <summary>
+    ///     清理 SDK 资源
+    /// </summary>
+    private void Cleanup()
+    {
+        if (!_isInitialized)
+        {
+            return;
+        }
+
+        lock (this)
+        {
+            if (!_isInitialized)
+            {
+                return;
+            }
+
+            try
+            {
+                HikvisionSdk.NET_DVR_Cleanup();
+                _isInitialized = false;
+                _logger?.LogInformation("海康威视 SDK 资源已清理");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "清理 SDK 资源时发生异常");
+            }
+        }
+    }
+
+    /// <summary>
+    ///     尝试登录设备
+    /// </summary>
+    private bool TryLogin(LicensePlateRecognitionConfig config, out int userId)
+    {
+        userId = -1;
+
+        try
+        {
+            // 验证配置
+            if (!int.TryParse(config.Port, out var port) || port <= 0)
+            {
+                _logger?.LogWarning("设备端口无效: IP={Ip}, Port={Port}", config.Ip, config.Port);
+                return false;
+            }
+
+            // 构建设备登录信息
+            var loginInfo = new HikvisionSdk.NET_DVR_USER_LOGIN_INFO
+            {
+                sDeviceAddress = ToFixedBytes(config.Ip, 129),
+                sUserName = ToFixedBytes(config.UserName ?? string.Empty, 64),
+                sPassword = ToFixedBytes(config.Password ?? string.Empty, 64),
+                wPort = (ushort)port,
+                bUseAsynLogin = 0
+            };
+
+            var devInfo = new HikvisionSdk.NET_DVR_DEVICEINFO_V40();
+
+            // 调用登录 API
+            userId = HikvisionSdk.NET_DVR_Login_V40(ref loginInfo, ref devInfo);
+
+            if (userId < 0)
+            {
+                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+                _logger?.LogWarning(
+                    "设备登录失败: IP={Ip}, Port={Port}, Username={Username}, ErrorCode={ErrorCode}, ErrorDesc={ErrorDesc}",
+                    config.Ip, config.Port, config.UserName, errorCode, GetErrorDescription(errorCode));
+                return false;
+            }
+
+            _logger?.LogDebug("设备登录成功: IP={Ip}, UserId={UserId}", config.Ip, userId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "设备登录异常: IP={Ip}", config.Ip);
+            return false;
+        }
+    }
+
+    /// <summary>
+    ///     将字符串转换为固定长度的字节数组
+    /// </summary>
+    private static byte[] ToFixedBytes(string text, int fixedLen)
+    {
+        var bytes = Encoding.ASCII.GetBytes(text ?? string.Empty);
+        Array.Resize(ref bytes, fixedLen);
+        return bytes;
+    }
+
+    /// <summary>
+    ///     获取错误描述
+    /// </summary>
+    private static string GetErrorDescription(uint errorCode)
+    {
+        return errorCode switch
+        {
+            0 => "无错误",
+            1 => "用户名或密码错误",
+            2 => "权限不足",
+            3 => "SDK 未初始化",
+            4 => "通道号错误",
+            5 => "设备连接数达到上限",
+            6 => "版本不匹配",
+            7 => "连接设备失败",
+            8 => "发送失败",
+            9 => "接收失败",
+            10 => "超时",
+            11 => "数据传输失败",
+            12 => "端口错误",
+            13 => "密码错误",
+            14 => "获取 DVR 工作状态失败",
+            15 => "获取 DVR 系统信息失败",
+            16 => "DVR 不支持此功能",
+            17 => "DVR 离线",
+            18 => "用户被锁定",
+            19 => "分配资源失败",
+            20 => "DVR 正在操作",
+            21 => "DVR 资源正在使用",
+            22 => "DVR 不允许更多连接",
+            23 => "DVR 命令执行失败",
+            24 => "DVR 预览失败",
+            25 => "DVR 参数格式错误",
+            26 => "DVR 无效文件或文件错误",
+            27 => "启动预览失败",
+            28 => "打开文件失败",
+            29 => "读取文件失败",
+            30 => "写入文件失败",
+            31 => "关闭文件失败",
+            32 => "创建文件失败",
+            33 => "删除文件失败",
+            34 => "定位文件失败",
+            35 => "获取文件大小失败",
+            36 => "打开流失败",
+            37 => "关闭流失败",
+            38 => "获取流失败",
+            39 => "开始录像失败",
+            40 => "停止录像失败",
+            41 => "开始抓拍失败",
+            42 => "停止抓拍失败",
+            43 => "无图像",
+            44 => "抓拍超时",
+            45 => "获取流超时",
+            _ => $"未知错误 ({errorCode})"
+        };
+    }
+
+    /// <summary>
+    ///     主动触发海康威视设备的车牌识别；识别结果通过 ILocalEventBus 的 LicensePlateRecognizedEventData 交付。
+    /// </summary>
+    /// <param name="config">设备配置</param>
+    public async Task TriggerCaptureAsync(LicensePlateRecognitionConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        // 1. 确保登录(使用会话缓存,避免重复登录)
+        var key = BuildDeviceKey(config);
+        var userId = _deviceKeyToUserId.AddOrUpdate(
+            key,
+            _ => LoginDevice(config),
+            (_, existingUserId) => existingUserId >= 0 ? existingUserId : LoginDevice(config));
+
+        if (userId < 0)
+        {
+            _logger?.LogError("登录海康威视设备失败: {Device}", config.Name);
+            throw new InvalidOperationException($"设备登录失败: {config.Name}");
+        }
+
+        // 2. 触发抓拍；结果由设备回调发布到 ILocalEventBus
+        var snapCfg = new HikvisionSdk.NET_DVR_SNAPCFG
+        {
+            dwSize = (uint)Marshal.SizeOf<HikvisionSdk.NET_DVR_SNAPCFG>(),
+            byRelatedDriveWay = 0,
+            bySnapTimes = 0, // 0 = 单次抓拍
+            wSnapWaitTime = 0,
+            wIntervalTime = new ushort[4],
+            dwSnapVehicleNum = 0,
+            struJpegPara = new HikvisionSdk.NET_DVR_JPEGPARA { wPicSize = 0xff, wPicQuality = 1 },
+            byRes2 = new byte[16]
+        };
+
+        var result = HikvisionSdk.NET_DVR_ContinuousShoot(userId, ref snapCfg);
+
+        if (!result)
+        {
+            var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+            var error = GetErrorDescription(errorCode);
+            _logger?.LogError("触发抓拍失败: {Error}", error);
+            throw new InvalidOperationException($"触发抓拍失败: {error}");
+        }
+
+        _logger?.LogInformation("已触发海康威视设备抓拍: Device={Device}", config.Name);
+
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     登录设备
+    /// </summary>
+    private int LoginDevice(LicensePlateRecognitionConfig config)
+    {
+        try
+        {
+            // 验证配置
+            if (!int.TryParse(config.Port, out var port) || port <= 0)
+            {
+                _logger?.LogWarning("设备端口无效: IP={Ip}, Port={Port}", config.Ip, config.Port);
+                return -1;
+            }
+
+            // 构建设备登录信息
+            var loginInfo = new HikvisionSdk.NET_DVR_USER_LOGIN_INFO
+            {
+                sDeviceAddress = ToFixedBytes(config.Ip, 129),
+                sUserName = ToFixedBytes(config.UserName ?? string.Empty, 64),
+                sPassword = ToFixedBytes(config.Password ?? string.Empty, 64),
+                wPort = (ushort)port,
+                bUseAsynLogin = 0 // 0-同步登录, 1-异步登录
+            };
+
+            var deviceInfo = new HikvisionSdk.NET_DVR_DEVICEINFO_V40();
+            var userId = HikvisionSdk.NET_DVR_Login_V40(ref loginInfo, ref deviceInfo);
+
+            if (userId < 0)
+            {
+                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+                _logger?.LogWarning("设备登录失败: IP={Ip}, Port={Port}, ErrorCode={ErrorCode}",
+                    config.Ip, port, errorCode);
+            }
+            else
+            {
+                _logger?.LogDebug("设备登录成功: IP={Ip}, UserId={UserId}", config.Ip, userId);
+            }
+
+            return userId;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "登录设备时发生异常: IP={Ip}", config.Ip);
+            return -1;
+        }
+    }
+
+    /// <summary>
+    ///     构建设备唯一键
+    /// </summary>
+    private static string BuildDeviceKey(LicensePlateRecognitionConfig config)
+    {
+        return $"{config.Ip}:{config.Port}";
+    }
+
+    /// <summary>
+    ///     映射车身颜色枚举值为可读字符串
+    /// </summary>
+    /// <param name="byColor">车身颜色枚举值</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapVehicleColor(int byColor)
+    {
+        if (!Enum.IsDefined(typeof(HikvisionVehicleColorType), byColor))
+            return null;
+
+        var vehicleColorType = (HikvisionVehicleColorType)byColor;
+        return vehicleColorType.GetDescription();
+    }
+
+    /// <summary>
+    ///     映射车型枚举值为可读字符串
+    /// </summary>
+    /// <param name="byVehicleType">车型枚举值</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapVehicleType(int byVehicleType)
+    {
+        if (!Enum.IsDefined(typeof(HikvisionVehicleType), byVehicleType))
+            return null;
+
+        var vehicleType = (HikvisionVehicleType)byVehicleType;
+        return vehicleType.GetDescription();
+    }
+
+    /// <summary>
+    ///     映射车牌颜色枚举值为可读字符串
+    /// </summary>
+    /// <param name="plateInfoEx">车牌扩展信息</param>
+    /// <returns>可读字符串，未知值返回 null</returns>
+    private static string? MapPlateColor(HikvisionSdk.NET_DVR_PLATE_INFO_EX plateInfoEx)
+    {
+        if (plateInfoEx.byColor == null || plateInfoEx.byColor.Length == 0)
+            return null;
+
+        var colorValue = plateInfoEx.byColor[0];
+        if (!Enum.IsDefined(typeof(HikvisionPlateColorType), colorValue))
+            return null;
+
+        var plateColorType = (HikvisionPlateColorType)colorValue;
+        return plateColorType.GetDescription();
+    }
+}
