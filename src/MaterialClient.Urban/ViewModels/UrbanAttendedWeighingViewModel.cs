@@ -213,9 +213,30 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     return;
                 }
 
+                // Capture old values before update for edit history tracking
+                var oldPlateNumber = item.PlateNumber ?? string.Empty;
+                var oldTotalWeight = item.TotalWeight;
+
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
                 await weighingRecordService.UpdateWeighingRecordAsync(
                     item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
+
+                // Append edit history entries for changed fields
+                var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(item.WeighingRecordId);
+                if (extension != null)
+                {
+                    if (oldPlateNumber != result.PlateNumber)
+                    {
+                        await _urbanWeighingExtensionService.AppendEditEntryAsync(
+                            extension.Id, "PlateNumber", oldPlateNumber, result.PlateNumber);
+                    }
+
+                    if (oldTotalWeight != result.TotalWeight)
+                    {
+                        await _urbanWeighingExtensionService.AppendEditEntryAsync(
+                            extension.Id, "TotalWeight", oldTotalWeight.ToString(), result.TotalWeight.ToString());
+                    }
+                }
 
                 await ReloadRecordsAsync();
             }

@@ -111,6 +111,8 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 ProId = licenseInfo?.ProjectId.ToString(),
                 ProName = licenseInfo?.ProName,
                 IsAnomaly = extension?.IsAnomaly ?? false,
+                AnomalyReason = extension?.AnomalyReason,
+                EditHistoryJson = extension?.EditHistoryJson,
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),
                 ClientSyncTime = null,
                 ClientRetryCount = extension?.RetryCount,

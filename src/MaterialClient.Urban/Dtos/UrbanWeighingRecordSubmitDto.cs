@@ -40,6 +40,10 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("isAnomaly")] public bool IsAnomaly { get; set; }
 
+    [JsonPropertyName("anomalyReason")] public string? AnomalyReason { get; set; }
+
+    [JsonPropertyName("editHistoryJson")] public string? EditHistoryJson { get; set; }
+
     [JsonPropertyName("clientSyncType")] public int? ClientSyncType { get; set; }
 
     [JsonPropertyName("clientSyncTime")] public DateTime? ClientSyncTime { get; set; }
