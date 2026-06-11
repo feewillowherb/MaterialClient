@@ -364,6 +364,10 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig);
             await _urbanWeighingExtensionService.UpdateAnomalyFlagAsync(extension.Id, isAnomaly);
 
+            // Also persist the recalculated AnomalyReason
+            var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig) : null;
+            extension.AnomalyReason = reason;
+
             _logger.LogInformation(
                 "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending, IsAnomaly={IsAnomaly}",
                 weighingRecordId, plateNumber, totalWeight, isAnomaly);

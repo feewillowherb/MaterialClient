@@ -61,6 +61,14 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             LastErrorTime = null
         };
 
+        // Persist AnomalyReason at creation time
+        var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
+        var anomalyConfig = GetAnomalyDetectionConfig();
+        extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig);
+        extension.AnomalyReason = extension.IsAnomaly
+            ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig)
+            : null;
+
         await _extensionRepository.InsertAsync(extension, autoSave: true);
         _logger.LogDebug("Created UrbanWeighingExtension {ExtensionId} for WeighingRecord {RecordId}",
             extension.Id, weighingRecordId);
@@ -129,7 +137,6 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             .Take(pageSize)
             .ToListAsync();
 
-        var anomalyConfig = GetAnomalyDetectionConfig();
         var items = rows.Select(x => new UrbanWeighingListItemDto
         {
             WeighingRecordId = x.Record.Id,
@@ -138,9 +145,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             TotalWeight = x.Record.TotalWeight,
             IsAnomaly = x.Extension?.IsAnomaly ?? false,
             SyncStatus = x.Extension?.SyncStatus,
-            AnomalyReason = (x.Extension?.IsAnomaly ?? false)
-                ? _anomalyDetector.GetAnomalyReason(x.Record, anomalyConfig)
-                : null,
+            AnomalyReason = x.Extension?.AnomalyReason,
             UploadTime = x.Extension?.SyncStatus == SyncStatus.Synced ? x.Record.UpdateDate ?? x.Record.AddDate : null
         }).ToList();
 
@@ -187,6 +192,23 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
     {
         var extension = await _extensionRepository.GetAsync(extensionId);
         extension.IsAnomaly = isAnomaly;
+        await _extensionRepository.UpdateAsync(extension, autoSave: true);
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public virtual async Task AppendEditEntryAsync(Guid extensionId, string field, string oldValue, string newValue)
+    {
+        var extension = await _extensionRepository.GetAsync(extensionId);
+        var history = extension.EditHistory;
+        history.Add(new EditEntry
+        {
+            Field = field,
+            OldValue = oldValue,
+            NewValue = newValue,
+            ChangedAt = DateTime.UtcNow
+        });
+        extension.EditHistory = history;
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 

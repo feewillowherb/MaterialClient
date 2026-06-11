@@ -40,4 +40,13 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     ///     更新扩展的异常标记。
     /// </summary>
     Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly);
+
+    /// <summary>
+    ///     追加一条修改记录到 <see cref="UrbanWeighingExtension.EditHistoryJson" />。
+    /// </summary>
+    /// <param name="extensionId">扩展实体 ID</param>
+    /// <param name="field">修改字段名称（如 PlateNumber、TotalWeight）</param>
+    /// <param name="oldValue">修改前的值</param>
+    /// <param name="newValue">修改后的值</param>
+    Task AppendEditEntryAsync(Guid extensionId, string field, string oldValue, string newValue);
 }
