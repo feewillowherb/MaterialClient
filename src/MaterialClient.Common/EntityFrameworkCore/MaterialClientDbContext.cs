@@ -238,6 +238,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         {
             entity.ConfigureByConvention();
             entity.Property(e => e.WeighingRecordId).IsRequired();
+            entity.Property(e => e.AnomalyReason).HasMaxLength(32);
+            entity.Property(e => e.EditHistoryJson);
+            entity.Ignore(e => e.EditHistory);
             entity.HasIndex(e => e.WeighingRecordId).IsUnique();
             entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
             entity.HasIndex(e => e.IsAnomaly);

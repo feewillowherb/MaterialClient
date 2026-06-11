@@ -502,6 +502,13 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AnomalyReason")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EditHistoryJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("IsAnomaly")
                         .HasColumnType("INTEGER");
 
