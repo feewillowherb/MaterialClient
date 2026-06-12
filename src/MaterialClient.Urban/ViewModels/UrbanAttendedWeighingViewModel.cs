@@ -369,6 +369,33 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         return Task.CompletedTask;
     }
 
+    [ReactiveCommand]
+    private Task GoToFirstPageAsync()
+    {
+        CurrentPage = 1;
+        return ReloadRecordsAsync();
+    }
+
+    [ReactiveCommand]
+    private Task GoToLastPageAsync()
+    {
+        CurrentPage = TotalPages;
+        return ReloadRecordsAsync();
+    }
+
+    [ReactiveCommand]
+    private Task GoToPageAsync(string? pageText)
+    {
+        if (string.IsNullOrWhiteSpace(pageText) || !int.TryParse(pageText, out var page))
+            return Task.CompletedTask;
+
+        if (page < 1 || page > TotalPages)
+            return Task.CompletedTask;
+
+        CurrentPage = page;
+        return ReloadRecordsAsync();
+    }
+
     public void StartDeviceStatusMonitoring()
     {
         if (_deviceStatusTrackerStarted) return;
