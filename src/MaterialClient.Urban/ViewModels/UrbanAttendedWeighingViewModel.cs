@@ -104,6 +104,20 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
         _subscriptions.Add(
             _localEventBus
+                .Subscribe<UploadCompletedEventData>(async eventData =>
+                {
+                    try
+                    {
+                        await ReloadRecordsAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to handle UploadCompletedEventData");
+                    }
+                }));
+
+        _subscriptions.Add(
+            _localEventBus
                 .Subscribe<StatusChangedEventData>(async eventData =>
                 {
                     try
