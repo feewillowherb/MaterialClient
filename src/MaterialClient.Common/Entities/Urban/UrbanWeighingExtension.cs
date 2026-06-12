@@ -1,6 +1,5 @@
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
 using MaterialClient.Common.Entities.Enums;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Entities;
 
 namespace MaterialClient.Common.Entities.Urban;
@@ -9,8 +8,19 @@ namespace MaterialClient.Common.Entities.Urban;
 ///     Urban-specific extension entity for weighing records.
 ///     Associated to <see cref="WeighingRecord" /> by <see cref="WeighingRecordId" /> only (no DB FK / no EF navigation).
 /// </summary>
-public class UrbanWeighingExtension : Entity<Guid>
+public class UrbanWeighingExtension : Entity<Guid>, IHasExtraProperties
 {
+    private ExtraPropertyDictionary _extraProperties = new();
+
+    /// <summary>
+    ///     额外属性字典
+    /// </summary>
+    public ExtraPropertyDictionary ExtraProperties
+    {
+        get => _extraProperties;
+        set => _extraProperties = value;
+    }
+
     /// <summary>
     ///     Parent <see cref="WeighingRecord" /> identifier (logical association, not a database foreign key).
     /// </summary>
@@ -45,40 +55,4 @@ public class UrbanWeighingExtension : Entity<Guid>
     ///     <c>null</c> when the record is not anomalous.
     /// </summary>
     public string? AnomalyReason { get; set; }
-
-    /// <summary>
-    ///     JSON array storing the modification history for PlateNumber and TotalWeight edits.
-    ///     Each element is an <see cref="EditEntry" /> serialized to JSON.
-    ///     <c>null</c> when no edits have been recorded.
-    /// </summary>
-    public string? EditHistoryJson { get; set; }
-
-    /// <summary>
-    ///     Typed access to the modification history.
-    ///     Deserializes from / serializes to <see cref="EditHistoryJson" />,
-    ///     following the same pattern as <see cref="WeighingRecord.Materials" />.
-    /// </summary>
-    [NotMapped]
-    public List<EditEntry> EditHistory
-    {
-        get
-        {
-            if (string.IsNullOrEmpty(EditHistoryJson))
-                return new List<EditEntry>();
-
-            try
-            {
-                return JsonSerializer.Deserialize<List<EditEntry>>(EditHistoryJson)
-                       ?? new List<EditEntry>();
-            }
-            catch
-            {
-                return new List<EditEntry>();
-            }
-        }
-        set =>
-            EditHistoryJson = value == null || value.Count == 0
-                ? null
-                : JsonSerializer.Serialize(value);
-    }
 }
