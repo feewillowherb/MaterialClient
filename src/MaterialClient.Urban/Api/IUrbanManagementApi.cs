@@ -31,5 +31,5 @@ public interface IUrbanManagementApi
 public class UrbanWeighingRecordReceiveResult
 {
     [JsonPropertyName("recordId")]
-    public long RecordId { get; set; }
+    public Guid RecordId { get; set; }
 }

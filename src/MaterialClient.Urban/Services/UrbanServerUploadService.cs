@@ -135,7 +135,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
 
             var response = await _urbanManagementApi.ReceiveWeighingRecordAsync(dto);
 
-            if (response.RecordId > 0)
+            if (response.RecordId != Guid.Empty)
             {
                 if (extension != null)
                 {
