@@ -216,6 +216,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 // Capture old values before update for edit history tracking
                 var oldPlateNumber = item.PlateNumber ?? string.Empty;
                 var oldTotalWeight = item.TotalWeight;
+                var oldAnomalyReason = item.AnomalyReason ?? string.Empty;
 
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
                 await weighingRecordService.UpdateWeighingRecordAsync(
@@ -235,6 +236,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     {
                         await _urbanWeighingExtensionService.AppendEditEntryAsync(
                             extension.Id, "TotalWeight", oldTotalWeight.ToString(), result.TotalWeight.ToString());
+                    }
+
+                    // Record anomaly reason change: old reason → cleared (empty)
+                    var newAnomalyReason = string.Empty;
+                    if (oldAnomalyReason != newAnomalyReason)
+                    {
+                        await _urbanWeighingExtensionService.AppendEditEntryAsync(
+                            extension.Id, "AnomalyReason", oldAnomalyReason, newAnomalyReason);
                     }
                 }
 
