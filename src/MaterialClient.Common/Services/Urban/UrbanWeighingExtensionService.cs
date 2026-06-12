@@ -77,6 +77,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
     }
 
     /// <inheritdoc />
+    [UnitOfWork]
     public virtual async Task<UrbanWeighingExtension?> GetByWeighingRecordIdAsync(long weighingRecordId)
     {
         if (weighingRecordId <= 0)
@@ -197,7 +198,8 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task AppendEditEntryAsync(Guid extensionId, string plateNumber, decimal totalWeight, string? anomalyReason)
+    public virtual async Task AppendEditEntryAsync(Guid extensionId, string plateNumber, decimal totalWeight,
+        string? anomalyReason)
     {
         var extension = await _extensionRepository.GetAsync(extensionId);
         var history = extension.GetEditHistory();
