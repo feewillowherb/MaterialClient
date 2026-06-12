@@ -220,7 +220,9 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     return;
                 }
 
-                var confirmResult = await MessageBox.ShowAsync(window, "确认提交审批修改吗？", "确认审批",
+                var confirmResult = await MessageBox.ShowAsync(window,
+                    "请确认数据真实有效。\n\n本人确认所提交的车牌号、重量等信息真实准确，并对其承担相应责任。",
+                    "确认审批",
                     MessageBoxIcon.Question, MessageBoxButton.YesNo);
                 if (confirmResult != MessageBoxResult.Yes)
                 {
