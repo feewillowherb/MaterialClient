@@ -8,19 +8,18 @@ using Volo.Abp.DependencyInjection;
 namespace MaterialClient.Common.Services;
 
 /// <summary>
-///     JWT 授权检查服务
+///     静态授权检查服务（JWT 实现）
 ///     从 .urban 文件中读取 JWT 令牌，使用 RSA 公钥验证 RS256 签名，提取 Claims
 /// </summary>
-[AutoConstructor]
-public partial class JwtLicenseChecker : IStaticLicenseChecker, ISingletonDependency
+public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
 {
     private readonly IConfiguration _configuration;
-    private readonly ILogger<JwtLicenseChecker> _logger;
+    private readonly ILogger<StaticLicenseChecker> _logger;
 
     private readonly SecurityKey? _signingKey;
     private readonly bool _keyConfigured;
 
-    public JwtLicenseChecker(IConfiguration configuration, ILogger<JwtLicenseChecker> logger)
+    public StaticLicenseChecker(IConfiguration configuration, ILogger<StaticLicenseChecker> logger)
     {
         _configuration = configuration;
         _logger = logger;
@@ -102,7 +101,7 @@ public partial class JwtLicenseChecker : IStaticLicenseChecker, ISingletonDepend
             // 验证令牌
             var principal = handler.ValidateToken(token, validationParameters, out var validatedToken);
 
-            if (validatedToken is not JwtSecurityToken jwtToken)
+            if (validatedToken is not JwtSecurityToken)
             {
                 _logger.LogWarning("令牌验证结果不是有效的 JWT");
                 return LicenseCheckResult.Fail("授权验证失败");

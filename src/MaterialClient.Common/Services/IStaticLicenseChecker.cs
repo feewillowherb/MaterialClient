@@ -82,7 +82,6 @@ public class LicenseCheckResult
 /// <summary>
 ///     静态授权检查接口
 ///     用于 Urban 模式启动时的后台授权验证
-///     TODO: 当前实现默认返回成功，后续完善实际授权逻辑
 /// </summary>
 public interface IStaticLicenseChecker
 {

@@ -5,39 +5,39 @@ using Xunit.Abstractions;
 namespace MaterialClient.Common.Tests.Services.Urban;
 
 /// <summary>
-///     JwtLicenseChecker 单元测试
+///     StaticLicenseChecker 单元测试
 ///     测试 JWT 授权检查服务（TODO: 后续完善实际授权逻辑）
 /// </summary>
-public class JwtLicenseCheckerTests(ITestOutputHelper output)
+public class StaticLicenseCheckerTests(ITestOutputHelper output)
 {
     private readonly ITestOutputHelper _output = output;
 
-    [Fact(Skip = "需要重新设计测试用例以适配 JwtLicenseChecker")]
+    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
     public async Task CheckLicenseAsync_Default_ReturnsSuccess()
     {
         // Arrange
-        // TODO: 构造带公钥配置的 JwtLicenseChecker
-        _output.WriteLine("需要重新设计测试用例以适配 JwtLicenseChecker");
+        // TODO: 构造带公钥配置的 StaticLicenseChecker
+        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
 
         await Task.CompletedTask;
     }
 
-    [Fact(Skip = "需要重新设计测试用例以适配 JwtLicenseChecker")]
+    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
     public async Task CheckLicenseAsync_NonExistentFile_ReturnsFail()
     {
         // Arrange
-        // TODO: 构造带公钥配置的 JwtLicenseChecker，测试文件不存在场景
-        _output.WriteLine("需要重新设计测试用例以适配 JwtLicenseChecker");
+        // TODO: 构造带公钥配置的 StaticLicenseChecker，测试文件不存在场景
+        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
 
         await Task.CompletedTask;
     }
 
-    [Fact(Skip = "需要重新设计测试用例以适配 JwtLicenseChecker")]
+    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
     public async Task CheckLicenseAsync_ExpiredToken_ReturnsFail()
     {
         // Arrange
         // TODO: 构造过期的 JWT 令牌，测试过期场景
-        _output.WriteLine("需要重新设计测试用例以适配 JwtLicenseChecker");
+        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
 
         await Task.CompletedTask;
     }
