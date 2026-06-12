@@ -222,28 +222,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 await weighingRecordService.UpdateWeighingRecordAsync(
                     item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
 
-                // Append edit history entries for changed fields
+                // Append a single snapshot edit entry with the full post-edit state
                 var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(item.WeighingRecordId);
                 if (extension != null)
                 {
-                    if (oldPlateNumber != result.PlateNumber)
+                    if (oldPlateNumber != result.PlateNumber || oldTotalWeight != result.TotalWeight)
                     {
                         await _urbanWeighingExtensionService.AppendEditEntryAsync(
-                            extension.Id, "PlateNumber", oldPlateNumber, result.PlateNumber);
-                    }
-
-                    if (oldTotalWeight != result.TotalWeight)
-                    {
-                        await _urbanWeighingExtensionService.AppendEditEntryAsync(
-                            extension.Id, "TotalWeight", oldTotalWeight.ToString(), result.TotalWeight.ToString());
-                    }
-
-                    // Record anomaly reason change: old reason → cleared (empty)
-                    var newAnomalyReason = string.Empty;
-                    if (oldAnomalyReason != newAnomalyReason)
-                    {
-                        await _urbanWeighingExtensionService.AppendEditEntryAsync(
-                            extension.Id, "AnomalyReason", oldAnomalyReason, newAnomalyReason);
+                            extension.Id, result.PlateNumber ?? string.Empty, result.TotalWeight, extension.AnomalyReason);
                     }
                 }
 

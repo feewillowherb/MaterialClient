@@ -42,7 +42,9 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("anomalyReason")] public string? AnomalyReason { get; set; }
 
-    [JsonPropertyName("editHistoryJson")] public string? EditHistoryJson { get; set; }
+    /// <summary>扩展属性字典，用于传递编辑历史等扩展数据。</summary>
+    [JsonPropertyName("extraProperties")]
+    public Dictionary<string, object?>? ExtraProperties { get; set; }
 
     [JsonPropertyName("clientSyncType")] public int? ClientSyncType { get; set; }
 

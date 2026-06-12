@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
@@ -112,13 +113,25 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 ProName = licenseInfo?.ProName,
                 IsAnomaly = extension?.IsAnomaly ?? false,
                 AnomalyReason = extension?.AnomalyReason,
-                EditHistoryJson = extension?.EditHistoryJson,
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),
                 ClientSyncTime = null,
                 ClientRetryCount = extension?.RetryCount,
                 ClientLastErrorTime = extension?.LastErrorTime,
                 AttachmentIds = attachmentIds.Count > 0 ? attachmentIds : null
             };
+
+            // Build ExtraProperties with edit history from extension
+            if (extension != null)
+            {
+                var editHistory = extension.GetEditHistory();
+                if (editHistory.Count > 0)
+                {
+                    dto.ExtraProperties = new Dictionary<string, object?>
+                    {
+                        ["EditHistory"] = JsonSerializer.Serialize(editHistory)
+                    };
+                }
+            }
 
             var response = await _urbanManagementApi.ReceiveWeighingRecordAsync(dto);
 
