@@ -345,22 +345,28 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         return ReloadRecordsAsync();
     }
 
-    public void PreviousPage()
+    [ReactiveCommand]
+    private Task PreviousPageAsync()
     {
         if (CurrentPage > 1)
         {
             CurrentPage--;
-            _ = ReloadRecordsAsync();
+            return ReloadRecordsAsync();
         }
+
+        return Task.CompletedTask;
     }
 
-    public void NextPage()
+    [ReactiveCommand]
+    private Task NextPageAsync()
     {
         if (CurrentPage < TotalPages)
         {
             CurrentPage++;
-            _ = ReloadRecordsAsync();
+            return ReloadRecordsAsync();
         }
+
+        return Task.CompletedTask;
     }
 
     public void StartDeviceStatusMonitoring()
