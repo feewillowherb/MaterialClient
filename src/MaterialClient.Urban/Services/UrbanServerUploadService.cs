@@ -109,7 +109,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 BuildLicenseNo = licenseInfo?.BuildLicenseNo,
                 FdBuildLicenseNo = licenseInfo?.FdBuildLicenseNo,
                 SiteType = null,
-                ProId = licenseInfo?.ProjectId.ToString(),
+                ProId = licenseInfo?.ProjectId,
                 ProName = licenseInfo?.ProName,
                 IsAnomaly = extension?.IsAnomaly ?? false,
                 AnomalyReason = extension?.AnomalyReason,
