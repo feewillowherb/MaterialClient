@@ -177,9 +177,9 @@
                                         <TextBlock Text="车牌号码" FontSize="12" Foreground="#475569"
                                                    Width="56" VerticalAlignment="Center"
                                                    FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                        <TextBox Classes="filter-input" Width="192" />
-                                        <Button Classes="primary-button" Content="搜索" />
-                                        <Button Classes="secondary-button" Content="重置" />
+                                        <TextBox Classes="filter-input" Width="192" Text="{Binding SearchText}" />
+                                        <Button Classes="primary-button" Content="搜索" Command="{Binding SearchCommand}" />
+                                        <Button Classes="secondary-button" Content="重置" Command="{Binding ResetSearchCommand}" />
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
@@ -315,8 +315,10 @@
                                     </TextBlock>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                         <Button Classes="secondary-button" Content="上一页"
+                                                Command="{Binding PreviousPageCommand}"
                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         <Button Classes="secondary-button" Content="下一页"
+                                                Command="{Binding NextPageCommand}"
                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                     </StackPanel>
                                 </Grid>
