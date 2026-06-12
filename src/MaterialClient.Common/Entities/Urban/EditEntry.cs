@@ -1,28 +1,29 @@
 namespace MaterialClient.Common.Entities.Urban;
 
 /// <summary>
-///     Represents a single edit entry in the modification history of a weighing record.
-///     Serialized as part of the JSON array stored in <see cref="UrbanWeighingExtension.EditHistoryJson" />.
+///     Represents a complete snapshot of a weighing record at a point in time.
+///     Each entry captures the full state after a modification, stored in
+///     <see cref="UrbanWeighingExtension" /> <c>ExtraProperties["EditHistory"]</c>.
 /// </summary>
 public class EditEntry
 {
     /// <summary>
-    ///     Name of the field that was modified (e.g. "PlateNumber", "TotalWeight").
-    /// </summary>
-    public string Field { get; set; } = string.Empty;
-
-    /// <summary>
-    ///     Value before the edit.
-    /// </summary>
-    public string OldValue { get; set; } = string.Empty;
-
-    /// <summary>
-    ///     Value after the edit.
-    /// </summary>
-    public string NewValue { get; set; } = string.Empty;
-
-    /// <summary>
     ///     UTC timestamp when the edit occurred.
     /// </summary>
     public DateTime ChangedAt { get; set; }
+
+    /// <summary>
+    ///     License plate number at the time of the snapshot.
+    /// </summary>
+    public string PlateNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     Total weight (kg) at the time of the snapshot.
+    /// </summary>
+    public decimal TotalWeight { get; set; }
+
+    /// <summary>
+    ///     Anomaly reason at the time of the snapshot, or <c>null</c> if no anomaly.
+    /// </summary>
+    public string? AnomalyReason { get; set; }
 }

@@ -42,11 +42,12 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly);
 
     /// <summary>
-    ///     追加一条修改记录到 <see cref="UrbanWeighingExtension.EditHistoryJson" />。
+    ///     追加一条完整快照修改记录到 <see cref="UrbanWeighingExtension" />
+    ///     <c>ExtraProperties["EditHistory"]</c>。
     /// </summary>
     /// <param name="extensionId">扩展实体 ID</param>
-    /// <param name="field">修改字段名称（如 PlateNumber、TotalWeight）</param>
-    /// <param name="oldValue">修改前的值</param>
-    /// <param name="newValue">修改后的值</param>
-    Task AppendEditEntryAsync(Guid extensionId, string field, string oldValue, string newValue);
+    /// <param name="plateNumber">当前车牌号</param>
+    /// <param name="totalWeight">当前总重量（kg）</param>
+    /// <param name="anomalyReason">当前异常原因（可为 null）</param>
+    Task AppendEditEntryAsync(Guid extensionId, string plateNumber, decimal totalWeight, string? anomalyReason);
 }

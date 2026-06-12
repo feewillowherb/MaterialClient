@@ -197,18 +197,18 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task AppendEditEntryAsync(Guid extensionId, string field, string oldValue, string newValue)
+    public virtual async Task AppendEditEntryAsync(Guid extensionId, string plateNumber, decimal totalWeight, string? anomalyReason)
     {
         var extension = await _extensionRepository.GetAsync(extensionId);
-        var history = extension.EditHistory;
+        var history = extension.GetEditHistory();
         history.Add(new EditEntry
         {
-            Field = field,
-            OldValue = oldValue,
-            NewValue = newValue,
-            ChangedAt = DateTime.UtcNow
+            ChangedAt = DateTime.UtcNow,
+            PlateNumber = plateNumber,
+            TotalWeight = totalWeight,
+            AnomalyReason = anomalyReason
         });
-        extension.EditHistory = history;
+        extension.SetEditHistory(history);
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 
