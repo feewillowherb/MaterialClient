@@ -314,11 +314,23 @@
                                         </TextBlock.Text>
                                     </TextBlock>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <Button Classes="secondary-button" Content="首页"
+                                                Command="{Binding GoToFirstPageCommand}"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         <Button Classes="secondary-button" Content="上一页"
                                                 Command="{Binding PreviousPageCommand}"
                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         <Button Classes="secondary-button" Content="下一页"
                                                 Command="{Binding NextPageCommand}"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <Button Classes="secondary-button" Content="尾页"
+                                                Command="{Binding GoToLastPageCommand}"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <TextBox Name="PageJumpTextBox" Width="40"
+                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <Button Classes="secondary-button" Content="跳转"
+                                                Command="{Binding GoToPageCommand}"
+                                                CommandParameter="{Binding Text, ElementName=PageJumpTextBox}"
                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                     </StackPanel>
                                 </Grid>
