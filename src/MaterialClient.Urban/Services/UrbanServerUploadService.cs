@@ -83,11 +83,23 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             }
 
             var buildLicenseNo = licenseInfo?.BuildLicenseNo ?? string.Empty;
-            var attachmentIds =
-                (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
+            var skipAttachmentUpload = extension?.GetEditHistory().Count > 0;
+            List<Guid> attachmentIds;
+            if (skipAttachmentUpload)
+            {
+                attachmentIds = [];
+                _logger.LogDebug(
+                    "Skipping attachment upload for record {RecordId} (re-transmit after client edit)",
+                    weighingRecordId);
+            }
+            else
+            {
+                attachmentIds =
+                    (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
+            }
 
             var hadLocalUrbanAttachments = await HasLocalUrbanAttachmentsAsync(weighingRecordId);
-            if (hadLocalUrbanAttachments && attachmentIds.Count == 0)
+            if (!skipAttachmentUpload && hadLocalUrbanAttachments && attachmentIds.Count == 0)
             {
                 _logger.LogWarning(
                     "Record {RecordId} has local Lrp/UrbanPhoto attachments but none were uploaded; keeping Pending for retry",
@@ -95,13 +107,15 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 return;
             }
 
+            var isAnomaly = extension?.IsAnomaly ?? false;
+
             var dto = new UrbanWeighingRecordSubmitDto
             {
                 ClientRecordId = record.Id,
                 PlateNumber = record.PlateNumber,
                 TotalWeight = MaterialMath.ConvertTonToKg(record.TotalWeight),
                 WeighingTime = record.AddDate,
-                SyncType = 0,
+                SyncType = isAnomaly ? null : 0,
                 VehicleColor = null,
                 PlateColor = null,
                 VehicleType = null,
@@ -111,7 +125,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 SiteType = null,
                 ProId = licenseInfo?.ProjectId,
                 ProName = licenseInfo?.ProName,
-                IsAnomaly = extension?.IsAnomaly ?? false,
+                IsAnomaly = isAnomaly,
                 AnomalyReason = extension?.AnomalyReason,
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),
                 ClientSyncTime = null,
