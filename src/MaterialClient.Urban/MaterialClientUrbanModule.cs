@@ -170,25 +170,64 @@ public class MaterialClientUrbanModule : AbpModule
         await EnsureUrbanDefaultWeighingModeAsync(context.ServiceProvider, logger);
 
         // Execute static license check (non-blocking on failure)
+        // Priority: LicenseInfo.LatestJwtToken (server JWT) > .urban file (bootstrap)
         try
         {
             var licenseChecker = context.ServiceProvider.GetRequiredService<IStaticLicenseChecker>();
             var settings = new SystemSettings();
-            var result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
-            logger?.LogInformation("Static license check: {Status} - {Message}",
-                result.IsSuccess ? "Passed" : "Failed", result.Message);
+            LicenseCheckResult? result = null;
 
-            if (result.IsSuccess)
+            // Try LatestJwtToken from DB first
+            var licenseRepository = context.ServiceProvider.GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
+            LicenseInfo? existingLicense = null;
+            try
             {
-                // Write license data to LicenseInfo entity
+                var queryable = await licenseRepository.GetQueryableAsync();
+                existingLicense = await queryable.FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Failed to query LicenseInfo for LatestJwtToken (non-blocking)");
+            }
+
+            if (existingLicense != null && !string.IsNullOrWhiteSpace(existingLicense.LatestJwtToken))
+            {
+                result = await licenseChecker.CheckLicenseFromTokenAsync(existingLicense.LatestJwtToken);
+                if (result.IsSuccess)
+                {
+                    logger?.LogInformation("Startup license check from LatestJwtToken: Passed");
+                }
+                else
+                {
+                    logger?.LogWarning("Startup license check from LatestJwtToken failed: {Reason}, falling back to .urban file", result.Message);
+                    result = null; // Reset to try .urban fallback
+                }
+            }
+
+            // Fallback to .urban file
+            if (result == null)
+            {
+                result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
+                if (result.IsSuccess)
+                {
+                    logger?.LogInformation("Startup license check from .urban file: Passed");
+                }
+            }
+
+            logger?.LogInformation("Static license check: {Status} - {Message}",
+                result?.IsSuccess == true ? "Passed" : "Failed", result?.Message ?? "No result");
+
+            if (result != null && result.IsSuccess)
+            {
+                // Write/overwrite license data to LicenseInfo entity from JWT claims
+                // This ensures any database tampering is transient
                 try
                 {
                     var uowManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-                    var licenseRepository = context.ServiceProvider.GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
 
                     using var uow = uowManager.Begin(true, false);
-                    var queryable = await licenseRepository.GetQueryableAsync();
-                    var existing = await queryable.FirstOrDefaultAsync();
+                    var queryable2 = await licenseRepository.GetQueryableAsync();
+                    var existing = await queryable2.FirstOrDefaultAsync();
 
                     if (existing == null)
                     {
@@ -206,6 +245,7 @@ public class MaterialClientUrbanModule : AbpModule
                     }
                     else
                     {
+                        // Overwrite all derived fields from JWT claims (anti-tamper)
                         existing.ProjectId = result.ProId;
                         existing.AuthEndTime = result.AuthEndTime;
                         var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
@@ -231,7 +271,7 @@ public class MaterialClientUrbanModule : AbpModule
             else
             {
                 logger?.LogWarning("Static license check returned failure, skipping LicenseInfo write: {Message}",
-                    result.Message);
+                    result?.Message ?? "No result");
             }
         }
         catch (Exception ex)

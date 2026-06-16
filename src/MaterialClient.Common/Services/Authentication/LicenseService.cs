@@ -57,6 +57,29 @@ public interface ILicenseService
         string? buildLicenseNo,
         string? fdBuildLicenseNo,
         DateTime? authEndTime);
+
+    /// <summary>
+    ///     防篡改验签通过后，将服务器重新签发的 JWT 存储到 LicenseInfo.LatestJwtToken，
+    ///     并从 JWT 派生字段覆盖 LicenseInfo。
+    /// </summary>
+    /// <param name="serverJwt">服务器返回的权威 JWT 原始文本</param>
+    /// <param name="proName">项目名称</param>
+    /// <param name="buildLicenseNo">施工许可证号</param>
+    /// <param name="fdBuildLicenseNo">凡东对接码</param>
+    /// <param name="authEndTime">授权过期时间</param>
+    Task StoreServerJwtAsync(
+        string serverJwt,
+        string proName,
+        string? buildLicenseNo,
+        string? fdBuildLicenseNo,
+        DateTime authEndTime);
+
+    /// <summary>
+    ///     获取本地 JWT 原始文本（优先 LatestJwtToken，其次 .urban 文件）
+    /// </summary>
+    /// <param name="licenseFilePath">.urban 文件路径（回退用）</param>
+    /// <returns>JWT 原始文本，若均不可用则返回 null</returns>
+    Task<string?> GetLocalJwtTokenAsync(string licenseFilePath);
 }
 
 /// <summary>
@@ -272,5 +295,57 @@ public partial class LicenseService : DomainService, ILicenseService
         license.UpdatedAt = DateTime.Now;
         await _licenseRepository.UpdateAsync(license);
         return true;
+    }
+
+    [UnitOfWork]
+    public async Task StoreServerJwtAsync(
+        string serverJwt,
+        string proName,
+        string? buildLicenseNo,
+        string? fdBuildLicenseNo,
+        DateTime authEndTime)
+    {
+        var license = await GetCurrentLicenseAsync();
+        if (license == null)
+        {
+            return;
+        }
+
+        license.LatestJwtToken = serverJwt;
+        license.ProName = proName;
+        license.BuildLicenseNo = buildLicenseNo;
+        license.FdBuildLicenseNo = fdBuildLicenseNo;
+        license.AuthEndTime = authEndTime;
+        license.UpdatedAt = DateTime.Now;
+        await _licenseRepository.UpdateAsync(license);
+    }
+
+    [UnitOfWork]
+    public async Task<string?> GetLocalJwtTokenAsync(string licenseFilePath)
+    {
+        var license = await GetCurrentLicenseAsync();
+        if (license != null && !string.IsNullOrWhiteSpace(license.LatestJwtToken))
+        {
+            return license.LatestJwtToken;
+        }
+
+        // Fallback to .urban file
+        if (File.Exists(licenseFilePath))
+        {
+            try
+            {
+                var content = await File.ReadAllTextAsync(licenseFilePath);
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    return content.Trim();
+                }
+            }
+            catch
+            {
+                // Ignore file read errors
+            }
+        }
+
+        return null;
     }
 }

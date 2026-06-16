@@ -426,6 +426,77 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                 return;
             }
 
+            // Step 1: Read local JWT (priority: LatestJwtToken > .urban file) for anti-tamper check
+            var licenseFilePath = "license.urban";
+            var localJwt = await _licenseService.GetLocalJwtTokenAsync(licenseFilePath);
+
+            bool antiTamperPassed = false;
+
+            if (!string.IsNullOrWhiteSpace(localJwt))
+            {
+                // Step 2: Submit JWT to server for anti-tamper verification
+                try
+                {
+                    var antiTamperResult = await _connection.InvokeAsync<JwtAntiTamperResult>(
+                        "VerifyJwtAsync",
+                        localJwt,
+                        license.ProjectId.ToString());
+
+                    if (antiTamperResult.Passed && !string.IsNullOrEmpty(antiTamperResult.ServerJwt))
+                    {
+                        // Step 3: Store server JWT and derive LicenseInfo from server JWT claims
+                        await _licenseService.StoreServerJwtAsync(
+                            antiTamperResult.ServerJwt,
+                            antiTamperResult.ProName ?? license.ProName ?? string.Empty,
+                            antiTamperResult.BuildLicenseNo,
+                            antiTamperResult.FdBuildLicenseNo,
+                            antiTamperResult.AuthEndTime ?? license.AuthEndTime);
+
+                        antiTamperPassed = true;
+
+                        _logger.LogInformation(
+                            "DeviceStatusSignalRClient: Anti-tamper check passed. Server JWT stored. ProId={ProId}",
+                            license.ProjectId);
+                    }
+                    else
+                    {
+                        // Anti-tamper check failed: log warning, do NOT modify LicenseInfo
+                        _logger.LogWarning(
+                            "DeviceStatusSignalRClient: Anti-tamper check FAILED. ProId={ProId}, Reason={Reason}. Skipping LicenseInfo update.",
+                            license.ProjectId, antiTamperResult.Reason ?? "Unknown");
+                        return; // Do NOT proceed with field sync
+                    }
+                }
+                catch (TimeoutException ex)
+                {
+                    // SignalR timeout: fall back to field sync only (availability over strict verification)
+                    _logger.LogWarning(ex,
+                        "DeviceStatusSignalRClient: VerifyJwtAsync call failed (timeout). ProId={ProId}. Falling back to field sync only.",
+                        license.ProjectId);
+                }
+                catch (Exception ex)
+                {
+                    // Network exception: fall back to field sync only
+                    _logger.LogWarning(ex,
+                        "DeviceStatusSignalRClient: VerifyJwtAsync call failed. ProId={ProId}. Falling back to field sync only.",
+                        license.ProjectId);
+                }
+            }
+            else
+            {
+                // No local JWT available: skip anti-tamper check, proceed with field sync
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: No local JWT available for anti-tamper check. ProId={ProId}. Proceeding with field sync only.",
+                    license.ProjectId);
+            }
+
+            // If anti-tamper passed, server JWT is already stored — skip field sync
+            if (antiTamperPassed)
+            {
+                return;
+            }
+
+            // Step 4: Existing field sync (GetClientProjectLicenseInfo) for cases without JWT
             var projectInfo = await _connection.InvokeAsync<ClientProjectLicenseInfoDto?>(
                 "GetClientProjectLicenseInfo",
                 license.ProjectId.ToString());
