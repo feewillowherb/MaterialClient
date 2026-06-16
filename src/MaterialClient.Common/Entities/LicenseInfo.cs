@@ -79,6 +79,14 @@ public class LicenseInfo : Entity<Guid>
     public string? FdBuildLicenseNo { get; set; }
 
     /// <summary>
+    ///     服务器最后一次提供的权威 JWT 原始文本。
+    ///     在线更新时由服务器端推送，启动时优先使用此值验证授权。
+    ///     若为 null，则回退到 .urban 文件。
+    /// </summary>
+    [MaxLength(4096)]
+    public string? LatestJwtToken { get; set; }
+
+    /// <summary>
     ///     机器码（用于验证授权是否匹配当前机器）
     /// </summary>
     [Required]
