@@ -1,29 +1,35 @@
+using MaterialClient.Common.Entities.Enums;
+
 namespace MaterialClient.Common.Entities.Urban;
 
 /// <summary>
-///     Represents a complete snapshot of a weighing record at a point in time.
-///     Each entry captures the full state after a modification, stored in
-///     <see cref="UrbanWeighingExtension" /> <c>ExtraProperties["EditHistory"]</c>.
+///     称重记录单次修改条目，存储于
+///     <see cref="UrbanWeighingExtension" /> <c>ExtraProperties["EditHistory"]</c>。
 /// </summary>
 public class EditEntry
 {
     /// <summary>
-    ///     UTC timestamp when the edit occurred.
+    ///     修改发生时间（UTC）
     /// </summary>
     public DateTime ChangedAt { get; set; }
 
     /// <summary>
-    ///     License plate number at the time of the snapshot.
+    ///     修改前的字段快照
     /// </summary>
-    public string PlateNumber { get; set; } = string.Empty;
+    public EditEntrySnapshot Before { get; set; } = new();
 
     /// <summary>
-    ///     Total weight (kg) at the time of the snapshot.
+    ///     修改后的字段快照
     /// </summary>
-    public decimal TotalWeight { get; set; }
+    public EditEntrySnapshot After { get; set; } = new();
 
     /// <summary>
-    ///     Anomaly reason at the time of the snapshot, or <c>null</c> if no anomaly.
+    ///     修改来源（客户端 / 服务端）
     /// </summary>
-    public string? AnomalyReason { get; set; }
+    public EditSource Source { get; set; }
+
+    /// <summary>
+    ///     是否修改过图片（预留字段，当前功能未实现）
+    /// </summary>
+    public bool IsImagesModified { get; set; }
 }

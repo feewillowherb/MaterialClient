@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
@@ -238,14 +239,26 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 await weighingRecordService.UpdateWeighingRecordAsync(
                     item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
 
-                // Append a single snapshot edit entry with the full post-edit state
                 var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(item.WeighingRecordId);
                 if (extension != null)
                 {
                     if (oldPlateNumber != result.PlateNumber || oldTotalWeight != result.TotalWeight)
                     {
                         await _urbanWeighingExtensionService.AppendEditEntryAsync(
-                            extension.Id, result.PlateNumber ?? string.Empty, result.TotalWeight, extension.AnomalyReason);
+                            extension.Id,
+                            new EditEntrySnapshot
+                            {
+                                PlateNumber = oldPlateNumber,
+                                TotalWeight = oldTotalWeight,
+                                AnomalyReason = string.IsNullOrEmpty(oldAnomalyReason) ? null : oldAnomalyReason
+                            },
+                            new EditEntrySnapshot
+                            {
+                                PlateNumber = result.PlateNumber ?? string.Empty,
+                                TotalWeight = result.TotalWeight,
+                                AnomalyReason = extension.AnomalyReason
+                            },
+                            EditSource.Client);
                     }
                 }
 

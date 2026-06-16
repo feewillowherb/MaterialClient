@@ -1,6 +1,6 @@
 using MaterialClient.Common.Dtos.Urban;
-using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Entities.Urban;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.DependencyInjection;
 
@@ -42,12 +42,18 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly);
 
     /// <summary>
-    ///     追加一条完整快照修改记录到 <see cref="UrbanWeighingExtension" />
+    ///     追加一条修改记录到 <see cref="UrbanWeighingExtension" />
     ///     <c>ExtraProperties["EditHistory"]</c>。
     /// </summary>
     /// <param name="extensionId">扩展实体 ID</param>
-    /// <param name="plateNumber">当前车牌号</param>
-    /// <param name="totalWeight">当前总重量（kg）</param>
-    /// <param name="anomalyReason">当前异常原因（可为 null）</param>
-    Task AppendEditEntryAsync(Guid extensionId, string plateNumber, decimal totalWeight, string? anomalyReason);
+    /// <param name="before">修改前快照</param>
+    /// <param name="after">修改后快照</param>
+    /// <param name="source">修改来源，默认为客户端</param>
+    /// <param name="isImagesModified">是否修改过图片（预留字段）</param>
+    Task AppendEditEntryAsync(
+        Guid extensionId,
+        EditEntrySnapshot before,
+        EditEntrySnapshot after,
+        EditSource source = EditSource.Client,
+        bool isImagesModified = false);
 }
