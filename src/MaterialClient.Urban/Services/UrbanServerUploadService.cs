@@ -137,7 +137,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             // Build ExtraProperties with edit history from extension
             if (extension != null)
             {
-                var editHistory = extension.GetEditHistory();
+                var editHistory = extension.GetEditHistory().NormalizeWeightsForServer();
                 if (editHistory.Count > 0)
                 {
                     dto.ExtraProperties = new Dictionary<string, object?>

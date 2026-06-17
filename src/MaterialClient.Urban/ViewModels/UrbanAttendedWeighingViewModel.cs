@@ -246,18 +246,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     {
                         await _urbanWeighingExtensionService.AppendEditEntryAsync(
                             extension.Id,
-                            new EditEntrySnapshot
-                            {
-                                PlateNumber = oldPlateNumber,
-                                TotalWeight = oldTotalWeight,
-                                AnomalyReason = string.IsNullOrEmpty(oldAnomalyReason) ? null : oldAnomalyReason
-                            },
-                            new EditEntrySnapshot
-                            {
-                                PlateNumber = result.PlateNumber ?? string.Empty,
-                                TotalWeight = result.TotalWeight,
-                                AnomalyReason = extension.AnomalyReason
-                            },
+                            EditEntrySnapshotExtensions.FromClientWeighing(
+                                oldPlateNumber,
+                                oldTotalWeight,
+                                string.IsNullOrEmpty(oldAnomalyReason) ? null : oldAnomalyReason),
+                            EditEntrySnapshotExtensions.FromClientWeighing(
+                                result.PlateNumber ?? string.Empty,
+                                result.TotalWeight,
+                                extension.AnomalyReason),
                             EditSource.Client);
                     }
                 }
