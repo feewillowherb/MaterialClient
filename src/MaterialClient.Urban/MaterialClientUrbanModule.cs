@@ -169,117 +169,19 @@ public class MaterialClientUrbanModule : AbpModule
 
         await EnsureUrbanDefaultWeighingModeAsync(context.ServiceProvider, logger);
 
-        // Execute static license check (non-blocking on failure)
-        // Priority: LicenseInfo.LatestJwtToken (server JWT) > .urban file (bootstrap)
-        try
+        var startupAuthService = context.ServiceProvider.GetRequiredService<IUrbanStartupAuthorizationService>();
+        var isAuthorized = await TryExecuteStartupLicenseCheckAsync(context, logger);
+        startupAuthService.SetResult(isAuthorized);
+
+        if (!startupAuthService.IsAuthorized)
         {
-            var licenseChecker = context.ServiceProvider.GetRequiredService<IStaticLicenseChecker>();
-            var settings = new SystemSettings();
-            LicenseCheckResult? result = null;
-
-            // Try LatestJwtToken from DB first
-            var licenseRepository = context.ServiceProvider.GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
-            LicenseInfo? existingLicense = null;
-            try
-            {
-                var queryable = await licenseRepository.GetQueryableAsync();
-                existingLicense = await queryable.FirstOrDefaultAsync();
-            }
-            catch (Exception ex)
-            {
-                logger?.LogWarning(ex, "Failed to query LicenseInfo for LatestJwtToken (non-blocking)");
-            }
-
-            if (existingLicense != null && !string.IsNullOrWhiteSpace(existingLicense.LatestJwtToken))
-            {
-                result = await licenseChecker.CheckLicenseFromTokenAsync(existingLicense.LatestJwtToken);
-                if (result.IsSuccess)
-                {
-                    logger?.LogInformation("Startup license check from LatestJwtToken: Passed");
-                }
-                else
-                {
-                    logger?.LogWarning("Startup license check from LatestJwtToken failed: {Reason}, falling back to .urban file", result.Message);
-                    result = null; // Reset to try .urban fallback
-                }
-            }
-
-            // Fallback to .urban file
-            if (result == null)
-            {
-                result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
-                if (result.IsSuccess)
-                {
-                    logger?.LogInformation("Startup license check from .urban file: Passed");
-                }
-            }
-
-            logger?.LogInformation("Static license check: {Status} - {Message}",
-                result?.IsSuccess == true ? "Passed" : "Failed", result?.Message ?? "No result");
-
-            if (result != null && result.IsSuccess)
-            {
-                // Write/overwrite license data to LicenseInfo entity from JWT claims
-                // This ensures any database tampering is transient
-                try
-                {
-                    var uowManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-
-                    using var uow = uowManager.Begin(true, false);
-                    var queryable2 = await licenseRepository.GetQueryableAsync();
-                    var existing = await queryable2.FirstOrDefaultAsync();
-
-                    if (existing == null)
-                    {
-                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
-                        var licenseInfo = new LicenseInfo(
-                            Guid.NewGuid(),
-                            result.ProId,
-                            null, // AuthToken
-                            result.AuthEndTime,
-                            machineCode,
-                            result.ProName,
-                            result.BuildLicenseNo,
-                            result.FdBuildLicenseNo);
-                        await licenseRepository.InsertAsync(licenseInfo);
-                    }
-                    else
-                    {
-                        // Overwrite all derived fields from JWT claims (anti-tamper)
-                        existing.ProjectId = result.ProId;
-                        existing.AuthEndTime = result.AuthEndTime;
-                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
-                        existing.Update(
-                            null, // AuthToken
-                            result.AuthEndTime,
-                            machineCode,
-                            result.ProName,
-                            result.BuildLicenseNo,
-                            result.FdBuildLicenseNo);
-                        await licenseRepository.UpdateAsync(existing);
-                    }
-
-                    await uow.CompleteAsync();
-                    logger?.LogInformation("Static license data written to LicenseInfo: ProId={ProId}, ProName={ProName}",
-                        result.ProId, result.ProName);
-                }
-                catch (Exception ex)
-                {
-                    logger?.LogWarning(ex, "Failed to write static license data to LicenseInfo (non-blocking)");
-                }
-            }
-            else
-            {
-                logger?.LogWarning("Static license check returned failure, skipping LicenseInfo write: {Message}",
-                    result?.Message ?? "No result");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "Static license check failed (non-blocking)");
+            logger?.LogWarning(
+                "Startup authorization failed: {Message}. Main window and background services will not start.",
+                startupAuthService.Result.FailureMessage);
+            return;
         }
 
-        // Start SignalR client connection (non-blocking)
+        // Start SignalR client connection
         try
         {
             var signalRClient = context.ServiceProvider.GetService<IDeviceStatusSignalRClient>();
@@ -291,7 +193,7 @@ public class MaterialClientUrbanModule : AbpModule
         }
         catch (Exception ex)
         {
-            logger?.LogWarning(ex, "SignalR client start failed (non-blocking)");
+            logger?.LogWarning(ex, "SignalR client start failed");
         }
 
         var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -305,6 +207,129 @@ public class MaterialClientUrbanModule : AbpModule
         {
             logger?.LogInformation(
                 "Urban PollingBackgroundService is disabled by configuration (BackgroundServices:Polling=false).");
+        }
+    }
+
+    private static async Task<UrbanStartupAuthorizationResult> TryExecuteStartupLicenseCheckAsync(
+        ApplicationInitializationContext context,
+        ILogger<MaterialClientUrbanModule>? logger)
+    {
+        // Priority: LicenseInfo.LatestJwtToken (server JWT) > license.urban file (bootstrap)
+        try
+        {
+            var licenseChecker = context.ServiceProvider.GetRequiredService<IStaticLicenseChecker>();
+            var settings = new SystemSettings();
+            LicenseCheckResult? result = null;
+
+            var licenseRepository = context.ServiceProvider
+                .GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
+            LicenseInfo? existingLicense = null;
+            try
+            {
+                var queryable = await licenseRepository.GetQueryableAsync();
+                existingLicense = await queryable.FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Failed to query LicenseInfo for LatestJwtToken");
+            }
+
+            if (existingLicense != null && !string.IsNullOrWhiteSpace(existingLicense.LatestJwtToken))
+            {
+                result = await licenseChecker.CheckLicenseFromTokenAsync(existingLicense.LatestJwtToken);
+                if (result.IsSuccess)
+                {
+                    logger?.LogInformation("Startup license check from LatestJwtToken: Passed");
+                }
+                else
+                {
+                    logger?.LogWarning(
+                        "Startup license check from LatestJwtToken failed: {Reason}, falling back to license file",
+                        result.Message);
+                    result = null;
+                }
+            }
+
+            if (result == null)
+            {
+                result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
+                if (result.IsSuccess)
+                {
+                    logger?.LogInformation("Startup license check from license file: Passed");
+                }
+            }
+
+            logger?.LogInformation(
+                "Static license check: {Status} - {Message}",
+                result.IsSuccess ? "Passed" : "Failed",
+                result.Message);
+
+            if (!result.IsSuccess || result.ProId == Guid.Empty)
+            {
+                var message = result.IsSuccess
+                    ? "Authorization data is incomplete: missing project id."
+                    : result.Message;
+                return new UrbanStartupAuthorizationResult(false, message, null);
+            }
+
+            try
+            {
+                var uowManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+
+                using var uow = uowManager.Begin(true, false);
+                var queryable2 = await licenseRepository.GetQueryableAsync();
+                var existing = await queryable2.FirstOrDefaultAsync();
+
+                if (existing == null)
+                {
+                    var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                    var licenseInfo = new LicenseInfo(
+                        Guid.NewGuid(),
+                        result.ProId,
+                        null,
+                        result.AuthEndTime,
+                        machineCode,
+                        result.ProName,
+                        result.BuildLicenseNo,
+                        result.FdBuildLicenseNo);
+                    await licenseRepository.InsertAsync(licenseInfo);
+                }
+                else
+                {
+                    existing.ProjectId = result.ProId;
+                    existing.AuthEndTime = result.AuthEndTime;
+                    var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                    existing.Update(
+                        null,
+                        result.AuthEndTime,
+                        machineCode,
+                        result.ProName,
+                        result.BuildLicenseNo,
+                        result.FdBuildLicenseNo);
+                    await licenseRepository.UpdateAsync(existing);
+                }
+
+                await uow.CompleteAsync();
+                logger?.LogInformation(
+                    "Static license data written to LicenseInfo: ProId={ProId}, ProName={ProName}",
+                    result.ProId,
+                    result.ProName);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Failed to write static license data to LicenseInfo");
+                return new UrbanStartupAuthorizationResult(
+                    false,
+                    "Failed to persist authorization data.",
+                    null);
+            }
+
+            return new UrbanStartupAuthorizationResult(true, result.Message, result.ProId);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Static license check failed");
+            return new UrbanStartupAuthorizationResult(false, ex.Message, null);
         }
     }
 

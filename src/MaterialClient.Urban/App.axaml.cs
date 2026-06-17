@@ -8,6 +8,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
+using MaterialClient.Urban.Views.Dialogs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -39,6 +40,17 @@ public class App : Application
                 });
 
                 await _abpApplication.InitializeAsync();
+
+                var startupAuth = _abpApplication.ServiceProvider
+                    .GetRequiredService<IUrbanStartupAuthorizationService>();
+                if (!startupAuth.IsAuthorized)
+                {
+                    var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
+                    notice.Closed += (_, _) => desktop.Shutdown();
+                    desktop.MainWindow = notice;
+                    desktop.Exit += OnApplicationExit;
+                    return;
+                }
 
                 // Resolve window from ABP container
                 var window = _abpApplication.ServiceProvider.GetRequiredService<UrbanAttendedWeighingWindow>();
