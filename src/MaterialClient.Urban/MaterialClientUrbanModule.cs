@@ -148,24 +148,7 @@ public class MaterialClientUrbanModule : AbpModule
     {
         var logger = context.ServiceProvider.GetService<ILogger<MaterialClientUrbanModule>>();
 
-        // Execute database migration
-        try
-        {
-            var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-            var dbContextProvider =
-                context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
-
-            using var uow = unitOfWorkManager.Begin(true, false);
-            await using var dbContext = await dbContextProvider.GetDbContextAsync();
-            await dbContext.Database.MigrateAsync();
-            await uow.CompleteAsync();
-
-            logger?.LogInformation("Database migration completed successfully");
-        }
-        catch (Exception ex)
-        {
-            logger?.LogError(ex, "Database migration failed");
-        }
+        await RunDatabaseMigrationAsync(context.ServiceProvider, logger);
 
         await EnsureUrbanDefaultWeighingModeAsync(context.ServiceProvider, logger);
 
@@ -223,15 +206,15 @@ public class MaterialClientUrbanModule : AbpModule
 
             var licenseRepository = context.ServiceProvider
                 .GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
-            LicenseInfo? existingLicense = null;
-            try
+            var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+
+            LicenseInfo? existingLicense;
+            using (var readUow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
             {
-                var queryable = await licenseRepository.GetQueryableAsync();
-                existingLicense = await queryable.FirstOrDefaultAsync();
-            }
-            catch (Exception ex)
-            {
-                logger?.LogWarning(ex, "Failed to query LicenseInfo for LatestJwtToken");
+                existingLicense = await (await licenseRepository.GetQueryableAsync())
+                    .OrderBy(license => license.CreatedAt)
+                    .FirstOrDefaultAsync();
+                await readUow.CompleteAsync();
             }
 
             if (existingLicense != null && !string.IsNullOrWhiteSpace(existingLicense.LatestJwtToken))
@@ -274,42 +257,44 @@ public class MaterialClientUrbanModule : AbpModule
 
             try
             {
-                var uowManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-
-                using var uow = uowManager.Begin(true, false);
-                var queryable2 = await licenseRepository.GetQueryableAsync();
-                var existing = await queryable2.FirstOrDefaultAsync();
-
-                if (existing == null)
+                using (var writeUow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: true))
                 {
-                    var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
-                    var licenseInfo = new LicenseInfo(
-                        Guid.NewGuid(),
-                        result.ProId,
-                        null,
-                        result.AuthEndTime,
-                        machineCode,
-                        result.ProName,
-                        result.BuildLicenseNo,
-                        result.FdBuildLicenseNo);
-                    await licenseRepository.InsertAsync(licenseInfo);
-                }
-                else
-                {
-                    existing.ProjectId = result.ProId;
-                    existing.AuthEndTime = result.AuthEndTime;
-                    var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
-                    existing.Update(
-                        null,
-                        result.AuthEndTime,
-                        machineCode,
-                        result.ProName,
-                        result.BuildLicenseNo,
-                        result.FdBuildLicenseNo);
-                    await licenseRepository.UpdateAsync(existing);
+                    var existing = await (await licenseRepository.GetQueryableAsync())
+                        .OrderBy(license => license.CreatedAt)
+                        .FirstOrDefaultAsync();
+
+                    if (existing == null)
+                    {
+                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                        var licenseInfo = new LicenseInfo(
+                            Guid.NewGuid(),
+                            result.ProId,
+                            null,
+                            result.AuthEndTime,
+                            machineCode,
+                            result.ProName,
+                            result.BuildLicenseNo,
+                            result.FdBuildLicenseNo);
+                        await licenseRepository.InsertAsync(licenseInfo);
+                    }
+                    else
+                    {
+                        existing.ProjectId = result.ProId;
+                        existing.AuthEndTime = result.AuthEndTime;
+                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                        existing.Update(
+                            null,
+                            result.AuthEndTime,
+                            machineCode,
+                            result.ProName,
+                            result.BuildLicenseNo,
+                            result.FdBuildLicenseNo);
+                        await licenseRepository.UpdateAsync(existing);
+                    }
+
+                    await writeUow.CompleteAsync();
                 }
 
-                await uow.CompleteAsync();
                 logger?.LogInformation(
                     "Static license data written to LicenseInfo: ProId={ProId}, ProName={ProName}",
                     result.ProId,
@@ -358,6 +343,31 @@ public class MaterialClientUrbanModule : AbpModule
         // Flush and close Serilog
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
+    }
+
+    private static async Task RunDatabaseMigrationAsync(
+        IServiceProvider serviceProvider,
+        ILogger<MaterialClientUrbanModule>? logger)
+    {
+        try
+        {
+            var unitOfWorkManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
+            var dbContextProvider =
+                serviceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
+
+            using (var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
+            {
+                var dbContext = await dbContextProvider.GetDbContextAsync();
+                await dbContext.Database.MigrateAsync();
+                await uow.CompleteAsync();
+            }
+
+            logger?.LogInformation("Database migration completed successfully");
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Database migration failed");
+        }
     }
 
     private static async Task EnsureUrbanDefaultWeighingModeAsync(
