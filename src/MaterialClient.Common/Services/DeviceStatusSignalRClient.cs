@@ -303,20 +303,37 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     {
         _reconnectAttempts = 0;
         var delays = _options.ReconnectDelays;
-        var maxAttempts = _options.MaxReconnectAttempts;
+        if (delays.Length == 0)
+        {
+            delays = [0, 2, 10, 30];
+        }
 
-        while (!cancellationToken.IsCancellationRequested && _reconnectAttempts < maxAttempts)
+        var maxAttempts = _options.MaxReconnectAttempts;
+        var persistentReconnect = _options.PersistentReconnect;
+
+        while (!cancellationToken.IsCancellationRequested &&
+               (persistentReconnect || _reconnectAttempts < maxAttempts))
         {
             _reconnectAttempts++;
 
-            // Calculate delay: use configured delays, then cap at 60 seconds
-            var delaySeconds = _reconnectAttempts <= delays.Length
-                ? delays[_reconnectAttempts - 1]
-                : Math.Min((int)Math.Pow(2, _reconnectAttempts), 60);
+            var delaySeconds = persistentReconnect
+                ? delays[(_reconnectAttempts - 1) % delays.Length]
+                : _reconnectAttempts <= delays.Length
+                    ? delays[_reconnectAttempts - 1]
+                    : Math.Min((int)Math.Pow(2, _reconnectAttempts), 60);
 
-            _logger.LogDebug(
-                "DeviceStatusSignalRClient: Reconnect attempt {Attempt}/{Max} in {Delay}s",
-                _reconnectAttempts, maxAttempts, delaySeconds);
+            if (persistentReconnect)
+            {
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: Reconnect attempt {Attempt} in {Delay}s (persistent)",
+                    _reconnectAttempts, delaySeconds);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: Reconnect attempt {Attempt}/{Max} in {Delay}s",
+                    _reconnectAttempts, maxAttempts, delaySeconds);
+            }
 
             if (delaySeconds > 0)
             {
@@ -354,10 +371,11 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             }
         }
 
-        if (_reconnectAttempts >= maxAttempts)
+        if (!persistentReconnect && _reconnectAttempts >= maxAttempts)
         {
             _logger.LogError(
-                "DeviceStatusSignalRClient: Max reconnect attempts ({Max}) reached. Giving up.",
+                "DeviceStatusSignalRClient: Max reconnect attempts ({Max}) reached. Giving up. " +
+                "Set SignalR:PersistentReconnect to true to keep retrying.",
                 maxAttempts);
         }
     }
