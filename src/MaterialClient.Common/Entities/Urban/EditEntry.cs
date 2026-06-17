@@ -9,7 +9,7 @@ namespace MaterialClient.Common.Entities.Urban;
 public class EditEntry
 {
     /// <summary>
-    ///     修改发生时间（UTC）
+    ///     修改发生时间（本地时间）
     /// </summary>
     public DateTime ChangedAt { get; set; }
 

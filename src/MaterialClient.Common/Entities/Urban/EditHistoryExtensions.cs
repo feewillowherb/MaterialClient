@@ -26,7 +26,8 @@ public static class EditHistoryExtensions
 
         try
         {
-            return JsonSerializer.Deserialize<List<EditEntry>>(json) ?? new List<EditEntry>();
+            var entries = JsonSerializer.Deserialize<List<EditEntry>>(json) ?? new List<EditEntry>();
+            return NormalizeEntries(entries);
         }
         catch
         {
@@ -48,7 +49,38 @@ public static class EditHistoryExtensions
         }
         else
         {
-            ext.SetProperty(EditHistoryKey, JsonSerializer.Serialize(entries));
+            var normalized = NormalizeEntries(entries);
+            ext.SetProperty(EditHistoryKey, JsonSerializer.Serialize(normalized));
         }
+    }
+
+    private static List<EditEntry> NormalizeEntries(IEnumerable<EditEntry> entries) =>
+        entries
+            .Select(entry => new EditEntry
+            {
+                ChangedAt = NormalizeChangedAt(entry.ChangedAt),
+                Before = entry.Before,
+                After = entry.After,
+                Source = entry.Source,
+                IsImagesModified = entry.IsImagesModified
+            })
+            .ToList();
+
+    /// <summary>
+    ///     修改历史统一按本地时间存储；兼容旧版 UTC（Z）写入。
+    /// </summary>
+    private static DateTime NormalizeChangedAt(DateTime changedAt)
+    {
+        if (changedAt == default)
+        {
+            return changedAt;
+        }
+
+        return changedAt.Kind switch
+        {
+            DateTimeKind.Utc => DateTime.SpecifyKind(changedAt.ToLocalTime(), DateTimeKind.Unspecified),
+            DateTimeKind.Local => DateTime.SpecifyKind(changedAt, DateTimeKind.Unspecified),
+            _ => changedAt
+        };
     }
 }

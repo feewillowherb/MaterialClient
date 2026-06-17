@@ -209,7 +209,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         var history = extension.GetEditHistory();
         history.Add(new EditEntry
         {
-            ChangedAt = DateTime.UtcNow,
+            ChangedAt = DateTime.Now,
             Before = before,
             After = after,
             Source = source,
