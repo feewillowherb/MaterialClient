@@ -14,7 +14,7 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     /// <summary>
     ///     在父称重记录已持久化后创建扩展行。
     /// </summary>
-    Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId);
+    Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLrpAttachment = true);
 
     /// <summary>
     ///     按称重记录 Id 查询扩展。

@@ -39,7 +39,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId)
+    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLrpAttachment = true)
     {
         if (weighingRecordId <= 0)
         {
@@ -61,12 +61,12 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             LastErrorTime = null
         };
 
-        // Persist AnomalyReason at creation time
+        // Persist AnomalyReason at creation time (includes Lrp absence check)
         var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
         var anomalyConfig = GetAnomalyDetectionConfig();
-        extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig);
+        extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLrpAttachment);
         extension.AnomalyReason = extension.IsAnomaly
-            ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig)
+            ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLrpAttachment)
             : null;
 
         await _extensionRepository.InsertAsync(extension, autoSave: true);
