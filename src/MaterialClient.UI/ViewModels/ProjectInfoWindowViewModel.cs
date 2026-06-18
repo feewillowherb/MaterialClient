@@ -8,7 +8,7 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.ViewModels;
+namespace MaterialClient.UI.ViewModels;
 
 /// <summary>
 ///     项目信息窗口 ViewModel
