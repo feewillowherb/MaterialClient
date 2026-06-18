@@ -29,7 +29,7 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
         _serviceProvider = serviceProvider;
         _logger = logger;
 
-        this.WhenAnyValue(x => x.LprPhotoPath)
+        this.WhenAnyValue(x => x.AnomalyReason)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(IsLrpAnomaly)));
     }
 
@@ -42,9 +42,10 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
     [Reactive] private string _cameraPhotoTime = "";
     [Reactive] private string? _lrpReplacementBase64;
     [Reactive] private string? _urbanPhotoReplacementBase64;
+    [Reactive] private AnomalyReason? _anomalyReason;
 
-    /// <summary>Whether Lrp photo is absent (empty/null) — shows anomaly warning.</summary>
-    public bool IsLrpAnomaly => string.IsNullOrEmpty(LprPhotoPath);
+    /// <summary>Whether this record's anomaly is "抓拍异常" — shows capture failure warning.</summary>
+    public bool IsLrpAnomaly => _anomalyReason == MaterialClient.Common.Entities.Enums.AnomalyReason.CaptureFailure;
 
     /// <summary>Set by the dialog code-behind to enable file picker support.</summary>
     public IStorageProvider? StorageProvider { get; set; }

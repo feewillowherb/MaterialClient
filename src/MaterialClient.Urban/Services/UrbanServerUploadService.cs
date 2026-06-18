@@ -4,6 +4,7 @@ using System.Text.Json;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Urban;
@@ -126,7 +127,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 ProId = licenseInfo?.ProjectId,
                 ProName = licenseInfo?.ProName,
                 IsAnomaly = isAnomaly,
-                AnomalyReason = extension?.AnomalyReason,
+                AnomalyReason = extension?.AnomalyReason?.GetDescription(),
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),
                 ClientSyncTime = null,
                 ClientRetryCount = extension?.RetryCount,

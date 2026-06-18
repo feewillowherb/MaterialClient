@@ -280,7 +280,7 @@
                                                            FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                             </StackPanel>
                                             <TextBlock Grid.Column="5"
-                                                       Text="{Binding AnomalyReason, TargetNullValue=--}"
+                                                       Text="{Binding AnomalyReason, Converter={StaticResource AnomalyReasonConverter}, TargetNullValue=--}"
                                                        FontSize="12"
                                                        Foreground="#334155"
                                                        VerticalAlignment="Center"

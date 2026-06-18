@@ -126,12 +126,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
             if (weighingMode == WeighingMode.UrbanMode)
             {
-                var extension = await _urbanWeighingExtensionService.CreateForRecordAsync(weighingRecord.Id);
-
-                // Anomaly detection
-                var anomalyConfig = GetAnomalyDetectionConfig();
-                extension.IsAnomaly = _anomalyDetector.IsAnomaly(weighingRecord, anomalyConfig);
-                await _urbanWeighingExtensionService.UpdateAnomalyFlagAsync(extension.Id, extension.IsAnomaly);
+                var hasLrp = !string.IsNullOrWhiteSpace(stateManager.GetCurrentCycleLrpImagePath());
+                var extension = await _urbanWeighingExtensionService.CreateForRecordAsync(weighingRecord.Id, hasLrp);
             }
 
             await uow.CompleteAsync();
@@ -361,11 +357,12 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             // Anomaly detection integration: recalculate anomaly flag after record edit
             // This ensures the anomaly status stays in sync with the edited record data
             var anomalyConfig = GetAnomalyDetectionConfig();
-            var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig);
+            var hasLrp = await HasLrpAttachmentAsync(weighingRecordId);
+            var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLrp);
             await _urbanWeighingExtensionService.UpdateAnomalyFlagAsync(extension.Id, isAnomaly);
 
             // Also persist the recalculated AnomalyReason
-            var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig) : null;
+            var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLrp) : null;
             extension.AnomalyReason = reason;
 
             _logger.LogInformation(
@@ -411,5 +408,15 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             _logger.LogWarning(ex, "Failed to read UrbanAnomalyDetection config, using default values");
             return new UrbanAnomalyDetectionConfig();
         }
+    }
+
+    private async Task<bool> HasLrpAttachmentAsync(long weighingRecordId)
+    {
+        var recordAttachments = await _weighingRecordAttachmentRepository.GetListAsync(a => a.WeighingRecordId == weighingRecordId);
+        if (recordAttachments.Count == 0) return false;
+
+        var fileIds = recordAttachments.Select(a => a.AttachmentFileId).ToList();
+        var lrpFiles = await _attachmentFileRepository.GetListAsync(f => fileIds.Contains(f.Id) && f.AttachType == AttachType.Lrp);
+        return lrpFiles.Count > 0;
     }
 }

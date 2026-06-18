@@ -14,6 +14,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.UI;
@@ -198,7 +199,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
             {
                 PlateNumber = item.PlateNumber ?? string.Empty,
                 TotalWeight = item.TotalWeight.ToString("F2"),
-                WeighingDate = item.AddDate.ToString("yyyy-MM-dd HH:mm:ss")
+                WeighingDate = item.AddDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                AnomalyReason = item.AnomalyReason
             };
 
             await dialogViewModel.LoadPhotosAsync(item.WeighingRecordId);
@@ -235,7 +237,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 // Capture old values before update for edit history tracking
                 var oldPlateNumber = item.PlateNumber ?? string.Empty;
                 var oldTotalWeight = item.TotalWeight;
-                var oldAnomalyReason = item.AnomalyReason ?? string.Empty;
+                var oldAnomalyReason = item.AnomalyReason?.GetDescription();
 
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
                 await weighingRecordService.UpdateWeighingRecordAsync(
@@ -251,11 +253,11 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                             EditEntrySnapshotExtensions.FromClientWeighing(
                                 oldPlateNumber,
                                 oldTotalWeight,
-                                string.IsNullOrEmpty(oldAnomalyReason) ? null : oldAnomalyReason),
+                                oldAnomalyReason),
                             EditEntrySnapshotExtensions.FromClientWeighing(
                                 result.PlateNumber ?? string.Empty,
                                 result.TotalWeight,
-                                extension.AnomalyReason),
+                                extension.AnomalyReason?.GetDescription()),
                             EditSource.Client);
                     }
                 }
