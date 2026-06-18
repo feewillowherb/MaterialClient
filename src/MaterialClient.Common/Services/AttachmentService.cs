@@ -51,6 +51,17 @@ public interface IAttachmentService
     Task CreateOrReplaceBillPhotoAsync(WeighingListItemDto listItem, string photoPath);
 
     /// <summary>
+    ///     替换称重记录的 Lpr / UrbanPhoto 本地附件：复制源文件到存储目录并更新数据库关联。
+    /// </summary>
+    /// <param name="weighingRecordId">称重记录 ID</param>
+    /// <param name="sourceFilePath">用户选择的源图片路径（绝对或相对）</param>
+    /// <param name="attachType">仅支持 <see cref="AttachType.Lpr"/> 或 <see cref="AttachType.UrbanPhoto"/></param>
+    Task ReplaceWeighingAttachmentFromSourceFileAsync(
+        long weighingRecordId,
+        string sourceFilePath,
+        AttachType attachType);
+
+    /// <summary>
     ///     同步指定运单的附件到OSS
     /// </summary>
     /// <param name="waybillId">运单ID</param>
@@ -268,6 +279,84 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to create BillPhoto attachment: FilePath={FilePath}", photoPath);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task ReplaceWeighingAttachmentFromSourceFileAsync(
+        long weighingRecordId,
+        string sourceFilePath,
+        AttachType attachType)
+    {
+        if (attachType is not (AttachType.Lpr or AttachType.UrbanPhoto))
+        {
+            throw new ArgumentException(
+                $"Invalid AttachType: {attachType}. Must be Lpr (5) or UrbanPhoto (6).",
+                nameof(attachType));
+        }
+
+        var absoluteSource = AttachmentPathUtils.ToAbsolutePath(sourceFilePath);
+        if (string.IsNullOrWhiteSpace(absoluteSource) || !File.Exists(absoluteSource))
+        {
+            _logger?.LogWarning(
+                "Replacement source file does not exist for record {RecordId}: {Path}",
+                weighingRecordId, sourceFilePath);
+            return;
+        }
+
+        try
+        {
+            var existingAttachments = await GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId]);
+            if (existingAttachments.TryGetValue(weighingRecordId, out var files))
+            {
+                foreach (var existing in files.Where(f => f.AttachType == attachType))
+                {
+                    var junctions = await _weighingRecordAttachmentRepository.GetListAsync(
+                        ra => ra.WeighingRecordId == weighingRecordId && ra.AttachmentFileId == existing.Id);
+                    foreach (var junction in junctions)
+                    {
+                        await _weighingRecordAttachmentRepository.DeleteAsync(junction);
+                    }
+
+                    await _attachmentFileRepository.DeleteAsync(existing);
+                    _logger?.LogInformation(
+                        "Deleted old {AttachType} attachment for record {RecordId}: FileId={FileId}",
+                        attachType, weighingRecordId, existing.Id);
+                }
+            }
+
+            var storageDir = AttachmentPathUtils.GetLocalStorageAbsolutePath(attachType);
+            Directory.CreateDirectory(storageDir);
+
+            var extension = Path.GetExtension(absoluteSource);
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                extension = ".jpg";
+            }
+
+            var fileName = $"{DateTime.Now.Ticks}_replace{extension}";
+            var destinationAbsolute = Path.Combine(storageDir, fileName);
+            File.Copy(absoluteSource, destinationAbsolute, overwrite: true);
+
+            var relativePath = PathManager.ToRelativePath(destinationAbsolute);
+            var attachmentFile = new AttachmentFile(fileName, relativePath, attachType);
+            await _attachmentFileRepository.InsertAsync(attachmentFile, true);
+
+            var recordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
+            await _weighingRecordAttachmentRepository.InsertAsync(recordAttachment, true);
+
+            _logger?.LogInformation(
+                "Replaced {AttachType} attachment for record {RecordId}: {Path}",
+                attachType, weighingRecordId, relativePath);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(
+                ex,
+                "Failed to replace {AttachType} attachment for record {RecordId} from {Path}",
+                attachType, weighingRecordId, sourceFilePath);
             throw;
         }
     }

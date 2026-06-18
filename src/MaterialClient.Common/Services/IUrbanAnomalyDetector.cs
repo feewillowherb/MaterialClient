@@ -15,16 +15,16 @@ public interface IUrbanAnomalyDetector
     /// </summary>
     /// <param name="record">The weighing record to evaluate.</param>
     /// <param name="config">The anomaly detection configuration thresholds.</param>
-    /// <param name="hasLrpAttachment"><c>true</c> if an Lrp photo attachment exists for this record.</param>
+    /// <param name="hasLprAttachment"><c>true</c> if an Lpr photo attachment exists for this record.</param>
     /// <returns><c>true</c> if the record is anomalous; otherwise, <c>false</c>.</returns>
-    bool IsAnomaly(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLrpAttachment = true);
+    bool IsAnomaly(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLprAttachment = true);
 
     /// <summary>
     ///     Returns the anomaly reason enum for the detected anomaly.
     /// </summary>
     /// <param name="record">The weighing record to evaluate.</param>
     /// <param name="config">The anomaly detection configuration thresholds.</param>
-    /// <param name="hasLrpAttachment"><c>true</c> if an Lrp photo attachment exists for this record.</param>
+    /// <param name="hasLprAttachment"><c>true</c> if an Lpr photo attachment exists for this record.</param>
     /// <returns>Anomaly reason enum, or <c>null</c> when normal.</returns>
-    AnomalyReason? GetAnomalyReason(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLrpAttachment = true);
+    AnomalyReason? GetAnomalyReason(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLprAttachment = true);
 }

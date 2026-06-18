@@ -8,7 +8,7 @@ namespace MaterialClient.Common.Services;
 /// <summary>
 ///     Urban anomaly detection service implementation.
 ///     Rules:
-///     0. Lrp photo absent → anomaly
+///     0. Lpr photo absent → anomaly
 ///     1. Plate number is null/empty/whitespace → anomaly
 ///     2. TotalWeight exceeds UpperLimit by DeviationPercentage → anomaly
 ///     3. TotalWeight is below LowerLimit by DeviationPercentage → anomaly
@@ -16,10 +16,10 @@ namespace MaterialClient.Common.Services;
 public class UrbanAnomalyDetector : IUrbanAnomalyDetector, ISingletonDependency
 {
     /// <inheritdoc />
-    public bool IsAnomaly(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLrpAttachment = true)
+    public bool IsAnomaly(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLprAttachment = true)
     {
-        // Rule 0: Lrp photo absent
-        if (!hasLrpAttachment)
+        // Rule 0: Lpr photo absent
+        if (!hasLprAttachment)
             return true;
 
         // Rule 1: Plate number is empty
@@ -40,10 +40,10 @@ public class UrbanAnomalyDetector : IUrbanAnomalyDetector, ISingletonDependency
     }
 
     /// <inheritdoc />
-    public AnomalyReason? GetAnomalyReason(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLrpAttachment = true)
+    public AnomalyReason? GetAnomalyReason(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLprAttachment = true)
     {
-        // Rule 0: Lrp photo absent
-        if (!hasLrpAttachment)
+        // Rule 0: Lpr photo absent
+        if (!hasLprAttachment)
             return AnomalyReason.CaptureFailure;
 
         // Rule 1: Plate number is empty

@@ -20,9 +20,9 @@ public class UrbanWeighingRecordApproveDto
 
     [JsonPropertyName("totalWeight")] public decimal TotalWeight { get; set; }
 
-    /// <summary>可选：Lrp 车牌识别图片替换（Base64 编码）。</summary>
-    [JsonPropertyName("lrpReplacementBase64")]
-    public string? LrpReplacementBase64 { get; set; }
+    /// <summary>可选：Lpr 车牌识别图片替换（Base64 编码）。</summary>
+    [JsonPropertyName("lprReplacementBase64")]
+    public string? LprReplacementBase64 { get; set; }
 
     /// <summary>可选：UrbanPhoto 城市拍照替换（Base64 编码）。</summary>
     [JsonPropertyName("urbanPhotoReplacementBase64")]

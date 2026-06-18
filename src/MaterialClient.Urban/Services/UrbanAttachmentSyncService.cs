@@ -29,7 +29,7 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 {
     private const string UnknownBuildLicenseNo = "unknown";
 
-    private static readonly AttachType[] UrbanSyncAttachTypes = [AttachType.Lrp, AttachType.UrbanPhoto];
+    private static readonly AttachType[] UrbanSyncAttachTypes = [AttachType.Lpr, AttachType.UrbanPhoto];
 
     private readonly IAttachmentService _attachmentService;
     private readonly IUrbanManagementApi _urbanManagementApi;

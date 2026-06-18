@@ -20,7 +20,7 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     private readonly ILogger<WeighingStateManager> _logger;
 
     private AttendedWeighingStatus _previousStatus = AttendedWeighingStatus.OffScale;
-    private string? _currentCycleLrpImagePath;
+    private string? _currentCycleLprImagePath;
     private string? _currentCycleVehicleColor;
     private string? _currentCycleVehicleType;
     private string? _currentCyclePlateColor;
@@ -102,19 +102,19 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     public long? GetLastCreatedWeighingRecordId() => _lastCreatedWeighingRecordIdSubject.Value;
 
     /// <summary>
-    ///     设置当前称重周期内的 LRP 图片相对路径（由 LPR 识别事件更新）
+    ///     设置当前称重周期内的 Lpr 图片相对路径（由 LPR 识别事件更新）
     /// </summary>
-    public void SetCurrentCycleLrpImagePath(string? relativePath)
+    public void SetCurrentCycleLprImagePath(string? relativePath)
     {
-        _currentCycleLrpImagePath = relativePath;
+        _currentCycleLprImagePath = relativePath;
         if (!string.IsNullOrWhiteSpace(relativePath))
-            _logger.LogDebug("Current cycle LRP image path set: {Path}", relativePath);
+            _logger.LogDebug("Current cycle Lpr image path set: {Path}", relativePath);
     }
 
     /// <summary>
-    ///     获取当前称重周期内的 LRP 图片相对路径
+    ///     获取当前称重周期内的 Lpr 图片相对路径
     /// </summary>
-    public string? GetCurrentCycleLrpImagePath() => _currentCycleLrpImagePath;
+    public string? GetCurrentCycleLprImagePath() => _currentCycleLprImagePath;
 
     /// <summary>
     ///     设置当前称重周期内的车辆信息
@@ -150,11 +150,11 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     public void ResetCycle()
     {
         _lastCreatedWeighingRecordIdSubject.OnNext(null);
-        _currentCycleLrpImagePath = null;
+        _currentCycleLprImagePath = null;
         _currentCycleVehicleColor = null;
         _currentCycleVehicleType = null;
         _currentCyclePlateColor = null;
-        _logger.LogDebug("Weighing cycle reset: record ID, LRP path, and vehicle info cleared");
+        _logger.LogDebug("Weighing cycle reset: record ID, Lpr path, and vehicle info cleared");
     }
 
     /// <summary>

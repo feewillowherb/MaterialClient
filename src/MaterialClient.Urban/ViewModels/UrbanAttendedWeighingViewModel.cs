@@ -10,11 +10,13 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Dtos;
+using MaterialClient.Urban.Services;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Extensions;
+using MaterialClient.Common.Utils;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.UI;
@@ -239,6 +241,21 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 var oldTotalWeight = item.TotalWeight;
                 var oldAnomalyReason = item.AnomalyReason?.GetDescription();
 
+                var imagesModified = false;
+                if (!string.IsNullOrWhiteSpace(result.LprReplacementSourcePath))
+                {
+                    await _attachmentService.ReplaceWeighingAttachmentFromSourceFileAsync(
+                        item.WeighingRecordId, result.LprReplacementSourcePath, AttachType.Lpr);
+                    imagesModified = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.UrbanPhotoReplacementSourcePath))
+                {
+                    await _attachmentService.ReplaceWeighingAttachmentFromSourceFileAsync(
+                        item.WeighingRecordId, result.UrbanPhotoReplacementSourcePath, AttachType.UrbanPhoto);
+                    imagesModified = true;
+                }
+
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
                 await weighingRecordService.UpdateWeighingRecordAsync(
                     item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
@@ -246,8 +263,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(item.WeighingRecordId);
                 if (extension != null)
                 {
-                    if (oldPlateNumber != result.PlateNumber || oldTotalWeight != result.TotalWeight)
+                    var dataChanged = oldPlateNumber != result.PlateNumber
+                                      || oldTotalWeight != result.TotalWeight
+                                      || imagesModified;
+                    if (dataChanged)
                     {
+                        var afterAnomalyReason = extension.IsAnomaly
+                            ? extension.AnomalyReason?.GetDescription()
+                            : null;
                         await _urbanWeighingExtensionService.AppendEditEntryAsync(
                             extension.Id,
                             EditEntrySnapshotExtensions.FromClientWeighing(
@@ -257,15 +280,15 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                             EditEntrySnapshotExtensions.FromClientWeighing(
                                 result.PlateNumber ?? string.Empty,
                                 result.TotalWeight,
-                                extension.AnomalyReason?.GetDescription()),
-                            EditSource.Client);
+                                afterAnomalyReason),
+                            EditSource.Client,
+                            isImagesModified: imagesModified);
                     }
                 }
 
-                // If replacement images were provided, call the server approve API
-                var hasReplacement = !string.IsNullOrEmpty(result.LrpReplacementBase64)
-                                     || !string.IsNullOrEmpty(result.UrbanPhotoReplacementBase64);
-                if (hasReplacement)
+                var hasServerReplacement = !string.IsNullOrEmpty(result.LprReplacementBase64)
+                                           || !string.IsNullOrEmpty(result.UrbanPhotoReplacementBase64);
+                if (hasServerReplacement)
                 {
                     try
                     {
@@ -274,8 +297,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                         {
                             ClientRecordId = item.WeighingRecordId,
                             PlateNumber = result.PlateNumber,
-                            TotalWeight = result.TotalWeight,
-                            LrpReplacementBase64 = result.LrpReplacementBase64,
+                            TotalWeight = MaterialMath.ConvertTonToKg(result.TotalWeight),
+                            LprReplacementBase64 = result.LprReplacementBase64,
                             UrbanPhotoReplacementBase64 = result.UrbanPhotoReplacementBase64
                         });
                     }
@@ -285,6 +308,18 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                             "Failed to send image replacement to server for record {Id}",
                             item.WeighingRecordId);
                     }
+                }
+
+                try
+                {
+                    var uploadService = _serviceProvider.GetRequiredService<IUrbanServerUploadService>();
+                    await uploadService.SubmitRecordAsync(item.WeighingRecordId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to submit approved record {Id} to server",
+                        item.WeighingRecordId);
                 }
 
                 await ReloadRecordsAsync();
@@ -600,7 +635,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     if (string.IsNullOrEmpty(file.LocalPath))
                         continue;
 
-                    if (file.AttachType == AttachType.Lrp)
+                    if (file.AttachType == AttachType.Lpr)
                     {
                         lprPath = file.LocalPath;
                         lprTime = file.AddDate;

@@ -39,7 +39,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLrpAttachment = true)
+    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLprAttachment = true)
     {
         if (weighingRecordId <= 0)
         {
@@ -64,9 +64,9 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         // Persist AnomalyReason at creation time (includes Lrp absence check)
         var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
         var anomalyConfig = GetAnomalyDetectionConfig();
-        extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLrpAttachment);
+        extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLprAttachment);
         extension.AnomalyReason = extension.IsAnomaly
-            ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLrpAttachment)
+            ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLprAttachment)
             : null;
 
         await _extensionRepository.InsertAsync(extension, autoSave: true);
@@ -189,10 +189,14 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly)
+    public virtual async Task UpdateAnomalyStateAsync(
+        Guid extensionId,
+        bool isAnomaly,
+        AnomalyReason? anomalyReason)
     {
         var extension = await _extensionRepository.GetAsync(extensionId);
         extension.IsAnomaly = isAnomaly;
+        extension.AnomalyReason = anomalyReason;
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 

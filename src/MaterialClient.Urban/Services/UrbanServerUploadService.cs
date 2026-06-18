@@ -84,7 +84,9 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             }
 
             var buildLicenseNo = licenseInfo?.BuildLicenseNo ?? string.Empty;
-            var skipAttachmentUpload = extension?.GetEditHistory().Count > 0;
+            var editHistory = extension?.GetEditHistory() ?? [];
+            var skipAttachmentUpload = editHistory.Count > 0
+                                       && !editHistory.Any(e => e.IsImagesModified);
             List<Guid> attachmentIds;
             if (skipAttachmentUpload)
             {
@@ -103,7 +105,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             if (!skipAttachmentUpload && hadLocalUrbanAttachments && attachmentIds.Count == 0)
             {
                 _logger.LogWarning(
-                    "Record {RecordId} has local Lrp/UrbanPhoto attachments but none were uploaded; keeping Pending for retry",
+                    "Record {RecordId} has local Lpr/UrbanPhoto attachments but none were uploaded; keeping Pending for retry",
                     weighingRecordId);
                 return;
             }
@@ -138,12 +140,12 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             // Build ExtraProperties with edit history from extension
             if (extension != null)
             {
-                var editHistory = extension.GetEditHistory().NormalizeWeightsForServer();
-                if (editHistory.Count > 0)
+                var normalizedEditHistory = editHistory.NormalizeWeightsForServer();
+                if (normalizedEditHistory.Count > 0)
                 {
                     dto.ExtraProperties = new Dictionary<string, object?>
                     {
-                        ["EditHistory"] = JsonSerializer.Serialize(editHistory)
+                        ["EditHistory"] = JsonSerializer.Serialize(normalizedEditHistory)
                     };
                 }
             }
@@ -184,6 +186,6 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             return false;
         }
 
-        return files.Exists(f => f.AttachType is AttachType.Lrp or AttachType.UrbanPhoto);
+        return files.Exists(f => f.AttachType is AttachType.Lpr or AttachType.UrbanPhoto);
     }
 }

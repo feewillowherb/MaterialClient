@@ -21,7 +21,7 @@ public interface IGateIoControlService
 /// <summary>
 ///     道闸 I/O 控制服务。
 ///     通过 ILocalEventBus 订阅识别事件和称重状态变化，实现会话状态管理和状态同步。
-///     支持双控制模式架构（LRP SDK 和 COM 直接控制）。
+///     支持双控制模式架构（Lpr SDK 和 COM 直接控制）。
 /// </summary>
 public sealed class GateIoControlService : IGateIoControlService, ISingletonDependency
 {
@@ -207,14 +207,14 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             // 检查道闸功能是否启用
             if (!_gateIoEnabled)
             {
-                _logger?.LogDebug("道闸功能已禁用，跳过 LRP 触发: Device={Device}", message.DeviceName);
+                _logger?.LogDebug("道闸功能已禁用，跳过 Lpr 触发: Device={Device}", message.DeviceName);
                 return;
             }
 
             // 状态门控逻辑：基于称重状态判断是否允许开闸
             if (!ShouldAllowGateOpen())
             {
-                _logger?.LogDebug("称重状态为 {Status}，禁止 LRP 开闸: Device={Device}",
+                _logger?.LogDebug("称重状态为 {Status}，禁止 Lpr 开闸: Device={Device}",
                     _currentWeighingStatus, message.DeviceName);
                 return;
             }
@@ -396,11 +396,11 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
                     break;
 
                 case AttendedWeighingStatus.WaitingForStability:
-                    _logger?.LogInformation("称重状态 WaitingForStability，禁止 LRP 开闸");
+                    _logger?.LogInformation("称重状态 WaitingForStability，禁止 Lpr 开闸");
                     break;
 
                 case AttendedWeighingStatus.WeightStabilized:
-                    _logger?.LogInformation("称重状态 WeightStabilized，禁止 LRP 开闸");
+                    _logger?.LogInformation("称重状态 WeightStabilized，禁止 Lpr 开闸");
                     break;
 
                 case AttendedWeighingStatus.WaitingForDeparture:
@@ -507,9 +507,9 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     {
         try
         {
-            // 默认使用 LRP SDK 控制方式
+            // 默认使用 Lpr SDK 控制方式
             // 未来可扩展：根据 config.GateIoControlMode 分发到不同的控制方法
-            await OpenGateViaLrpSdkAsync(config, ioChannel);
+            await OpenGateViaLprSdkAsync(config, ioChannel);
         }
         catch (NotSupportedException ex)
         {
@@ -525,9 +525,9 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     }
 
     /// <summary>
-    ///     通过 LRP SDK 控制道闸（方式 1：当前实现）
+    ///     通过 Lpr SDK 控制道闸（方式 1：当前实现）
     /// </summary>
-    private async Task OpenGateViaLrpSdkAsync(LicensePlateRecognitionConfig config, uint ioChannel)
+    private async Task OpenGateViaLprSdkAsync(LicensePlateRecognitionConfig config, uint ioChannel)
     {
         // 注意：当前实现仅支持 Vzvision 设备
         // LprDeviceType 从全局配置获取，而非从单个设备配置获取
@@ -539,6 +539,6 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     /// </summary>
     private async Task OpenGateViaComAsync(LicensePlateRecognitionConfig config, uint ioChannel)
     {
-        throw new NotSupportedException("直接通过 COM 控制道闸 I/O 功能暂不支持，请使用 LRP SDK 控制方式");
+        throw new NotSupportedException("直接通过 COM 控制道闸 I/O 功能暂不支持，请使用 Lpr SDK 控制方式");
     }
 }

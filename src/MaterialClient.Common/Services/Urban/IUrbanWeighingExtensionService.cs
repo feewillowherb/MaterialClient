@@ -14,7 +14,7 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     /// <summary>
     ///     在父称重记录已持久化后创建扩展行。
     /// </summary>
-    Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLrpAttachment = true);
+    Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLprAttachment = true);
 
     /// <summary>
     ///     按称重记录 Id 查询扩展。
@@ -37,9 +37,9 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     Task UpdateSyncStatusAsync(Guid extensionId, SyncStatus syncStatus, DateTime? lastErrorTime = null);
 
     /// <summary>
-    ///     更新扩展的异常标记。
+    ///     更新扩展的异常标记与原因。
     /// </summary>
-    Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly);
+    Task UpdateAnomalyStateAsync(Guid extensionId, bool isAnomaly, AnomalyReason? anomalyReason);
 
     /// <summary>
     ///     追加一条修改记录到 <see cref="UrbanWeighingExtension" />

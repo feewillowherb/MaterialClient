@@ -12,7 +12,7 @@ using ReactiveUI.SourceGenerators;
 namespace MaterialClient.Urban.ViewModels;
 
 /// <summary>
-///     ViewModel for WeighingRecordEditDialog - edit plate/weight and preview LRP / UrbanPhoto during approval
+///     ViewModel for WeighingRecordEditDialog - edit plate/weight and preview Lpr / UrbanPhoto during approval
 /// </summary>
 public partial class WeighingRecordEditDialogViewModel : ReactiveObject
 {
@@ -30,7 +30,7 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
         _logger = logger;
 
         this.WhenAnyValue(x => x.AnomalyReason)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsLrpAnomaly)));
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsLprAnomaly)));
     }
 
     [Reactive] private string _plateNumber = string.Empty;
@@ -40,12 +40,14 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
     [Reactive] private string? _cameraPhotoPath;
     [Reactive] private string _lprPhotoTime = "";
     [Reactive] private string _cameraPhotoTime = "";
-    [Reactive] private string? _lrpReplacementBase64;
+    [Reactive] private string? _lprReplacementBase64;
+    [Reactive] private string? _lprReplacementSourcePath;
     [Reactive] private string? _urbanPhotoReplacementBase64;
+    [Reactive] private string? _urbanPhotoReplacementSourcePath;
     [Reactive] private AnomalyReason? _anomalyReason;
 
     /// <summary>Whether this record's anomaly is "抓拍异常" — shows capture failure warning.</summary>
-    public bool IsLrpAnomaly => _anomalyReason == MaterialClient.Common.Entities.Enums.AnomalyReason.CaptureFailure;
+    public bool IsLprAnomaly => _anomalyReason == MaterialClient.Common.Entities.Enums.AnomalyReason.CaptureFailure;
 
     /// <summary>Set by the dialog code-behind to enable file picker support.</summary>
     public IStorageProvider? StorageProvider { get; set; }
@@ -73,7 +75,7 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
                         continue;
                     }
 
-                    if (file.AttachType == AttachType.Lrp)
+                    if (file.AttachType == AttachType.Lpr)
                     {
                         lprPath = file.LocalPath;
                         lprTime = file.AddDate;
@@ -109,7 +111,13 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
             return;
         }
 
-        Result = new EditResult(PlateNumber, weight, LrpReplacementBase64, UrbanPhotoReplacementBase64);
+        Result = new EditResult(
+            PlateNumber,
+            weight,
+            LprReplacementSourcePath,
+            LprReplacementBase64,
+            UrbanPhotoReplacementSourcePath,
+            UrbanPhotoReplacementBase64);
     }
 
     [ReactiveCommand]
@@ -186,7 +194,8 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
             await stream.CopyToAsync(ms);
             var base64 = Convert.ToBase64String(ms.ToArray());
 
-            LrpReplacementBase64 = base64;
+            LprReplacementBase64 = base64;
+            LprReplacementSourcePath = files[0].Path.LocalPath;
             LprPhotoPath = files[0].Path.LocalPath;
         }
         catch (Exception ex)
@@ -217,6 +226,7 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
             var base64 = Convert.ToBase64String(ms.ToArray());
 
             UrbanPhotoReplacementBase64 = base64;
+            UrbanPhotoReplacementSourcePath = files[0].Path.LocalPath;
             CameraPhotoPath = files[0].Path.LocalPath;
         }
         catch (Exception ex)
@@ -229,4 +239,10 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
 /// <summary>
 ///     Result from the weighing record edit dialog
 /// </summary>
-public record EditResult(string PlateNumber, decimal TotalWeight, string? LrpReplacementBase64 = null, string? UrbanPhotoReplacementBase64 = null);
+public record EditResult(
+    string PlateNumber,
+    decimal TotalWeight,
+    string? LprReplacementSourcePath = null,
+    string? LprReplacementBase64 = null,
+    string? UrbanPhotoReplacementSourcePath = null,
+    string? UrbanPhotoReplacementBase64 = null);
