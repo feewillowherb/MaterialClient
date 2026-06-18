@@ -13,7 +13,7 @@
         WindowStartupLocation="CenterOwner"
         SystemDecorations="None"
         Background="White"
-        Icon="/Assets/fd-ico.ico">
+        Icon="avares://MaterialClient.UI/Assets/fd-ico.ico">
 
     <Design.DataContext>
         <vm:ProjectInfoWindowViewModel />

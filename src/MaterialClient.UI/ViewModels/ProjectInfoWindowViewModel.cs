@@ -56,55 +56,34 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
     {
         try
         {
-            // 获取用户会话信息
-            var session = await _authenticationService.GetCurrentSessionAsync();
-            if (session != null)
-                ProjectName = session.CompanyName ?? string.Empty;
-            else
-                ProjectName = "未登录";
-
-            // 产品显示名从 SystemSettings.DefaultWeighingMode 获取
-            var settings = await _settingsService.GetSettingsAsync();
-            ProductNameDisplay = settings.SystemSettings.DefaultWeighingMode.GetDescription();
-
-            // 获取授权信息
             var license = await _licenseService.GetCurrentLicenseAsync();
             if (license != null)
             {
-                // 格式化到期时间
+                ProjectName = string.IsNullOrWhiteSpace(license.ProName) ? "未命名项目" : license.ProName;
+
                 ExpirationDate = license.AuthEndTime.ToString("yyyy-MM-dd");
 
-                // 处理机器码（部分隐藏）
-                if (!string.IsNullOrEmpty(license.MachineCode))
-                {
-                    MachineCode = MaskCode(license.MachineCode);
-                }
-                else
-                {
-                    MachineCode = string.Empty;
-                }
+                MachineCode = !string.IsNullOrEmpty(license.MachineCode)
+                    ? MaskCode(license.MachineCode)
+                    : string.Empty;
 
-                // 处理授权码（Guid转字符串并部分隐藏）
-                if (license.AuthToken.HasValue)
-                {
-                    var authTokenString = license.AuthToken.Value.ToString("N"); // 无连字符格式
-                    AuthCode = MaskCode(authTokenString);
-                }
-                else
-                {
-                    AuthCode = string.Empty;
-                }
+                AuthCode = license.AuthToken.HasValue
+                    ? MaskCode(license.AuthToken.Value.ToString("N"))
+                    : string.Empty;
             }
             else
             {
+                ProjectName = "未授权";
                 ExpirationDate = "未授权";
                 MachineCode = string.Empty;
                 AuthCode = string.Empty;
             }
+
+            var settings = await _settingsService.GetSettingsAsync();
+            ProductNameDisplay = settings.SystemSettings.DefaultWeighingMode.GetDescription();
         }
         catch (Exception)
         {
-            // 如果获取数据失败，显示默认值
             ProjectName = "获取失败";
             ProductNameDisplay = "获取失败";
             ExpirationDate = "获取失败";
