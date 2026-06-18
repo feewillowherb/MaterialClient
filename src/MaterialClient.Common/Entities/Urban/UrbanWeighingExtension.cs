@@ -50,9 +50,9 @@ public class UrbanWeighingExtension : Entity<Guid>, IHasExtraProperties
     public bool IsAnomaly { get; set; } = false;
 
     /// <summary>
-    ///     Persisted anomaly reason text (e.g. "超上限", "低下限", "车牌为空").
+    ///     Persisted anomaly reason enum.
     ///     Set at record creation time and recalculated on approval edits.
     ///     <c>null</c> when the record is not anomalous.
     /// </summary>
-    public string? AnomalyReason { get; set; }
+    public AnomalyReason? AnomalyReason { get; set; }
 }

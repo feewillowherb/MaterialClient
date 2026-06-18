@@ -21,5 +21,19 @@ public static class EnumExtensions
         var descriptionAttribute = fieldInfo.GetCustomAttribute<DescriptionAttribute>();
         return descriptionAttribute?.Description ?? enumValue.ToString();
     }
-}
 
+    /// <summary>
+    ///     从 Description 文本解析枚举值
+    /// </summary>
+    public static T Parse<T>(string description) where T : struct, Enum
+    {
+        foreach (var field in typeof(T).GetFields())
+        {
+            if (Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute)) is DescriptionAttribute attr
+                && attr.Description == description)
+                return (T)field.GetValue(null)!;
+        }
+
+        return Enum.TryParse<T>(description, out var result) ? result : default;
+    }
+}

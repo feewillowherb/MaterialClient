@@ -26,9 +26,9 @@ public class UrbanWeighingListItemDto
     public SyncStatus? SyncStatus { get; init; }
 
     /// <summary>
-    ///     Short anomaly reason text, null/empty when record is normal.
+    ///     Anomaly reason enum, null when record is normal.
     /// </summary>
-    public string? AnomalyReason { get; init; }
+    public AnomalyReason? AnomalyReason { get; init; }
 
     /// <summary>
     ///     Record upload time (when available), null means not uploaded yet.
