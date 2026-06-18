@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.UI.ViewModels;
@@ -26,6 +28,9 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
         _attachmentService = attachmentService;
         _serviceProvider = serviceProvider;
         _logger = logger;
+
+        this.WhenAnyValue(x => x.LprPhotoPath)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsLrpAnomaly)));
     }
 
     [Reactive] private string _plateNumber = string.Empty;
@@ -35,6 +40,14 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
     [Reactive] private string? _cameraPhotoPath;
     [Reactive] private string _lprPhotoTime = "";
     [Reactive] private string _cameraPhotoTime = "";
+    [Reactive] private string? _lrpReplacementBase64;
+    [Reactive] private string? _urbanPhotoReplacementBase64;
+
+    /// <summary>Whether Lrp photo is absent (empty/null) — shows anomaly warning.</summary>
+    public bool IsLrpAnomaly => string.IsNullOrEmpty(LprPhotoPath);
+
+    /// <summary>Set by the dialog code-behind to enable file picker support.</summary>
+    public IStorageProvider? StorageProvider { get; set; }
 
     public EditResult? Result { get; private set; }
 
@@ -95,7 +108,7 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
             return;
         }
 
-        Result = new EditResult(PlateNumber, weight);
+        Result = new EditResult(PlateNumber, weight, LrpReplacementBase64, UrbanPhotoReplacementBase64);
     }
 
     [ReactiveCommand]
@@ -145,9 +158,74 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
             _logger.LogError(ex, "打开摄像头图片查看器失败");
         }
     }
+
+    private static readonly FilePickerFileType[] ImageFileTypes =
+    [
+        new("图片文件") { Patterns = ["*.jpg", "*.jpeg", "*.png", "*.bmp"] }
+    ];
+
+    [ReactiveCommand]
+    private async Task ReplaceLprAsync()
+    {
+        if (StorageProvider == null) return;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "选择车牌识别图片",
+            AllowMultiple = false,
+            FileTypeFilter = ImageFileTypes
+        });
+
+        if (files.Count == 0) return;
+
+        try
+        {
+            await using var stream = await files[0].OpenReadAsync();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+
+            LrpReplacementBase64 = base64;
+            LprPhotoPath = files[0].Path.LocalPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "替换车牌识别图片失败");
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task ReplaceUrbanPhotoAsync()
+    {
+        if (StorageProvider == null) return;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "选择城市拍照图片",
+            AllowMultiple = false,
+            FileTypeFilter = ImageFileTypes
+        });
+
+        if (files.Count == 0) return;
+
+        try
+        {
+            await using var stream = await files[0].OpenReadAsync();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+
+            UrbanPhotoReplacementBase64 = base64;
+            CameraPhotoPath = files[0].Path.LocalPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "替换城市拍照图片失败");
+        }
+    }
 }
 
 /// <summary>
 ///     Result from the weighing record edit dialog
 /// </summary>
-public record EditResult(string PlateNumber, decimal TotalWeight);
+public record EditResult(string PlateNumber, decimal TotalWeight, string? LrpReplacementBase64 = null, string? UrbanPhotoReplacementBase64 = null);

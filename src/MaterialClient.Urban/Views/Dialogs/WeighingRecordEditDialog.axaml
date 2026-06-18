@@ -32,6 +32,12 @@
                                    Stretch="UniformToFill" />
                         </Border>
                     </Button>
+                    <TextBlock Text="⚠ 抓拍异常" FontSize="11" Foreground="#D97706"
+                               FontWeight="Medium" HorizontalAlignment="Center"
+                               IsVisible="{Binding IsLrpAnomaly}" />
+                    <Button Content="替换" Command="{Binding ReplaceLrpCommand}"
+                            HorizontalAlignment="Center" Padding="16,4" FontSize="12"
+                            CornerRadius="4" />
                 </StackPanel>
 
                 <StackPanel Spacing="4">
@@ -50,6 +56,9 @@
                                    Stretch="UniformToFill" />
                         </Border>
                     </Button>
+                    <Button Content="替换" Command="{Binding ReplaceUrbanPhotoCommand}"
+                            HorizontalAlignment="Center" Padding="16,4" FontSize="12"
+                            CornerRadius="4" />
                 </StackPanel>
             </StackPanel>
 

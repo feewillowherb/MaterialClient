@@ -8,6 +8,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
+using MaterialClient.Urban.Api;
+using MaterialClient.Urban.Dtos;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
@@ -255,6 +257,31 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                                 result.TotalWeight,
                                 extension.AnomalyReason),
                             EditSource.Client);
+                    }
+                }
+
+                // If replacement images were provided, call the server approve API
+                var hasReplacement = !string.IsNullOrEmpty(result.LrpReplacementBase64)
+                                     || !string.IsNullOrEmpty(result.UrbanPhotoReplacementBase64);
+                if (hasReplacement)
+                {
+                    try
+                    {
+                        var api = _serviceProvider.GetRequiredService<IUrbanManagementApi>();
+                        await api.ApproveWeighingRecordAsync(new UrbanWeighingRecordApproveDto
+                        {
+                            ClientRecordId = item.WeighingRecordId,
+                            PlateNumber = result.PlateNumber,
+                            TotalWeight = result.TotalWeight,
+                            LrpReplacementBase64 = result.LrpReplacementBase64,
+                            UrbanPhotoReplacementBase64 = result.UrbanPhotoReplacementBase64
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to send image replacement to server for record {Id}",
+                            item.WeighingRecordId);
                     }
                 }
 
