@@ -376,7 +376,7 @@
                                     <!-- Photo 2: Camera Capture -->
                                     <StackPanel Spacing="4">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Text="摄像头抓拍" FontSize="11" Foreground="#666666"
+                                            <TextBlock Text="枪机抓拍" FontSize="11" Foreground="#666666"
                                                        FontWeight="Medium" VerticalAlignment="Center"
                                                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                             <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11" Foreground="#94A3B8"
