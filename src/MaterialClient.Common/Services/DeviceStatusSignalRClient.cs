@@ -37,6 +37,41 @@ public interface IDeviceStatusSignalRClient : ISingletonDependency
     ///     Current connection state.
     /// </summary>
     HubConnectionState ConnectionState { get; }
+
+    /// <summary>
+    ///     Whether the connection is currently connected.
+    /// </summary>
+    bool IsConnected { get; }
+
+    /// <summary>
+    ///     Register a callback for receiving log list requests from the server.
+    /// </summary>
+    void OnReceiveLogListRequest(Func<string, string, string, Task> callback);
+
+    /// <summary>
+    ///     Register the client's log pull capability with the server.
+    /// </summary>
+    Task RegisterLogCapability(string clientId, object capabilityInfo);
+
+    /// <summary>
+    ///     Return the log list result to the server.
+    /// </summary>
+    Task ReturnLogList(object result);
+
+    /// <summary>
+    ///     Register a callback for receiving file content requests from the server.
+    /// </summary>
+    void OnReceiveFileContentRequest(Func<string, string, string, string, Task> callback);
+
+    /// <summary>
+    ///     Return a file chunk to the server.
+    /// </summary>
+    Task ReturnFileChunkAsync(string requestId, int chunkIndex, int totalChunks, byte[] data, long totalFileSize);
+
+    /// <summary>
+    ///     Return a file error to the server.
+    /// </summary>
+    Task ReturnFileErrorAsync(string requestId, string errorMessage);
 }
 
 /// <inheritdoc />
@@ -75,6 +110,9 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 
     /// <inheritdoc />
     public HubConnectionState ConnectionState => _connection?.State ?? HubConnectionState.Disconnected;
+
+    /// <inheritdoc />
+    public bool IsConnected => _connection?.State == HubConnectionState.Connected;
 
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -544,6 +582,117 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
         {
             _logger.LogWarning(ex,
                 "DeviceStatusSignalRClient: Failed to sync project license info from server.");
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnReceiveLogListRequest(Func<string, string, string, Task> callback)
+    {
+        if (_connection != null)
+        {
+            _connection.On<string, string, string>("ReceiveLogListRequest", callback);
+            _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveLogListRequest callback");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task RegisterLogCapability(string clientId, object capabilityInfo)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("RegisterLogCapability", clientId, capabilityInfo);
+                _logger.LogDebug("DeviceStatusSignalRClient: Registered log capability for ClientId={ClientId}", clientId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to register log capability");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot register log capability: connection is not established");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ReturnLogList(object result)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("ReturnLogList", result);
+                _logger.LogDebug("DeviceStatusSignalRClient: Returned log list for RequestId={RequestId}",
+                    result.GetType().GetProperty("RequestId")?.GetValue(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to return log list");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot return log list: connection is not established");
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnReceiveFileContentRequest(Func<string, string, string, string, Task> callback)
+    {
+        if (_connection != null)
+        {
+            _connection.On<string, string, string, string>("ReceiveFileContentRequest", callback);
+            _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveFileContentRequest callback");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ReturnFileChunkAsync(string requestId, int chunkIndex, int totalChunks, byte[] data, long totalFileSize)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("ReceiveFileChunk", requestId, chunkIndex, totalChunks, data, totalFileSize);
+                _logger.LogDebug("DeviceStatusSignalRClient: Sent file chunk {ChunkIndex}/{TotalChunks} for RequestId={RequestId}",
+                    chunkIndex, totalChunks, requestId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to send file chunk");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot send file chunk: connection is not established");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ReturnFileErrorAsync(string requestId, string errorMessage)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("ReceiveFileError", requestId, errorMessage);
+                _logger.LogWarning("DeviceStatusSignalRClient: Sent file error for RequestId={RequestId}: {ErrorMessage}",
+                    requestId, errorMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to send file error");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot send file error: connection is not established");
         }
     }
 
