@@ -72,6 +72,11 @@ public interface IDeviceStatusSignalRClient : ISingletonDependency
     ///     Return a file error to the server.
     /// </summary>
     Task ReturnFileErrorAsync(string requestId, string errorMessage);
+
+    /// <summary>
+    ///     Register a callback for server Web approval sync push messages.
+    /// </summary>
+    void OnWeighingRecordApproved(Func<Models.WeighingRecordApprovedPushDto, Task> callback);
 }
 
 /// <inheritdoc />
@@ -92,8 +97,10 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 
     private Func<string, string, string, Task>? _logListRequestHandler;
     private Func<string, string, string, string, Task>? _fileContentRequestHandler;
+    private Func<Models.WeighingRecordApprovedPushDto, Task>? _weighingRecordApprovedHandler;
     private bool _logListHandlerRegistered;
     private bool _fileContentHandlerRegistered;
+    private bool _weighingRecordApprovedHandlerRegistered;
 
     public DeviceStatusSignalRClient(
         ILogger<DeviceStatusSignalRClient> logger,
@@ -634,10 +641,32 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
         _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveFileContentRequest callback");
     }
 
+    /// <inheritdoc />
+    public void OnWeighingRecordApproved(Func<Models.WeighingRecordApprovedPushDto, Task> callback)
+    {
+        _weighingRecordApprovedHandler = callback;
+        TryRegisterWeighingRecordApprovedHandler();
+    }
+
+    private void TryRegisterWeighingRecordApprovedHandler()
+    {
+        if (_connection == null || _weighingRecordApprovedHandler == null || _weighingRecordApprovedHandlerRegistered)
+        {
+            return;
+        }
+
+        _connection.On<Models.WeighingRecordApprovedPushDto>(
+            "WeighingRecordApproved",
+            push => _weighingRecordApprovedHandler(push));
+        _weighingRecordApprovedHandlerRegistered = true;
+        _logger.LogDebug("DeviceStatusSignalRClient: Registered WeighingRecordApproved callback");
+    }
+
     private void TryRegisterLogPullHandlers()
     {
         TryRegisterLogListHandler();
         TryRegisterFileContentHandler();
+        TryRegisterWeighingRecordApprovedHandler();
     }
 
     /// <inheritdoc />

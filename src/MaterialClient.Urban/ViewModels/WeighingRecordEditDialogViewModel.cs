@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.UI.ViewModels;
 using MaterialClient.UI.Views;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Urban.ViewModels;
 
@@ -18,17 +20,25 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
 {
     private readonly IAttachmentService _attachmentService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<WeighingRecordEditDialogViewModel> _logger;
     private long _weighingRecordId;
     private string? _pendingLrpReplacementSourcePath;
+    private IDisposable? _serverApprovalSubscription;
+
+    public Action? RequestCloseDueToServerApproval { get; set; }
+
+    public bool ClosedDueToServerApproval { get; private set; }
 
     public WeighingRecordEditDialogViewModel(
         IAttachmentService attachmentService,
         IServiceProvider serviceProvider,
+        ILocalEventBus localEventBus,
         ILogger<WeighingRecordEditDialogViewModel> logger)
     {
         _attachmentService = attachmentService;
         _serviceProvider = serviceProvider;
+        _localEventBus = localEventBus;
         _logger = logger;
 
         this.WhenAnyValue(x => x.AnomalyReason, x => x.LprPhotoPath, x => x.CameraPhotoPath)
@@ -63,6 +73,20 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
         _weighingRecordId = weighingRecordId;
         _pendingLrpReplacementSourcePath = null;
         _isLrpImageModified = false;
+        ClosedDueToServerApproval = false;
+
+        _serverApprovalSubscription?.Dispose();
+        _serverApprovalSubscription = _localEventBus.Subscribe<ServerApprovalSyncedEventData>(eventData =>
+        {
+            if (eventData.WeighingRecordId != _weighingRecordId)
+            {
+                return Task.CompletedTask;
+            }
+
+            ClosedDueToServerApproval = true;
+            RequestCloseDueToServerApproval?.Invoke();
+            return Task.CompletedTask;
+        });
 
         try
         {

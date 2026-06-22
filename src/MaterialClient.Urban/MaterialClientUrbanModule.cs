@@ -157,6 +157,21 @@ public class MaterialClientUrbanModule : AbpModule
             logger?.LogWarning(ex, "ClientLogPullService initialization failed");
         }
 
+        try
+        {
+            var serverApprovalSyncCoordinator =
+                context.ServiceProvider.GetService<Services.ServerApprovalSyncCoordinator>();
+            if (serverApprovalSyncCoordinator != null)
+            {
+                _ = serverApprovalSyncCoordinator.InitializeAsync();
+                logger?.LogInformation("ServerApprovalSyncCoordinator startup scheduled");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "ServerApprovalSyncCoordinator initialization failed");
+        }
+
         var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
         var pollingEnabled = configuration.GetValue("BackgroundServices:Polling", true);
         if (pollingEnabled)

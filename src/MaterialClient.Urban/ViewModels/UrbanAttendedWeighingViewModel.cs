@@ -121,6 +121,20 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
         _subscriptions.Add(
             _localEventBus
+                .Subscribe<ServerApprovalSyncedEventData>(async eventData =>
+                {
+                    try
+                    {
+                        await ReloadRecordsAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to handle ServerApprovalSyncedEventData");
+                    }
+                }));
+
+        _subscriptions.Add(
+            _localEventBus
                 .Subscribe<StatusChangedEventData>(async eventData =>
                 {
                     try
@@ -194,6 +208,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
             var dialogViewModel = new WeighingRecordEditDialogViewModel(
                 _serviceProvider.GetRequiredService<IAttachmentService>(),
                 _serviceProvider,
+                _serviceProvider.GetRequiredService<ILocalEventBus>(),
                 _serviceProvider.GetRequiredService<ILogger<WeighingRecordEditDialogViewModel>>())
             {
                 PlateNumber = item.PlateNumber ?? string.Empty,
@@ -206,7 +221,19 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
             var dialog = new WeighingRecordEditDialog(dialogViewModel);
             var window = GetWindow();
+            dialogViewModel.RequestCloseDueToServerApproval = () =>
+            {
+                RxApp.MainThreadScheduler.Schedule(() => dialog.Close(null));
+            };
             var result = await dialog.ShowDialog<EditResult?>(window);
+
+            if (result == null && dialogViewModel.ClosedDueToServerApproval)
+            {
+                await MessageBox.ShowAsync(window, "该记录已在服务端审批。", "提示",
+                    MessageBoxIcon.Information, MessageBoxButton.OK);
+                await ReloadRecordsAsync();
+                return;
+            }
 
             if (result != null)
             {
