@@ -29,14 +29,23 @@ public partial class UrbanWeighingUploadRequestedEventHandler
         try
         {
             using var uow = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: false);
-            await _uploadService.SubmitRecordAsync(eventData.WeighingRecordId);
+            var success = await _uploadService.SubmitRecordAsync(eventData.WeighingRecordId);
             await uow.CompleteAsync();
 
-            await _localEventBus.PublishAsync(new UploadCompletedEventData(eventData.WeighingRecordId));
+            if (success)
+            {
+                await _localEventBus.PublishAsync(new UploadCompletedEventData(eventData.WeighingRecordId));
 
-            _logger.LogInformation(
-                "UrbanWeighingUploadRequested: upload completed for record {RecordId}",
-                eventData.WeighingRecordId);
+                _logger.LogInformation(
+                    "UrbanWeighingUploadRequested: upload completed for record {RecordId}",
+                    eventData.WeighingRecordId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "UrbanWeighingUploadRequested: immediate upload failed for record {RecordId} (polling will retry)",
+                    eventData.WeighingRecordId);
+            }
         }
         catch (Exception ex)
         {

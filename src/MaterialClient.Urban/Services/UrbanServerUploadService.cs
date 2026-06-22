@@ -27,7 +27,8 @@ public interface IUrbanServerUploadService : ITransientDependency
     /// <summary>
     ///     将称重记录提交到 UrbanManagement 服务端
     /// </summary>
-    Task SubmitRecordAsync(long weighingRecordId);
+    /// <returns>提交成功返回 true；失败时保留 Pending 状态并返回 false</returns>
+    Task<bool> SubmitRecordAsync(long weighingRecordId);
 }
 
 /// <inheritdoc />
@@ -61,7 +62,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
 
     /// <inheritdoc />
     [UnitOfWork]
-    public async Task SubmitRecordAsync(long weighingRecordId)
+    public async Task<bool> SubmitRecordAsync(long weighingRecordId)
     {
         try
         {
@@ -107,7 +108,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 _logger.LogWarning(
                     "Record {RecordId} has local Lpr/UrbanPhoto attachments but none were uploaded; keeping Pending for retry",
                     weighingRecordId);
-                return;
+                return false;
             }
 
             var isAnomaly = extension?.IsAnomaly ?? false;
@@ -164,17 +165,18 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                     weighingRecordId,
                     response.RecordId,
                     attachmentIds.Count);
+                return true;
             }
-            else
-            {
-                _logger.LogWarning(
-                    "Record {RecordId} submission returned invalid server record id",
-                    weighingRecordId);
-            }
+
+            _logger.LogWarning(
+                "Record {RecordId} submission returned invalid server record id",
+                weighingRecordId);
+            return false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to submit record {RecordId} to server", weighingRecordId);
+            return false;
         }
     }
 

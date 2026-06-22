@@ -3,33 +3,45 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Logging;
 using MaterialClient.Urban.Dtos;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Urban.Services
 {
     /// <summary>
     /// 客户端日志拉取服务 - 通过 SignalR 响应服务端的日志列表请求
     /// </summary>
-    public class ClientLogPullService : ITransientDependency, IAsyncDisposable
+    public class ClientLogPullService : ISingletonDependency, IAsyncDisposable
     {
         private readonly ILogger<ClientLogPullService> _logger;
         private readonly IConfiguration _configuration;
         private readonly IDeviceStatusSignalRClient? _signalRClient;
+        private readonly ILocalEventBus _localEventBus;
         private readonly string _logBaseDirectory;
+        private readonly SemaphoreSlim _registerCapabilityGate = new(1, 1);
+
+        private IDisposable? _connectionRestoredSubscription;
+        private string? _clientId;
+        private volatile bool _capabilityRegistered;
 
         public ClientLogPullService(
             ILogger<ClientLogPullService> logger,
             IConfiguration configuration,
-            IDeviceStatusSignalRClient? signalRClient)
+            IDeviceStatusSignalRClient? signalRClient,
+            ILocalEventBus localEventBus)
         {
             _logger = logger;
             _configuration = configuration;
             _signalRClient = signalRClient;
+            _localEventBus = localEventBus;
 
             var appDirectory = AppContext.BaseDirectory;
             var logDirectory = configuration.GetValue<string>("Log:Directory", "Logs");
@@ -39,17 +51,16 @@ namespace MaterialClient.Urban.Services
         }
 
         /// <summary>
-        /// 初始化服务 - 注册 SignalR 回调并连接
+        /// 初始化服务 - 注册 SignalR 回调（不阻塞启动；能力注册在后台重试）
         /// </summary>
-        public async Task InitializeAsync()
+        public Task InitializeAsync()
         {
             if (_signalRClient == null)
             {
                 _logger.LogWarning("SignalR client not available. Client log pull service cannot initialize.");
-                return;
+                return Task.CompletedTask;
             }
 
-            // Get client ID from configuration or use machine name
             var clientId = _configuration.GetValue<string>("Client:Id") ?? Environment.MachineName;
             if (clientId.Length > 100)
             {
@@ -57,43 +68,100 @@ namespace MaterialClient.Urban.Services
                 _logger.LogWarning("Client ID truncated to 100 characters: {ClientId}", clientId);
             }
 
-            // Register callback for log list requests
+            _clientId = clientId;
+            RegisterSignalRCallbacks(clientId);
+
+            _connectionRestoredSubscription?.Dispose();
+            _connectionRestoredSubscription = _localEventBus.Subscribe<SignalRConnectionRestoredEventData>(_ =>
+            {
+                OnSignalRConnectionRestored();
+                return Task.CompletedTask;
+            });
+
+            _logger.LogInformation("ClientLogPullService initialized. ClientId: {ClientId}", clientId);
+
+            TryRegisterCapabilityInBackground();
+            return Task.CompletedTask;
+        }
+
+        private void OnSignalRConnectionRestored()
+        {
+            if (string.IsNullOrEmpty(_clientId))
+            {
+                return;
+            }
+
+            _capabilityRegistered = false;
+            RegisterSignalRCallbacks(_clientId);
+            TryRegisterCapabilityInBackground();
+        }
+
+        private void RegisterSignalRCallbacks(string clientId)
+        {
+            if (_signalRClient == null)
+            {
+                return;
+            }
+
             _signalRClient.OnReceiveLogListRequest(async (requestId, targetClientId, dateFolder) =>
             {
                 await HandleLogListRequestAsync(requestId, targetClientId, dateFolder, clientId);
             });
 
-            // Register callback for file content requests
             _signalRClient.OnReceiveFileContentRequest(async (requestId, targetClientId, filePath, fileName) =>
             {
                 await HandleFileContentRequestAsync(requestId, targetClientId, filePath, fileName, clientId);
             });
+        }
 
-            _logger.LogInformation("ClientLogPullService initialized. ClientId: {ClientId}", clientId);
+        private void TryRegisterCapabilityInBackground()
+        {
+            if (string.IsNullOrEmpty(_clientId))
+            {
+                return;
+            }
 
-            // Wait for connection to be established before registering capability
-            await RegisterCapabilityAsync(clientId);
+            _ = RegisterCapabilityAsync(_clientId);
         }
 
         /// <summary>
-        /// 注册日志拉取能力到服务端
+        /// 注册日志拉取能力到服务端（后台重试，失败不阻塞应用启动）
         /// </summary>
         private async Task RegisterCapabilityAsync(string clientId)
         {
-            if (_signalRClient == null) return;
-
-            var retries = 0;
-            const int maxRetries = 3;
-
-            while (retries < maxRetries)
+            if (_signalRClient == null || _capabilityRegistered)
             {
-                try
-                {
-                    // Wait for connection to be established
-                    await Task.Delay(1000 * (retries + 1));
+                return;
+            }
 
-                    if (_signalRClient.IsConnected)
+            if (!await _registerCapabilityGate.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                if (_capabilityRegistered)
+                {
+                    return;
+                }
+
+                const int maxAttempts = 5;
+
+                for (var attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    try
                     {
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Min(attempt, 5)));
+
+                        if (!_signalRClient.IsConnected)
+                        {
+                            _logger.LogDebug(
+                                "SignalR not connected; deferring log capability registration (attempt {Attempt}/{MaxAttempts})",
+                                attempt, maxAttempts);
+                            continue;
+                        }
+
                         var capabilityInfo = new LogCapabilityInfo
                         {
                             SupportsLogPull = true,
@@ -104,21 +172,26 @@ namespace MaterialClient.Urban.Services
                         };
 
                         await _signalRClient.RegisterLogCapability(clientId, capabilityInfo);
+                        _capabilityRegistered = true;
                         _logger.LogInformation("Log capability registered successfully: ClientId={ClientId}", clientId);
                         return;
                     }
-                }
-                catch (Exception ex)
-                {
-                    retries++;
-                    if (retries >= maxRetries)
+                    catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to register log capability after {Retries} retries", maxRetries);
-                        return;
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to register log capability (attempt {Attempt}/{MaxAttempts})",
+                            attempt, maxAttempts);
                     }
-                    _logger.LogWarning(ex, "Failed to register log capability (attempt {Attempt}/{MaxAttempts})", retries, maxRetries);
-                    await Task.Delay(5000);
                 }
+
+                _logger.LogWarning(
+                    "Log capability registration skipped after {MaxAttempts} attempts; app continues without remote log pull",
+                    maxAttempts);
+            }
+            finally
+            {
+                _registerCapabilityGate.Release();
             }
         }
 
@@ -149,39 +222,16 @@ namespace MaterialClient.Urban.Services
                     return;
                 }
 
-                // Build target directory path
-                var targetDirectory = string.IsNullOrEmpty(dateFolder)
-                    ? _logBaseDirectory
-                    : Path.Combine(_logBaseDirectory, dateFolder);
-
-                // Verify the directory is within the log base directory
-                if (!targetDirectory.StartsWith(_logBaseDirectory, StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogWarning("Log list request rejected: directory outside log directory: {TargetDirectory}",
-                        targetDirectory);
-                    return;
-                }
-
-                // Scan directory for log files
-                var logFiles = new List<LogFileDto>();
-
-                if (Directory.Exists(targetDirectory))
-                {
-                    var files = Directory.GetFiles(targetDirectory, "*.log");
-                    foreach (var file in files)
+                // Scan directory for log files (standardized and legacy layouts)
+                var logFiles = ClientLogScanner.Scan(_logBaseDirectory, dateFolder)
+                    .Select(entry => new LogFileDto
                     {
-                        var fileInfo = new FileInfo(file);
-                        var relativePath = Path.GetRelativePath(_logBaseDirectory, Path.GetDirectoryName(file) ?? _logBaseDirectory);
-
-                        logFiles.Add(new LogFileDto
-                        {
-                            FileName = fileInfo.Name,
-                            FilePath = relativePath.Replace("\\", "/") + "/",
-                            FileSize = fileInfo.Length,
-                            LastModified = fileInfo.LastWriteTimeUtc
-                        });
-                    }
-                }
+                        FileName = entry.FileName,
+                        FilePath = entry.FilePath,
+                        FileSize = entry.FileSize,
+                        LastModified = entry.LastModifiedUtc
+                    })
+                    .ToList();
 
                 // Build result
                 var result = new ClientLogListResultDto
@@ -248,9 +298,10 @@ namespace MaterialClient.Urban.Services
                 }
 
                 // Build full file path
-                var fullPath = string.IsNullOrEmpty(filePath)
+                var normalizedFilePath = filePath.Replace('\\', '/').Trim('/');
+                var fullPath = string.IsNullOrEmpty(normalizedFilePath)
                     ? Path.Combine(_logBaseDirectory, fileName)
-                    : Path.Combine(_logBaseDirectory, filePath, fileName);
+                    : Path.Combine(_logBaseDirectory, normalizedFilePath, fileName);
 
                 // Verify the file is within the log base directory
                 if (!fullPath.StartsWith(_logBaseDirectory, StringComparison.OrdinalIgnoreCase))
@@ -313,10 +364,13 @@ namespace MaterialClient.Urban.Services
             }
         }
 
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
+            _connectionRestoredSubscription?.Dispose();
+            _connectionRestoredSubscription = null;
+            _registerCapabilityGate.Dispose();
             _logger.LogInformation("ClientLogPullService disposing");
-            await Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 

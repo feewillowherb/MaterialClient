@@ -90,6 +90,11 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     private bool _isStopped;
     private readonly object _lock = new();
 
+    private Func<string, string, string, Task>? _logListRequestHandler;
+    private Func<string, string, string, string, Task>? _fileContentRequestHandler;
+    private bool _logListHandlerRegistered;
+    private bool _fileContentHandlerRegistered;
+
     public DeviceStatusSignalRClient(
         ILogger<DeviceStatusSignalRClient> logger,
         ILicenseService licenseService,
@@ -173,6 +178,8 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                 message.ClientId, message.DeviceType, message.Status);
         });
 
+        TryRegisterLogPullHandlers();
+
         try
         {
             await _connection.StartAsync(cancellationToken);
@@ -181,7 +188,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                 "DeviceStatusSignalRClient: Connected successfully. ConnectionId={ConnectionId}",
                 _connection.ConnectionId);
 
-            await SyncProjectLicenseFromServerAsync();
+            await OnConnectionRestoredAsync();
         }
         catch (TimeoutException ex)
         {
@@ -588,11 +595,49 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     /// <inheritdoc />
     public void OnReceiveLogListRequest(Func<string, string, string, Task> callback)
     {
-        if (_connection != null)
+        _logListRequestHandler = callback;
+        TryRegisterLogListHandler();
+    }
+
+    private void TryRegisterLogListHandler()
+    {
+        if (_connection == null || _logListRequestHandler == null || _logListHandlerRegistered)
         {
-            _connection.On<string, string, string>("ReceiveLogListRequest", callback);
-            _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveLogListRequest callback");
+            return;
         }
+
+        _connection.On<string, string, string>("ReceiveLogListRequest",
+            (requestId, targetClientId, dateFolder) =>
+                _logListRequestHandler(requestId, targetClientId, dateFolder));
+        _logListHandlerRegistered = true;
+        _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveLogListRequest callback");
+    }
+
+    /// <inheritdoc />
+    public void OnReceiveFileContentRequest(Func<string, string, string, string, Task> callback)
+    {
+        _fileContentRequestHandler = callback;
+        TryRegisterFileContentHandler();
+    }
+
+    private void TryRegisterFileContentHandler()
+    {
+        if (_connection == null || _fileContentRequestHandler == null || _fileContentHandlerRegistered)
+        {
+            return;
+        }
+
+        _connection.On<string, string, string, string>("ReceiveFileContentRequest",
+            (requestId, targetClientId, filePath, fileName) =>
+                _fileContentRequestHandler(requestId, targetClientId, filePath, fileName));
+        _fileContentHandlerRegistered = true;
+        _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveFileContentRequest callback");
+    }
+
+    private void TryRegisterLogPullHandlers()
+    {
+        TryRegisterLogListHandler();
+        TryRegisterFileContentHandler();
     }
 
     /// <inheritdoc />
@@ -637,16 +682,6 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
         else
         {
             throw new InvalidOperationException("Cannot return log list: connection is not established");
-        }
-    }
-
-    /// <inheritdoc />
-    public void OnReceiveFileContentRequest(Func<string, string, string, string, Task> callback)
-    {
-        if (_connection != null)
-        {
-            _connection.On<string, string, string, string>("ReceiveFileContentRequest", callback);
-            _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveFileContentRequest callback");
         }
     }
 

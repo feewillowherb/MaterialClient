@@ -275,8 +275,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                 }
 
-                await _localEventBus.PublishAsync(
-                    new UrbanWeighingUploadRequestedEventData(item.WeighingRecordId));
+                RequestBackgroundUpload(item.WeighingRecordId);
 
                 await ReloadRecordsAsync();
             }
@@ -284,6 +283,27 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to approve weighing record {Id}", item.WeighingRecordId);
+        }
+    }
+
+  private void RequestBackgroundUpload(long weighingRecordId)
+    {
+        _ = RequestBackgroundUploadAsync(weighingRecordId);
+    }
+
+    private async Task RequestBackgroundUploadAsync(long weighingRecordId)
+    {
+        try
+        {
+            await _localEventBus.PublishAsync(
+                new UrbanWeighingUploadRequestedEventData(weighingRecordId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to publish upload request for record {Id}; polling will retry",
+                weighingRecordId);
         }
     }
 
