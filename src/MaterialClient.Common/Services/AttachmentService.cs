@@ -62,6 +62,13 @@ public interface IAttachmentService
         AttachType attachType);
 
     /// <summary>
+    ///     从已有 UrbanPhoto 附件复制创建 Lrp 附件（采纳枪机图为车牌识别图）。
+    /// </summary>
+    /// <param name="weighingRecordId">称重记录 ID</param>
+    /// <returns>新建 Lrp 的本地相对路径；失败返回 null</returns>
+    Task<string?> CreateLrpFromUrbanPhotoAsync(long weighingRecordId);
+
+    /// <summary>
     ///     同步指定运单的附件到OSS
     /// </summary>
     /// <param name="waybillId">运单ID</param>
@@ -359,6 +366,42 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
                 attachType, weighingRecordId, sourceFilePath);
             throw;
         }
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public async Task<string?> CreateLrpFromUrbanPhotoAsync(long weighingRecordId)
+    {
+        var attachmentsByRecord = await GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId]);
+        if (!attachmentsByRecord.TryGetValue(weighingRecordId, out var files))
+        {
+            _logger?.LogWarning("No attachments found for record {RecordId} when adopting UrbanPhoto as Lrp", weighingRecordId);
+            return null;
+        }
+
+        var urbanPhoto = files.FirstOrDefault(f =>
+            f.AttachType == AttachType.UrbanPhoto && !string.IsNullOrWhiteSpace(f.LocalPath));
+        if (urbanPhoto == null)
+        {
+            _logger?.LogWarning("No UrbanPhoto attachment for record {RecordId}", weighingRecordId);
+            return null;
+        }
+
+        var absoluteSource = AttachmentPathUtils.ToAbsolutePath(urbanPhoto.LocalPath);
+        if (string.IsNullOrWhiteSpace(absoluteSource) || !File.Exists(absoluteSource))
+        {
+            _logger?.LogWarning(
+                "UrbanPhoto file missing for record {RecordId}: {Path}",
+                weighingRecordId, urbanPhoto.LocalPath);
+            return null;
+        }
+
+        await ReplaceWeighingAttachmentFromSourceFileAsync(weighingRecordId, absoluteSource, AttachType.Lpr);
+
+        var updated = await GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId]);
+        return updated.GetValueOrDefault(weighingRecordId)?
+            .FirstOrDefault(f => f.AttachType == AttachType.Lpr)?
+            .LocalPath;
     }
 
     /// <summary>

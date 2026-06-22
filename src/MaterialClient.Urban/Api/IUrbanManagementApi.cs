@@ -23,14 +23,6 @@ public interface IUrbanManagementApi
     [Post("/api/app/urban-attachment/upload")]
     Task<UrbanAttachmentUploadResponseDto> UploadAttachmentsAsync(
         [Body] UrbanAttachmentUploadRequestDto dto);
-
-    /// <summary>
-    ///     审批称重记录（对应 <see cref="UrbanManagement.Core.Services.IUrbanWeighingRecordAppService.ApproveAsync"/>）
-    ///     MaterialClient 使用 ClientRecordId 查找记录
-    /// </summary>
-    [Post("/api/app/urban-weighing-record/approve")]
-    Task ApproveWeighingRecordAsync(
-        [Body] UrbanWeighingRecordApproveDto dto);
 }
 
 /// <summary>

@@ -38,6 +38,10 @@
                     <Button Content="替换" Command="{Binding ReplaceLprCommand}"
                             HorizontalAlignment="Center" Padding="16,4" FontSize="12"
                             CornerRadius="4" />
+                    <Button Content="采纳" Command="{Binding AdoptUrbanPhotoAsLrpCommand}"
+                            IsVisible="{Binding CanAdoptUrbanPhotoAsLrp}"
+                            HorizontalAlignment="Center" Padding="16,4" FontSize="12"
+                            CornerRadius="4" />
                 </StackPanel>
 
                 <StackPanel Spacing="4">
@@ -56,9 +60,6 @@
                                    Stretch="UniformToFill" />
                         </Border>
                     </Button>
-                    <Button Content="替换" Command="{Binding ReplaceUrbanPhotoCommand}"
-                            HorizontalAlignment="Center" Padding="16,4" FontSize="12"
-                            CornerRadius="4" />
                 </StackPanel>
             </StackPanel>
 

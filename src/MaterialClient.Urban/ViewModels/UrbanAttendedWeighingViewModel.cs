@@ -8,9 +8,6 @@ using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
-using MaterialClient.Urban.Api;
-using MaterialClient.Urban.Dtos;
-using MaterialClient.Urban.Services;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
@@ -241,19 +238,11 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 var oldTotalWeight = item.TotalWeight;
                 var oldAnomalyReason = item.AnomalyReason?.GetDescription();
 
-                var imagesModified = false;
-                if (!string.IsNullOrWhiteSpace(result.LprReplacementSourcePath))
+                var imagesModified = result.IsLrpImageModified;
+                if (!string.IsNullOrWhiteSpace(result.PendingLrpReplacementSourcePath))
                 {
                     await _attachmentService.ReplaceWeighingAttachmentFromSourceFileAsync(
-                        item.WeighingRecordId, result.LprReplacementSourcePath, AttachType.Lpr);
-                    imagesModified = true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(result.UrbanPhotoReplacementSourcePath))
-                {
-                    await _attachmentService.ReplaceWeighingAttachmentFromSourceFileAsync(
-                        item.WeighingRecordId, result.UrbanPhotoReplacementSourcePath, AttachType.UrbanPhoto);
-                    imagesModified = true;
+                        item.WeighingRecordId, result.PendingLrpReplacementSourcePath, AttachType.Lpr);
                 }
 
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
@@ -286,41 +275,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                 }
 
-                var hasServerReplacement = !string.IsNullOrEmpty(result.LprReplacementBase64)
-                                           || !string.IsNullOrEmpty(result.UrbanPhotoReplacementBase64);
-                if (hasServerReplacement)
-                {
-                    try
-                    {
-                        var api = _serviceProvider.GetRequiredService<IUrbanManagementApi>();
-                        await api.ApproveWeighingRecordAsync(new UrbanWeighingRecordApproveDto
-                        {
-                            ClientRecordId = item.WeighingRecordId,
-                            PlateNumber = result.PlateNumber,
-                            TotalWeight = MaterialMath.ConvertTonToKg(result.TotalWeight),
-                            LprReplacementBase64 = result.LprReplacementBase64,
-                            UrbanPhotoReplacementBase64 = result.UrbanPhotoReplacementBase64
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex,
-                            "Failed to send image replacement to server for record {Id}",
-                            item.WeighingRecordId);
-                    }
-                }
-
-                try
-                {
-                    var uploadService = _serviceProvider.GetRequiredService<IUrbanServerUploadService>();
-                    await uploadService.SubmitRecordAsync(item.WeighingRecordId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex,
-                        "Failed to submit approved record {Id} to server",
-                        item.WeighingRecordId);
-                }
+                await _localEventBus.PublishAsync(
+                    new UrbanWeighingUploadRequestedEventData(item.WeighingRecordId));
 
                 await ReloadRecordsAsync();
             }
