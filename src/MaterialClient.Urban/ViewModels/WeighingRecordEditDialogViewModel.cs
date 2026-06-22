@@ -14,7 +14,7 @@ using Volo.Abp.EventBus.Local;
 namespace MaterialClient.Urban.ViewModels;
 
 /// <summary>
-///     ViewModel for WeighingRecordEditDialog - edit plate/weight and preview Lrp / UrbanPhoto during approval
+///     ViewModel for WeighingRecordEditDialog - edit plate/weight and preview Lpr / UrbanPhoto during approval
 /// </summary>
 public partial class WeighingRecordEditDialogViewModel : ReactiveObject
 {
@@ -23,7 +23,8 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<WeighingRecordEditDialogViewModel> _logger;
     private long _weighingRecordId;
-    private string? _pendingLrpReplacementSourcePath;
+    private string? _pendingLprReplacementSourcePath;
+    private bool _pendingAdoptUrbanPhotoAsLpr;
     private IDisposable? _serverApprovalSubscription;
 
     public Action? RequestCloseDueToServerApproval { get; set; }
@@ -45,7 +46,7 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
             .Subscribe(_ =>
             {
                 this.RaisePropertyChanged(nameof(IsLprAnomaly));
-                this.RaisePropertyChanged(nameof(CanAdoptUrbanPhotoAsLrp));
+                this.RaisePropertyChanged(nameof(CanAdoptUrbanPhotoAsLpr));
             });
     }
 
@@ -56,12 +57,12 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
     [Reactive] private string? _cameraPhotoPath;
     [Reactive] private string _lprPhotoTime = "";
     [Reactive] private string _cameraPhotoTime = "";
-    [Reactive] private bool _isLrpImageModified;
+    [Reactive] private bool _isLprImageModified;
     [Reactive] private AnomalyReason? _anomalyReason;
 
     public bool IsLprAnomaly => _anomalyReason == MaterialClient.Common.Entities.Enums.AnomalyReason.CaptureFailure;
 
-    public bool CanAdoptUrbanPhotoAsLrp =>
+    public bool CanAdoptUrbanPhotoAsLpr =>
         string.IsNullOrEmpty(LprPhotoPath) && !string.IsNullOrEmpty(CameraPhotoPath);
 
     public IStorageProvider? StorageProvider { get; set; }
@@ -71,8 +72,9 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
     public async Task LoadPhotosAsync(long weighingRecordId)
     {
         _weighingRecordId = weighingRecordId;
-        _pendingLrpReplacementSourcePath = null;
-        _isLrpImageModified = false;
+        _pendingLprReplacementSourcePath = null;
+        _pendingAdoptUrbanPhotoAsLpr = false;
+        _isLprImageModified = false;
         ClosedDueToServerApproval = false;
 
         _serverApprovalSubscription?.Dispose();
@@ -143,7 +145,12 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
             return;
         }
 
-        Result = new EditResult(PlateNumber, weight, IsLrpImageModified, _pendingLrpReplacementSourcePath);
+        Result = new EditResult(
+            PlateNumber,
+            weight,
+            IsLprImageModified,
+            _pendingLprReplacementSourcePath,
+            _pendingAdoptUrbanPhotoAsLpr);
     }
 
     [ReactiveCommand]
@@ -221,9 +228,10 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
 
         try
         {
-            _pendingLrpReplacementSourcePath = files[0].Path.LocalPath;
-            LprPhotoPath = _pendingLrpReplacementSourcePath;
-            IsLrpImageModified = true;
+            _pendingAdoptUrbanPhotoAsLpr = false;
+            _pendingLprReplacementSourcePath = files[0].Path.LocalPath;
+            LprPhotoPath = _pendingLprReplacementSourcePath;
+            IsLprImageModified = true;
         }
         catch (Exception ex)
         {
@@ -232,30 +240,17 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
     }
 
     [ReactiveCommand]
-    private async Task AdoptUrbanPhotoAsLrpAsync()
+    private void AdoptUrbanPhotoAsLpr()
     {
-        if (_weighingRecordId == 0 || !CanAdoptUrbanPhotoAsLrp)
+        if (_weighingRecordId == 0 || !CanAdoptUrbanPhotoAsLpr || string.IsNullOrEmpty(CameraPhotoPath))
         {
             return;
         }
 
-        try
-        {
-            var newLrpPath = await _attachmentService.CreateLrpFromUrbanPhotoAsync(_weighingRecordId);
-            if (string.IsNullOrEmpty(newLrpPath))
-            {
-                _logger.LogWarning("Failed to adopt UrbanPhoto as Lrp for record {RecordId}", _weighingRecordId);
-                return;
-            }
-
-            _pendingLrpReplacementSourcePath = null;
-            LprPhotoPath = newLrpPath;
-            IsLrpImageModified = true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "采纳枪机图为车牌识别图失败");
-        }
+        _pendingAdoptUrbanPhotoAsLpr = true;
+        _pendingLprReplacementSourcePath = null;
+        LprPhotoPath = CameraPhotoPath;
+        IsLprImageModified = true;
     }
 }
 
@@ -265,5 +260,6 @@ public partial class WeighingRecordEditDialogViewModel : ReactiveObject
 public record EditResult(
     string PlateNumber,
     decimal TotalWeight,
-    bool IsLrpImageModified,
-    string? PendingLrpReplacementSourcePath = null);
+    bool IsLprImageModified,
+    string? PendingLprReplacementSourcePath = null,
+    bool PendingAdoptUrbanPhotoAsLpr = false);

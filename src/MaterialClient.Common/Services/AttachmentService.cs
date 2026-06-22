@@ -62,11 +62,11 @@ public interface IAttachmentService
         AttachType attachType);
 
     /// <summary>
-    ///     从已有 UrbanPhoto 附件复制创建 Lrp 附件（采纳枪机图为车牌识别图）。
+    ///     从已有 UrbanPhoto 附件复制创建 Lpr 附件（采纳枪机图为车牌识别图）。
     /// </summary>
     /// <param name="weighingRecordId">称重记录 ID</param>
-    /// <returns>新建 Lrp 的本地相对路径；失败返回 null</returns>
-    Task<string?> CreateLrpFromUrbanPhotoAsync(long weighingRecordId);
+    /// <returns>新建 Lpr 的本地相对路径；失败返回 null</returns>
+    Task<string?> CreateLprFromUrbanPhotoAsync(long weighingRecordId);
 
     /// <summary>
     ///     同步指定运单的附件到OSS
@@ -370,12 +370,12 @@ public partial class AttachmentService : IAttachmentService, ITransientDependenc
 
     /// <inheritdoc />
     [UnitOfWork]
-    public async Task<string?> CreateLrpFromUrbanPhotoAsync(long weighingRecordId)
+    public async Task<string?> CreateLprFromUrbanPhotoAsync(long weighingRecordId)
     {
         var attachmentsByRecord = await GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId]);
         if (!attachmentsByRecord.TryGetValue(weighingRecordId, out var files))
         {
-            _logger?.LogWarning("No attachments found for record {RecordId} when adopting UrbanPhoto as Lrp", weighingRecordId);
+            _logger?.LogWarning("No attachments found for record {RecordId} when adopting UrbanPhoto as Lpr", weighingRecordId);
             return null;
         }
 

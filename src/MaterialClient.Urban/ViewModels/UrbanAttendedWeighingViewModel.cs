@@ -265,11 +265,21 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 var oldTotalWeight = item.TotalWeight;
                 var oldAnomalyReason = item.AnomalyReason?.GetDescription();
 
-                var imagesModified = result.IsLrpImageModified;
-                if (!string.IsNullOrWhiteSpace(result.PendingLrpReplacementSourcePath))
+                var imagesModified = result.IsLprImageModified;
+                if (result.PendingAdoptUrbanPhotoAsLpr)
+                {
+                    var lprPath = await _attachmentService.CreateLprFromUrbanPhotoAsync(item.WeighingRecordId);
+                    if (string.IsNullOrEmpty(lprPath))
+                    {
+                        await MessageBox.ShowAsync(window, "采纳枪机图为车牌识别图失败，请重试。", "错误",
+                            MessageBoxIcon.Error, MessageBoxButton.OK);
+                        return;
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(result.PendingLprReplacementSourcePath))
                 {
                     await _attachmentService.ReplaceWeighingAttachmentFromSourceFileAsync(
-                        item.WeighingRecordId, result.PendingLrpReplacementSourcePath, AttachType.Lpr);
+                        item.WeighingRecordId, result.PendingLprReplacementSourcePath, AttachType.Lpr);
                 }
 
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
