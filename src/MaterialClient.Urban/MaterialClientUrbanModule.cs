@@ -1,4 +1,6 @@
+using System;
 using System.Text;
+using System.Threading.Tasks;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
 using MaterialClient.UI;
@@ -101,18 +103,49 @@ public class MaterialClientUrbanModule : AbpModule
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
     {
+        // Check if logging is enabled (default: true)
+        var logEnabled = configuration.GetValue<bool>("Log:Enabled", true);
+        if (!logEnabled)
+        {
+            // Skip logging configuration if disabled
+            services.AddLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddDebug(); // Fallback to debug output
+            });
+            return;
+        }
+
         var appDirectory = AppContext.BaseDirectory;
-        var logsDirectory = Path.Combine(appDirectory, "Logs");
+        var logDirectory = configuration.GetValue<string>("Log:Directory", "Logs");
+        var logsDirectory = Path.IsPathRooted(logDirectory)
+            ? logDirectory
+            : Path.Combine(appDirectory, logDirectory);
 
         if (!Directory.Exists(logsDirectory))
             Directory.CreateDirectory(logsDirectory);
 
-        var logFilePath = Path.Combine(logsDirectory, "MaterialClient.Urban-.log");
+        // Configure log file path with date folder structure
+        var useDateFolders = configuration.GetValue<bool>("Log:UseDateFolders", true);
+        var logFilePath = useDateFolders
+            ? Path.Combine(logsDirectory, "{YYYY}/{MM}/{DD}/MaterialClient.Urban-.log")
+            : Path.Combine(logsDirectory, "MaterialClient.Urban-.log");
 
         var defaultLevel = GetLogLevel(configuration, "Logging:LogLevel:Default", "Information");
         var microsoftLevel = GetLogLevel(configuration, "Logging:LogLevel:Microsoft", "Warning");
         var efCoreLevel = GetLogLevel(configuration, "Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");
         var abpLevel = GetLogLevel(configuration, "Logging:LogLevel:Volo.Abp", "Warning");
+
+        // Read file size limit and retention days from configuration
+        var fileSizeLimitMB = configuration.GetValue<int>("Log:FileSizeLimitMB", 50);
+        var retentionDays = configuration.GetValue<int>("Log:RetentionDays", 30);
+
+        // Validate file size limit range (10-500MB)
+        if (fileSizeLimitMB < 10 || fileSizeLimitMB > 500)
+        {
+            Log.Warning($"Invalid Log:FileSizeLimitMB value: {fileSizeLimitMB}. Using default 50MB.");
+            fileSizeLimitMB = 50;
+        }
 
         var loggerConfig = new LoggerConfiguration()
             .Enrich.FromLogContext()
@@ -123,7 +156,10 @@ public class MaterialClientUrbanModule : AbpModule
             .WriteTo.File(
                 logFilePath,
                 rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 30,
+                rollOnFileSizeLimit: true,
+                fileSizeLimitBytes: fileSizeLimitMB * 1024 * 1024,  // Convert MB to bytes
+                retainedFileCountLimit: retentionDays > 0 ? null : (int?)null,  // Serilog's day-based retention
+                retainedFileTimeLimit: retentionDays > 0 ? (TimeSpan?)TimeSpan.FromDays(retentionDays) : null,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                 encoding: Encoding.UTF8);
 
@@ -177,6 +213,21 @@ public class MaterialClientUrbanModule : AbpModule
         catch (Exception ex)
         {
             logger?.LogWarning(ex, "SignalR client start failed");
+        }
+
+        // Initialize client log pull service
+        try
+        {
+            var clientLogPullService = context.ServiceProvider.GetService<Services.ClientLogPullService>();
+            if (clientLogPullService != null)
+            {
+                await clientLogPullService.InitializeAsync();
+                logger?.LogInformation("ClientLogPullService initialized");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "ClientLogPullService initialization failed");
         }
 
         var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
