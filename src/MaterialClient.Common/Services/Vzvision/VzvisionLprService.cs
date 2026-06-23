@@ -98,7 +98,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     {
         await Task.CompletedTask;
 
-        // 缓存当前称重模式（用于 Lrp 附件保存判断）
+        // 缓存当前称重模式（用于 Lpr 附件保存判断）
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
@@ -372,8 +372,8 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
             var vehicleType = MapVehicleType(plate.nType);
             var deviceName = cfg.Name;
 
-            // 提取 Lrp 图片（仅 UrbanMode），从 pImgFull 提取全场景图
-            var lrpPath = TrySaveVzLrpAttachment(pImgFull, license);
+            // 提取 Lpr 图片（仅 UrbanMode），从 pImgFull 提取全场景图
+            var lrpPath = TrySaveVzLprAttachment(pImgFull, license);
 
             _ = _localEventBus.PublishAsync(new LicensePlateRecognizedEventData
             {
@@ -385,7 +385,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
                 DeviceType = LprDeviceType.Vzvision,
                 DeviceName = deviceName,
                 Timestamp = DateTime.Now,
-                LrpImagePath = lrpPath
+                LprImagePath = lrpPath
             });
         }
         catch (Exception ex)
@@ -397,15 +397,15 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     }
 
     /// <summary>
-    ///     尝试保存 Vzvision Lrp 车牌识别图片（仅 UrbanMode = 201 时保存）
+    ///     尝试保存 Vzvision Lpr 车牌识别图片（仅 UrbanMode = 201 时保存）
     ///     从 Vzvision SDK 回调的 pImgFull 提取图片数据，压缩后保存到磁盘
     /// </summary>
     /// <param name="pImgFull">Vzvision SDK 回调中的全场景图信息指针</param>
     /// <param name="plateNumber">车牌号（用于文件名）</param>
     /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
-    private string? TrySaveVzLrpAttachment(IntPtr pImgFull, string plateNumber)
+    private string? TrySaveVzLprAttachment(IntPtr pImgFull, string plateNumber)
     {
-        // 仅 UrbanMode = 201 时保存 Lrp 附件
+        // 仅 UrbanMode = 201 时保存 Lpr 附件
         if (_cachedWeighingMode != WeighingMode.UrbanMode)
             return null;
 
@@ -435,27 +435,27 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
                 Array.Resize(ref imageBytes, actualLength);
             }
 
-            // 使用 JpegCompressionUtil 压缩（Lrp 专用质量）
+            // 使用 JpegCompressionUtil 压缩（Lpr 专用质量）
             var compressedBytes = JpegCompressionUtil.TryCompressJpegBytes(
-                imageBytes, JpegCompressionUtil.LrpCompressionQuality, _logger);
+                imageBytes, JpegCompressionUtil.LprCompressionQuality, _logger);
             var finalBytes = compressedBytes ?? imageBytes;
 
-            // 保存到 Lrp 目录
-            var lrpDir = PathManager.EnsureDirectoryExists("Lrp");
+            // 保存到 Lpr 目录
+            var lrpDir = PathManager.EnsureDirectoryExists("Lpr");
             var safePlate = string.IsNullOrWhiteSpace(plateNumber) ? "unknown" : plateNumber;
             var fileName = $"{safePlate}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
             var filePath = Path.Combine(lrpDir, fileName);
             File.WriteAllBytes(filePath, finalBytes);
 
             var relativePath = PathManager.ToRelativePath(filePath);
-            _logger?.LogInformation("已保存 Vzvision Lrp 附件: {Path} ({Size} bytes)",
+            _logger?.LogInformation("已保存 Vzvision Lpr 附件: {Path} ({Size} bytes)",
                 relativePath, finalBytes.Length);
 
             return relativePath;
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "保存 Vzvision Lrp 附件失败: Plate={Plate}", plateNumber);
+            _logger?.LogWarning(ex, "保存 Vzvision Lpr 附件失败: Plate={Plate}", plateNumber);
             return null;
         }
     }

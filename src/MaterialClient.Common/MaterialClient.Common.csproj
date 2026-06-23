@@ -39,14 +39,17 @@
         <PackageReference Include="System.IO.Ports"/>
         <PackageReference Include="System.Reactive"/>
         <PackageReference Include="ReactiveUI"/>
+        <PackageReference Include="Microsoft.Extensions.Logging"/>
         <PackageReference Include="Serilog"/>
         <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="Serilog.Sinks.Map"/>
         <PackageReference Include="Serilog.Extensions.Logging"/>
         <PackageReference Include="Yitter.IdGenerator"/>
         <PackageReference Include="FlashCap"/>
         <PackageReference Include="Aliyun.OSS.SDK.NetCore"/>
         <PackageReference Include="ClosedXML"/>
         <PackageReference Include="System.Drawing.Common"/>
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt"/>
     </ItemGroup>
 
 

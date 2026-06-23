@@ -34,11 +34,17 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("siteType")] public string? SiteType { get; set; }
 
-    [JsonPropertyName("proId")] public string? ProId { get; set; }
+    [JsonPropertyName("proId")] public Guid? ProId { get; set; }
 
     [JsonPropertyName("proName")] public string? ProName { get; set; }
 
     [JsonPropertyName("isAnomaly")] public bool IsAnomaly { get; set; }
+
+    [JsonPropertyName("anomalyReason")] public string? AnomalyReason { get; set; }
+
+    /// <summary>扩展属性字典，用于传递编辑历史等扩展数据。</summary>
+    [JsonPropertyName("extraProperties")]
+    public Dictionary<string, object?>? ExtraProperties { get; set; }
 
     [JsonPropertyName("clientSyncType")] public int? ClientSyncType { get; set; }
 

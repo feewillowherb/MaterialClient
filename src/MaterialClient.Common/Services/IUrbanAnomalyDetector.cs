@@ -1,5 +1,6 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Services;
 
@@ -14,14 +15,16 @@ public interface IUrbanAnomalyDetector
     /// </summary>
     /// <param name="record">The weighing record to evaluate.</param>
     /// <param name="config">The anomaly detection configuration thresholds.</param>
+    /// <param name="hasLprAttachment"><c>true</c> if an Lpr photo attachment exists for this record.</param>
     /// <returns><c>true</c> if the record is anomalous; otherwise, <c>false</c>.</returns>
-    bool IsAnomaly(WeighingRecord record, UrbanAnomalyDetectionConfig config);
+    bool IsAnomaly(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLprAttachment = true);
 
     /// <summary>
-    ///     Returns a short, human-readable anomaly reason text for UI display.
+    ///     Returns the anomaly reason enum for the detected anomaly.
     /// </summary>
     /// <param name="record">The weighing record to evaluate.</param>
     /// <param name="config">The anomaly detection configuration thresholds.</param>
-    /// <returns>Short reason (e.g. "车牌为空", "超上限", "低下限"), or <c>null</c> when normal.</returns>
-    string? GetAnomalyReason(WeighingRecord record, UrbanAnomalyDetectionConfig config);
+    /// <param name="hasLprAttachment"><c>true</c> if an Lpr photo attachment exists for this record.</param>
+    /// <returns>Anomaly reason enum, or <c>null</c> when normal.</returns>
+    AnomalyReason? GetAnomalyReason(WeighingRecord record, UrbanAnomalyDetectionConfig config, bool hasLprAttachment = true);
 }

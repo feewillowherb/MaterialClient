@@ -46,6 +46,7 @@
     <!-- Logging -->
     <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="8.0.0-dev-02318" />
+    <PackageVersion Include="Serilog.Sinks.Map" Version="2.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
@@ -62,6 +63,8 @@
     <PackageVersion Include="Irihi.Ursa.Themes.Semi" Version="1.15.1" />
     <PackageVersion Include="MessageBox.Avalonia" Version="3.3.1.1" />
     <PackageVersion Include="Semi.Avalonia" Version="11.3.7.1" />
+    <!-- JWT -->
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.12.1" />
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="Reqnroll.xUnit" Version="3.2.1" />

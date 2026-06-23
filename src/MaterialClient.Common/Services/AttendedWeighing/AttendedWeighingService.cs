@@ -106,8 +106,8 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
 
                     _plateNumberService.OnPlateNumberRecognized(eventData.PlateNumber, eventData.ColorType);
 
-                    if (!string.IsNullOrWhiteSpace(eventData.LrpImagePath))
-                        _stateManager.SetCurrentCycleLrpImagePath(eventData.LrpImagePath);
+                    if (!string.IsNullOrWhiteSpace(eventData.LprImagePath))
+                        _stateManager.SetCurrentCycleLprImagePath(eventData.LprImagePath);
 
                     // 存储车辆信息到状态管理器
                     _stateManager.SetCurrentCycleVehicleInfo(eventData.VehicleColor, eventData.VehicleType,

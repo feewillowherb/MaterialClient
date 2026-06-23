@@ -1,4 +1,5 @@
 using MaterialClient.Common.Entities.Enums;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Entities;
 
 namespace MaterialClient.Common.Entities.Urban;
@@ -7,8 +8,19 @@ namespace MaterialClient.Common.Entities.Urban;
 ///     Urban-specific extension entity for weighing records.
 ///     Associated to <see cref="WeighingRecord" /> by <see cref="WeighingRecordId" /> only (no DB FK / no EF navigation).
 /// </summary>
-public class UrbanWeighingExtension : Entity<Guid>
+public class UrbanWeighingExtension : Entity<Guid>, IHasExtraProperties
 {
+    private ExtraPropertyDictionary _extraProperties = new();
+
+    /// <summary>
+    ///     额外属性字典
+    /// </summary>
+    public ExtraPropertyDictionary ExtraProperties
+    {
+        get => _extraProperties;
+        set => _extraProperties = value;
+    }
+
     /// <summary>
     ///     Parent <see cref="WeighingRecord" /> identifier (logical association, not a database foreign key).
     /// </summary>
@@ -36,4 +48,11 @@ public class UrbanWeighingExtension : Entity<Guid>
     ///     Set during record creation by <see cref="Services.IUrbanAnomalyDetector" />.
     /// </summary>
     public bool IsAnomaly { get; set; } = false;
+
+    /// <summary>
+    ///     Persisted anomaly reason enum.
+    ///     Set at record creation time and recalculated on approval edits.
+    ///     <c>null</c> when the record is not anomalous.
+    /// </summary>
+    public AnomalyReason? AnomalyReason { get; set; }
 }

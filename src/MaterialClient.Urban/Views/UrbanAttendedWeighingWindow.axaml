@@ -46,6 +46,7 @@
             <ui:WeighingWindowBase.MenuItems>
                 <StackPanel Orientation="Horizontal" Spacing="4"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button Classes="popup-menu-item-button" Content="项目信息" Click="OnProjectInfoClick" />
                     <Button Classes="popup-menu-item-button" Content="系统设置" Click="OnSystemSettingsClick" />
                 </StackPanel>
             </ui:WeighingWindowBase.MenuItems>
@@ -177,16 +178,16 @@
                                         <TextBlock Text="车牌号码" FontSize="12" Foreground="#475569"
                                                    Width="56" VerticalAlignment="Center"
                                                    FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                        <TextBox Classes="filter-input" Width="192" />
-                                        <Button Classes="primary-button" Content="搜索" />
-                                        <Button Classes="secondary-button" Content="重置" />
+                                        <TextBox Classes="filter-input" Width="192" Text="{Binding SearchText}" />
+                                        <Button Classes="primary-button" Content="搜索" Command="{Binding SearchCommand}" />
+                                        <Button Classes="secondary-button" Content="重置" Command="{Binding ResetSearchCommand}" />
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <!-- DataGrid Table Header Label -->
                             <Border Grid.Row="2" Background="{DynamicResource PrimaryBlue}" Padding="12,0">
-                                <Grid ColumnDefinitions="96,126,88,74,88,90,*">
+                                <Grid ColumnDefinitions="96,126,126,74,88,90,*">
                                     <TextBlock Text="车牌" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
@@ -225,9 +226,11 @@
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Background" Value="Transparent" />
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="VerticalContentAlignment" Value="Center" />
                                         <Setter Property="BorderThickness" Value="0,0,0,1" />
                                         <Setter Property="BorderBrush" Value="#F1F5F9" />
-                                        <Setter Property="Padding" Value="12,6" />
+                                        <Setter Property="Padding" Value="12,0" />
+                                        <Setter Property="Height" Value="45" />
                                     </Style>
                                     <Style Selector="ListBoxItem:selected">
                                         <Setter Property="Background" Value="#E3F2FD" />
@@ -235,22 +238,26 @@
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="dtos:UrbanWeighingListItemDto">
-                                        <Grid ColumnDefinitions="96,126,88,74,88,90,*">
+                                        <Grid ColumnDefinitions="96,126,126,74,88,90,*" ClipToBounds="True">
                                             <!-- PlateNumber -->
                                             <TextBlock Text="{Binding PlateNumber}" FontSize="12" FontWeight="Medium"
                                                        Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
                                                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                             <!-- AddDate -->
                                             <TextBlock Grid.Column="1" Text="{Binding AddDate, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
-                                                       Foreground="#666666" VerticalAlignment="Center" />
+                                                       Foreground="#666666" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
                                             <!-- UploadTime -->
                                             <TextBlock Grid.Column="2"
                                                        Text="{Binding UploadTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}', TargetNullValue=--}"
                                                        FontSize="12"
                                                        Foreground="#666666"
-                                                       VerticalAlignment="Center" />
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
                                             <!-- TotalWeight -->
-                                            <TextBlock Grid.Column="3" Text="{Binding TotalWeight, StringFormat='{}{0:F2} 吨'}" FontSize="12" VerticalAlignment="Center"
+                                            <TextBlock Grid.Column="3" Text="{Binding TotalWeight, StringFormat='{}{0:F2} 吨'}" FontSize="12"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
                                                        Foreground="#333333" />
                                             <!-- Primary badge: data quality (IsAnomaly) -->
                                             <StackPanel Grid.Column="4" VerticalAlignment="Center"
@@ -273,7 +280,7 @@
                                                            FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                             </StackPanel>
                                             <TextBlock Grid.Column="5"
-                                                       Text="{Binding AnomalyReason, TargetNullValue=--}"
+                                                       Text="{Binding AnomalyReason, Converter={StaticResource AnomalyReasonConverter}, TargetNullValue=--}"
                                                        FontSize="12"
                                                        Foreground="#334155"
                                                        VerticalAlignment="Center"
@@ -281,6 +288,7 @@
                                                        TextTrimming="CharacterEllipsis" />
                                             <!-- Action Button -->
                                             <Button Grid.Column="6" Classes="primary-button" Content="审批"
+                                                    Height="28" Padding="12,4" FontSize="12"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     Command="{Binding #UrbanAttendedWeighingWindowRoot.DataContext.ApproveRecordCommand}"
                                                     CommandParameter="{Binding}"
@@ -307,9 +315,23 @@
                                         </TextBlock.Text>
                                     </TextBlock>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <Button Classes="secondary-button" Content="首页"
+                                                Command="{Binding GoToFirstPageCommand}"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         <Button Classes="secondary-button" Content="上一页"
+                                                Command="{Binding PreviousPageCommand}"
                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         <Button Classes="secondary-button" Content="下一页"
+                                                Command="{Binding NextPageCommand}"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <Button Classes="secondary-button" Content="尾页"
+                                                Command="{Binding GoToLastPageCommand}"
+                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <TextBox Name="PageJumpTextBox" Width="40"
+                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                        <Button Classes="secondary-button" Content="跳转"
+                                                Command="{Binding GoToPageCommand}"
+                                                CommandParameter="{Binding Text, ElementName=PageJumpTextBox}"
                                                 FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                     </StackPanel>
                                 </Grid>
@@ -354,7 +376,7 @@
                                     <!-- Photo 2: Camera Capture -->
                                     <StackPanel Spacing="4">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Text="摄像头抓拍" FontSize="11" Foreground="#666666"
+                                            <TextBlock Text="枪机抓拍" FontSize="11" Foreground="#666666"
                                                        FontWeight="Medium" VerticalAlignment="Center"
                                                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                             <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11" Foreground="#94A3B8"

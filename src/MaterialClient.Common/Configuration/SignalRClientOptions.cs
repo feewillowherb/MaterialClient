@@ -19,9 +19,16 @@ public class SignalRClientOptions
 
     /// <summary>
     ///     Maximum reconnect attempts before giving up.
-    ///     Default: 10.
+    ///     Default: 10. Ignored when <see cref="PersistentReconnect"/> is true.
     /// </summary>
     public int MaxReconnectAttempts { get; set; } = 10;
+
+    /// <summary>
+    ///     When true, keep reconnecting after <see cref="MaxReconnectAttempts"/> is exhausted
+    ///     (e.g. server was offline longer than the retry window). When false, stop after max attempts.
+    ///     Default: false.
+    /// </summary>
+    public bool PersistentReconnect { get; set; }
 
     /// <summary>
     ///     Maximum number of messages to queue when disconnected.

@@ -29,7 +29,7 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 {
     private const string UnknownBuildLicenseNo = "unknown";
 
-    private static readonly AttachType[] UrbanSyncAttachTypes = [AttachType.Lrp, AttachType.UrbanPhoto];
+    private static readonly AttachType[] UrbanSyncAttachTypes = [AttachType.Lpr, AttachType.UrbanPhoto];
 
     private readonly IAttachmentService _attachmentService;
     private readonly IUrbanManagementApi _urbanManagementApi;
@@ -93,11 +93,10 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
                 continue;
             }
 
-            var attachTypeName = ToServerAttachTypeName(group.Key);
             var request = new UrbanAttachmentUploadRequestDto
             {
                 BuildLicenseNo = licenseNo,
-                AttachType = attachTypeName,
+                AttachType = group.Key,
                 Images = base64Images.ToArray()
             };
 
@@ -116,12 +115,4 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 
         return serverIds;
     }
-
-    private static string ToServerAttachTypeName(AttachType attachType) =>
-        attachType switch
-        {
-            AttachType.Lrp => "Lrp",
-            AttachType.UrbanPhoto => "UrbanPhoto",
-            _ => throw new ArgumentOutOfRangeException(nameof(attachType), attachType, "Unsupported attach type")
-        };
 }

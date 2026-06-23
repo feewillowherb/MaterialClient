@@ -2,7 +2,9 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
+using MaterialClient.Common.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
@@ -238,6 +240,12 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
         {
             entity.ConfigureByConvention();
             entity.Property(e => e.WeighingRecordId).IsRequired();
+            entity.Property(e => e.AnomalyReason)
+                .HasConversion(
+                    new ValueConverter<AnomalyReason?, string?>(
+                        v => v.HasValue ? v.Value.GetDescription() : null,
+                        v => string.IsNullOrEmpty(v) ? null : EnumExtensions.Parse<AnomalyReason>(v)))
+                .HasMaxLength(32);
             entity.HasIndex(e => e.WeighingRecordId).IsUnique();
             entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
             entity.HasIndex(e => e.IsAnomaly);

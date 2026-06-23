@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using MaterialClient.UI.Controls;
+using MaterialClient.UI.ViewModels;
 using MaterialClient.UI.Views;
 using MaterialClient.Urban.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -110,6 +111,25 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
 
             if (ViewModel != null)
                 await ViewModel.RefreshDeviceStatusBarAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+    }
+
+    private async void OnProjectInfoClick(object? sender, RoutedEventArgs e)
+    {
+        if (_serviceProvider == null) return;
+
+        try
+        {
+            var projectInfoWindow = _serviceProvider.GetRequiredService<ProjectInfoWindow>();
+
+            if (projectInfoWindow.DataContext is ProjectInfoWindowViewModel viewModel)
+                await viewModel.InitializeAsync();
+
+            await projectInfoWindow.ShowDialog(this);
         }
         catch (Exception ex)
         {

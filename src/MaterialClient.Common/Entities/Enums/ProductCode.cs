@@ -23,5 +23,5 @@ public enum ProductCode
     ///     城管专用产品代码（Urban 桌面端）
     /// </summary>
     [Description("城管固废称重验收系统客户端软件")]
-    Urban = 5030
+    Urban = 5001
 }

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Urban.Dtos;
 
@@ -11,7 +12,7 @@ public class UrbanAttachmentUploadRequestDto
     public string BuildLicenseNo { get; set; } = string.Empty;
 
     [JsonPropertyName("attachType")]
-    public string AttachType { get; set; } = string.Empty;
+    public AttachType AttachType { get; set; }
 
     [JsonPropertyName("images")]
     public string[] Images { get; set; } = [];

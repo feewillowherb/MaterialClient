@@ -6,9 +6,9 @@ namespace MaterialClient.Common.Entities.Enums;
 public enum GateIoControlMode
 {
     /// <summary>
-    ///     通过 LRP SDK 控制道闸 I/O（当前实现，默认）
+    ///     通过 Lpr SDK 控制道闸 I/O（当前实现，默认）
     /// </summary>
-    LrpSdk = 1,
+    LprSdk = 1,
 
     /// <summary>
     ///     直接通过 COM 控制道闸 I/O（预留，暂不支持）

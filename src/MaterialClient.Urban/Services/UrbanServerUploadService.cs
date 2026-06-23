@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
+using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Urban;
@@ -25,7 +27,8 @@ public interface IUrbanServerUploadService : ITransientDependency
     /// <summary>
     ///     将称重记录提交到 UrbanManagement 服务端
     /// </summary>
-    Task SubmitRecordAsync(long weighingRecordId);
+    /// <returns>提交成功返回 true；失败时保留 Pending 状态并返回 false</returns>
+    Task<bool> SubmitRecordAsync(long weighingRecordId);
 }
 
 /// <inheritdoc />
@@ -59,7 +62,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
 
     /// <inheritdoc />
     [UnitOfWork]
-    public async Task SubmitRecordAsync(long weighingRecordId)
+    public async Task<bool> SubmitRecordAsync(long weighingRecordId)
     {
         try
         {
@@ -82,17 +85,33 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             }
 
             var buildLicenseNo = licenseInfo?.BuildLicenseNo ?? string.Empty;
-            var attachmentIds =
-                (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
+            var editHistory = extension?.GetEditHistory() ?? [];
+            var skipAttachmentUpload = editHistory.Count > 0
+                                       && !editHistory.Any(e => e.IsImagesModified);
+            List<Guid> attachmentIds;
+            if (skipAttachmentUpload)
+            {
+                attachmentIds = [];
+                _logger.LogDebug(
+                    "Skipping attachment upload for record {RecordId} (re-transmit after client edit)",
+                    weighingRecordId);
+            }
+            else
+            {
+                attachmentIds =
+                    (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
+            }
 
             var hadLocalUrbanAttachments = await HasLocalUrbanAttachmentsAsync(weighingRecordId);
-            if (hadLocalUrbanAttachments && attachmentIds.Count == 0)
+            if (!skipAttachmentUpload && hadLocalUrbanAttachments && attachmentIds.Count == 0)
             {
                 _logger.LogWarning(
-                    "Record {RecordId} has local Lrp/UrbanPhoto attachments but none were uploaded; keeping Pending for retry",
+                    "Record {RecordId} has local Lpr/UrbanPhoto attachments but none were uploaded; keeping Pending for retry",
                     weighingRecordId);
-                return;
+                return false;
             }
+
+            var isAnomaly = extension?.IsAnomaly ?? false;
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
@@ -100,7 +119,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 PlateNumber = record.PlateNumber,
                 TotalWeight = MaterialMath.ConvertTonToKg(record.TotalWeight),
                 WeighingTime = record.AddDate,
-                SyncType = 0,
+                SyncType = isAnomaly ? null : 0,
                 VehicleColor = null,
                 PlateColor = null,
                 VehicleType = null,
@@ -108,9 +127,10 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 BuildLicenseNo = licenseInfo?.BuildLicenseNo,
                 FdBuildLicenseNo = licenseInfo?.FdBuildLicenseNo,
                 SiteType = null,
-                ProId = licenseInfo?.ProjectId.ToString(),
+                ProId = licenseInfo?.ProjectId,
                 ProName = licenseInfo?.ProName,
-                IsAnomaly = extension?.IsAnomaly ?? false,
+                IsAnomaly = isAnomaly,
+                AnomalyReason = extension?.AnomalyReason?.GetDescription(),
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),
                 ClientSyncTime = null,
                 ClientRetryCount = extension?.RetryCount,
@@ -118,9 +138,22 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 AttachmentIds = attachmentIds.Count > 0 ? attachmentIds : null
             };
 
+            // Build ExtraProperties with edit history from extension
+            if (extension != null)
+            {
+                var normalizedEditHistory = editHistory.NormalizeWeightsForServer();
+                if (normalizedEditHistory.Count > 0)
+                {
+                    dto.ExtraProperties = new Dictionary<string, object?>
+                    {
+                        ["EditHistory"] = JsonSerializer.Serialize(normalizedEditHistory)
+                    };
+                }
+            }
+
             var response = await _urbanManagementApi.ReceiveWeighingRecordAsync(dto);
 
-            if (response.RecordId > 0)
+            if (response.RecordId != Guid.Empty)
             {
                 if (extension != null)
                 {
@@ -132,17 +165,18 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                     weighingRecordId,
                     response.RecordId,
                     attachmentIds.Count);
+                return true;
             }
-            else
-            {
-                _logger.LogWarning(
-                    "Record {RecordId} submission returned invalid server record id",
-                    weighingRecordId);
-            }
+
+            _logger.LogWarning(
+                "Record {RecordId} submission returned invalid server record id",
+                weighingRecordId);
+            return false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to submit record {RecordId} to server", weighingRecordId);
+            return false;
         }
     }
 
@@ -154,6 +188,6 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             return false;
         }
 
-        return files.Exists(f => f.AttachType is AttachType.Lrp or AttachType.UrbanPhoto);
+        return files.Exists(f => f.AttachType is AttachType.Lpr or AttachType.UrbanPhoto);
     }
 }

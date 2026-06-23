@@ -108,6 +108,10 @@ namespace MaterialClient.Common.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("LatestJwtToken")
+                        .HasMaxLength(4096)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("MachineCode")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -501,6 +505,15 @@ namespace MaterialClient.Common.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("AnomalyReason")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ExtraProperties");
 
                     b.Property<bool>("IsAnomaly")
                         .HasColumnType("INTEGER");

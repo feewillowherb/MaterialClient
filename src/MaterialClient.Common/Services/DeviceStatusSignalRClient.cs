@@ -37,6 +37,46 @@ public interface IDeviceStatusSignalRClient : ISingletonDependency
     ///     Current connection state.
     /// </summary>
     HubConnectionState ConnectionState { get; }
+
+    /// <summary>
+    ///     Whether the connection is currently connected.
+    /// </summary>
+    bool IsConnected { get; }
+
+    /// <summary>
+    ///     Register a callback for receiving log list requests from the server.
+    /// </summary>
+    void OnReceiveLogListRequest(Func<string, string, string, Task> callback);
+
+    /// <summary>
+    ///     Register the client's log pull capability with the server.
+    /// </summary>
+    Task RegisterLogCapability(string clientId, object capabilityInfo);
+
+    /// <summary>
+    ///     Return the log list result to the server.
+    /// </summary>
+    Task ReturnLogList(object result);
+
+    /// <summary>
+    ///     Register a callback for receiving file content requests from the server.
+    /// </summary>
+    void OnReceiveFileContentRequest(Func<string, string, string, string, Task> callback);
+
+    /// <summary>
+    ///     Return a file chunk to the server.
+    /// </summary>
+    Task ReturnFileChunkAsync(string requestId, int chunkIndex, int totalChunks, byte[] data, long totalFileSize);
+
+    /// <summary>
+    ///     Return a file error to the server.
+    /// </summary>
+    Task ReturnFileErrorAsync(string requestId, string errorMessage);
+
+    /// <summary>
+    ///     Register a callback for server Web approval sync push messages.
+    /// </summary>
+    void OnWeighingRecordApproved(Func<Models.WeighingRecordApprovedPushDto, Task> callback);
 }
 
 /// <inheritdoc />
@@ -54,6 +94,13 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     private bool _isStarted;
     private bool _isStopped;
     private readonly object _lock = new();
+
+    private Func<string, string, string, Task>? _logListRequestHandler;
+    private Func<string, string, string, string, Task>? _fileContentRequestHandler;
+    private Func<Models.WeighingRecordApprovedPushDto, Task>? _weighingRecordApprovedHandler;
+    private bool _logListHandlerRegistered;
+    private bool _fileContentHandlerRegistered;
+    private bool _weighingRecordApprovedHandlerRegistered;
 
     public DeviceStatusSignalRClient(
         ILogger<DeviceStatusSignalRClient> logger,
@@ -75,6 +122,9 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 
     /// <inheritdoc />
     public HubConnectionState ConnectionState => _connection?.State ?? HubConnectionState.Disconnected;
+
+    /// <inheritdoc />
+    public bool IsConnected => _connection?.State == HubConnectionState.Connected;
 
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -135,6 +185,8 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                 message.ClientId, message.DeviceType, message.Status);
         });
 
+        TryRegisterLogPullHandlers();
+
         try
         {
             await _connection.StartAsync(cancellationToken);
@@ -143,7 +195,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                 "DeviceStatusSignalRClient: Connected successfully. ConnectionId={ConnectionId}",
                 _connection.ConnectionId);
 
-            await SyncProjectLicenseFromServerAsync();
+            await OnConnectionRestoredAsync();
         }
         catch (TimeoutException ex)
         {
@@ -303,20 +355,37 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     {
         _reconnectAttempts = 0;
         var delays = _options.ReconnectDelays;
-        var maxAttempts = _options.MaxReconnectAttempts;
+        if (delays.Length == 0)
+        {
+            delays = [0, 2, 10, 30];
+        }
 
-        while (!cancellationToken.IsCancellationRequested && _reconnectAttempts < maxAttempts)
+        var maxAttempts = _options.MaxReconnectAttempts;
+        var persistentReconnect = _options.PersistentReconnect;
+
+        while (!cancellationToken.IsCancellationRequested &&
+               (persistentReconnect || _reconnectAttempts < maxAttempts))
         {
             _reconnectAttempts++;
 
-            // Calculate delay: use configured delays, then cap at 60 seconds
-            var delaySeconds = _reconnectAttempts <= delays.Length
-                ? delays[_reconnectAttempts - 1]
-                : Math.Min((int)Math.Pow(2, _reconnectAttempts), 60);
+            var delaySeconds = persistentReconnect
+                ? delays[(_reconnectAttempts - 1) % delays.Length]
+                : _reconnectAttempts <= delays.Length
+                    ? delays[_reconnectAttempts - 1]
+                    : Math.Min((int)Math.Pow(2, _reconnectAttempts), 60);
 
-            _logger.LogDebug(
-                "DeviceStatusSignalRClient: Reconnect attempt {Attempt}/{Max} in {Delay}s",
-                _reconnectAttempts, maxAttempts, delaySeconds);
+            if (persistentReconnect)
+            {
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: Reconnect attempt {Attempt} in {Delay}s (persistent)",
+                    _reconnectAttempts, delaySeconds);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: Reconnect attempt {Attempt}/{Max} in {Delay}s",
+                    _reconnectAttempts, maxAttempts, delaySeconds);
+            }
 
             if (delaySeconds > 0)
             {
@@ -354,10 +423,11 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             }
         }
 
-        if (_reconnectAttempts >= maxAttempts)
+        if (!persistentReconnect && _reconnectAttempts >= maxAttempts)
         {
             _logger.LogError(
-                "DeviceStatusSignalRClient: Max reconnect attempts ({Max}) reached. Giving up.",
+                "DeviceStatusSignalRClient: Max reconnect attempts ({Max}) reached. Giving up. " +
+                "Set SignalR:PersistentReconnect to true to keep retrying.",
                 maxAttempts);
         }
     }
@@ -426,6 +496,77 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                 return;
             }
 
+            // Step 1: Read local JWT (priority: LatestJwtToken > .urban file) for anti-tamper check
+            var licenseFilePath = "license.urban";
+            var localJwt = await _licenseService.GetLocalJwtTokenAsync(licenseFilePath);
+
+            bool antiTamperPassed = false;
+
+            if (!string.IsNullOrWhiteSpace(localJwt))
+            {
+                // Step 2: Submit JWT to server for anti-tamper verification
+                try
+                {
+                    var antiTamperResult = await _connection.InvokeAsync<JwtAntiTamperResult>(
+                        "VerifyJwtAsync",
+                        localJwt,
+                        license.ProjectId.ToString());
+
+                    if (antiTamperResult.Passed && !string.IsNullOrEmpty(antiTamperResult.ServerJwt))
+                    {
+                        // Step 3: Store server JWT and derive LicenseInfo from server JWT claims
+                        await _licenseService.StoreServerJwtAsync(
+                            antiTamperResult.ServerJwt,
+                            antiTamperResult.ProName ?? license.ProName ?? string.Empty,
+                            antiTamperResult.BuildLicenseNo,
+                            antiTamperResult.FdBuildLicenseNo,
+                            antiTamperResult.AuthEndTime ?? license.AuthEndTime);
+
+                        antiTamperPassed = true;
+
+                        _logger.LogInformation(
+                            "DeviceStatusSignalRClient: Anti-tamper check passed. Server JWT stored. ProId={ProId}",
+                            license.ProjectId);
+                    }
+                    else
+                    {
+                        // Anti-tamper check failed: log warning, do NOT modify LicenseInfo
+                        _logger.LogWarning(
+                            "DeviceStatusSignalRClient: Anti-tamper check FAILED. ProId={ProId}, Reason={Reason}. Skipping LicenseInfo update.",
+                            license.ProjectId, antiTamperResult.Reason ?? "Unknown");
+                        return; // Do NOT proceed with field sync
+                    }
+                }
+                catch (TimeoutException ex)
+                {
+                    // SignalR timeout: fall back to field sync only (availability over strict verification)
+                    _logger.LogWarning(ex,
+                        "DeviceStatusSignalRClient: VerifyJwtAsync call failed (timeout). ProId={ProId}. Falling back to field sync only.",
+                        license.ProjectId);
+                }
+                catch (Exception ex)
+                {
+                    // Network exception: fall back to field sync only
+                    _logger.LogWarning(ex,
+                        "DeviceStatusSignalRClient: VerifyJwtAsync call failed. ProId={ProId}. Falling back to field sync only.",
+                        license.ProjectId);
+                }
+            }
+            else
+            {
+                // No local JWT available: skip anti-tamper check, proceed with field sync
+                _logger.LogDebug(
+                    "DeviceStatusSignalRClient: No local JWT available for anti-tamper check. ProId={ProId}. Proceeding with field sync only.",
+                    license.ProjectId);
+            }
+
+            // If anti-tamper passed, server JWT is already stored — skip field sync
+            if (antiTamperPassed)
+            {
+                return;
+            }
+
+            // Step 4: Existing field sync (GetClientProjectLicenseInfo) for cases without JWT
             var projectInfo = await _connection.InvokeAsync<ClientProjectLicenseInfoDto?>(
                 "GetClientProjectLicenseInfo",
                 license.ProjectId.ToString());
@@ -455,6 +596,167 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
         {
             _logger.LogWarning(ex,
                 "DeviceStatusSignalRClient: Failed to sync project license info from server.");
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnReceiveLogListRequest(Func<string, string, string, Task> callback)
+    {
+        _logListRequestHandler = callback;
+        TryRegisterLogListHandler();
+    }
+
+    private void TryRegisterLogListHandler()
+    {
+        if (_connection == null || _logListRequestHandler == null || _logListHandlerRegistered)
+        {
+            return;
+        }
+
+        _connection.On<string, string, string>("ReceiveLogListRequest",
+            (requestId, targetClientId, dateFolder) =>
+                _logListRequestHandler(requestId, targetClientId, dateFolder));
+        _logListHandlerRegistered = true;
+        _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveLogListRequest callback");
+    }
+
+    /// <inheritdoc />
+    public void OnReceiveFileContentRequest(Func<string, string, string, string, Task> callback)
+    {
+        _fileContentRequestHandler = callback;
+        TryRegisterFileContentHandler();
+    }
+
+    private void TryRegisterFileContentHandler()
+    {
+        if (_connection == null || _fileContentRequestHandler == null || _fileContentHandlerRegistered)
+        {
+            return;
+        }
+
+        _connection.On<string, string, string, string>("ReceiveFileContentRequest",
+            (requestId, targetClientId, filePath, fileName) =>
+                _fileContentRequestHandler(requestId, targetClientId, filePath, fileName));
+        _fileContentHandlerRegistered = true;
+        _logger.LogDebug("DeviceStatusSignalRClient: Registered ReceiveFileContentRequest callback");
+    }
+
+    /// <inheritdoc />
+    public void OnWeighingRecordApproved(Func<Models.WeighingRecordApprovedPushDto, Task> callback)
+    {
+        _weighingRecordApprovedHandler = callback;
+        TryRegisterWeighingRecordApprovedHandler();
+    }
+
+    private void TryRegisterWeighingRecordApprovedHandler()
+    {
+        if (_connection == null || _weighingRecordApprovedHandler == null || _weighingRecordApprovedHandlerRegistered)
+        {
+            return;
+        }
+
+        _connection.On<Models.WeighingRecordApprovedPushDto>(
+            "WeighingRecordApproved",
+            push => _weighingRecordApprovedHandler(push));
+        _weighingRecordApprovedHandlerRegistered = true;
+        _logger.LogDebug("DeviceStatusSignalRClient: Registered WeighingRecordApproved callback");
+    }
+
+    private void TryRegisterLogPullHandlers()
+    {
+        TryRegisterLogListHandler();
+        TryRegisterFileContentHandler();
+        TryRegisterWeighingRecordApprovedHandler();
+    }
+
+    /// <inheritdoc />
+    public async Task RegisterLogCapability(string clientId, object capabilityInfo)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("RegisterLogCapability", clientId, capabilityInfo);
+                _logger.LogDebug("DeviceStatusSignalRClient: Registered log capability for ClientId={ClientId}", clientId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to register log capability");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot register log capability: connection is not established");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ReturnLogList(object result)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("ReturnLogList", result);
+                _logger.LogDebug("DeviceStatusSignalRClient: Returned log list for RequestId={RequestId}",
+                    result.GetType().GetProperty("RequestId")?.GetValue(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to return log list");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot return log list: connection is not established");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ReturnFileChunkAsync(string requestId, int chunkIndex, int totalChunks, byte[] data, long totalFileSize)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("ReceiveFileChunk", requestId, chunkIndex, totalChunks, data, totalFileSize);
+                _logger.LogDebug("DeviceStatusSignalRClient: Sent file chunk {ChunkIndex}/{TotalChunks} for RequestId={RequestId}",
+                    chunkIndex, totalChunks, requestId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to send file chunk");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot send file chunk: connection is not established");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ReturnFileErrorAsync(string requestId, string errorMessage)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _connection.InvokeAsync("ReceiveFileError", requestId, errorMessage);
+                _logger.LogWarning("DeviceStatusSignalRClient: Sent file error for RequestId={RequestId}: {ErrorMessage}",
+                    requestId, errorMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "DeviceStatusSignalRClient: Failed to send file error");
+                throw;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Cannot send file error: connection is not established");
         }
     }
 

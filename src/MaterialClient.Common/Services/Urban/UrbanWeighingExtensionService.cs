@@ -39,7 +39,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId)
+    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLprAttachment = true)
     {
         if (weighingRecordId <= 0)
         {
@@ -61,6 +61,14 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             LastErrorTime = null
         };
 
+        // Persist AnomalyReason at creation time (includes Lrp absence check)
+        var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
+        var anomalyConfig = GetAnomalyDetectionConfig();
+        extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLprAttachment);
+        extension.AnomalyReason = extension.IsAnomaly
+            ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLprAttachment)
+            : null;
+
         await _extensionRepository.InsertAsync(extension, autoSave: true);
         _logger.LogDebug("Created UrbanWeighingExtension {ExtensionId} for WeighingRecord {RecordId}",
             extension.Id, weighingRecordId);
@@ -69,6 +77,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
     }
 
     /// <inheritdoc />
+    [UnitOfWork]
     public virtual async Task<UrbanWeighingExtension?> GetByWeighingRecordIdAsync(long weighingRecordId)
     {
         if (weighingRecordId <= 0)
@@ -129,7 +138,6 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             .Take(pageSize)
             .ToListAsync();
 
-        var anomalyConfig = GetAnomalyDetectionConfig();
         var items = rows.Select(x => new UrbanWeighingListItemDto
         {
             WeighingRecordId = x.Record.Id,
@@ -138,9 +146,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             TotalWeight = x.Record.TotalWeight,
             IsAnomaly = x.Extension?.IsAnomaly ?? false,
             SyncStatus = x.Extension?.SyncStatus,
-            AnomalyReason = (x.Extension?.IsAnomaly ?? false)
-                ? _anomalyDetector.GetAnomalyReason(x.Record, anomalyConfig)
-                : null,
+            AnomalyReason = x.Extension?.AnomalyReason,
             UploadTime = x.Extension?.SyncStatus == SyncStatus.Synced ? x.Record.UpdateDate ?? x.Record.AddDate : null
         }).ToList();
 
@@ -183,10 +189,37 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task UpdateAnomalyFlagAsync(Guid extensionId, bool isAnomaly)
+    public virtual async Task UpdateAnomalyStateAsync(
+        Guid extensionId,
+        bool isAnomaly,
+        AnomalyReason? anomalyReason)
     {
         var extension = await _extensionRepository.GetAsync(extensionId);
         extension.IsAnomaly = isAnomaly;
+        extension.AnomalyReason = anomalyReason;
+        await _extensionRepository.UpdateAsync(extension, autoSave: true);
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
+    public virtual async Task AppendEditEntryAsync(
+        Guid extensionId,
+        EditEntrySnapshot before,
+        EditEntrySnapshot after,
+        EditSource source = EditSource.Client,
+        bool isImagesModified = false)
+    {
+        var extension = await _extensionRepository.GetAsync(extensionId);
+        var history = extension.GetEditHistory();
+        history.Add(new EditEntry
+        {
+            ChangedAt = DateTime.Now,
+            Before = before,
+            After = after,
+            Source = source,
+            IsImagesModified = isImagesModified
+        });
+        extension.SetEditHistory(history);
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 

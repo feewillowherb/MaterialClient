@@ -16,6 +16,7 @@
             <converters:WeighingModeConverter x:Key="WeighingModeConverter" />
             <converters:MaterialUnitDisplayConverter x:Key="MaterialUnitDisplayConverter" />
             <converters:ProductCodeConverter x:Key="ProductCodeConverter" />
+            <converters:AnomalyReasonConverter x:Key="AnomalyReasonConverter" />
         </Style.Resources>
     </Style>
 

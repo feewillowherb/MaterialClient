@@ -8,6 +8,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
+using MaterialClient.Urban.Views.Dialogs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -40,32 +41,27 @@ public class App : Application
 
                 await _abpApplication.InitializeAsync();
 
+                var startupAuth = _abpApplication.ServiceProvider
+                    .GetRequiredService<IUrbanStartupAuthorizationService>();
+                if (!startupAuth.IsAuthorized)
+                {
+                    var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
+                    notice.Closed += (_, _) => desktop.Shutdown();
+                    desktop.MainWindow = notice;
+                    notice.Show();
+                    desktop.Exit += OnApplicationExit;
+                    return;
+                }
+
                 // Resolve window from ABP container
                 var window = _abpApplication.ServiceProvider.GetRequiredService<UrbanAttendedWeighingWindow>();
                 _viewModel = window.ViewModel;
 
+                // After async ABP init, MainWindow must be shown explicitly (see MaterialClient App.axaml.cs).
                 desktop.MainWindow = window;
+                window.Show();
+                StartMainWindowServices();
 
-                // Start ViewModel initialization after window is shown
-                desktop.MainWindow.Opened += (_, _) =>
-                {
-                    try
-                    {
-                        _viewModel?.Initialize();
-                        _minimalWebHostService = _abpApplication.ServiceProvider.GetService<IMinimalWebHostService>();
-                        _ = StartUrbanWebHostAsync();
-                        _ = StartDevicesAndStatusMonitoringAsync();
-                        var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
-                        logger?.LogInformation("Urban ViewModel initialized, device status monitoring started");
-                    }
-                    catch (Exception ex)
-                    {
-                        var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
-                        logger?.LogError(ex, "Failed to initialize ViewModel");
-                    }
-                };
-
-                // Register exit handler for resource cleanup
                 desktop.Exit += OnApplicationExit;
             }
             catch (Exception ex)
@@ -76,6 +72,30 @@ public class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void StartMainWindowServices()
+    {
+        if (_abpApplication == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _viewModel?.Initialize();
+            _minimalWebHostService = _abpApplication.ServiceProvider.GetService<IMinimalWebHostService>();
+            _ = StartUrbanWebHostAsync();
+            _ = StartDevicesAndStatusMonitoringAsync();
+
+            var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+            logger?.LogInformation("Urban ViewModel initialized, device status monitoring started");
+        }
+        catch (Exception ex)
+        {
+            var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+            logger?.LogError(ex, "Failed to initialize ViewModel");
+        }
     }
 
     private async Task StartUrbanWebHostAsync()

@@ -13,6 +13,7 @@ public partial class WeighingRecordEditDialog : Window
     public WeighingRecordEditDialog(WeighingRecordEditDialogViewModel viewModel) : this()
     {
         DataContext = viewModel;
+        viewModel.StorageProvider = StorageProvider;
 
         viewModel.SaveCommand.Subscribe(_ => Close(viewModel.Result));
         viewModel.CancelCommand.Subscribe(_ => Close(null));

@@ -32,11 +32,17 @@
                                    Stretch="UniformToFill" />
                         </Border>
                     </Button>
+                    <TextBlock Text="⚠ 抓拍异常" FontSize="11" Foreground="#D97706"
+                               FontWeight="Medium" HorizontalAlignment="Center"
+                               IsVisible="{Binding IsLprAnomaly}" />
+                    <Button Content="替换" Command="{Binding ReplaceLprCommand}"
+                            HorizontalAlignment="Center" Padding="16,4" FontSize="12"
+                            CornerRadius="4" />
                 </StackPanel>
 
                 <StackPanel Spacing="4">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="摄像头抓拍" FontSize="11" Foreground="#666666"
+                        <TextBlock Text="枪机抓拍" FontSize="11" Foreground="#666666"
                                    FontWeight="Medium" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11"
                                    Foreground="#94A3B8" VerticalAlignment="Center" />
@@ -50,6 +56,10 @@
                                    Stretch="UniformToFill" />
                         </Border>
                     </Button>
+                    <Button Content="使用枪机抓拍做为车牌识别" Command="{Binding AdoptUrbanPhotoAsLprCommand}"
+                            IsVisible="{Binding CanAdoptUrbanPhotoAsLpr}"
+                            HorizontalAlignment="Center" Padding="16,4" FontSize="12"
+                            CornerRadius="4" />
                 </StackPanel>
             </StackPanel>
 

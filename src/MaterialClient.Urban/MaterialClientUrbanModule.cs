@@ -1,10 +1,13 @@
+using System;
 using System.Text;
+using System.Threading.Tasks;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
 using MaterialClient.UI;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Logging;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.Authentication;
@@ -101,145 +104,30 @@ public class MaterialClientUrbanModule : AbpModule
 
     private void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
     {
-        var appDirectory = AppContext.BaseDirectory;
-        var logsDirectory = Path.Combine(appDirectory, "Logs");
-
-        if (!Directory.Exists(logsDirectory))
-            Directory.CreateDirectory(logsDirectory);
-
-        var logFilePath = Path.Combine(logsDirectory, "MaterialClient.Urban-.log");
-
-        var defaultLevel = GetLogLevel(configuration, "Logging:LogLevel:Default", "Information");
-        var microsoftLevel = GetLogLevel(configuration, "Logging:LogLevel:Microsoft", "Warning");
-        var efCoreLevel = GetLogLevel(configuration, "Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");
-        var abpLevel = GetLogLevel(configuration, "Logging:LogLevel:Volo.Abp", "Warning");
-
-        var loggerConfig = new LoggerConfiguration()
-            .Enrich.FromLogContext()
-            .MinimumLevel.Is(ParseLogEventLevel(defaultLevel))
-            .MinimumLevel.Override("Microsoft", ParseLogEventLevel(microsoftLevel))
-            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", ParseLogEventLevel(efCoreLevel))
-            .MinimumLevel.Override("Volo.Abp", ParseLogEventLevel(abpLevel))
-            .WriteTo.File(
-                logFilePath,
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 30,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
-                encoding: Encoding.UTF8);
-
-        Log.Logger = loggerConfig.CreateLogger();
-
-        services.AddLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddSerilog(Log.Logger);
-        });
+        SerilogFileLogConfigurator.Configure(services, configuration, "MaterialClient.Urban");
     }
-
-    private string GetLogLevel(IConfiguration configuration, string key, string defaultValue)
-        => configuration[key] ?? defaultValue;
-
-    private LogEventLevel ParseLogEventLevel(string level)
-        => Enum.TryParse<LogEventLevel>(level, true, out var result)
-            ? result
-            : LogEventLevel.Information;
 
     public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
     {
         var logger = context.ServiceProvider.GetService<ILogger<MaterialClientUrbanModule>>();
 
-        // Execute database migration
-        try
-        {
-            var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-            var dbContextProvider =
-                context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
-
-            using var uow = unitOfWorkManager.Begin(true, false);
-            await using var dbContext = await dbContextProvider.GetDbContextAsync();
-            await dbContext.Database.MigrateAsync();
-            await uow.CompleteAsync();
-
-            logger?.LogInformation("Database migration completed successfully");
-        }
-        catch (Exception ex)
-        {
-            logger?.LogError(ex, "Database migration failed");
-        }
+        await RunDatabaseMigrationAsync(context.ServiceProvider, logger);
 
         await EnsureUrbanDefaultWeighingModeAsync(context.ServiceProvider, logger);
 
-        // Execute static license check (non-blocking on failure)
-        try
+        var startupAuthService = context.ServiceProvider.GetRequiredService<IUrbanStartupAuthorizationService>();
+        var isAuthorized = await TryExecuteStartupLicenseCheckAsync(context, logger);
+        startupAuthService.SetResult(isAuthorized);
+
+        if (!startupAuthService.IsAuthorized)
         {
-            var licenseChecker = context.ServiceProvider.GetRequiredService<IStaticLicenseChecker>();
-            var settings = new SystemSettings();
-            var result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
-            logger?.LogInformation("Static license check: {Status} - {Message}",
-                result.IsSuccess ? "Passed" : "Failed", result.Message);
-
-            if (result.IsSuccess)
-            {
-                // Write license data to LicenseInfo entity
-                try
-                {
-                    var uowManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-                    var licenseRepository = context.ServiceProvider.GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
-
-                    using var uow = uowManager.Begin(true, false);
-                    var queryable = await licenseRepository.GetQueryableAsync();
-                    var existing = await queryable.FirstOrDefaultAsync();
-
-                    if (existing == null)
-                    {
-                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
-                        var licenseInfo = new LicenseInfo(
-                            Guid.NewGuid(),
-                            result.ProId,
-                            null, // AuthToken
-                            result.AuthEndTime,
-                            machineCode,
-                            result.ProName,
-                            result.BuildLicenseNo,
-                            result.FdBuildLicenseNo);
-                        await licenseRepository.InsertAsync(licenseInfo);
-                    }
-                    else
-                    {
-                        existing.ProjectId = result.ProId;
-                        existing.AuthEndTime = result.AuthEndTime;
-                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
-                        existing.Update(
-                            null, // AuthToken
-                            result.AuthEndTime,
-                            machineCode,
-                            result.ProName,
-                            result.BuildLicenseNo,
-                            result.FdBuildLicenseNo);
-                        await licenseRepository.UpdateAsync(existing);
-                    }
-
-                    await uow.CompleteAsync();
-                    logger?.LogInformation("Static license data written to LicenseInfo: ProId={ProId}, ProName={ProName}",
-                        result.ProId, result.ProName);
-                }
-                catch (Exception ex)
-                {
-                    logger?.LogWarning(ex, "Failed to write static license data to LicenseInfo (non-blocking)");
-                }
-            }
-            else
-            {
-                logger?.LogWarning("Static license check returned failure, skipping LicenseInfo write: {Message}",
-                    result.Message);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "Static license check failed (non-blocking)");
+            logger?.LogWarning(
+                "Startup authorization failed: {Message}. Main window and background services will not start.",
+                startupAuthService.Result.FailureMessage);
+            return;
         }
 
-        // Start SignalR client connection (non-blocking)
+        // Start SignalR client connection
         try
         {
             var signalRClient = context.ServiceProvider.GetService<IDeviceStatusSignalRClient>();
@@ -251,7 +139,37 @@ public class MaterialClientUrbanModule : AbpModule
         }
         catch (Exception ex)
         {
-            logger?.LogWarning(ex, "SignalR client start failed (non-blocking)");
+            logger?.LogWarning(ex, "SignalR client start failed");
+        }
+
+        // Initialize client log pull service (non-blocking; SignalR failures must not delay UI startup)
+        try
+        {
+            var clientLogPullService = context.ServiceProvider.GetService<Services.ClientLogPullService>();
+            if (clientLogPullService != null)
+            {
+                _ = clientLogPullService.InitializeAsync();
+                logger?.LogInformation("ClientLogPullService startup scheduled (callbacks registered, capability registration is background)");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "ClientLogPullService initialization failed");
+        }
+
+        try
+        {
+            var serverApprovalSyncCoordinator =
+                context.ServiceProvider.GetService<Services.ServerApprovalSyncCoordinator>();
+            if (serverApprovalSyncCoordinator != null)
+            {
+                _ = serverApprovalSyncCoordinator.InitializeAsync();
+                logger?.LogInformation("ServerApprovalSyncCoordinator startup scheduled");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "ServerApprovalSyncCoordinator initialization failed");
         }
 
         var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -265,6 +183,131 @@ public class MaterialClientUrbanModule : AbpModule
         {
             logger?.LogInformation(
                 "Urban PollingBackgroundService is disabled by configuration (BackgroundServices:Polling=false).");
+        }
+    }
+
+    private static async Task<UrbanStartupAuthorizationResult> TryExecuteStartupLicenseCheckAsync(
+        ApplicationInitializationContext context,
+        ILogger<MaterialClientUrbanModule>? logger)
+    {
+        // Priority: LicenseInfo.LatestJwtToken (server JWT) > license.urban file (bootstrap)
+        try
+        {
+            var licenseChecker = context.ServiceProvider.GetRequiredService<IStaticLicenseChecker>();
+            var settings = new SystemSettings();
+            LicenseCheckResult? result = null;
+
+            var licenseRepository = context.ServiceProvider
+                .GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
+            var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+
+            LicenseInfo? existingLicense;
+            using (var readUow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
+            {
+                existingLicense = await (await licenseRepository.GetQueryableAsync())
+                    .OrderBy(license => license.CreatedAt)
+                    .FirstOrDefaultAsync();
+                await readUow.CompleteAsync();
+            }
+
+            if (existingLicense != null && !string.IsNullOrWhiteSpace(existingLicense.LatestJwtToken))
+            {
+                result = await licenseChecker.CheckLicenseFromTokenAsync(existingLicense.LatestJwtToken);
+                if (result.IsSuccess)
+                {
+                    logger?.LogInformation("Startup license check from LatestJwtToken: Passed");
+                }
+                else
+                {
+                    logger?.LogWarning(
+                        "Startup license check from LatestJwtToken failed: {Reason}, falling back to license file",
+                        result.Message);
+                    result = null;
+                }
+            }
+
+            if (result == null)
+            {
+                result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
+                if (result.IsSuccess)
+                {
+                    logger?.LogInformation("Startup license check from license file: Passed");
+                }
+            }
+
+            logger?.LogInformation(
+                "Static license check: {Status} - {Message}",
+                result.IsSuccess ? "Passed" : "Failed",
+                result.Message);
+
+            if (!result.IsSuccess || result.ProId == Guid.Empty)
+            {
+                var message = result.IsSuccess
+                    ? "Authorization data is incomplete: missing project id."
+                    : result.Message;
+                return new UrbanStartupAuthorizationResult(false, message, null);
+            }
+
+            try
+            {
+                using (var writeUow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: true))
+                {
+                    var existing = await (await licenseRepository.GetQueryableAsync())
+                        .OrderBy(license => license.CreatedAt)
+                        .FirstOrDefaultAsync();
+
+                    if (existing == null)
+                    {
+                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                        var licenseInfo = new LicenseInfo(
+                            Guid.NewGuid(),
+                            result.ProId,
+                            null,
+                            result.AuthEndTime,
+                            machineCode,
+                            result.ProName,
+                            result.BuildLicenseNo,
+                            result.FdBuildLicenseNo);
+                        await licenseRepository.InsertAsync(licenseInfo);
+                    }
+                    else
+                    {
+                        existing.ProjectId = result.ProId;
+                        existing.AuthEndTime = result.AuthEndTime;
+                        var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                        existing.Update(
+                            null,
+                            result.AuthEndTime,
+                            machineCode,
+                            result.ProName,
+                            result.BuildLicenseNo,
+                            result.FdBuildLicenseNo);
+                        await licenseRepository.UpdateAsync(existing);
+                    }
+
+                    await writeUow.CompleteAsync();
+                }
+
+                logger?.LogInformation(
+                    "Static license data written to LicenseInfo: ProId={ProId}, ProName={ProName}",
+                    result.ProId,
+                    result.ProName);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Failed to write static license data to LicenseInfo");
+                return new UrbanStartupAuthorizationResult(
+                    false,
+                    "Failed to persist authorization data.",
+                    null);
+            }
+
+            return new UrbanStartupAuthorizationResult(true, result.Message, result.ProId);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Static license check failed");
+            return new UrbanStartupAuthorizationResult(false, ex.Message, null);
         }
     }
 
@@ -293,6 +336,31 @@ public class MaterialClientUrbanModule : AbpModule
         // Flush and close Serilog
         await Log.CloseAndFlushAsync();
         await base.OnApplicationShutdownAsync(context);
+    }
+
+    private static async Task RunDatabaseMigrationAsync(
+        IServiceProvider serviceProvider,
+        ILogger<MaterialClientUrbanModule>? logger)
+    {
+        try
+        {
+            var unitOfWorkManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
+            var dbContextProvider =
+                serviceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
+
+            using (var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
+            {
+                var dbContext = await dbContextProvider.GetDbContextAsync();
+                await dbContext.Database.MigrateAsync();
+                await uow.CompleteAsync();
+            }
+
+            logger?.LogInformation("Database migration completed successfully");
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Database migration failed");
+        }
     }
 
     private static async Task EnsureUrbanDefaultWeighingModeAsync(

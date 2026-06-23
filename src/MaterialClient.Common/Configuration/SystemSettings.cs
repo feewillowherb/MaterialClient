@@ -92,7 +92,7 @@ public class SystemSettings
     /// <summary>
     ///     静态授权文件路径
     /// </summary>
-    public string LicenseFilePath { get; set; } = "RSA.xml";
+    public string LicenseFilePath { get; set; } = "license.urban";
 
     /// <summary>
     ///     Urban 异常检测阈值配置（单位：吨）。

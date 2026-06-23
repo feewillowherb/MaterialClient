@@ -49,8 +49,8 @@ public class LicensePlateRecognizedEventData
     public DateTime Timestamp { get; set; } = DateTime.Now;
 
     /// <summary>
-    ///     Lrp 车牌识别图片的本地相对路径（仅 UrbanMode = 201 时保存）
-    ///     为 null 时表示未保存 Lrp 图片
+    ///     Lpr 车牌识别图片的本地相对路径（仅 UrbanMode = 201 时保存）
+    ///     为 null 时表示未保存 Lpr 图片
     /// </summary>
-    public string? LrpImagePath { get; set; }
+    public string? LprImagePath { get; set; }
 }

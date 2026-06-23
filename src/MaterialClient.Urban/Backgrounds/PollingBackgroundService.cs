@@ -1,12 +1,14 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.Urban.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.BackgroundWorkers;
+using Volo.Abp.EventBus.Local;
 using Volo.Abp.Threading;
 using Volo.Abp.Uow;
 
@@ -66,6 +68,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 
         var extensionService = serviceProvider.GetRequiredService<IUrbanWeighingExtensionService>();
         var uploadService = serviceProvider.GetRequiredService<IUrbanServerUploadService>();
+        var localEventBus = serviceProvider.GetRequiredService<ILocalEventBus>();
 
         var pending = await extensionService.GetPendingForUploadAsync(batchSize);
 
@@ -81,6 +84,7 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
             try
             {
                 await uploadService.SubmitRecordAsync(extension.WeighingRecordId);
+                await localEventBus.PublishAsync(new UploadCompletedEventData(extension.WeighingRecordId));
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

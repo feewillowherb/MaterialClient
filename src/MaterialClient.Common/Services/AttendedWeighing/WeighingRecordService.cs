@@ -126,12 +126,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
             if (weighingMode == WeighingMode.UrbanMode)
             {
-                var extension = await _urbanWeighingExtensionService.CreateForRecordAsync(weighingRecord.Id);
-
-                // Anomaly detection
-                var anomalyConfig = GetAnomalyDetectionConfig();
-                extension.IsAnomaly = _anomalyDetector.IsAnomaly(weighingRecord, anomalyConfig);
-                await _urbanWeighingExtensionService.UpdateAnomalyFlagAsync(extension.Id, extension.IsAnomaly);
+                var hasLrp = !string.IsNullOrWhiteSpace(stateManager.GetCurrentCycleLprImagePath());
+                var extension = await _urbanWeighingExtensionService.CreateForRecordAsync(weighingRecord.Id, hasLrp);
             }
 
             await uow.CompleteAsync();
@@ -153,7 +149,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
                 _logger.LogWarning("Weighing record {Id} has no associated photos", weighingRecord.Id);
 
             if (weighingMode == WeighingMode.UrbanMode)
-                await SaveLrpAttachmentAsync(weighingRecord.Id, stateManager.GetCurrentCycleLrpImagePath());
+                await SaveLprAttachmentAsync(weighingRecord.Id, stateManager.GetCurrentCycleLprImagePath());
         }
         catch (Exception ex)
         {
@@ -208,11 +204,11 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         }
     }
 
-    private async Task SaveLrpAttachmentAsync(long weighingRecordId, string? lrpRelativePath)
+    private async Task SaveLprAttachmentAsync(long weighingRecordId, string? lrpRelativePath)
     {
         if (string.IsNullOrWhiteSpace(lrpRelativePath))
         {
-            _logger.LogDebug("No LRP image path for weighing record {Id}, skipping Lrp attachment", weighingRecordId);
+            _logger.LogDebug("No Lpr image path for weighing record {Id}, skipping Lrp attachment", weighingRecordId);
             return;
         }
 
@@ -220,14 +216,14 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         {
             if (!AttachmentPathUtils.FileExists(lrpRelativePath))
             {
-                _logger.LogWarning("LRP photo file does not exist: {PhotoPath}", lrpRelativePath);
+                _logger.LogWarning("Lpr photo file does not exist: {PhotoPath}", lrpRelativePath);
                 return;
             }
 
             using var uow = _unitOfWorkManager.Begin();
 
             var fileName = Path.GetFileName(lrpRelativePath);
-            var attachmentFile = new AttachmentFile(fileName, lrpRelativePath, AttachType.Lrp);
+            var attachmentFile = new AttachmentFile(fileName, lrpRelativePath, AttachType.Lpr);
             await _attachmentFileRepository.InsertAsync(attachmentFile, true);
 
             var weighingRecordAttachment = new WeighingRecordAttachment(weighingRecordId, attachmentFile.Id);
@@ -361,8 +357,10 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             // Anomaly detection integration: recalculate anomaly flag after record edit
             // This ensures the anomaly status stays in sync with the edited record data
             var anomalyConfig = GetAnomalyDetectionConfig();
-            var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig);
-            await _urbanWeighingExtensionService.UpdateAnomalyFlagAsync(extension.Id, isAnomaly);
+            var hasLpr = await HasLprAttachmentAsync(weighingRecordId);
+            var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLpr);
+            var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLpr) : null;
+            await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, isAnomaly, reason);
 
             _logger.LogInformation(
                 "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending, IsAnomaly={IsAnomaly}",
@@ -407,5 +405,15 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             _logger.LogWarning(ex, "Failed to read UrbanAnomalyDetection config, using default values");
             return new UrbanAnomalyDetectionConfig();
         }
+    }
+
+    private async Task<bool> HasLprAttachmentAsync(long weighingRecordId)
+    {
+        var recordAttachments = await _weighingRecordAttachmentRepository.GetListAsync(a => a.WeighingRecordId == weighingRecordId);
+        if (recordAttachments.Count == 0) return false;
+
+        var fileIds = recordAttachments.Select(a => a.AttachmentFileId).ToList();
+        var lprFiles = await _attachmentFileRepository.GetListAsync(f => fileIds.Contains(f.Id) && f.AttachType == AttachType.Lpr);
+        return lprFiles.Count > 0;
     }
 }

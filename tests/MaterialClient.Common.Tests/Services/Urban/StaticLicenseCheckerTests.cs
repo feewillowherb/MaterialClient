@@ -5,73 +5,41 @@ using Xunit.Abstractions;
 namespace MaterialClient.Common.Tests.Services.Urban;
 
 /// <summary>
-///     StaticAuthChecker 单元测试
-///     测试静态授权检查服务的默认行为（TODO: 后续完善实际授权逻辑）
+///     StaticLicenseChecker 单元测试
+///     测试 JWT 授权检查服务（TODO: 后续完善实际授权逻辑）
 /// </summary>
 public class StaticLicenseCheckerTests(ITestOutputHelper output)
 {
     private readonly ITestOutputHelper _output = output;
 
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
+    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
     public async Task CheckLicenseAsync_Default_ReturnsSuccess()
     {
         // Arrange
-        var checker = new StaticLicenseChecker();
+        // TODO: 构造带公钥配置的 StaticLicenseChecker
+        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
 
-        // Act
-        var result = await checker.CheckLicenseAsync("test-license.lic");
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.IsSuccess, "默认实现应返回成功");
-        _output.WriteLine($"授权检查结果: {result.IsSuccess} - {result.Message}");
+        await Task.CompletedTask;
     }
 
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
-    public async Task CheckLicenseAsync_Default_ReturnsNonNullMessage()
+    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
+    public async Task CheckLicenseAsync_NonExistentFile_ReturnsFail()
     {
         // Arrange
-        var checker = new StaticLicenseChecker();
+        // TODO: 构造带公钥配置的 StaticLicenseChecker，测试文件不存在场景
+        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
 
-        // Act
-        var result = await checker.CheckLicenseAsync("nonexistent.lic");
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.False(string.IsNullOrEmpty(result.Message), "结果消息不应为空");
+        await Task.CompletedTask;
     }
 
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
-    public async Task CheckLicenseAsync_Default_CheckedAtIsValid()
+    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
+    public async Task CheckLicenseAsync_ExpiredToken_ReturnsFail()
     {
         // Arrange
-        var checker = new StaticLicenseChecker();
-        var before = DateTime.Now.AddSeconds(-1);
+        // TODO: 构造过期的 JWT 令牌，测试过期场景
+        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
 
-        // Act
-        var result = await checker.CheckLicenseAsync("test.lic");
-
-        // Assert
-        Assert.NotNull(result);
-        var after = DateTime.Now.AddSeconds(1);
-        Assert.True(result.CheckedAt >= before && result.CheckedAt <= after,
-            "检查时间应在合理范围内");
-    }
-
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
-    public async Task CheckLicenseAsync_NonExistentFile_StillReturnsSuccess()
-    {
-        // Arrange
-        var checker = new StaticLicenseChecker();
-
-        // Act
-        // TODO: 当前默认返回成功，后续实现实际授权验证时此测试应改为验证失败场景
-        var result = await checker.CheckLicenseAsync("/nonexistent/path/license.lic");
-
-        // Assert
-        Assert.NotNull(result);
-        // 当前实现默认返回成功，即使文件不存在
-        Assert.True(result.IsSuccess, "当前实现：默认返回成功（后续完善实际授权逻辑）");
+        await Task.CompletedTask;
     }
 }
 

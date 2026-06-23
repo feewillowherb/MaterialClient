@@ -23,6 +23,13 @@ public interface IUrbanManagementApi
     [Post("/api/app/urban-attachment/upload")]
     Task<UrbanAttachmentUploadResponseDto> UploadAttachmentsAsync(
         [Body] UrbanAttachmentUploadRequestDto dto);
+
+    [Post("/api/app/urban-weighing-record/ack-approval-sync")]
+    Task AckApprovalSyncAsync([Body] AckApprovalSyncDto dto);
+
+    [Get("/api/app/urban-weighing-record/pending-server-approval-sync")]
+    Task<List<MaterialClient.Common.Models.WeighingRecordApprovedPushDto>> GetPendingServerApprovalSyncAsync(
+        [Query] PendingServerApprovalSyncQueryDto input);
 }
 
 /// <summary>
@@ -31,5 +38,5 @@ public interface IUrbanManagementApi
 public class UrbanWeighingRecordReceiveResult
 {
     [JsonPropertyName("recordId")]
-    public long RecordId { get; set; }
+    public Guid RecordId { get; set; }
 }
