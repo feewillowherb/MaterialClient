@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MaterialClient.Common.Services;
@@ -32,6 +33,9 @@ public class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // 未授权流程中会临时切换 MainWindow；显式退出，避免关闭提示窗时整个进程被关掉
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             try
             {
                 // Create and initialize ABP application with Autofac (matching MaterialClient pattern)
@@ -79,37 +83,79 @@ public class App : Application
         IClassicDesktopStyleApplicationLifetime desktop,
         IAbpApplicationWithInternalServiceProvider abpApplication)
     {
-        while (true)
+        var startupAuth = abpApplication.ServiceProvider
+            .GetRequiredService<IUrbanStartupAuthorizationService>();
+        var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
+        desktop.MainWindow = notice;
+        notice.Show();
+
+        try
         {
-            var startupAuth = abpApplication.ServiceProvider
-                .GetRequiredService<IUrbanStartupAuthorizationService>();
-            var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
-            var noticeClosed = new TaskCompletionSource();
-            notice.Closed += (_, _) => noticeClosed.TrySetResult();
-            desktop.MainWindow = notice;
-            notice.Show();
-            await noticeClosed.Task;
-
-            if (notice.UserChoice == UnauthorizedNoticeWindow.UnauthorizedNoticeResult.Exit)
+            while (true)
             {
-                desktop.Shutdown();
-                return false;
-            }
+                var userChoice = await AwaitNoticeChoiceAsync(notice);
 
-            var activationWindow = abpApplication.ServiceProvider
-                .GetRequiredService<UrbanActivationWindow>();
-            var activated = await activationWindow.ShowDialog<bool?>(desktop.MainWindow);
-            if (activated != true)
-            {
-                continue;
-            }
+                if (userChoice == UnauthorizedNoticeWindow.UnauthorizedNoticeResult.Exit)
+                {
+                    desktop.Shutdown();
+                    return false;
+                }
 
-            var licenseService = abpApplication.ServiceProvider.GetRequiredService<ILicenseService>();
-            if (await licenseService.IsLicenseValidAsync())
-            {
-                return true;
+                var activationWindow = abpApplication.ServiceProvider
+                    .GetRequiredService<UrbanActivationWindow>();
+                var activated = await activationWindow.ShowDialog<bool?>(notice);
+                if (activated != true)
+                {
+                    continue;
+                }
+
+                var licenseService = abpApplication.ServiceProvider.GetRequiredService<ILicenseService>();
+                if (await licenseService.IsLicenseValidAsync())
+                {
+                    return true;
+                }
             }
         }
+        finally
+        {
+            if (notice.IsVisible)
+            {
+                notice.Close();
+            }
+        }
+    }
+
+    private static Task<UnauthorizedNoticeWindow.UnauthorizedNoticeResult> AwaitNoticeChoiceAsync(
+        UnauthorizedNoticeWindow notice)
+    {
+        var choiceTcs = new TaskCompletionSource<UnauthorizedNoticeWindow.UnauthorizedNoticeResult>();
+
+        void OnOnlineActivateRequested(object? sender, EventArgs e)
+        {
+            Cleanup();
+            choiceTcs.TrySetResult(UnauthorizedNoticeWindow.UnauthorizedNoticeResult.OnlineActivate);
+        }
+
+        void OnNoticeClosed(object? sender, EventArgs e)
+        {
+            if (choiceTcs.Task.IsCompleted)
+            {
+                return;
+            }
+
+            Cleanup();
+            choiceTcs.TrySetResult(notice.UserChoice);
+        }
+
+        void Cleanup()
+        {
+            notice.OnlineActivateRequested -= OnOnlineActivateRequested;
+            notice.Closed -= OnNoticeClosed;
+        }
+
+        notice.OnlineActivateRequested += OnOnlineActivateRequested;
+        notice.Closed += OnNoticeClosed;
+        return choiceTcs.Task;
     }
 
     private void StartMainWindowServices()

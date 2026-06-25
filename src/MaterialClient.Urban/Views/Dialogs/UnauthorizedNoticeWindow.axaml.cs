@@ -33,8 +33,11 @@ public partial class UnauthorizedNoticeWindow : Window
     private void OnOnlineActivateClick(object? sender, RoutedEventArgs e)
     {
         UserChoice = UnauthorizedNoticeResult.OnlineActivate;
-        Close();
+        // 保持窗口打开作对话框父级；由 App 在激活流程结束后再关闭，避免关闭 MainWindow 导致应用退出
+        OnlineActivateRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    public event EventHandler? OnlineActivateRequested;
 
     private void OnExitClick(object? sender, RoutedEventArgs e)
     {
