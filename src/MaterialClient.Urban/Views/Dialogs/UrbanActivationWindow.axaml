@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MaterialClient.Urban.ViewModels"
+        x:Class="MaterialClient.Urban.Views.Dialogs.UrbanActivationWindow"
+        x:DataType="vm:UrbanActivationWindowViewModel"
+        Title="在线激活"
+        Width="480"
+        Height="320"
+        MinWidth="400"
+        MinHeight="280"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        SystemDecorations="BorderOnly"
+        Icon="/Assets/fd-ico.ico">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+        <TextBlock Grid.Row="0"
+                   Text="请输入城管接入码完成在线激活"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,16" />
+
+        <StackPanel Grid.Row="1" Spacing="12">
+            <StackPanel Spacing="4">
+                <TextBlock Text="机器码" FontSize="13" Foreground="#6B7280" />
+                <TextBox Text="{Binding MachineCode}"
+                         IsReadOnly="True"
+                         FontFamily="Consolas" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="接入码" FontSize="13" Foreground="#6B7280" />
+                <TextBox Text="{Binding AccessCode}"
+                         Watermark="请输入接入码" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="#DC2626"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="12"
+                    Margin="0,16,0,0">
+            <Button Content="取消"
+                    MinWidth="96"
+                    Click="OnCancelClick" />
+            <Button Content="激活"
+                    MinWidth="96"
+                    Classes="primary-button"
+                    Command="{Binding ActivateCommand}"
+                    IsEnabled="{Binding !IsBusy}" />
+        </StackPanel>
+    </Grid>
+</Window>

@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
@@ -45,12 +46,12 @@ public class App : Application
                     .GetRequiredService<IUrbanStartupAuthorizationService>();
                 if (!startupAuth.IsAuthorized)
                 {
-                    var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
-                    notice.Closed += (_, _) => desktop.Shutdown();
-                    desktop.MainWindow = notice;
-                    notice.Show();
-                    desktop.Exit += OnApplicationExit;
-                    return;
+                    var shouldContinue = await HandleUnauthorizedStartupAsync(desktop, _abpApplication);
+                    if (!shouldContinue)
+                    {
+                        desktop.Exit += OnApplicationExit;
+                        return;
+                    }
                 }
 
                 // Resolve window from ABP container
@@ -72,6 +73,43 @@ public class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task<bool> HandleUnauthorizedStartupAsync(
+        IClassicDesktopStyleApplicationLifetime desktop,
+        IAbpApplicationWithInternalServiceProvider abpApplication)
+    {
+        while (true)
+        {
+            var startupAuth = abpApplication.ServiceProvider
+                .GetRequiredService<IUrbanStartupAuthorizationService>();
+            var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
+            var noticeClosed = new TaskCompletionSource();
+            notice.Closed += (_, _) => noticeClosed.TrySetResult();
+            desktop.MainWindow = notice;
+            notice.Show();
+            await noticeClosed.Task;
+
+            if (notice.UserChoice == UnauthorizedNoticeWindow.UnauthorizedNoticeResult.Exit)
+            {
+                desktop.Shutdown();
+                return false;
+            }
+
+            var activationWindow = abpApplication.ServiceProvider
+                .GetRequiredService<UrbanActivationWindow>();
+            var activated = await activationWindow.ShowDialog<bool?>(desktop.MainWindow);
+            if (activated != true)
+            {
+                continue;
+            }
+
+            var licenseService = abpApplication.ServiceProvider.GetRequiredService<ILicenseService>();
+            if (await licenseService.IsLicenseValidAsync())
+            {
+                return true;
+            }
+        }
     }
 
     private void StartMainWindowServices()

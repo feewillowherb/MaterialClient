@@ -95,6 +95,13 @@ public class MaterialClientUrbanModule : AbpModule
                 c.Timeout = TimeSpan.FromSeconds(30);
             });
 
+        services.AddRefitClient<IUrbanAuthApi>()
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri(urbanManagementUrl);
+                c.Timeout = TimeSpan.FromSeconds(30);
+            });
+
         // Configure SignalR client options
         services.Configure<SignalRClientOptions>(configuration.GetSection("SignalR"));
 
@@ -196,6 +203,7 @@ public class MaterialClientUrbanModule : AbpModule
             var licenseChecker = context.ServiceProvider.GetRequiredService<IStaticLicenseChecker>();
             var settings = new SystemSettings();
             LicenseCheckResult? result = null;
+            string? validatedJwtText = null;
 
             var licenseRepository = context.ServiceProvider
                 .GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
@@ -212,7 +220,8 @@ public class MaterialClientUrbanModule : AbpModule
 
             if (existingLicense != null && !string.IsNullOrWhiteSpace(existingLicense.LatestJwtToken))
             {
-                result = await licenseChecker.CheckLicenseFromTokenAsync(existingLicense.LatestJwtToken);
+                validatedJwtText = existingLicense.LatestJwtToken.Trim();
+                result = await licenseChecker.CheckLicenseFromTokenAsync(validatedJwtText);
                 if (result.IsSuccess)
                 {
                     logger?.LogInformation("Startup license check from LatestJwtToken: Passed");
@@ -228,7 +237,20 @@ public class MaterialClientUrbanModule : AbpModule
 
             if (result == null)
             {
-                result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
+                if (File.Exists(settings.LicenseFilePath))
+                {
+                    validatedJwtText = (await File.ReadAllTextAsync(settings.LicenseFilePath)).Trim();
+                    if (!string.IsNullOrWhiteSpace(validatedJwtText))
+                    {
+                        result = await licenseChecker.CheckLicenseFromTokenAsync(validatedJwtText);
+                    }
+                }
+
+                if (result == null)
+                {
+                    result = await licenseChecker.CheckLicenseAsync(settings.LicenseFilePath);
+                }
+
                 if (result.IsSuccess)
                 {
                     logger?.LogInformation("Startup license check from license file: Passed");
@@ -262,12 +284,13 @@ public class MaterialClientUrbanModule : AbpModule
                         var licenseInfo = new LicenseInfo(
                             Guid.NewGuid(),
                             result.ProId,
-                            null,
                             result.AuthEndTime,
                             machineCode,
                             result.ProName,
-                            result.BuildLicenseNo,
-                            result.FdBuildLicenseNo);
+                            result.AccessCode)
+                        {
+                            LatestJwtToken = validatedJwtText
+                        };
                         await licenseRepository.InsertAsync(licenseInfo);
                     }
                     else
@@ -275,13 +298,16 @@ public class MaterialClientUrbanModule : AbpModule
                         existing.ProjectId = result.ProId;
                         existing.AuthEndTime = result.AuthEndTime;
                         var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+                        if (!string.IsNullOrWhiteSpace(validatedJwtText))
+                        {
+                            existing.LatestJwtToken = validatedJwtText;
+                        }
+
                         existing.Update(
-                            null,
                             result.AuthEndTime,
                             machineCode,
                             result.ProName,
-                            result.BuildLicenseNo,
-                            result.FdBuildLicenseNo);
+                            result.AccessCode);
                         await licenseRepository.UpdateAsync(existing);
                     }
 

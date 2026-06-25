@@ -94,18 +94,11 @@ namespace MaterialClient.Common.Migrations
                     b.Property<DateTime>("AuthEndTime")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("AuthToken")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BuildLicenseNo")
+                    b.Property<string>("AccessCode")
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FdBuildLicenseNo")
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LatestJwtToken")

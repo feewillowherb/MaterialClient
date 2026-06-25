@@ -84,6 +84,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 {
     private readonly ILogger<DeviceStatusSignalRClient> _logger;
     private readonly ILicenseService _licenseService;
+    private readonly IStaticLicenseChecker _staticLicenseChecker;
     private readonly ILocalEventBus _localEventBus;
     private readonly SignalRClientOptions _options;
 
@@ -105,11 +106,13 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     public DeviceStatusSignalRClient(
         ILogger<DeviceStatusSignalRClient> logger,
         ILicenseService licenseService,
+        IStaticLicenseChecker staticLicenseChecker,
         ILocalEventBus localEventBus,
         IOptions<SignalRClientOptions> options)
     {
         _logger = logger;
         _licenseService = licenseService;
+        _staticLicenseChecker = staticLicenseChecker;
         _localEventBus = localEventBus;
         _options = options.Value;
 
@@ -186,6 +189,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
         });
 
         TryRegisterLogPullHandlers();
+        RegisterUpdateClientLicenseHandler();
 
         try
         {
@@ -519,7 +523,6 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                             antiTamperResult.ServerJwt,
                             antiTamperResult.ProName ?? license.ProName ?? string.Empty,
                             antiTamperResult.BuildLicenseNo,
-                            antiTamperResult.FdBuildLicenseNo,
                             antiTamperResult.AuthEndTime ?? license.AuthEndTime);
 
                         antiTamperPassed = true;
@@ -582,7 +585,6 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             var updated = await _licenseService.SyncProjectFieldsFromServerAsync(
                 projectInfo.ProName,
                 projectInfo.BuildLicenseNo,
-                projectInfo.FdBuildLicenseNo,
                 projectInfo.AuthEndTime);
 
             if (updated)
@@ -597,6 +599,42 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             _logger.LogWarning(ex,
                 "DeviceStatusSignalRClient: Failed to sync project license info from server.");
         }
+    }
+
+    private void RegisterUpdateClientLicenseHandler()
+    {
+        if (_connection == null)
+        {
+            return;
+        }
+
+        _connection.On<ClientLicenseUpdateDto>("UpdateClientLicense", async dto =>
+        {
+            if (string.IsNullOrWhiteSpace(dto.JwtToken))
+            {
+                _logger.LogWarning("DeviceStatusSignalRClient: UpdateClientLicense received empty JWT");
+                return;
+            }
+
+            var checkResult = await _staticLicenseChecker.CheckLicenseFromTokenAsync(dto.JwtToken);
+            if (!checkResult.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "DeviceStatusSignalRClient: UpdateClientLicense JWT validation failed: {Reason}",
+                    checkResult.Message);
+                return;
+            }
+
+            await _licenseService.StoreServerJwtAsync(
+                dto.JwtToken.Trim(),
+                checkResult.ProName ?? string.Empty,
+                checkResult.AccessCode,
+                checkResult.AuthEndTime);
+
+            _logger.LogInformation(
+                "DeviceStatusSignalRClient: License updated via UpdateClientLicense push. ProId={ProId}",
+                checkResult.ProId);
+        });
     }
 
     /// <inheritdoc />

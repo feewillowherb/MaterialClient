@@ -40,17 +40,16 @@ public class TestService : DomainService, ITestService
     public async Task<LicenseInfo> CreateLicenseInfoAsync(
         Guid? id = null,
         Guid? projectId = null,
-        Guid? authToken = null,
         DateTime? authEndTime = null,
-        string? machineCode = null)
+        string? machineCode = null,
+        string? accessCode = null)
     {
         var license = new LicenseInfo(
             id ?? Guid.NewGuid(),
             projectId ?? Guid.NewGuid(),
-            authToken ?? Guid.NewGuid(),
             authEndTime ?? DateTime.UtcNow.AddMonths(6),
-            machineCode ?? "test-machine-code"
-        );
+            machineCode ?? "test-machine-code",
+            accessCode: accessCode);
 
         return await _licenseRepository.InsertAsync(license);
     }

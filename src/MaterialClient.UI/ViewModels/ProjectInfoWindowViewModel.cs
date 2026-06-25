@@ -67,8 +67,8 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
                     ? MaskCode(license.MachineCode)
                     : string.Empty;
 
-                AuthCode = license.AuthToken.HasValue
-                    ? MaskCode(license.AuthToken.Value.ToString("N"))
+                AuthCode = !string.IsNullOrWhiteSpace(license.AccessCode)
+                    ? MaskCode(license.AccessCode)
                     : string.Empty;
             }
             else

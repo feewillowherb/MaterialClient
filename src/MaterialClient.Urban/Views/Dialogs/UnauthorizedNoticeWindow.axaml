@@ -3,9 +3,9 @@
         x:Class="MaterialClient.Urban.Views.Dialogs.UnauthorizedNoticeWindow"
         Title="软件未授权"
         Width="480"
-        Height="280"
+        Height="300"
         MinWidth="400"
-        MinHeight="240"
+        MinHeight="260"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
         SystemDecorations="BorderOnly"
@@ -18,7 +18,7 @@
                        FontWeight="Bold"
                        Foreground="#DC2626"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="请联系管理员获取授权文件（license.urban），并将其放置于程序目录后重新启动。"
+            <TextBlock Text="请使用在线激活，或联系管理员获取授权文件（license.urban）并放置于程序目录后重新启动。"
                        TextWrapping="Wrap"
                        FontSize="14"
                        Foreground="#374151"
@@ -33,11 +33,17 @@
                        IsVisible="False" />
         </StackPanel>
 
-        <Button Grid.Row="1"
-                Content="确定"
-                HorizontalAlignment="Center"
-                MinWidth="120"
-                Margin="0,16,0,0"
-                Click="OnConfirmClick" />
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Spacing="12"
+                    Margin="0,16,0,0">
+            <Button Content="在线激活"
+                    MinWidth="120"
+                    Click="OnOnlineActivateClick" />
+            <Button Content="退出"
+                    MinWidth="120"
+                    Click="OnExitClick" />
+        </StackPanel>
     </Grid>
 </Window>

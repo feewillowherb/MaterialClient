@@ -74,17 +74,17 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             if (licenseInfo == null)
             {
                 _logger.LogWarning(
-                    "LicenseInfo not available, ProId/ProName/BuildLicenseNo/FdBuildLicenseNo will be null for record {RecordId}",
+                    "LicenseInfo not available, ProId/ProName/AccessCode will be null for record {RecordId}",
                     weighingRecordId);
             }
-            else if (licenseInfo.ProName == null || licenseInfo.BuildLicenseNo == null)
+            else if (licenseInfo.ProName == null || licenseInfo.AccessCode == null)
             {
                 _logger.LogDebug(
                     "LicenseInfo exists but some project fields are empty for record {RecordId}",
                     weighingRecordId);
             }
 
-            var buildLicenseNo = licenseInfo?.BuildLicenseNo ?? string.Empty;
+            var accessCode = licenseInfo?.AccessCode ?? string.Empty;
             var editHistory = extension?.GetEditHistory() ?? [];
             var skipAttachmentUpload = editHistory.Count > 0
                                        && !editHistory.Any(e => e.IsImagesModified);
@@ -99,7 +99,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             else
             {
                 attachmentIds =
-                    (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
+                    (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, accessCode)).ToList();
             }
 
             var hadLocalUrbanAttachments = await HasLocalUrbanAttachmentsAsync(weighingRecordId);
@@ -124,8 +124,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 PlateColor = null,
                 VehicleType = null,
                 DeviceId = null,
-                BuildLicenseNo = licenseInfo?.BuildLicenseNo,
-                FdBuildLicenseNo = licenseInfo?.FdBuildLicenseNo,
+                BuildLicenseNo = licenseInfo?.AccessCode,
                 SiteType = null,
                 ProId = licenseInfo?.ProjectId,
                 ProName = licenseInfo?.ProName,

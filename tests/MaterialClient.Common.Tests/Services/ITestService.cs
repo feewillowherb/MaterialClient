@@ -16,9 +16,9 @@ public interface ITestService
     Task<LicenseInfo> CreateLicenseInfoAsync(
         Guid? id = null,
         Guid? projectId = null,
-        Guid? authToken = null,
         DateTime? authEndTime = null,
-        string? machineCode = null);
+        string? machineCode = null,
+        string? accessCode = null);
 
     /// <summary>
     /// 创建测试用的用户会话
