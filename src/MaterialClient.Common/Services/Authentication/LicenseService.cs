@@ -278,7 +278,7 @@ public partial class LicenseService : DomainService, ILicenseService
     {
         if (string.IsNullOrWhiteSpace(accessCode))
         {
-            throw new BusinessException("AUTH:EMPTY_CODE", "接入码不能为空");
+            throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
         }
 
         var urbanAuthApi = LazyServiceProvider.LazyGetService<IUrbanAuthApi>();

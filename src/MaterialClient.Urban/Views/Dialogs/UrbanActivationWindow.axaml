@@ -15,7 +15,7 @@
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="24">
         <TextBlock Grid.Row="0"
-                   Text="请输入城管接入码完成在线激活"
+                   Text="请输入授权码完成在线激活"
                    FontSize="16"
                    FontWeight="SemiBold"
                    Margin="0,0,0,16" />
@@ -29,9 +29,9 @@
             </StackPanel>
 
             <StackPanel Spacing="4">
-                <TextBlock Text="接入码" FontSize="13" Foreground="#6B7280" />
-                <TextBox Text="{Binding AccessCode}"
-                         Watermark="请输入接入码" />
+                <TextBlock Text="授权码" FontSize="13" Foreground="#6B7280" />
+                <TextBox Text="{Binding AuthorizationCode}"
+                         Watermark="请输入授权码" />
             </StackPanel>
 
             <TextBlock Text="{Binding ErrorMessage}"

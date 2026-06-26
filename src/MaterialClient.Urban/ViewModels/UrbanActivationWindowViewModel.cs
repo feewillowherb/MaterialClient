@@ -13,7 +13,7 @@ public class UrbanActivationWindowViewModel : ReactiveObject, ITransientDependen
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
 
-    private string _accessCode = string.Empty;
+    private string _authorizationCode = string.Empty;
     private string _machineCode = string.Empty;
     private string? _errorMessage;
     private bool _isBusy;
@@ -28,10 +28,13 @@ public class UrbanActivationWindowViewModel : ReactiveObject, ITransientDependen
         ActivateCommand = ReactiveCommand.CreateFromTask(ActivateAsync);
     }
 
-    public string AccessCode
+    /// <summary>
+    ///     用户输入的在线激活授权码（运营发码，非项目接入码 AccessCode）。
+    /// </summary>
+    public string AuthorizationCode
     {
-        get => _accessCode;
-        set => this.RaiseAndSetIfChanged(ref _accessCode, value);
+        get => _authorizationCode;
+        set => this.RaiseAndSetIfChanged(ref _authorizationCode, value);
     }
 
     public string MachineCode
@@ -62,7 +65,7 @@ public class UrbanActivationWindowViewModel : ReactiveObject, ITransientDependen
         IsBusy = true;
         try
         {
-            await _licenseService.ActivateUrbanAsync(AccessCode);
+            await _licenseService.ActivateUrbanAsync(AuthorizationCode);
             ActivationSucceeded?.Invoke(this, EventArgs.Empty);
             return true;
         }
