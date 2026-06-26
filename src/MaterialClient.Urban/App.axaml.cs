@@ -92,30 +92,31 @@ public class App : Application
         desktop.MainWindow = notice;
         notice.Show();
 
+        var licenseService = abpApplication.ServiceProvider.GetRequiredService<ILicenseService>();
+
         try
         {
             while (true)
             {
+                var activationWindow = abpApplication.ServiceProvider
+                    .GetRequiredService<UrbanActivationWindow>();
+                var activated = await activationWindow.ShowDialog<bool?>(notice);
+                if (activated == true)
+                {
+                    if (await licenseService.IsLicenseValidAsync())
+                    {
+                        return true;
+                    }
+
+                    continue;
+                }
+
                 var userChoice = await AwaitNoticeChoiceAsync(notice);
 
                 if (userChoice == UnauthorizedNoticeWindow.UnauthorizedNoticeResult.Exit)
                 {
                     desktop.Shutdown();
                     return false;
-                }
-
-                var activationWindow = abpApplication.ServiceProvider
-                    .GetRequiredService<UrbanActivationWindow>();
-                var activated = await activationWindow.ShowDialog<bool?>(notice);
-                if (activated != true)
-                {
-                    continue;
-                }
-
-                var licenseService = abpApplication.ServiceProvider.GetRequiredService<ILicenseService>();
-                if (await licenseService.IsLicenseValidAsync())
-                {
-                    return true;
                 }
             }
         }

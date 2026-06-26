@@ -3,7 +3,7 @@
         xmlns:vm="using:MaterialClient.Urban.ViewModels"
         x:Class="MaterialClient.Urban.Views.Dialogs.UrbanActivationWindow"
         x:DataType="vm:UrbanActivationWindowViewModel"
-        Title="在线激活"
+        Title="激活"
         Width="480"
         Height="320"
         MinWidth="400"
@@ -15,7 +15,7 @@
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="24">
         <TextBlock Grid.Row="0"
-                   Text="请输入授权码完成在线激活"
+                   Text="请输入授权码完成激活"
                    FontSize="16"
                    FontWeight="SemiBold"
                    Margin="0,0,0,16" />
