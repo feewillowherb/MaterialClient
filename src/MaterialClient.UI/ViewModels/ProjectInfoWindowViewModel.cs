@@ -33,6 +33,8 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
 
     [Reactive] private string _authCode = string.Empty;
 
+    [Reactive] private bool _isAuthCodeVisible = true;
+
     public ProjectInfoWindowViewModel(
         IAuthenticationService authenticationService,
         ILicenseService licenseService,
@@ -81,6 +83,7 @@ public partial class ProjectInfoWindowViewModel : ReactiveViewModelBase, ITransi
 
             var settings = await _settingsService.GetSettingsAsync();
             ProductNameDisplay = settings.SystemSettings.DefaultWeighingMode.GetDescription();
+            IsAuthCodeVisible = settings.SystemSettings.DefaultWeighingMode != WeighingMode.UrbanMode;
         }
         catch (Exception)
         {
