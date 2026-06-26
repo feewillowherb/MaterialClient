@@ -85,7 +85,10 @@ public class App : Application
     {
         var startupAuth = abpApplication.ServiceProvider
             .GetRequiredService<IUrbanStartupAuthorizationService>();
-        var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
+        var machineCode = abpApplication.ServiceProvider
+            .GetRequiredService<IMachineCodeService>()
+            .GetMachineCode();
+        var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage, machineCode);
         desktop.MainWindow = notice;
         notice.Show();
 

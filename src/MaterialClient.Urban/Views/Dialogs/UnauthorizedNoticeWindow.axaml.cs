@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
@@ -19,8 +20,10 @@ public partial class UnauthorizedNoticeWindow : Window
         InitializeComponent();
     }
 
-    public UnauthorizedNoticeWindow(string? failureMessage) : this()
+    public UnauthorizedNoticeWindow(string? failureMessage, string machineCode) : this()
     {
+        MachineCodeTextBox.Text = machineCode;
+
         if (string.IsNullOrWhiteSpace(failureMessage))
         {
             return;
@@ -28,6 +31,26 @@ public partial class UnauthorizedNoticeWindow : Window
 
         DetailTextBlock.Text = failureMessage;
         DetailTextBlock.IsVisible = true;
+    }
+
+    private async void OnCopyMachineCodeClick(object? sender, RoutedEventArgs e)
+    {
+        var machineCode = MachineCodeTextBox.Text;
+        if (string.IsNullOrWhiteSpace(machineCode))
+        {
+            return;
+        }
+
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard == null)
+        {
+            return;
+        }
+
+        await clipboard.SetTextAsync(machineCode);
+        CopyMachineCodeButton.Content = "已复制";
+        await Task.Delay(1500);
+        CopyMachineCodeButton.Content = "复制";
     }
 
     private void OnOnlineActivateClick(object? sender, RoutedEventArgs e)
