@@ -26,6 +26,8 @@ public class MaterialClientCommonModule : AbpModule
         var services = context.Services;
         var configuration = context.Services.GetConfiguration();
 
+        services.AddMemoryCache();
+
         // Register DbContext with default repositories
         services.AddAbpDbContext<MaterialClientDbContext>(options =>
         {

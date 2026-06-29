@@ -1,5 +1,6 @@
 using MaterialClient.Common.Entities.Enums;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services.AttendedWeighing;
 
@@ -7,7 +8,7 @@ namespace MaterialClient.Common.Services.AttendedWeighing;
 ///     默认称重管线策略（有人值守模式）
 ///     保持现有有人值守称重的全部行为不变
 /// </summary>
-public class DefaultWeighingPipelineStrategy : IWeighingPipelineStrategy
+public class DefaultWeighingPipelineStrategy : IWeighingPipelineStrategy, ISingletonDependency
 {
     private readonly ILogger<DefaultWeighingPipelineStrategy> _logger;
 
