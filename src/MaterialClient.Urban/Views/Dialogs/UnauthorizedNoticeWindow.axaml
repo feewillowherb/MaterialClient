@@ -1,6 +1,5 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:urban="using:MaterialClient.Urban"
         x:Class="MaterialClient.Urban.Views.Dialogs.UnauthorizedNoticeWindow"
         Title="软件未授权"
         Width="480"
@@ -19,24 +18,19 @@
                        FontWeight="Bold"
                        Foreground="#DC2626"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="请使用授权码完成在线激活。"
+            <TextBlock Text="请联系运营获取接入码，点击下方在线激活。"
                        TextWrapping="Wrap"
                        FontSize="14"
                        Foreground="#374151"
                        HorizontalAlignment="Center"
                        TextAlignment="Center" />
 
-            <!-- 离线下发 license.urban：保留布局，ShowOfflineActivationUi 为 true 时显示 -->
+            <!-- 本机机器码（在线激活所需：提交给运营以获取接入码）。离线 license.urban 导入入口已移除（V2）。 -->
             <StackPanel Spacing="4"
-                        Margin="0,4,0,0"
-                        IsVisible="{x:Static urban:UrbanActivationUiOptions.ShowOfflineActivationUi}">
-                <TextBlock Text="机器码"
+                        Margin="0,4,0,0">
+                <TextBlock Text="本机机器码"
                            FontSize="13"
                            Foreground="#6B7280" />
-                <TextBlock Text="（离线）可联系管理员获取 license.urban 授权文件并放置于程序目录后重新启动。"
-                           TextWrapping="Wrap"
-                           FontSize="12"
-                           Foreground="#9CA3AF" />
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <TextBox x:Name="MachineCodeTextBox"
                              Grid.Column="0"
@@ -66,7 +60,7 @@
                     HorizontalAlignment="Center"
                     Spacing="12"
                     Margin="0,16,0,0">
-            <Button Content="激活"
+            <Button Content="在线激活"
                     MinWidth="120"
                     Classes="primary-button"
                     Click="OnOnlineActivateClick" />

@@ -85,81 +85,16 @@ public class App : Application
     {
         var startupAuth = abpApplication.ServiceProvider
             .GetRequiredService<IUrbanStartupAuthorizationService>();
-        var machineCode = abpApplication.ServiceProvider
-            .GetRequiredService<IMachineCodeService>()
-            .GetMachineCode();
-        var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage, machineCode);
-        desktop.MainWindow = notice;
-        notice.Show();
+        var recoveryService = abpApplication.ServiceProvider
+            .GetRequiredService<IUrbanLicenseRecoveryService>();
 
-        var licenseService = abpApplication.ServiceProvider.GetRequiredService<ILicenseService>();
-
-        try
+        var shouldContinue = await recoveryService.RecoverAsync(startupAuth.Result.FailureMessage);
+        if (!shouldContinue)
         {
-            while (true)
-            {
-                var activationWindow = abpApplication.ServiceProvider
-                    .GetRequiredService<UrbanActivationWindow>();
-                var activated = await activationWindow.ShowDialog<bool?>(notice);
-                if (activated == true)
-                {
-                    if (await licenseService.IsLicenseValidAsync())
-                    {
-                        return true;
-                    }
-
-                    continue;
-                }
-
-                var userChoice = await AwaitNoticeChoiceAsync(notice);
-
-                if (userChoice == UnauthorizedNoticeWindow.UnauthorizedNoticeResult.Exit)
-                {
-                    desktop.Shutdown();
-                    return false;
-                }
-            }
-        }
-        finally
-        {
-            if (notice.IsVisible)
-            {
-                notice.Close();
-            }
-        }
-    }
-
-    private static Task<UnauthorizedNoticeWindow.UnauthorizedNoticeResult> AwaitNoticeChoiceAsync(
-        UnauthorizedNoticeWindow notice)
-    {
-        var choiceTcs = new TaskCompletionSource<UnauthorizedNoticeWindow.UnauthorizedNoticeResult>();
-
-        void OnOnlineActivateRequested(object? sender, EventArgs e)
-        {
-            Cleanup();
-            choiceTcs.TrySetResult(UnauthorizedNoticeWindow.UnauthorizedNoticeResult.OnlineActivate);
+            desktop.Shutdown();
         }
 
-        void OnNoticeClosed(object? sender, EventArgs e)
-        {
-            if (choiceTcs.Task.IsCompleted)
-            {
-                return;
-            }
-
-            Cleanup();
-            choiceTcs.TrySetResult(notice.UserChoice);
-        }
-
-        void Cleanup()
-        {
-            notice.OnlineActivateRequested -= OnOnlineActivateRequested;
-            notice.Closed -= OnNoticeClosed;
-        }
-
-        notice.OnlineActivateRequested += OnOnlineActivateRequested;
-        notice.Closed += OnNoticeClosed;
-        return choiceTcs.Task;
+        return shouldContinue;
     }
 
     private void StartMainWindowServices()

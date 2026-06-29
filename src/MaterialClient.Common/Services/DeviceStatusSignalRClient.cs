@@ -533,10 +533,30 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                     }
                     else
                     {
-                        // Anti-tamper check failed: log warning, do NOT modify LicenseInfo
+                        // F4: A device change is an irreversible business fact — the project was
+                        // re-activated on another device, so this (old-device) token is revoked.
+                        // Clear the local JWT and hand off to the UI layer to force re-activation
+                        // (terminating if the user cancels). Other failure types keep the
+                        // availability-first "log + skip" behaviour below.
+                        if (antiTamperResult.RevocationReason == RevocationReason.DeviceChanged)
+                        {
+                            _logger.LogWarning(
+                                "DeviceStatusSignalRClient: Authorization device changed. ProId={ProId}, Reason={Reason}. " +
+                                "Clearing local JWT and requesting re-activation.",
+                                license.ProjectId, antiTamperResult.Reason ?? "Unknown");
+
+                            await _licenseService.ClearLatestJwtTokenAsync();
+                            _ = _localEventBus.PublishAsync(new LicenseDeviceRevokedEto(
+                                license.ProjectId,
+                                antiTamperResult.Reason ?? "授权设备已变更，请在当前设备重新激活"));
+                            return; // Do NOT proceed with field sync; app re-activates or exits.
+                        }
+
+                        // Non-device-change failure (EXPIRED/NOT_FOUND/INVALID_SIGNATURE/UNREACHABLE):
+                        // do NOT modify LicenseInfo, keep availability-first skip.
                         _logger.LogWarning(
-                            "DeviceStatusSignalRClient: Anti-tamper check FAILED. ProId={ProId}, Reason={Reason}. Skipping LicenseInfo update.",
-                            license.ProjectId, antiTamperResult.Reason ?? "Unknown");
+                            "DeviceStatusSignalRClient: Anti-tamper check FAILED. ProId={ProId}, Reason={Reason}, RevocationReason={RevocationReason}. Skipping LicenseInfo update.",
+                            license.ProjectId, antiTamperResult.Reason ?? "Unknown", antiTamperResult.RevocationReason);
                         return; // Do NOT proceed with field sync
                     }
                 }

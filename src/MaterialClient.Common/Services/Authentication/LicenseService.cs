@@ -23,6 +23,12 @@ public interface ILicenseService
 
     Task ClearLicenseAsync();
 
+    /// <summary>
+    ///     清除 <see cref="LicenseInfo.LatestJwtToken" />（置空并持久化），保留其余授权字段。
+    ///     用于 F4：检测到授权设备变更后使旧设备令牌失效，强制重新在线激活。
+    /// </summary>
+    Task ClearLatestJwtTokenAsync();
+
     Task<bool> SyncProjectFieldsFromServerAsync(
         string? proName,
         string? accessCode,
@@ -181,6 +187,25 @@ public partial class LicenseService : DomainService, ILicenseService
     }
 
     [UnitOfWork]
+    public async Task ClearLatestJwtTokenAsync()
+    {
+        var license = await GetCurrentLicenseAsync();
+        if (license == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(license.LatestJwtToken))
+        {
+            return;
+        }
+
+        license.LatestJwtToken = null;
+        // UpdatedAt is auto-filled by ApplyAuditConcepts on update (F3).
+        await _licenseRepository.UpdateAsync(license);
+    }
+
+    [UnitOfWork]
     public async Task<bool> SyncProjectFieldsFromServerAsync(
         string? proName,
         string? accessCode,
@@ -219,7 +244,7 @@ public partial class LicenseService : DomainService, ILicenseService
             return false;
         }
 
-        license.UpdatedAt = DateTime.Now;
+        // UpdatedAt is auto-filled by ApplyAuditConcepts on update (F3).
         await _licenseRepository.UpdateAsync(license);
         return true;
     }
@@ -241,7 +266,7 @@ public partial class LicenseService : DomainService, ILicenseService
         license.ProName = proName;
         license.AccessCode = accessCode;
         license.AuthEndTime = authEndTime;
-        license.UpdatedAt = DateTime.Now;
+        // UpdatedAt is auto-filled by ApplyAuditConcepts on update (F3).
         await _licenseRepository.UpdateAsync(license);
     }
 
