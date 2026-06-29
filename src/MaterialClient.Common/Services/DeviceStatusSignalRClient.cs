@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services.Authentication;
@@ -552,7 +553,19 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                             return; // Do NOT proceed with field sync; app re-activates or exits.
                         }
 
-                        // Non-device-change failure (EXPIRED/NOT_FOUND/INVALID_SIGNATURE/UNREACHABLE):
+                        if (antiTamperResult.RevocationReason == RevocationReason.Expired)
+                        {
+                            var handled = await TryHandleExpiredAuthorizationAsync(
+                                license,
+                                localJwt,
+                                antiTamperResult);
+                            if (handled)
+                            {
+                                return;
+                            }
+                        }
+
+                        // Non-device-change failure (NOT_FOUND/INVALID_SIGNATURE/UNREACHABLE):
                         // do NOT modify LicenseInfo, keep availability-first skip.
                         _logger.LogWarning(
                             "DeviceStatusSignalRClient: Anti-tamper check FAILED. ProId={ProId}, Reason={Reason}, RevocationReason={RevocationReason}. Skipping LicenseInfo update.",
@@ -619,6 +632,74 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             _logger.LogWarning(ex,
                 "DeviceStatusSignalRClient: Failed to sync project license info from server.");
         }
+    }
+
+    /// <summary>
+    ///     Persists the expired JWT, re-runs local JWT validation, and terminates when validation fails.
+    /// </summary>
+    /// <returns><c>true</c> when the expired path was handled (caller should stop sync).</returns>
+    private async Task<bool> TryHandleExpiredAuthorizationAsync(
+        LicenseInfo license,
+        string localJwt,
+        JwtAntiTamperResult antiTamperResult)
+    {
+        var jwtToStore = !string.IsNullOrWhiteSpace(antiTamperResult.ServerJwt)
+            ? antiTamperResult.ServerJwt
+            : localJwt;
+
+        if (string.IsNullOrWhiteSpace(jwtToStore))
+        {
+            _logger.LogWarning(
+                "DeviceStatusSignalRClient: Authorization expired but no JWT available to persist. ProId={ProId}",
+                license.ProjectId);
+            return false;
+        }
+
+        var normalizedJwt = jwtToStore.Trim();
+        var authEndTime = antiTamperResult.AuthEndTime ?? license.AuthEndTime;
+
+        await _licenseService.StoreServerJwtAsync(
+            normalizedJwt,
+            antiTamperResult.ProName ?? license.ProName ?? string.Empty,
+            antiTamperResult.BuildLicenseNo ?? license.AccessCode,
+            authEndTime);
+
+        _logger.LogInformation(
+            "DeviceStatusSignalRClient: Persisted expired JWT for re-validation. ProId={ProId}, AuthEndTime={AuthEndTime}",
+            license.ProjectId,
+            authEndTime);
+
+        var checkResult = await _staticLicenseChecker.CheckLicenseFromTokenAsync(normalizedJwt);
+        if (!checkResult.IsSuccess)
+        {
+            _logger.LogWarning(
+                "DeviceStatusSignalRClient: JWT re-validation failed after expiry. ProId={ProId}, Reason={Reason}",
+                license.ProjectId,
+                checkResult.Message);
+
+            _ = _localEventBus.PublishAsync(new LicenseExpiredEto(
+                license.ProjectId,
+                string.IsNullOrWhiteSpace(checkResult.Message) ? "授权已过期" : checkResult.Message));
+            return true;
+        }
+
+        var currentLicense = await _licenseService.GetCurrentLicenseAsync();
+        if (currentLicense is { IsExpired: true })
+        {
+            _logger.LogWarning(
+                "DeviceStatusSignalRClient: License record expired after server expiry signal. ProId={ProId}",
+                license.ProjectId);
+
+            _ = _localEventBus.PublishAsync(new LicenseExpiredEto(
+                license.ProjectId,
+                "授权已过期"));
+            return true;
+        }
+
+        _logger.LogWarning(
+            "DeviceStatusSignalRClient: Server reported expiry but local JWT re-validation passed. ProId={ProId}",
+            license.ProjectId);
+        return true;
     }
 
     private void RegisterUpdateClientLicenseHandler()
