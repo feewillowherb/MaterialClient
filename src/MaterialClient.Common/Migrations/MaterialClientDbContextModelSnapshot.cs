@@ -91,31 +91,13 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("AccessCode")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("AuthEndTime")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("CreationTime")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("CreatedAt");
+                    b.Property<Guid?>("AuthToken")
+                        .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("CreatorId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("CreatorId");
-
-                    b.Property<DateTime?>("LastModificationTime")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("UpdatedAt");
-
-                    b.Property<Guid?>("LastModifierId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("LastModifierId");
-
-                    b.Property<string>("LatestJwtToken")
-                        .HasMaxLength(4096)
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MachineCode")
@@ -123,11 +105,10 @@ namespace MaterialClient.Common.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ProName")
-                        .HasMaxLength(256)
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("ProjectId")
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -502,51 +483,6 @@ namespace MaterialClient.Common.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Settings");
-                });
-
-            modelBuilder.Entity("MaterialClient.Common.Entities.Urban.UrbanWeighingExtension", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AnomalyReason")
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ExtraProperties")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("ExtraProperties");
-
-                    b.Property<bool>("IsAnomaly")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("LastErrorTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RetryCount")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("SubmitMachineCode")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("SyncStatus")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("WeighingRecordId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsAnomaly");
-
-                    b.HasIndex("WeighingRecordId")
-                        .IsUnique();
-
-                    b.HasIndex("SyncStatus", "WeighingRecordId");
-
-                    b.ToTable("UrbanWeighingExtensions");
                 });
 
             modelBuilder.Entity("MaterialClient.Common.Entities.UserCredential", b =>
@@ -972,9 +908,6 @@ namespace MaterialClient.Common.Migrations
                     b.Property<string>("MaterialsJson")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("PlateColor")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("PlateNumber")
                         .HasColumnType("TEXT");
 
@@ -989,12 +922,6 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<int?>("UpdateTime")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("VehicleColor")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("VehicleType")
-                        .HasColumnType("TEXT");
 
                     b.Property<long?>("WaybillId")
                         .HasColumnType("INTEGER");
