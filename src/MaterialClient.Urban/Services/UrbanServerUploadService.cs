@@ -40,6 +40,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
+    private readonly IMachineCodeService _machineCodeService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
@@ -49,6 +50,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
+        IMachineCodeService machineCodeService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
@@ -57,6 +59,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _weighingRecordRepository = weighingRecordRepository;
         _extensionService = extensionService;
         _licenseService = licenseService;
+        _machineCodeService = machineCodeService;
         _logger = logger;
     }
 
@@ -82,6 +85,15 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 _logger.LogDebug(
                     "LicenseInfo exists but some project fields are empty for record {RecordId}",
                     weighingRecordId);
+            }
+
+            // F2: record the machine code that submits this weighing data (traceability only —
+            // MUST NOT be used for authorization; that is F4's responsibility).
+            var submitMachineCode = _machineCodeService.GetMachineCode();
+            if (extension != null)
+            {
+                // Tracked entity within the ambient UnitOfWork → persisted on save.
+                extension.SubmitMachineCode = submitMachineCode;
             }
 
             var accessCode = licenseInfo?.AccessCode ?? string.Empty;
@@ -128,6 +140,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 SiteType = null,
                 ProId = licenseInfo?.ProjectId,
                 ProName = licenseInfo?.ProName,
+                SubmitMachineCode = submitMachineCode,
                 IsAnomaly = isAnomaly,
                 AnomalyReason = extension?.AnomalyReason?.GetDescription(),
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),

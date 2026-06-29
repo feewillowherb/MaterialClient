@@ -38,6 +38,9 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("proName")] public string? ProName { get; set; }
 
+    /// <summary>提交该称重数据的客户端机器码（F2 数据溯源，仅记录不校验）。</summary>
+    [JsonPropertyName("submitMachineCode")] public string? SubmitMachineCode { get; set; }
+
     [JsonPropertyName("isAnomaly")] public bool IsAnomaly { get; set; }
 
     [JsonPropertyName("anomalyReason")] public string? AnomalyReason { get; set; }
