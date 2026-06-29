@@ -213,7 +213,7 @@ public class MaterialClientUrbanModule : AbpModule
             using (var readUow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
             {
                 existingLicense = await (await licenseRepository.GetQueryableAsync())
-                    .OrderBy(license => license.CreatedAt)
+                    .OrderBy(license => license.CreationTime)
                     .FirstOrDefaultAsync();
                 await readUow.CompleteAsync();
             }
@@ -275,7 +275,7 @@ public class MaterialClientUrbanModule : AbpModule
                 using (var writeUow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: true))
                 {
                     var existing = await (await licenseRepository.GetQueryableAsync())
-                        .OrderBy(license => license.CreatedAt)
+                        .OrderBy(license => license.CreationTime)
                         .FirstOrDefaultAsync();
 
                     if (existing == null)

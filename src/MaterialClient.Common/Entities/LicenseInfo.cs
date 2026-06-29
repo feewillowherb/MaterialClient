@@ -1,15 +1,18 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Volo.Abp.Domain.Entities;
+using Volo.Abp.Domain.Entities.Auditing;
 
 namespace MaterialClient.Common.Entities;
 
 /// <summary>
 ///     授权许可信息实体
-///     存储软件授权信息，包括项目ID、接入码和有效期
+///     存储软件授权信息，包括项目ID、接入码和有效期。
+///     继承 <see cref="AuditedEntity{TKey}" />，CreationTime/LastModificationTime 等审计字段
+///     由 ABP（AbpDbContext）在保存时自动填充，无需手动赋值（F3）。
 /// </summary>
 [Table("LicenseInfo")]
-public class LicenseInfo : Entity<Guid>
+public class LicenseInfo : AuditedEntity<Guid>
 {
     private LicenseInfo()
     {
@@ -29,8 +32,7 @@ public class LicenseInfo : Entity<Guid>
         MachineCode = machineCode;
         ProName = proName;
         AccessCode = accessCode;
-        CreatedAt = DateTime.Now;
-        UpdatedAt = DateTime.Now;
+        // CreationTime/LastModificationTime are auto-filled by ABP on save.
     }
 
     [Required]
@@ -55,12 +57,6 @@ public class LicenseInfo : Entity<Guid>
     [MaxLength(128)]
     public string? MachineCode { get; set; }
 
-    [Required]
-    public DateTime CreatedAt { get; set; }
-
-    [Required]
-    public DateTime UpdatedAt { get; set; }
-
     public bool IsExpired => DateTime.Now > AuthEndTime;
 
     public bool IsExpiringSoon => !IsExpired && (AuthEndTime - DateTime.Now).TotalDays <= 7;
@@ -75,6 +71,7 @@ public class LicenseInfo : Entity<Guid>
         MachineCode = machineCode;
         ProName = proName;
         AccessCode = accessCode;
-        UpdatedAt = DateTime.Now;
+        // LastModificationTime is auto-filled by ABP on update.
     }
 }
+

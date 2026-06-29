@@ -175,8 +175,10 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.ProjectId).IsRequired();
             entity.Property(e => e.AuthEndTime).IsRequired();
             entity.Property(e => e.MachineCode).IsRequired().HasMaxLength(128);
-            entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.UpdatedAt).IsRequired();
+            // F3: LicenseInfo is now AuditedEntity<Guid>; map the inherited ABP audit
+            // properties to the legacy CreatedAt/UpdatedAt columns to preserve historical data.
+            entity.Property(e => e.CreationTime).HasColumnName("CreatedAt");
+            entity.Property(e => e.LastModificationTime).HasColumnName("UpdatedAt");
 
             // Only one license should exist at a time
             entity.HasIndex(e => e.ProjectId);
@@ -249,6 +251,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.HasIndex(e => e.WeighingRecordId).IsUnique();
             entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
             entity.HasIndex(e => e.IsAnomaly);
+            entity.Property(e => e.SubmitMachineCode).HasMaxLength(128);
         });
     }
 
@@ -321,5 +324,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
                     entry.Entity.UpdateDate = now;
                     break;
             }
+
+        // Note: LicenseInfo (AuditedEntity<Guid>) audit fields (CreationTime /
+        // LastModificationTime / CreatorUserId / LastModifierUserId) are auto-filled by the
+        // ABP AbpDbContext base in SaveChangesAsync, so no custom handling is needed here.
     }
 }
