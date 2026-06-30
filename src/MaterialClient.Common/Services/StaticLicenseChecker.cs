@@ -125,7 +125,7 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
             if (!File.Exists(licenseFilePath))
             {
                 _logger.LogWarning("授权文件不存在: {Path}", licenseFilePath);
-                return LicenseCheckResult.Fail("授权文件未找到");
+                return LicenseCheckResult.Fail("未授权");
             }
 
             var token = await File.ReadAllTextAsync(licenseFilePath);
