@@ -87,6 +87,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     private readonly ILicenseService _licenseService;
     private readonly IStaticLicenseChecker _staticLicenseChecker;
     private readonly ILocalEventBus _localEventBus;
+    private readonly IDeviceStatusRepublishTrigger? _republishTrigger;
     private readonly SignalRClientOptions _options;
 
     private HubConnection? _connection;
@@ -109,12 +110,14 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
         ILicenseService licenseService,
         IStaticLicenseChecker staticLicenseChecker,
         ILocalEventBus localEventBus,
-        IOptions<SignalRClientOptions> options)
+        IOptions<SignalRClientOptions> options,
+        IDeviceStatusRepublishTrigger? republishTrigger = null)
     {
         _logger = logger;
         _licenseService = licenseService;
         _staticLicenseChecker = staticLicenseChecker;
         _localEventBus = localEventBus;
+        _republishTrigger = republishTrigger;
         _options = options.Value;
 
         // Validate and clamp configuration
@@ -480,8 +483,9 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     private async Task OnConnectionRestoredAsync()
     {
         await FlushMessageQueueAsync();
-        await _localEventBus.PublishAsync(new SignalRConnectionRestoredEventData());
         await SyncProjectLicenseFromServerAsync();
+        await _localEventBus.PublishAsync(new SignalRConnectionRestoredEventData());
+        _republishTrigger?.RepublishActiveStatuses();
     }
 
     private async Task SyncProjectLicenseFromServerAsync()

@@ -1,3 +1,4 @@
+using MaterialClient.Common.Services;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.UI.Services;
@@ -14,7 +15,7 @@ public interface ISharedDeviceStatusTrackerRegistry
     void RepublishActiveStatuses();
 }
 
-public class SharedDeviceStatusTrackerRegistry : ISharedDeviceStatusTrackerRegistry, ISingletonDependency
+public class SharedDeviceStatusTrackerRegistry : ISharedDeviceStatusTrackerRegistry, IDeviceStatusRepublishTrigger, ISingletonDependency
 {
     private SharedDeviceStatusTracker? _activeTracker;
 
