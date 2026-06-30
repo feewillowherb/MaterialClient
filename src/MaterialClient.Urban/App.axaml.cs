@@ -31,12 +31,13 @@ public class App : Application
     public static bool RequestRestartOnExit { get; set; }
 
     /// <summary>
-    ///     Requests a full process restart after online activation succeeds.
+    ///     Marks that <see cref="Program.Main" /> should start a new process after this instance exits.
+    ///     Caller must invoke <see cref="IClassicDesktopStyleApplicationLifetime.Shutdown" /> after
+    ///     <see cref="OnApplicationExit" /> is registered so cleanup runs before the mutex is released.
     /// </summary>
-    public static void RequestProcessRestart(IClassicDesktopStyleApplicationLifetime desktop)
+    public static void RequestProcessRestart()
     {
         RequestRestartOnExit = true;
-        desktop.Shutdown();
     }
 
     public override void Initialize()
@@ -61,14 +62,17 @@ public class App : Application
 
                 await _abpApplication.InitializeAsync();
 
+                // Register exit cleanup before any Shutdown path (activation restart, user cancel, etc.).
+                desktop.Exit += OnApplicationExit;
+
                 var startupAuth = _abpApplication.ServiceProvider
                     .GetRequiredService<IUrbanStartupAuthorizationService>();
                 if (!startupAuth.IsAuthorized)
                 {
-                    var shouldContinue = await HandleUnauthorizedStartupAsync(desktop, _abpApplication);
+                    var shouldContinue = await HandleUnauthorizedStartupAsync(_abpApplication);
                     if (!shouldContinue)
                     {
-                        desktop.Exit += OnApplicationExit;
+                        desktop.Shutdown();
                         return;
                     }
                 }
@@ -78,11 +82,11 @@ public class App : Application
                 _viewModel = window.ViewModel;
 
                 // After async ABP init, MainWindow must be shown explicitly (see MaterialClient App.axaml.cs).
+                // Authorized session: closing the weighing window should terminate the process.
+                desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
                 desktop.MainWindow = window;
                 window.Show();
                 StartMainWindowServices();
-
-                desktop.Exit += OnApplicationExit;
             }
             catch (Exception ex)
             {
@@ -95,7 +99,6 @@ public class App : Application
     }
 
     private async Task<bool> HandleUnauthorizedStartupAsync(
-        IClassicDesktopStyleApplicationLifetime desktop,
         IAbpApplicationWithInternalServiceProvider abpApplication)
     {
         var startupAuth = abpApplication.ServiceProvider
@@ -106,7 +109,6 @@ public class App : Application
         var shouldContinue = await recoveryService.RecoverAsync(startupAuth.Result.FailureMessage);
         if (!shouldContinue)
         {
-            desktop.Shutdown();
             return false;
         }
 
@@ -114,7 +116,7 @@ public class App : Application
         logger?.LogInformation(
             "Online activation succeeded at startup; requesting process restart for full initialization.");
 
-        RequestProcessRestart(desktop);
+        RequestProcessRestart();
         return false;
     }
 

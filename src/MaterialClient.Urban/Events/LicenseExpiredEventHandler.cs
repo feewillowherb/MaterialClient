@@ -48,7 +48,8 @@ public partial class LicenseExpiredEventHandler
                 "Re-activation successful after license expiry. ProjectId={ProjectId}. Requesting process restart.",
                 eventData.ProjectId);
 
-            App.RequestProcessRestart(desktop);
+            App.RequestProcessRestart();
+            desktop.Shutdown();
             return;
         }
 

@@ -42,7 +42,8 @@ public partial class LicenseDeviceRevokedEventHandler
                 "Re-activation successful after device revocation. ProjectId={ProjectId}. Requesting process restart.",
                 eventData.ProjectId);
 
-            App.RequestProcessRestart(desktop);
+            App.RequestProcessRestart();
+            desktop.Shutdown();
             return;
         }
 
