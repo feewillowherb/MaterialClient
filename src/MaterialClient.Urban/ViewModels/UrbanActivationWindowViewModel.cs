@@ -16,6 +16,7 @@ public class UrbanActivationWindowViewModel : ReactiveObject, ITransientDependen
     private string _authorizationCode = string.Empty;
     private string _machineCode = string.Empty;
     private string? _errorMessage;
+    private string? _failureReason;
     private bool _isBusy;
 
     public UrbanActivationWindowViewModel(
@@ -48,6 +49,21 @@ public class UrbanActivationWindowViewModel : ReactiveObject, ITransientDependen
         get => _errorMessage;
         set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
     }
+
+    /// <summary>
+    ///     授权验证失败的初始原因（由恢复流程传入），区别于每次激活尝试的 ErrorMessage。
+    /// </summary>
+    public string? FailureReason
+    {
+        get => _failureReason;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _failureReason, value);
+            this.RaisePropertyChanged(nameof(HasFailureReason));
+        }
+    }
+
+    public bool HasFailureReason => !string.IsNullOrWhiteSpace(_failureReason);
 
     public bool IsBusy
     {

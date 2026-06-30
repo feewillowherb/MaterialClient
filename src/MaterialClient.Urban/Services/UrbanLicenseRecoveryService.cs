@@ -1,7 +1,8 @@
+using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using MaterialClient.Common.Services.Authentication;
+using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.DependencyInjection;
@@ -10,8 +11,8 @@ namespace MaterialClient.Urban.Services;
 
 /// <summary>
 ///     Shared online-activation recovery flow used by both the startup authorization gate
-///     and the runtime device-revocation path (F4). Shows the online-only
-///     <see cref="UnauthorizedNoticeWindow" /> + activation loop; returns <c>true</c> when the
+///     and the runtime device-revocation path (F4). Shows
+///     <see cref="UrbanActivationWindow" /> directly; returns <c>true</c> when the
 ///     user activates successfully, or <c>false</c> when the user chooses to exit (the caller
 ///     is then responsible for shutting the application down).
 /// </summary>
@@ -36,56 +37,54 @@ public partial class UrbanLicenseRecoveryService : IUrbanLicenseRecoveryService,
             return false;
         }
 
-        var machineCode = _machineCodeService.GetMachineCode();
-        var notice = new UnauthorizedNoticeWindow(failureMessage, machineCode);
-
-        // Startup path: no main window yet → notice becomes the main window.
-        // Runtime path (device revoked): the weighing window already exists → block it so the
-        // user cannot continue weighing business while recovery is pending.
         var blockingOwner = desktop.MainWindow;
         var isStartup = blockingOwner == null;
-        if (isStartup)
-        {
-            desktop.MainWindow = notice;
-        }
-        else
-        {
-            blockingOwner!.IsEnabled = false;
-        }
-
-        notice.Show();
 
         try
         {
             while (true)
             {
                 var activationWindow = _serviceProvider.GetRequiredService<UrbanActivationWindow>();
-                var activated = await activationWindow.ShowDialog<bool?>(notice);
-                if (activated == true)
+                var viewModel = (UrbanActivationWindowViewModel)activationWindow.DataContext!;
+                viewModel.FailureReason = failureMessage;
+
+                bool? result;
+
+                if (isStartup)
+                {
+                    desktop.MainWindow = activationWindow;
+                    activationWindow.Show();
+                    result = await AwaitWindowResultAsync(activationWindow);
+                }
+                else
+                {
+                    blockingOwner!.IsEnabled = false;
+                    try
+                    {
+                        result = await activationWindow.ShowDialog<bool?>(blockingOwner);
+                    }
+                    finally
+                    {
+                        blockingOwner.IsEnabled = true;
+                    }
+                }
+
+                if (result == true)
                 {
                     if (await _licenseService.IsLicenseValidAsync())
                     {
                         return true;
                     }
 
+                    failureMessage = "激活完成但授权验证未通过，请重新激活";
                     continue;
                 }
 
-                var userChoice = await AwaitNoticeChoiceAsync(notice);
-
-                if (userChoice == UnauthorizedNoticeWindow.UnauthorizedNoticeResult.Exit)
-                {
-                    return false;
-                }
+                return false;
             }
         }
         finally
         {
-            if (notice.IsVisible)
-            {
-                notice.Close();
-            }
-
             if (!isStartup && blockingOwner != null)
             {
                 blockingOwner.IsEnabled = true;
@@ -93,36 +92,13 @@ public partial class UrbanLicenseRecoveryService : IUrbanLicenseRecoveryService,
         }
     }
 
-    private static Task<UnauthorizedNoticeWindow.UnauthorizedNoticeResult> AwaitNoticeChoiceAsync(
-        UnauthorizedNoticeWindow notice)
+    private static async Task<bool?> AwaitWindowResultAsync(UrbanActivationWindow window)
     {
-        var choiceTcs = new TaskCompletionSource<UnauthorizedNoticeWindow.UnauthorizedNoticeResult>();
-
-        void OnOnlineActivateRequested(object? sender, EventArgs e)
+        var tcs = new TaskCompletionSource<bool?>();
+        window.Closed += (_, _) =>
         {
-            Cleanup();
-            choiceTcs.TrySetResult(UnauthorizedNoticeWindow.UnauthorizedNoticeResult.OnlineActivate);
-        }
-
-        void OnNoticeClosed(object? sender, EventArgs e)
-        {
-            if (choiceTcs.Task.IsCompleted)
-            {
-                return;
-            }
-
-            Cleanup();
-            choiceTcs.TrySetResult(notice.UserChoice);
-        }
-
-        void Cleanup()
-        {
-            notice.OnlineActivateRequested -= OnOnlineActivateRequested;
-            notice.Closed -= OnNoticeClosed;
-        }
-
-        notice.OnlineActivateRequested += OnOnlineActivateRequested;
-        notice.Closed += OnNoticeClosed;
-        return choiceTcs.Task;
+            tcs.TrySetResult(window.ActivationResult);
+        };
+        return await tcs.Task;
     }
 }

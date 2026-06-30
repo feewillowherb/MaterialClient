@@ -1,9 +1,12 @@
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Authentication;
+using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views.Dialogs;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus;
@@ -12,7 +15,8 @@ namespace MaterialClient.Urban.Events;
 
 /// <summary>
 ///     Handles <see cref="LicenseExpiredEto" />: authorization has expired on the server.
-///     Shows a notice and shuts down the application (no online re-activation loop).
+///     Shows the activation window so the user can re-activate, or shuts down if the user
+///     cancels.
 /// </summary>
 [AutoConstructor]
 public partial class LicenseExpiredEventHandler
@@ -22,6 +26,7 @@ public partial class LicenseExpiredEventHandler
 
     private readonly ILogger<LicenseExpiredEventHandler> _logger;
     private readonly IMachineCodeService _machineCodeService;
+    private readonly IServiceProvider _serviceProvider;
 
     public async Task HandleEventAsync(LicenseExpiredEto eventData)
     {
@@ -30,7 +35,7 @@ public partial class LicenseExpiredEventHandler
             : eventData.Reason;
 
         _logger.LogWarning(
-            "License expired. ProjectId={ProjectId}, Reason={Reason}. Shutting down application.",
+            "License expired. ProjectId={ProjectId}, Reason={Reason}. Showing activation window.",
             eventData.ProjectId,
             message);
 
@@ -41,31 +46,43 @@ public partial class LicenseExpiredEventHandler
                 return;
             }
 
-            var notice = new UnauthorizedNoticeWindow(message, _machineCodeService.GetMachineCode());
+            var activationWindow = _serviceProvider.GetRequiredService<UrbanActivationWindow>();
+            var viewModel = (UrbanActivationWindowViewModel)activationWindow.DataContext!;
+            viewModel.FailureReason = message;
+
             var blockingOwner = desktop.MainWindow;
             var isStartup = blockingOwner == null;
 
             if (isStartup)
             {
-                desktop.MainWindow = notice;
+                desktop.MainWindow = activationWindow;
+                activationWindow.Show();
+
+                var closedTcs = new TaskCompletionSource<bool>();
+                activationWindow.Closed += (_, _) => closedTcs.TrySetResult(activationWindow.ActivationResult);
+                var result = await closedTcs.Task;
+
+                if (!result)
+                {
+                    desktop.Shutdown();
+                }
             }
             else
             {
                 blockingOwner!.IsEnabled = false;
+                try
+                {
+                    var result = await activationWindow.ShowDialog<bool?>(blockingOwner);
+                    if (result != true)
+                    {
+                        desktop.Shutdown();
+                    }
+                }
+                finally
+                {
+                    blockingOwner.IsEnabled = true;
+                }
             }
-
-            var closedTcs = new TaskCompletionSource();
-            notice.Closed += (_, _) => closedTcs.TrySetResult();
-            notice.Show();
-
-            await closedTcs.Task;
-
-            if (!isStartup && blockingOwner != null)
-            {
-                blockingOwner.IsEnabled = true;
-            }
-
-            desktop.Shutdown();
         });
     }
 }
