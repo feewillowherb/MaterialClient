@@ -30,7 +30,7 @@ public class UrbanActivationWindowViewModel : ReactiveObject, ITransientDependen
     }
 
     /// <summary>
-    ///     用户输入的在线激活授权码（运营发码，非项目接入码 AccessCode）。
+    ///     用户输入的激活码（运营发码，非项目接入码 AccessCode）。
     /// </summary>
     public string AuthorizationCode
     {
