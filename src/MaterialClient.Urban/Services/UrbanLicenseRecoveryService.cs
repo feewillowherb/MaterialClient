@@ -10,9 +10,9 @@ using Volo.Abp.DependencyInjection;
 namespace MaterialClient.Urban.Services;
 
 /// <summary>
-///     Shared online-activation recovery flow used by both the startup authorization gate
-///     and the runtime device-revocation path (F4). Shows
-///     <see cref="UrbanActivationWindow" /> directly; returns <c>true</c> when the
+///     Shared online-activation recovery flow used by the startup authorization gate,
+///     runtime license expiry, and device-revocation path (F4). Hides the main weighing
+///     window when present, shows <see cref="UrbanActivationWindow" /> as MainWindow;
 ///     user activates successfully, or <c>false</c> when the user chooses to exit (the caller
 ///     is then responsible for shutting the application down).
 /// </summary>
@@ -40,55 +40,40 @@ public partial class UrbanLicenseRecoveryService : IUrbanLicenseRecoveryService,
         var blockingOwner = desktop.MainWindow;
         var isStartup = blockingOwner == null;
 
-        try
+        while (true)
         {
-            while (true)
+            var activationWindow = _serviceProvider.GetRequiredService<UrbanActivationWindow>();
+            var viewModel = (UrbanActivationWindowViewModel)activationWindow.DataContext!;
+            viewModel.FailureReason = failureMessage;
+
+            bool? result;
+
+            if (isStartup)
             {
-                var activationWindow = _serviceProvider.GetRequiredService<UrbanActivationWindow>();
-                var viewModel = (UrbanActivationWindowViewModel)activationWindow.DataContext!;
-                viewModel.FailureReason = failureMessage;
-
-                bool? result;
-
-                if (isStartup)
-                {
-                    desktop.MainWindow = activationWindow;
-                    activationWindow.Show();
-                    result = await AwaitWindowResultAsync(activationWindow);
-                }
-                else
-                {
-                    blockingOwner!.IsEnabled = false;
-                    try
-                    {
-                        result = await activationWindow.ShowDialog<bool?>(blockingOwner);
-                    }
-                    finally
-                    {
-                        blockingOwner.IsEnabled = true;
-                    }
-                }
-
-                if (result == true)
-                {
-                    if (await _licenseService.IsLicenseValidAsync())
-                    {
-                        return true;
-                    }
-
-                    failureMessage = "激活完成但授权验证未通过，请重新激活";
-                    continue;
-                }
-
-                return false;
+                desktop.MainWindow = activationWindow;
+                activationWindow.Show();
+                result = await AwaitWindowResultAsync(activationWindow);
             }
-        }
-        finally
-        {
-            if (!isStartup && blockingOwner != null)
+            else
             {
-                blockingOwner.IsEnabled = true;
+                blockingOwner.Hide();
+                desktop.MainWindow = activationWindow;
+                activationWindow.Show();
+                result = await AwaitWindowResultAsync(activationWindow);
             }
+
+            if (result == true)
+            {
+                if (await _licenseService.IsLicenseValidAsync())
+                {
+                    return true;
+                }
+
+                failureMessage = "激活完成但授权验证未通过，请重新激活";
+                continue;
+            }
+
+            return false;
         }
     }
 
