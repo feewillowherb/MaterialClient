@@ -31,18 +31,22 @@ public partial class LicenseDeviceRevokedEventHandler
         var activated = await Dispatcher.UIThread.InvokeAsync(
             async () => await _recoveryService.RecoverAsync(eventData.Reason));
 
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return;
+        }
+
         if (activated)
         {
             _logger.LogInformation(
-                "Re-activation successful after device revocation. ProjectId={ProjectId}",
+                "Re-activation successful after device revocation. ProjectId={ProjectId}. Requesting process restart.",
                 eventData.ProjectId);
+
+            App.RequestProcessRestart(desktop);
             return;
         }
 
         // User chose to exit (did not re-activate) → shut the application down gracefully.
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            desktop.Shutdown();
-        }
+        desktop.Shutdown();
     }
 }

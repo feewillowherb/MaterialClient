@@ -24,6 +24,21 @@ public class App : Application
     private UrbanAttendedWeighingViewModel? _viewModel;
     private IMinimalWebHostService? _minimalWebHostService;
 
+    /// <summary>
+    ///     When true, <see cref="Program.Main" /> starts a new process after this instance exits
+    ///     and the single-instance mutex is released.
+    /// </summary>
+    public static bool RequestRestartOnExit { get; set; }
+
+    /// <summary>
+    ///     Requests a full process restart after online activation succeeds.
+    /// </summary>
+    public static void RequestProcessRestart(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        RequestRestartOnExit = true;
+        desktop.Shutdown();
+    }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -92,9 +107,15 @@ public class App : Application
         if (!shouldContinue)
         {
             desktop.Shutdown();
+            return false;
         }
 
-        return shouldContinue;
+        var logger = abpApplication.ServiceProvider.GetService<ILogger<App>>();
+        logger?.LogInformation(
+            "Online activation succeeded at startup; requesting process restart for full initialization.");
+
+        RequestProcessRestart(desktop);
+        return false;
     }
 
     private void StartMainWindowServices()
