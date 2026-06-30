@@ -21,9 +21,9 @@ namespace MaterialClient.Common.Services;
 public interface IWeighingMatchingService
 {
     /// <summary>
-    ///     手动匹配使用的最小重量差阈值（吨），固定 0.1 吨
+    ///     手动匹配使用的最小重量差阈值（吨），固定 0.01 吨
     /// </summary>
-    public const decimal ManualMatchMinWeightDiff = 0.1m;
+    public const decimal ManualMatchMinWeightDiff = 0.01m;
 
     Task<bool> TryMatchWeighingRecordAsync(WeighingRecord record);
     Task UpdateWaybillAsync(UpdateWaybillInput input);

@@ -91,22 +91,28 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AccessCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("AuthEndTime")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("AuthToken")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("CreatedAt");
 
-                    b.Property<string>("BuildLicenseNo")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("CreatorId");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("UpdatedAt");
 
-                    b.Property<string>("FdBuildLicenseNo")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("LastModifierId");
 
                     b.Property<string>("LatestJwtToken")
                         .HasMaxLength(4096)
@@ -122,9 +128,6 @@ namespace MaterialClient.Common.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -523,6 +526,10 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<int>("RetryCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SubmitMachineCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("SyncStatus")
                         .HasColumnType("INTEGER");

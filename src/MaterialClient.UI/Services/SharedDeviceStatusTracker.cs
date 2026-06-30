@@ -176,6 +176,24 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(8)));
 
         NotifyChanged();
+        RepublishCurrentStatusesIfSignalRConnected();
+    }
+
+    /// <summary>
+    ///     SignalR often connects during module init before this tracker registers.
+    ///     UploadStatus registration on the server requires an explicit republish here.
+    /// </summary>
+    private void RepublishCurrentStatusesIfSignalRConnected()
+    {
+        var signalRClient = _serviceProvider.GetService<IDeviceStatusSignalRClient>();
+        if (signalRClient?.IsConnected != true)
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "SharedDeviceStatusTracker: SignalR already connected when monitoring started; republishing statuses for server client registration.");
+        RepublishCurrentStatuses();
     }
 
     public DeviceStatusItem[] GetCurrentStatuses() =>

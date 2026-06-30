@@ -1,0 +1,103 @@
+using System;
+using System.Reactive;
+using System.Threading.Tasks;
+using MaterialClient.Common.Services.Authentication;
+using ReactiveUI;
+using Volo.Abp;
+using Volo.Abp.DependencyInjection;
+
+namespace MaterialClient.Urban.ViewModels;
+
+public class UrbanActivationWindowViewModel : ReactiveObject, ITransientDependency
+{
+    private readonly ILicenseService _licenseService;
+    private readonly IMachineCodeService _machineCodeService;
+
+    private string _authorizationCode = string.Empty;
+    private string _machineCode = string.Empty;
+    private string? _errorMessage;
+    private string? _failureReason;
+    private bool _isBusy;
+
+    public UrbanActivationWindowViewModel(
+        ILicenseService licenseService,
+        IMachineCodeService machineCodeService)
+    {
+        _licenseService = licenseService;
+        _machineCodeService = machineCodeService;
+        MachineCode = _machineCodeService.GetMachineCode();
+        ActivateCommand = ReactiveCommand.CreateFromTask(ActivateAsync);
+    }
+
+    /// <summary>
+    ///     用户输入的激活码（运营发码，非项目接入码 AccessCode）。
+    /// </summary>
+    public string AuthorizationCode
+    {
+        get => _authorizationCode;
+        set => this.RaiseAndSetIfChanged(ref _authorizationCode, value);
+    }
+
+    public string MachineCode
+    {
+        get => _machineCode;
+        set => this.RaiseAndSetIfChanged(ref _machineCode, value);
+    }
+
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
+    }
+
+    /// <summary>
+    ///     授权验证失败的初始原因（由恢复流程传入），区别于每次激活尝试的 ErrorMessage。
+    /// </summary>
+    public string? FailureReason
+    {
+        get => _failureReason;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _failureReason, value);
+            this.RaisePropertyChanged(nameof(HasFailureReason));
+        }
+    }
+
+    public bool HasFailureReason => !string.IsNullOrWhiteSpace(_failureReason);
+
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set => this.RaiseAndSetIfChanged(ref _isBusy, value);
+    }
+
+    public ReactiveCommand<Unit, bool> ActivateCommand { get; }
+
+    public event EventHandler? ActivationSucceeded;
+
+    private async Task<bool> ActivateAsync()
+    {
+        ErrorMessage = null;
+        IsBusy = true;
+        try
+        {
+            await _licenseService.ActivateUrbanAsync(AuthorizationCode);
+            ActivationSucceeded?.Invoke(this, EventArgs.Empty);
+            return true;
+        }
+        catch (BusinessException ex)
+        {
+            ErrorMessage = ex.Message;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"激活失败: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+}

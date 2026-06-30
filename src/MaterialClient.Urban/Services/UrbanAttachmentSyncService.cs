@@ -27,7 +27,7 @@ public interface IUrbanAttachmentSyncService : ITransientDependency
 [AutoConstructor]
 public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 {
-    private const string UnknownBuildLicenseNo = "unknown";
+    private const string UnknownAccessCode = "unknown";
 
     private static readonly AttachType[] UrbanSyncAttachTypes = [AttachType.Lpr, AttachType.UrbanPhoto];
 
@@ -37,11 +37,11 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 
     public async Task<IReadOnlyList<Guid>> UploadAttachmentsAsync(long weighingRecordId, string buildLicenseNo)
     {
-        var licenseNo = string.IsNullOrWhiteSpace(buildLicenseNo) ? UnknownBuildLicenseNo : buildLicenseNo.Trim();
-        if (licenseNo == UnknownBuildLicenseNo)
+        var licenseNo = string.IsNullOrWhiteSpace(buildLicenseNo) ? UnknownAccessCode : buildLicenseNo.Trim();
+        if (licenseNo == UnknownAccessCode)
         {
             _logger.LogWarning(
-                "BuildLicenseNo missing for record {RecordId}; using placeholder for attachment upload path",
+                "AccessCode missing for record {RecordId}; using placeholder for attachment upload path",
                 weighingRecordId);
         }
 

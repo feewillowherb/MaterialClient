@@ -9,6 +9,7 @@ namespace MaterialClient.Urban.Services;
 ///     城管称重管线策略
 ///     UrbanMode 下跳过运单匹对（TryMatchEvent）和 waybill 匹对逻辑
 /// </summary>
+[Dependency(ReplaceServices = true)]
 [AutoConstructor]
 public partial class UrbanWeighingPipelineStrategy : IWeighingPipelineStrategy, ISingletonDependency
 {

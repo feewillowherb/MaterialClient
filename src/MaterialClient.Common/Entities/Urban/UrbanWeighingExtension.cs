@@ -55,4 +55,11 @@ public class UrbanWeighingExtension : Entity<Guid>, IHasExtraProperties
     ///     <c>null</c> when the record is not anomalous.
     /// </summary>
     public AnomalyReason? AnomalyReason { get; set; }
+
+    /// <summary>
+    ///     提交该称重数据时的本机机器码（F2 数据溯源）。
+    ///     由 <c>MachineCodeService.GetMachineCode()</c> 在准备上传时写入，
+    ///     仅供溯源记录，MUST NOT 用于授权比对（鉴权由 F4 负责）。
+    /// </summary>
+    public string? SubmitMachineCode { get; set; }
 }

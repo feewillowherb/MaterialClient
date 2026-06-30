@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.ReactiveUI;
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 
@@ -32,7 +33,36 @@ internal sealed class Program
         BuildAvaloniaApp()
             .StartWithClassicDesktopLifetime(args);
 
+        if (App.RequestRestartOnExit)
+        {
+            TryRestartProcess();
+        }
+
         // 程序退出时，using 语句会自动释放 Mutex
+    }
+
+    private static void TryRestartProcess()
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exePath))
+            {
+                Trace.TraceError("[Urban] Process restart skipped: Environment.ProcessPath is empty.");
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo(exePath)
+            {
+                UseShellExecute = true,
+                WorkingDirectory = AppContext.BaseDirectory
+            });
+            Trace.TraceInformation("[Urban] Process restart: new instance started.");
+        }
+        catch (Exception ex)
+        {
+            Trace.TraceError($"[Urban] Failed to restart process: {ex}");
+        }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

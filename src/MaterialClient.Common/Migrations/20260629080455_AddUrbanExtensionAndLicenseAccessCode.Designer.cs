@@ -12,8 +12,8 @@ using Volo.Abp.EntityFrameworkCore;
 namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    [Migration("20260602084800_Rebuild_UrbanWeighingExtension")]
-    partial class Rebuild_UrbanWeighingExtension
+    [Migration("20260629080455_AddUrbanExtensionAndLicenseAccessCode")]
+    partial class AddUrbanExtensionAndLicenseAccessCode
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -94,13 +94,31 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AccessCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("AuthEndTime")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("AuthToken")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("CreatedAt");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("UpdatedAt");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("LatestJwtToken")
+                        .HasMaxLength(4096)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MachineCode")
@@ -108,10 +126,11 @@ namespace MaterialClient.Common.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("ProjectId")
+                    b.Property<string>("ProName")
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -493,6 +512,15 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AnomalyReason")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ExtraProperties");
+
                     b.Property<bool>("IsAnomaly")
                         .HasColumnType("INTEGER");
 
@@ -501,6 +529,10 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<int>("RetryCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SubmitMachineCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("SyncStatus")
                         .HasColumnType("INTEGER");

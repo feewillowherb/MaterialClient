@@ -2,9 +2,11 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Urban.Services;
 using MaterialClient.Urban.ViewModels;
 using MaterialClient.Urban.Views;
@@ -22,6 +24,22 @@ public class App : Application
     private UrbanAttendedWeighingViewModel? _viewModel;
     private IMinimalWebHostService? _minimalWebHostService;
 
+    /// <summary>
+    ///     When true, <see cref="Program.Main" /> starts a new process after this instance exits
+    ///     and the single-instance mutex is released.
+    /// </summary>
+    public static bool RequestRestartOnExit { get; set; }
+
+    /// <summary>
+    ///     Marks that <see cref="Program.Main" /> should start a new process after this instance exits.
+    ///     Caller must invoke <see cref="IClassicDesktopStyleApplicationLifetime.Shutdown" /> after
+    ///     <see cref="OnApplicationExit" /> is registered so cleanup runs before the mutex is released.
+    /// </summary>
+    public static void RequestProcessRestart()
+    {
+        RequestRestartOnExit = true;
+    }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -31,6 +49,9 @@ public class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // 未授权流程中会临时切换 MainWindow；显式退出，避免关闭提示窗时整个进程被关掉
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             try
             {
                 // Create and initialize ABP application with Autofac (matching MaterialClient pattern)
@@ -41,16 +62,19 @@ public class App : Application
 
                 await _abpApplication.InitializeAsync();
 
+                // Register exit cleanup before any Shutdown path (activation restart, user cancel, etc.).
+                desktop.Exit += OnApplicationExit;
+
                 var startupAuth = _abpApplication.ServiceProvider
                     .GetRequiredService<IUrbanStartupAuthorizationService>();
                 if (!startupAuth.IsAuthorized)
                 {
-                    var notice = new UnauthorizedNoticeWindow(startupAuth.Result.FailureMessage);
-                    notice.Closed += (_, _) => desktop.Shutdown();
-                    desktop.MainWindow = notice;
-                    notice.Show();
-                    desktop.Exit += OnApplicationExit;
-                    return;
+                    var shouldContinue = await HandleUnauthorizedStartupAsync(_abpApplication);
+                    if (!shouldContinue)
+                    {
+                        desktop.Shutdown();
+                        return;
+                    }
                 }
 
                 // Resolve window from ABP container
@@ -58,11 +82,11 @@ public class App : Application
                 _viewModel = window.ViewModel;
 
                 // After async ABP init, MainWindow must be shown explicitly (see MaterialClient App.axaml.cs).
+                // Authorized session: closing the weighing window should terminate the process.
+                desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
                 desktop.MainWindow = window;
                 window.Show();
                 StartMainWindowServices();
-
-                desktop.Exit += OnApplicationExit;
             }
             catch (Exception ex)
             {
@@ -72,6 +96,28 @@ public class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task<bool> HandleUnauthorizedStartupAsync(
+        IAbpApplicationWithInternalServiceProvider abpApplication)
+    {
+        var startupAuth = abpApplication.ServiceProvider
+            .GetRequiredService<IUrbanStartupAuthorizationService>();
+        var recoveryService = abpApplication.ServiceProvider
+            .GetRequiredService<IUrbanLicenseRecoveryService>();
+
+        var shouldContinue = await recoveryService.RecoverAsync(startupAuth.Result.FailureMessage);
+        if (!shouldContinue)
+        {
+            return false;
+        }
+
+        var logger = abpApplication.ServiceProvider.GetService<ILogger<App>>();
+        logger?.LogInformation(
+            "Online activation succeeded at startup; requesting process restart for full initialization.");
+
+        RequestProcessRestart();
+        return false;
     }
 
     private void StartMainWindowServices()

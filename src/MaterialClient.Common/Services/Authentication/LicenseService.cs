@@ -2,6 +2,7 @@ using MaterialClient.Common.Api;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -10,81 +11,48 @@ using Volo.Abp.Uow;
 
 namespace MaterialClient.Common.Services.Authentication;
 
-/// <summary>
-///     授权许可服务接口
-///     负责软件授权验证和授权信息管理
-/// </summary>
 public interface ILicenseService
 {
-    /// <summary>
-    ///     验证授权码并保存授权信息
-    /// </summary>
-    /// <param name="authorizationCode">授权码</param>
-    /// <param name="productCode">产品代码（用于授权验证）</param>
-    /// <returns>授权信息</returns>
-    /// <exception cref="Volo.Abp.BusinessException">授权码无效或验证失败</exception>
     Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode, ProductCode productCode);
 
-    /// <summary>
-    ///     测试方法：验证授权码（不联网，返回固定有效的授权信息）
-    /// </summary>
-    /// <param name="authorizationCode">授权码（测试方法中不进行实际验证）</param>
-    /// <returns>固定的有效授权信息</returns>
     Task<LicenseInfo> VerifyAuthorizationCodeTestAsync(string authorizationCode);
 
-    /// <summary>
-    ///     获取当前授权信息
-    /// </summary>
-    /// <returns>授权信息，如果不存在则返回 null</returns>
     Task<LicenseInfo?> GetCurrentLicenseAsync();
 
-    /// <summary>
-    ///     检查授权是否有效（存在且未过期）
-    /// </summary>
-    /// <returns>true 表示授权有效，false 表示授权无效或不存在</returns>
     Task<bool> IsLicenseValidAsync();
 
-    /// <summary>
-    ///     删除当前授权信息（用于项目ID变更时）
-    /// </summary>
     Task ClearLicenseAsync();
 
     /// <summary>
-    ///     用服务端返回的项目字段更新本地授权信息（仅覆盖非空值）。
+    ///     清除 <see cref="LicenseInfo.LatestJwtToken" />（置空并持久化），保留其余授权字段。
+    ///     用于 F4：检测到授权设备变更后使旧设备令牌失效，强制重新在线激活。
     /// </summary>
-    Task<bool> SyncProjectFieldsFromServerAsync(
-        string? proName,
-        string? buildLicenseNo,
-        string? fdBuildLicenseNo,
-        DateTime? authEndTime);
+    Task ClearLatestJwtTokenAsync();
 
     /// <summary>
-    ///     防篡改验签通过后，将服务器重新签发的 JWT 存储到 LicenseInfo.LatestJwtToken，
-    ///     并从 JWT 派生字段覆盖 LicenseInfo。
+    ///     服务端判定授权已过期：清除 <see cref="LicenseInfo.LatestJwtToken" /> 并回写权威过期字段。
     /// </summary>
-    /// <param name="serverJwt">服务器返回的权威 JWT 原始文本</param>
-    /// <param name="proName">项目名称</param>
-    /// <param name="buildLicenseNo">施工许可证号</param>
-    /// <param name="fdBuildLicenseNo">凡东对接码</param>
-    /// <param name="authEndTime">授权过期时间</param>
+    Task ApplyServerExpirationAsync(
+        DateTime? authEndTime,
+        string? proName = null,
+        string? accessCode = null);
+
+    Task<bool> SyncProjectFieldsFromServerAsync(
+        string? proName,
+        string? accessCode,
+        DateTime? authEndTime);
+
     Task StoreServerJwtAsync(
         string serverJwt,
         string proName,
-        string? buildLicenseNo,
-        string? fdBuildLicenseNo,
+        string? accessCode,
         DateTime authEndTime);
 
-    /// <summary>
-    ///     获取本地 JWT 原始文本（优先 LatestJwtToken，其次 .urban 文件）
-    /// </summary>
-    /// <param name="licenseFilePath">.urban 文件路径（回退用）</param>
-    /// <returns>JWT 原始文本，若均不可用则返回 null</returns>
     Task<string?> GetLocalJwtTokenAsync(string licenseFilePath);
+
+    Task<LicenseInfo> ActivateUrbanAsync(string accessCode);
 }
 
-/// <summary>
-///     授权许可服务实现
-/// </summary>
 [AutoConstructor]
 public partial class LicenseService : DomainService, ILicenseService
 {
@@ -92,16 +60,25 @@ public partial class LicenseService : DomainService, ILicenseService
     private readonly IJsonSerializer _jsonSerializer;
     private readonly IRepository<LicenseInfo, Guid> _licenseRepository;
     private readonly IMachineCodeService _machineCodeService;
+    private readonly IStaticLicenseChecker _staticLicenseChecker;
 
     [UnitOfWork]
     public async Task<LicenseInfo> VerifyAuthorizationCodeAsync(string authorizationCode, ProductCode productCode)
     {
-        if (string.IsNullOrWhiteSpace(authorizationCode)) throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
+        if (productCode == ProductCode.Urban)
+        {
+            throw new BusinessException(
+                "AUTH:URBAN_DIRECT_ACTIVATION_FORBIDDEN",
+                "城管产品请使用 Urban 在线激活，不可直连 BasePlatform");
+        }
 
-        // Get machine code
+        if (string.IsNullOrWhiteSpace(authorizationCode))
+        {
+            throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
+        }
+
         var machineCode = _machineCodeService.GetMachineCode();
 
-        // Call base platform API to verify authorization code
         var request = new LicenseRequestDto
         {
             ProductCode = ((int)productCode).ToString(),
@@ -118,7 +95,6 @@ public partial class LicenseService : DomainService, ILicenseService
             throw new BusinessException("AUTH:API_ERROR", "无法连接到授权服务器，请检查网络连接", innerException: ex);
         }
 
-        // Check response
         if (!response.Success || string.IsNullOrEmpty(response.Data))
         {
             var errorMsg = response?.Msg ?? "未知错误";
@@ -127,74 +103,51 @@ public partial class LicenseService : DomainService, ILicenseService
 
         var licenseDto = _jsonSerializer.Deserialize<LicenseInfoDto>(response.Data);
 
-        // Verify machine code matches (if provided by API)
-        // if (!string.IsNullOrWhiteSpace(licenseDto.MachineCode) &&
-        //     !string.Equals(licenseDto.MachineCode, machineCode, StringComparison.OrdinalIgnoreCase))
-        // {
-        //     throw new BusinessException("AUTH:MACHINE_MISMATCH", "授权码与当前机器不匹配");
-        // }
-
-        // Check if license already exists
         var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
 
-        if (existingLicense != null)
-            // Check if project ID changed
-            if (existingLicense.ProjectId != licenseDto.Proid)
-            {
-                // Project ID changed - delete old license (cascade will delete related records)
-                await _licenseRepository.DeleteAsync(existingLicense);
-                existingLicense = null;
-            }
+        if (existingLicense != null && existingLicense.ProjectId != licenseDto.Proid)
+        {
+            await _licenseRepository.DeleteAsync(existingLicense);
+            existingLicense = null;
+        }
 
         LicenseInfo license;
         if (existingLicense == null)
         {
-            // Create new license
             license = new LicenseInfo(
                 Guid.NewGuid(),
                 licenseDto.Proid,
-                licenseDto.AuthToken,
                 licenseDto.AuthEndTime,
-                machineCode
-            );
+                machineCode);
             await _licenseRepository.InsertAsync(license);
         }
         else
         {
-            // Update existing license
-            existingLicense.Update(licenseDto.AuthToken, licenseDto.AuthEndTime, machineCode);
+            existingLicense.Update(licenseDto.AuthEndTime, machineCode);
             license = await _licenseRepository.UpdateAsync(existingLicense);
         }
 
         return license;
     }
 
-    /// <summary>
-    ///     测试方法：验证授权码（不联网，返回固定有效的授权信息）
-    ///     仅用于测试阶段，总是返回一个有效期为1年的固定授权信息
-    /// </summary>
-    /// <param name="authorizationCode">授权码（测试方法中不进行实际验证）</param>
-    /// <returns>固定的有效授权信息</returns>
     [UnitOfWork]
     public async Task<LicenseInfo> VerifyAuthorizationCodeTestAsync(string authorizationCode)
     {
-        if (string.IsNullOrWhiteSpace(authorizationCode)) throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
+        if (string.IsNullOrWhiteSpace(authorizationCode))
+        {
+            throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
+        }
 
-        // 获取机器码
         var machineCode = _machineCodeService.GetMachineCode();
 
-        // 创建固定的测试授权信息
-        var testLicenseId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // 固定的测试授权ID（主键）
-        var testProjectId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // 固定的测试项目ID
-        var testAuthToken = Guid.Parse("11111111-1111-1111-1111-111111111111"); // 固定的测试令牌
-        var testAuthEndTime = DateTime.Now.AddYears(1); // 有效期1年
+        var testLicenseId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var testProjectId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var testAuthEndTime = DateTime.Now.AddYears(1);
 
-        // 检查是否已存在授权信息
         var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
 
         LicenseInfo license;
 
-        // 如果存在授权信息但ID不是固定的测试ID，先删除它（会级联删除关联的会话和凭证）
         if (existingLicense != null && existingLicense.Id != testLicenseId)
         {
             await _licenseRepository.DeleteAsync(existingLicense);
@@ -203,54 +156,101 @@ public partial class LicenseService : DomainService, ILicenseService
 
         if (existingLicense == null)
         {
-            // 创建新的测试授权信息，使用固定的ID
             license = new LicenseInfo(
-                testLicenseId, // 使用固定的ID，确保外键约束能够匹配
+                testLicenseId,
                 testProjectId,
-                testAuthToken,
                 testAuthEndTime,
-                machineCode
-            );
+                machineCode);
             await _licenseRepository.InsertAsync(license);
         }
         else
         {
-            // 更新现有授权信息为测试数据（ID已经是固定的testLicenseId）
             existingLicense.ProjectId = testProjectId;
-            existingLicense.Update(testAuthToken, testAuthEndTime, machineCode);
+            existingLicense.Update(testAuthEndTime, machineCode);
             license = await _licenseRepository.UpdateAsync(existingLicense);
         }
 
         return license;
     }
+
     [UnitOfWork]
     public async Task<LicenseInfo?> GetCurrentLicenseAsync()
-    {
-        return await _licenseRepository.FirstOrDefaultAsync();
-    }
+        => await _licenseRepository.FirstOrDefaultAsync();
 
     [UnitOfWork]
     public async Task<bool> IsLicenseValidAsync()
     {
         var license = await GetCurrentLicenseAsync();
-        if (license == null) return false;
-
-        // Check if expired
-        return !license.IsExpired;
+        return license is { IsExpired: false };
     }
 
     [UnitOfWork]
     public async Task ClearLicenseAsync()
     {
         var license = await GetCurrentLicenseAsync();
-        if (license != null) await _licenseRepository.DeleteAsync(license);
+        if (license != null)
+        {
+            await _licenseRepository.DeleteAsync(license);
+        }
+    }
+
+    [UnitOfWork]
+    public async Task ClearLatestJwtTokenAsync()
+    {
+        var license = await GetCurrentLicenseAsync();
+        if (license == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(license.LatestJwtToken))
+        {
+            return;
+        }
+
+        license.LatestJwtToken = null;
+        // UpdatedAt is auto-filled by ApplyAuditConcepts on update (F3).
+        await _licenseRepository.UpdateAsync(license);
+    }
+
+    [UnitOfWork]
+    public async Task ApplyServerExpirationAsync(
+        DateTime? authEndTime,
+        string? proName = null,
+        string? accessCode = null)
+    {
+        var license = await GetCurrentLicenseAsync();
+        if (license == null)
+        {
+            return;
+        }
+
+        license.LatestJwtToken = null;
+
+        if (authEndTime.HasValue)
+        {
+            license.AuthEndTime = authEndTime.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(proName) &&
+            !string.Equals(license.ProName, proName, StringComparison.Ordinal))
+        {
+            license.ProName = proName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(accessCode) &&
+            !string.Equals(license.AccessCode, accessCode, StringComparison.Ordinal))
+        {
+            license.AccessCode = accessCode;
+        }
+
+        await _licenseRepository.UpdateAsync(license);
     }
 
     [UnitOfWork]
     public async Task<bool> SyncProjectFieldsFromServerAsync(
         string? proName,
-        string? buildLicenseNo,
-        string? fdBuildLicenseNo,
+        string? accessCode,
         DateTime? authEndTime)
     {
         var license = await GetCurrentLicenseAsync();
@@ -261,23 +261,17 @@ public partial class LicenseService : DomainService, ILicenseService
 
         var updated = false;
 
-        if (!string.IsNullOrWhiteSpace(proName) && !string.Equals(license.ProName, proName, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(proName) &&
+            !string.Equals(license.ProName, proName, StringComparison.Ordinal))
         {
             license.ProName = proName;
             updated = true;
         }
 
-        if (!string.IsNullOrWhiteSpace(buildLicenseNo) &&
-            !string.Equals(license.BuildLicenseNo, buildLicenseNo, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(accessCode) &&
+            !string.Equals(license.AccessCode, accessCode, StringComparison.Ordinal))
         {
-            license.BuildLicenseNo = buildLicenseNo;
-            updated = true;
-        }
-
-        if (!string.IsNullOrWhiteSpace(fdBuildLicenseNo) &&
-            !string.Equals(license.FdBuildLicenseNo, fdBuildLicenseNo, StringComparison.Ordinal))
-        {
-            license.FdBuildLicenseNo = fdBuildLicenseNo;
+            license.AccessCode = accessCode;
             updated = true;
         }
 
@@ -292,7 +286,7 @@ public partial class LicenseService : DomainService, ILicenseService
             return false;
         }
 
-        license.UpdatedAt = DateTime.Now;
+        // UpdatedAt is auto-filled by ApplyAuditConcepts on update (F3).
         await _licenseRepository.UpdateAsync(license);
         return true;
     }
@@ -301,8 +295,7 @@ public partial class LicenseService : DomainService, ILicenseService
     public async Task StoreServerJwtAsync(
         string serverJwt,
         string proName,
-        string? buildLicenseNo,
-        string? fdBuildLicenseNo,
+        string? accessCode,
         DateTime authEndTime)
     {
         var license = await GetCurrentLicenseAsync();
@@ -313,10 +306,9 @@ public partial class LicenseService : DomainService, ILicenseService
 
         license.LatestJwtToken = serverJwt;
         license.ProName = proName;
-        license.BuildLicenseNo = buildLicenseNo;
-        license.FdBuildLicenseNo = fdBuildLicenseNo;
+        license.AccessCode = accessCode;
         license.AuthEndTime = authEndTime;
-        license.UpdatedAt = DateTime.Now;
+        // UpdatedAt is auto-filled by ApplyAuditConcepts on update (F3).
         await _licenseRepository.UpdateAsync(license);
     }
 
@@ -329,7 +321,6 @@ public partial class LicenseService : DomainService, ILicenseService
             return license.LatestJwtToken;
         }
 
-        // Fallback to .urban file
         if (File.Exists(licenseFilePath))
         {
             try
@@ -347,5 +338,80 @@ public partial class LicenseService : DomainService, ILicenseService
         }
 
         return null;
+    }
+
+    [UnitOfWork]
+    public async Task<LicenseInfo> ActivateUrbanAsync(string accessCode)
+    {
+        if (string.IsNullOrWhiteSpace(accessCode))
+        {
+            throw new BusinessException("AUTH:EMPTY_CODE", "授权码不能为空");
+        }
+
+        var urbanAuthApi = LazyServiceProvider.LazyGetService<IUrbanAuthApi>();
+        if (urbanAuthApi == null)
+        {
+            throw new BusinessException("AUTH:URBAN_API_UNAVAILABLE", "Urban 授权 API 未注册");
+        }
+
+        var machineCode = _machineCodeService.GetMachineCode();
+        var request = new ActivateUrbanRequest((int)ProductCode.Urban, accessCode.Trim(), machineCode);
+
+        HttpResult<ActivateUrbanResponseData> response;
+        try
+        {
+            response = await urbanAuthApi.ActivateUrbanAsync(request);
+        }
+        catch (Exception ex)
+        {
+            throw new BusinessException("AUTH:API_ERROR", "无法连接到 Urban 授权服务", innerException: ex);
+        }
+
+        if (!response.Success || response.Data == null || string.IsNullOrWhiteSpace(response.Data.JwtToken))
+        {
+            throw new BusinessException("AUTH:ACTIVATE_FAILED", response.Msg ?? "在线激活失败");
+        }
+
+        var checkResult = await _staticLicenseChecker.CheckLicenseFromTokenAsync(response.Data.JwtToken);
+        if (!checkResult.IsSuccess || checkResult.ProId == Guid.Empty)
+        {
+            throw new BusinessException("AUTH:JWT_INVALID", checkResult.Message);
+        }
+
+        var existingLicense = await _licenseRepository.FirstOrDefaultAsync();
+        if (existingLicense != null && existingLicense.ProjectId != checkResult.ProId)
+        {
+            await _licenseRepository.DeleteAsync(existingLicense);
+            existingLicense = null;
+        }
+
+        LicenseInfo license;
+        if (existingLicense == null)
+        {
+            license = new LicenseInfo(
+                Guid.NewGuid(),
+                checkResult.ProId,
+                checkResult.AuthEndTime,
+                machineCode,
+                checkResult.ProName,
+                checkResult.AccessCode)
+            {
+                LatestJwtToken = response.Data.JwtToken.Trim()
+            };
+            await _licenseRepository.InsertAsync(license);
+        }
+        else
+        {
+            existingLicense.ProjectId = checkResult.ProId;
+            existingLicense.LatestJwtToken = response.Data.JwtToken.Trim();
+            existingLicense.Update(
+                checkResult.AuthEndTime,
+                machineCode,
+                checkResult.ProName,
+                checkResult.AccessCode);
+            license = await _licenseRepository.UpdateAsync(existingLicense);
+        }
+
+        return license;
     }
 }

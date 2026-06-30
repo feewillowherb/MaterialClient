@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Services.Authentication;
@@ -84,7 +85,9 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 {
     private readonly ILogger<DeviceStatusSignalRClient> _logger;
     private readonly ILicenseService _licenseService;
+    private readonly IStaticLicenseChecker _staticLicenseChecker;
     private readonly ILocalEventBus _localEventBus;
+    private readonly IDeviceStatusRepublishTrigger? _republishTrigger;
     private readonly SignalRClientOptions _options;
 
     private HubConnection? _connection;
@@ -105,12 +108,16 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     public DeviceStatusSignalRClient(
         ILogger<DeviceStatusSignalRClient> logger,
         ILicenseService licenseService,
+        IStaticLicenseChecker staticLicenseChecker,
         ILocalEventBus localEventBus,
-        IOptions<SignalRClientOptions> options)
+        IOptions<SignalRClientOptions> options,
+        IDeviceStatusRepublishTrigger? republishTrigger = null)
     {
         _logger = logger;
         _licenseService = licenseService;
+        _staticLicenseChecker = staticLicenseChecker;
         _localEventBus = localEventBus;
+        _republishTrigger = republishTrigger;
         _options = options.Value;
 
         // Validate and clamp configuration
@@ -186,6 +193,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
         });
 
         TryRegisterLogPullHandlers();
+        RegisterUpdateClientLicenseHandler();
 
         try
         {
@@ -475,8 +483,9 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     private async Task OnConnectionRestoredAsync()
     {
         await FlushMessageQueueAsync();
-        await _localEventBus.PublishAsync(new SignalRConnectionRestoredEventData());
         await SyncProjectLicenseFromServerAsync();
+        await _localEventBus.PublishAsync(new SignalRConnectionRestoredEventData());
+        _republishTrigger?.RepublishActiveStatuses();
     }
 
     private async Task SyncProjectLicenseFromServerAsync()
@@ -519,7 +528,6 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                             antiTamperResult.ServerJwt,
                             antiTamperResult.ProName ?? license.ProName ?? string.Empty,
                             antiTamperResult.BuildLicenseNo,
-                            antiTamperResult.FdBuildLicenseNo,
                             antiTamperResult.AuthEndTime ?? license.AuthEndTime);
 
                         antiTamperPassed = true;
@@ -530,10 +538,41 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                     }
                     else
                     {
-                        // Anti-tamper check failed: log warning, do NOT modify LicenseInfo
+                        // F4: A device change is an irreversible business fact — the project was
+                        // re-activated on another device, so this (old-device) token is revoked.
+                        // Clear the local JWT and hand off to the UI layer to force re-activation
+                        // (terminating if the user cancels). Other failure types keep the
+                        // availability-first "log + skip" behaviour below.
+                        if (antiTamperResult.RevocationReason == RevocationReason.DeviceChanged)
+                        {
+                            _logger.LogWarning(
+                                "DeviceStatusSignalRClient: Authorization device changed. ProId={ProId}, Reason={Reason}. " +
+                                "Clearing local JWT and requesting re-activation.",
+                                license.ProjectId, antiTamperResult.Reason ?? "Unknown");
+
+                            await _licenseService.ClearLatestJwtTokenAsync();
+                            _ = _localEventBus.PublishAsync(new LicenseDeviceRevokedEto(
+                                license.ProjectId,
+                                antiTamperResult.Reason ?? "授权设备已变更，请在当前设备重新激活"));
+                            return; // Do NOT proceed with field sync; app re-activates or exits.
+                        }
+
+                        if (antiTamperResult.RevocationReason == RevocationReason.Expired)
+                        {
+                            var handled = await TryHandleExpiredAuthorizationAsync(
+                                license,
+                                antiTamperResult);
+                            if (handled)
+                            {
+                                return;
+                            }
+                        }
+
+                        // Non-device-change failure (NOT_FOUND/INVALID_SIGNATURE/UNREACHABLE):
+                        // do NOT modify LicenseInfo, keep availability-first skip.
                         _logger.LogWarning(
-                            "DeviceStatusSignalRClient: Anti-tamper check FAILED. ProId={ProId}, Reason={Reason}. Skipping LicenseInfo update.",
-                            license.ProjectId, antiTamperResult.Reason ?? "Unknown");
+                            "DeviceStatusSignalRClient: Anti-tamper check FAILED. ProId={ProId}, Reason={Reason}, RevocationReason={RevocationReason}. Skipping LicenseInfo update.",
+                            license.ProjectId, antiTamperResult.Reason ?? "Unknown", antiTamperResult.RevocationReason);
                         return; // Do NOT proceed with field sync
                     }
                 }
@@ -582,7 +621,6 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             var updated = await _licenseService.SyncProjectFieldsFromServerAsync(
                 projectInfo.ProName,
                 projectInfo.BuildLicenseNo,
-                projectInfo.FdBuildLicenseNo,
                 projectInfo.AuthEndTime);
 
             if (updated)
@@ -597,6 +635,69 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             _logger.LogWarning(ex,
                 "DeviceStatusSignalRClient: Failed to sync project license info from server.");
         }
+    }
+
+    /// <summary>
+    ///     Clears local JWT and persists server-authoritative expiry fields, then notifies Urban to terminate.
+    /// </summary>
+    /// <returns><c>true</c> when the expired path was handled (caller should stop sync).</returns>
+    private async Task<bool> TryHandleExpiredAuthorizationAsync(
+        LicenseInfo license,
+        JwtAntiTamperResult antiTamperResult)
+    {
+        var authEndTime = antiTamperResult.AuthEndTime ?? license.AuthEndTime;
+        var message = string.IsNullOrWhiteSpace(antiTamperResult.Reason)
+            ? "授权已过期"
+            : antiTamperResult.Reason;
+
+        await _licenseService.ApplyServerExpirationAsync(
+            authEndTime,
+            antiTamperResult.ProName ?? license.ProName,
+            antiTamperResult.BuildLicenseNo ?? license.AccessCode);
+
+        _logger.LogInformation(
+            "DeviceStatusSignalRClient: Cleared JWT after server expiry. ProId={ProId}, AuthEndTime={AuthEndTime}",
+            license.ProjectId,
+            authEndTime);
+
+        _ = _localEventBus.PublishAsync(new LicenseExpiredEto(license.ProjectId, message));
+        return true;
+    }
+
+    private void RegisterUpdateClientLicenseHandler()
+    {
+        if (_connection == null)
+        {
+            return;
+        }
+
+        _connection.On<ClientLicenseUpdateDto>("UpdateClientLicense", async dto =>
+        {
+            if (string.IsNullOrWhiteSpace(dto.JwtToken))
+            {
+                _logger.LogWarning("DeviceStatusSignalRClient: UpdateClientLicense received empty JWT");
+                return;
+            }
+
+            var checkResult = await _staticLicenseChecker.CheckLicenseFromTokenAsync(dto.JwtToken);
+            if (!checkResult.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "DeviceStatusSignalRClient: UpdateClientLicense JWT validation failed: {Reason}",
+                    checkResult.Message);
+                return;
+            }
+
+            await _licenseService.StoreServerJwtAsync(
+                dto.JwtToken.Trim(),
+                checkResult.ProName ?? string.Empty,
+                checkResult.AccessCode,
+                checkResult.AuthEndTime);
+
+            _logger.LogInformation(
+                "DeviceStatusSignalRClient: License updated via UpdateClientLicense push. ProId={ProId}",
+                checkResult.ProId);
+        });
     }
 
     /// <inheritdoc />

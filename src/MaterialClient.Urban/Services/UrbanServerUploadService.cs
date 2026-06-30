@@ -40,6 +40,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
+    private readonly IMachineCodeService _machineCodeService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
@@ -49,6 +50,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
+        IMachineCodeService machineCodeService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
@@ -57,6 +59,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _weighingRecordRepository = weighingRecordRepository;
         _extensionService = extensionService;
         _licenseService = licenseService;
+        _machineCodeService = machineCodeService;
         _logger = logger;
     }
 
@@ -74,17 +77,26 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             if (licenseInfo == null)
             {
                 _logger.LogWarning(
-                    "LicenseInfo not available, ProId/ProName/BuildLicenseNo/FdBuildLicenseNo will be null for record {RecordId}",
+                    "LicenseInfo not available, ProId/ProName/AccessCode will be null for record {RecordId}",
                     weighingRecordId);
             }
-            else if (licenseInfo.ProName == null || licenseInfo.BuildLicenseNo == null)
+            else if (licenseInfo.ProName == null || licenseInfo.AccessCode == null)
             {
                 _logger.LogDebug(
                     "LicenseInfo exists but some project fields are empty for record {RecordId}",
                     weighingRecordId);
             }
 
-            var buildLicenseNo = licenseInfo?.BuildLicenseNo ?? string.Empty;
+            // F2: record the machine code that submits this weighing data (traceability only —
+            // MUST NOT be used for authorization; that is F4's responsibility).
+            var submitMachineCode = _machineCodeService.GetMachineCode();
+            if (extension != null)
+            {
+                // Tracked entity within the ambient UnitOfWork → persisted on save.
+                extension.SubmitMachineCode = submitMachineCode;
+            }
+
+            var accessCode = licenseInfo?.AccessCode ?? string.Empty;
             var editHistory = extension?.GetEditHistory() ?? [];
             var skipAttachmentUpload = editHistory.Count > 0
                                        && !editHistory.Any(e => e.IsImagesModified);
@@ -99,7 +111,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             else
             {
                 attachmentIds =
-                    (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, buildLicenseNo)).ToList();
+                    (await _attachmentSyncService.UploadAttachmentsAsync(weighingRecordId, accessCode)).ToList();
             }
 
             var hadLocalUrbanAttachments = await HasLocalUrbanAttachmentsAsync(weighingRecordId);
@@ -124,11 +136,11 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 PlateColor = null,
                 VehicleType = null,
                 DeviceId = null,
-                BuildLicenseNo = licenseInfo?.BuildLicenseNo,
-                FdBuildLicenseNo = licenseInfo?.FdBuildLicenseNo,
+                BuildLicenseNo = licenseInfo?.AccessCode,
                 SiteType = null,
                 ProId = licenseInfo?.ProjectId,
                 ProName = licenseInfo?.ProName,
+                SubmitMachineCode = submitMachineCode,
                 IsAnomaly = isAnomaly,
                 AnomalyReason = extension?.AnomalyReason?.GetDescription(),
                 ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),

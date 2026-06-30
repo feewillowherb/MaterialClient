@@ -156,8 +156,10 @@
                                VerticalAlignment="Center" />
                 </Grid>
 
-                <!-- 授权码 -->
-                <Grid Grid.Row="4" Margin="0,0,0,20">
+                <!-- 接入码（Urban 在线激活不展示） -->
+                <Grid Grid.Row="4"
+                      Margin="0,0,0,20"
+                      IsVisible="{Binding IsAuthCodeVisible}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80" />
                         <ColumnDefinition Width="*" />
