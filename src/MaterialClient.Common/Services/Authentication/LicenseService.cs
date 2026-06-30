@@ -29,6 +29,14 @@ public interface ILicenseService
     /// </summary>
     Task ClearLatestJwtTokenAsync();
 
+    /// <summary>
+    ///     服务端判定授权已过期：清除 <see cref="LicenseInfo.LatestJwtToken" /> 并回写权威过期字段。
+    /// </summary>
+    Task ApplyServerExpirationAsync(
+        DateTime? authEndTime,
+        string? proName = null,
+        string? accessCode = null);
+
     Task<bool> SyncProjectFieldsFromServerAsync(
         string? proName,
         string? accessCode,
@@ -202,6 +210,40 @@ public partial class LicenseService : DomainService, ILicenseService
 
         license.LatestJwtToken = null;
         // UpdatedAt is auto-filled by ApplyAuditConcepts on update (F3).
+        await _licenseRepository.UpdateAsync(license);
+    }
+
+    [UnitOfWork]
+    public async Task ApplyServerExpirationAsync(
+        DateTime? authEndTime,
+        string? proName = null,
+        string? accessCode = null)
+    {
+        var license = await GetCurrentLicenseAsync();
+        if (license == null)
+        {
+            return;
+        }
+
+        license.LatestJwtToken = null;
+
+        if (authEndTime.HasValue)
+        {
+            license.AuthEndTime = authEndTime.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(proName) &&
+            !string.Equals(license.ProName, proName, StringComparison.Ordinal))
+        {
+            license.ProName = proName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(accessCode) &&
+            !string.Equals(license.AccessCode, accessCode, StringComparison.Ordinal))
+        {
+            license.AccessCode = accessCode;
+        }
+
         await _licenseRepository.UpdateAsync(license);
     }
 

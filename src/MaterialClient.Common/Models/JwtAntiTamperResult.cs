@@ -4,7 +4,7 @@ namespace MaterialClient.Common.Models;
 ///     防篡改验签失败类型枚举（与服务端 UrbanManagement.Core.Models.RevocationReason 对齐，
 ///     成员顺序保持一致以兼容 SignalR 默认的整型枚举序列化）。
 ///     客户端仅对 <see cref="DeviceChanged" /> 采取「清除授权 + 强制重新激活」，
-///     对 <see cref="Expired" /> 采取「持久化过期 JWT + 复验后终止运行」。
+///     对 <see cref="Expired" /> 采取「清除本地 JWT + 回写权威过期字段后终止运行」。
 /// </summary>
 public enum RevocationReason
 {

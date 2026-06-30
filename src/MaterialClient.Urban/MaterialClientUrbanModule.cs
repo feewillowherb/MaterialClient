@@ -218,6 +218,14 @@ public class MaterialClientUrbanModule : AbpModule
                 await readUow.CompleteAsync();
             }
 
+            if (existingLicense is { IsExpired: true })
+            {
+                logger?.LogWarning(
+                    "Startup authorization failed: license record expired. AuthEndTime={AuthEndTime}",
+                    existingLicense.AuthEndTime);
+                return new UrbanStartupAuthorizationResult(false, "授权已过期", null);
+            }
+
             if (existingLicense != null && !string.IsNullOrWhiteSpace(existingLicense.LatestJwtToken))
             {
                 validatedJwtText = existingLicense.LatestJwtToken.Trim();
@@ -228,6 +236,14 @@ public class MaterialClientUrbanModule : AbpModule
                 }
                 else
                 {
+                    if (IsLicenseExpirationMessage(result.Message))
+                    {
+                        logger?.LogWarning(
+                            "Startup license check from LatestJwtToken failed due to expiry: {Reason}",
+                            result.Message);
+                        return new UrbanStartupAuthorizationResult(false, result.Message, null);
+                    }
+
                     logger?.LogWarning(
                         "Startup license check from LatestJwtToken failed: {Reason}, falling back to license file",
                         result.Message);
@@ -336,6 +352,10 @@ public class MaterialClientUrbanModule : AbpModule
             return new UrbanStartupAuthorizationResult(false, ex.Message, null);
         }
     }
+
+    private static bool IsLicenseExpirationMessage(string? message)
+        => !string.IsNullOrWhiteSpace(message)
+           && message.Contains("过期", StringComparison.Ordinal);
 
     public override async Task OnApplicationShutdownAsync(ApplicationShutdownContext context)
     {
