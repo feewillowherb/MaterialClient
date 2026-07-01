@@ -9,12 +9,12 @@ public class UrbanAnomalyDetectionConfig
     /// <summary>
     ///     Upper weight limit (in tons). Weights exceeding this by the deviation percentage are anomalies.
     /// </summary>
-    public decimal UpperLimit { get; set; } = 30.0m;
+    public decimal UpperLimit { get; set; } = 50.0m;
 
     /// <summary>
     ///     Lower weight limit (in tons). Weights below this by the deviation percentage are anomalies.
     /// </summary>
-    public decimal LowerLimit { get; set; } = 2.0m;
+    public decimal LowerLimit { get; set; } = 1.0m;
 
     /// <summary>
     ///     Allowed deviation percentage for weight thresholds.
