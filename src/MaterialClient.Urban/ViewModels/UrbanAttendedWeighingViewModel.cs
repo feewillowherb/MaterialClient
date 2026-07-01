@@ -48,7 +48,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     private readonly IServiceProvider _serviceProvider;
     private readonly CompositeDisposable _subscriptions = [];
 
-    private const int PageSize = 20;
+    private const int PageSize = 7;
 
     private const string TabAll = "全部";
     private const string TabNormal = "正常";
