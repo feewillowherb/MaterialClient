@@ -813,7 +813,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         if (plateInfoEx.byColor == null || plateInfoEx.byColor.Length == 0)
             return null;
 
-        var colorValue = plateInfoEx.byColor[0];
+        var colorValue = (int)plateInfoEx.byColor[0];
         if (!Enum.IsDefined(typeof(HikvisionPlateColorType), colorValue))
             return null;
 

@@ -13,6 +13,11 @@ public static class HikvisionEncodingHelper
     private static Encoding? _gbkEncoding;
     private static readonly object _lock = new();
 
+    static HikvisionEncodingHelper()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
     /// <summary>
     ///     获取 GBK 编码
     ///     如果系统不支持 GBK，则回退到 UTF-8 并记录警告
@@ -37,11 +42,12 @@ public static class HikvisionEncodingHelper
                 _gbkEncoding = Encoding.GetEncoding("GBK");
                 logger?.LogDebug("使用 GBK 编码处理海康威视车牌识别结果");
             }
-            catch (NotSupportedException)
+            catch (Exception ex) when (ex is NotSupportedException or ArgumentException)
             {
                 // 系统不支持 GBK 编码，回退到 UTF-8
                 _gbkEncoding = Encoding.UTF8;
                 logger?.LogWarning(
+                    ex,
                     "系统不支持 GBK 编码，将使用 UTF-8 编码处理车牌识别结果。这可能导致中文字符显示不正确。");
             }
 
