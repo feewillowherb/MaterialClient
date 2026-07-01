@@ -110,6 +110,42 @@ public static class PlateNumberValidator
     }
 
     /// <summary>
+    ///     从含噪声的原始字符串中提取并验证中国车牌号（如海康 ITS 回调前缀脏数据）。
+    /// </summary>
+    public static bool TryExtractFromRaw(string? raw, out string plateNumber)
+    {
+        plateNumber = string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        var text = raw.Trim().ToUpperInvariant();
+
+        // 新能源 8 位 → 普通 7 位 → 武警
+        ReadOnlySpan<string> patterns =
+        [
+            @"[京津晋冀蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新][A-Z][DF][A-HJ-NP-Z0-9]{5}",
+            @"[京津冀晋蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新港澳台使领][A-Z][A-HJ-NP-Z0-9]{5}",
+            @"WJ[京津冀晋蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新][0-9]{4}[A-HJ-NP-Z0-9]"
+        ];
+
+        foreach (var pattern in patterns)
+        {
+            var match = Regex.Match(text, pattern);
+            if (!match.Success)
+                continue;
+
+            var candidate = match.Value;
+            if (!IsValidChinesePlateNumber(candidate))
+                continue;
+
+            plateNumber = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     ///     格式化车牌号（移除空格，转换为大写）
     /// </summary>
     /// <param name="plateNumber">车牌号</param>

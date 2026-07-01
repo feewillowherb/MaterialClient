@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using MaterialClient.Common.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace MaterialClient.Common.Utils;
@@ -170,5 +171,27 @@ public static class HikvisionEncodingHelper
             logger?.LogError(ex, "从字节数组读取 GBK 字符串失败");
             return string.Empty;
         }
+    }
+
+    /// <summary>
+    ///     从海康车牌字节缓冲区解析车牌号（GBK + byLicenseLen + 脏数据提取）。
+    /// </summary>
+    public static string GetLicensePlate(byte[] bytes, byte licenseCharLen, ILogger? logger = null)
+    {
+        if (bytes == null || bytes.Length == 0)
+            return string.Empty;
+
+        var raw = GetString(bytes, logger);
+        if (PlateNumberValidator.TryExtractFromRaw(raw, out var extracted))
+            return extracted;
+
+        if (licenseCharLen > 0 && raw.Length > licenseCharLen)
+        {
+            var suffix = raw[^licenseCharLen..];
+            if (PlateNumberValidator.TryExtractFromRaw(suffix, out extracted))
+                return extracted;
+        }
+
+        return raw.Trim();
     }
 }

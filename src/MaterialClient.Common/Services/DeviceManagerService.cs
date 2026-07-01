@@ -194,7 +194,7 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
         try
         {
             var hikvisionService = GetHikvisionService();
-            var cameraConfigs = settings.CameraConfigs;
+            var cameraConfigs = HikvisionCaptureConfigHelper.ResolveCameraConfigs(settings);
 
             if (cameraConfigs == null || cameraConfigs.Count == 0)
             {

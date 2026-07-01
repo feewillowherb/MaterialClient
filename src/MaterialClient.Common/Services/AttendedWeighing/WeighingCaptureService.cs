@@ -1,3 +1,4 @@
+using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Vzvision;
@@ -40,17 +41,20 @@ public interface IWeighingCaptureService
 public class WeighingCaptureService : IWeighingCaptureService, ISingletonDependency
 {
     private readonly IHikvisionService _hikvisionService;
+    private readonly IHikvisionLprService? _hikvisionLprService;
     private readonly IVzvisionLprService? _vzvisionLprService;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<WeighingCaptureService> _logger;
 
     public WeighingCaptureService(
         IHikvisionService hikvisionService,
+        IHikvisionLprService? hikvisionLprService,
         IVzvisionLprService? vzvisionLprService,
         ISettingsService settingsService,
         ILogger<WeighingCaptureService> logger)
     {
         _hikvisionService = hikvisionService;
+        _hikvisionLprService = hikvisionLprService;
         _vzvisionLprService = vzvisionLprService;
         _settingsService = settingsService;
         _logger = logger;
@@ -62,7 +66,7 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
-            var cameraConfigs = settings.CameraConfigs;
+            var cameraConfigs = HikvisionCaptureConfigHelper.ResolveCameraConfigs(settings);
 
             if (cameraConfigs.Count == 0)
             {
@@ -143,53 +147,102 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
 
         try
         {
-            if (settings.SystemSettings.LprDeviceType != LprDeviceType.Vzvision)
-                return;
-
-            if (_vzvisionLprService == null)
+            if (settings.SystemSettings.LprDeviceType == LprDeviceType.Vzvision)
             {
-                _logger.LogWarning("IVzvisionLprService 未注入，无法抓拍 ({Phase})", phase);
+                await TriggerVzvisionCaptureAsync(settings, phase);
                 return;
             }
 
-            var lprConfigs = settings.LicensePlateRecognitionConfigs;
-            if (lprConfigs.Count == 0)
+            if (settings.SystemSettings.LprDeviceType == LprDeviceType.Hikvision)
             {
-                _logger.LogWarning("未配置 Vzvision 车牌设备，跳过抓拍 ({Phase})", phase);
-                return;
+                await TriggerHikvisionCaptureAsync(settings, phase);
             }
-
-            _logger.LogInformation("触发 Vzvision 抓拍 ({Phase})，设备数 {Count}", phase, lprConfigs.Count);
-
-            var tasks = lprConfigs
-                .Where(config => config.IsValid())
-                .Select(async config =>
-                {
-                    try
-                    {
-                        await _vzvisionLprService.TriggerCaptureAsync(config);
-                        _logger.LogInformation("Vzvision 抓拍已发送: {Name} ({Ip}) [{Phase}]",
-                            config.Name, config.Ip, phase);
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Vzvision 抓拍失败: {Name} ({Ip}) [{Phase}]",
-                            config.Name, config.Ip, phase);
-                        return false;
-                    }
-                });
-
-            var results = await Task.WhenAll(tasks);
-            var successCount = results.Count(r => r);
-            var failCount = results.Length - successCount;
-
-            _logger.LogInformation("Vzvision 抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}",
-                phase, successCount, failCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "触发 Vzvision 抓拍异常 ({Phase})", phase);
+            _logger.LogError(ex, "触发 LPR 抓拍异常 ({Phase})", phase);
         }
+    }
+
+    private async Task TriggerVzvisionCaptureAsync(SettingsEntity settings, string phase)
+    {
+        if (_vzvisionLprService == null)
+        {
+            _logger.LogWarning("IVzvisionLprService 未注入，无法抓拍 ({Phase})", phase);
+            return;
+        }
+
+        var lprConfigs = settings.LicensePlateRecognitionConfigs;
+        if (lprConfigs.Count == 0)
+        {
+            _logger.LogWarning("未配置 Vzvision 车牌设备，跳过抓拍 ({Phase})", phase);
+            return;
+        }
+
+        _logger.LogInformation("触发 Vzvision 抓拍 ({Phase})，设备数 {Count}", phase, lprConfigs.Count);
+
+        var tasks = lprConfigs
+            .Where(config => config.IsValid())
+            .Select(async config =>
+            {
+                try
+                {
+                    await _vzvisionLprService.TriggerCaptureAsync(config);
+                    _logger.LogInformation("Vzvision 抓拍已发送: {Name} ({Ip}) [{Phase}]",
+                        config.Name, config.Ip, phase);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Vzvision 抓拍失败: {Name} ({Ip}) [{Phase}]",
+                        config.Name, config.Ip, phase);
+                    return false;
+                }
+            });
+
+        var results = await Task.WhenAll(tasks);
+        var successCount = results.Count(r => r);
+        var failCount = results.Length - successCount;
+
+        _logger.LogInformation("Vzvision 抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}",
+            phase, successCount, failCount);
+    }
+
+    private async Task TriggerHikvisionCaptureAsync(SettingsEntity settings, string phase)
+    {
+        if (_hikvisionLprService == null)
+        {
+            _logger.LogWarning("IHikvisionLprService 未注入，无法抓拍 ({Phase})", phase);
+            return;
+        }
+
+        var lprConfigs = settings.LicensePlateRecognitionConfigs;
+        if (lprConfigs.Count == 0)
+        {
+            _logger.LogWarning("未配置海康车牌设备，跳过抓拍 ({Phase})", phase);
+            return;
+        }
+
+        _logger.LogInformation("触发海康抓拍 ({Phase})，设备数 {Count}", phase, lprConfigs.Count);
+
+        var successCount = 0;
+        var failCount = 0;
+        foreach (var config in lprConfigs.Where(c => c.IsValid()))
+        {
+            try
+            {
+                await _hikvisionLprService.TriggerCaptureAsync(config);
+                successCount++;
+                _logger.LogInformation("海康抓拍已发送: {Name} ({Ip}) [{Phase}]", config.Name, config.Ip, phase);
+            }
+            catch (Exception ex)
+            {
+                failCount++;
+                _logger.LogWarning(ex, "海康抓拍失败: {Name} ({Ip}) [{Phase}]", config.Name, config.Ip, phase);
+            }
+        }
+
+        _logger.LogInformation("海康抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}",
+            phase, successCount, failCount);
     }
 }

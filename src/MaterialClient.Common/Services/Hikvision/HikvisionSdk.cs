@@ -196,32 +196,6 @@ internal static class HikvisionSdk
     }
 
     /// <summary>
-    ///     报警器信息（用于识别设备）
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_DVR_ALARMER
-    {
-        public int dwAlarmType;
-        public int byAlarmOutputNumber;
-        public int byAlarmInfoChannel;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 129)]
-        public byte[] sDeviceIP;
-
-        public byte byDevicePort;
-        public byte byAlarmInputIndex;
-        public byte byChannel;
-        public byte byRes;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-        public byte[] sSerialNumber;
-
-        public uint dwDeviceVersion;
-        public int byAlarmChannel;
-        public int byRes1;
-    }
-
-    /// <summary>
     ///     车牌识别结果
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
@@ -279,54 +253,6 @@ internal static class HikvisionSdk
         public int byContrast;
         public int byDirection;
         public int byRes;
-    }
-
-    /// <summary>
-    ///     ITS 车牌识别结果
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_ITS_PLATE_RESULT
-    {
-        public int dwResultNum;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public NET_ITS_PLATE_INFO[] struPlateInfo;
-
-        public int dwRelativeTime;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public byte[] byRes;
-    }
-
-    /// <summary>
-    ///     ITS 车牌信息
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_ITS_PLATE_INFO
-    {
-        public int dwPicLen;
-        public IntPtr pBuffer;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)]
-        public byte[] sLicense;
-
-        public int byLaneNo;
-        public int byVehicleType;
-        public int byColor;
-        public int byVehicleSpeed;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-        public byte[] byRes1;
-
-        public uint dwSysRefTime;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
-        public byte[] sDirection;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public byte[] byRes2;
-
-        public NET_DVR_PLATE_INFO_EX struPlateInfoEx;
     }
 
     /// <summary>
