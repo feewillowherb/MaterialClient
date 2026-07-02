@@ -368,15 +368,20 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
             var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(pAlarmInfo);
             var plateNumber = HikvisionEncodingHelper.GetString(plateResult.struPlateInfo.sLicense, _logger);
+            var vehicleColor = MapVehicleColor(plateResult.struVehicleInfo.byColor);
+            var vehicleType = MapVehicleType(plateResult.byVehicleType);
+            var plateColor = MapPlateColor(plateResult.struPlateInfo);
+            var hasImage = (plateResult.dwPicLen != 0 && plateResult.pBuffer1 != IntPtr.Zero)
+                           || (plateResult.dwFarCarPicLen != 0 && plateResult.pBuffer5 != IntPtr.Zero);
+
+            _logger?.LogDebug(
+                "COMM_UPLOAD_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
+                plateNumber, vehicleColor, vehicleType, plateColor, hasImage);
 
             if (!TryValidatePlateNumber(plateNumber))
             {
                 return;
             }
-
-            var vehicleColor = MapVehicleColor(plateResult.struVehicleInfo.byColor);
-            var vehicleType = MapVehicleType(plateResult.byVehicleType);
-            var plateColor = MapPlateColor(plateResult.struPlateInfo);
 
             IntPtr imagePtr = IntPtr.Zero;
             var imageLen = 0;
@@ -414,18 +419,13 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
             var itsResult = Marshal.PtrToStructure<HikvisionSdk.NET_ITS_PLATE_RESULT>(pAlarmInfo);
             var plateNumber = HikvisionEncodingHelper.GetString(itsResult.struPlateInfo.sLicense, _logger);
-
-            if (!TryValidatePlateNumber(plateNumber))
-            {
-                return;
-            }
-
             var vehicleColor = MapVehicleColor(itsResult.struVehicleInfo.byColor);
             var vehicleType = MapVehicleType(itsResult.struVehicleInfo.byVehicleType);
             var plateColor = MapPlateColor(itsResult.struPlateInfo);
 
             IntPtr imagePtr = IntPtr.Zero;
             var imageLen = 0;
+            var hasImage = false;
             var picCount = Math.Min((int)itsResult.dwPicNum, itsResult.struPicInfo.Length);
             for (var i = 0; i < picCount; i++)
             {
@@ -435,9 +435,19 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                     continue;
                 }
 
+                hasImage = true;
                 imagePtr = picInfo.pBuffer;
                 imageLen = (int)picInfo.dwDataLen;
                 break;
+            }
+
+            _logger?.LogDebug(
+                "COMM_ITS_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
+                plateNumber, vehicleColor, vehicleType, plateColor, hasImage);
+
+            if (!TryValidatePlateNumber(plateNumber))
+            {
+                return;
             }
 
             var lrpPath = TrySaveLprAttachment(imagePtr, imageLen, plateNumber);
