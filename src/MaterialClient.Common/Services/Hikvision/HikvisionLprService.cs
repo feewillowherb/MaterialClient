@@ -836,10 +836,10 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         {
             dwSize = (uint)Marshal.SizeOf<HikvisionSdk.NET_DVR_SNAPCFG>(),
             byRelatedDriveWay = 0,
-            bySnapTimes = 0, // 0 = 单次抓拍
-            wSnapWaitTime = 0,
-            wIntervalTime = new ushort[4],
-            dwSnapVehicleNum = 0,
+            bySnapTimes = 1, // 0 = 单次抓拍
+            wSnapWaitTime = 1,
+            wIntervalTime =  [200,0,0,0],
+            dwSnapVehicleNum = 1,
             struJpegPara = new HikvisionSdk.NET_DVR_JPEGPARA { wPicSize = 0xff, wPicQuality = 1 },
             byRes2 = new byte[16]
         };
