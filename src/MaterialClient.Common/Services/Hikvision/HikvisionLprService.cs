@@ -378,11 +378,6 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 "COMM_UPLOAD_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
                 plateNumber, vehicleColor, vehicleType, plateColor, hasImage);
 
-            if (!TryValidatePlateNumber(plateNumber))
-            {
-                return;
-            }
-
             IntPtr imagePtr = IntPtr.Zero;
             var imageLen = 0;
             if (plateResult.dwPicLen != 0 && plateResult.pBuffer1 != IntPtr.Zero)
@@ -394,6 +389,14 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             {
                 imagePtr = plateResult.pBuffer5;
                 imageLen = (int)plateResult.dwFarCarPicLen;
+            }
+
+            if (!TryValidatePlateNumber(plateNumber))
+            {
+#if DEBUG
+                TrySaveInvalidPlateDebugImage(imagePtr, imageLen, plateNumber, "upload", deviceIp);
+#endif
+                return;
             }
 
             var lrpPath = TrySaveLprAttachment(imagePtr, imageLen, plateNumber);
@@ -447,6 +450,9 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
             if (!TryValidatePlateNumber(plateNumber))
             {
+#if DEBUG
+                TrySaveInvalidPlateDebugImage(imagePtr, imageLen, plateNumber, "its", deviceIp);
+#endif
                 return;
             }
 
@@ -552,6 +558,78 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             return null;
         }
     }
+
+#if DEBUG
+    /// <summary>
+    ///     调试专用：车牌校验失败时仍将附带图片落盘，便于分析结构体错位或无效识别结果。
+    ///     仅 DEBUG 构建生效，保存至 LprDebug/invalid-plate/。
+    /// </summary>
+    private void TrySaveInvalidPlateDebugImage(
+        IntPtr pBuffer,
+        int picLen,
+        string plateRaw,
+        string source,
+        string deviceIp)
+    {
+        if (pBuffer == IntPtr.Zero || picLen <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var imageBytes = new byte[picLen];
+            Marshal.Copy(pBuffer, imageBytes, 0, picLen);
+
+            var debugDir = PathManager.EnsureDirectoryExists("LprDebug/invalid-plate");
+            var safePlate = SanitizeDebugFileNameFragment(plateRaw);
+            var safeIp = string.IsNullOrWhiteSpace(deviceIp) ? "unknown-ip" : deviceIp.Replace('.', '-');
+            var fileName = $"{source}_{safePlate}_{safeIp}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+            var filePath = Path.Combine(debugDir, fileName);
+            File.WriteAllBytes(filePath, imageBytes);
+
+            _logger?.LogDebug(
+                "无效车牌调试图片已保存: Path={Path}, PlateRaw={PlateRaw}, Source={Source}, DeviceIp={DeviceIp}",
+                PathManager.ToRelativePath(filePath), plateRaw, source, deviceIp);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex,
+                "保存无效车牌调试图片失败: PlateRaw={PlateRaw}, Source={Source}, DeviceIp={DeviceIp}",
+                plateRaw, source, deviceIp);
+        }
+    }
+
+    private static string SanitizeDebugFileNameFragment(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "empty";
+        }
+
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var builder = new StringBuilder(Math.Min(text.Length, 32));
+        foreach (var ch in text)
+        {
+            if (Array.IndexOf(invalidChars, ch) >= 0 || char.IsControl(ch))
+            {
+                builder.Append('_');
+            }
+            else
+            {
+                builder.Append(ch);
+            }
+
+            if (builder.Length >= 32)
+            {
+                break;
+            }
+        }
+
+        var sanitized = builder.ToString().Trim();
+        return string.IsNullOrEmpty(sanitized) ? "invalid" : sanitized;
+    }
+#endif
 
     /// <summary>
     ///     确保 SDK 已初始化
