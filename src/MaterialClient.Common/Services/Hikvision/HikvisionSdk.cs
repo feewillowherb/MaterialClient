@@ -4,9 +4,10 @@ namespace MaterialClient.Common.Services.Hikvision;
 
 /// <summary>
 ///     海康威视车牌识别 SDK P/Invoke 声明
-///     包含 LPR 功能所需的核心 API、回调和结构体定义
+///     包含 LPR 功能所需的核心 API、回调和结构体定义。
+///     SDK 版本: CH-HCNetSDKV6.1.9.48 — LPR 结构体见 HikvisionSdk.LprStructs.cs（来源: GovClient CHCNetSDK.cs）。
 /// </summary>
-internal static class HikvisionSdk
+internal static partial class HikvisionSdk
 {
     #region 常量定义
 
@@ -195,139 +196,7 @@ internal static class HikvisionSdk
         public byte[] byRes2;
     }
 
-    /// <summary>
-    ///     报警器信息（用于识别设备）
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_DVR_ALARMER
-    {
-        public int dwAlarmType;
-        public int byAlarmOutputNumber;
-        public int byAlarmInfoChannel;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 129)]
-        public byte[] sDeviceIP;
-
-        public byte byDevicePort;
-        public byte byAlarmInputIndex;
-        public byte byChannel;
-        public byte byRes;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-        public byte[] sSerialNumber;
-
-        public uint dwDeviceVersion;
-        public int byAlarmChannel;
-        public int byRes1;
-    }
-
-    /// <summary>
-    ///     车牌识别结果
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_DVR_PLATE_RESULT
-    {
-        public int dwResult;
-        public int dwPicLen;
-        public IntPtr pBuffer;
-        public uint dwRelativeTime;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)]
-        public byte[] sLicense;
-
-        public int byPicNum;
-        public int byLaneNo;
-        public int byDriveChan;
-        public int byVehicleType;
-        public int byColor;
-        public int byVehicleSpeed;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-        public byte[] byRes;
-
-        public int dwSysRefTime;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
-        public byte[] sDirection;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public byte[] byRes1;
-
-        public NET_DVR_PLATE_INFO_EX struPlateInfo;
-    }
-
-    /// <summary>
-    ///     车牌信息扩展
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_DVR_PLATE_INFO_EX
-    {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] byRegion;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] byClass;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] byColor;
-
-        public int byBelief;
-        public int byColorViolet;
-        public int byPlateType;
-        public int byConfidence;
-        public int byBrightness;
-        public int byContrast;
-        public int byDirection;
-        public int byRes;
-    }
-
-    /// <summary>
-    ///     ITS 车牌识别结果
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_ITS_PLATE_RESULT
-    {
-        public int dwResultNum;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public NET_ITS_PLATE_INFO[] struPlateInfo;
-
-        public int dwRelativeTime;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public byte[] byRes;
-    }
-
-    /// <summary>
-    ///     ITS 车牌信息
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NET_ITS_PLATE_INFO
-    {
-        public int dwPicLen;
-        public IntPtr pBuffer;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)]
-        public byte[] sLicense;
-
-        public int byLaneNo;
-        public int byVehicleType;
-        public int byColor;
-        public int byVehicleSpeed;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-        public byte[] byRes1;
-
-        public uint dwSysRefTime;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
-        public byte[] sDirection;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public byte[] byRes2;
-
-        public NET_DVR_PLATE_INFO_EX struPlateInfoEx;
-    }
+    // LPR 回调结构体定义见 HikvisionSdk.LprStructs.cs（与 CHCNetSDK.h V6.1.9.48 对齐）
 
     /// <summary>
     ///     JPEG 图片参数
