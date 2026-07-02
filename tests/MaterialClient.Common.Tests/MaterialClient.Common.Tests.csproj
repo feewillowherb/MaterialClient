@@ -12,6 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="TestData\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Reqnroll.xUnit" />
     <PackageReference Include="Volo.Abp.Autofac"/>
     <PackageReference Include="Volo.Abp.Data"/>

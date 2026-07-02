@@ -301,6 +301,29 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     }
 
     /// <summary>
+    ///     测试专用：回放 SDK 报警回调，无需 NET_DVR_StartListen_V30 或物理设备。
+    /// </summary>
+    /// <param name="lCommand">报警命令，如 COMM_UPLOAD_PLATE_RESULT / COMM_ITS_PLATE_RESULT</param>
+    /// <param name="pAlarmer">NET_DVR_ALARMER 非托管指针</param>
+    /// <param name="pAlarmInfo">NET_DVR_PLATE_RESULT 或 NET_ITS_PLATE_RESULT 非托管指针</param>
+    /// <param name="dwBufLen">报警数据长度</param>
+    /// <param name="weighingMode">可选，覆盖称重模式（如 UrbanMode 以测试 Lpr 图片保存）</param>
+    internal void InvokePlateAlarmCallbackForTests(
+        int lCommand,
+        IntPtr pAlarmer,
+        IntPtr pAlarmInfo,
+        uint dwBufLen,
+        WeighingMode? weighingMode = null)
+    {
+        if (weighingMode.HasValue)
+        {
+            _cachedWeighingMode = weighingMode.Value;
+        }
+
+        MessageCallback(lCommand, pAlarmer, pAlarmInfo, dwBufLen, IntPtr.Zero);
+    }
+
+    /// <summary>
     ///     消息回调函数
     ///     CRITICAL: 整个回调必须用 try-catch 包裹，防止未处理异常导致进程崩溃
     /// </summary>
