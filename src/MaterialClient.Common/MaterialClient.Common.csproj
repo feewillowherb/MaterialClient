@@ -50,6 +50,7 @@
         <PackageReference Include="ClosedXML"/>
         <PackageReference Include="System.Drawing.Common"/>
         <PackageReference Include="System.IdentityModel.Tokens.Jwt"/>
+        <PackageReference Include="System.Text.Encoding.CodePages"/>
     </ItemGroup>
 
 

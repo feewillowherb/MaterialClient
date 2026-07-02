@@ -15,7 +15,7 @@ public static class HikvisionEncodingHelper
 
     static HikvisionEncodingHelper()
     {
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        CodePagesEncodingInitializer.Register();
     }
 
     /// <summary>

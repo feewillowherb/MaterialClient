@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Threading;
 using Avalonia;
 using Avalonia.ReactiveUI;
+using MaterialClient.Common.Utils;
 
 namespace MaterialClient;
 
@@ -16,6 +17,8 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        CodePagesEncodingInitializer.Register();
+
         // 使用 Mutex 确保只有一个实例运行
         using var mutex = new Mutex(true, MutexName, out bool createdNew);
         

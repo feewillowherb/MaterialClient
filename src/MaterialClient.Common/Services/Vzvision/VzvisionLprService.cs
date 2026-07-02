@@ -49,7 +49,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     /// <summary>SDK 车牌字节为 GB2312（与 Vz 设备侧常见编码一致）</summary>
     private static readonly Lazy<Encoding> Gb2312Encoding = new(() =>
     {
-        Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        CodePagesEncodingInitializer.Register();
         return Encoding.GetEncoding("GB2312");
     });
 
