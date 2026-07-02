@@ -399,44 +399,43 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             // 查找设备配置
             _deviceConfigs.TryGetValue(deviceIp, out var config);
 
-            // 解析 ITS 车牌识别结果
-            var itsResult = Marshal.PtrToStructure<HikvisionSdk.NET_ITS_PLATE_RESULT>(pAlarmInfo);
+            // 解析 ITS 车牌识别结果（NET_ITS_PLATE_RESULT，dwSize=592）
+            var itsResult = HikvisionItsPlateResultParser.Parse(pAlarmInfo);
+            var plateInfo = itsResult.struPlateInfo;
 
-            // 遍历所有车牌识别结果
-            for (var i = 0; i < itsResult.dwResultNum && i < itsResult.struPlateInfo.Length; i++)
+            // 使用 GBK 编码提取车牌号
+            var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
+
+            // 提取车辆信息（车身颜色在 struVehicleInfo，车牌颜色在 struPlateInfo）
+            var vehicleColor = MapSdkVehicleColor(itsResult.struVehicleInfo.byColor);
+            var vehicleType = MapSdkVehicleType(itsResult.byVehicleType);
+            var plateColor = MapSdkPlateColor(plateInfo.byColor);
+
+            // 提取 Lpr 图片（仅 UrbanMode）
+            var lprPic = HikvisionItsPlateResultParser.SelectLprPicture(itsResult);
+            var lrpPath = lprPic.HasValue
+                ? TrySaveLprAttachment(lprPic.Value.pBuffer, (int)lprPic.Value.dwDataLen, plateNumber)
+                : null;
+
+            // 通过 ILocalEventBus 发布车牌识别事件
+            var eventData = new LicensePlateRecognizedEventData
             {
-                var plateInfo = itsResult.struPlateInfo[i];
+                PlateNumber = plateNumber,
+                ColorType = null,
+                VehicleColor = vehicleColor,
+                VehicleType = vehicleType,
+                PlateColor = plateColor,
+                DeviceType = LprDeviceType.Hikvision,
+                DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
+                Timestamp = DateTime.Now,
+                LprImagePath = lrpPath
+            };
+            _ = _localEventBus.PublishAsync(eventData);
 
-                // 使用 GBK 编码提取车牌号
-                var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
-
-                // 提取车辆信息
-                var vehicleColor = MapVehicleColor(plateInfo.byColor);
-                var vehicleType = MapVehicleType(plateInfo.byVehicleType);
-                var plateColor = MapPlateColor(plateInfo.struPlateInfoEx);
-
-                // 提取 Lpr 图片（仅 UrbanMode）
-                var lrpPath = TrySaveLprAttachment(plateInfo.pBuffer, plateInfo.dwPicLen, plateNumber);
-
-                // 通过 ILocalEventBus 发布车牌识别事件
-                var eventData = new LicensePlateRecognizedEventData
-                {
-                    PlateNumber = plateNumber,
-                    ColorType = null, // 海康威视使用 PlateColor 字符串字段
-                    VehicleColor = vehicleColor,
-                    VehicleType = vehicleType,
-                    PlateColor = plateColor,
-                    DeviceType = LprDeviceType.Hikvision,
-                    DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
-                    Timestamp = DateTime.Now,
-                    LprImagePath = lrpPath
-                };
-                _ = _localEventBus.PublishAsync(eventData);
-
-                _logger?.LogInformation(
-                    "收到 ITS 车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                    eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
-            }
+            _logger?.LogInformation(
+                "收到 ITS 车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}, Detail={Detail}",
+                eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A,
+                eventData.Timestamp, HikvisionItsPlateResultParser.Format(itsResult));
         }
         catch (Exception ex)
         {
@@ -820,4 +819,13 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         var plateColorType = (HikvisionPlateColorType)colorValue;
         return plateColorType.GetDescription();
     }
+
+    private static string? MapSdkPlateColor(byte byColor) =>
+        HikvisionItsPlateResultParser.GetPlateColorDescription(byColor);
+
+    private static string? MapSdkVehicleColor(byte byColor) =>
+        HikvisionItsPlateResultParser.GetVehicleColorDescription(byColor);
+
+    private static string? MapSdkVehicleType(byte byVehicleType) =>
+        HikvisionItsPlateResultParser.GetVehicleTypeDescription(byVehicleType);
 }
