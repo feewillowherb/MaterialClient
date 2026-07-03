@@ -27,8 +27,18 @@ public static class HikvisionPlateNumberHelper
     ];
 
     /// <summary>
+    ///     解析海康 <c>sLicense</c>：提取纯车牌号与车牌颜色（颜色优先取自文本前缀，否则使用 fallback）。
+    /// </summary>
+    public static HikvisionPlateLicense ParseLicense(string? plateRaw, string? fallbackPlateColor = null)
+    {
+        var plateNumber = StripColorPrefix(plateRaw);
+        var plateColor = TryExtractColorFromPrefix(plateRaw, plateNumber)
+                         ?? NormalizePlateColor(fallbackPlateColor);
+        return new HikvisionPlateLicense(plateNumber, plateColor);
+    }
+
+    /// <summary>
     ///     去除海康 <c>sLicense</c> 中嵌在车牌号前的颜色前缀（如「蓝」「黄色」）。
-    ///     车牌颜色应使用 <c>byColor</c> 字段映射，而非依赖 <c>sLicense</c> 文本前缀。
     /// </summary>
     public static string StripColorPrefix(string? plateNumber)
     {
@@ -52,6 +62,42 @@ public static class HikvisionPlateNumberHelper
         }
 
         return StripKnownColorPrefix(trimmed);
+    }
+
+    /// <summary>
+    ///     将车牌颜色规范化为不含「色」字的短形式（如「蓝色」→「蓝」）。
+    /// </summary>
+    public static string? NormalizePlateColor(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+        {
+            return null;
+        }
+
+        var normalized = color.Replace("色", string.Empty, StringComparison.Ordinal);
+        return string.IsNullOrEmpty(normalized) ? null : normalized;
+    }
+
+    private static string? TryExtractColorFromPrefix(string? plateRaw, string plateNumber)
+    {
+        if (string.IsNullOrWhiteSpace(plateRaw))
+        {
+            return null;
+        }
+
+        var trimmed = plateRaw.Trim();
+        if (string.Equals(trimmed, plateNumber, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var prefix = trimmed[..(trimmed.Length - plateNumber.Length)].Trim();
+        if (string.IsNullOrEmpty(prefix))
+        {
+            return null;
+        }
+
+        return NormalizePlateColor(prefix);
     }
 
     private static int FindFirstProvinceIndex(string text)

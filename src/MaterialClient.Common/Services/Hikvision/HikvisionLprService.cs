@@ -368,20 +368,21 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
             var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(pAlarmInfo);
             var plateRaw = HikvisionEncodingHelper.GetString(plateResult.struPlateInfo.sLicense, _logger);
-            var plateNumber = HikvisionPlateNumberHelper.StripColorPrefix(plateRaw);
-            if (!string.Equals(plateRaw, plateNumber, StringComparison.Ordinal))
+            var license = HikvisionPlateNumberHelper.ParseLicense(plateRaw, MapPlateColor(plateResult.struPlateInfo));
+            if (!string.Equals(plateRaw?.Trim(), license.PlateNumber, StringComparison.Ordinal))
             {
-                _logger?.LogDebug("已去除车牌颜色前缀: Raw={Raw}, Plate={Plate}", plateRaw, plateNumber);
+                _logger?.LogDebug(
+                    "已解析 sLicense: Raw={Raw}, Plate={Plate}, PlateColor={PlateColor}",
+                    plateRaw, license.PlateNumber, license.PlateColor);
             }
             var vehicleColor = MapVehicleColor(plateResult.struVehicleInfo.byColor);
             var vehicleType = MapVehicleType(plateResult.byVehicleType);
-            var plateColor = MapPlateColor(plateResult.struPlateInfo);
             var hasImage = (plateResult.dwPicLen != 0 && plateResult.pBuffer1 != IntPtr.Zero)
                            || (plateResult.dwFarCarPicLen != 0 && plateResult.pBuffer5 != IntPtr.Zero);
 
             _logger?.LogDebug(
                 "COMM_UPLOAD_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
-                plateNumber, vehicleColor, vehicleType, plateColor, hasImage);
+                license.PlateNumber, vehicleColor, vehicleType, license.PlateColor, hasImage);
 
             IntPtr imagePtr = IntPtr.Zero;
             var imageLen = 0;
@@ -396,7 +397,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 imageLen = (int)plateResult.dwFarCarPicLen;
             }
 
-            ProcessRecognizedPlate(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor,
+            ProcessRecognizedPlate(license.PlateNumber, deviceIp, config, vehicleColor, vehicleType, license.PlateColor,
                 imagePtr, imageLen, "upload", "收到车牌识别结果", "无效车牌，仅保留 Lpr 图片");
         }
         catch (Exception ex)
@@ -418,14 +419,15 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
             var itsResult = Marshal.PtrToStructure<HikvisionSdk.NET_ITS_PLATE_RESULT>(pAlarmInfo);
             var plateRaw = HikvisionEncodingHelper.GetString(itsResult.struPlateInfo.sLicense, _logger);
-            var plateNumber = HikvisionPlateNumberHelper.StripColorPrefix(plateRaw);
-            if (!string.Equals(plateRaw, plateNumber, StringComparison.Ordinal))
+            var license = HikvisionPlateNumberHelper.ParseLicense(plateRaw, MapPlateColor(itsResult.struPlateInfo));
+            if (!string.Equals(plateRaw?.Trim(), license.PlateNumber, StringComparison.Ordinal))
             {
-                _logger?.LogDebug("已去除车牌颜色前缀: Raw={Raw}, Plate={Plate}", plateRaw, plateNumber);
+                _logger?.LogDebug(
+                    "已解析 sLicense: Raw={Raw}, Plate={Plate}, PlateColor={PlateColor}",
+                    plateRaw, license.PlateNumber, license.PlateColor);
             }
             var vehicleColor = MapVehicleColor(itsResult.struVehicleInfo.byColor);
             var vehicleType = MapVehicleType(itsResult.struVehicleInfo.byVehicleType);
-            var plateColor = MapPlateColor(itsResult.struPlateInfo);
 
             IntPtr imagePtr = IntPtr.Zero;
             var imageLen = 0;
@@ -447,9 +449,9 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
             _logger?.LogDebug(
                 "COMM_ITS_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
-                plateNumber, vehicleColor, vehicleType, plateColor, hasImage);
+                license.PlateNumber, vehicleColor, vehicleType, license.PlateColor, hasImage);
 
-            ProcessRecognizedPlate(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor,
+            ProcessRecognizedPlate(license.PlateNumber, deviceIp, config, vehicleColor, vehicleType, license.PlateColor,
                 imagePtr, imageLen, "its", "收到 ITS 车牌识别结果", "无效车牌，仅保留 Lpr 图片");
         }
         catch (Exception ex)
