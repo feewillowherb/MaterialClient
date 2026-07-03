@@ -1,8 +1,9 @@
-using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
+using MaterialClient.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
     private readonly IRepository<UrbanWeighingExtension, Guid> _extensionRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanAnomalyDetector _anomalyDetector;
+    private readonly ISettingsService _settingsService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<UrbanWeighingExtensionService> _logger;
 
@@ -27,12 +29,14 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         IRepository<UrbanWeighingExtension, Guid> extensionRepository,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IUrbanAnomalyDetector anomalyDetector,
+        ISettingsService settingsService,
         IConfiguration configuration,
         ILogger<UrbanWeighingExtensionService> logger)
     {
         _extensionRepository = extensionRepository;
         _weighingRecordRepository = weighingRecordRepository;
         _anomalyDetector = anomalyDetector;
+        _settingsService = settingsService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -63,7 +67,8 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
         // Persist AnomalyReason at creation time (includes Lrp absence check)
         var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
-        var anomalyConfig = GetAnomalyDetectionConfig();
+        var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
+            _settingsService, _configuration, _logger);
         extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLprAttachment);
         extension.AnomalyReason = extension.IsAnomaly
             ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLprAttachment)
@@ -235,18 +240,4 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 
-    private UrbanAnomalyDetectionConfig GetAnomalyDetectionConfig()
-    {
-        try
-        {
-            var config = new UrbanAnomalyDetectionConfig();
-            _configuration.GetSection("UrbanAnomalyDetection").Bind(config);
-            return config;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read UrbanAnomalyDetection config, using default values");
-            return new UrbanAnomalyDetectionConfig();
-        }
-    }
 }

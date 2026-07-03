@@ -2,7 +2,8 @@ namespace MaterialClient.Common.Configuration;
 
 /// <summary>
 ///     Urban anomaly detection configuration model.
-///     Bound from the "UrbanAnomalyDetection" section in appsettings.json.
+///     Primary source: <see cref="SystemSettings.UrbanAnomalyDetection" /> via <see cref="Services.ISettingsService" />.
+///     Fallback: "UrbanAnomalyDetection" section in appsettings.json when settings cannot be loaded.
 /// </summary>
 public class UrbanAnomalyDetectionConfig
 {

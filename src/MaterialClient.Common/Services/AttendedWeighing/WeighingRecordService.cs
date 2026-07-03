@@ -356,7 +356,8 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
             // Anomaly detection integration: recalculate anomaly flag after record edit
             // This ensures the anomaly status stays in sync with the edited record data
-            var anomalyConfig = GetAnomalyDetectionConfig();
+            var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
+                _settingsService, _configuration, _logger);
             var hasLpr = await HasLprAttachmentAsync(weighingRecordId);
             var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLpr);
             var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLpr) : null;
@@ -385,25 +386,6 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         {
             _logger.LogWarning(ex, "Failed to load configuration, using default values");
             return new WeighingConfiguration();
-        }
-    }
-
-    /// <summary>
-    ///     Reads UrbanAnomalyDetection config from IConfiguration.
-    ///     Falls back to defaults and logs a warning on failure.
-    /// </summary>
-    private UrbanAnomalyDetectionConfig GetAnomalyDetectionConfig()
-    {
-        try
-        {
-            var config = new UrbanAnomalyDetectionConfig();
-            _configuration.GetSection("UrbanAnomalyDetection").Bind(config);
-            return config;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read UrbanAnomalyDetection config, using default values");
-            return new UrbanAnomalyDetectionConfig();
         }
     }
 
