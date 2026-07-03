@@ -396,17 +396,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 imageLen = (int)plateResult.dwFarCarPicLen;
             }
 
-            if (!TryValidatePlateNumber(plateNumber))
-            {
-#if DEBUG
-                TrySaveInvalidPlateDebugImage(imagePtr, imageLen, plateNumber, "upload", deviceIp);
-#endif
-                return;
-            }
-
-            var lrpPath = TrySaveLprAttachment(imagePtr, imageLen, plateNumber);
-            PublishPlateRecognizedEvent(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor, lrpPath,
-                "收到车牌识别结果");
+            ProcessRecognizedPlate(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor,
+                imagePtr, imageLen, "upload", "收到车牌识别结果", "无效车牌，仅保留 Lpr 图片");
         }
         catch (Exception ex)
         {
@@ -458,17 +449,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 "COMM_ITS_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
                 plateNumber, vehicleColor, vehicleType, plateColor, hasImage);
 
-            if (!TryValidatePlateNumber(plateNumber))
-            {
-#if DEBUG
-                TrySaveInvalidPlateDebugImage(imagePtr, imageLen, plateNumber, "its", deviceIp);
-#endif
-                return;
-            }
-
-            var lrpPath = TrySaveLprAttachment(imagePtr, imageLen, plateNumber);
-            PublishPlateRecognizedEvent(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor, lrpPath,
-                "收到 ITS 车牌识别结果");
+            ProcessRecognizedPlate(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor,
+                imagePtr, imageLen, "its", "收到 ITS 车牌识别结果", "无效车牌，仅保留 Lpr 图片");
         }
         catch (Exception ex)
         {
@@ -489,6 +471,47 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     private static bool TryValidatePlateNumber(string plateNumber)
     {
         return !string.IsNullOrWhiteSpace(plateNumber) && !plateNumber.Contains("车牌");
+    }
+
+    /// <summary>
+    ///     处理识别结果：有效车牌正常发布事件；无效车牌仍尝试保存 Lpr 图片，有图时以空车牌号发布事件。
+    /// </summary>
+    private void ProcessRecognizedPlate(
+        string plateNumber,
+        string deviceIp,
+        LicensePlateRecognitionConfig? config,
+        string? vehicleColor,
+        string? vehicleType,
+        string? plateColor,
+        IntPtr imagePtr,
+        int imageLen,
+        string debugImageSource,
+        string validPlateLogMessage,
+        string invalidPlateLogMessage)
+    {
+        var isValidPlate = TryValidatePlateNumber(plateNumber);
+        var lrpPath = TrySaveLprAttachment(imagePtr, imageLen, plateNumber);
+
+        if (!isValidPlate)
+        {
+            _logger?.LogWarning(
+                "无效车牌，已尝试保留 Lpr 图片: Plate={Plate}, LprPath={LprPath}, DeviceIp={DeviceIp}",
+                plateNumber, lrpPath ?? "(无图)", deviceIp);
+
+#if DEBUG
+            TrySaveInvalidPlateDebugImage(imagePtr, imageLen, plateNumber, debugImageSource, deviceIp);
+#endif
+            if (!string.IsNullOrWhiteSpace(lrpPath))
+            {
+                PublishPlateRecognizedEvent(string.Empty, deviceIp, config, vehicleColor, vehicleType, plateColor,
+                    lrpPath, invalidPlateLogMessage);
+            }
+
+            return;
+        }
+
+        PublishPlateRecognizedEvent(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor, lrpPath,
+            validPlateLogMessage);
     }
 
     private void PublishPlateRecognizedEvent(

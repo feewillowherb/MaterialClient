@@ -8,6 +8,8 @@ using MaterialClient.Common.Tests.HikvisionGolden;
 using MaterialClient.Common.Tests.Tests;
 using MaterialClient.Common.Utils;
 using NSubstitute;
+using System.Runtime.InteropServices;
+using System.Text;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -117,6 +119,71 @@ public class HikvisionPlateGoldenBinaryTests
         }
 
         _output.WriteLine($"Fixture {fixtureId}: plate={captured.PlateNumber}, command=0x{entry.LCommand:X}");
+    }
+
+    [Fact]
+    public void PlateAlarm_InvalidPlate_StillSavesLprAndPublishesEmptyPlate()
+    {
+        CodePagesEncodingInitializer.Register();
+
+        var goldenRoot = HikvisionPlateGoldenLoader.ResolveGoldenRootDirectory();
+        var manifest = HikvisionPlateGoldenLoader.LoadManifest(goldenRoot);
+        var entry = manifest.Fixtures.Single(f => f.Id == "upload_yellow_plate");
+
+        var eventBus = new TestLocalEventBus();
+        LicensePlateRecognizedEventData? captured = null;
+        eventBus.Subscribe<LicensePlateRecognizedEventData>(e => captured = e);
+
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetSettingsAsync().Returns(Task.FromResult(new SettingsEntity(
+            new ScaleSettings(),
+            new DocumentScannerConfig(),
+            new SystemSettings { DefaultWeighingMode = WeighingMode.UrbanMode },
+            [],
+            [],
+            new WeighingConfiguration(),
+            new SoundDeviceSettings())));
+
+        var service = new HikvisionLprService(settingsService, eventBus);
+        service.AddOrUpdateDevice(new LicensePlateRecognitionConfig
+        {
+            Ip = entry.DeviceIp,
+            Name = entry.DeviceName,
+            Direction = LicensePlateDirection.A,
+            UserName = "admin",
+            Password = "admin123",
+            Port = "8000",
+            Channel = "1"
+        });
+
+        using var loader = new HikvisionPlateGoldenLoader();
+        var replay = loader.PrepareReplay(entry, goldenRoot);
+
+        var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(replay.PAlarmInfo);
+        plateResult.struPlateInfo.sLicense = EncodeGbkLicense("车牌");
+        Marshal.StructureToPtr(plateResult, replay.PAlarmInfo, false);
+
+        service.InvokePlateAlarmCallbackForTests(
+            replay.LCommand,
+            replay.PAlarmer,
+            replay.PAlarmInfo,
+            replay.DwBufLen,
+            WeighingMode.UrbanMode);
+
+        Assert.NotNull(captured);
+        Assert.Equal(string.Empty, captured!.PlateNumber);
+        Assert.False(string.IsNullOrWhiteSpace(captured.LprImagePath));
+        Assert.True(PathManager.FileExists(captured.LprImagePath!),
+            $"无效车牌仍应保存 Lpr 图片: {captured.LprImagePath}");
+    }
+
+    private static byte[] EncodeGbkLicense(string plate)
+    {
+        var gbk = Encoding.GetEncoding("GBK");
+        var bytes = gbk.GetBytes(plate);
+        var buffer = new byte[HikvisionSdk.MaxLicenseLen];
+        Array.Copy(bytes, buffer, Math.Min(bytes.Length, buffer.Length));
+        return buffer;
     }
 
     [Fact]
