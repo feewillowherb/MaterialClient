@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Threading;
 using Avalonia;
 using Avalonia.ReactiveUI;
@@ -17,6 +18,9 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // 注册表/计划任务自启动时工作目录常为 System32，需在配置加载前对齐到 exe 目录
+        Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+
         CodePagesEncodingInitializer.Register();
 
         // 使用 Mutex 确保只有一个实例运行
