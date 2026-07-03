@@ -72,6 +72,14 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
             var extension = await _extensionService.GetByWeighingRecordIdAsync(weighingRecordId);
 
+            if (extension == null)
+            {
+                _logger.LogWarning(
+                    "No UrbanWeighingExtension for record {RecordId}; cannot submit without extension Id",
+                    weighingRecordId);
+                return false;
+            }
+
             var licenseInfo = await _licenseService.GetCurrentLicenseAsync();
 
             if (licenseInfo == null)
@@ -90,14 +98,11 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             // F2: record the machine code that submits this weighing data (traceability only —
             // MUST NOT be used for authorization; that is F4's responsibility).
             var submitMachineCode = _machineCodeService.GetMachineCode();
-            if (extension != null)
-            {
-                // Tracked entity within the ambient UnitOfWork → persisted on save.
-                extension.SubmitMachineCode = submitMachineCode;
-            }
+            // Tracked entity within the ambient UnitOfWork → persisted on save.
+            extension.SubmitMachineCode = submitMachineCode;
 
             var accessCode = licenseInfo?.AccessCode ?? string.Empty;
-            var editHistory = extension?.GetEditHistory() ?? [];
+            var editHistory = extension.GetEditHistory();
             var skipAttachmentUpload = editHistory.Count > 0
                                        && !editHistory.Any(e => e.IsImagesModified);
             List<Guid> attachmentIds;
@@ -123,11 +128,11 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 return false;
             }
 
-            var isAnomaly = extension?.IsAnomaly ?? false;
+            var isAnomaly = extension.IsAnomaly;
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
-                ClientRecordId = record.Id,
+                ClientRecordId = extension.Id,
                 PlateNumber = record.PlateNumber,
                 TotalWeight = MaterialMath.ConvertTonToKg(record.TotalWeight),
                 WeighingTime = record.AddDate,
@@ -142,35 +147,29 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 ProName = licenseInfo?.ProName,
                 SubmitMachineCode = submitMachineCode,
                 IsAnomaly = isAnomaly,
-                AnomalyReason = extension?.AnomalyReason?.GetDescription(),
-                ClientSyncType = (int?)(extension?.SyncStatus ?? SyncStatus.Pending),
+                AnomalyReason = extension.AnomalyReason?.GetDescription(),
+                ClientSyncType = (int?)extension.SyncStatus,
                 ClientSyncTime = null,
-                ClientRetryCount = extension?.RetryCount,
-                ClientLastErrorTime = extension?.LastErrorTime,
+                ClientRetryCount = extension.RetryCount,
+                ClientLastErrorTime = extension.LastErrorTime,
                 AttachmentIds = attachmentIds.Count > 0 ? attachmentIds : null
             };
 
             // Build ExtraProperties with edit history from extension
-            if (extension != null)
+            var normalizedEditHistory = editHistory.NormalizeWeightsForServer();
+            if (normalizedEditHistory.Count > 0)
             {
-                var normalizedEditHistory = editHistory.NormalizeWeightsForServer();
-                if (normalizedEditHistory.Count > 0)
+                dto.ExtraProperties = new Dictionary<string, object?>
                 {
-                    dto.ExtraProperties = new Dictionary<string, object?>
-                    {
-                        ["EditHistory"] = JsonSerializer.Serialize(normalizedEditHistory)
-                    };
-                }
+                    ["EditHistory"] = JsonSerializer.Serialize(normalizedEditHistory)
+                };
             }
 
             var response = await _urbanManagementApi.ReceiveWeighingRecordAsync(dto);
 
             if (response.RecordId != Guid.Empty)
             {
-                if (extension != null)
-                {
-                    await _extensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Synced);
-                }
+                await _extensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Synced);
 
                 _logger.LogInformation(
                     "Record {RecordId} submitted to server successfully. ServerId={ServerId}, AttachmentCount={AttachmentCount}",

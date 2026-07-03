@@ -78,6 +78,18 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
+    public virtual async Task<UrbanWeighingExtension?> GetByIdAsync(Guid extensionId)
+    {
+        if (extensionId == Guid.Empty)
+        {
+            return null;
+        }
+
+        return await _extensionRepository.FindAsync(extensionId);
+    }
+
+    /// <inheritdoc />
+    [UnitOfWork]
     public virtual async Task<UrbanWeighingExtension?> GetByWeighingRecordIdAsync(long weighingRecordId)
     {
         if (weighingRecordId <= 0)

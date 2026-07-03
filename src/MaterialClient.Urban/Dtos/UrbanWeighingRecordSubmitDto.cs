@@ -8,7 +8,8 @@ namespace MaterialClient.Urban.Dtos;
 /// </summary>
 public class UrbanWeighingRecordSubmitDto
 {
-    [JsonPropertyName("clientRecordId")] public long ClientRecordId { get; set; }
+    /// <summary>客户端扩展 ID（<c>UrbanWeighingExtension.Id</c>，用于幂等去重）。</summary>
+    [JsonPropertyName("clientRecordId")] public Guid ClientRecordId { get; set; }
 
     [JsonPropertyName("plateNumber")] public string? PlateNumber { get; set; }
 
