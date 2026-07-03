@@ -367,7 +367,12 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             _deviceConfigs.TryGetValue(deviceIp, out var config);
 
             var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(pAlarmInfo);
-            var plateNumber = HikvisionEncodingHelper.GetString(plateResult.struPlateInfo.sLicense, _logger);
+            var plateRaw = HikvisionEncodingHelper.GetString(plateResult.struPlateInfo.sLicense, _logger);
+            var plateNumber = HikvisionPlateNumberHelper.StripColorPrefix(plateRaw);
+            if (!string.Equals(plateRaw, plateNumber, StringComparison.Ordinal))
+            {
+                _logger?.LogDebug("已去除车牌颜色前缀: Raw={Raw}, Plate={Plate}", plateRaw, plateNumber);
+            }
             var vehicleColor = MapVehicleColor(plateResult.struVehicleInfo.byColor);
             var vehicleType = MapVehicleType(plateResult.byVehicleType);
             var plateColor = MapPlateColor(plateResult.struPlateInfo);
@@ -421,7 +426,12 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             _deviceConfigs.TryGetValue(deviceIp, out var config);
 
             var itsResult = Marshal.PtrToStructure<HikvisionSdk.NET_ITS_PLATE_RESULT>(pAlarmInfo);
-            var plateNumber = HikvisionEncodingHelper.GetString(itsResult.struPlateInfo.sLicense, _logger);
+            var plateRaw = HikvisionEncodingHelper.GetString(itsResult.struPlateInfo.sLicense, _logger);
+            var plateNumber = HikvisionPlateNumberHelper.StripColorPrefix(plateRaw);
+            if (!string.Equals(plateRaw, plateNumber, StringComparison.Ordinal))
+            {
+                _logger?.LogDebug("已去除车牌颜色前缀: Raw={Raw}, Plate={Plate}", plateRaw, plateNumber);
+            }
             var vehicleColor = MapVehicleColor(itsResult.struVehicleInfo.byColor);
             var vehicleType = MapVehicleType(itsResult.struVehicleInfo.byVehicleType);
             var plateColor = MapPlateColor(itsResult.struPlateInfo);
