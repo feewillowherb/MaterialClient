@@ -1779,8 +1779,9 @@ public class AttendedWeighingServiceTests : IDisposable
         var stateManager = new WeighingStateManager(_testEventBus, stateManagerLogger);
         var plateNumberService = new PlateNumberService(recommendPlateService, _testEventBus, plateLogger);
         var streamPipeline = new WeighingStreamPipeline(pipelineLogger);
+        var lprDeviceResolver = Substitute.For<ILprDeviceResolver>();
         var captureService = new WeighingCaptureService(
-            hikvisionService, null, settingsService, captureLogger);
+            hikvisionService, lprDeviceResolver, settingsService, captureLogger);
         var recordService = new WeighingRecordService(
             weighingRecordRepo, Substitute.For<IUrbanWeighingExtensionService>(), fileRepo, attachmentRepo, uowManager, settingsService,
             plateNumberService, _testEventBus, recordLogger,
