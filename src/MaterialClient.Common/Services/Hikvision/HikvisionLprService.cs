@@ -301,6 +301,29 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     }
 
     /// <summary>
+    ///     测试专用：回放 SDK 报警回调，无需 NET_DVR_StartListen_V30 或物理设备。
+    /// </summary>
+    /// <param name="lCommand">报警命令，如 COMM_UPLOAD_PLATE_RESULT / COMM_ITS_PLATE_RESULT</param>
+    /// <param name="pAlarmer">NET_DVR_ALARMER 非托管指针</param>
+    /// <param name="pAlarmInfo">NET_DVR_PLATE_RESULT 或 NET_ITS_PLATE_RESULT 非托管指针</param>
+    /// <param name="dwBufLen">报警数据长度</param>
+    /// <param name="weighingMode">可选，覆盖称重模式（如 UrbanMode 以测试 Lpr 图片保存）</param>
+    internal void InvokePlateAlarmCallbackForTests(
+        int lCommand,
+        IntPtr pAlarmer,
+        IntPtr pAlarmInfo,
+        uint dwBufLen,
+        WeighingMode? weighingMode = null)
+    {
+        if (weighingMode.HasValue)
+        {
+            _cachedWeighingMode = weighingMode.Value;
+        }
+
+        MessageCallback(lCommand, pAlarmer, pAlarmInfo, dwBufLen, IntPtr.Zero);
+    }
+
+    /// <summary>
     ///     消息回调函数
     ///     CRITICAL: 整个回调必须用 try-catch 包裹，防止未处理异常导致进程崩溃
     /// </summary>
@@ -339,45 +362,43 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     {
         try
         {
-            // 解析报警器信息（包含设备 IP）
             var alarmer = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_ALARMER>(pAlarmer);
-            var deviceIp = Encoding.ASCII.GetString(alarmer.sDeviceIP).TrimEnd('\0');
-
-            // 查找设备配置
+            var deviceIp = ResolveDeviceIp(alarmer);
             _deviceConfigs.TryGetValue(deviceIp, out var config);
 
-            // 解析车牌识别结果
             var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(pAlarmInfo);
-
-            // 使用 GBK 编码提取车牌号
-            var plateNumber = HikvisionEncodingHelper.GetString(plateResult.sLicense, _logger);
-
-            // 提取车辆信息
-            var vehicleColor = MapVehicleColor(plateResult.byColor);
-            var vehicleType = MapVehicleType(plateResult.byVehicleType);
-            var plateColor = MapPlateColor(plateResult.struPlateInfo);
-
-            // 提取 Lpr 图片（仅 UrbanMode）
-            var lrpPath = TrySaveLprAttachment(plateResult.pBuffer, plateResult.dwPicLen, plateNumber);
-
-            // 通过 ILocalEventBus 发布车牌识别事件
-            var eventData = new LicensePlateRecognizedEventData
+            var plateRaw = HikvisionEncodingHelper.GetString(plateResult.struPlateInfo.sLicense, _logger);
+            var license = HikvisionPlateNumberHelper.ParseLicense(plateRaw, MapPlateColor(plateResult.struPlateInfo));
+            if (!string.Equals(plateRaw?.Trim(), license.PlateNumber, StringComparison.Ordinal))
             {
-                PlateNumber = plateNumber,
-                ColorType = null, // 海康威视使用 PlateColor 字符串字段
-                VehicleColor = vehicleColor,
-                VehicleType = vehicleType,
-                PlateColor = plateColor,
-                DeviceType = LprDeviceType.Hikvision,
-                DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
-                Timestamp = DateTime.Now,
-                LprImagePath = lrpPath
-            };
-            _ = _localEventBus.PublishAsync(eventData);
+                _logger?.LogDebug(
+                    "已解析 sLicense: Raw={Raw}, Plate={Plate}, PlateColor={PlateColor}",
+                    plateRaw, license.PlateNumber, license.PlateColor);
+            }
+            var vehicleColor = MapVehicleColor(plateResult.struVehicleInfo.byColor);
+            var vehicleType = MapVehicleType(plateResult.byVehicleType);
+            var hasImage = (plateResult.dwPicLen != 0 && plateResult.pBuffer1 != IntPtr.Zero)
+                           || (plateResult.dwFarCarPicLen != 0 && plateResult.pBuffer5 != IntPtr.Zero);
 
-            _logger?.LogInformation(
-                "收到车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
+            _logger?.LogDebug(
+                "COMM_UPLOAD_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
+                license.PlateNumber, vehicleColor, vehicleType, license.PlateColor, hasImage);
+
+            IntPtr imagePtr = IntPtr.Zero;
+            var imageLen = 0;
+            if (plateResult.dwPicLen != 0 && plateResult.pBuffer1 != IntPtr.Zero)
+            {
+                imagePtr = plateResult.pBuffer1;
+                imageLen = (int)plateResult.dwPicLen;
+            }
+            else if (plateResult.dwFarCarPicLen != 0 && plateResult.pBuffer5 != IntPtr.Zero)
+            {
+                imagePtr = plateResult.pBuffer5;
+                imageLen = (int)plateResult.dwFarCarPicLen;
+            }
+
+            ProcessRecognizedPlate(license.PlateNumber, deviceIp, config, vehicleColor, vehicleType, license.PlateColor,
+                imagePtr, imageLen, "upload", "收到车牌识别结果", "无效车牌，仅保留 Lpr 图片");
         }
         catch (Exception ex)
         {
@@ -392,56 +413,137 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     {
         try
         {
-            // 解析报警器信息（包含设备 IP）
             var alarmer = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_ALARMER>(pAlarmer);
-            var deviceIp = Encoding.ASCII.GetString(alarmer.sDeviceIP).TrimEnd('\0');
-
-            // 查找设备配置
+            var deviceIp = ResolveDeviceIp(alarmer);
             _deviceConfigs.TryGetValue(deviceIp, out var config);
 
-            // 解析 ITS 车牌识别结果
             var itsResult = Marshal.PtrToStructure<HikvisionSdk.NET_ITS_PLATE_RESULT>(pAlarmInfo);
-
-            // 遍历所有车牌识别结果
-            for (var i = 0; i < itsResult.dwResultNum && i < itsResult.struPlateInfo.Length; i++)
+            var plateRaw = HikvisionEncodingHelper.GetString(itsResult.struPlateInfo.sLicense, _logger);
+            var license = HikvisionPlateNumberHelper.ParseLicense(plateRaw, MapPlateColor(itsResult.struPlateInfo));
+            if (!string.Equals(plateRaw?.Trim(), license.PlateNumber, StringComparison.Ordinal))
             {
-                var plateInfo = itsResult.struPlateInfo[i];
-
-                // 使用 GBK 编码提取车牌号
-                var plateNumber = HikvisionEncodingHelper.GetString(plateInfo.sLicense, _logger);
-
-                // 提取车辆信息
-                var vehicleColor = MapVehicleColor(plateInfo.byColor);
-                var vehicleType = MapVehicleType(plateInfo.byVehicleType);
-                var plateColor = MapPlateColor(plateInfo.struPlateInfoEx);
-
-                // 提取 Lpr 图片（仅 UrbanMode）
-                var lrpPath = TrySaveLprAttachment(plateInfo.pBuffer, plateInfo.dwPicLen, plateNumber);
-
-                // 通过 ILocalEventBus 发布车牌识别事件
-                var eventData = new LicensePlateRecognizedEventData
-                {
-                    PlateNumber = plateNumber,
-                    ColorType = null, // 海康威视使用 PlateColor 字符串字段
-                    VehicleColor = vehicleColor,
-                    VehicleType = vehicleType,
-                    PlateColor = plateColor,
-                    DeviceType = LprDeviceType.Hikvision,
-                    DeviceName = config?.Name ?? $"Unknown ({deviceIp})",
-                    Timestamp = DateTime.Now,
-                    LprImagePath = lrpPath
-                };
-                _ = _localEventBus.PublishAsync(eventData);
-
-                _logger?.LogInformation(
-                    "收到 ITS 车牌识别结果: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-                    eventData.DeviceName, eventData.PlateNumber, config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
+                _logger?.LogDebug(
+                    "已解析 sLicense: Raw={Raw}, Plate={Plate}, PlateColor={PlateColor}",
+                    plateRaw, license.PlateNumber, license.PlateColor);
             }
+            var vehicleColor = MapVehicleColor(itsResult.struVehicleInfo.byColor);
+            var vehicleType = MapVehicleType(itsResult.struVehicleInfo.byVehicleType);
+
+            IntPtr imagePtr = IntPtr.Zero;
+            var imageLen = 0;
+            var hasImage = false;
+            var picCount = Math.Min((int)itsResult.dwPicNum, itsResult.struPicInfo.Length);
+            for (var i = 0; i < picCount; i++)
+            {
+                var picInfo = itsResult.struPicInfo[i];
+                if (picInfo.dwDataLen == 0 || picInfo.byType != HikvisionSdk.HikItsPictureTypeScene)
+                {
+                    continue;
+                }
+
+                hasImage = true;
+                imagePtr = picInfo.pBuffer;
+                imageLen = (int)picInfo.dwDataLen;
+                break;
+            }
+
+            _logger?.LogDebug(
+                "COMM_ITS_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
+                license.PlateNumber, vehicleColor, vehicleType, license.PlateColor, hasImage);
+
+            ProcessRecognizedPlate(license.PlateNumber, deviceIp, config, vehicleColor, vehicleType, license.PlateColor,
+                imagePtr, imageLen, "its", "收到 ITS 车牌识别结果", "无效车牌，仅保留 Lpr 图片");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "处理 ITS 车牌识别结果失败");
         }
+    }
+
+    private static string ResolveDeviceIp(HikvisionSdk.NET_DVR_ALARMER alarmer)
+    {
+        if (alarmer.byDeviceIPValid == 0 || alarmer.sDeviceIP is not { Length: > 0 })
+        {
+            return string.Empty;
+        }
+
+        return Encoding.UTF8.GetString(alarmer.sDeviceIP).TrimEnd('\0');
+    }
+
+    private static bool TryValidatePlateNumber(string plateNumber)
+    {
+        return !string.IsNullOrWhiteSpace(plateNumber) && !plateNumber.Contains("车牌");
+    }
+
+    /// <summary>
+    ///     处理识别结果：有效车牌正常发布事件；无效车牌仍尝试保存 Lpr 图片，有图时以空车牌号发布事件。
+    /// </summary>
+    private void ProcessRecognizedPlate(
+        string plateNumber,
+        string deviceIp,
+        LicensePlateRecognitionConfig? config,
+        string? vehicleColor,
+        string? vehicleType,
+        string? plateColor,
+        IntPtr imagePtr,
+        int imageLen,
+        string debugImageSource,
+        string validPlateLogMessage,
+        string invalidPlateLogMessage)
+    {
+        var isValidPlate = TryValidatePlateNumber(plateNumber);
+        var lrpPath = TrySaveLprAttachment(imagePtr, imageLen, plateNumber);
+
+        if (!isValidPlate)
+        {
+            _logger?.LogWarning(
+                "无效车牌，已尝试保留 Lpr 图片: Plate={Plate}, LprPath={LprPath}, DeviceIp={DeviceIp}",
+                plateNumber, lrpPath ?? "(无图)", deviceIp);
+
+#if DEBUG
+            TrySaveInvalidPlateDebugImage(imagePtr, imageLen, plateNumber, debugImageSource, deviceIp);
+#endif
+            if (!string.IsNullOrWhiteSpace(lrpPath))
+            {
+                PublishPlateRecognizedEvent(string.Empty, deviceIp, config, vehicleColor, vehicleType, plateColor,
+                    lrpPath, invalidPlateLogMessage);
+            }
+
+            return;
+        }
+
+        PublishPlateRecognizedEvent(plateNumber, deviceIp, config, vehicleColor, vehicleType, plateColor, lrpPath,
+            validPlateLogMessage);
+    }
+
+    private void PublishPlateRecognizedEvent(
+        string plateNumber,
+        string deviceIp,
+        LicensePlateRecognitionConfig? config,
+        string? vehicleColor,
+        string? vehicleType,
+        string? plateColor,
+        string? lrpPath,
+        string logMessageTemplate)
+    {
+        var eventData = new LicensePlateRecognizedEventData
+        {
+            PlateNumber = plateNumber,
+            ColorType = null,
+            VehicleColor = vehicleColor,
+            VehicleType = vehicleType,
+            PlateColor = plateColor,
+            DeviceType = LprDeviceType.Hikvision,
+            DeviceName = config?.Name ?? (string.IsNullOrWhiteSpace(deviceIp) ? "Unknown" : $"Unknown ({deviceIp})"),
+            Timestamp = DateTime.Now,
+            LprImagePath = lrpPath
+        };
+        _ = _localEventBus.PublishAsync(eventData);
+
+        _logger?.LogInformation(
+            "{LogMessage}: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
+            logMessageTemplate, eventData.DeviceName, eventData.PlateNumber,
+            config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
     }
 
     /// <summary>
@@ -491,6 +593,78 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             return null;
         }
     }
+
+#if DEBUG
+    /// <summary>
+    ///     调试专用：车牌校验失败时仍将附带图片落盘，便于分析结构体错位或无效识别结果。
+    ///     仅 DEBUG 构建生效，保存至 LprDebug/invalid-plate/。
+    /// </summary>
+    private void TrySaveInvalidPlateDebugImage(
+        IntPtr pBuffer,
+        int picLen,
+        string plateRaw,
+        string source,
+        string deviceIp)
+    {
+        if (pBuffer == IntPtr.Zero || picLen <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var imageBytes = new byte[picLen];
+            Marshal.Copy(pBuffer, imageBytes, 0, picLen);
+
+            var debugDir = PathManager.EnsureDirectoryExists("LprDebug/invalid-plate");
+            var safePlate = SanitizeDebugFileNameFragment(plateRaw);
+            var safeIp = string.IsNullOrWhiteSpace(deviceIp) ? "unknown-ip" : deviceIp.Replace('.', '-');
+            var fileName = $"{source}_{safePlate}_{safeIp}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
+            var filePath = Path.Combine(debugDir, fileName);
+            File.WriteAllBytes(filePath, imageBytes);
+
+            _logger?.LogDebug(
+                "无效车牌调试图片已保存: Path={Path}, PlateRaw={PlateRaw}, Source={Source}, DeviceIp={DeviceIp}",
+                PathManager.ToRelativePath(filePath), plateRaw, source, deviceIp);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex,
+                "保存无效车牌调试图片失败: PlateRaw={PlateRaw}, Source={Source}, DeviceIp={DeviceIp}",
+                plateRaw, source, deviceIp);
+        }
+    }
+
+    private static string SanitizeDebugFileNameFragment(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "empty";
+        }
+
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var builder = new StringBuilder(Math.Min(text.Length, 32));
+        foreach (var ch in text)
+        {
+            if (Array.IndexOf(invalidChars, ch) >= 0 || char.IsControl(ch))
+            {
+                builder.Append('_');
+            }
+            else
+            {
+                builder.Append(ch);
+            }
+
+            if (builder.Length >= 32)
+            {
+                break;
+            }
+        }
+
+        var sanitized = builder.ToString().Trim();
+        return string.IsNullOrEmpty(sanitized) ? "invalid" : sanitized;
+    }
+#endif
 
     /// <summary>
     ///     确保 SDK 已初始化
@@ -697,10 +871,10 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         {
             dwSize = (uint)Marshal.SizeOf<HikvisionSdk.NET_DVR_SNAPCFG>(),
             byRelatedDriveWay = 0,
-            bySnapTimes = 0, // 0 = 单次抓拍
-            wSnapWaitTime = 0,
-            wIntervalTime = new ushort[4],
-            dwSnapVehicleNum = 0,
+            bySnapTimes = 1, // 0 = 单次抓拍
+            wSnapWaitTime = 1,
+            wIntervalTime =  [200,0,0,0],
+            dwSnapVehicleNum = 1,
             struJpegPara = new HikvisionSdk.NET_DVR_JPEGPARA { wPicSize = 0xff, wPicQuality = 1 },
             byRes2 = new byte[16]
         };
@@ -808,12 +982,9 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     /// </summary>
     /// <param name="plateInfoEx">车牌扩展信息</param>
     /// <returns>可读字符串，未知值返回 null</returns>
-    private static string? MapPlateColor(HikvisionSdk.NET_DVR_PLATE_INFO_EX plateInfoEx)
+    private static string? MapPlateColor(HikvisionSdk.NET_DVR_PLATE_INFO plateInfo)
     {
-        if (plateInfoEx.byColor == null || plateInfoEx.byColor.Length == 0)
-            return null;
-
-        var colorValue = (int)plateInfoEx.byColor[0];
+        var colorValue = (int)plateInfo.byColor;
         if (!Enum.IsDefined(typeof(HikvisionPlateColorType), colorValue))
             return null;
 

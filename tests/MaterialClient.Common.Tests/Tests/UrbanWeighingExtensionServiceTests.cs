@@ -1,3 +1,4 @@
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
@@ -29,6 +30,7 @@ public class UrbanWeighingExtensionServiceTests
             _extensionRepository,
             _weighingRecordRepository,
             Substitute.For<IUrbanAnomalyDetector>(),
+            Substitute.For<ISettingsService>(),
             new ConfigurationBuilder().Build(),
             Substitute.For<ILogger<UrbanWeighingExtensionService>>());
     }

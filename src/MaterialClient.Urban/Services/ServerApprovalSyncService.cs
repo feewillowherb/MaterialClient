@@ -1,5 +1,4 @@
 using MaterialClient.Common.Models;
-using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.Urban;
@@ -22,7 +21,7 @@ public interface IServerApprovalSyncService : ITransientDependency
 [AutoConstructor]
 public partial class ServerApprovalSyncService : IServerApprovalSyncService
 {
-    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IRepository<MaterialClient.Common.Entities.WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanWeighingExtensionService _urbanWeighingExtensionService;
     private readonly IUrbanManagementApi _urbanManagementApi;
     private readonly ILocalEventBus _localEventBus;
@@ -31,20 +30,28 @@ public partial class ServerApprovalSyncService : IServerApprovalSyncService
     [UnitOfWork]
     public virtual async Task<bool> ApplyServerApprovalAsync(WeighingRecordApprovedPushDto push)
     {
-        var record = await _weighingRecordRepository.FindAsync(push.ClientRecordId);
+        var extension = await _urbanWeighingExtensionService.GetByIdAsync(push.ClientRecordId);
+        if (extension == null)
+        {
+            _logger.LogWarning(
+                "Server approval sync skipped: UrbanWeighingExtension {ClientRecordId} not found",
+                push.ClientRecordId);
+            return false;
+        }
+
+        var record = await _weighingRecordRepository.FindAsync(extension.WeighingRecordId);
         if (record == null)
         {
             _logger.LogWarning(
-                "Server approval sync skipped: local record {ClientRecordId} not found",
+                "Server approval sync skipped: local WeighingRecord {WeighingRecordId} not found for extension {ClientRecordId}",
+                extension.WeighingRecordId,
                 push.ClientRecordId);
             return false;
         }
 
         var totalWeightTon = MaterialMath.ConvertKgToTon(push.TotalWeight);
-        var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(push.ClientRecordId);
 
-        var alreadyApplied = extension != null
-                             && !extension.IsAnomaly
+        var alreadyApplied = !extension.IsAnomaly
                              && string.Equals(record.PlateNumber, push.PlateNumber, StringComparison.Ordinal)
                              && record.TotalWeight == totalWeightTon;
 
@@ -54,11 +61,8 @@ public partial class ServerApprovalSyncService : IServerApprovalSyncService
             record.TotalWeight = totalWeightTon;
             await _weighingRecordRepository.UpdateAsync(record, autoSave: true);
 
-            if (extension != null)
-            {
-                await _urbanWeighingExtensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Synced);
-                await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, false, null);
-            }
+            await _urbanWeighingExtensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Synced);
+            await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, false, null);
         }
 
         try
@@ -74,7 +78,7 @@ public partial class ServerApprovalSyncService : IServerApprovalSyncService
                 push.ClientRecordId);
         }
 
-        await _localEventBus.PublishAsync(new ServerApprovalSyncedEventData(push.ClientRecordId));
+        await _localEventBus.PublishAsync(new ServerApprovalSyncedEventData(extension.WeighingRecordId));
         return true;
     }
 }

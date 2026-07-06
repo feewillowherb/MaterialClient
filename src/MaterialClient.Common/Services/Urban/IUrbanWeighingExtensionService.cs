@@ -17,6 +17,11 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLprAttachment = true);
 
     /// <summary>
+    ///     按扩展 Id 查询。
+    /// </summary>
+    Task<UrbanWeighingExtension?> GetByIdAsync(Guid extensionId);
+
+    /// <summary>
     ///     按称重记录 Id 查询扩展。
     /// </summary>
     Task<UrbanWeighingExtension?> GetByWeighingRecordIdAsync(long weighingRecordId);

@@ -5,7 +5,7 @@ namespace MaterialClient.Urban.Dtos;
 public class AckApprovalSyncDto
 {
     [JsonPropertyName("clientRecordId")]
-    public long ClientRecordId { get; set; }
+    public Guid ClientRecordId { get; set; }
 }
 
 public class PendingServerApprovalSyncQueryDto

@@ -1,0 +1,40 @@
+{
+  "fixtures": [
+    {
+      "id": "upload_yellow_plate",
+      "folder": "upload",
+      "lCommand": 10240,
+      "deviceIp": "192.168.1.100",
+      "deviceName": "\u5165\u53E3\u76F8\u673A",
+      "expectedPlate": "\u6D59A12345",
+      "expectedPlateColor": "\u9EC4",
+      "expectedVehicleColor": "\u767D\u8272",
+      "expectedVehicleType": "\u5C0F\u8F7F\u8F66",
+      "alarmerFile": "alarmer.bin",
+      "alarmInfoFile": "plate_result.bin",
+      "imageFile": "scene.jpg",
+      "imageBinding": {
+        "type": "upload",
+        "picIndex": 0
+      }
+    },
+    {
+      "id": "its_yellow_plate",
+      "folder": "its",
+      "lCommand": 12368,
+      "deviceIp": "192.168.1.100",
+      "deviceName": "\u5165\u53E3\u76F8\u673A",
+      "expectedPlate": "\u6D59A12345",
+      "expectedPlateColor": "\u9EC4",
+      "expectedVehicleColor": "\u767D\u8272",
+      "expectedVehicleType": "\u5C0F\u8F7F\u8F66",
+      "alarmerFile": "alarmer.bin",
+      "alarmInfoFile": "plate_result.bin",
+      "imageFile": "scene.jpg",
+      "imageBinding": {
+        "type": "its",
+        "picIndex": 0
+      }
+    }
+  ]
+}

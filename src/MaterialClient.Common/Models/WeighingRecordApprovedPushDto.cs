@@ -8,7 +8,8 @@ namespace MaterialClient.Common.Models;
 public class WeighingRecordApprovedPushDto
 {
     [JsonPropertyName("clientRecordId")]
-    public long ClientRecordId { get; set; }
+    /// <summary>客户端 <see cref="Entities.Urban.UrbanWeighingExtension" /> Id。</summary>
+    public Guid ClientRecordId { get; set; }
 
     [JsonPropertyName("plateNumber")]
     public string PlateNumber { get; set; } = string.Empty;
