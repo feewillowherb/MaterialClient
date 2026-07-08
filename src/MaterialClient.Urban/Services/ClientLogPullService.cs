@@ -324,7 +324,7 @@ namespace MaterialClient.Urban.Services
                 var fileInfo = new FileInfo(fullPath);
                 var totalChunks = (int)Math.Ceiling((double)fileInfo.Length / chunkSize);
 
-                using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 var buffer = new byte[chunkSize];
                 int chunkIndex = 0;
                 int bytesRead;
