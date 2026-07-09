@@ -30,6 +30,8 @@ public class RecycleDataSyncService : DomainService
 
     private readonly IRepository<WeighingRecord, long> _recordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
+    private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<WeighingRecordAttachment, int> _attachmentLinkRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRecycleDataApi _recycleApi;
@@ -40,6 +42,8 @@ public class RecycleDataSyncService : DomainService
     public RecycleDataSyncService(
         IRepository<WeighingRecord, long> recordRepository,
         IRepository<Waybill, long> waybillRepository,
+        IRepository<WaybillMaterial, int> waybillMaterialRepository,
+        IRepository<Material, int> materialRepository,
         IRepository<WeighingRecordAttachment, int> attachmentLinkRepository,
         IRepository<AttachmentFile, int> attachmentFileRepository,
         IRecycleDataApi recycleApi,
@@ -49,6 +53,8 @@ public class RecycleDataSyncService : DomainService
     {
         _recordRepository = recordRepository;
         _waybillRepository = waybillRepository;
+        _waybillMaterialRepository = waybillMaterialRepository;
+        _materialRepository = materialRepository;
         _attachmentLinkRepository = attachmentLinkRepository;
         _attachmentFileRepository = attachmentFileRepository;
         _recycleApi = recycleApi;
@@ -142,13 +148,20 @@ public class RecycleDataSyncService : DomainService
         }
 
         var waybill = await LoadWaybillAsync(record.WaybillId, cancellationToken);
+        var productName = await ResolveProductNameAsync(record, waybill, cancellationToken);
+        if (string.IsNullOrWhiteSpace(productName))
+        {
+            Logger.LogWarning("Recycle 记录 {RecordId} 无法解析 Material.Name，跳过上报。", recordId);
+            await uow.CompleteAsync(cancellationToken);
+            return;
+        }
 
         // 构造请求（含附件 Base64）。配置缺失（密钥）会从 HMAC Handler 抛 InvalidOperationException。
         RecycleTransportRecord payload;
         try
         {
             var outPhotos = await BuildOutPhotosBase64Async(record.Id, cancellationToken);
-            payload = _mapper.Map(record, waybill, outPhotos);
+            payload = _mapper.Map(record, waybill, outPhotos, productName);
         }
         catch (Exception ex)
         {
@@ -220,6 +233,40 @@ public class RecycleDataSyncService : DomainService
         }
 
         return await _waybillRepository.FindAsync(waybillId.Value, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    ///     解析 §2.2 <c>productName</c>：取关联物料 <see cref="Material.Name"/>。
+    ///     MaterialId 优先级：运单物料行 → 运单 MaterialId → 称重记录 MaterialsJson 首项。
+    /// </summary>
+    private async Task<string?> ResolveProductNameAsync(
+        WeighingRecord record,
+        Waybill? waybill,
+        CancellationToken cancellationToken)
+    {
+        int? materialId = null;
+
+        if (waybill != null)
+        {
+            var waybillMaterialQueryable = await _waybillMaterialRepository.GetQueryableAsync();
+            materialId = await waybillMaterialQueryable
+                .Where(wm => wm.WaybillId == waybill.Id)
+                .OrderBy(wm => wm.Id)
+                .Select(wm => (int?)wm.MaterialId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            materialId ??= waybill.MaterialId;
+        }
+
+        materialId ??= record.Materials.FirstOrDefault()?.MaterialId;
+
+        if (!materialId.HasValue)
+        {
+            return null;
+        }
+
+        var material = await _materialRepository.FindAsync(materialId.Value, cancellationToken: cancellationToken);
+        return string.IsNullOrWhiteSpace(material?.Name) ? null : material.Name;
     }
 
     /// <summary>

@@ -27,7 +27,8 @@ public class RecycleWeightMapper : ITransientDependency
     /// <param name="record">称重记录</param>
     /// <param name="waybill">关联运单（可为 null）</param>
     /// <param name="outPhotos">出场照片 Base64（不带标识头，逗号分隔）</param>
-    public RecycleTransportRecord Map(WeighingRecord record, Waybill? waybill, string outPhotos)
+    /// <param name="productName">成品名称（§2.2 productName，来自 <see cref="Material.Name"/>）</param>
+    public RecycleTransportRecord Map(WeighingRecord record, Waybill? waybill, string outPhotos, string productName)
     {
         // 重量：kg → 吨（÷1000），保持 decimal 精度。
         var netWeightKg = waybill?.OrderGoodsWeight ?? 0m;
@@ -55,7 +56,7 @@ public class RecycleWeightMapper : ITransientDependency
             DataNo = dataNo,
             PointNumber = _options.PointNumber ?? string.Empty,
             CarNo = carNo,
-            ProductName = _options.ProductName ?? string.Empty,
+            ProductName = productName,
             NetWeight = netWeightTons,
             TareWeight = tareWeightKg.HasValue && tareWeightKg.Value > 0 ? tareWeightKg.Value / 1000m : (decimal?)null,
             GrossWeight = grossWeightKg.HasValue && grossWeightKg.Value > 0 ? grossWeightKg.Value / 1000m : (decimal?)null,

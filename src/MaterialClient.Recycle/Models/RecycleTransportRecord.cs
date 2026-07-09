@@ -31,7 +31,7 @@ public class RecycleTransportRecord
     [JsonPropertyName("carrierCompanyName")]
     public string? CarrierCompanyName { get; set; }
 
-    /// <summary>成品名称（必填）</summary>
+    /// <summary>成品名称（必填，§2.2 字段 productName，映射自物料 <c>Material.Name</c>）。</summary>
     [JsonPropertyName("productName")]
     public string ProductName { get; set; } = string.Empty;
 

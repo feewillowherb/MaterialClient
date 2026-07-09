@@ -20,9 +20,6 @@ public class RecycleSyncOptions
     /// <summary>资源化利用厂唯一标识（pointNumber，待运营方提供）。</summary>
     public string? PointNumber { get; set; }
 
-    /// <summary>成品名称（productName，待运营方确认映射规则）。</summary>
-    public string? ProductName { get; set; }
-
     /// <summary>轮询扫描间隔（秒），默认 5。</summary>
     public int PollIntervalSeconds { get; set; } = 5;
 
