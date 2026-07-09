@@ -38,26 +38,24 @@ public interface IRecommendationService
 /// <summary>
 ///     推荐服务实现，提供数据库查询和全局内存缓存双路径。
 ///     缓存使用全局唯一键存储单个推荐数据，任意运单完成时直接覆盖。
+///     注册为瞬时服务：Singleton 持有 IRepository 会导致 DbContext 在 scope 结束后被 Dispose。
 /// </summary>
-public class RecommendationService : IRecommendationService, ISingletonDependency
+public class RecommendationService : IRecommendationService, ITransientDependency
 {
     private const string GlobalCacheKey = "Recommendation_Global";
 
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly ILogger<RecommendationService> _logger;
     private readonly IMemoryCache _memoryCache;
-    private readonly IUnitOfWorkManager _unitOfWorkManager;
 
     public RecommendationService(
         IRepository<Waybill, long> waybillRepository,
         ILogger<RecommendationService> logger,
-        IMemoryCache memoryCache,
-        IUnitOfWorkManager unitOfWorkManager)
+        IMemoryCache memoryCache)
     {
         _waybillRepository = waybillRepository;
         _logger = logger;
         _memoryCache = memoryCache;
-        _unitOfWorkManager = unitOfWorkManager;
     }
 
     /// <inheritdoc />
