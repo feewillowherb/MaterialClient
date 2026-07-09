@@ -7,6 +7,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MaterialClient.Recycle.Services;
 using MaterialClient.Views.AttendedWeighing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
@@ -16,6 +17,7 @@ namespace MaterialClient.Recycle;
 public class App : Application
 {
     private IAbpApplicationWithInternalServiceProvider? _abpApplication;
+    private IMinimalWebHostService? _minimalWebHostService;
 
     public override void Initialize()
     {
@@ -39,6 +41,10 @@ public class App : Application
                 desktop.Exit += OnApplicationExit;
 
                 var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+
+                // 诊断 Web Host：根据 MinimalWebHost:EnableOnStartup 控制是否启动
+                _ = StartMinimalWebHostAsync();
+
                 var startupService = _abpApplication.ServiceProvider.GetRequiredService<RecycleStartupService>();
                 var mainWindow = await startupService.StartupAsync();
 
@@ -64,6 +70,37 @@ public class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    private async Task StartMinimalWebHostAsync()
+    {
+        if (_abpApplication == null)
+        {
+            return;
+        }
+
+        var configuration = _abpApplication.ServiceProvider.GetRequiredService<IConfiguration>();
+        var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
+
+        var enableOnStartup = configuration.GetValue("MinimalWebHost:EnableOnStartup", true);
+        if (!enableOnStartup)
+        {
+            logger?.LogInformation("Recycle minimal web host startup is disabled by configuration.");
+            return;
+        }
+
+        try
+        {
+            _minimalWebHostService = _abpApplication.ServiceProvider.GetService<IMinimalWebHostService>();
+            if (_minimalWebHostService != null && !_minimalWebHostService.IsRunning)
+            {
+                await _minimalWebHostService.StartAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Failed to start recycle minimal web host");
+        }
+    }
+
     private async void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
         var logger = _abpApplication?.ServiceProvider.GetService<ILogger<App>>();
@@ -74,6 +111,20 @@ public class App : Application
         {
             var shutdownTask = Task.Run(async () =>
             {
+                // 先停止 Web Host，避免关闭期间仍有未完成的回调
+                if (_minimalWebHostService != null)
+                {
+                    try
+                    {
+                        await _minimalWebHostService.StopAsync();
+                        logger?.LogInformation("Recycle minimal web host stopped");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "Error stopping recycle minimal web host");
+                    }
+                }
+
                 if (_abpApplication != null)
                 {
                     var sw = Stopwatch.StartNew();

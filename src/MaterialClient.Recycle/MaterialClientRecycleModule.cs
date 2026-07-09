@@ -101,6 +101,10 @@ public class MaterialClientRecycleModule : AbpModule
                 c.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
             })
             .AddHttpMessageHandler<RecycleHmacDelegatingHandler>();
+
+        // 诊断 Web Host：通过 MinimalWebHost 配置节统一控制（Urls / EnableOnStartup）
+        services.AddSingleton<MinimalWebHostService>();
+        services.AddSingleton<IMinimalWebHostService>(sp => sp.GetRequiredService<MinimalWebHostService>());
     }
 
     public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)

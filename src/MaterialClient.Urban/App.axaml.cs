@@ -154,7 +154,7 @@ public class App : Application
         var configuration = _abpApplication.ServiceProvider.GetRequiredService<IConfiguration>();
         var logger = _abpApplication.ServiceProvider.GetService<ILogger<App>>();
 
-        var enableOnStartup = configuration.GetValue("UrbanWebHost:EnableOnStartup", true);
+        var enableOnStartup = configuration.GetValue("MinimalWebHost:EnableOnStartup", true);
         if (!enableOnStartup)
         {
             logger?.LogInformation("Urban minimal web host startup is disabled by configuration.");

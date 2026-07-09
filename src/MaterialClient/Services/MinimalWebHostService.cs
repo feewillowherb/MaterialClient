@@ -73,6 +73,33 @@ public class MinimalWebHostService : IAsyncDisposable
     }
 
     /// <summary>
+    ///     解析监听地址，优先级：<see cref="MinimalWebHost:Urls" /> 配置 &gt; 数据库 SystemSettings.Urls &gt; 默认值。
+    /// </summary>
+    /// <param name="systemSettingsUrls">数据库 SystemSettings.Urls，作为配置缺失时的 fallback</param>
+    private string ResolveUrls(string? systemSettingsUrls)
+    {
+        var urls = _configuration["MinimalWebHost:Urls"];
+        if (string.IsNullOrWhiteSpace(urls))
+        {
+            urls = systemSettingsUrls;
+        }
+
+        if (string.IsNullOrWhiteSpace(urls))
+        {
+            return "http://localhost:9960";
+        }
+
+        urls = urls.Trim();
+        if (!urls.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !urls.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            urls = "http://" + urls;
+        }
+
+        return urls;
+    }
+
+    /// <summary>
     ///     启动 Web Host
     /// </summary>
     /// <remarks>
@@ -86,6 +113,15 @@ public class MinimalWebHostService : IAsyncDisposable
         {
             var logger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
             logger?.LogInformation("Web Host 未启动：当前为海康威视 LPR，与监听端口冲突");
+            return;
+        }
+
+        // 通用 MinimalWebHost 配置节：EnableOnStartup 默认 true，保持向后兼容
+        var enableOnStartup = _configuration.GetValue("MinimalWebHost:EnableOnStartup", true);
+        if (!enableOnStartup)
+        {
+            var startupLogger = _sharedServiceProvider.GetService<ILogger<MinimalWebHostService>>();
+            startupLogger?.LogInformation("Web Host 未启动：MinimalWebHost:EnableOnStartup=false");
             return;
         }
 
@@ -108,22 +144,8 @@ public class MinimalWebHostService : IAsyncDisposable
             // 配置 API 端点
             ConfigureEndpoints(_webApplication);
 
-            // Configure URLs from SystemSettings (settings already loaded above)
-            var urls = settings.SystemSettings.Urls;
-            if (string.IsNullOrWhiteSpace(urls))
-            {
-                urls = "http://localhost:9960";
-            }
-            else
-            {
-                // 如果没有协议前缀，自动添加 http://
-                urls = urls.Trim();
-                if (!urls.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-                    !urls.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    urls = "http://" + urls;
-                }
-            }
+            // 解析监听地址：MinimalWebHost:Urls 优先，其次数据库 SystemSettings.Urls，最后默认值
+            var urls = ResolveUrls(settings.SystemSettings.Urls);
 
             _webApplication.Urls.Add(urls);
 
