@@ -86,22 +86,16 @@ public class RecycleTransportRecord
 
     /// <summary>
     ///     从 <see cref="WeighingRecord" />（+ 关联 <see cref="Waybill" />）创建 §2.2 运输记录。
-    ///     字段来源说明（设计假设）：
-    ///     §2.2 文档以 <c>WeighingRecord.OrderGoodsWeight/OrderTruckWeight/OrderTotalWeight/OrderNo/OutTime</c>
-    ///     描述字段，但这些字段实际位于关联的 <see cref="Waybill" />（<see cref="WeighingRecord.WaybillId" />）。
-    ///     本映射从 Waybill 取数，Waybill 缺失时回退到 WeighingRecord 自身字段。
+    ///     字段来源：Waybill.OrderNo 作为 dataNo（缺失时跳过上报，不用 R-{id} 回退）；
+    ///     重量 kg÷1000→吨；carrierCompanyName 来自 Provider.ProviderName。
     /// </summary>
-    /// <param name="record">称重记录</param>
-    /// <param name="waybill">关联运单（可为 null）</param>
-    /// <param name="outPhotos">出场照片 Base64（不带标识头，逗号分隔）</param>
-    /// <param name="productName">成品名称（§2.2 productName，来自 <see cref="Material.Name"/>）</param>
-    /// <param name="pointNumber">资源化利用厂唯一标识（§2.2 pointNumber）</param>
     public static RecycleTransportRecord FromWeighingRecord(
         WeighingRecord record,
         Waybill? waybill,
         string outPhotos,
         string productName,
-        string? pointNumber)
+        string? pointNumber,
+        string? carrierCompanyName = null)
     {
         var netWeightKg = waybill?.OrderGoodsWeight ?? 0m;
         var tareWeightKg = waybill?.OrderTruckWeight;
@@ -120,6 +114,7 @@ public class RecycleTransportRecord
             DataNo = dataNo,
             PointNumber = pointNumber ?? string.Empty,
             CarNo = carNo,
+            CarrierCompanyName = carrierCompanyName,
             ProductName = productName,
             NetWeight = netWeightTons,
             TareWeight = tareWeightKg.HasValue && tareWeightKg.Value > 0 ? tareWeightKg.Value / 1000m : null,

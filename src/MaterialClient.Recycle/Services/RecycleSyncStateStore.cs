@@ -5,9 +5,7 @@ namespace MaterialClient.Recycle.Services;
 
 /// <summary>
 ///     Recycle 同步状态存取助手。
-///     设计约束「无新表（Recycle 复用 WeighingRecord + AttachmentFile）」下，
-///     将 Recycle 上报同步状态承载于 <see cref="WeighingRecord.ExtraProperties" />（既有 JSON 列），
-///     避免新增数据库表/迁移。键名加 <c>Recycle_</c> 前缀以与其它用途隔离。
+///     支持两种承载方式：WeighingRecord.ExtraProperties（历史兼容）与 Waybill.ExtraProperties（新增 Waybill 级）。
 /// </summary>
 internal static class RecycleSyncStateStore
 {
@@ -17,33 +15,22 @@ internal static class RecycleSyncStateStore
     private const string FailMsgKey = Prefix + "FailMsg";
     private const string LastSyncTimeKey = Prefix + "LastSyncTime";
 
-    /// <summary>读取同步状态，默认 <see cref="SyncStatus.Pending" />。</summary>
+    #region WeighingRecord（历史兼容）
+
     public static SyncStatus GetSyncStatus(WeighingRecord record)
     {
         if (record.ExtraProperties.TryGetValue(SyncStatusKey, out var value) && value != null)
-        {
             return ToSyncStatus(value);
-        }
-
         return SyncStatus.Pending;
     }
 
     public static int GetFailCount(WeighingRecord record)
     {
         if (record.ExtraProperties.TryGetValue(FailCountKey, out var value) && value != null)
-        {
             return ToInt32(value);
-        }
-
         return 0;
     }
 
-    public static string? GetFailMsg(WeighingRecord record)
-    {
-        return record.ExtraProperties.TryGetValue(FailMsgKey, out var value) ? value?.ToString() : null;
-    }
-
-    /// <summary>写入同步状态字段（FailCount/FailMsg/LastSyncTime 随状态一并更新）。</summary>
     public static void SetSynced(WeighingRecord record, DateTime now)
     {
         record.ExtraProperties[SyncStatusKey] = (int)SyncStatus.Synced;
@@ -56,7 +43,6 @@ internal static class RecycleSyncStateStore
         record.ExtraProperties[FailCountKey] = failCount;
         record.ExtraProperties[FailMsgKey] = failMsg;
         record.ExtraProperties[LastSyncTimeKey] = now.ToString("O");
-        // SyncStatus 保留为 Pending（仍在重试队列）或最终 Failed（放弃），由调用方根据 failCount 决定。
     }
 
     public static void MarkAbandoned(WeighingRecord record)
@@ -64,27 +50,54 @@ internal static class RecycleSyncStateStore
         record.ExtraProperties[SyncStatusKey] = (int)SyncStatus.Failed;
     }
 
+    #endregion
+
+    #region Waybill（新增，Waybill 级同步）
+
+    public static SyncStatus GetWaybillSyncStatus(Waybill waybill)
+    {
+        if (waybill.ExtraProperties.TryGetValue(SyncStatusKey, out var value) && value != null)
+            return ToSyncStatus(value);
+        return SyncStatus.Pending;
+    }
+
+    public static int GetWaybillFailCount(Waybill waybill)
+    {
+        if (waybill.ExtraProperties.TryGetValue(FailCountKey, out var value) && value != null)
+            return ToInt32(value);
+        return 0;
+    }
+
+    public static void SetWaybillSynced(Waybill waybill, DateTime now)
+    {
+        waybill.ExtraProperties[SyncStatusKey] = (int)SyncStatus.Synced;
+        waybill.ExtraProperties[FailMsgKey] = null;
+        waybill.ExtraProperties[LastSyncTimeKey] = now.ToString("O");
+    }
+
+    public static void SetWaybillFailed(Waybill waybill, int failCount, string failMsg, DateTime now)
+    {
+        waybill.ExtraProperties[FailCountKey] = failCount;
+        waybill.ExtraProperties[FailMsgKey] = failMsg;
+        waybill.ExtraProperties[LastSyncTimeKey] = now.ToString("O");
+    }
+
+    public static void MarkWaybillAbandoned(Waybill waybill)
+    {
+        waybill.ExtraProperties[SyncStatusKey] = (int)SyncStatus.Failed;
+    }
+
+    #endregion
+
     private static SyncStatus ToSyncStatus(object value)
     {
-        try
-        {
-            return (SyncStatus)ToInt32(value);
-        }
-        catch
-        {
-            return SyncStatus.Pending;
-        }
+        try { return (SyncStatus)ToInt32(value); }
+        catch { return SyncStatus.Pending; }
     }
 
     private static int ToInt32(object value)
     {
-        try
-        {
-            return Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture);
-        }
-        catch
-        {
-            return 0;
-        }
+        try { return Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture); }
+        catch { return 0; }
     }
 }

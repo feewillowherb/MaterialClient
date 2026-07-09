@@ -71,6 +71,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     private bool _sdkSetupDone;
     private bool _started;
     private WeighingMode _cachedWeighingMode = WeighingMode.Standard;
+    private bool _cachedHasCameraConfigs = true;
 
     public VzvisionLprService(ISettingsService settingsService, ILocalEventBus localEventBus, ILogger<VzvisionLprService>? logger = null)
     {
@@ -103,6 +104,7 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
         {
             var settings = await _settingsService.GetSettingsAsync();
             _cachedWeighingMode = settings.SystemSettings.DefaultWeighingMode;
+            _cachedHasCameraConfigs = settings.CameraConfigs.Count > 0;
         }
         catch (Exception ex)
         {
@@ -405,8 +407,8 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
     private string? TrySaveVzLprAttachment(IntPtr pImgFull, string plateNumber)
     {
-        // 仅 UrbanMode = 201 时保存 Lpr 附件
-        if (_cachedWeighingMode != WeighingMode.UrbanMode)
+        // UrbanMode 或无 CameraConfigs 时保存 Lpr 附件
+        if (_cachedWeighingMode != WeighingMode.UrbanMode && _cachedHasCameraConfigs)
             return null;
 
         if (pImgFull == IntPtr.Zero)

@@ -12,13 +12,18 @@ namespace MaterialClient.Recycle.Api;
 public interface IRecycleDataApi
 {
     /// <summary>
-    ///     批量新增出场运输记录。请求体为 JSON Array。
+    ///     批量新增出场运输记录（§2.2 端点）。请求体为 JSON Array。
     /// </summary>
-    /// <param name="records">运输记录列表</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>统一响应（code==200 表示成功）</returns>
     [Post("/dataCenter/resourcePlace/productTransportRecord/v1/addBatch")]
     Task<RecycleApiResponse> SubmitTransportRecordAsync(
         [Body] List<RecycleTransportRecord> records,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     批量新增物料进场运输记录（§2.3 端点）。请求体为 JSON Array。
+    /// </summary>
+    [Post("/dataCenter/resourcePlace/materialTransportRecord/v1/addBatch")]
+    Task<RecycleApiResponse> SubmitMaterialTransportRecordAsync(
+        [Body] List<RecycleMaterialTransportRecord> records,
         CancellationToken cancellationToken = default);
 }

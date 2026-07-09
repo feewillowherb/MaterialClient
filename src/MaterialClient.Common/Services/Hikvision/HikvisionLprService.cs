@@ -64,6 +64,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     private bool _isInitialized;
     private int _listenHandle = -1;
     private WeighingMode _cachedWeighingMode = WeighingMode.Standard;
+    private bool _cachedHasCameraConfigs = true;
 
     public HikvisionLprService(ISettingsService settingsService, ILocalEventBus localEventBus, ILogger<HikvisionLprService>? logger = null)
     {
@@ -141,6 +142,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
             // 缓存当前称重模式（用于 Lpr 附件保存判断）
             _cachedWeighingMode = settings.SystemSettings.DefaultWeighingMode;
+            _cachedHasCameraConfigs = settings.CameraConfigs.Count > 0;
             
             if (string.IsNullOrWhiteSpace(urls))
             {
@@ -556,8 +558,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
     private string? TrySaveLprAttachment(IntPtr pBuffer, int picLen, string plateNumber)
     {
-        // 仅 UrbanMode = 201 时保存 Lpr 附件
-        if (_cachedWeighingMode != WeighingMode.UrbanMode)
+        // UrbanMode 或无 CameraConfigs 时保存 Lpr 附件
+        if (_cachedWeighingMode != WeighingMode.UrbanMode && _cachedHasCameraConfigs)
             return null;
 
         if (pBuffer == IntPtr.Zero || picLen <= 0)

@@ -109,6 +109,9 @@
                 <DataTemplate DataType="vm:SolidWasteWeighingDetailViewModel">
                     <aw:SolidWasteModeFormView />
                 </DataTemplate>
+                <DataTemplate DataType="vm:RecycleWeighingDetailViewModel">
+                    <aw:RecycleModeFormView />
+                </DataTemplate>
             </ContentControl.DataTemplates>
         </ContentControl>
 
