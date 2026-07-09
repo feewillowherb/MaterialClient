@@ -933,8 +933,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         var orderNo = Waybill.GenerateOrderNo(deliveryType, joinRecord.AddDate, todayCount);
         var orderId = Waybill.GenerateOrderId();
-        var orderSource = joinRecord.WeighingMode == WeighingMode.SolidWaste ||
-                          outRecord.WeighingMode == WeighingMode.SolidWaste
+        var orderSource = joinRecord.WeighingMode is WeighingMode.SolidWaste or WeighingMode.Recycle ||
+                          outRecord.WeighingMode is WeighingMode.SolidWaste or WeighingMode.Recycle
             ? OrderSource.MannedStation
             : OrderSource.UnmannedStation;
 
@@ -952,6 +952,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         // 复制 SolidWaste 信息（手动匹配 + 自动匹配都走此处）
         CopySolidWasteInfoToWaybill(waybill, joinRecord, outRecord);
+
+        // 从称重记录继承 WeighingMode（Recycle 等非 SolidWaste 模式）
+        ApplyWeighingModeFromRecordsIfNeeded(waybill, joinRecord, outRecord);
 
         // 先插入 Waybill 获取 Id
         await _waybillRepository.InsertAsync(waybill, true);
@@ -1010,6 +1013,38 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         // 即使 shipper 未设置，也写入默认值（SetShipper 内部会回退 DefaultShipper）
         waybill.SetSolidWasteShipper(shipper);
+    }
+
+    /// <summary>
+    ///     从称重记录继承 WeighingMode。SolidWaste 由 <see cref="CopySolidWasteInfoToWaybill" /> 处理；
+    ///     其余模式（如 Recycle）在 Waybill 仍为 Standard 时从 join/out 记录补齐。
+    /// </summary>
+    private static void ApplyWeighingModeFromRecordsIfNeeded(
+        Waybill waybill,
+        WeighingRecord joinRecord,
+        WeighingRecord outRecord)
+    {
+        if (waybill.WeighingMode != WeighingMode.Standard)
+        {
+            return;
+        }
+
+        if (joinRecord.WeighingMode == WeighingMode.Recycle || outRecord.WeighingMode == WeighingMode.Recycle)
+        {
+            waybill.WeighingMode = WeighingMode.Recycle;
+            return;
+        }
+
+        if (joinRecord.WeighingMode != WeighingMode.Standard)
+        {
+            waybill.WeighingMode = joinRecord.WeighingMode;
+            return;
+        }
+
+        if (outRecord.WeighingMode != WeighingMode.Standard)
+        {
+            waybill.WeighingMode = outRecord.WeighingMode;
+        }
     }
 
     /// <summary>
