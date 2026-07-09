@@ -169,6 +169,7 @@ public class SettingsService : DomainService, ISettingsService
         {
             WeighingMode.SolidWaste => ProductCode.SolidWaste,
             WeighingMode.UrbanMode => ProductCode.Urban,
+            WeighingMode.Recycle => ProductCode.Recycle,
             _ => ProductCode.Standard
         };
     }
@@ -185,6 +186,7 @@ public class SettingsService : DomainService, ISettingsService
         {
             ProductCode.SolidWaste => WeighingMode.SolidWaste,
             ProductCode.Urban => WeighingMode.UrbanMode,
+            ProductCode.Recycle => WeighingMode.Recycle,
             _ => WeighingMode.Standard
         };
         settings.SystemSettings = systemSettings;
