@@ -85,28 +85,23 @@ public class RecycleTransportRecord
     public string? ReceivingProof { get; set; }
 
     /// <summary>
-    ///     从 <see cref="WeighingRecord" />（+ 关联 <see cref="Waybill" />）创建 §2.2 运输记录。
-    ///     字段来源：Waybill.OrderNo 作为 dataNo（缺失时跳过上报，不用 R-{id} 回退）；
+    ///     从 <see cref="Waybill" /> 创建 §2.2 运输记录。
+    ///     字段来源：Waybill.OrderNo 作为 dataNo（OrderNo 为空时由调用方跳过上报，本方法不做 R-{id} 回退）；
     ///     重量 kg÷1000→吨；carrierCompanyName 来自 Provider.ProviderName。
     /// </summary>
-    public static RecycleTransportRecord FromWeighingRecord(
-        WeighingRecord record,
-        Waybill? waybill,
+    public static RecycleTransportRecord FromWaybill(
+        Waybill waybill,
         string outPhotos,
         string productName,
         string? pointNumber,
         string? carrierCompanyName = null)
     {
-        var netWeightKg = waybill?.OrderGoodsWeight ?? 0m;
-        var tareWeightKg = waybill?.OrderTruckWeight;
-        var grossWeightKg = waybill?.OrderTotalWeight;
-        var outTime = waybill?.OutTime ?? record.AddDate;
-        var dataNo = !string.IsNullOrWhiteSpace(waybill?.OrderNo)
-            ? waybill!.OrderNo
-            : $"R-{record.Id}";
-        var carNo = !string.IsNullOrWhiteSpace(waybill?.PlateNumber)
-            ? waybill!.PlateNumber!
-            : record.PlateNumber ?? string.Empty;
+        var netWeightKg = waybill.OrderGoodsWeight ?? 0m;
+        var tareWeightKg = waybill.OrderTruckWeight;
+        var grossWeightKg = waybill.OrderTotalWeight;
+        var outTime = waybill.OutTime ?? waybill.AddDate;
+        var dataNo = waybill.OrderNo ?? string.Empty;
+        var carNo = waybill.PlateNumber ?? string.Empty;
         var netWeightTons = netWeightKg > 0 ? netWeightKg / 1000m : 0m;
 
         return new RecycleTransportRecord

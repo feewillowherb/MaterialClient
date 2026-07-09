@@ -181,12 +181,7 @@ public class RecycleDataSyncService : DomainService
         CancellationToken cancellationToken)
     {
         // §2.2 出场照片（取进场侧：设计定稿统一取进场侧附件）
-        var payload = RecycleTransportRecord.FromWeighingRecord(
-            new WeighingRecord // 不使用 WeighingRecord 字段，仅用 Id 作为 fallback
-            {
-                Id = waybill.Id,
-                AddDate = waybill.AddDate
-            },
+        var payload = RecycleTransportRecord.FromWaybill(
             waybill,
             photos,
             materialName,

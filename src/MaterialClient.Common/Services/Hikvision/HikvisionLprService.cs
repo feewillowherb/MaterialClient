@@ -904,6 +904,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         {
             var settings = await _settingsService.GetSettingsAsync();
             _cachedWeighingMode = settings.SystemSettings.DefaultWeighingMode;
+            _cachedHasCameraConfigs = settings.CameraConfigs.Count > 0;
         }
         catch (Exception ex)
         {
