@@ -35,7 +35,6 @@ public class RecycleDataSyncService : DomainService
     private readonly IRepository<WeighingRecordAttachment, int> _attachmentLinkRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRecycleDataApi _recycleApi;
-    private readonly RecycleWeightMapper _mapper;
     private readonly RecycleSyncOptions _options;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
 
@@ -47,7 +46,6 @@ public class RecycleDataSyncService : DomainService
         IRepository<WeighingRecordAttachment, int> attachmentLinkRepository,
         IRepository<AttachmentFile, int> attachmentFileRepository,
         IRecycleDataApi recycleApi,
-        RecycleWeightMapper mapper,
         IOptions<RecycleSyncOptions> options,
         IUnitOfWorkManager unitOfWorkManager)
     {
@@ -58,7 +56,6 @@ public class RecycleDataSyncService : DomainService
         _attachmentLinkRepository = attachmentLinkRepository;
         _attachmentFileRepository = attachmentFileRepository;
         _recycleApi = recycleApi;
-        _mapper = mapper;
         _options = options.Value;
         _unitOfWorkManager = unitOfWorkManager;
     }
@@ -161,7 +158,8 @@ public class RecycleDataSyncService : DomainService
         try
         {
             var outPhotos = await BuildOutPhotosBase64Async(record.Id, cancellationToken);
-            payload = _mapper.Map(record, waybill, outPhotos, productName);
+            payload = RecycleTransportRecord.FromWeighingRecord(
+                record, waybill, outPhotos, productName, _options.PointNumber);
         }
         catch (Exception ex)
         {
