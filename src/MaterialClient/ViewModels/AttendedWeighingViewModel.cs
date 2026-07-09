@@ -1695,7 +1695,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     private AttendedWeighingDetailViewModelBase CreateDetailViewModel(WeighingMode weighingMode)
     {
-        return weighingMode == WeighingMode.SolidWaste
+        // Recycle 前端功能与 SolidWaste 完全一致，复用 SolidWasteWeighingDetailViewModel。
+        return weighingMode is WeighingMode.SolidWaste or WeighingMode.Recycle
             ? _serviceProvider.GetRequiredService<SolidWasteWeighingDetailViewModel>()
             : _serviceProvider.GetRequiredService<StandardWeighingDetailViewModel>();
     }
