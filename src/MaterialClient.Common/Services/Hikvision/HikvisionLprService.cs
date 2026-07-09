@@ -16,9 +16,9 @@ namespace MaterialClient.Common.Services.Hikvision;
 
 /// <summary>
 ///     海康威视车牌识别服务接口
-///     支持多设备管理，可动态添加/更新设备和检查设备在线状态
+///     支持多设备管理、被动监听与主动抓拍（<see cref="ILprDevice.TriggerCaptureAsync"/>）
 /// </summary>
-public interface IHikvisionLprService
+public interface IHikvisionLprService : ILprDevice
 {
     /// <summary>
     ///     添加或更新设备配置
@@ -855,6 +855,8 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     {
         ArgumentNullException.ThrowIfNull(config);
 
+        await RefreshCachedWeighingModeAsync();
+
         // 1. 确保登录(使用会话缓存,避免重复登录)
         var key = BuildDeviceKey(config);
         var userId = _deviceKeyToUserId.AddOrUpdate(
@@ -894,6 +896,19 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         _logger?.LogInformation("已触发海康威视设备抓拍: Device={Device}", config.Name);
 
         await Task.CompletedTask;
+    }
+
+    private async Task RefreshCachedWeighingModeAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            _cachedWeighingMode = settings.SystemSettings.DefaultWeighingMode;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "刷新称重模式缓存失败，Lpr 图片保存将沿用缓存模式 {Mode}", _cachedWeighingMode);
+        }
     }
 
     /// <summary>

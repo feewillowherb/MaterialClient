@@ -1,6 +1,6 @@
 using MaterialClient.Common.Entities.Enums;
+using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hikvision;
-using MaterialClient.Common.Services.Vzvision;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
@@ -18,40 +18,40 @@ public interface IWeighingCaptureService
     Task<List<string>> CaptureAllCamerasAsync(string reason);
 
     /// <summary>
-    ///     触发 Vzvision LPR 抓拍（进入 WaitingForStability 状态时）
+    ///     触发 LPR 主动抓拍（进入 WaitingForStability 状态时）
     /// </summary>
     Task CaptureOnWaitingForStability();
 
     /// <summary>
-    ///     触发 Vzvision LPR 抓拍（进入 WeightStabilized 状态时）
+    ///     触发 LPR 主动抓拍（进入 WeightStabilized 状态时）
     /// </summary>
     Task CaptureOnWeightStabilized();
 
     /// <summary>
-    ///     触发 Vzvision LPR 抓拍（进入 OffScale 状态时）
+    ///     触发 LPR 主动抓拍（进入 OffScale 状态时）
     /// </summary>
     Task CaptureOnOffScale();
 }
 
 /// <summary>
 ///     称重抓拍服务
-///     负责相机抓拍编排（Hikvision JPEG 批量抓拍 + Vzvision LPR 触发）
+///     负责相机抓拍编排（Hikvision JPEG 批量抓拍 + LPR 主动触发）
 /// </summary>
 public class WeighingCaptureService : IWeighingCaptureService, ISingletonDependency
 {
     private readonly IHikvisionService _hikvisionService;
-    private readonly IVzvisionLprService? _vzvisionLprService;
+    private readonly ILprDeviceResolver _lprDeviceResolver;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<WeighingCaptureService> _logger;
 
     public WeighingCaptureService(
         IHikvisionService hikvisionService,
-        IVzvisionLprService? vzvisionLprService,
+        ILprDeviceResolver lprDeviceResolver,
         ISettingsService settingsService,
         ILogger<WeighingCaptureService> logger)
     {
         _hikvisionService = hikvisionService;
-        _vzvisionLprService = vzvisionLprService;
+        _lprDeviceResolver = lprDeviceResolver;
         _settingsService = settingsService;
         _logger = logger;
     }
@@ -143,23 +143,33 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
 
         try
         {
-            if (settings.SystemSettings.LprDeviceType != LprDeviceType.Vzvision)
-                return;
-
-            if (_vzvisionLprService == null)
+            var lprDeviceType = settings.SystemSettings.LprDeviceType;
+            ILprDevice lprDevice;
+            try
             {
-                _logger.LogWarning("IVzvisionLprService 未注入，无法抓拍 ({Phase})", phase);
+                lprDevice = _lprDeviceResolver.GetDevice(lprDeviceType);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                _logger.LogWarning(ex, "未知 LPR 设备类型 {DeviceType}，跳过抓拍 ({Phase})", lprDeviceType, phase);
+                return;
+            }
+
+            if (!lprDevice.SupportsActiveCapture)
+            {
+                _logger.LogInformation("LPR 设备 {DeviceType} 不支持主动抓拍，跳过 ({Phase})", lprDeviceType, phase);
                 return;
             }
 
             var lprConfigs = settings.LicensePlateRecognitionConfigs;
             if (lprConfigs.Count == 0)
             {
-                _logger.LogWarning("未配置 Vzvision 车牌设备，跳过抓拍 ({Phase})", phase);
+                _logger.LogWarning("未配置 LPR 车牌设备，跳过抓拍 ({Phase})", phase);
                 return;
             }
 
-            _logger.LogInformation("触发 Vzvision 抓拍 ({Phase})，设备数 {Count}", phase, lprConfigs.Count);
+            _logger.LogInformation("触发 {DeviceType} LPR 抓拍 ({Phase})，设备数 {Count}",
+                lprDeviceType, phase, lprConfigs.Count);
 
             var tasks = lprConfigs
                 .Where(config => config.IsValid())
@@ -167,15 +177,15 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
                 {
                     try
                     {
-                        await _vzvisionLprService.TriggerCaptureAsync(config);
-                        _logger.LogInformation("Vzvision 抓拍已发送: {Name} ({Ip}) [{Phase}]",
-                            config.Name, config.Ip, phase);
+                        await lprDevice.TriggerCaptureAsync(config);
+                        _logger.LogInformation("{DeviceType} LPR 抓拍已发送: {Name} ({Ip}) [{Phase}]",
+                            lprDeviceType, config.Name, config.Ip, phase);
                         return true;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Vzvision 抓拍失败: {Name} ({Ip}) [{Phase}]",
-                            config.Name, config.Ip, phase);
+                        _logger.LogWarning(ex, "{DeviceType} LPR 抓拍失败: {Name} ({Ip}) [{Phase}]",
+                            lprDeviceType, config.Name, config.Ip, phase);
                         return false;
                     }
                 });
@@ -184,12 +194,12 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
             var successCount = results.Count(r => r);
             var failCount = results.Length - successCount;
 
-            _logger.LogInformation("Vzvision 抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}",
-                phase, successCount, failCount);
+            _logger.LogInformation("{DeviceType} LPR 抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}",
+                lprDeviceType, phase, successCount, failCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "触发 Vzvision 抓拍异常 ({Phase})", phase);
+            _logger.LogError(ex, "触发 LPR 主动抓拍异常 ({Phase})", phase);
         }
     }
 }
