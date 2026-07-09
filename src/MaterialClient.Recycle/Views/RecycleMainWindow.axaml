@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MaterialClient.Recycle.Views.RecycleMainWindow"
+        xmlns:vm="using:MaterialClient.Recycle.ViewModels"
+        x:DataType="vm:RecycleMainWindowViewModel"
+        Title="资源化利用厂称重系统客户端"
+        Width="1024" Height="700"
+        WindowState="Maximized"
+        Icon="Assets/fd-ico.ico">
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- 顶部标题栏 -->
+        <Border Grid.Row="0" Background="#4169E1" Padding="16,10">
+            <StackPanel>
+                <TextBlock Text="资源化利用厂称重系统客户端"
+                           Foreground="White" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding StatusLine}"
+                           Foreground="#D9E2FF" FontSize="12" Margin="0,2,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- 主内容区：称重主界面占位（SolidWaste 称重 UI 复用需要将共享 ViewModel/Window 迁移至 MaterialClient.UI，见变更说明） -->
+        <Border Grid.Row="1" Background="#F5F7FB" Padding="16">
+            <StackPanel Spacing="8" VerticalAlignment="Top">
+                <TextBlock Text="称重数据上报管线已就绪" FontSize="16" FontWeight="SemiBold" Foreground="#333" />
+                <TextBlock Text="{Binding SyncHint}" FontSize="13" Foreground="#666" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- 底部状态栏 -->
+        <Border Grid.Row="2" Background="#EEF1F6" Padding="16,8">
+            <TextBlock Text="{Binding FooterLine}" FontSize="12" Foreground="#666" />
+        </Border>
+
+    </Grid>
+</Window>
