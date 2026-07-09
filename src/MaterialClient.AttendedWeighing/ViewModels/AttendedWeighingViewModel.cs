@@ -327,7 +327,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
-            IsSolidWasteMode = settings.SystemSettings.DefaultWeighingMode == WeighingMode.SolidWaste;
+            IsSolidWasteMode = settings.SystemSettings.DefaultWeighingMode
+                is WeighingMode.SolidWaste or WeighingMode.Recycle;
         }
         catch (Exception ex)
         {
@@ -1333,16 +1334,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
 
     public bool CanPrintSolidWaste => SelectedListItem is
-    {
-        ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed,
-        WeighingMode: WeighingMode.SolidWaste
-    };
+        { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed } item
+        && item.WeighingMode is WeighingMode.SolidWaste or WeighingMode.Recycle;
 
     public bool CanEditSolidWaste => SelectedListItem is
-    {
-        ItemType: WeighingListItemType.Waybill,
-        WeighingMode: WeighingMode.SolidWaste
-    };
+        { ItemType: WeighingListItemType.Waybill } item
+        && item.WeighingMode is WeighingMode.SolidWaste or WeighingMode.Recycle;
 
     public string DeliveryTypeTitleText =>
         SelectedListItem?.DeliveryType == DeliveryType.Receiving ? "收料信息" : "发料信息";
@@ -1565,7 +1562,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         OffsetInfo = item.OffsetInfo;
 
         // Block 6：固废模式显示「净重」+ OrderGoodsWeight 吨，标准模式显示「偏差」+ OffsetInfo
-        if (item.WeighingMode == WeighingMode.SolidWaste)
+        if (item.WeighingMode is WeighingMode.SolidWaste or WeighingMode.Recycle)
         {
             OffsetBlockTitle = "净重";
             OffsetBlockValue = item.OrderGoodsWeight.HasValue ? $"{item.OrderGoodsWeight.Value:F2} 吨" : "--";

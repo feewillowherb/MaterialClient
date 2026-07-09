@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using MaterialClient.AttendedWeighing;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Configuration;
@@ -11,6 +12,8 @@ using MaterialClient.Recycle.Api;
 using MaterialClient.Recycle.Backgrounds;
 using MaterialClient.Recycle.Models;
 using MaterialClient.Recycle.Services;
+using MaterialClient.Recycle.ViewModels;
+using MaterialClient.UI.ViewModels;
 using MaterialClient.UI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +34,7 @@ namespace MaterialClient.Recycle;
 [DependsOn(
     typeof(MaterialClientCommonModule),
     typeof(MaterialClientUiModule),
+    typeof(MaterialClientAttendedWeighingModule),
     typeof(AbpAutofacModule),
     typeof(AbpBackgroundWorkersModule)
 )]
@@ -69,6 +73,9 @@ public class MaterialClientRecycleModule : AbpModule
 
         // Serilog 日志（按日轮转）
         SerilogFileLogConfigurator.Configure(services, configuration, "MaterialClient.Recycle");
+
+        // Recycle 授权窗口固定 ProductCode 5020（覆盖默认 AuthCodeWindowViewModel）
+        services.AddTransient<AuthCodeWindowViewModel, RecycleAuthCodeWindowViewModel>();
 
         services.AddHttpClient();
 

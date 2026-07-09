@@ -3,11 +3,11 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MaterialClient.ViewModels;
+using MaterialClient.UI.ViewModels;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.Views;
+namespace MaterialClient.UI.Views;
 
 public partial class AuthCodeWindow : Window, ITransientDependency
 {
@@ -18,40 +18,35 @@ public partial class AuthCodeWindow : Window, ITransientDependency
         InitializeComponent();
         DataContext = authCodeWindowViewModel;
 
-        // Subscribe to DataContext changes
         this.WhenAnyValue(x => x.DataContext)
             .Subscribe(dataContext =>
             {
                 _authSuccessSubscription?.Dispose();
 
                 if (dataContext is AuthCodeWindowViewModel viewModel)
-                    // Watch for successful authorization
                     _authSuccessSubscription = viewModel
                         .WhenAnyValue(vm => vm.IsVerified)
                         .Subscribe(isVerified =>
                         {
-                            IsVerified = isVerified; // 保存到窗口属性
+                            IsVerified = isVerified;
                             if (isVerified)
                                 Dispatcher.UIThread.Post(async () =>
                                 {
                                     await Task.Delay(TimeSpan.FromSeconds(0.5));
-                                    // 隐藏窗口而不是关闭，以便StartupService可以管理窗口生命周期
                                     Hide();
                                 }, DispatcherPriority.Background);
                         });
             });
     }
 
-    /// <summary>
-    ///     公开的验证结果属性，用于在窗口关闭后读取
-    /// </summary>
     public bool IsVerified { get; private set; }
 
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
-        // When user closes the window without completing authorization,
-        // the application should exit (as per FR-003)
-        if (DataContext is AuthCodeWindowViewModel viewModel) viewModel.HandleWindowClose();
+        if (DataContext is AuthCodeWindowViewModel viewModel)
+        {
+            viewModel.HandleWindowClose();
+        }
 
         Close();
     }
@@ -60,7 +55,9 @@ public partial class AuthCodeWindow : Window, ITransientDependency
     {
         base.OnOpened(e);
         if (DataContext is AuthCodeWindowViewModel viewModel)
+        {
             _ = viewModel.LoadCurrentDefaultWeighingModeAsync();
+        }
     }
 
     protected override void OnClosed(EventArgs e)

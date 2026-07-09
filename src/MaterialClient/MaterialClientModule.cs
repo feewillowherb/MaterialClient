@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using MaterialClient.AttendedWeighing;
 using MaterialClient.Backgrounds;
 using MaterialClient.Common;
 using MaterialClient.UI;
@@ -33,6 +34,7 @@ namespace MaterialClient
 [DependsOn(
     typeof(MaterialClientCommonModule),
     typeof(MaterialClientUiModule),
+    typeof(MaterialClientAttendedWeighingModule),
     typeof(AbpAutofacModule),
     typeof(AbpBackgroundWorkersModule)
 )]

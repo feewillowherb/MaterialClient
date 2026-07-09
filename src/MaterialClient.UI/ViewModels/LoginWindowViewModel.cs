@@ -7,12 +7,12 @@ using ReactiveUI.SourceGenerators;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 
-namespace MaterialClient.ViewModels;
+namespace MaterialClient.UI.ViewModels;
 
 /// <summary>
 ///     登录窗口 ViewModel
 /// </summary>
-public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDependency
+public partial class LoginWindowViewModel : ReactiveViewModelBase, ITransientDependency
 {
     private readonly IAuthenticationService _authenticationService;
 
@@ -40,16 +40,12 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
             .Select(msg => !string.IsNullOrEmpty(msg))
             .Subscribe(hasError => HasError = hasError);
 
-        // Load saved credentials
         _ = LoadSavedCredentialsAsync();
     }
-
-    #region Commands
 
     [ReactiveCommand]
     private async Task LoginAsync()
     {
-        // Validate input
         if (string.IsNullOrWhiteSpace(Username))
         {
             ShowError("请输入用户名");
@@ -68,24 +64,18 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
 
         try
         {
-            // Call authentication service for login operation
             await _authenticationService.LoginAsync(Username, Password, RememberMe);
 
-            // Success
             IsLoginSuccessful = true;
             ErrorMessage = string.Empty;
             ShowRetryButton = false;
-
-            // Window will be closed by the caller
         }
         catch (BusinessException ex)
         {
-            // Business exception from authentication service
             HandleLoginError(ex.Message);
         }
         catch (Exception ex)
         {
-            // Unexpected exception
             HandleLoginError($"登录失败：{ex.Message}");
         }
         finally
@@ -99,10 +89,6 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
     {
         ResetErrorState();
     }
-
-    #endregion
-
-    #region Methods
 
     private async Task LoadSavedCredentialsAsync()
     {
@@ -118,7 +104,7 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
         }
         catch
         {
-            // Ignore errors when loading saved credentials
+            // ignore
         }
     }
 
@@ -126,7 +112,6 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
     {
         IsLoginSuccessful = false;
 
-        // Check if it's a network error
         if (errorMessage.Contains("网络") || errorMessage.Contains("连接"))
         {
             ErrorMessage = "网络连接失败，请检查网络设置";
@@ -145,10 +130,6 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
         ShowRetryButton = false;
     }
 
-    /// <summary>
-    ///     Reset the login form for re-login scenario.
-    ///     Clears username, password, remember-me, and error state.
-    /// </summary>
     public void ResetLoginForm()
     {
         Username = string.Empty;
@@ -163,6 +144,4 @@ public partial class LoginWindowViewModel : ReactiveViewModelBase,ITransientDepe
         ShowRetryButton = false;
         IsLoginSuccessful = false;
     }
-
-    #endregion
 }
