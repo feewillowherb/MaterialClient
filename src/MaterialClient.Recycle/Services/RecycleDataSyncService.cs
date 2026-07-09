@@ -14,9 +14,9 @@ namespace MaterialClient.Recycle.Services;
 
 /// <summary>
 ///     Recycle 数据上报同步核心服务（Waybill 级）。
-///     扫描 WeighingMode=Recycle 且 OrderType=Completed 的 Waybill，
+///     扫描 WeighingMode=Recycle 且 OrderType=Completed 且 IsPendingSync=true 的 Waybill，
 ///     按 DeliveryType 分流：Sending→§2.2（productTransportRecord），Receiving→§2.3（materialTransportRecord）。
-///     同步状态承载于 Waybill.ExtraProperties（<see cref="RecycleSyncStateStore" />），每个 Waybill 仅上报一次。
+///     同步状态使用 Waybill 既有字段（IsPendingSync / LastSyncTime），与 SolidWaste 链路一致。
 /// </summary>
 public class RecycleDataSyncService : DomainService
 {
@@ -93,7 +93,7 @@ public class RecycleDataSyncService : DomainService
     }
 
     /// <summary>
-    ///     查询待上报 Waybill：WeighingMode=Recycle，OrderType=Completed，未同步/未放弃。
+    ///     查询待上报 Waybill：WeighingMode=Recycle，OrderType=Completed，IsPendingSync=true。
     /// </summary>
     private async Task<List<Waybill>> GetPendingWaybillsAsync(CancellationToken cancellationToken)
     {
@@ -103,20 +103,11 @@ public class RecycleDataSyncService : DomainService
         var waybills = await queryable
             .Where(w => w.WeighingMode == WeighingMode.Recycle)
             .Where(w => w.OrderType == OrderTypeEnum.Completed)
+            .Where(w => w.IsPendingSync)
             .ToListAsync(cancellationToken);
 
         await uow.CompleteAsync(cancellationToken);
-
-        var maxFail = _options.MaxFailCount;
-        return waybills
-            .Where(w =>
-            {
-                var status = RecycleSyncStateStore.GetWaybillSyncStatus(w);
-                if (status == SyncStatus.Synced)
-                    return false;
-                return RecycleSyncStateStore.GetWaybillFailCount(w) < maxFail;
-            })
-            .ToList();
+        return waybills;
     }
 
     private async Task ProcessWaybillAsync(Waybill waybill, CancellationToken cancellationToken)
@@ -203,7 +194,7 @@ public class RecycleDataSyncService : DomainService
 
         if (response != null && response.Code == 200)
         {
-            RecycleSyncStateStore.SetWaybillSynced(waybill, now);
+            waybill.ResetPendingSync(now);
             await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
             Logger.LogInformation("Recycle Waybill {WaybillId} §2.2 上报成功（DataNo={DataNo}）。", waybill.Id, payload.DataNo);
         }
@@ -244,7 +235,7 @@ public class RecycleDataSyncService : DomainService
 
         if (response != null && response.Code == 200)
         {
-            RecycleSyncStateStore.SetWaybillSynced(waybill, now);
+            waybill.ResetPendingSync(now);
             await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
             Logger.LogInformation("Recycle Waybill {WaybillId} §2.3 上报成功（DataNo={DataNo}）。", waybill.Id, payload.DataNo);
         }
@@ -258,22 +249,10 @@ public class RecycleDataSyncService : DomainService
 
     private async Task HandleFailureAsync(Waybill waybill, RecycleApiResponse? response, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-        var failCount = RecycleSyncStateStore.GetWaybillFailCount(waybill) + 1;
         var failMsg = response?.Msg ?? $"HTTP business failure (code={response?.Code})";
-        RecycleSyncStateStore.SetWaybillFailed(waybill, failCount, failMsg, now);
-
-        if (failCount >= _options.MaxFailCount)
-        {
-            RecycleSyncStateStore.MarkWaybillAbandoned(waybill);
-            Logger.LogWarning("Recycle Waybill {WaybillId} 达到最大失败次数 {MaxFail}，放弃重试（FailMsg={FailMsg}）。",
-                waybill.Id, _options.MaxFailCount, failMsg);
-        }
-        else
-        {
-            Logger.LogWarning("Recycle Waybill {WaybillId} 上报失败（FailCount={FailCount}/{MaxFail}，FailMsg={FailMsg}）。",
-                waybill.Id, failCount, _options.MaxFailCount, failMsg);
-        }
+        // 失败时保持 IsPendingSync=true，下轮继续重试；仅记录日志。
+        Logger.LogWarning("Recycle Waybill {WaybillId} 上报失败（FailMsg={FailMsg}），保持 IsPendingSync，下轮重试。",
+            waybill.Id, failMsg);
 
         await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
     }
