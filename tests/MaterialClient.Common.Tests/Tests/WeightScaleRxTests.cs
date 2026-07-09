@@ -235,7 +235,8 @@ public class WeightScaleRxTests
         var stateManager = new WeighingStateManager(eventBus, stateManagerLogger);
         var plateNumberService = new PlateNumberService(recommendPlateService, eventBus, plateLogger);
         var streamPipeline = new WeighingStreamPipeline(pipelineLogger);
-        var captureService = new WeighingCaptureService(hikvisionService, null, settingsService, captureLogger);
+        var lprDeviceResolver = Substitute.For<ILprDeviceResolver>();
+        var captureService = new WeighingCaptureService(hikvisionService, lprDeviceResolver, settingsService, captureLogger);
         var recordService = new WeighingRecordService(
             weighingRecordRepo, Substitute.For<IUrbanWeighingExtensionService>(), fileRepo, attachmentRepo, uowManager, settingsService,
             plateNumberService, eventBus, recordLogger,
