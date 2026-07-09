@@ -42,7 +42,7 @@ public partial class MinimalWebHostService : IMinimalWebHostService
     private WebApplication? _webApplication;
     private bool _isRunning;
 
-    private const string DefaultUrls = "http://localhost:9962";
+    private const string DefaultUrls = "http://localhost:9960";
     private const string SetScaleWeightApiPath = "/api/scale/weight";
     private const string SetTestPlateApiPath = "/api/lpr/test-plate";
 
