@@ -211,7 +211,7 @@ public class RecycleDataSyncService : DomainService
     }
 
     /// <summary>
-    ///     §2.3 收料上报（Receiving）：重量吨→kg（×1000），进场照片。
+    ///     §2.3 收料上报（Receiving）：重量已是吨，直接使用，进场照片。
     /// </summary>
     private async Task SubmitReceivingAsync(
         Waybill waybill, string photos, string materialName, string? carrierCompanyName,
