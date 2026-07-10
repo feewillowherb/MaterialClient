@@ -5,7 +5,7 @@ namespace MaterialClient.Recycle.Models;
 
 /// <summary>
 ///     资源化利用厂物料进场运输记录请求 DTO（§2.3 接口 materialTransportRecord/v1/addBatch）。
-///     重量单位为「kg」；时间格式 yyyy-MM-dd HH:mm:ss；
+///     重量字段由 FromWaybill 从吨（Waybill 存储单位）×1000 转换为 kg；时间格式 yyyy-MM-dd HH:mm:ss；
 ///     inPhoto 为纯 Base64（不带 data:image/...;base64, 标识头，多张英文逗号分隔）。
 /// </summary>
 public record RecycleMaterialTransportRecord
@@ -56,6 +56,10 @@ public record RecycleMaterialTransportRecord
         string? carrierCompanyName,
         string? pointNumber)
     {
+        var netWeightTons = waybill.OrderGoodsWeight ?? 0m;
+        var tareWeightTons = waybill.OrderTruckWeight;
+        var grossWeightTons = waybill.OrderTotalWeight;
+
         return new RecycleMaterialTransportRecord
         {
             DataNo = waybill.OrderNo ?? string.Empty,
@@ -63,9 +67,9 @@ public record RecycleMaterialTransportRecord
             CarNo = waybill.PlateNumber ?? string.Empty,
             CarrierCompanyName = carrierCompanyName,
             MaterialName = materialName,
-            NetWeight = waybill.OrderGoodsWeight ?? 0m,
-            TareWeight = waybill.OrderTruckWeight,
-            GrossWeight = waybill.OrderTotalWeight,
+            NetWeight = netWeightTons > 0m ? netWeightTons * 1000m : 0m,
+            TareWeight = tareWeightTons.HasValue && tareWeightTons.Value > 0m ? tareWeightTons.Value * 1000m : null,
+            GrossWeight = grossWeightTons.HasValue && grossWeightTons.Value > 0m ? grossWeightTons.Value * 1000m : null,
             InTime = (waybill.JoinTime ?? waybill.AddDate).ToString("yyyy-MM-dd HH:mm:ss"),
             InPhoto = inPhoto
         };

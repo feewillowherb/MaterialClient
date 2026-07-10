@@ -5,7 +5,7 @@ namespace MaterialClient.Recycle.Models;
 
 /// <summary>
 ///     资源化利用厂出场运输记录请求 DTO（§2.2 接口 productTransportRecord/v1/addBatch）。
-///     重量单位为「吨」（由 kg ÷ 1000 转换）；时间格式 yyyy-MM-dd HH:mm:ss；
+///     重量单位为「吨」（Waybill 存储单位已是吨，FromWaybill 直接使用）；时间格式 yyyy-MM-dd HH:mm:ss；
 ///     outPhotos 为纯 Base64（不带 data:image/...;base64, 标识头，多张英文逗号分隔）。
 ///     JSON 字段名按 §2.2 文档要求为 camelCase，使用 <see cref="JsonPropertyNameAttribute"/> 显式声明，
 ///     避免依赖 Refit 默认序列化策略。
@@ -87,7 +87,7 @@ public record RecycleTransportRecord
     /// <summary>
     ///     从 <see cref="Waybill" /> 创建 §2.2 运输记录。
     ///     字段来源：Waybill.OrderNo 作为 dataNo（OrderNo 为空时由调用方跳过上报，本方法不做 R-{id} 回退）；
-    ///     重量 kg÷1000→吨；carrierCompanyName 来自 Provider.ProviderName。
+    ///     重量单位已是吨，直接使用；carrierCompanyName 来自 Provider.ProviderName。
     /// </summary>
     public static RecycleTransportRecord FromWaybill(
         Waybill waybill,
@@ -96,13 +96,12 @@ public record RecycleTransportRecord
         string? pointNumber,
         string? carrierCompanyName = null)
     {
-        var netWeightKg = waybill.OrderGoodsWeight ?? 0m;
-        var tareWeightKg = waybill.OrderTruckWeight;
-        var grossWeightKg = waybill.OrderTotalWeight;
+        var netWeightTons = waybill.OrderGoodsWeight ?? 0m;
+        var tareWeightTons = waybill.OrderTruckWeight;
+        var grossWeightTons = waybill.OrderTotalWeight;
         var outTime = waybill.OutTime ?? waybill.AddDate;
         var dataNo = waybill.OrderNo ?? string.Empty;
         var carNo = waybill.PlateNumber ?? string.Empty;
-        var netWeightTons = netWeightKg > 0 ? netWeightKg / 1000m : 0m;
 
         return new RecycleTransportRecord
         {
@@ -112,8 +111,8 @@ public record RecycleTransportRecord
             CarrierCompanyName = carrierCompanyName,
             ProductName = productName,
             NetWeight = netWeightTons,
-            TareWeight = tareWeightKg.HasValue && tareWeightKg.Value > 0 ? tareWeightKg.Value / 1000m : null,
-            GrossWeight = grossWeightKg.HasValue && grossWeightKg.Value > 0 ? grossWeightKg.Value / 1000m : null,
+            TareWeight = tareWeightTons.HasValue && tareWeightTons.Value > 0 ? tareWeightTons.Value : null,
+            GrossWeight = grossWeightTons.HasValue && grossWeightTons.Value > 0 ? grossWeightTons.Value : null,
             OutTime = outTime.ToString("yyyy-MM-dd HH:mm:ss"),
             OutPhotos = outPhotos
         };
