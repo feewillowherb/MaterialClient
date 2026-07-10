@@ -189,6 +189,10 @@ public class RecycleDataSyncService : DomainService
             throw;
         }
 
+        Logger.LogInformation(
+            "Recycle §2.2 payload: WaybillId={WaybillId}, Payload={@Payload}",
+            waybill.Id, payload.ForLogging());
+
         using var uow = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: true);
         var now = DateTime.UtcNow;
 
@@ -229,6 +233,10 @@ public class RecycleDataSyncService : DomainService
         {
             throw;
         }
+
+        Logger.LogInformation(
+            "Recycle §2.3 payload: WaybillId={WaybillId}, Payload={@Payload}",
+            waybill.Id, payload.ForLogging());
 
         using var uow = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: true);
         var now = DateTime.UtcNow;

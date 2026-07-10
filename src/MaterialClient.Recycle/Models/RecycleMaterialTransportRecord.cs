@@ -8,46 +8,46 @@ namespace MaterialClient.Recycle.Models;
 ///     重量单位为「kg」；时间格式 yyyy-MM-dd HH:mm:ss；
 ///     inPhoto 为纯 Base64（不带 data:image/...;base64, 标识头，多张英文逗号分隔）。
 /// </summary>
-public class RecycleMaterialTransportRecord
+public record RecycleMaterialTransportRecord
 {
     [JsonPropertyName("dataNo")]
-    public string DataNo { get; set; } = string.Empty;
+    public string DataNo { get; init; } = string.Empty;
 
     [JsonPropertyName("dataStatus")]
-    public int? DataStatus { get; set; } = 0;
+    public int? DataStatus { get; init; } = 0;
 
     [JsonPropertyName("pointNumber")]
-    public string PointNumber { get; set; } = string.Empty;
+    public string PointNumber { get; init; } = string.Empty;
 
     [JsonPropertyName("carNo")]
-    public string CarNo { get; set; } = string.Empty;
+    public string CarNo { get; init; } = string.Empty;
 
     [JsonPropertyName("carrierCompanyName")]
-    public string? CarrierCompanyName { get; set; }
+    public string? CarrierCompanyName { get; init; }
 
     [JsonPropertyName("materialName")]
-    public string MaterialName { get; set; } = string.Empty;
+    public string MaterialName { get; init; } = string.Empty;
 
     [JsonPropertyName("netWeight")]
-    public decimal NetWeight { get; set; }
+    public decimal NetWeight { get; init; }
 
     [JsonPropertyName("tareWeight")]
-    public decimal? TareWeight { get; set; }
+    public decimal? TareWeight { get; init; }
 
     [JsonPropertyName("grossWeight")]
-    public decimal? GrossWeight { get; set; }
+    public decimal? GrossWeight { get; init; }
 
     [JsonPropertyName("unitPrice")]
-    public decimal? UnitPrice { get; set; }
+    public decimal? UnitPrice { get; init; }
 
     [JsonPropertyName("payAmount")]
-    public decimal? PayAmount { get; set; }
+    public decimal? PayAmount { get; init; }
 
     [JsonPropertyName("inTime")]
-    public string InTime { get; set; } = string.Empty;
+    public string InTime { get; init; } = string.Empty;
 
     [JsonPropertyName("inPhoto")]
-    public string InPhoto { get; set; } = string.Empty;
+    public string InPhoto { get; init; } = string.Empty;
 
     public static RecycleMaterialTransportRecord FromWaybill(
         Waybill waybill,
@@ -70,4 +70,15 @@ public class RecycleMaterialTransportRecord
             InPhoto = inPhoto
         };
     }
+
+    /// <summary>
+    ///     Returns a copy safe for structured logging (photo base64 content omitted).
+    /// </summary>
+    public RecycleMaterialTransportRecord ForLogging() =>
+        this with
+        {
+            InPhoto = string.IsNullOrEmpty(InPhoto)
+                ? InPhoto
+                : $"[{InPhoto.Length} chars omitted]"
+        };
 }
