@@ -51,13 +51,6 @@ public class RecycleHmacDelegatingHandler : DelegatingHandler
         var method = request.Method.Method;
         var signature = ResourcePlaceHmacSigner.Sign(method, request.RequestUri!.ToString(), accessKey, secretKey, gmtDateTime);
 
-        _logger.LogInformation("=== 签名生成过程 ===");
-        _logger.LogInformation("URL: {Url}", request.RequestUri);
-        _logger.LogInformation("Method: {Method}", method.ToUpperInvariant());
-        _logger.LogInformation("时间戳 (GMT): {DateTime}", gmtDateTime);
-        _logger.LogInformation("AccessKey: {AccessKey}", accessKey);
-        _logger.LogInformation("签名 (Base64): {Signature}", signature);
-
         // 注入四个 X-AKZTJG-* Header
         request.Headers.TryAddWithoutValidation("X-AKZTJG-HMAC-SIGNATURE", signature);
         request.Headers.TryAddWithoutValidation("X-AKZTJG-HMAC-ALGORITHM", Algorithm);
