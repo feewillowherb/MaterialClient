@@ -2,9 +2,11 @@ using System.Collections.ObjectModel;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using MaterialClient.Common.Dtos.Urban;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
@@ -47,6 +49,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     private readonly ILogger<UrbanAttendedWeighingViewModel> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly CompositeDisposable _subscriptions = [];
+    private readonly SemaphoreSlim _reloadGate = new(1, 1);
 
     private const int PageSize = 7;
 
@@ -585,6 +588,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     private async Task ReloadRecordsAsync()
     {
+        await _reloadGate.WaitAsync();
         try
         {
             var input = new GetUrbanWeighingListInput
@@ -599,21 +603,26 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
             var result = await _urbanWeighingExtensionService.GetPagedListItemsAsync(input);
 
-            TotalCount = (int)result.TotalCount;
-            TotalPages = TotalCount > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 1;
+            var totalCount = (int)result.TotalCount;
+            var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / PageSize) : 1;
+            var items = result.Items.ToList();
 
-            RxApp.MainThreadScheduler.Schedule(() =>
+            await Dispatcher.UIThread.InvokeAsync(() =>
             {
+                TotalCount = totalCount;
+                TotalPages = totalPages;
                 ListItems.Clear();
-                foreach (var item in result.Items)
-                {
+                foreach (var item in items)
                     ListItems.Add(item);
-                }
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to reload weighing records");
+        }
+        finally
+        {
+            _reloadGate.Release();
         }
     }
 
@@ -699,5 +708,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         _deviceStatusTracker.StatusesChanged -= OnDeviceStatusesChanged;
         _deviceStatusTracker.Dispose();
         _subscriptions.Dispose();
+        _reloadGate.Dispose();
     }
 }
