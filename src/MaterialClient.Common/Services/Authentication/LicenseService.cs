@@ -118,12 +118,18 @@ public partial class LicenseService : DomainService, ILicenseService
                 Guid.NewGuid(),
                 licenseDto.Proid,
                 licenseDto.AuthEndTime,
-                machineCode);
+                machineCode,
+                licenseDto.ProName,
+                licenseDto.BuildLicenseNo);
             await _licenseRepository.InsertAsync(license);
         }
         else
         {
-            existingLicense.Update(licenseDto.AuthEndTime, machineCode);
+            existingLicense.Update(
+                licenseDto.AuthEndTime,
+                machineCode,
+                licenseDto.ProName,
+                licenseDto.BuildLicenseNo);
             license = await _licenseRepository.UpdateAsync(existingLicense);
         }
 
