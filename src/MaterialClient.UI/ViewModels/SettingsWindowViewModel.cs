@@ -66,6 +66,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableTriggerLprCapture;
     [Reactive] private int _jpegQuality = 75;
     [Reactive] private bool _showUrbanAnomalyDetectionSettings;
+    [Reactive] private DeliveryType _defaultDeliveryType = DeliveryType.Receiving;
     [Reactive] private decimal _urbanAnomalyUpperLimit = 30.0m;
     [Reactive] private decimal _urbanAnomalyLowerLimit = 2.0m;
     [Reactive] private decimal _urbanAnomalyDeviationPercentage = 10.0m;
@@ -122,6 +123,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         LprDeviceType.Hikvision,
         LprDeviceType.Vzvision,
         LprDeviceType.Huaxiazhixin
+    };
+
+    /// <summary>
+    ///     收发料类型选项（单一数据源）
+    /// </summary>
+    public ObservableCollection<DeliveryType> DeliveryTypeOptions { get; } = new()
+    {
+        DeliveryType.Receiving,
+        DeliveryType.Sending
     };
 
     /// <summary>
@@ -230,6 +240,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.EnableLatestRecommendation = EnableLatestRecommendation;
             systemSettings.EnableTriggerLprCapture = EnableTriggerLprCapture;
             systemSettings.JpegQuality = JpegQuality;
+            systemSettings.DefaultDeliveryType = DefaultDeliveryType;
             systemSettings.UrbanAnomalyDetection = new UrbanAnomalyDetectionConfig
             {
                 UpperLimit = UrbanAnomalyUpperLimit,
@@ -765,6 +776,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UrbanAnomalyDeviationPercentage = urbanAnomalyConfig.DeviationPercentage;
             ShowUrbanAnomalyDetectionSettings =
                 await _settingsService.GetWeighingModeAsync() == WeighingMode.UrbanMode;
+            DefaultDeliveryType = settings.SystemSettings.DefaultDeliveryType;
 
             // Ensure the loaded printer is in the available list (might be disconnected)
             if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&
