@@ -87,14 +87,14 @@ public record RecycleTransportRecord
     /// <summary>
     ///     从 <see cref="Waybill" /> 创建 §2.2 运输记录。
     ///     字段来源：Waybill.OrderNo 作为 dataNo（OrderNo 为空时由调用方跳过上报，本方法不做 R-{id} 回退）；
-    ///     重量单位已是吨，直接使用；carrierCompanyName 来自 Provider.ProviderName。
+    ///     重量单位已是吨，直接使用；consignee 来自 Provider.ProviderName。
     /// </summary>
     public static RecycleTransportRecord FromWaybill(
         Waybill waybill,
         string outPhotos,
         string productName,
         string? pointNumber,
-        string? carrierCompanyName = null)
+        string? consignee = null)
     {
         var netWeightTons = waybill.OrderGoodsWeight ?? 0m;
         var tareWeightTons = waybill.OrderTruckWeight;
@@ -108,7 +108,7 @@ public record RecycleTransportRecord
             DataNo = dataNo,
             PointNumber = pointNumber ?? string.Empty,
             CarNo = carNo,
-            CarrierCompanyName = carrierCompanyName,
+            Consignee = consignee,
             ProductName = productName,
             NetWeight = netWeightTons,
             TareWeight = tareWeightTons.HasValue && tareWeightTons.Value > 0 ? tareWeightTons.Value : null,
