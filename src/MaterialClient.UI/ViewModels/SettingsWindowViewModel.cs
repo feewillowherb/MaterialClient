@@ -26,6 +26,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.UI.ViewModels;
 
@@ -41,6 +42,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private readonly ISoundDeviceService _soundDeviceService;
     private readonly ILprDeviceResolver _lprDeviceResolver;
+    private readonly ILocalEventBus _localEventBus;
     private readonly IUsbCameraService? _usbCameraService;
     private readonly IDisposable _lprMessageSubscription;
 
@@ -177,6 +179,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ILogger<SettingsWindowViewModel> logger,
         ISoundDeviceService soundDeviceService,
         ILprDeviceResolver lprDeviceResolver,
+        ILocalEventBus localEventBus,
         IUsbCameraService? usbCameraService = null)
     {
         _settingsService = settingsService;
@@ -186,6 +189,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _logger = logger;
         _soundDeviceService = soundDeviceService;
         _lprDeviceResolver = lprDeviceResolver;
+        _localEventBus = localEventBus;
         _usbCameraService = usbCameraService;
 
         // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
@@ -312,7 +316,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Restart truck scale service with new settings
             await _truckScaleWeightService.RestartAsync();
 
-            MessageBus.Current.SendMessage(new SettingsSavedMessage());
+            // Common + UI both consume via EventData → bridge → SettingsSavedMessage
+            await _localEventBus.PublishAsync(new SettingsSavedEventData());
             MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
         }
         catch
