@@ -395,9 +395,9 @@ public partial class ManualMatchEditWindowViewModel : ViewModelBase, ITransientD
                 "SaveAsync: Sent MatchSucceededEventData via ILocalEventBus for WaybillId {WaybillId}, WeighingRecordId {RecordId}",
                 waybill.Id, CurrentRecord.Id);
 
-            await _localEventBus.PublishAsync(new ManualMatchSaveCompletedEventData(waybill.Id));
+            MessageBus.Current.SendMessage(new ManualMatchSaveCompletedMessage(waybill.Id));
             Logger?.LogInformation(
-                "SaveAsync: Sent ManualMatchSaveCompletedEventData via ILocalEventBus for WaybillId {WaybillId}",
+                "SaveAsync: Sent ManualMatchSaveCompletedMessage via MessageBus for WaybillId {WaybillId}",
                 waybill.Id);
 
             return true;

@@ -4,13 +4,11 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Threading;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.ViewModels;
 using ReactiveUI;
-using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.Views;
 
@@ -18,7 +16,6 @@ public partial class ManualMatchWindow : Window
 {
     private readonly IServiceProvider? _serviceProvider;
     private readonly ManualMatchWindowViewModel? _viewModel;
-    private readonly ILocalEventBus? _localEventBus;
     private long? _savedWaybillId;
     private readonly CompositeDisposable _disposables = new();
 
@@ -38,20 +35,13 @@ public partial class ManualMatchWindow : Window
     public ManualMatchWindow(WeighingRecord currentRecord, IServiceProvider serviceProvider) : this()
     {
         _serviceProvider = serviceProvider;
-        _localEventBus = serviceProvider.GetService(typeof(ILocalEventBus)) as ILocalEventBus;
         _viewModel = new ManualMatchWindowViewModel(currentRecord, serviceProvider);
         DataContext = _viewModel;
 
-        if (_localEventBus != null)
-        {
-            _localEventBus
-                .Subscribe<ManualMatchSaveCompletedEventData>(eventData =>
-                {
-                    Dispatcher.UIThread.Post(() => { _savedWaybillId = eventData.WaybillId; });
-                    return Task.CompletedTask;
-                })
-                .DisposeWith(_disposables);
-        }
+        MessageBus.Current.Listen<ManualMatchSaveCompletedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(message => { _savedWaybillId = message.WaybillId; })
+            .DisposeWith(_disposables);
     }
 
     /// <summary>

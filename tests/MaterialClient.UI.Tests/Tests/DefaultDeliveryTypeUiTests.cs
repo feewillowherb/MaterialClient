@@ -9,7 +9,6 @@ using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.UI.ViewModels;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using Volo.Abp.EventBus.Local;
 using Xunit;
 
 namespace MaterialClient.UI.Tests.Tests;
@@ -29,7 +28,6 @@ public class SettingsWindowViewModelDefaultDeliveryTypeTests
             Substitute.For<ILogger<SettingsWindowViewModel>>(),
             Substitute.For<ISoundDeviceService>(),
             Substitute.For<ILprDeviceResolver>(),
-            Substitute.For<ILocalEventBus>(),
             null);
     }
 

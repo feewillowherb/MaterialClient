@@ -27,7 +27,6 @@ using Ursa.Controls;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Volo.Abp.Domain.Repositories;
-using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.ViewModels;
 
@@ -45,7 +44,6 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     private protected readonly IServiceProvider _serviceProvider;
     private protected readonly IMaterialService _materialService;
     private protected readonly IProviderService _providerService;
-    private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IWaybillVoidService _waybillVoidService;
@@ -69,7 +67,6 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         _waybillVoidService = _serviceProvider.GetRequiredService<IWaybillVoidService>();
         _materialService = _serviceProvider.GetRequiredService<IMaterialService>();
         _providerService = _serviceProvider.GetRequiredService<IProviderService>();
-        _localEventBus = _serviceProvider.GetRequiredService<ILocalEventBus>();
 
         // Subscribe to weight changes -> update GoodsWeight
         this.WhenAnyValue(x => x.AllWeight, x => x.TruckWeight)
@@ -458,8 +455,8 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
                 }
             }
 
-            await _localEventBus.PublishAsync(new SaveCompletedEventData(_listItem.Id, _listItem.ItemType));
-            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
+            MessageBus.Current.SendMessage(new SaveCompletedMessage(_listItem.Id, _listItem.ItemType));
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
                 itemId: _listItem.Id,
                 itemType: _listItem.ItemType,
                 orderType: _listItem.OrderType,
@@ -510,7 +507,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
                 }
             }
 
-            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
                 itemId: _listItem.Id,
                 itemType: WeighingListItemType.Waybill,
                 orderType: OrderTypeEnum.Completed,
@@ -557,7 +554,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         {
             await _weighingRecordRepository.DeleteAsync(_listItem.Id);
 
-            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
                 itemId: _listItem.Id,
                 itemType: _listItem.ItemType,
                 orderType: _listItem.OrderType,
@@ -590,7 +587,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
         {
             await _waybillVoidService.VoidWaybillAsync(_listItem.Id, scope.Value, "operator void");
 
-            await _localEventBus.PublishAsync(new DetailOperationCompletedEventData(
+            MessageBus.Current.SendMessage(new DetailOperationCompletedMessage(
                 itemId: _listItem.Id,
                 itemType: WeighingListItemType.Waybill,
                 orderType: _listItem.OrderType,
@@ -607,7 +604,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     [ReactiveCommand]
     private void Close()
     {
-        _ = _localEventBus.PublishAsync(new DetailCloseRequestedEventData());
+        MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
     }
 
     [ReactiveCommand]
@@ -643,7 +640,7 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
             {
                 if (matchWindow.SavedWaybillId.HasValue)
                 {
-                    await _localEventBus.PublishAsync(new ManualMatchSaveCompletedEventData(
+                    MessageBus.Current.SendMessage(new ManualMatchSaveCompletedMessage(
                         waybillId: matchWindow.SavedWaybillId.Value));
                 }
             }

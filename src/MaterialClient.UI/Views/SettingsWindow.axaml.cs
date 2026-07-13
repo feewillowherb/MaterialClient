@@ -13,7 +13,6 @@ using MaterialClient.Common.Events;
 using MaterialClient.UI.ViewModels;
 using ReactiveUI;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.EventBus.Local;
 
 namespace MaterialClient.UI.Views;
 
@@ -38,16 +37,10 @@ public partial class SettingsWindow : Window, ITransientDependency
 
         DataContext = viewModel;
 
-        var localEventBus = serviceProvider?.GetService(typeof(ILocalEventBus)) as ILocalEventBus;
-        if (localEventBus != null)
-        {
-            localEventBus.Subscribe<DetailCloseRequestedEventData>(_ =>
-                {
-                    Dispatcher.UIThread.Post(Close);
-                    return Task.CompletedTask;
-                })
-                .DisposeWith(_disposables);
-        }
+        MessageBus.Current.Listen<DetailCloseRequestedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => Close())
+            .DisposeWith(_disposables);
 
         // Subscribe to LprDeviceType changes to update column visibility
         if (viewModel != null)
