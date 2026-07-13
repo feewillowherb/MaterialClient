@@ -98,4 +98,10 @@ public class SystemSettings
     ///     Urban 异常检测阈值配置（单位：吨）。
     /// </summary>
     public UrbanAnomalyDetectionConfig UrbanAnomalyDetection { get; set; } = new();
+
+    /// <summary>
+    ///     默认收发料类型（Receiving=收料 / Sending=发料）
+    ///     用于系统级别的默认收发料模式设置
+    /// </summary>
+    public DeliveryType DefaultDeliveryType { get; set; } = DeliveryType.Receiving;
 }

@@ -29,6 +29,11 @@ public interface ISettingsService
     Task<WeighingMode> GetWeighingModeAsync();
 
     /// <summary>
+    ///     Get default delivery type from settings
+    /// </summary>
+    Task<DeliveryType> GetDefaultDeliveryTypeAsync();
+
+    /// <summary>
     ///     Get the ProductCode derived from the current WeighingMode setting.
     ///     Standard -> ProductCode.Standard (5000), SolidWaste -> ProductCode.SolidWaste (5010), UrbanMode -> ProductCode.Urban (5030)
     /// </summary>
@@ -157,6 +162,15 @@ public class SettingsService : DomainService, ISettingsService
     {
         var settings = await GetSettingsAsync();
         return settings.SystemSettings.DefaultWeighingMode;
+    }
+
+    /// <summary>
+    ///     Get default delivery type from settings
+    /// </summary>
+    public async Task<DeliveryType> GetDefaultDeliveryTypeAsync()
+    {
+        var settings = await GetSettingsAsync();
+        return settings.SystemSettings.DefaultDeliveryType;
     }
 
     /// <summary>
