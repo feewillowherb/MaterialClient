@@ -329,6 +329,12 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             var settings = await _settingsService.GetSettingsAsync();
             IsSolidWasteMode = settings.SystemSettings.DefaultWeighingMode
                 is WeighingMode.SolidWaste or WeighingMode.Recycle;
+
+            // Apply persisted default delivery type
+            var defaultDeliveryType = settings.SystemSettings.DefaultDeliveryType;
+            if (!Enum.IsDefined(defaultDeliveryType))
+                defaultDeliveryType = DeliveryType.Receiving;
+            _attendedWeighingService?.SetDeliveryType(defaultDeliveryType);
         }
         catch (Exception ex)
         {
