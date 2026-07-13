@@ -29,6 +29,11 @@ public interface ISettingsService
     Task<WeighingMode> GetWeighingModeAsync();
 
     /// <summary>
+    ///     Get default delivery type from settings
+    /// </summary>
+    Task<DeliveryType> GetDefaultDeliveryTypeAsync();
+
+    /// <summary>
     ///     Get the ProductCode derived from the current WeighingMode setting.
     ///     Standard -> ProductCode.Standard (5000), SolidWaste -> ProductCode.SolidWaste (5010), UrbanMode -> ProductCode.Urban (5030)
     /// </summary>
@@ -160,6 +165,15 @@ public class SettingsService : DomainService, ISettingsService
     }
 
     /// <summary>
+    ///     Get default delivery type from settings
+    /// </summary>
+    public async Task<DeliveryType> GetDefaultDeliveryTypeAsync()
+    {
+        var settings = await GetSettingsAsync();
+        return settings.SystemSettings.DefaultDeliveryType;
+    }
+
+    /// <summary>
     ///     Get the ProductCode derived from the current WeighingMode setting.
     /// </summary>
     public async Task<ProductCode> GetProductCodeAsync()
@@ -169,6 +183,7 @@ public class SettingsService : DomainService, ISettingsService
         {
             WeighingMode.SolidWaste => ProductCode.SolidWaste,
             WeighingMode.UrbanMode => ProductCode.Urban,
+            WeighingMode.Recycle => ProductCode.Recycle,
             _ => ProductCode.Standard
         };
     }
@@ -185,6 +200,7 @@ public class SettingsService : DomainService, ISettingsService
         {
             ProductCode.SolidWaste => WeighingMode.SolidWaste,
             ProductCode.Urban => WeighingMode.UrbanMode,
+            ProductCode.Recycle => WeighingMode.Recycle,
             _ => WeighingMode.Standard
         };
         settings.SystemSettings = systemSettings;

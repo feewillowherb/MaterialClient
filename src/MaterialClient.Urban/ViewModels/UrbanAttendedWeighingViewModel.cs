@@ -85,15 +85,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         this.RaisePropertyChanged(nameof(IsWeighingActive));
 
         _subscriptions.Add(
-            _localEventBus.Subscribe<PlateNumberChangedEventData>(eventData =>
-            {
-                RxApp.MainThreadScheduler.Schedule(() => MostFrequentPlateNumber = eventData.PlateNumber);
-                return Task.CompletedTask;
-            }));
+            MessageBus.Current.Listen<PlateNumberChangedMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(message => MostFrequentPlateNumber = message.PlateNumber));
 
         _subscriptions.Add(
-            _localEventBus
-                .Subscribe<WeighingRecordCreatedEventData>(async eventData =>
+            MessageBus.Current.Listen<WeighingRecordCreatedMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(async _ =>
                 {
                     try
                     {
@@ -101,13 +100,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to handle WeighingRecordCreatedEventData");
+                        _logger.LogError(ex, "Failed to handle WeighingRecordCreatedMessage");
                     }
                 }));
 
         _subscriptions.Add(
-            _localEventBus
-                .Subscribe<UploadCompletedEventData>(async eventData =>
+            MessageBus.Current.Listen<UploadCompletedMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(async _ =>
                 {
                     try
                     {
@@ -115,13 +115,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to handle UploadCompletedEventData");
+                        _logger.LogError(ex, "Failed to handle UploadCompletedMessage");
                     }
                 }));
 
         _subscriptions.Add(
-            _localEventBus
-                .Subscribe<ServerApprovalSyncedEventData>(async eventData =>
+            MessageBus.Current.Listen<ServerApprovalSyncedMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(async _ =>
                 {
                     try
                     {
@@ -129,36 +130,39 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to handle ServerApprovalSyncedEventData");
+                        _logger.LogError(ex, "Failed to handle ServerApprovalSyncedMessage");
                     }
                 }));
 
         _subscriptions.Add(
-            _localEventBus
-                .Subscribe<StatusChangedEventData>(async eventData =>
+            MessageBus.Current.Listen<StatusChangedMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(message =>
                 {
                     try
                     {
-                        UpdateStatusDisplay(eventData.Status);
+                        UpdateStatusDisplay(message.Status);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to handle StatusChangedEventData");
+                        _logger.LogError(ex, "Failed to handle StatusChangedMessage");
                     }
                 }));
 
         _subscriptions.Add(
-            _localEventBus.Subscribe<SettingsSavedEventData>(async _ =>
-            {
-                try
+            MessageBus.Current.Listen<SettingsSavedMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(async _ =>
                 {
-                    await RefreshDeviceStatusBarAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to refresh device status bar after settings save");
-                }
-            }));
+                    try
+                    {
+                        await RefreshDeviceStatusBarAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to refresh device status bar after settings save");
+                    }
+                }));
 
         _subscriptions.Add(
             this.WhenAnyValue(x => x.SelectedListItem)
@@ -208,7 +212,6 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
             var dialogViewModel = new WeighingRecordEditDialogViewModel(
                 _serviceProvider.GetRequiredService<IAttachmentService>(),
                 _serviceProvider,
-                _serviceProvider.GetRequiredService<ILocalEventBus>(),
                 _serviceProvider.GetRequiredService<ILogger<WeighingRecordEditDialogViewModel>>())
             {
                 PlateNumber = item.PlateNumber ?? string.Empty,
@@ -599,17 +602,18 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
             var result = await _urbanWeighingExtensionService.GetPagedListItemsAsync(input);
 
-            TotalCount = (int)result.TotalCount;
-            TotalPages = TotalCount > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 1;
+            var totalCount = (int)result.TotalCount;
+            var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / PageSize) : 1;
+            var items = result.Items.ToList();
 
-            RxApp.MainThreadScheduler.Schedule(() =>
-            {
-                ListItems.Clear();
-                foreach (var item in result.Items)
-                {
-                    ListItems.Add(item);
-                }
-            });
+            // Clear/Add 与绑定属性更新在 ObserveOn(RxApp.MainThreadScheduler) 管线内执行：
+            // 事件订阅回调经 ObserveOn 串行排入主线程队列，Clear+Add 为单一原子同步块，
+            // 由主线程调度器串行化，无需 SemaphoreSlim / Dispatcher.UIThread.InvokeAsync。
+            TotalCount = totalCount;
+            TotalPages = totalPages;
+            ListItems.Clear();
+            foreach (var item in items)
+                ListItems.Add(item);
         }
         catch (Exception ex)
         {

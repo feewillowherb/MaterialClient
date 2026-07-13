@@ -71,22 +71,9 @@ public partial class MinimalWebHostService : IMinimalWebHostService
             _webApplication = builder.Build();
             ConfigureEndpoints(_webApplication);
 
-            var urls = _configuration["UrbanWebHost:Urls"];
-            if (string.IsNullOrWhiteSpace(urls))
-            {
-                urls = "http://localhost:9961";
-            }
-            else
-            {
-                urls = urls.Trim();
-                if (!urls.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-                    !urls.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    urls = "http://" + urls;
-                }
-            }
-
+            var urls = ResolveUrls();
             _webApplication.Urls.Add(urls);
+
             _logger.LogInformation("Urban minimal web host started on {Url}", urls);
             await _webApplication.StartAsync(cancellationToken);
         }
@@ -133,6 +120,27 @@ public partial class MinimalWebHostService : IMinimalWebHostService
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
+    }
+
+    /// <summary>
+    ///     解析监听地址，优先级：<see cref="MinimalWebHost:Urls" /> 配置 &gt; 默认值。
+    /// </summary>
+    private string ResolveUrls()
+    {
+        var urls = _configuration["MinimalWebHost:Urls"];
+        if (string.IsNullOrWhiteSpace(urls))
+        {
+            return "http://localhost:9961";
+        }
+
+        urls = urls.Trim();
+        if (!urls.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !urls.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            urls = "http://" + urls;
+        }
+
+        return urls;
     }
 
     private void ConfigureEndpoints(WebApplication app)

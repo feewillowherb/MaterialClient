@@ -120,6 +120,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
                     vehicleColor, vehicleType, plateColor);
 
             var weighingMode = await _settingsService.GetWeighingModeAsync();
+            var settings = await _settingsService.GetSettingsAsync();
             weighingRecord.SetWeighingMode(weighingMode);
 
             await _weighingRecordRepository.InsertAsync(weighingRecord, autoSave: true);
@@ -148,7 +149,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             else
                 _logger.LogWarning("Weighing record {Id} has no associated photos", weighingRecord.Id);
 
-            if (weighingMode == WeighingMode.UrbanMode)
+            if (weighingMode == WeighingMode.UrbanMode || settings.CameraConfigs.Count == 0)
                 await SaveLprAttachmentAsync(weighingRecord.Id, stateManager.GetCurrentCycleLprImagePath());
         }
         catch (Exception ex)
@@ -232,6 +233,19 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             await uow.CompleteAsync();
             _logger.LogInformation("Saved Lrp attachment to weighing record {Id}: {Path}", weighingRecordId,
                 lrpRelativePath);
+
+            // 无 CameraConfigs 时额外插入 UnmatchedEntryPhoto（同路径），供 PhotoGrid 与市平台取图
+            var settings = await _settingsService.GetSettingsAsync();
+            if (settings.CameraConfigs.Count == 0)
+            {
+                using var uow2 = _unitOfWorkManager.Begin();
+                var unmatchedFile = new AttachmentFile(fileName, lrpRelativePath, AttachType.UnmatchedEntryPhoto);
+                await _attachmentFileRepository.InsertAsync(unmatchedFile, true);
+                var unmatchedAttachment = new WeighingRecordAttachment(weighingRecordId, unmatchedFile.Id);
+                await _weighingRecordAttachmentRepository.InsertAsync(unmatchedAttachment, true);
+                await uow2.CompleteAsync();
+                _logger.LogInformation("Saved UnmatchedEntryPhoto (no-camera fallback) to weighing record {Id}: {Path}", weighingRecordId, lrpRelativePath);
+            }
         }
         catch (Exception ex)
         {

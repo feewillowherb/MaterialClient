@@ -23,5 +23,11 @@ public enum ProductCode
     ///     城管专用产品代码（Urban 桌面端）
     /// </summary>
     [Description("城管地磅称重系统客户端软件")]
-    Urban = 5001
+    Urban = 5001,
+
+    /// <summary>
+    ///     资源化利用厂产品代码（Recycle 桌面端）
+    /// </summary>
+    [Description("资源化利用厂称重系统客户端软件")]
+    Recycle = 5020
 }

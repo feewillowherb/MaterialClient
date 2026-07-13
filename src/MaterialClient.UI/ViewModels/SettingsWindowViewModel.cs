@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -41,8 +42,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ILogger<SettingsWindowViewModel> _logger;
     private readonly ISoundDeviceService _soundDeviceService;
     private readonly ILprDeviceResolver _lprDeviceResolver;
-    private readonly IUsbCameraService? _usbCameraService;
     private readonly ILocalEventBus _localEventBus;
+    private readonly IUsbCameraService? _usbCameraService;
     private readonly IDisposable _lprMessageSubscription;
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
@@ -66,6 +67,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableTriggerLprCapture;
     [Reactive] private int _jpegQuality = 75;
     [Reactive] private bool _showUrbanAnomalyDetectionSettings;
+    [Reactive] private DeliveryType _defaultDeliveryType = DeliveryType.Receiving;
     [Reactive] private decimal _urbanAnomalyUpperLimit = 30.0m;
     [Reactive] private decimal _urbanAnomalyLowerLimit = 2.0m;
     [Reactive] private decimal _urbanAnomalyDeviationPercentage = 10.0m;
@@ -125,6 +127,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     };
 
     /// <summary>
+    ///     收发料类型选项（单一数据源）
+    /// </summary>
+    public ObservableCollection<DeliveryType> DeliveryTypeOptions { get; } = new()
+    {
+        DeliveryType.Receiving,
+        DeliveryType.Sending
+    };
+
+    /// <summary>
     ///     是否显示海康威视专用配置字段
     /// </summary>
     public bool ShowHikvisionLprFields => LprDeviceType == LprDeviceType.Hikvision;
@@ -181,17 +192,15 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _localEventBus = localEventBus;
         _usbCameraService = usbCameraService;
 
-        // Subscribe to LPR recognition events and update the matching row's LastCapturePlateNumber
-        _lprMessageSubscription = _localEventBus.Subscribe<LicensePlateRecognizedEventData>(eventData =>
+        // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
+        _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(msg =>
             {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    var item = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
-                        string.Equals(c.Name, eventData.DeviceName, StringComparison.Ordinal));
-                    if (item != null)
-                        item.LastCapturePlateNumber = eventData.PlateNumber ?? string.Empty;
-                });
-                return Task.CompletedTask;
+                var item = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
+                    string.Equals(c.Name, msg.DeviceName, StringComparison.Ordinal));
+                if (item != null)
+                    item.LastCapturePlateNumber = msg.PlateNumber ?? string.Empty;
             });
 
         // Subscribe to LprDeviceType changes to notify LPR-related visibility properties
@@ -230,6 +239,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.EnableLatestRecommendation = EnableLatestRecommendation;
             systemSettings.EnableTriggerLprCapture = EnableTriggerLprCapture;
             systemSettings.JpegQuality = JpegQuality;
+            systemSettings.DefaultDeliveryType = DefaultDeliveryType;
             systemSettings.UrbanAnomalyDetection = new UrbanAnomalyDetectionConfig
             {
                 UpperLimit = UrbanAnomalyUpperLimit,
@@ -306,8 +316,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Restart truck scale service with new settings
             await _truckScaleWeightService.RestartAsync();
 
+            // Common + UI both consume via EventData → bridge → SettingsSavedMessage
             await _localEventBus.PublishAsync(new SettingsSavedEventData());
-            await _localEventBus.PublishAsync(new DetailCloseRequestedEventData());
+            MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
         }
         catch
         {
@@ -318,7 +329,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [ReactiveCommand]
     private void Cancel()
     {
-        _ = _localEventBus.PublishAsync(new DetailCloseRequestedEventData());
+        MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
     }
 
     [ReactiveCommand]
@@ -765,6 +776,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UrbanAnomalyDeviationPercentage = urbanAnomalyConfig.DeviationPercentage;
             ShowUrbanAnomalyDetectionSettings =
                 await _settingsService.GetWeighingModeAsync() == WeighingMode.UrbanMode;
+            DefaultDeliveryType = settings.SystemSettings.DefaultDeliveryType;
 
             // Ensure the loaded printer is in the available list (might be disconnected)
             if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&
@@ -947,7 +959,7 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     [Reactive] private bool _isOnline;
 
     /// <summary>
-    ///     最近一次测试抓拍的车牌号（来自 ILocalEventBus）
+    ///     最近一次测试抓拍的车牌号（来自 MessageBus）
     /// </summary>
     [Reactive] private string _lastCapturePlateNumber = string.Empty;
 

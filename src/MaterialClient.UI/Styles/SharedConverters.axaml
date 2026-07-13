@@ -13,6 +13,7 @@
             <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
             <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
             <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
+            <converters:DeliveryTypeConverter x:Key="DeliveryTypeConverter" />
             <converters:WeighingModeConverter x:Key="WeighingModeConverter" />
             <converters:MaterialUnitDisplayConverter x:Key="MaterialUnitDisplayConverter" />
             <converters:ProductCodeConverter x:Key="ProductCodeConverter" />
