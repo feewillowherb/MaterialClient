@@ -14,7 +14,15 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     /// <summary>
     ///     在父称重记录已持久化后创建扩展行。
     /// </summary>
-    Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLprAttachment = true);
+    /// <param name="weighingRecordId">父称重记录 Id</param>
+    /// <param name="hasLprAttachment">创建时是否已有 LPR 附件（仅在 <paramref name="evaluateAnomaly"/> 为 true 时参与判定）</param>
+    /// <param name="evaluateAnomaly">
+    ///     是否立即计算并持久化异常。晚到 LPR 补绑场景应传 false，待 LPR Upsert 或周期重置后再算。
+    /// </param>
+    Task<UrbanWeighingExtension> CreateForRecordAsync(
+        long weighingRecordId,
+        bool hasLprAttachment = true,
+        bool evaluateAnomaly = true);
 
     /// <summary>
     ///     按扩展 Id 查询。

@@ -105,6 +105,22 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 }));
 
         _subscriptions.Add(
+            MessageBus.Current.Listen<UpdatePlateNumberMessage>()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(async _ =>
+                {
+                    try
+                    {
+                        // LPR late-bind syncs plate and recalculates Urban anomaly; refresh list tabs.
+                        await ReloadRecordsAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to handle UpdatePlateNumberMessage");
+                    }
+                }));
+
+        _subscriptions.Add(
             MessageBus.Current.Listen<UploadCompletedMessage>()
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(async _ =>

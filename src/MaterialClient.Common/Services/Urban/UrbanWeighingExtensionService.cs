@@ -43,7 +43,10 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(long weighingRecordId, bool hasLprAttachment = true)
+    public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(
+        long weighingRecordId,
+        bool hasLprAttachment = true,
+        bool evaluateAnomaly = true)
     {
         if (weighingRecordId <= 0)
         {
@@ -65,18 +68,27 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             LastErrorTime = null
         };
 
-        // Persist AnomalyReason at creation time (includes Lrp absence check)
-        var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
-        var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
-            _settingsService, _configuration, _logger);
-        extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLprAttachment);
-        extension.AnomalyReason = extension.IsAnomaly
-            ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLprAttachment)
-            : null;
+        if (evaluateAnomaly)
+        {
+            var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
+            var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
+                _settingsService, _configuration, _logger);
+            extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLprAttachment);
+            extension.AnomalyReason = extension.IsAnomaly
+                ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLprAttachment)
+                : null;
+        }
+        else
+        {
+            // Defer until LPR late-bind Upsert or cycle reset recalculation.
+            extension.IsAnomaly = false;
+            extension.AnomalyReason = null;
+        }
 
         await _extensionRepository.InsertAsync(extension, autoSave: true);
-        _logger.LogDebug("Created UrbanWeighingExtension {ExtensionId} for WeighingRecord {RecordId}",
-            extension.Id, weighingRecordId);
+        _logger.LogDebug(
+            "Created UrbanWeighingExtension {ExtensionId} for WeighingRecord {RecordId}, EvaluateAnomaly={EvaluateAnomaly}",
+            extension.Id, weighingRecordId, evaluateAnomaly);
 
         return extension;
     }

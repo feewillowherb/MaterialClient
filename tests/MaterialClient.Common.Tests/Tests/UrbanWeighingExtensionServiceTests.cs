@@ -42,6 +42,40 @@ public class UrbanWeighingExtensionServiceTests
     }
 
     [Fact]
+    public async Task CreateForRecordAsync_WhenEvaluateAnomalyFalse_ShouldDeferAnomalyFlags()
+    {
+        const long recordId = 2001;
+        var inserted = (UrbanWeighingExtension?)null;
+
+        _weighingRecordRepository.GetAsync(recordId).Returns(new WeighingRecord(10m, null));
+        _extensionRepository.FirstOrDefaultAsync(Arg.Any<System.Linq.Expressions.Expression<Func<UrbanWeighingExtension, bool>>>())
+            .Returns((UrbanWeighingExtension?)null);
+        _extensionRepository.InsertAsync(Arg.Any<UrbanWeighingExtension>(), Arg.Any<bool>())
+            .Returns(call =>
+            {
+                inserted = call.Arg<UrbanWeighingExtension>();
+                return inserted;
+            });
+
+        var anomalyDetector = Substitute.For<IUrbanAnomalyDetector>();
+        var service = new UrbanWeighingExtensionService(
+            _extensionRepository,
+            _weighingRecordRepository,
+            anomalyDetector,
+            Substitute.For<ISettingsService>(),
+            new ConfigurationBuilder().Build(),
+            Substitute.For<ILogger<UrbanWeighingExtensionService>>());
+
+        var extension = await service.CreateForRecordAsync(recordId, hasLprAttachment: false, evaluateAnomaly: false);
+
+        extension.IsAnomaly.ShouldBeFalse();
+        extension.AnomalyReason.ShouldBeNull();
+        anomalyDetector.DidNotReceiveWithAnyArgs().IsAnomaly(default!, default!, default);
+        inserted.ShouldNotBeNull();
+        inserted!.IsAnomaly.ShouldBeFalse();
+    }
+
+    [Fact]
     public void NewExtension_Should_Use_NonZero_WeighingRecordId_When_Associating()
     {
         const long recordId = 1001;

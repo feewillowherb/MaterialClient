@@ -132,8 +132,11 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
             if (weighingMode == WeighingMode.UrbanMode)
             {
-                var hasLrp = !string.IsNullOrWhiteSpace(stateManager.GetCurrentCycleLprImagePath());
-                var extension = await _urbanWeighingExtensionService.CreateForRecordAsync(weighingRecord.Id, hasLrp);
+                // Defer anomaly until LPR Upsert or cycle-reset recalculation (late-bind capture).
+                await _urbanWeighingExtensionService.CreateForRecordAsync(
+                    weighingRecord.Id,
+                    hasLprAttachment: true,
+                    evaluateAnomaly: false);
             }
 
             await uow.CompleteAsync();
@@ -287,15 +290,34 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             return;
 
         var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
+
+        // Sync plate from recognition cache before evaluating (LPR often arrives after create).
+        var plateNumber = _plateNumberService.GetMostFrequentPlateNumber();
+        if (!string.IsNullOrWhiteSpace(plateNumber) && record.PlateNumber != plateNumber)
+        {
+            using var uow = _unitOfWorkManager.Begin();
+            var oldPlate = record.PlateNumber;
+            record.PlateNumber = plateNumber;
+            await _weighingRecordRepository.UpdateAsync(record, true);
+            await uow.CompleteAsync();
+            _logger.LogInformation(
+                "Synced plate before Urban anomaly recalc for record {Id}: '{OldPlate}' -> '{NewPlate}'",
+                weighingRecordId, oldPlate ?? "None", plateNumber);
+        }
+
         var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
             _settingsService, _configuration, _logger);
         var hasLpr = await HasLprAttachmentAsync(weighingRecordId);
         var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLpr);
         var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLpr) : null;
         await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, isAnomaly, reason);
+
         _logger.LogInformation(
-            "Recalculated Urban anomaly after Lpr upsert for record {Id}: IsAnomaly={IsAnomaly}",
-            weighingRecordId, isAnomaly);
+            "Recalculated Urban anomaly after Lpr change for record {Id}: IsAnomaly={IsAnomaly}, HasLpr={HasLpr}, Reason={Reason}",
+            weighingRecordId, isAnomaly, hasLpr, reason);
+
+        // Notify Urban UI to refresh list tabs after anomaly/plate change.
+        _ = _localEventBus.PublishAsync(new UpdatePlateNumberEventData(weighingRecordId, record.PlateNumber));
     }
 
     private async Task SaveLprAttachmentAsync(long weighingRecordId, string? lrpRelativePath)
@@ -440,7 +462,13 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
     public async Task RewriteAndResetCycleAsync(WeighingStateManager stateManager,
         IPlateNumberService plateNumberService)
     {
+        var recordId = stateManager.GetLastCreatedWeighingRecordId();
         await TryReWritePlateNumberAsync(stateManager);
+
+        // Finalize Urban anomaly after plate rewrite (CaptureFailure if LPR never arrived).
+        if (recordId is > 0)
+            await RecalculateUrbanAnomalyAfterLprChangeAsync(recordId.Value);
+
         plateNumberService.ClearCache();
         stateManager.ResetCycle();
     }
