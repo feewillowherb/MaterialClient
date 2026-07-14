@@ -2,6 +2,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Services.AttendedWeighing.Records;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Utils;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,11 @@ public interface IWeighingRecordService
     ///     保存抓拍的照片
     /// </summary>
     Task SaveCapturePhotosAsync(long weighingRecordId, List<string> photoPaths);
+
+    /// <summary>
+    ///     将本周期 LPR 候选 Upsert 到指定称重记录（无则插入，有则替换路径）
+    /// </summary>
+    Task UpsertLprAttachmentAsync(long weighingRecordId, CycleLprCandidate candidate);
 
     /// <summary>
     ///     尝试重写称重记录的车牌号和收发类型
@@ -120,7 +126,6 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
                     vehicleColor, vehicleType, plateColor);
 
             var weighingMode = await _settingsService.GetWeighingModeAsync();
-            var settings = await _settingsService.GetSettingsAsync();
             weighingRecord.SetWeighingMode(weighingMode);
 
             await _weighingRecordRepository.InsertAsync(weighingRecord, autoSave: true);
@@ -149,8 +154,9 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             else
                 _logger.LogWarning("Weighing record {Id} has no associated photos", weighingRecord.Id);
 
-            if (weighingMode == WeighingMode.UrbanMode || settings.CameraConfigs.Count == 0)
-                await SaveLprAttachmentAsync(weighingRecord.Id, stateManager.GetCurrentCycleLprImagePath());
+            var lprCandidate = stateManager.GetCurrentCycleLprCandidate();
+            if (lprCandidate is not null)
+                await UpsertLprAttachmentAsync(weighingRecord.Id, lprCandidate);
         }
         catch (Exception ex)
         {
@@ -203,6 +209,93 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         {
             _logger.LogError(ex, "Error occurred while saving captured photos");
         }
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertLprAttachmentAsync(long weighingRecordId, CycleLprCandidate candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate.RelativePath))
+        {
+            _logger.LogDebug("No Lpr image path for weighing record {Id}, skipping Lrp upsert", weighingRecordId);
+            return;
+        }
+
+        try
+        {
+            if (!AttachmentPathUtils.FileExists(candidate.RelativePath))
+            {
+                _logger.LogWarning("Lpr photo file does not exist: {PhotoPath}", candidate.RelativePath);
+                return;
+            }
+
+            var recordAttachments =
+                await _weighingRecordAttachmentRepository.GetListAsync(a => a.WeighingRecordId == weighingRecordId);
+            var fileIds = recordAttachments.Select(a => a.AttachmentFileId).ToList();
+            var existingFiles = fileIds.Count == 0
+                ? []
+                : await _attachmentFileRepository.GetListAsync(f => fileIds.Contains(f.Id));
+
+            var existingLpr = existingFiles.FirstOrDefault(f => f.AttachType == AttachType.Lpr);
+            if (existingLpr is null)
+            {
+                await SaveLprAttachmentAsync(weighingRecordId, candidate.RelativePath);
+            }
+            else
+            {
+                using var uow = _unitOfWorkManager.Begin();
+                var fileName = Path.GetFileName(candidate.RelativePath);
+                existingLpr.FileName = fileName;
+                existingLpr.LocalPath = candidate.RelativePath;
+                await _attachmentFileRepository.UpdateAsync(existingLpr, true);
+
+                var settings = await _settingsService.GetSettingsAsync();
+                if (settings.CameraConfigs.Count == 0)
+                {
+                    var unmatched = existingFiles.FirstOrDefault(f => f.AttachType == AttachType.UnmatchedEntryPhoto);
+                    if (unmatched is not null)
+                    {
+                        unmatched.FileName = fileName;
+                        unmatched.LocalPath = candidate.RelativePath;
+                        await _attachmentFileRepository.UpdateAsync(unmatched, true);
+                    }
+                    else
+                    {
+                        var unmatchedFile = new AttachmentFile(fileName, candidate.RelativePath, AttachType.UnmatchedEntryPhoto);
+                        await _attachmentFileRepository.InsertAsync(unmatchedFile, true);
+                        await _weighingRecordAttachmentRepository.InsertAsync(
+                            new WeighingRecordAttachment(weighingRecordId, unmatchedFile.Id), true);
+                    }
+                }
+
+                await uow.CompleteAsync();
+                _logger.LogInformation("Updated Lrp attachment on weighing record {Id}: {Path}", weighingRecordId,
+                    candidate.RelativePath);
+            }
+
+            await RecalculateUrbanAnomalyAfterLprChangeAsync(weighingRecordId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while upserting Lrp attachment for record {Id}", weighingRecordId);
+        }
+    }
+
+    private async Task RecalculateUrbanAnomalyAfterLprChangeAsync(long weighingRecordId)
+    {
+        var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(weighingRecordId);
+        if (extension is null)
+            return;
+
+        var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
+        var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
+            _settingsService, _configuration, _logger);
+        var hasLpr = await HasLprAttachmentAsync(weighingRecordId);
+        var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLpr);
+        var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLpr) : null;
+        await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, isAnomaly, reason);
+        _logger.LogInformation(
+            "Recalculated Urban anomaly after Lpr upsert for record {Id}: IsAnomaly={IsAnomaly}",
+            weighingRecordId, isAnomaly);
     }
 
     private async Task SaveLprAttachmentAsync(long weighingRecordId, string? lrpRelativePath)

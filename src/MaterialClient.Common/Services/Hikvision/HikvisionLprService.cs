@@ -549,19 +549,15 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     }
 
     /// <summary>
-    ///     尝试保存 Lpr 车牌识别图片（仅 UrbanMode = 201 时保存）
+    ///     尝试保存 Lpr 车牌识别图片
     ///     从海康威视 SDK 回调的 pBuffer 提取图片数据，压缩后保存到磁盘
     /// </summary>
     /// <param name="pBuffer">SDK 回调中的图片数据指针</param>
     /// <param name="picLen">图片数据长度</param>
     /// <param name="plateNumber">车牌号（用于文件名）</param>
-    /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
+    /// <returns>保存的相对路径，保存失败时返回 null</returns>
     private string? TrySaveLprAttachment(IntPtr pBuffer, int picLen, string plateNumber)
     {
-        // UrbanMode 或无 CameraConfigs 时保存 Lpr 附件
-        if (_cachedWeighingMode != WeighingMode.UrbanMode && _cachedHasCameraConfigs)
-            return null;
-
         if (pBuffer == IntPtr.Zero || picLen <= 0)
             return null;
 

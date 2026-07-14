@@ -72,6 +72,11 @@ public class SystemSettings
     public bool EnableTriggerLprCapture { get; set; } = false;
 
     /// <summary>
+    ///     LPR 主动抓拍触发前延迟（毫秒）。0 表示立即抓拍。
+    /// </summary>
+    public int TriggerLprCaptureDelayMs { get; set; } = 0;
+
+    /// <summary>
     ///     JPEG 抓拍压缩质量（1-100），默认 75。
     ///     值 >= 100 时跳过压缩，保留原始文件。
     /// </summary>

@@ -141,6 +141,13 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
             return;
         }
 
+        var delayMs = settings.SystemSettings.TriggerLprCaptureDelayMs;
+        if (delayMs > 0)
+        {
+            _logger.LogInformation("LPR 主动抓拍延迟 {DelayMs}ms ({Phase})", delayMs, phase);
+            await Task.Delay(delayMs);
+        }
+
         try
         {
             var lprDeviceType = settings.SystemSettings.LprDeviceType;

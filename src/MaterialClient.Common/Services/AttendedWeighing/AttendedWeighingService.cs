@@ -107,7 +107,23 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
                     _plateNumberService.OnPlateNumberRecognized(eventData.PlateNumber, eventData.ColorType);
 
                     if (!string.IsNullOrWhiteSpace(eventData.LprImagePath))
-                        _stateManager.SetCurrentCycleLprImagePath(eventData.LprImagePath);
+                    {
+                        var candidate = new CycleLprCandidate(
+                            eventData.LprImagePath,
+                            !string.IsNullOrWhiteSpace(eventData.PlateNumber),
+                            eventData.Timestamp == default ? DateTime.Now : eventData.Timestamp);
+
+                        if (_stateManager.TryAcceptLprCandidate(candidate))
+                        {
+                            var recordId = _stateManager.GetLastCreatedWeighingRecordId();
+                            if (recordId is > 0)
+                            {
+                                var accepted = _stateManager.GetCurrentCycleLprCandidate();
+                                if (accepted is not null)
+                                    await _recordService.UpsertLprAttachmentAsync(recordId.Value, accepted);
+                            }
+                        }
+                    }
 
                     // 存储车辆信息到状态管理器
                     _stateManager.SetCurrentCycleVehicleInfo(eventData.VehicleColor, eventData.VehicleType,
@@ -431,8 +447,8 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
         try
         {
             var photoPaths = await _captureService.CaptureAllCamerasAsync("WeightStabilized");
-            await _captureService.CaptureOnWeightStabilized();
             await _recordService.CreateWeighingRecordAsync(currentWeight, photoPaths, _stateManager);
+            await _captureService.CaptureOnWeightStabilized();
         }
         catch (Exception ex)
         {
