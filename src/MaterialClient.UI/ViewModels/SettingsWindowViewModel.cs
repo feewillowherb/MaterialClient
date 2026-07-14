@@ -65,6 +65,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private string _selectedPrinterName = string.Empty;
     [Reactive] private bool _enableLatestRecommendation;
     [Reactive] private bool _enableTriggerLprCapture;
+    [Reactive] private int _triggerLprCaptureDelayMs;
     [Reactive] private int _jpegQuality = 75;
     [Reactive] private bool _showUrbanAnomalyDetectionSettings;
     [Reactive] private DeliveryType _defaultDeliveryType = DeliveryType.Receiving;
@@ -238,6 +239,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.SelectedPrinterName = SelectedPrinterName;
             systemSettings.EnableLatestRecommendation = EnableLatestRecommendation;
             systemSettings.EnableTriggerLprCapture = EnableTriggerLprCapture;
+            systemSettings.TriggerLprCaptureDelayMs = Math.Max(0, TriggerLprCaptureDelayMs);
             systemSettings.JpegQuality = JpegQuality;
             systemSettings.DefaultDeliveryType = DefaultDeliveryType;
             systemSettings.UrbanAnomalyDetection = new UrbanAnomalyDetectionConfig
@@ -769,6 +771,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             SelectedPrinterName = settings.SystemSettings.SelectedPrinterName;
             EnableLatestRecommendation = settings.SystemSettings.EnableLatestRecommendation;
             EnableTriggerLprCapture = settings.SystemSettings.EnableTriggerLprCapture;
+            TriggerLprCaptureDelayMs = Math.Max(0, settings.SystemSettings.TriggerLprCaptureDelayMs);
             JpegQuality = settings.SystemSettings.JpegQuality;
             var urbanAnomalyConfig = settings.SystemSettings.UrbanAnomalyDetection ?? new UrbanAnomalyDetectionConfig();
             UrbanAnomalyUpperLimit = urbanAnomalyConfig.UpperLimit;

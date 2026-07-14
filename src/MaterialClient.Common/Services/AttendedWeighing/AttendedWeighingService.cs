@@ -107,7 +107,23 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
                     _plateNumberService.OnPlateNumberRecognized(eventData.PlateNumber, eventData.ColorType);
 
                     if (!string.IsNullOrWhiteSpace(eventData.LprImagePath))
-                        _stateManager.SetCurrentCycleLprImagePath(eventData.LprImagePath);
+                    {
+                        var candidate = new CycleLprCandidate(
+                            eventData.LprImagePath,
+                            !string.IsNullOrWhiteSpace(eventData.PlateNumber),
+                            eventData.Timestamp == default ? DateTime.Now : eventData.Timestamp);
+
+                        if (_stateManager.TryAcceptLprCandidate(candidate))
+                        {
+                            var recordId = _stateManager.GetLastCreatedWeighingRecordId();
+                            if (recordId is > 0)
+                            {
+                                var accepted = _stateManager.GetCurrentCycleLprCandidate();
+                                if (accepted is not null)
+                                    await _recordService.UpsertLprAttachmentAsync(recordId.Value, accepted);
+                            }
+                        }
+                    }
 
                     // 存储车辆信息到状态管理器
                     _stateManager.SetCurrentCycleVehicleInfo(eventData.VehicleColor, eventData.VehicleType,
@@ -431,8 +447,8 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
         try
         {
             var photoPaths = await _captureService.CaptureAllCamerasAsync("WeightStabilized");
-            await _captureService.CaptureOnWeightStabilized();
             await _recordService.CreateWeighingRecordAsync(currentWeight, photoPaths, _stateManager);
+            await _captureService.CaptureOnWeightStabilized();
         }
         catch (Exception ex)
         {
@@ -475,7 +491,6 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             case (AttendedWeighingStatus.OffScale, AttendedWeighingStatus.WaitingForStability):
                 _logger.LogInformation("Entered WaitingForStability state (ascending), weight: {Weight:F3}t",
                     weight);
-                EnqueueAsyncOperation(async () => await _captureService.CaptureOnWaitingForStability());
                 break;
 
             case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.WeightStabilized):
@@ -508,7 +523,6 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
                 _logger.LogWarning(
                     "Abnormal departure from WeightStabilized, weight returned to {Weight:F3}t", weight);
-                EnqueueAsyncOperation(async () => await _captureService.CaptureOnOffScale());
                 EnqueueAsyncOperation(async () =>
                     await _recordService.RewriteAndResetCycleAsync(_stateManager, _plateNumberService));
                 break;
@@ -517,7 +531,6 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
                 _logger.LogInformation(
                     "Normal flow completed (normal departure), entered OffScale state, weight: {Weight:F3}t",
                     weight);
-                EnqueueAsyncOperation(async () => await _captureService.CaptureOnOffScale());
                 EnqueueAsyncOperation(async () =>
                     await _recordService.RewriteAndResetCycleAsync(_stateManager, _plateNumberService));
                 break;

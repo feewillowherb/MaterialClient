@@ -4,6 +4,8 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using NSubstitute;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
 using Xunit;
 
 namespace MaterialClient.Common.Tests.Tests;
@@ -88,22 +90,39 @@ public class DefaultDeliveryTypeSettingTests
 
     #region 4.2 - SettingsService.GetDefaultDeliveryTypeAsync returns persisted value
 
-    [Fact]
-    public async Task GetDefaultDeliveryTypeAsync_ReturnsSending_WhenPersisted()
+    private static SettingsService CreateSettingsService(SettingsEntity? persisted)
     {
-        // Arrange
-        var mockSettingsService = Substitute.For<ISettingsService>();
-        mockSettingsService.GetSettingsAsync().Returns(new SettingsEntity(
+        var mockRepo = Substitute.For<IRepository<SettingsEntity, int>>();
+        mockRepo.GetListAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(persisted is null ? [] : [persisted]);
+
+        var mockUow = Substitute.For<IUnitOfWork>();
+        mockUow.CompleteAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        var mockUowManager = Substitute.For<IUnitOfWorkManager>();
+        mockUowManager.Begin(Arg.Any<AbpUnitOfWorkOptions>(), Arg.Any<bool>()).Returns(mockUow);
+
+        return new SettingsService(mockRepo, mockUowManager);
+    }
+
+    private static SettingsEntity CreateSettingsEntity(DeliveryType defaultDeliveryType) =>
+        new(
             new ScaleSettings(),
             new DocumentScannerConfig(),
-            new SystemSettings { DefaultDeliveryType = DeliveryType.Sending },
+            new SystemSettings { DefaultDeliveryType = defaultDeliveryType },
             [],
             [],
             new WeighingConfiguration(),
-            new SoundDeviceSettings()));
+            new SoundDeviceSettings());
+
+    [Fact]
+    public async Task GetDefaultDeliveryTypeAsync_ReturnsSending_WhenPersisted()
+    {
+        // Arrange — real SettingsService reads DefaultDeliveryType from persisted SystemSettings
+        var settingsService = CreateSettingsService(CreateSettingsEntity(DeliveryType.Sending));
 
         // Act
-        var result = await mockSettingsService.GetDefaultDeliveryTypeAsync();
+        var result = await settingsService.GetDefaultDeliveryTypeAsync();
 
         // Assert
         Assert.Equal(DeliveryType.Sending, result);
@@ -112,19 +131,11 @@ public class DefaultDeliveryTypeSettingTests
     [Fact]
     public async Task GetDefaultDeliveryTypeAsync_ReturnsReceiving_OnEmptySettingsStore()
     {
-        // Arrange — SystemSettings() constructor defaults DefaultDeliveryType to Receiving
-        var mockSettingsService = Substitute.For<ISettingsService>();
-        mockSettingsService.GetSettingsAsync().Returns(new SettingsEntity(
-            new ScaleSettings(),
-            new DocumentScannerConfig(),
-            new SystemSettings(),
-            [],
-            [],
-            new WeighingConfiguration(),
-            new SoundDeviceSettings()));
+        // Arrange — no persisted row → SettingsService creates defaults (DefaultDeliveryType = Receiving)
+        var settingsService = CreateSettingsService(persisted: null);
 
         // Act
-        var result = await mockSettingsService.GetDefaultDeliveryTypeAsync();
+        var result = await settingsService.GetDefaultDeliveryTypeAsync();
 
         // Assert
         Assert.Equal(DeliveryType.Receiving, result);

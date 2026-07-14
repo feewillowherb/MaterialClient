@@ -177,6 +177,57 @@ public class HikvisionPlateGoldenBinaryTests
             $"无效车牌仍应保存 Lpr 图片: {captured.LprImagePath}");
     }
 
+    [Fact]
+    public void PlateAlarm_StandardModeWithCameraConfigs_StillSavesLpr()
+    {
+        CodePagesEncodingInitializer.Register();
+
+        var goldenRoot = HikvisionPlateGoldenLoader.ResolveGoldenRootDirectory();
+        var manifest = HikvisionPlateGoldenLoader.LoadManifest(goldenRoot);
+        var entry = manifest.Fixtures.First(f => !string.IsNullOrEmpty(f.ImageFile));
+
+        var eventBus = new TestLocalEventBus();
+        LicensePlateRecognizedEventData? captured = null;
+        eventBus.Subscribe<LicensePlateRecognizedEventData>(e => captured = e);
+
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetSettingsAsync().Returns(Task.FromResult(new SettingsEntity(
+            new ScaleSettings(),
+            new DocumentScannerConfig(),
+            new SystemSettings { DefaultWeighingMode = WeighingMode.Standard },
+            new List<CameraConfig> { new() { Name = "cam1", Ip = "192.168.1.10" } },
+            [],
+            new WeighingConfiguration(),
+            new SoundDeviceSettings())));
+
+        var service = new HikvisionLprService(settingsService, eventBus);
+        service.AddOrUpdateDevice(new LicensePlateRecognitionConfig
+        {
+            Ip = entry.DeviceIp,
+            Name = entry.DeviceName,
+            Direction = LicensePlateDirection.A,
+            UserName = "admin",
+            Password = "admin123",
+            Port = "8000",
+            Channel = "1"
+        });
+
+        using var loader = new HikvisionPlateGoldenLoader();
+        var replay = loader.PrepareReplay(entry, goldenRoot);
+
+        service.InvokePlateAlarmCallbackForTests(
+            replay.LCommand,
+            replay.PAlarmer,
+            replay.PAlarmInfo,
+            replay.DwBufLen,
+            WeighingMode.Standard);
+
+        Assert.NotNull(captured);
+        Assert.False(string.IsNullOrWhiteSpace(captured!.LprImagePath));
+        Assert.True(PathManager.FileExists(captured.LprImagePath!),
+            $"Standard + CameraConfigs 仍应保存 Lpr: {captured.LprImagePath}");
+    }
+
     private static byte[] EncodeGbkLicense(string plate)
     {
         var gbk = Encoding.GetEncoding("GBK");

@@ -1,6 +1,7 @@
 using System.Reactive.Subjects;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
+using MaterialClient.Common.Services.AttendedWeighing.Records;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus.Local;
@@ -20,7 +21,7 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     private readonly ILogger<WeighingStateManager> _logger;
 
     private AttendedWeighingStatus _previousStatus = AttendedWeighingStatus.OffScale;
-    private string? _currentCycleLprImagePath;
+    private CycleLprCandidate? _currentCycleLprCandidate;
     private string? _currentCycleVehicleColor;
     private string? _currentCycleVehicleType;
     private string? _currentCyclePlateColor;
@@ -102,19 +103,62 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     public long? GetLastCreatedWeighingRecordId() => _lastCreatedWeighingRecordIdSubject.Value;
 
     /// <summary>
-    ///     设置当前称重周期内的 Lpr 图片相对路径（由 LPR 识别事件更新）
+    ///     尝试接受本周期 LPR 候选（有车牌优先，同级接受较新）。
     /// </summary>
-    public void SetCurrentCycleLprImagePath(string? relativePath)
+    /// <returns>true 表示候选已更新</returns>
+    public bool TryAcceptLprCandidate(CycleLprCandidate incoming)
     {
-        _currentCycleLprImagePath = relativePath;
-        if (!string.IsNullOrWhiteSpace(relativePath))
-            _logger.LogDebug("Current cycle Lpr image path set: {Path}", relativePath);
+        if (string.IsNullOrWhiteSpace(incoming.RelativePath))
+            return false;
+
+        var current = _currentCycleLprCandidate;
+        if (current is null)
+        {
+            _currentCycleLprCandidate = incoming;
+            _logger.LogDebug(
+                "Current cycle Lpr candidate set: Path={Path}, HasPlate={HasPlate}",
+                incoming.RelativePath, incoming.HasPlate);
+            return true;
+        }
+
+        if (!current.HasPlate && incoming.HasPlate)
+        {
+            _currentCycleLprCandidate = incoming;
+            _logger.LogInformation(
+                "Current cycle Lpr candidate upgraded with plate: Path={Path}",
+                incoming.RelativePath);
+            return true;
+        }
+
+        if (current.HasPlate && !incoming.HasPlate)
+        {
+            _logger.LogDebug(
+                "Rejected plate-less Lpr candidate; keeping plated path {Path}",
+                current.RelativePath);
+            return false;
+        }
+
+        if (incoming.ReceivedAt >= current.ReceivedAt)
+        {
+            _currentCycleLprCandidate = incoming;
+            _logger.LogDebug(
+                "Current cycle Lpr candidate replaced with newer path: Path={Path}, HasPlate={HasPlate}",
+                incoming.RelativePath, incoming.HasPlate);
+            return true;
+        }
+
+        return false;
     }
+
+    /// <summary>
+    ///     获取当前称重周期内的 LPR 候选
+    /// </summary>
+    public CycleLprCandidate? GetCurrentCycleLprCandidate() => _currentCycleLprCandidate;
 
     /// <summary>
     ///     获取当前称重周期内的 Lpr 图片相对路径
     /// </summary>
-    public string? GetCurrentCycleLprImagePath() => _currentCycleLprImagePath;
+    public string? GetCurrentCycleLprImagePath() => _currentCycleLprCandidate?.RelativePath;
 
     /// <summary>
     ///     设置当前称重周期内的车辆信息
@@ -150,11 +194,11 @@ public class WeighingStateManager : ISingletonDependency, IDisposable
     public void ResetCycle()
     {
         _lastCreatedWeighingRecordIdSubject.OnNext(null);
-        _currentCycleLprImagePath = null;
+        _currentCycleLprCandidate = null;
         _currentCycleVehicleColor = null;
         _currentCycleVehicleType = null;
         _currentCyclePlateColor = null;
-        _logger.LogDebug("Weighing cycle reset: record ID, Lpr path, and vehicle info cleared");
+        _logger.LogDebug("Weighing cycle reset: record ID, Lpr candidate, and vehicle info cleared");
     }
 
     /// <summary>

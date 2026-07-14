@@ -399,18 +399,14 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     }
 
     /// <summary>
-    ///     尝试保存 Vzvision Lpr 车牌识别图片（仅 UrbanMode = 201 时保存）
+    ///     尝试保存 Vzvision Lpr 车牌识别图片
     ///     从 Vzvision SDK 回调的 pImgFull 提取图片数据，压缩后保存到磁盘
     /// </summary>
     /// <param name="pImgFull">Vzvision SDK 回调中的全场景图信息指针</param>
     /// <param name="plateNumber">车牌号（用于文件名）</param>
-    /// <returns>保存的相对路径，非 UrbanMode 或保存失败时返回 null</returns>
+    /// <returns>保存的相对路径，保存失败时返回 null</returns>
     private string? TrySaveVzLprAttachment(IntPtr pImgFull, string plateNumber)
     {
-        // UrbanMode 或无 CameraConfigs 时保存 Lpr 附件
-        if (_cachedWeighingMode != WeighingMode.UrbanMode && _cachedHasCameraConfigs)
-            return null;
-
         if (pImgFull == IntPtr.Zero)
             return null;
 
@@ -442,8 +438,9 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
                 imageBytes, JpegCompressionUtil.LprCompressionQuality, _logger);
             var finalBytes = compressedBytes ?? imageBytes;
 
-            // 保存到 Lpr 目录
-            var lrpDir = PathManager.EnsureDirectoryExists("Lpr");
+            // Save under Lpr/{yyyy}/{MM}/{dd}/ (same dated layout as Camera)
+            var relativeDir = AttachmentPathUtils.GetLocalStoragePath(AttachType.Lpr).TrimEnd('/', '\\');
+            var lrpDir = PathManager.EnsureDirectoryExists(relativeDir);
             var safePlate = string.IsNullOrWhiteSpace(plateNumber) ? "unknown" : plateNumber;
             var fileName = $"{safePlate}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
             var filePath = Path.Combine(lrpDir, fileName);

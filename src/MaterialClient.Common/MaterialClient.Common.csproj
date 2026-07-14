@@ -31,6 +31,7 @@
         <PackageReference Include="Refit.HttpClientFactory"/>
         <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
         <PackageReference Include="Volo.Abp.Autofac"/>
+        <PackageReference Include="Volo.Abp.BackgroundWorkers"/>
         <PackageReference Include="Volo.Abp.Core"/>
         <PackageReference Include="Volo.Abp.Ddd.Domain"/>
         <PackageReference Include="Volo.Abp.Ddd.Application.Contracts"/>

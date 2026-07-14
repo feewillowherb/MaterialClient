@@ -1,3 +1,4 @@
+using MaterialClient.Common.Backgrounds;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
@@ -8,6 +9,9 @@ using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Volo.Abp;
+using Volo.Abp.BackgroundWorkers;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
 using Volo.Abp.Modularity;
@@ -17,7 +21,8 @@ namespace MaterialClient.Common;
 
 [DependsOn(
     typeof(AbpEntityFrameworkCoreModule),
-    typeof(AbpEntityFrameworkCoreSqliteModule)
+    typeof(AbpEntityFrameworkCoreSqliteModule),
+    typeof(AbpBackgroundWorkersModule)
 )]
 public class MaterialClientCommonModule : AbpModule
 {
@@ -61,5 +66,25 @@ public class MaterialClientCommonModule : AbpModule
         // Configure AliyunOss
         services.Configure<AliyunOssConfig>(
             configuration.GetSection("AliyunOss"));
+
+        services.Configure<ImageCleanupOptions>(
+            configuration.GetSection(ImageCleanupOptions.SectionName));
+    }
+
+    public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
+    {
+        var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
+        var enabled = configuration.GetValue($"{ImageCleanupOptions.SectionName}:Enabled", true);
+        if (enabled)
+        {
+            await context.AddBackgroundWorkerAsync<ImageCleanupBackgroundService>();
+        }
+        else
+        {
+            var logger = context.ServiceProvider.GetService<ILogger<MaterialClientCommonModule>>();
+            logger?.LogInformation(
+                "ImageCleanupBackgroundService is disabled by configuration ({Section}:Enabled=false).",
+                ImageCleanupOptions.SectionName);
+        }
     }
 }
