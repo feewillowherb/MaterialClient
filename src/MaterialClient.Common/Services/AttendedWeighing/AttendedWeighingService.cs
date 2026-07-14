@@ -491,7 +491,6 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             case (AttendedWeighingStatus.OffScale, AttendedWeighingStatus.WaitingForStability):
                 _logger.LogInformation("Entered WaitingForStability state (ascending), weight: {Weight:F3}t",
                     weight);
-                EnqueueAsyncOperation(async () => await _captureService.CaptureOnWaitingForStability());
                 break;
 
             case (AttendedWeighingStatus.WaitingForStability, AttendedWeighingStatus.WeightStabilized):
@@ -524,7 +523,6 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             case (AttendedWeighingStatus.WeightStabilized, AttendedWeighingStatus.OffScale):
                 _logger.LogWarning(
                     "Abnormal departure from WeightStabilized, weight returned to {Weight:F3}t", weight);
-                EnqueueAsyncOperation(async () => await _captureService.CaptureOnOffScale());
                 EnqueueAsyncOperation(async () =>
                     await _recordService.RewriteAndResetCycleAsync(_stateManager, _plateNumberService));
                 break;
@@ -533,7 +531,6 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
                 _logger.LogInformation(
                     "Normal flow completed (normal departure), entered OffScale state, weight: {Weight:F3}t",
                     weight);
-                EnqueueAsyncOperation(async () => await _captureService.CaptureOnOffScale());
                 EnqueueAsyncOperation(async () =>
                     await _recordService.RewriteAndResetCycleAsync(_stateManager, _plateNumberService));
                 break;

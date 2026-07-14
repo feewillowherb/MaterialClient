@@ -18,19 +18,9 @@ public interface IWeighingCaptureService
     Task<List<string>> CaptureAllCamerasAsync(string reason);
 
     /// <summary>
-    ///     触发 LPR 主动抓拍（进入 WaitingForStability 状态时）
-    /// </summary>
-    Task CaptureOnWaitingForStability();
-
-    /// <summary>
     ///     触发 LPR 主动抓拍（进入 WeightStabilized 状态时）
     /// </summary>
     Task CaptureOnWeightStabilized();
-
-    /// <summary>
-    ///     触发 LPR 主动抓拍（进入 OffScale 状态时）
-    /// </summary>
-    Task CaptureOnOffScale();
 }
 
 /// <summary>
@@ -124,13 +114,7 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
     }
 
     /// <inheritdoc />
-    public Task CaptureOnWaitingForStability() => TriggerLprCaptureForAllAsync("WaitingForStability");
-
-    /// <inheritdoc />
     public Task CaptureOnWeightStabilized() => TriggerLprCaptureForAllAsync("WeightStabilized");
-
-    /// <inheritdoc />
-    public Task CaptureOnOffScale() => TriggerLprCaptureForAllAsync("OffScale");
 
     private async Task TriggerLprCaptureForAllAsync(string phase)
     {
