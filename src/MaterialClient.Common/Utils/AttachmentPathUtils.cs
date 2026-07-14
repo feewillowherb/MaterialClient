@@ -38,13 +38,13 @@ public static class AttachmentPathUtils
     ///     根据附件类型获取基础路径
     /// </summary>
     /// <param name="attachType">附件类型</param>
-    /// <returns>基础路径：PhotoPiaoJu、PhotoJianKong、PhotoUrban 或 Lpr</returns>
+    /// <returns>基础路径：PhotoPiaoJu、PhotoJianKong 或 Lpr（UrbanPhoto 与 Lpr 共用 Lpr 根）</returns>
     public static string GetBasePath(AttachType attachType)
     {
         return attachType switch
         {
             AttachType.TicketPhoto => "PhotoPiaoJu",
-            AttachType.UrbanPhoto => "PhotoUrban",
+            AttachType.UrbanPhoto => "Lpr",
             AttachType.Lpr => "Lpr",
             _ => "PhotoJianKong"
         };

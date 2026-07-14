@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Utils;
 using Xunit;
 
@@ -47,6 +48,32 @@ public class AttachmentPathUtilsTests
     }
 
     [Fact]
+    public void GetBasePath_UrbanPhotoAndLpr_ShareLprRoot()
+    {
+        Assert.Equal("Lpr", AttachmentPathUtils.GetBasePath(AttachType.UrbanPhoto));
+        Assert.Equal("Lpr", AttachmentPathUtils.GetBasePath(AttachType.Lpr));
+        Assert.Equal("PhotoJianKong", AttachmentPathUtils.GetBasePath(AttachType.EntryPhoto));
+        Assert.Equal("PhotoPiaoJu", AttachmentPathUtils.GetBasePath(AttachType.TicketPhoto));
+    }
+
+    [Fact]
+    public void GetLocalStoragePath_UrbanPhotoAndLpr_UseDatedLprFolder()
+    {
+        var date = new DateTime(2026, 7, 14);
+        var expected = "Lpr/2026/07/14/";
+
+        Assert.Equal(expected, AttachmentPathUtils.GetLocalStoragePath(AttachType.UrbanPhoto, date));
+        Assert.Equal(expected, AttachmentPathUtils.GetLocalStoragePath(AttachType.Lpr, date));
+    }
+
+    [Fact]
+    public void GetLocalStoragePath_EntryPhoto_UsesPhotoJianKongDatedFolder()
+    {
+        var date = new DateTime(2026, 7, 14);
+        Assert.Equal("PhotoJianKong/2026/07/14/", AttachmentPathUtils.GetLocalStoragePath(AttachType.EntryPhoto, date));
+    }
+
+    [Fact]
     public void FileExists_WhenCurrentDirectoryChanges_ReturnsCorrectResultBasedOnAppBaseDirectory()
     {
         // Arrange
@@ -88,4 +115,3 @@ public class AttachmentPathUtilsTests
         }
     }
 }
-

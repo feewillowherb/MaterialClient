@@ -438,8 +438,9 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
                 imageBytes, JpegCompressionUtil.LprCompressionQuality, _logger);
             var finalBytes = compressedBytes ?? imageBytes;
 
-            // 保存到 Lpr 目录
-            var lrpDir = PathManager.EnsureDirectoryExists("Lpr");
+            // Save under Lpr/{yyyy}/{MM}/{dd}/ (same dated layout as Camera)
+            var relativeDir = AttachmentPathUtils.GetLocalStoragePath(AttachType.Lpr).TrimEnd('/', '\\');
+            var lrpDir = PathManager.EnsureDirectoryExists(relativeDir);
             var safePlate = string.IsNullOrWhiteSpace(plateNumber) ? "unknown" : plateNumber;
             var fileName = $"{safePlate}_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
             var filePath = Path.Combine(lrpDir, fileName);
