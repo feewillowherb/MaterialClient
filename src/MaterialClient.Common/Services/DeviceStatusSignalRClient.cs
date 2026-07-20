@@ -52,7 +52,10 @@ public interface IDeviceStatusSignalRClient : ISingletonDependency
     /// <summary>
     ///     Register the client's log pull capability with the server.
     /// </summary>
-    Task RegisterLogCapability(string clientId, object capabilityInfo);
+    /// <param name="clientId">客户端唯一标识符</param>
+    /// <param name="capabilityInfo">日志能力信息</param>
+    /// <param name="proName">客户端所属项目名称，用于服务端展示「项目名称-客户端名称」</param>
+    Task RegisterLogCapability(string clientId, object capabilityInfo, string proName);
 
     /// <summary>
     ///     Return the log list result to the server.
@@ -771,14 +774,14 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     }
 
     /// <inheritdoc />
-    public async Task RegisterLogCapability(string clientId, object capabilityInfo)
+    public async Task RegisterLogCapability(string clientId, object capabilityInfo, string proName)
     {
         if (_connection?.State == HubConnectionState.Connected)
         {
             try
             {
-                await _connection.InvokeAsync("RegisterLogCapability", clientId, capabilityInfo);
-                _logger.LogDebug("DeviceStatusSignalRClient: Registered log capability for ClientId={ClientId}", clientId);
+                await _connection.InvokeAsync("RegisterLogCapability", clientId, capabilityInfo, proName);
+                _logger.LogDebug("DeviceStatusSignalRClient: Registered log capability for ClientId={ClientId}, ProName={ProName}", clientId, proName);
             }
             catch (Exception ex)
             {

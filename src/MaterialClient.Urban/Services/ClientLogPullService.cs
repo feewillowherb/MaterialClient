@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Logging;
 using MaterialClient.Urban.Dtos;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +25,7 @@ namespace MaterialClient.Urban.Services
         private readonly ILogger<ClientLogPullService> _logger;
         private readonly IConfiguration _configuration;
         private readonly IDeviceStatusSignalRClient? _signalRClient;
+        private readonly ILicenseService _licenseService;
         private readonly ILocalEventBus _localEventBus;
         private readonly string _logBaseDirectory;
         private readonly SemaphoreSlim _registerCapabilityGate = new(1, 1);
@@ -36,11 +38,13 @@ namespace MaterialClient.Urban.Services
             ILogger<ClientLogPullService> logger,
             IConfiguration configuration,
             IDeviceStatusSignalRClient? signalRClient,
+            ILicenseService licenseService,
             ILocalEventBus localEventBus)
         {
             _logger = logger;
             _configuration = configuration;
             _signalRClient = signalRClient;
+            _licenseService = licenseService;
             _localEventBus = localEventBus;
 
             var appDirectory = AppContext.BaseDirectory;
@@ -171,9 +175,24 @@ namespace MaterialClient.Urban.Services
                             LogFormatVersion = "1.0"
                         };
 
-                        await _signalRClient.RegisterLogCapability(clientId, capabilityInfo);
+                        // 每次注册都取最新的项目名称（License 可能在运行期间被服务端刷新）
+                        string proName = string.Empty;
+                        try
+                        {
+                            var license = await _licenseService.GetCurrentLicenseAsync();
+                            proName = license?.ProName ?? string.Empty;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex,
+                                "Failed to read current license for ProName; registering with empty project name");
+                        }
+
+                        await _signalRClient.RegisterLogCapability(clientId, capabilityInfo, proName);
                         _capabilityRegistered = true;
-                        _logger.LogInformation("Log capability registered successfully: ClientId={ClientId}", clientId);
+                        _logger.LogInformation(
+                            "Log capability registered successfully: ClientId={ClientId}, ProName={ProName}",
+                            clientId, proName);
                         return;
                     }
                     catch (Exception ex)
