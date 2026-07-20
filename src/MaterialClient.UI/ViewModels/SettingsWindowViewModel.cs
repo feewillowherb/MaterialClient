@@ -105,7 +105,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         ScaleType.Yaohua,
         ScaleType.DingSong,
-        ScaleType.TestMode
+        ScaleType.TestMode,
+        ScaleType.PortableXPSY
     };
 
     /// <summary>

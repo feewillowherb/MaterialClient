@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Ports;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
@@ -1001,6 +1002,128 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         // Cleanup
         subscription.Dispose();
         await service.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Portable XP-SY: payload "51.07000" reversed -&gt; 70.15 (ScaleUnit.Ton keeps device value)
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParsePortableXpsy_PositiveFrame_Should_Parse70_15()
+    {
+        var weights = await RunPortableXpsyCaseAsync("51.07000=", ScaleUnit.Ton, communicationMethod: "TF0");
+        weights.ShouldContain(70.15m);
+    }
+
+    /// <summary>
+    /// Portable XP-SY negative and integer-style field samples
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParsePortableXpsy_NegativeAndIntegerFrames_Should_ParseCorrectly()
+    {
+        var negative = await RunPortableXpsyCaseAsync("51.0700-=", ScaleUnit.Ton);
+        negative.ShouldContain(-70.15m);
+
+        var integerSample = await RunPortableXpsyCaseAsync(".0151000=", ScaleUnit.Ton);
+        integerSample.ShouldContain(1510m);
+    }
+
+    /// <summary>
+    /// Continuous Portable XP-SY frames in one serial burst
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParsePortableXpsy_BackToBackFrames_Should_ParseBoth()
+    {
+        var weights = await RunPortableXpsyCaseAsync("51.07000=51.07000=", ScaleUnit.Ton);
+        weights.Count(w => w == 70.15m).ShouldBeGreaterThanOrEqualTo(2);
+    }
+
+    /// <summary>
+    /// Portable XP-SY must use ASCII path even when CommunicationMethod is TF0
+    /// </summary>
+    [Fact(Timeout = 5000)]
+    public async Task ParsePortableXpsy_WithTf0_Should_StillUseAsciiPath()
+    {
+        var weights = await RunPortableXpsyCaseAsync("51.07000=", ScaleUnit.Ton, communicationMethod: "TF0");
+        weights.ShouldContain(70.15m);
+    }
+
+    private async Task<List<decimal>> RunPortableXpsyCaseAsync(
+        string asciiFrames,
+        ScaleUnit scaleUnit,
+        string communicationMethod = "TF0")
+    {
+        var mockSerialPort = Substitute.For<ISerialPort>();
+        var mockFactory = Substitute.For<ISerialPortFactory>();
+        mockFactory.Create().Returns(mockSerialPort);
+
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var settings = new ScaleSettings
+        {
+            SerialPort = "COM3",
+            BaudRate = "9600",
+            CommunicationMethod = communicationMethod,
+            ScaleType = ScaleType.PortableXPSY,
+            ScaleUnit = scaleUnit
+        };
+
+        var receivedWeights = new List<decimal>();
+        using var subscription = service.WeightUpdates.Subscribe(w =>
+        {
+            lock (receivedWeights)
+            {
+                receivedWeights.Add(w);
+            }
+        });
+
+        mockSerialPort.IsOpen.Returns(true);
+        var data = Encoding.ASCII.GetBytes(asciiFrames);
+        SetupMockSerialPortRead(mockSerialPort, data);
+
+        var initialized = await service.InitializeAsync(settings);
+        initialized.ShouldBeTrue();
+
+        RaiseSerialDataReceived(mockSerialPort);
+
+        // Wait briefly for sync receive handler to finish
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < 2000)
+        {
+            lock (receivedWeights)
+            {
+                if (receivedWeights.Count > 0)
+                    break;
+            }
+
+            await Task.Delay(20);
+        }
+
+        List<decimal> snapshot;
+        lock (receivedWeights)
+        {
+            snapshot = receivedWeights.ToList();
+        }
+
+        output.WriteLine($"PortableXPSY frame(s): {asciiFrames}");
+        output.WriteLine($"Received: [{string.Join(", ", snapshot)}]");
+        output.WriteLine($"Current: {service.GetCurrentWeight()}");
+
+        await service.DisposeAsync();
+        return snapshot;
+    }
+
+    private static void RaiseSerialDataReceived(ISerialPort mockSerialPort)
+    {
+        var eventArgsType = typeof(SerialDataReceivedEventArgs);
+        var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            eventArgsType,
+            BindingFlags.NonPublic | BindingFlags.Instance,
+            null,
+            new object[] { SerialData.Chars },
+            null)!;
+
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort,
+            eventArgs);
     }
 
     private void SetupMockSerialPortRead(ISerialPort mockSerialPort, byte[] data)

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Ports;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -74,6 +75,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     private readonly ISettingsService _settingsService;
     private readonly ISerialPortFactory _serialPortFactory;
 
+    private const int PortableXpsyFrameLength = 9;
+    private const int PortableXpsyPayloadLength = 8;
+
     // Rx Subject for weight updates
     private readonly Subject<decimal> _weightSubject = new();
     private int _byteCount = 12;
@@ -85,6 +89,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     private bool _isListening;
 
     private ReceType _receType = ReceType.String;
+
+    private readonly byte[] _portableXpsyBuffer = new byte[4096];
+    private int _portableXpsyBufferIndex;
 
     private ISerialPort? _serialPort;
 
@@ -148,9 +155,16 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 }
 
                 _currentSettings = settings;
+                _portableXpsyBufferIndex = 0;
 
-                // Determine receiving type based on communication method
-                if (settings.CommunicationMethod == "TF0")
+                // Portable XP-SY always uses ASCII '='-delimited frames, even if CommunicationMethod is TF0.
+                if (settings.ScaleType == ScaleType.PortableXPSY)
+                {
+                    _receType = ReceType.String;
+                    _endChar = "=";
+                    _byteCount = PortableXpsyFrameLength;
+                }
+                else if (settings.CommunicationMethod == "TF0")
                 {
                     _receType = ReceType.Hex;
                     _byteCount = 12;
@@ -298,16 +312,22 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
             try
             {
+                ScaleType? scaleType;
+                using (_rwLock.ReadLock())
+                {
+                    scaleType = _currentSettings?.ScaleType;
+                }
+
+                // Portable XP-SY: dedicated 9-byte ASCII frame scan (do not mix with HEX / legacy String).
+                if (scaleType == ScaleType.PortableXPSY)
+                {
+                    ReceivePortableXpsy();
+                    return;
+                }
+
                 switch (_receType)
                 {
                     case ReceType.Hex:
-                        // Get scale type to determine which ReceiveHex method to use
-                        ScaleType? scaleType;
-                        using (_rwLock.ReadLock())
-                        {
-                            scaleType = _currentSettings?.ScaleType;
-                        }
-
                         if (scaleType == ScaleType.DingSong)
                         {
                             ReceiveHexDingSong(); // Internal lock management
@@ -565,6 +585,175 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Error receiving HEX data from truck scale");
+        }
+    }
+
+    /// <summary>
+    ///     Receive Portable XP-SY frames: 8 ASCII payload bytes + '=' (low digit first, reverse before parse).
+    /// </summary>
+    private void ReceivePortableXpsy()
+    {
+        try
+        {
+            ISerialPort? port;
+            using (_rwLock.ReadLock())
+            {
+                port = _serialPort;
+                if (port == null) return;
+            }
+
+            var availableBytes = port.BytesToRead;
+            if (availableBytes <= 0) return;
+
+            if (_portableXpsyBufferIndex + availableBytes > _portableXpsyBuffer.Length)
+            {
+                _logger?.LogWarning("Portable XP-SY receive buffer overflow, resetting");
+                _portableXpsyBufferIndex = 0;
+            }
+
+            var bytesRead = port.Read(_portableXpsyBuffer, _portableXpsyBufferIndex, availableBytes);
+            if (bytesRead <= 0) return;
+
+            _portableXpsyBufferIndex += bytesRead;
+
+            while (_portableXpsyBufferIndex >= PortableXpsyFrameLength)
+            {
+                var startIndex = FindPortableXpsyFrameStart();
+                if (startIndex < 0)
+                {
+                    // Keep a trailing partial payload window for the next DataReceived.
+                    if (_portableXpsyBufferIndex > PortableXpsyPayloadLength)
+                    {
+                        Array.Copy(
+                            _portableXpsyBuffer,
+                            _portableXpsyBufferIndex - PortableXpsyPayloadLength,
+                            _portableXpsyBuffer,
+                            0,
+                            PortableXpsyPayloadLength);
+                        _portableXpsyBufferIndex = PortableXpsyPayloadLength;
+                    }
+
+                    return;
+                }
+
+                if (startIndex > 0)
+                {
+                    Array.Copy(
+                        _portableXpsyBuffer,
+                        startIndex,
+                        _portableXpsyBuffer,
+                        0,
+                        _portableXpsyBufferIndex - startIndex);
+                    _portableXpsyBufferIndex -= startIndex;
+                }
+
+                if (_portableXpsyBufferIndex < PortableXpsyFrameLength) return;
+
+                var message = new byte[PortableXpsyFrameLength];
+                Array.Copy(_portableXpsyBuffer, 0, message, 0, PortableXpsyFrameLength);
+
+                var parsedWeight = TryParsePortableXpsyMessage(message);
+                if (parsedWeight.HasValue)
+                {
+                    var convertedWeight = ConvertWeight(parsedWeight.Value);
+                    using var writeLock = _rwLock.WriteLock();
+                    _currentWeight = convertedWeight;
+                    _weightSubject.OnNext(convertedWeight);
+                }
+
+                Array.Copy(
+                    _portableXpsyBuffer,
+                    PortableXpsyFrameLength,
+                    _portableXpsyBuffer,
+                    0,
+                    _portableXpsyBufferIndex - PortableXpsyFrameLength);
+                _portableXpsyBufferIndex -= PortableXpsyFrameLength;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error receiving Portable XP-SY data from truck scale");
+            _portableXpsyBufferIndex = 0;
+        }
+    }
+
+    private int FindPortableXpsyFrameStart()
+    {
+        for (var i = 0; i <= _portableXpsyBufferIndex - PortableXpsyFrameLength; i++)
+        {
+            if (_portableXpsyBuffer[i + PortableXpsyPayloadLength] != (byte)'=')
+                continue;
+
+            if (IsValidPortableXpsyPayload(_portableXpsyBuffer, i))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static bool IsValidPortableXpsyPayload(byte[] buffer, int offset)
+    {
+        var hasDigit = false;
+        for (var j = 0; j < PortableXpsyPayloadLength; j++)
+        {
+            var b = buffer[offset + j];
+            if (b is >= (byte)'0' and <= (byte)'9')
+            {
+                hasDigit = true;
+                continue;
+            }
+
+            if (b is (byte)'.' or (byte)'-')
+                continue;
+
+            return false;
+        }
+
+        return hasDigit;
+    }
+
+    /// <summary>
+    ///     Parse Portable XP-SY: reverse 8-char ASCII payload then parse with invariant culture.
+    /// </summary>
+    private decimal? TryParsePortableXpsyMessage(byte[] message)
+    {
+        try
+        {
+            if (message.Length != PortableXpsyFrameLength)
+                return null;
+
+            if (message[PortableXpsyPayloadLength] != (byte)'=')
+                return null;
+
+            if (!IsValidPortableXpsyPayload(message, 0))
+                return null;
+
+            var payload = Encoding.ASCII.GetString(message, 0, PortableXpsyPayloadLength);
+            var reversed = payload.ToCharArray();
+            Array.Reverse(reversed);
+            var weightText = new string(reversed).Trim();
+
+            if (!decimal.TryParse(
+                    weightText,
+                    NumberStyles.Float | NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture,
+                    out var weight))
+            {
+                _logger?.LogWarning("Failed to parse Portable XP-SY weight: {WeightText}", weightText);
+                return null;
+            }
+
+            _logger?.LogDebug(
+                "Parsed Portable XP-SY weight: {Weight} (payload: {Payload}, reversed: {WeightText})",
+                weight,
+                payload,
+                weightText);
+            return weight;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error parsing Portable XP-SY weight data");
+            return null;
         }
     }
 
@@ -927,6 +1116,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         }
         finally
         {
+            _portableXpsyBufferIndex = 0;
             _isClosing = false;
         }
     }
