@@ -169,7 +169,11 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.SelectedListItem)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(DeliveryTypeTitleText)))
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(DeliveryTypeTitleText));
+                this.RaisePropertyChanged(nameof(ProviderLabelText));
+            })
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.IsShowingMainView)
@@ -1392,6 +1396,9 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     public string DeliveryTypeTitleText =>
         SelectedListItem?.DeliveryType == DeliveryType.Receiving ? "收料信息" : "发料信息";
+
+    public string ProviderLabelText =>
+        SelectedListItem?.DeliveryType == DeliveryType.Receiving ? "发货单位" : "收货单位";
 
     public string PageInfoText => $"第 {CurrentPage} / {TotalPages} 页";
     public bool IsSending => !IsReceiving;

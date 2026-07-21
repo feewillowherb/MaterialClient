@@ -173,7 +173,7 @@
                              Columns="3"
                              Margin="0,0,0,0">
 
-                    <!-- Block 4: 供应商 (Blue) -->
+                    <!-- Block 4: 发货单位/收货单位 (Blue) -->
                     <Border Background="White"
                             BorderBrush="#B1EBFF"
                             BorderThickness="0,5,0,0"
@@ -185,7 +185,7 @@
                                     BorderThickness="0,0,0,3"
                                     Padding="10,6"
                                     Height="40">
-                                <TextBlock Text="供应商"
+                                <TextBlock Text="{Binding ProviderLabelText}"
                                            FontSize="14"
                                            Foreground="#222222"
                                            VerticalAlignment="Center" />
