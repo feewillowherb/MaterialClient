@@ -2,7 +2,6 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
-using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -13,6 +12,11 @@ namespace MaterialClient.Common.Services;
 public interface IRecycleWeighingService
 {
     Task UpdateRecycleModeAsync(UpdateRecycleModeInput input);
+
+    /// <summary>
+    ///     加载 Recycle 详情页所需字段（含 WeighingRecord ExtraProperties 或 RecycleWaybillExtension）。
+    /// </summary>
+    Task<RecycleDetailLoadResult?> GetRecycleDetailAsync(long id, WeighingListItemType itemType);
 }
 
 [AutoConstructor]
@@ -97,6 +101,50 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
         throw new BusinessException($"Unsupported item type: {input.ItemType}");
     }
 
+    [UnitOfWork]
+    public async Task<RecycleDetailLoadResult?> GetRecycleDetailAsync(long id, WeighingListItemType itemType)
+    {
+        if (itemType == WeighingListItemType.WeighingRecord)
+        {
+            var record = await _weighingRecordRepository.FindAsync(id);
+            if (record == null)
+            {
+                return null;
+            }
+
+            var firstMaterial = record.Materials.FirstOrDefault();
+            return new RecycleDetailLoadResult(
+                record.ProviderId,
+                firstMaterial?.MaterialId,
+                firstMaterial?.MaterialUnitId,
+                record.GetUnitPrice(),
+                record.GetSaleContractNo(),
+                record.Remark);
+        }
+
+        if (itemType == WeighingListItemType.Waybill)
+        {
+            var waybill = await _waybillRepository.FindAsync(id);
+            if (waybill == null)
+            {
+                return null;
+            }
+
+            var extension = await _recycleWaybillExtensionRepository
+                .FirstOrDefaultAsync(e => e.WaybillId == waybill.Id);
+
+            return new RecycleDetailLoadResult(
+                waybill.ProviderId,
+                waybill.MaterialId,
+                waybill.MaterialUnitId,
+                extension?.UnitPrice,
+                extension?.SaleContractNo,
+                waybill.Remark);
+        }
+
+        throw new BusinessException($"Unsupported item type: {itemType}");
+    }
+
     /// <summary>
     ///     按 <paramref name="waybillId" /> upsert <see cref="RecycleWaybillExtension" />。
     ///     仅更新传入的非 null 字段（receivingTime=null 表示不修改收货时间）。
@@ -132,6 +180,18 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
         await _recycleWaybillExtensionRepository.UpdateAsync(existing);
     }
 }
+
+/// <summary>
+///     Recycle 详情页加载结果（WeighingRecord ExtraProperties 或 RecycleWaybillExtension）。
+/// </summary>
+public record RecycleDetailLoadResult(
+    int? ProviderId,
+    int? MaterialId,
+    int? MaterialUnitId,
+    decimal? UnitPrice,
+    string? SaleContractNo,
+    string? Remark
+);
 
 public record UpdateRecycleModeInput(
     long Id,

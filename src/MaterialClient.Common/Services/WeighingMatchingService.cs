@@ -867,9 +867,17 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         // 使用传入的值，或从 waybill 中获取
         materialId ??= waybill.MaterialId;
         materialUnitId ??= waybill.MaterialUnitId;
-        waybillQuantity ??= waybill.OrderPlanOnPcs;
+        waybillQuantity ??= waybill.OrderPlanOnPcs ?? waybill.OrderGoodsWeight;
 
-        if (!materialUnitId.HasValue || !waybillQuantity.HasValue || !materialId.HasValue)
+        if (!materialId.HasValue)
+            return;
+
+        // 即使暂无数量，也先落盘 MaterialId/UnitId，避免匹配后 UI 无法回填材料名称。
+        waybill.MaterialId = materialId;
+        if (materialUnitId.HasValue)
+            waybill.MaterialUnitId = materialUnitId;
+
+        if (!materialUnitId.HasValue || !waybillQuantity.HasValue)
             return;
 
         var material = await _materialRepository.GetAsync(materialId.Value);
@@ -877,8 +885,6 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var materialUnit = await _materialUnitRepository.GetAsync(materialUnitId.Value);
 
         // 更新 Waybill 的物料信息
-        waybill.MaterialId = materialId;
-        waybill.MaterialUnitId = materialUnitId;
         waybill.OrderPlanOnPcs = waybillQuantity;
         waybill.MaterialUnitRate = materialUnit.Rate;
         waybill.CalculateMaterialWeight(material.LowerLimit, material.UpperLimit);
@@ -979,7 +985,10 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         var outMaterial = outRecord.Materials?.FirstOrDefault();
         var materialId = joinMaterial?.MaterialId ?? outMaterial?.MaterialId;
         var materialUnitId = joinMaterial?.MaterialUnitId ?? outMaterial?.MaterialUnitId;
-        var waybillQuantity = joinMaterial?.WaybillQuantity ?? outMaterial?.WaybillQuantity;
+        // Recycle/SolidWaste 保存时往往不写 Materials.WaybillQuantity；用已算净重兜底。
+        var waybillQuantity = joinMaterial?.WaybillQuantity
+                              ?? outMaterial?.WaybillQuantity
+                              ?? waybill.OrderGoodsWeight;
         await TryCalculateMaterialAsync(waybill, materialId, materialUnitId, waybillQuantity);
 
         return waybill;

@@ -154,6 +154,50 @@ public class RecycleWeighingServiceUpsertTests : MaterialClientEntityFrameworkCo
         record.GetSaleContractNo().ShouldBeNull();
     }
 
+    [Fact]
+    public async Task GetRecycleDetailAsync_Waybill_Returns_Extension_Fields()
+    {
+        var waybillId = await CreateWaybillAsync(7101);
+        await WithUnitOfWorkAsync(async () =>
+        {
+            await _extensionRepository.InsertAsync(new RecycleWaybillExtension(waybillId)
+            {
+                UnitPrice = 88.5m,
+                SaleContractNo = "HT-LOAD"
+            });
+        });
+
+        var detail = await _recycleWeighingService.GetRecycleDetailAsync(
+            waybillId,
+            WeighingListItemType.Waybill);
+
+        detail.ShouldNotBeNull();
+        detail!.UnitPrice.ShouldBe(88.5m);
+        detail.SaleContractNo.ShouldBe("HT-LOAD");
+    }
+
+    [Fact]
+    public async Task GetRecycleDetailAsync_WeighingRecord_Returns_ExtraProperties()
+    {
+        var recordId = await CreateWeighingRecordAsync(8101);
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var record = await _weighingRecordRepository.GetAsync(recordId);
+            record.SetRecycleInfo(66m, "HT-REC");
+            record.Remark = "note";
+            await _weighingRecordRepository.UpdateAsync(record);
+        });
+
+        var detail = await _recycleWeighingService.GetRecycleDetailAsync(
+            recordId,
+            WeighingListItemType.WeighingRecord);
+
+        detail.ShouldNotBeNull();
+        detail!.UnitPrice.ShouldBe(66m);
+        detail.SaleContractNo.ShouldBe("HT-REC");
+        detail.Remark.ShouldBe("note");
+    }
+
     private async Task<long> CreateWeighingRecordAsync(long id)
     {
         return await WithUnitOfWorkAsync(async () =>
