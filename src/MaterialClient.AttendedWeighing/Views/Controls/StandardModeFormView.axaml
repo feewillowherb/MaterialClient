@@ -211,19 +211,9 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- 运单数量 (4字) -->
-                        <DataGridTemplateColumn Header="运单数量" Width="80">
+                        <!-- 运单数量 (4字)：编辑器直接放在 CellTemplate，单击即可输入 -->
+                        <DataGridTemplateColumn Header="运单数量" Width="80" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding WaybillQuantityDisplay}"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               FontSize="12"
-                                               Foreground="#333333" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                            <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
                                     <NumericUpDown Value="{Binding WaybillQuantity, Mode=TwoWay}"
                                                    FormatString="F2"
@@ -231,13 +221,14 @@
                                                    Minimum="0"
                                                    HorizontalAlignment="Stretch"
                                                    VerticalAlignment="Center"
+                                                   HorizontalContentAlignment="Center"
                                                    FontSize="12"
                                                    Foreground="#333333"
                                                    ShowButtonSpinner="False"
                                                    BorderThickness="0"
                                                    Background="Transparent" />
                                 </DataTemplate>
-                            </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
                         <!-- 运单重量 (4字) -->
