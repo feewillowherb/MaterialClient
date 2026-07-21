@@ -77,7 +77,7 @@ public class RecycleReceivingUiTests
     {
         var vm = new RecycleReceivingViewModel();
         vm.Initialize("fl-7001");
-        vm.ReceivingDate = new DateTime(2026, 7, 9);
+        vm.ReceivingDateTime = new DateTime(2026, 7, 9, 15, 30, 0);
         // 收货照片为空
 
         await vm.ConfirmCommand.Execute().ToTask();
@@ -91,7 +91,7 @@ public class RecycleReceivingUiTests
     {
         var vm = new RecycleReceivingViewModel();
         vm.Initialize("fl-7001");
-        vm.ReceivingDate = null;
+        vm.ReceivingDateTime = null;
         vm.SelectedImagePath = @"C:\fake-receiving.jpg";
 
         await vm.ConfirmCommand.Execute().ToTask();
@@ -105,8 +105,7 @@ public class RecycleReceivingUiTests
     {
         var vm = new RecycleReceivingViewModel();
         vm.Initialize("fl-7001");
-        vm.ReceivingDate = new DateTime(2026, 7, 9);
-        vm.ReceivingTimeOfDay = new TimeSpan(15, 30, 0);
+        vm.ReceivingDateTime = new DateTime(2026, 7, 9, 15, 30, 0);
         vm.SelectedImagePath = @"C:\fake-receiving.jpg";
 
         await vm.ConfirmCommand.Execute().ToTask();
