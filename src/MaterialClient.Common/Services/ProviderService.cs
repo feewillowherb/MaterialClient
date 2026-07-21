@@ -45,12 +45,19 @@ public interface IProviderService
     /// </summary>
     /// <param name="providerName">供应商名称</param>
     /// <param name="deliveryType">当前称重记录/联单的 DeliveryType</param>
-    Task<Provider> CreateProviderAsync(string providerName, DeliveryType deliveryType);
+    /// <param name="address">收货地址（本地专用，可选）；提供时在远端创建后、本地 upsert 前回填</param>
+    Task<Provider> CreateProviderAsync(string providerName, DeliveryType deliveryType, string? address = null);
 
     /// <summary>
     ///     更新供应商信息
     /// </summary>
-    Task<ProviderDto> UpdateProviderAsync(int id, string providerName, string? contactName, string? contactPhone);
+    /// <param name="address">收货地址（本地专用，可选）；提供时同步更新本地 Provider.Address（远端契约不新增 Address）</param>
+    Task<ProviderDto> UpdateProviderAsync(
+        int id,
+        string providerName,
+        string? contactName,
+        string? contactPhone,
+        string? address = null);
 }
 
 /// <summary>
@@ -113,7 +120,8 @@ public partial class ProviderService : DomainService, IProviderService
                     ProviderType = p.ProviderType ?? 0,
                     ProviderName = p.ProviderName ?? string.Empty,
                     ContactName = p.ContectName,
-                    ContactPhone = p.ContectPhone
+                    ContactPhone = p.ContectPhone,
+                    Address = p.Address
                 })
                 .ToListAsync();
             var selectedSet = selectedList.Select(p => p.Id).ToHashSet();
@@ -130,7 +138,8 @@ public partial class ProviderService : DomainService, IProviderService
                     ProviderType = p.ProviderType ?? 0,
                     ProviderName = p.ProviderName ?? string.Empty,
                     ContactName = p.ContectName,
-                    ContactPhone = p.ContectPhone
+                    ContactPhone = p.ContectPhone,
+                    Address = p.Address
                 })
                 .ToListAsync();
             merged.AddRange(pageItems);
@@ -147,7 +156,8 @@ public partial class ProviderService : DomainService, IProviderService
                     ProviderType = p.ProviderType ?? 0,
                     ProviderName = p.ProviderName ?? string.Empty,
                     ContactName = p.ContectName,
-                    ContactPhone = p.ContectPhone
+                    ContactPhone = p.ContectPhone,
+                    Address = p.Address
                 })
                 .ToListAsync();
             merged.AddRange(items);
@@ -158,7 +168,10 @@ public partial class ProviderService : DomainService, IProviderService
 
     /// <inheritdoc />
     [UnitOfWork]
-    public virtual async Task<Provider> CreateProviderAsync(string providerName, DeliveryType deliveryType)
+    public virtual async Task<Provider> CreateProviderAsync(
+        string providerName,
+        DeliveryType deliveryType,
+        string? address = null)
     {
         if (string.IsNullOrWhiteSpace(providerName))
         {
@@ -181,6 +194,12 @@ public partial class ProviderService : DomainService, IProviderService
         }
 
         var provider = MaterialProviderListResultDto.ToEntity(response.Data);
+
+        // Address 为本地专用字段（远端契约不携带）：远端创建返回后、本地 upsert 前回填。
+        if (!string.IsNullOrWhiteSpace(address))
+        {
+            provider.Address = address.Trim();
+        }
 
         try
         {
@@ -214,7 +233,8 @@ public partial class ProviderService : DomainService, IProviderService
         int id,
         string providerName,
         string? contactName,
-        string? contactPhone)
+        string? contactPhone,
+        string? address = null)
     {
         if (string.IsNullOrWhiteSpace(providerName))
         {
@@ -229,13 +249,31 @@ public partial class ProviderService : DomainService, IProviderService
             throw new BusinessException("PROVIDER:REMOTE_UPDATE_FAILED", errorMessage);
         }
 
+        // Address 为本地专用字段（远端契约不携带）：远端更新成功后同步更新本地 Provider.Address。
+        string? localAddress = address;
+        var local = await _providerRepository.FindAsync(id);
+        if (local != null)
+        {
+            if (address != null)
+            {
+                local.Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+                localAddress = local.Address;
+                await _providerRepository.UpdateAsync(local);
+            }
+            else
+            {
+                localAddress = local.Address;
+            }
+        }
+
         return new ProviderDto
         {
             Id = response.Data.ProviderId,
             ProviderType = response.Data.ProviderType ?? 0,
             ProviderName = response.Data.ProviderName ?? string.Empty,
             ContactName = response.Data.ContectName,
-            ContactPhone = response.Data.ContectPhone
+            ContactPhone = response.Data.ContectPhone,
+            Address = localAddress
         };
     }
 }

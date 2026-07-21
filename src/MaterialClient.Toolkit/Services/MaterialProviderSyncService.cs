@@ -46,6 +46,8 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
 
         var materialIdMap = new Dictionary<int, int>(); // local Id -> server GoodsId
         var providerIdMap = new Dictionary<int, int>(); // local Id -> server ProviderId
+        // Address 为本地专用字段（远端 DTO 不携带）：按服务端 ProviderId 快照本地 Address，重建后回填。
+        var providerAddressByServerId = new Dictionary<int, string?>();
         var materialDtos = new List<MaterialGoodListResultDto>();
         var providerDtos = new List<MaterialProviderListResultDto>();
 
@@ -106,6 +108,7 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
             }
 
             providerIdMap[provider.Id] = response.Data.ProviderId;
+            providerAddressByServerId[response.Data.ProviderId] = provider.Address;
             providerDtos.Add(response.Data);
             _logger.LogInformation("Provider '{ProviderName}' created on server with ProviderId={ProviderId}.",
                 provider.ProviderName, response.Data.ProviderId);
@@ -133,8 +136,19 @@ public partial class MaterialProviderSyncService : IMaterialProviderSyncService,
             // Replace Provider entities
             _dbContext.Providers.RemoveRange(providers);
             var serverProviders = providerDtos.Select(MaterialProviderListResultDto.ToEntity).ToList();
+            // 回填本地 Address（ToEntity 不携带 Address；按服务端 ProviderId=实体 Id 匹配快照）。
+            int restoredAddressCount = 0;
+            foreach (var serverProvider in serverProviders)
+            {
+                if (providerAddressByServerId.TryGetValue(serverProvider.Id, out var address) && address != null)
+                {
+                    serverProvider.Address = address;
+                    restoredAddressCount++;
+                }
+            }
             _dbContext.Providers.AddRange(serverProviders);
-            _logger.LogInformation("Replaced {Count} Provider entities with server data.", serverProviders.Count);
+            _logger.LogInformation("Replaced {Count} Provider entities with server data (restored {AddressCount} local Address values).",
+                serverProviders.Count, restoredAddressCount);
 
             // Clear MaterialUnit table (references old local MaterialId)
             var materialUnits = await _dbContext.MaterialUnits.ToListAsync(cancellationToken);
