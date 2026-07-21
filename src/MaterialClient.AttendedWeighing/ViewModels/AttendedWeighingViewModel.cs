@@ -60,6 +60,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     private readonly ILprDeviceOnlineStatusService _lprDeviceOnlineStatusService;
     private readonly ISyncMaterialService _syncMaterialService;
     private readonly IAttachmentService _attachmentService;
+    private readonly IRecycleReceivingService _recycleReceivingService;
     private readonly ILocalEventBus _localEventBus;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
     private bool _isSyncing;
@@ -79,6 +80,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         ILprDeviceOnlineStatusService lprDeviceOnlineStatusService,
         ISyncMaterialService syncMaterialService,
         IAttachmentService attachmentService,
+        IRecycleReceivingService recycleReceivingService,
         ILocalEventBus localEventBus
     ) : base(serviceProvider.GetService<ILogger<AttendedWeighingViewModel>>())
     {
@@ -92,6 +94,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         _lprDeviceOnlineStatusService = lprDeviceOnlineStatusService;
         _syncMaterialService = syncMaterialService;
         _attachmentService = attachmentService;
+        _recycleReceivingService = recycleReceivingService;
         _localEventBus = localEventBus;
 
         PhotoGridViewModel = new PhotoGridViewModel(serviceProvider);
@@ -120,6 +123,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             {
                 this.RaisePropertyChanged(nameof(IsCompletedWaybillSelected));
                 this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
+                this.RaisePropertyChanged(nameof(CanReceive));
 
                 if (item != null)
                 {
@@ -151,6 +155,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     this.RaisePropertyChanged(nameof(BillPhotoButtonText));
                     this.RaisePropertyChanged(nameof(ShouldShowPreview));
                     this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
+                    this.RaisePropertyChanged(nameof(CanReceive));
                 }
             })
             .DisposeWith(_disposables);
@@ -1349,9 +1354,19 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     public bool IsCompletedWaybillSelected => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed };
 
+    /// <summary>
+    ///     打印按钮可见条件：仅 SolidWaste 已完成运单。
+    ///     Recycle 模式已将「打印」替换为「收货」（见 <see cref="CanReceive" />），SHALL NOT 在 Recycle 显示打印。
+    /// </summary>
     public bool CanPrintSolidWaste => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed } item
-        && item.WeighingMode is WeighingMode.SolidWaste or WeighingMode.Recycle;
+        && item.WeighingMode == WeighingMode.SolidWaste;
+
+    /// <summary>
+    ///     收货按钮可见条件：Recycle 模式且选中已完成 Waybill。
+    /// </summary>
+    public bool CanReceive => SelectedListItem is
+        { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed, WeighingMode: WeighingMode.Recycle };
 
     public bool CanEditSolidWaste => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill } item
@@ -2642,6 +2657,52 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             Logger?.LogError(ex, "打印固废称重单失败。ListItemId: {ListItemId}", SelectedListItem.Id);
             await ShowMessageBoxAsync($"打印失败：{ex.Message}");
+        }
+    }
+
+    [ReactiveCommand]
+    private async Task ReceiveAsync()
+    {
+        if (SelectedListItem == null || !CanReceive) return;
+
+        var waybillId = SelectedListItem.Id;
+        var orderNo = SelectedListItem.OrderNo ?? string.Empty;
+
+        try
+        {
+            var parentWin = GetParentWindow();
+            var dialogVm = new RecycleReceivingViewModel();
+            dialogVm.Initialize(orderNo);
+
+            var dialog = new RecycleReceivingWindow(dialogVm);
+            RecycleReceivingResult? result = null;
+            if (parentWin != null)
+            {
+                result = await dialog.ShowDialog<RecycleReceivingResult?>(parentWin);
+            }
+            else
+            {
+                dialog.Show();
+                return;
+            }
+
+            if (result == null) return;
+
+            // 以文件流方式读取收货照片，交由收货服务落盘为 TicketPhoto 附件并持久化。
+            await using var stream = File.OpenRead(result.ImagePath);
+            await _recycleReceivingService.ConfirmAsync(waybillId, result.ReceivingTime, stream);
+
+            Logger?.LogInformation("Recycle 收货已确认：WaybillId={WaybillId}", waybillId);
+
+            await ShowMessageBoxAsync("收货成功");
+
+            // 收货改变了运单待上报状态，刷新列表以反映最新状态。
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "收货失败。WaybillId: {WaybillId}", waybillId);
+            await ShowMessageBoxAsync($"收货失败：{ex.Message}");
         }
     }
 
