@@ -28,12 +28,25 @@ public class RecycleDataSyncService : DomainService
         AttachType.Lpr
     };
 
+    /// <summary>出场侧照片类型（§2.2 outPhotos 聚合出场侧）</summary>
+    private static readonly AttachType[] ExitPhotoTypes =
+    {
+        AttachType.ExitPhoto
+    };
+
+    /// <summary>收货照片类型（§2.2 receivingProof 数据源）</summary>
+    private static readonly AttachType[] ReceivingProofTypes =
+    {
+        AttachType.TicketPhoto
+    };
+
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<WaybillAttachment, int> _waybillAttachmentRepository;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRepository<WaybillMaterial, int> _waybillMaterialRepository;
     private readonly IRepository<Material, int> _materialRepository;
     private readonly IRepository<Provider, int> _providerRepository;
+    private readonly IRepository<RecycleWaybillExtension, Guid> _recycleWaybillExtensionRepository;
     private readonly IRecycleDataApi _recycleApi;
     private readonly RecycleSyncOptions _options;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
@@ -45,6 +58,7 @@ public class RecycleDataSyncService : DomainService
         IRepository<WaybillMaterial, int> waybillMaterialRepository,
         IRepository<Material, int> materialRepository,
         IRepository<Provider, int> providerRepository,
+        IRepository<RecycleWaybillExtension, Guid> recycleWaybillExtensionRepository,
         IRecycleDataApi recycleApi,
         IOptions<RecycleSyncOptions> options,
         IUnitOfWorkManager unitOfWorkManager)
@@ -55,6 +69,7 @@ public class RecycleDataSyncService : DomainService
         _waybillMaterialRepository = waybillMaterialRepository;
         _materialRepository = materialRepository;
         _providerRepository = providerRepository;
+        _recycleWaybillExtensionRepository = recycleWaybillExtensionRepository;
         _recycleApi = recycleApi;
         _options = options.Value;
         _unitOfWorkManager = unitOfWorkManager;
@@ -132,9 +147,6 @@ public class RecycleDataSyncService : DomainService
         // 解析 carrierCompanyName
         var carrierCompanyName = await ResolveCarrierCompanyNameAsync(waybill, cancellationToken);
 
-        // 5.4: 照片取进场侧（聚合 Waybill 关联附件）
-        var photos = await BuildEntryPhotosBase64Async(waybill.Id, cancellationToken);
-
         // 净重非正跳过
         if ((waybill.OrderGoodsWeight ?? 0m) <= 0m)
         {
@@ -147,11 +159,11 @@ public class RecycleDataSyncService : DomainService
         {
             if (waybill.DeliveryType == DeliveryType.Sending)
             {
-                await SubmitSendingAsync(waybill, photos, materialName, carrierCompanyName, cancellationToken);
+                await SubmitSendingAsync(waybill, materialName, carrierCompanyName, cancellationToken);
             }
             else if (waybill.DeliveryType == DeliveryType.Receiving)
             {
-                await SubmitReceivingAsync(waybill, photos, materialName, carrierCompanyName, cancellationToken);
+                await SubmitReceivingAsync(waybill, materialName, carrierCompanyName, cancellationToken);
             }
             else
             {
@@ -165,19 +177,38 @@ public class RecycleDataSyncService : DomainService
     }
 
     /// <summary>
-    ///     §2.2 发料上报（Sending）：重量已是吨，直接使用，出场照片。
+    ///     §2.2 发料上报（Sending）：outPhotos 聚合进场+出场照片（进场在前），透传 UnitPrice/SaleContractNo/
+    ///     ReceivingTime（来自 RecycleWaybillExtension）、ReceivingProof（TicketPhoto）、ConsigneeAddress（Provider.Address）。
     /// </summary>
     private async Task SubmitSendingAsync(
-        Waybill waybill, string photos, string materialName, string? carrierCompanyName,
+        Waybill waybill, string materialName, string? carrierCompanyName,
         CancellationToken cancellationToken)
     {
-        // §2.2 出场照片（取进场侧：设计定稿统一取进场侧附件）
+        // §2.2 outPhotos：进场侧 + 出场侧（进场在前、出场在后）。
+        var entryPhotos = await BuildEntryPhotosBase64Async(waybill.Id, cancellationToken);
+        var exitPhotos = await BuildExitPhotosBase64Async(waybill.Id, cancellationToken);
+        var outPhotos = MergeEntryAndExitPhotos(entryPhotos, exitPhotos);
+
+        // §2.2 扩展字段：RecycleWaybillExtension（UnitPrice/SaleContractNo/ReceivingTime）。
+        var extension = await GetRecycleWaybillExtensionAsync(waybill.Id, cancellationToken);
+
+        // §2.2 consigneeAddress：关联 Provider.Address。
+        var consigneeAddress = await ResolveConsigneeAddressAsync(waybill, cancellationToken);
+
+        // §2.2 receivingProof：TicketPhoto 收货照片 Base64。
+        var receivingProof = await BuildReceivingProofBase64Async(waybill.Id, cancellationToken);
+
         var payload = RecycleTransportRecord.FromWaybill(
             waybill,
-            photos,
+            outPhotos,
             materialName,
             _options.PointNumber,
-            carrierCompanyName);
+            carrierCompanyName,
+            unitPrice: extension?.UnitPrice,
+            saleContractNo: extension?.SaleContractNo,
+            receivingTime: extension?.ReceivingTime,
+            receivingProof: receivingProof,
+            consigneeAddress: consigneeAddress);
 
         RecycleApiResponse? response;
         try
@@ -211,12 +242,15 @@ public class RecycleDataSyncService : DomainService
     }
 
     /// <summary>
-    ///     §2.3 收料上报（Receiving）：重量已是吨，直接使用，进场照片。
+    ///     §2.3 收料上报（Receiving）：inPhoto 仅进场侧照片（不含 ExitPhoto），重量已是吨直接使用。
     /// </summary>
     private async Task SubmitReceivingAsync(
-        Waybill waybill, string photos, string materialName, string? carrierCompanyName,
+        Waybill waybill, string materialName, string? carrierCompanyName,
         CancellationToken cancellationToken)
     {
+        // §2.3 inPhoto：仅进场侧照片，SHALL NOT 包含 ExitPhoto。
+        var photos = await BuildEntryPhotosBase64Async(waybill.Id, cancellationToken);
+
         var payload = RecycleMaterialTransportRecord.FromWaybill(
             waybill,
             photos,
@@ -268,7 +302,23 @@ public class RecycleDataSyncService : DomainService
     /// <summary>
     ///     5.4: 读取 Waybill 关联附件，取进场侧照片（EntryPhoto → UnmatchedEntryPhoto → Lpr），Base64 编码逗号分隔。
     /// </summary>
-    private async Task<string> BuildEntryPhotosBase64Async(long waybillId, CancellationToken cancellationToken)
+    private Task<string> BuildEntryPhotosBase64Async(long waybillId, CancellationToken cancellationToken)
+        => BuildPhotosBase64Async(waybillId, EntryPhotoTypes, cancellationToken);
+
+    /// <summary>
+    ///     §2.2: 读取 Waybill 关联的出场侧照片（ExitPhoto），Base64 编码逗号分隔。进场侧在前、出场侧在后由调用方聚合。
+    /// </summary>
+    private Task<string> BuildExitPhotosBase64Async(long waybillId, CancellationToken cancellationToken)
+        => BuildPhotosBase64Async(waybillId, ExitPhotoTypes, cancellationToken);
+
+    /// <summary>
+    ///     读取 Waybill 关联附件中指定 <paramref name="types" /> 的照片，Base64 编码（无 Data URL 前缀）逗号分隔。
+    ///     文件缺失记 LogWarning 并跳过（不中断同步流程）。
+    /// </summary>
+    private async Task<string> BuildPhotosBase64Async(
+        long waybillId,
+        AttachType[] types,
+        CancellationToken cancellationToken)
     {
         var linkQueryable = await _waybillAttachmentRepository.GetQueryableAsync();
         var attachmentIds = await linkQueryable
@@ -281,7 +331,7 @@ public class RecycleDataSyncService : DomainService
 
         var fileQueryable = await _attachmentFileRepository.GetQueryableAsync();
         var files = await fileQueryable
-            .Where(f => attachmentIds.Contains(f.Id) && EntryPhotoTypes.Contains(f.AttachType))
+            .Where(f => attachmentIds.Contains(f.Id) && types.Contains(f.AttachType))
             .ToListAsync(cancellationToken);
 
         var base64List = new List<string>(files.Count);
@@ -299,6 +349,54 @@ public class RecycleDataSyncService : DomainService
         }
 
         return string.Join(",", base64List);
+    }
+
+    /// <summary>
+    ///     §2.2: 读取 Waybill 关联的 TicketPhoto 收货照片，Base64 编码（无 Data URL 前缀）。
+    ///     无关联附件或文件缺失时返回 null（记日志但不中断上报）。
+    /// </summary>
+    private async Task<string?> BuildReceivingProofBase64Async(long waybillId, CancellationToken cancellationToken)
+    {
+        var linkQueryable = await _waybillAttachmentRepository.GetQueryableAsync();
+        var attachmentIds = await linkQueryable
+            .Where(l => l.WaybillId == waybillId)
+            .Select(l => l.AttachmentFileId)
+            .ToListAsync(cancellationToken);
+
+        if (attachmentIds.Count == 0)
+            return null;
+
+        var fileQueryable = await _attachmentFileRepository.GetQueryableAsync();
+        var file = await fileQueryable
+            .Where(f => attachmentIds.Contains(f.Id) && ReceivingProofTypes.Contains(f.AttachType))
+            .OrderBy(f => f.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (file == null)
+            return null;
+
+        var absolutePath = PathManager.ToAbsolutePath(file.LocalPath);
+        if (!File.Exists(absolutePath))
+        {
+            Logger.LogWarning("Recycle 收货照片文件缺失，跳过：WaybillId={WaybillId}, Path={Path}", waybillId, absolutePath);
+            return null;
+        }
+
+        var bytes = await File.ReadAllBytesAsync(absolutePath, cancellationToken);
+        return Convert.ToBase64String(bytes);
+    }
+
+    /// <summary>
+    ///     合并进场侧与出场侧照片 Base64，进场侧在前、出场侧在后，英文逗号分隔；两侧均为空时返回空串。
+    /// </summary>
+    private static string MergeEntryAndExitPhotos(string entryPhotos, string exitPhotos)
+    {
+        var hasEntry = !string.IsNullOrEmpty(entryPhotos);
+        var hasExit = !string.IsNullOrEmpty(exitPhotos);
+        if (hasEntry && hasExit) return $"{entryPhotos},{exitPhotos}";
+        if (hasEntry) return entryPhotos;
+        if (hasExit) return exitPhotos;
+        return string.Empty;
     }
 
     /// <summary>
@@ -335,5 +433,30 @@ public class RecycleDataSyncService : DomainService
 
         var provider = await _providerRepository.FindAsync(waybill.ProviderId.Value, cancellationToken: cancellationToken);
         return provider?.ProviderName;
+    }
+
+    /// <summary>
+    ///     §2.2: 按 WaybillId 读取 RecycleWaybillExtension（UnitPrice/SaleContractNo/ReceivingTime）。无记录返回 null。
+    /// </summary>
+    private async Task<RecycleWaybillExtension?> GetRecycleWaybillExtensionAsync(
+        long waybillId, CancellationToken cancellationToken)
+    {
+        var queryable = await _recycleWaybillExtensionRepository.GetQueryableAsync();
+        return await queryable
+            .Where(e => e.WaybillId == waybillId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    ///     §2.2: 解析 consigneeAddress（ProviderId → Provider.Address，本地专用字段）。
+    ///     Provider 不存在或 Address 为空返回 null。
+    /// </summary>
+    private async Task<string?> ResolveConsigneeAddressAsync(Waybill waybill, CancellationToken cancellationToken)
+    {
+        if (!waybill.ProviderId.HasValue)
+            return null;
+
+        var provider = await _providerRepository.FindAsync(waybill.ProviderId.Value, cancellationToken: cancellationToken);
+        return string.IsNullOrWhiteSpace(provider?.Address) ? null : provider.Address;
     }
 }
