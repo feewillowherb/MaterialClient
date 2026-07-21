@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewModels="clr-namespace:MaterialClient.ViewModels"
+        xmlns:u="https://irihi.tech/ursa"
+        x:Class="MaterialClient.Views.Dialogs.RecycleReceivingWindow"
+        x:DataType="viewModels:RecycleReceivingViewModel"
+        Title="收货确认"
+        Width="480"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White"
+        Icon="/Assets/fd-ico.ico">
+
+  <Border BorderBrush="LightGray" BorderThickness="1">
+    <Grid RowDefinitions="50,Auto,Auto" Margin="0">
+
+      <!-- 标题栏 -->
+      <Grid Grid.Row="0" Background="#6498FE">
+        <TextBlock Text="收货确认"
+                   FontSize="14"
+                   Foreground="White"
+                   VerticalAlignment="Center"
+                   Margin="15,0,0,0" />
+        <Button Content="✕"
+                Classes="transparent-button"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                FontSize="20"
+                Foreground="White"
+                Width="40"
+                Height="35"
+                Command="{Binding CancelCommand}"
+                Cursor="Hand" />
+      </Grid>
+
+      <!-- 表单 -->
+      <StackPanel Grid.Row="1" Margin="16" Spacing="12">
+
+        <!-- 运单号 -->
+        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
+          <TextBlock Text="运单："
+                     VerticalAlignment="Center"
+                     Foreground="#333" />
+          <TextBlock Grid.Column="1"
+                     Text="{Binding OrderNo}"
+                     VerticalAlignment="Center"
+                     Foreground="#333"
+                     TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <!-- 收货时间（Ursa DateTimePicker，与项目其它对话框一致，避免原生 DatePicker DateTimeOffset 绑定错误） -->
+        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
+          <TextBlock Text="收货时间 *"
+                     VerticalAlignment="Center"
+                     Foreground="#333" />
+          <u:DateTimePicker Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            SelectedDate="{Binding ReceivingDateTime, Mode=TwoWay}"
+                            DisplayFormat="yyyy-MM-dd HH:mm"
+                            PanelFormat="yyyy-MM-dd HH:mm" />
+        </Grid>
+
+        <!-- 收货照片 -->
+        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
+          <TextBlock Text="收货照片 *"
+                     VerticalAlignment="Center"
+                     Foreground="#333" />
+          <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="6">
+            <Button Content="选择图片…"
+                    Width="100"
+                    Height="30"
+                    HorizontalAlignment="Left"
+                    Classes="secondary-button"
+                    Command="{Binding SelectImageCommand}" />
+            <TextBlock Text="{Binding SelectedImagePath, TargetNullValue='未选择'}"
+                       FontSize="11"
+                       Foreground="#888"
+                       TextTrimming="CharacterEllipsis" />
+            <Image Source="{Binding SelectedImagePath, Converter={StaticResource NullOrEmptyImageConverter}}"
+                   MaxHeight="160"
+                   MaxWidth="320"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Left"
+                   IsVisible="{Binding SelectedImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- 错误提示 -->
+        <TextBlock Text="{Binding ErrorMessage}"
+                   Foreground="#EF4444"
+                   FontSize="12"
+                   IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </StackPanel>
+
+      <!-- 底部按钮 -->
+      <Grid Grid.Row="2" Margin="16,0,16,16">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Button Grid.Column="1"
+                Content="取消"
+                Width="80"
+                Height="30"
+                Margin="0,0,8,0"
+                Classes="secondary-button"
+                Command="{Binding CancelCommand}" />
+        <Button Grid.Column="2"
+                Content="确认收货"
+                Width="90"
+                Height="30"
+                Classes="primary-button"
+                Command="{Binding ConfirmCommand}" />
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

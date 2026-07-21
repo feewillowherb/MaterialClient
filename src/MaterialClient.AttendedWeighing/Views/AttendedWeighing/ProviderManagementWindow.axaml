@@ -85,6 +85,7 @@
             <DataGridTextColumn Binding="{Binding ProviderName}" Header="名称" MinWidth="200" Width="*" />
             <DataGridTextColumn Binding="{Binding ContactName}" Header="联系人姓名" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding ContactPhone}" Header="联系人电话" MinWidth="140" />
+            <DataGridTextColumn Binding="{Binding Address}" Header="收货地址" MinWidth="160" />
           </DataGrid.Columns>
         </DataGrid>
       </Grid>

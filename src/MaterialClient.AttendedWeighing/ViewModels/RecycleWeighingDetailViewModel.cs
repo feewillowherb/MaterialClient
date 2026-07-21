@@ -17,7 +17,6 @@ using ReactiveUI.SourceGenerators;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.ViewModels;
 
@@ -31,6 +30,12 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
     [Reactive] private Material? _selectedRecycleMaterial;
     [Reactive] private SelectionItem? _selectedProviderItem;
     [Reactive] private SelectionItem? _selectedMaterialItem;
+
+    /// <summary>单价（元/吨，可选）。§2.2 unitPrice 数据源，回填/持久化到 RecycleWaybillExtension。</summary>
+    [Reactive] private decimal? _unitPrice;
+
+    /// <summary>销售合同编号（可选）。§2.2 saleContractNo 数据源，回填/持久化到 RecycleWaybillExtension。</summary>
+    [Reactive] private string? _saleContractNo;
 
     public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>> ProviderLoadPageAsync { get; }
     public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>> MaterialLoadPageAsync { get; }
@@ -130,75 +135,57 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
 
         try
         {
-            if (_listItem.ItemType == WeighingListItemType.WeighingRecord)
+            var detail = await _recycleWeighingService.GetRecycleDetailAsync(_listItem.Id, _listItem.ItemType);
+            if (detail == null)
             {
-                var record = await _serviceProvider.GetRequiredService<IRepository<WeighingRecord, long>>().GetAsync(_listItem.Id);
-
-                SelectedProviderId = record.ProviderId;
-                _listItem.ProviderId = record.ProviderId;
-                SelectedProviderItem = SelectedProviderId.HasValue
-                    ? SelectionItem.FromProvider(new ProviderDto { Id = SelectedProviderId.Value, ProviderName = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value)?.ProviderName ?? string.Empty })
-                    : null;
-
-                var materialId = record.Materials.FirstOrDefault()?.MaterialId;
-                if (materialId.HasValue)
-                {
-                    var material = RecycleMaterials.FirstOrDefault(m => m.Id == materialId.Value);
-                    if (material != null)
-                    {
-                        SelectedRecycleMaterial = material;
-                        SelectedMaterialItem = SelectionItem.FromMaterial(material);
-
-                        var units = await LoadMaterialUnitsForRowAsync(material.Id);
-                        if (MaterialItems.Count > 0)
-                        {
-                            var firstRow = MaterialItems[0];
-                            firstRow.SetMaterialUnits(units);
-                            if (units.Count > 0)
-                                firstRow.InitializeSelection(material, units, units[0].Id);
-                        }
-                    }
-                }
+                return;
             }
-            else if (_listItem.ItemType == WeighingListItemType.Waybill)
+
+            SelectedProviderId = detail.ProviderId;
+            _listItem.ProviderId = detail.ProviderId;
+            SelectedProviderItem = SelectedProviderId.HasValue
+                ? SelectionItem.FromProvider(new ProviderDto
+                {
+                    Id = SelectedProviderId.Value,
+                    ProviderName = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value)?.ProviderName
+                        ?? string.Empty
+                })
+                : null;
+
+            UnitPrice = detail.UnitPrice;
+            SaleContractNo = detail.SaleContractNo;
+            if (detail.Remark != null)
             {
-                var waybillRepository = _serviceProvider.GetRequiredService<IRepository<Waybill, long>>();
-                var waybill = await waybillRepository.GetAsync(_listItem.Id);
-
-                SelectedProviderId = waybill.ProviderId;
-                _listItem.ProviderId = waybill.ProviderId;
-                SelectedProviderItem = SelectedProviderId.HasValue
-                    ? SelectionItem.FromProvider(new ProviderDto
-                    {
-                        Id = SelectedProviderId.Value,
-                        ProviderName = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value)?.ProviderName
-                            ?? string.Empty
-                    })
-                    : null;
-
-                var materialId = waybill.MaterialId;
-                if (materialId.HasValue)
-                {
-                    var material = RecycleMaterials.FirstOrDefault(m => m.Id == materialId.Value);
-                    if (material != null)
-                    {
-                        SelectedRecycleMaterial = material;
-                        SelectedMaterialItem = SelectionItem.FromMaterial(material);
-
-                        var units = await LoadMaterialUnitsForRowAsync(material.Id);
-                        if (MaterialItems.Count > 0)
-                        {
-                            var firstRow = MaterialItems[0];
-                            firstRow.SetMaterialUnits(units);
-                            var unitId = waybill.MaterialUnitId ?? units.FirstOrDefault()?.Id;
-                            if (unitId.HasValue)
-                                firstRow.InitializeSelection(material, units, unitId.Value);
-                            else if (units.Count > 0)
-                                firstRow.InitializeSelection(material, units, units[0].Id);
-                        }
-                    }
-                }
+                Remark = detail.Remark;
             }
+
+            if (!detail.MaterialId.HasValue)
+            {
+                return;
+            }
+
+            var material = RecycleMaterials.FirstOrDefault(m => m.Id == detail.MaterialId.Value);
+            if (material == null)
+            {
+                return;
+            }
+
+            SelectedRecycleMaterial = material;
+            SelectedMaterialItem = SelectionItem.FromMaterial(material);
+
+            var units = await LoadMaterialUnitsForRowAsync(material.Id);
+            if (MaterialItems.Count == 0)
+            {
+                return;
+            }
+
+            var firstRow = MaterialItems[0];
+            firstRow.SetMaterialUnits(units);
+            var unitId = detail.MaterialUnitId ?? units.FirstOrDefault()?.Id;
+            if (unitId.HasValue)
+                firstRow.InitializeSelection(material, units, unitId.Value);
+            else if (units.Count > 0)
+                firstRow.InitializeSelection(material, units, units[0].Id);
         }
         catch (Exception ex)
         {
@@ -277,7 +264,9 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
                 materialId,
                 materialUnitId,
                 IsWeighingRecord ? SelectedDeliveryType : null,
-                Remark));
+                Remark,
+                UnitPrice,
+                SaleContractNo));
         }
         catch (BusinessException ex)
         {
@@ -319,7 +308,9 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
                 materialId,
                 materialUnitId,
                 IsWeighingRecord ? SelectedDeliveryType : null,
-                Remark));
+                Remark,
+                UnitPrice,
+                SaleContractNo));
 
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
         }

@@ -25,6 +25,7 @@ using Serilog;
 using Volo.Abp;
 using Volo.Abp.Autofac;
 using Volo.Abp.BackgroundWorkers;
+using Volo.Abp.Caching;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
@@ -36,7 +37,8 @@ namespace MaterialClient.Recycle;
     typeof(MaterialClientUiModule),
     typeof(MaterialClientAttendedWeighingModule),
     typeof(AbpAutofacModule),
-    typeof(AbpBackgroundWorkersModule)
+    typeof(AbpBackgroundWorkersModule),
+    typeof(AbpCachingModule)
 )]
 public class MaterialClientRecycleModule : AbpModule
 {

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MaterialClient.Common\MaterialClient.Common.csproj"/>
+    <ProjectReference Include="..\..\src\MaterialClient.Recycle\MaterialClient.Recycle.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

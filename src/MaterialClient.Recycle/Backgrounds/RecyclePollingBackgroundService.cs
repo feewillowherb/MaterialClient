@@ -28,8 +28,6 @@ public sealed class RecyclePollingBackgroundService : AsyncPeriodicBackgroundWor
 
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
     {
-        Logger.LogInformation("Recycle 轮询：开始上报扫描。");
-
         try
         {
             if (workerContext.CancellationToken.IsCancellationRequested)

@@ -22,6 +22,8 @@ public partial class ProviderEditWindowViewModel : ViewModelBase, ITransientDepe
     [Reactive] public string ProviderName { get; set; } = string.Empty;
     [Reactive] public string? ContectName { get; set; }
     [Reactive] public string? ContectPhone { get; set; }
+    /// <summary>收货地址（本地专用，§2.2 consigneeAddress 数据源）</summary>
+    [Reactive] public string? Address { get; set; }
 
     public void Initialize(ProviderDto provider)
     {
@@ -29,6 +31,7 @@ public partial class ProviderEditWindowViewModel : ViewModelBase, ITransientDepe
         ProviderName = provider.ProviderName;
         ContectName = provider.ContactName;
         ContectPhone = provider.ContactPhone;
+        Address = provider.Address;
         Result = null;
     }
 
@@ -39,7 +42,8 @@ public partial class ProviderEditWindowViewModel : ViewModelBase, ITransientDepe
             Id,
             ProviderName,
             ContectName,
-            ContectPhone);
+            ContectPhone,
+            Address);
     }
 
     [ReactiveCommand]

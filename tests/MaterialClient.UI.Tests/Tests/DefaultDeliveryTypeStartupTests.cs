@@ -72,6 +72,7 @@ public class AttendedWeighingViewModelStartupTests : IDisposable
             Substitute.For<ILprDeviceOnlineStatusService>(),
             Substitute.For<ISyncMaterialService>(),
             Substitute.For<IAttachmentService>(),
+            Substitute.For<IRecycleReceivingService>(),
             testEventBus);
 
         return (vm, attendedWeighingService);

@@ -87,7 +87,7 @@ public class WeighingListItemDto
     public string? Operator { get; set; }
 
     /// <summary>
-    ///     备注（仅运单有值）
+    ///     备注
     /// </summary>
     public string? Remark { get; set; }
 
@@ -136,6 +136,11 @@ public class WeighingListItemDto
     ///     称重模式
     /// </summary>
     public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
+
+    /// <summary>
+    ///     Recycle 运单是否已提交收货（来自 RecycleWaybillExtension.IsReceived；非 Recycle/无扩展时为 false）。
+    /// </summary>
+    public bool IsReceived { get; set; }
 
     /// <summary>
     ///     从 WeighingRecord 创建 DTO
@@ -198,6 +203,7 @@ public class WeighingListItemDto
             WaybillQuantity = firstMaterial?.WaybillQuantity,
             Operator = record.Creator,
             WeighingMode = record.WeighingMode,
+            Remark = record.Remark,
             Materials = materials.Select(m =>
             {
                 var dto = new WeighingListItemMaterialDto

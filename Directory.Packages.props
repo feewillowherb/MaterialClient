@@ -33,6 +33,7 @@
     <PackageVersion Include="Volo.Abp.Authorization" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.BackgroundJobs.Abstractions" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.BackgroundWorkers" Version="10.0.1" />
+    <PackageVersion Include="Volo.Abp.Caching" Version="10.0.1" />
     <!-- System Packages -->
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.1" />
     <PackageVersion Include="System.Management" Version="10.0.1" />

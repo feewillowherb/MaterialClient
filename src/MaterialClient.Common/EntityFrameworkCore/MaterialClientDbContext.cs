@@ -46,6 +46,9 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     // Urban extension DbSet
     public DbSet<UrbanWeighingExtension> UrbanWeighingExtensions { get; set; }
 
+    // Recycle Waybill extension DbSet
+    public DbSet<RecycleWaybillExtension> RecycleWaybillExtensions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -125,6 +128,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
             entity.Property(e => e.TotalWeight).IsRequired();
             entity.Property(e => e.WeighingMode).HasDefaultValue(WeighingMode.Standard);
+            entity.Property(e => e.Remark).HasMaxLength(500);
 
             // MaterialsJson stores the list of materials as JSON
             entity.Property(e => e.MaterialsJson);
@@ -252,6 +256,18 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
             entity.HasIndex(e => e.IsAnomaly);
             entity.Property(e => e.SubmitMachineCode).HasMaxLength(128);
+        });
+
+        // RecycleWaybillExtension: logical WaybillId only (no FK / no navigation mapping).
+        // Table name RecycleWaybillExtensions; one extension per Waybill (unique WaybillId).
+        modelBuilder.Entity<RecycleWaybillExtension>(entity =>
+        {
+            entity.ConfigureByConvention();
+            entity.ToTable("RecycleWaybillExtensions");
+            entity.Property(e => e.WaybillId).IsRequired();
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 4);
+            entity.Property(e => e.SaleContractNo).HasMaxLength(100);
+            entity.HasIndex(e => e.WaybillId).IsUnique();
         });
     }
 

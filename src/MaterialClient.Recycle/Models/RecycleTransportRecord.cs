@@ -60,7 +60,7 @@ public record RecycleTransportRecord
     [JsonPropertyName("outTime")]
     public string OutTime { get; init; } = string.Empty;
 
-    /// <summary>出场照片 Base64（必填，不带标识头，多张英文逗号分隔）</summary>
+    /// <summary>出场照片 Base64（必填，进场+出场照片聚合，进场在前出场在后，不带标识头，多张英文逗号分隔）</summary>
     [JsonPropertyName("outPhotos")]
     public string OutPhotos { get; init; } = string.Empty;
 
@@ -87,14 +87,21 @@ public record RecycleTransportRecord
     /// <summary>
     ///     从 <see cref="Waybill" /> 创建 §2.2 运输记录。
     ///     字段来源：Waybill.OrderNo 作为 dataNo（OrderNo 为空时由调用方跳过上报，本方法不做 R-{id} 回退）；
-    ///     重量单位已是吨，直接使用；consignee 来自 Provider.ProviderName。
+    ///     重量单位已是吨，直接使用；consignee 来自 Provider.ProviderName；
+    ///     unitPrice/saleContractNo/receivingTime 来自 RecycleWaybillExtension；
+    ///     receivingProof 来自 TicketPhoto 附件 Base64；consigneeAddress 来自 Provider.Address。
     /// </summary>
     public static RecycleTransportRecord FromWaybill(
         Waybill waybill,
         string outPhotos,
         string productName,
         string? pointNumber,
-        string? consignee = null)
+        string? consignee = null,
+        decimal? unitPrice = null,
+        string? saleContractNo = null,
+        DateTime? receivingTime = null,
+        string? receivingProof = null,
+        string? consigneeAddress = null)
     {
         var netWeightTons = waybill.OrderGoodsWeight ?? 0m;
         var tareWeightTons = waybill.OrderTruckWeight;
@@ -113,8 +120,13 @@ public record RecycleTransportRecord
             NetWeight = netWeightTons,
             TareWeight = tareWeightTons.HasValue && tareWeightTons.Value > 0 ? tareWeightTons.Value : null,
             GrossWeight = grossWeightTons.HasValue && grossWeightTons.Value > 0 ? grossWeightTons.Value : null,
+            UnitPrice = unitPrice,
             OutTime = outTime.ToString("yyyy-MM-dd HH:mm:ss"),
-            OutPhotos = outPhotos
+            OutPhotos = outPhotos,
+            SaleContractNo = string.IsNullOrWhiteSpace(saleContractNo) ? null : saleContractNo,
+            ConsigneeAddress = string.IsNullOrWhiteSpace(consigneeAddress) ? null : consigneeAddress,
+            ReceivingTime = receivingTime?.ToString("yyyy-MM-dd HH:mm:ss"),
+            ReceivingProof = string.IsNullOrEmpty(receivingProof) ? null : receivingProof
         };
     }
 

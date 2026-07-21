@@ -117,7 +117,9 @@ public class MaterialProviderListResultDto
     public int? MaterialTypeId { get; set; }
 
     /// <summary>
-    ///     转换为实体对象
+    ///     转换为实体对象。
+    ///     注意：<see cref="Provider.Address" /> 为本地专用字段，远端 DTO 不携带，
+    ///     本方法 SHALL NOT 覆盖 Address（保持默认 null）；本地 Address 由一次性同步快照-回填保留。
     /// </summary>
     public static Provider ToEntity(MaterialProviderListResultDto dto)
     {

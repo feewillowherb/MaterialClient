@@ -2,7 +2,6 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
-using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -13,6 +12,11 @@ namespace MaterialClient.Common.Services;
 public interface IRecycleWeighingService
 {
     Task UpdateRecycleModeAsync(UpdateRecycleModeInput input);
+
+    /// <summary>
+    ///     加载 Recycle 详情页所需字段（含 WeighingRecord ExtraProperties 或 RecycleWaybillExtension）。
+    /// </summary>
+    Task<RecycleDetailLoadResult?> GetRecycleDetailAsync(long id, WeighingListItemType itemType);
 }
 
 [AutoConstructor]
@@ -20,6 +24,7 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IRepository<RecycleWaybillExtension, Guid> _recycleWaybillExtensionRepository;
     private readonly ILogger<RecycleWeighingService>? _logger;
 
     [UnitOfWork]
@@ -60,6 +65,10 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
                 }
             }
 
+            // Stage UnitPrice/SaleContractNo on WeighingRecord ExtraProperties before Waybill exists.
+            record.SetRecycleInfo(input.UnitPrice, input.SaleContractNo);
+            if (input.Remark != null) record.Remark = input.Remark;
+
             await _weighingRecordRepository.UpdateAsync(record);
             return;
         }
@@ -77,6 +86,13 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
             if (input.MaterialUnitId.HasValue) waybill.MaterialUnitId = input.MaterialUnitId;
             if (waybill.OrderGoodsWeight.HasValue) waybill.OrderPlanOnPcs = waybill.OrderGoodsWeight;
 
+            // Recycle 扩展字段（UnitPrice/SaleContractNo）upsert 到 RecycleWaybillExtension（每个 Waybill 至多一条）。
+            await UpsertRecycleExtensionAsync(
+                waybill.Id,
+                unitPrice: input.UnitPrice,
+                saleContractNo: input.SaleContractNo,
+                receivingTime: null);
+
             waybill.SetPendingSync();
             await _waybillRepository.UpdateAsync(waybill);
             return;
@@ -84,7 +100,98 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
 
         throw new BusinessException($"Unsupported item type: {input.ItemType}");
     }
+
+    [UnitOfWork]
+    public async Task<RecycleDetailLoadResult?> GetRecycleDetailAsync(long id, WeighingListItemType itemType)
+    {
+        if (itemType == WeighingListItemType.WeighingRecord)
+        {
+            var record = await _weighingRecordRepository.FindAsync(id);
+            if (record == null)
+            {
+                return null;
+            }
+
+            var firstMaterial = record.Materials.FirstOrDefault();
+            return new RecycleDetailLoadResult(
+                record.ProviderId,
+                firstMaterial?.MaterialId,
+                firstMaterial?.MaterialUnitId,
+                record.GetUnitPrice(),
+                record.GetSaleContractNo(),
+                record.Remark);
+        }
+
+        if (itemType == WeighingListItemType.Waybill)
+        {
+            var waybill = await _waybillRepository.FindAsync(id);
+            if (waybill == null)
+            {
+                return null;
+            }
+
+            var extension = await _recycleWaybillExtensionRepository
+                .FirstOrDefaultAsync(e => e.WaybillId == waybill.Id);
+
+            return new RecycleDetailLoadResult(
+                waybill.ProviderId,
+                waybill.MaterialId,
+                waybill.MaterialUnitId,
+                extension?.UnitPrice,
+                extension?.SaleContractNo,
+                waybill.Remark);
+        }
+
+        throw new BusinessException($"Unsupported item type: {itemType}");
+    }
+
+    /// <summary>
+    ///     按 <paramref name="waybillId" /> upsert <see cref="RecycleWaybillExtension" />。
+    ///     仅更新传入的非 null 字段（receivingTime=null 表示不修改收货时间）。
+    ///     存在则更新、否则插入；遵循 UrbanWeighingExtension 约定（无 FK/无导航）。
+    /// </summary>
+    private async Task UpsertRecycleExtensionAsync(
+        long waybillId,
+        decimal? unitPrice,
+        string? saleContractNo,
+        DateTime? receivingTime)
+    {
+        var existing = await _recycleWaybillExtensionRepository
+            .FirstOrDefaultAsync(e => e.WaybillId == waybillId);
+
+        if (existing == null)
+        {
+            var extension = new RecycleWaybillExtension(waybillId)
+            {
+                UnitPrice = unitPrice,
+                SaleContractNo = string.IsNullOrWhiteSpace(saleContractNo) ? null : saleContractNo,
+                ReceivingTime = receivingTime
+            };
+            await _recycleWaybillExtensionRepository.InsertAsync(extension);
+            return;
+        }
+
+        existing.UnitPrice = unitPrice;
+        existing.SaleContractNo = string.IsNullOrWhiteSpace(saleContractNo) ? null : saleContractNo;
+        if (receivingTime.HasValue)
+        {
+            existing.ReceivingTime = receivingTime;
+        }
+        await _recycleWaybillExtensionRepository.UpdateAsync(existing);
+    }
 }
+
+/// <summary>
+///     Recycle 详情页加载结果（WeighingRecord ExtraProperties 或 RecycleWaybillExtension）。
+/// </summary>
+public record RecycleDetailLoadResult(
+    int? ProviderId,
+    int? MaterialId,
+    int? MaterialUnitId,
+    decimal? UnitPrice,
+    string? SaleContractNo,
+    string? Remark
+);
 
 public record UpdateRecycleModeInput(
     long Id,
@@ -94,5 +201,7 @@ public record UpdateRecycleModeInput(
     int? MaterialId,
     int? MaterialUnitId,
     DeliveryType? DeliveryType,
-    string? Remark
+    string? Remark,
+    decimal? UnitPrice = null,
+    string? SaleContractNo = null
 );

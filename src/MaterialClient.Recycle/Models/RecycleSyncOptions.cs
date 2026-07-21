@@ -23,8 +23,11 @@ public class RecycleSyncOptions
     /// <summary>轮询扫描间隔（秒），默认 5。</summary>
     public int PollIntervalSeconds { get; set; } = 5;
 
-    /// <summary>单条记录最大重试次数，达到后放弃（SyncStatus=Failed），默认 9。</summary>
+    /// <summary>单条记录最大重试次数（预留；当前以失败冷却缓存为准）。</summary>
     public int MaxFailCount { get; set; } = 9;
+
+    /// <summary>业务上报失败后冷却分钟数（ABP Cache 绝对过期），默认 60。</summary>
+    public int FailCooldownMinutes { get; set; } = 60;
 
     /// <summary>HTTP 请求超时（秒），默认 30。</summary>
     public int TimeoutSeconds { get; set; } = 30;

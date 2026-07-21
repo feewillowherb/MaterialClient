@@ -3,6 +3,7 @@ using System;
 using MaterialClient.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -11,9 +12,11 @@ using Volo.Abp.EntityFrameworkCore;
 namespace MaterialClient.Common.Migrations
 {
     [DbContext(typeof(MaterialClientDbContext))]
-    partial class MaterialClientDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260720151258_RecycleEnhancementFields")]
+    partial class RecycleEnhancementFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -472,9 +475,6 @@ namespace MaterialClient.Common.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsReceived")
-                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("ReceivingTime")
                         .HasColumnType("TEXT");
@@ -1013,10 +1013,6 @@ namespace MaterialClient.Common.Migrations
 
                     b.Property<int?>("ProviderId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("Remark")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("TotalWeight")
                         .HasColumnType("TEXT");
