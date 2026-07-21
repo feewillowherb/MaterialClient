@@ -68,6 +68,17 @@
                    Watermark="请输入联系人电话"
                    VerticalContentAlignment="Center" />
         </Grid>
+
+        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
+          <TextBlock Text="收货地址："
+                     VerticalAlignment="Center"
+                     Foreground="#333" />
+          <TextBox Grid.Column="1"
+                   Height="30"
+                   Text="{Binding Address, Mode=TwoWay}"
+                   Watermark="请输入收货地址（本地专用）"
+                   VerticalContentAlignment="Center" />
+        </Grid>
       </StackPanel>
 
       <!-- 底部按钮 -->
