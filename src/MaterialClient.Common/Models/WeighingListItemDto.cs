@@ -138,11 +138,6 @@ public class WeighingListItemDto
     public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;
 
     /// <summary>
-    ///     Recycle 运单是否已提交收货（来自 RecycleWaybillExtension.IsReceived；非 Recycle/无扩展时为 false）。
-    /// </summary>
-    public bool IsReceived { get; set; }
-
-    /// <summary>
     ///     从 WeighingRecord 创建 DTO
     /// </summary>
     public static WeighingListItemDto FromWeighingRecord(WeighingRecord record)

@@ -14,7 +14,7 @@ namespace MaterialClient.Common.Services;
 /// <summary>
 ///     Recycle 已提交收货详情（供收货对话框回填）。
 /// </summary>
-public record RecycleReceivingDetail(bool IsReceived, DateTime? ReceivingTime, string? ImagePath);
+public record RecycleReceivingDetail(DateTime? ReceivingTime, string? ImagePath);
 
 /// <summary>
 ///     Recycle 模式收货领域服务接口。
@@ -79,7 +79,7 @@ public partial class RecycleReceivingService : DomainService, IRecycleReceivingS
         };
         await _attachmentService.CreateOrReplaceBillPhotoAsync(listItem, savedPath);
 
-        // 2. 按 WaybillId upsert RecycleWaybillExtension（ReceivingTime + IsReceived）。
+        // 2. 按 WaybillId upsert RecycleWaybillExtension（ReceivingTime）。
         await UpsertReceivingAsync(waybillId, receivingTime);
 
         // 3. 标记 Waybill 待上报，使后台 RecycleDataSyncService 下轮采集 receivingTime/receivingProof 上报 §2.2。
@@ -113,19 +113,14 @@ public partial class RecycleReceivingService : DomainService, IRecycleReceivingS
             }
         }
 
-        var isReceived = extension?.IsReceived == true
-                         || (extension?.ReceivingTime != null)
-                         || imagePath != null;
-
         return new RecycleReceivingDetail(
-            isReceived,
             extension?.ReceivingTime,
             imagePath);
     }
 
     /// <summary>
     ///     按 <paramref name="waybillId" /> upsert <see cref="RecycleWaybillExtension" /> 的收货字段。
-    ///     存在则更新收货时间并标记已收货（保留既有 UnitPrice/SaleContractNo），否则新建。
+    ///     存在则更新收货时间（保留既有 UnitPrice/SaleContractNo），否则新建。
     /// </summary>
     private async Task UpsertReceivingAsync(long waybillId, DateTime receivingTime)
     {
@@ -136,15 +131,13 @@ public partial class RecycleReceivingService : DomainService, IRecycleReceivingS
         {
             var extension = new RecycleWaybillExtension(waybillId)
             {
-                ReceivingTime = receivingTime,
-                IsReceived = true
+                ReceivingTime = receivingTime
             };
             await _recycleWaybillExtensionRepository.InsertAsync(extension);
             return;
         }
 
         existing.ReceivingTime = receivingTime;
-        existing.IsReceived = true;
         await _recycleWaybillExtensionRepository.UpdateAsync(existing);
     }
 }

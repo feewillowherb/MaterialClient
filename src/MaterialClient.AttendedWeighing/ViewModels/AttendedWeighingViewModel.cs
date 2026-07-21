@@ -124,8 +124,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 this.RaisePropertyChanged(nameof(IsCompletedWaybillSelected));
                 this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
                 this.RaisePropertyChanged(nameof(CanReceive));
-                this.RaisePropertyChanged(nameof(ReceivingStatusText));
-                this.RaisePropertyChanged(nameof(ReceivingStatusBrush));
 
                 if (item != null)
                 {
@@ -158,8 +156,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     this.RaisePropertyChanged(nameof(ShouldShowPreview));
                     this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
                     this.RaisePropertyChanged(nameof(CanReceive));
-                    this.RaisePropertyChanged(nameof(ReceivingStatusText));
-                    this.RaisePropertyChanged(nameof(ReceivingStatusBrush));
                 }
             })
             .DisposeWith(_disposables);
@@ -1364,31 +1360,17 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
 
     /// <summary>
     ///     打印按钮可见条件：仅 SolidWaste 已完成运单。
-    ///     Recycle 模式已将「打印」替换为「收货」（见 <see cref="CanReceive" />），SHALL NOT 在 Recycle 显示打印。
+    ///     Recycle 模式已将「打印」替换为「上传照片」（见 <see cref="CanReceive" />），SHALL NOT 在 Recycle 显示打印。
     /// </summary>
     public bool CanPrintSolidWaste => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed } item
         && item.WeighingMode == WeighingMode.SolidWaste;
 
     /// <summary>
-    ///     收货按钮可见条件：Recycle 模式且选中已完成 Waybill。
+    ///     上传照片按钮可见条件：Recycle 模式且选中已完成 Waybill。
     /// </summary>
     public bool CanReceive => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed, WeighingMode: WeighingMode.Recycle };
-
-    /// <summary>
-    ///     收货状态文案（已收货 / 未收货）；不影响 <see cref="CanReceive" /> 与收货按钮可操作性。
-    /// </summary>
-    public string ReceivingStatusText =>
-        SelectedListItem?.IsReceived == true ? "已收货" : "未收货";
-
-    /// <summary>
-    ///     收货状态背景：已收货绿色，未收货红色。
-    /// </summary>
-    public IBrush ReceivingStatusBrush =>
-        SelectedListItem?.IsReceived == true
-            ? new SolidColorBrush(Color.Parse("#22C55E"))
-            : new SolidColorBrush(Color.Parse("#EF4444"));
 
     public bool CanEditSolidWaste => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill } item

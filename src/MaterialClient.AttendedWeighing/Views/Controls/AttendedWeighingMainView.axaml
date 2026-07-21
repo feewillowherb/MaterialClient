@@ -47,28 +47,13 @@
                             Padding="14,0"
                             VerticalAlignment="Center" />
 
-                    <!-- Recycle：状态徽章在收货按钮左侧；是否已收货不影响收货按钮可点 -->
-                    <StackPanel Grid.Column="2"
-                                Orientation="Horizontal"
-                                Spacing="6"
-                                VerticalAlignment="Center"
-                                IsVisible="{Binding CanReceive}">
-                        <Border Background="{Binding ReceivingStatusBrush}"
-                                CornerRadius="3"
-                                Padding="8,0"
-                                Height="28"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding ReceivingStatusText}"
-                                       Foreground="White"
-                                       FontSize="12"
-                                       VerticalAlignment="Center" />
-                        </Border>
-                        <Button Content="收货"
-                                Command="{Binding ReceiveCommand}"
-                                Height="28"
-                                Padding="14,0"
-                                VerticalAlignment="Center" />
-                    </StackPanel>
+                    <Button Grid.Column="2"
+                            Content="上传照片"
+                            Command="{Binding ReceiveCommand}"
+                            IsVisible="{Binding CanReceive}"
+                            Height="28"
+                            Padding="14,0"
+                            VerticalAlignment="Center" />
                 </Grid>
             </Border>
 

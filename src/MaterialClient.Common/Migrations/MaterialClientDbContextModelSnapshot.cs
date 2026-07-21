@@ -473,9 +473,6 @@ namespace MaterialClient.Common.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsReceived")
-                        .HasColumnType("INTEGER");
-
                     b.Property<DateTime?>("ReceivingTime")
                         .HasColumnType("TEXT");
 
