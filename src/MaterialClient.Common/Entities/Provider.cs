@@ -82,6 +82,14 @@ public class Provider : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
     public int? CoId { get; set; }
 
     /// <summary>
+    ///     收货地址（本地专用字段）。
+    ///     作为 §2.2 productTransportRecord/v1/addBatch 接口 <c>consigneeAddress</c> 的本地数据源。
+    ///     本字段不进入远端 <c>CreateProviderInput</c>/<c>UpdateProviderInput</c>/<c>MaterialProviderListResultDto</c> 契约，
+    ///     数据库列可空；Recycle 内联新建供应商表单层校验必填。
+    /// </summary>
+    public string? Address { get; set; }
+
+    /// <summary>
     ///     称重模式（用于隔离不同模式的数据）
     /// </summary>
     public WeighingMode WeighingMode { get; set; } = WeighingMode.Standard;

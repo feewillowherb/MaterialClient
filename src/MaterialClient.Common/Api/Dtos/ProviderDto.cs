@@ -29,4 +29,9 @@ public class ProviderDto
     ///     联系人电话
     /// </summary>
     public string? ContactPhone { get; set; }
+
+    /// <summary>
+    ///     收货地址（本地专用字段，§2.2 consigneeAddress 数据源）。远端 DTO 不携带，由本地维护。
+    /// </summary>
+    public string? Address { get; set; }
 }
