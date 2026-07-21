@@ -2,6 +2,7 @@ using MaterialClient.Recycle.Api;
 using MaterialClient.Recycle.Models;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using Volo.Abp.Caching;
 using Volo.Abp.Modularity;
 
 namespace MaterialClient.Common.EntityFrameworkCore;
@@ -13,9 +14,12 @@ namespace MaterialClient.Common.EntityFrameworkCore;
 ///     <list type="bullet">
 ///         <item><see cref="IRecycleDataApi" />：NSubstitute mock（不触发真实 §2.2/§2.3 HTTP 调用）。</item>
 ///         <item><see cref="RecycleSyncOptions" />：提供测试用 <c>PointNumber</c>，避免依赖 appsettings。</item>
+///         <item><see cref="AbpCachingModule" />：提供 <c>IDistributedCache</c>（进程内实现）。</item>
 ///     </list>
 /// </summary>
-[DependsOn(typeof(MaterialClientEntityFrameworkCoreTestModule))]
+[DependsOn(
+    typeof(MaterialClientEntityFrameworkCoreTestModule),
+    typeof(AbpCachingModule))]
 public class RecycleDataSyncTestModule : AbpModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
@@ -30,6 +34,7 @@ public class RecycleDataSyncTestModule : AbpModule
             o.AccessKey = "test-access-key";
             o.SecretKey = "test-secret-key";
             o.PollIntervalSeconds = 5;
+            o.FailCooldownMinutes = 60;
             o.TimeoutSeconds = 30;
         });
     }

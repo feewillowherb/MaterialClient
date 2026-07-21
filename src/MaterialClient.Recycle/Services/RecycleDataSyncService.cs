@@ -4,8 +4,10 @@ using MaterialClient.Common.Utils;
 using MaterialClient.Recycle.Api;
 using MaterialClient.Recycle.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Volo.Abp.Caching;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Uow;
@@ -17,6 +19,7 @@ namespace MaterialClient.Recycle.Services;
 ///     扫描 WeighingMode=Recycle 且 OrderType=Completed 且 IsPendingSync=true 的 Waybill，
 ///     按 DeliveryType 分流：Sending→§2.2（productTransportRecord），Receiving→§2.3（materialTransportRecord）。
 ///     同步状态使用 Waybill 既有字段（IsPendingSync / LastSyncTime），与 SolidWaste 链路一致。
+///     业务上报失败后将 WaybillId 写入 ABP Cache，默认冷却 60 分钟内跳过重试。
 /// </summary>
 public class RecycleDataSyncService : DomainService
 {
@@ -50,6 +53,7 @@ public class RecycleDataSyncService : DomainService
     private readonly IRecycleDataApi _recycleApi;
     private readonly RecycleSyncOptions _options;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly IDistributedCache<RecycleSyncFailCacheItem, long> _failCache;
 
     public RecycleDataSyncService(
         IRepository<Waybill, long> waybillRepository,
@@ -61,7 +65,8 @@ public class RecycleDataSyncService : DomainService
         IRepository<RecycleWaybillExtension, Guid> recycleWaybillExtensionRepository,
         IRecycleDataApi recycleApi,
         IOptions<RecycleSyncOptions> options,
-        IUnitOfWorkManager unitOfWorkManager)
+        IUnitOfWorkManager unitOfWorkManager,
+        IDistributedCache<RecycleSyncFailCacheItem, long> failCache)
     {
         _waybillRepository = waybillRepository;
         _waybillAttachmentRepository = waybillAttachmentRepository;
@@ -73,6 +78,7 @@ public class RecycleDataSyncService : DomainService
         _recycleApi = recycleApi;
         _options = options.Value;
         _unitOfWorkManager = unitOfWorkManager;
+        _failCache = failCache;
     }
 
     /// <summary>
@@ -86,9 +92,34 @@ public class RecycleDataSyncService : DomainService
             return;
         }
 
-        Logger.LogInformation("Recycle 同步扫描：发现 {Count} 条待上报 Waybill。", pendingWaybills.Count);
-
+        var toSync = new List<Waybill>(pendingWaybills.Count);
+        var cooledCount = 0;
         foreach (var waybill in pendingWaybills)
+        {
+            if (await _failCache.GetAsync(waybill.Id, token: cancellationToken) != null)
+            {
+                cooledCount++;
+                continue;
+            }
+
+            toSync.Add(waybill);
+        }
+
+        if (toSync.Count == 0)
+        {
+            if (cooledCount > 0)
+            {
+                Logger.LogDebug("Recycle 同步扫描：{CooledCount} 条在失败冷却缓存中，本轮跳过。", cooledCount);
+            }
+
+            return;
+        }
+
+        Logger.LogInformation(
+            "Recycle 同步扫描：发现 {Count} 条待上报 Waybill（冷却跳过 {CooledCount}）。",
+            toSync.Count, cooledCount);
+
+        foreach (var waybill in toSync)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -292,9 +323,20 @@ public class RecycleDataSyncService : DomainService
     private async Task HandleFailureAsync(Waybill waybill, RecycleApiResponse? response, CancellationToken cancellationToken)
     {
         var failMsg = response?.Msg ?? $"HTTP business failure (code={response?.Code})";
-        // 失败时保持 IsPendingSync=true，下轮继续重试；仅记录日志。
-        Logger.LogWarning("Recycle Waybill {WaybillId} 上报失败（FailMsg={FailMsg}），保持 IsPendingSync，下轮重试。",
-            waybill.Id, failMsg);
+        // 保持 IsPendingSync=true；写入 ABP Cache，冷却期内跳过上报。
+        var cooldownMinutes = _options.FailCooldownMinutes <= 0 ? 60 : _options.FailCooldownMinutes;
+        await _failCache.SetAsync(
+            waybill.Id,
+            new RecycleSyncFailCacheItem { FailMsg = failMsg },
+            new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(cooldownMinutes)
+            },
+            token: cancellationToken);
+
+        Logger.LogWarning(
+            "Recycle Waybill {WaybillId} 上报失败（FailMsg={FailMsg}），保持 IsPendingSync，冷却缓存 {CooldownMinutes} 分钟后再试。",
+            waybill.Id, failMsg, cooldownMinutes);
 
         await _waybillRepository.UpdateAsync(waybill, cancellationToken: cancellationToken);
     }

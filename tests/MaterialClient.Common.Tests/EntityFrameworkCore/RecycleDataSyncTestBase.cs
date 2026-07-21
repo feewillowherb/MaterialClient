@@ -6,6 +6,7 @@ using MaterialClient.Recycle.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
@@ -65,7 +66,8 @@ public abstract class RecycleDataSyncTestBase : MaterialClientTestBase<RecycleDa
             sp.GetRequiredService<IRepository<RecycleWaybillExtension, Guid>>(),
             api,
             sp.GetRequiredService<IOptions<RecycleSyncOptions>>(),
-            sp.GetRequiredService<IUnitOfWorkManager>());
+            sp.GetRequiredService<IUnitOfWorkManager>(),
+            sp.GetRequiredService<IDistributedCache<RecycleSyncFailCacheItem, long>>());
 
         service.LazyServiceProvider = new AbpLazyServiceProvider(sp);
         return service;

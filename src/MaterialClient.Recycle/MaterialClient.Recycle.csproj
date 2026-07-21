@@ -43,6 +43,7 @@
   <ItemGroup>
     <PackageReference Include="Volo.Abp.Autofac" />
     <PackageReference Include="Volo.Abp.BackgroundWorkers" />
+    <PackageReference Include="Volo.Abp.Caching" />
     <PackageReference Include="Volo.Abp.Core" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.File" />
