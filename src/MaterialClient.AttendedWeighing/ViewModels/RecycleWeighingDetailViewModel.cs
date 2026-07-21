@@ -10,6 +10,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Models;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -31,6 +32,12 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
     [Reactive] private Material? _selectedRecycleMaterial;
     [Reactive] private SelectionItem? _selectedProviderItem;
     [Reactive] private SelectionItem? _selectedMaterialItem;
+
+    /// <summary>单价（元/吨，可选）。§2.2 unitPrice 数据源，回填/持久化到 RecycleWaybillExtension。</summary>
+    [Reactive] private decimal? _unitPrice;
+
+    /// <summary>销售合同编号（可选）。§2.2 saleContractNo 数据源，回填/持久化到 RecycleWaybillExtension。</summary>
+    [Reactive] private string? _saleContractNo;
 
     public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>> ProviderLoadPageAsync { get; }
     public Func<string?, int, int, IReadOnlyList<int>?, Task<PagedResultDto<SelectionItem>>> MaterialLoadPageAsync { get; }
@@ -176,6 +183,16 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
                     })
                     : null;
 
+                // 回填 RecycleWaybillExtension（按 WaybillId）的 UnitPrice/SaleContractNo。
+                var extensionRepository =
+                    _serviceProvider.GetRequiredService<IRepository<RecycleWaybillExtension, Guid>>();
+                var extensionQuery = await extensionRepository.GetQueryableAsync();
+                var extension = await extensionQuery
+                    .Where(e => e.WaybillId == waybill.Id)
+                    .FirstOrDefaultAsync();
+                UnitPrice = extension?.UnitPrice;
+                SaleContractNo = extension?.SaleContractNo;
+
                 var materialId = waybill.MaterialId;
                 if (materialId.HasValue)
                 {
@@ -277,7 +294,9 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
                 materialId,
                 materialUnitId,
                 IsWeighingRecord ? SelectedDeliveryType : null,
-                Remark));
+                Remark,
+                UnitPrice,
+                SaleContractNo));
         }
         catch (BusinessException ex)
         {
@@ -319,7 +338,9 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
                 materialId,
                 materialUnitId,
                 IsWeighingRecord ? SelectedDeliveryType : null,
-                Remark));
+                Remark,
+                UnitPrice,
+                SaleContractNo));
 
             await weighingMatchingService.CompleteOrderAsync(_listItem.Id);
         }
