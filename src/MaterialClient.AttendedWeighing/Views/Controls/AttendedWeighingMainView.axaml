@@ -46,6 +46,15 @@
                             Height="28"
                             Padding="14,0"
                             VerticalAlignment="Center" />
+
+                    <!-- Recycle 模式：收货按钮（替换打印），仅 Recycle+Completed 可见，与打印按钮互斥 -->
+                    <Button Grid.Column="2"
+                            Content="收货"
+                            Command="{Binding ReceiveCommand}"
+                            IsVisible="{Binding CanReceive}"
+                            Height="28"
+                            Padding="14,0"
+                            VerticalAlignment="Center" />
                 </Grid>
             </Border>
 
