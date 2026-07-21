@@ -67,6 +67,7 @@ public class RecycleReceivingServiceTests
         inserted.ShouldNotBeNull();
         inserted!.WaybillId.ShouldBe(6001);
         inserted.ReceivingTime.ShouldBe(receivingTime);
+        inserted.IsReceived.ShouldBeTrue();
 
         // Waybill 标记待上报
         waybill.IsPendingSync.ShouldBeTrue();

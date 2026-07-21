@@ -38,13 +38,14 @@ public partial class RecycleReceivingViewModel : ViewModelBase
 
     public void SetImagePickerHandler(Func<Task<string?>> handler) => _imagePickerHandler = handler;
 
-    public void Initialize(string orderNo)
+    public void Initialize(string orderNo, DateTime? receivingTime = null, string? imagePath = null)
     {
         OrderNo = orderNo ?? string.Empty;
-        ReceivingDateTime = DateTime.Now;
-        SelectedImagePath = null;
+        ReceivingDateTime = receivingTime ?? DateTime.Now;
+        SelectedImagePath = imagePath;
         ErrorMessage = null;
         Result = null;
+        this.RaisePropertyChanged(nameof(PreviewImagePath));
     }
 
     [ReactiveCommand]

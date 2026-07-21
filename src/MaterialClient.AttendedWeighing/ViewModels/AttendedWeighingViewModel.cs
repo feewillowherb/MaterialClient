@@ -124,6 +124,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 this.RaisePropertyChanged(nameof(IsCompletedWaybillSelected));
                 this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
                 this.RaisePropertyChanged(nameof(CanReceive));
+                this.RaisePropertyChanged(nameof(ReceivingStatusText));
+                this.RaisePropertyChanged(nameof(ReceivingStatusBrush));
 
                 if (item != null)
                 {
@@ -156,6 +158,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     this.RaisePropertyChanged(nameof(ShouldShowPreview));
                     this.RaisePropertyChanged(nameof(CanPrintSolidWaste));
                     this.RaisePropertyChanged(nameof(CanReceive));
+                    this.RaisePropertyChanged(nameof(ReceivingStatusText));
+                    this.RaisePropertyChanged(nameof(ReceivingStatusBrush));
                 }
             })
             .DisposeWith(_disposables);
@@ -1367,6 +1371,20 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// </summary>
     public bool CanReceive => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill, OrderType: OrderTypeEnum.Completed, WeighingMode: WeighingMode.Recycle };
+
+    /// <summary>
+    ///     收货状态文案（已收货 / 未收货）；不影响 <see cref="CanReceive" /> 与收货按钮可操作性。
+    /// </summary>
+    public string ReceivingStatusText =>
+        SelectedListItem?.IsReceived == true ? "已收货" : "未收货";
+
+    /// <summary>
+    ///     收货状态背景：已收货绿色，未收货红色。
+    /// </summary>
+    public IBrush ReceivingStatusBrush =>
+        SelectedListItem?.IsReceived == true
+            ? new SolidColorBrush(Color.Parse("#22C55E"))
+            : new SolidColorBrush(Color.Parse("#EF4444"));
 
     public bool CanEditSolidWaste => SelectedListItem is
         { ItemType: WeighingListItemType.Waybill } item
@@ -2672,7 +2690,8 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         {
             var parentWin = GetParentWindow();
             var dialogVm = new RecycleReceivingViewModel();
-            dialogVm.Initialize(orderNo);
+            var detail = await _recycleReceivingService.GetDetailAsync(waybillId);
+            dialogVm.Initialize(orderNo, detail.ReceivingTime, detail.ImagePath);
 
             var dialog = new RecycleReceivingWindow(dialogVm);
             RecycleReceivingResult? result = null;

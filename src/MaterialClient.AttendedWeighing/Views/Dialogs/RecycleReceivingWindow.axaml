@@ -78,10 +78,12 @@
                        FontSize="11"
                        Foreground="#888"
                        TextTrimming="CharacterEllipsis" />
-            <Image Source="{Binding PreviewImagePath}"
+            <Image Source="{Binding SelectedImagePath, Converter={StaticResource NullOrEmptyImageConverter}}"
                    MaxHeight="160"
+                   MaxWidth="320"
                    Stretch="Uniform"
-                   HorizontalAlignment="Left" />
+                   HorizontalAlignment="Left"
+                   IsVisible="{Binding SelectedImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
         </Grid>
 

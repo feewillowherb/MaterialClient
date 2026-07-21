@@ -47,14 +47,28 @@
                             Padding="14,0"
                             VerticalAlignment="Center" />
 
-                    <!-- Recycle 模式：收货按钮（替换打印），仅 Recycle+Completed 可见，与打印按钮互斥 -->
-                    <Button Grid.Column="2"
-                            Content="收货"
-                            Command="{Binding ReceiveCommand}"
-                            IsVisible="{Binding CanReceive}"
-                            Height="28"
-                            Padding="14,0"
-                            VerticalAlignment="Center" />
+                    <!-- Recycle：状态徽章在收货按钮左侧；是否已收货不影响收货按钮可点 -->
+                    <StackPanel Grid.Column="2"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding CanReceive}">
+                        <Border Background="{Binding ReceivingStatusBrush}"
+                                CornerRadius="3"
+                                Padding="8,0"
+                                Height="28"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ReceivingStatusText}"
+                                       Foreground="White"
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <Button Content="收货"
+                                Command="{Binding ReceiveCommand}"
+                                Height="28"
+                                Padding="14,0"
+                                VerticalAlignment="Center" />
+                    </StackPanel>
                 </Grid>
             </Border>
 

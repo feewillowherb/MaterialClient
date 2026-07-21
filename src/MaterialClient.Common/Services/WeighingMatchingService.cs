@@ -1179,6 +1179,20 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             ? (await _materialUnitRepository.GetListAsync(u => materialUnitIds.Contains(u.Id))).ToDictionary(u => u.Id)
             : new Dictionary<int, MaterialUnit>();
 
+        // Recycle 已完成运单：批量填充 IsReceived
+        var recycleWaybillIds = items
+            .Where(i => i.ItemType == WeighingListItemType.Waybill && i.WeighingMode == WeighingMode.Recycle)
+            .Select(i => i.Id)
+            .Distinct()
+            .ToList();
+        var receivedByWaybillId = new Dictionary<long, bool>();
+        if (recycleWaybillIds.Count > 0)
+        {
+            var extensions = await _recycleWaybillExtensionRepository
+                .GetListAsync(e => recycleWaybillIds.Contains(e.WaybillId));
+            receivedByWaybillId = extensions.ToDictionary(e => e.WaybillId, e => e.IsReceived);
+        }
+
         // 填充预计算字段
         foreach (var item in items)
         {
@@ -1195,6 +1209,13 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                     unitInfo = $"{materialUnit.Rate}/{materialUnit.UnitName}";
 
                 item.MaterialInfo = unitInfo != null ? $"{unitInfo} {material.Name}" : material.Name;
+            }
+
+            if (item.ItemType == WeighingListItemType.Waybill
+                && item.WeighingMode == WeighingMode.Recycle
+                && receivedByWaybillId.TryGetValue(item.Id, out var isReceived))
+            {
+                item.IsReceived = isReceived;
             }
 
             // 仅对 Waybill 类型填充进出场重量和偏差信息
