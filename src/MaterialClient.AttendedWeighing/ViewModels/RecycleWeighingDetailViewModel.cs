@@ -147,6 +147,9 @@ public partial class RecycleWeighingDetailViewModel : AttendedWeighingDetailView
                     ? SelectionItem.FromProvider(new ProviderDto { Id = SelectedProviderId.Value, ProviderName = Providers.FirstOrDefault(p => p.Id == SelectedProviderId.Value)?.ProviderName ?? string.Empty })
                     : null;
 
+                UnitPrice = record.GetUnitPrice();
+                SaleContractNo = record.GetSaleContractNo();
+
                 var materialId = record.Materials.FirstOrDefault()?.MaterialId;
                 if (materialId.HasValue)
                 {

@@ -61,6 +61,10 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
                 }
             }
 
+            // Stage UnitPrice/SaleContractNo on WeighingRecord ExtraProperties before Waybill exists.
+            record.SetRecycleInfo(input.UnitPrice, input.SaleContractNo);
+            if (input.Remark != null) record.Remark = input.Remark;
+
             await _weighingRecordRepository.UpdateAsync(record);
             return;
         }

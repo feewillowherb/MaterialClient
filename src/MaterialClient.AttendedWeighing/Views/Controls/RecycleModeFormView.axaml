@@ -111,13 +111,17 @@
                            FontSize="12"
                            Foreground="#333333"
                            Margin="0,0,8,0" />
-                    <TextBox Grid.Column="1"
-                             Height="20"
-                             Text="{Binding UnitPrice, Mode=TwoWay, TargetNullValue=''}"
-                             Watermark="元/吨"
-                             TextAlignment="Left"
-                             FontSize="12"
-                             Margin="0,5,0,5" />
+                    <NumericUpDown Grid.Column="1"
+                                   Height="20"
+                                   Value="{Binding UnitPrice, Mode=TwoWay}"
+                                   FormatString="F2"
+                                   Increment="0.01"
+                                   Minimum="0"
+                                   Watermark="元/吨"
+                                   FontSize="12"
+                                   ShowButtonSpinner="False"
+                                   HorizontalAlignment="Stretch"
+                                   Margin="0,5,0,5" />
                 </Grid>
 
                 <!-- 合同编号 -->

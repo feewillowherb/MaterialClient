@@ -148,6 +148,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
+    private readonly IRepository<RecycleWaybillExtension, Guid> _recycleWaybillExtensionRepository;
     private readonly ISettingsService _settingsService;
     private readonly RecommendPlateNumberService _recommendPlateNumberService;
     private readonly IRecommendationService _recommendationService;
@@ -387,6 +388,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         if (input.PlateNumber != null) record.PlateNumber = input.PlateNumber;
         if (input.ProviderId.HasValue) record.ProviderId = input.ProviderId;
         if (input.DeliveryType.HasValue) record.DeliveryType = input.DeliveryType;
+        if (input.Remark != null) record.Remark = input.Remark;
 
         // 更新物料信息（在第一个 Material 中）
         if (input.MaterialId.HasValue || input.MaterialUnitId.HasValue || input.WaybillQuantity.HasValue)
@@ -457,6 +459,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             if (input.Street != null) record.SetSolidWasteStreet(input.Street);
             if (input.SolidWasteOrderNumber != null) record.SetSolidWasteOrderNumber(input.SolidWasteOrderNumber);
             if (input.Shipper != null) record.SetSolidWasteShipper(input.Shipper);
+            if (input.Remark != null) record.Remark = input.Remark;
 
             await _weighingRecordRepository.UpdateAsync(record);
             return;
@@ -500,7 +503,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
                 input.MaterialId,
                 input.MaterialUnitId,
                 input.WaybillQuantity,
-                input.DeliveryType
+                input.DeliveryType,
+                input.Remark
             ));
         else if (input.ItemType == WeighingListItemType.Waybill)
             await UpdateWaybillAsync(new UpdateWaybillInput(
@@ -946,7 +950,8 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             OutTime = outRecord.AddDate,
             DeliveryType = deliveryType,
             OrderSource = orderSource,
-            OrderType = OrderTypeEnum.FirstWeight
+            OrderType = OrderTypeEnum.FirstWeight,
+            Remark = joinRecord.Remark ?? outRecord.Remark
         };
         waybill.SetWeight(joinRecord, outRecord, deliveryType);
 
@@ -962,6 +967,9 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
         outRecord.MatchAsOut(joinRecord.Id, waybill.Id);
         await _weighingRecordRepository.UpdateAsync(joinRecord);
         await _weighingRecordRepository.UpdateAsync(outRecord);
+
+        // Copy Recycle staging fields from WeighingRecord ExtraProperties to RecycleWaybillExtension.
+        await CopyRecycleInfoToWaybillExtensionAsync(waybill, joinRecord, outRecord);
 
         // 复制 WeighingRecord 的附件到 WaybillAttachment
         await CopyAttachmentsToWaybillAsync(waybill.Id, joinRecord.Id, outRecord.Id);
@@ -1013,6 +1021,45 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
 
         // 即使 shipper 未设置，也写入默认值（SetShipper 内部会回退 DefaultShipper）
         waybill.SetSolidWasteShipper(shipper);
+    }
+
+    /// <summary>
+    ///     将 Recycle 暂存字段从 WeighingRecord ExtraProperties 拷贝到新建 Waybill 的
+    ///     <see cref="RecycleWaybillExtension" />（join 优先、缺失 fallback 到 out；不写 ReceivingTime）。
+    ///     两侧皆无有效值时不插入空扩展行。
+    /// </summary>
+    private async Task CopyRecycleInfoToWaybillExtensionAsync(
+        Waybill waybill,
+        WeighingRecord joinRecord,
+        WeighingRecord outRecord)
+    {
+        var values = RecycleInfoExtensions.ResolveFromWeighingRecords(joinRecord, outRecord);
+        if (values == null || !values.HasAnyValue)
+        {
+            return;
+        }
+
+        var existing = await _recycleWaybillExtensionRepository
+            .FirstOrDefaultAsync(e => e.WaybillId == waybill.Id);
+
+        if (existing == null)
+        {
+            await _recycleWaybillExtensionRepository.InsertAsync(new RecycleWaybillExtension(waybill.Id)
+            {
+                UnitPrice = values.UnitPrice,
+                SaleContractNo = string.IsNullOrWhiteSpace(values.SaleContractNo)
+                    ? null
+                    : values.SaleContractNo,
+                ReceivingTime = null
+            });
+            return;
+        }
+
+        existing.UnitPrice = values.UnitPrice;
+        existing.SaleContractNo = string.IsNullOrWhiteSpace(values.SaleContractNo)
+            ? null
+            : values.SaleContractNo;
+        await _recycleWaybillExtensionRepository.UpdateAsync(existing);
     }
 
     /// <summary>
@@ -1428,7 +1475,8 @@ public record UpdateWeighingRecordInput(
     int? MaterialId,
     int? MaterialUnitId,
     decimal? WaybillQuantity,
-    DeliveryType? DeliveryType
+    DeliveryType? DeliveryType,
+    string? Remark = null
 );
 
 public record UpdateSolidWasteModeInput(

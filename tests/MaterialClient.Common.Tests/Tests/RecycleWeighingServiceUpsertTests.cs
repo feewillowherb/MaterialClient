@@ -9,20 +9,21 @@ using Xunit;
 namespace MaterialClient.Common.Tests.Tests;
 
 /// <summary>
-///     DB-backed 单测：RecycleWeighingService.UpdateRecycleModeAsync 按 WaybillId upsert RecycleWaybillExtension
-///     （存在更新 / 不存在插入，含 null 置空），并维持 Waybill SetPendingSync。
-///     使用 EF 测试宿主的 in-memory SQLite，避免 IQueryable 异步 mock 的可选参数重载匹配问题。
+///     DB-backed 单测：RecycleWeighingService.UpdateRecycleModeAsync
+///     Waybill → upsert RecycleWaybillExtension；WeighingRecord → ExtraProperties staging。
 /// </summary>
 public class RecycleWeighingServiceUpsertTests : MaterialClientEntityFrameworkCoreTestBase
 {
     private readonly IRecycleWeighingService _recycleWeighingService;
     private readonly IRepository<Waybill, long> _waybillRepository;
+    private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<RecycleWaybillExtension, Guid> _extensionRepository;
 
     public RecycleWeighingServiceUpsertTests()
     {
         _recycleWeighingService = GetRequiredService<IRecycleWeighingService>();
         _waybillRepository = GetRequiredService<IRepository<Waybill, long>>();
+        _weighingRecordRepository = GetRequiredService<IRepository<WeighingRecord, long>>();
         _extensionRepository = GetRequiredService<IRepository<RecycleWaybillExtension, Guid>>();
     }
 
@@ -97,6 +98,75 @@ public class RecycleWeighingServiceUpsertTests : MaterialClientEntityFrameworkCo
         // 仅一条扩展记录（upsert 不重复插入）
         var all = await WithUnitOfWorkAsync(() => _extensionRepository.GetListAsync(e => e.WaybillId == waybillId));
         all.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task UpdateRecycleModeAsync_WeighingRecord_Writes_ExtraProperties_Without_Extension()
+    {
+        var recordId = await CreateWeighingRecordAsync(8001);
+
+        await _recycleWeighingService.UpdateRecycleModeAsync(new UpdateRecycleModeInput(
+            recordId,
+            WeighingListItemType.WeighingRecord,
+            PlateNumber: "P8001",
+            ProviderId: null,
+            MaterialId: null,
+            MaterialUnitId: null,
+            DeliveryType: DeliveryType.Sending,
+            Remark: null,
+            UnitPrice: 120.5m,
+            SaleContractNo: "HT-WR-001"));
+
+        var record = await WithUnitOfWorkAsync(() => _weighingRecordRepository.GetAsync(recordId));
+        record.GetUnitPrice().ShouldBe(120.5m);
+        record.GetSaleContractNo().ShouldBe("HT-WR-001");
+        record.WeighingMode.ShouldBe(WeighingMode.Recycle);
+
+        var extensions = await WithUnitOfWorkAsync(() => _extensionRepository.GetListAsync());
+        extensions.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task UpdateRecycleModeAsync_WeighingRecord_Nulls_ExtraProperties()
+    {
+        var recordId = await CreateWeighingRecordAsync(8002);
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var record = await _weighingRecordRepository.GetAsync(recordId);
+            record.SetRecycleInfo(99m, "OLD");
+            await _weighingRecordRepository.UpdateAsync(record);
+        });
+
+        await _recycleWeighingService.UpdateRecycleModeAsync(new UpdateRecycleModeInput(
+            recordId,
+            WeighingListItemType.WeighingRecord,
+            PlateNumber: null,
+            ProviderId: null,
+            MaterialId: null,
+            MaterialUnitId: null,
+            DeliveryType: null,
+            Remark: null,
+            UnitPrice: null,
+            SaleContractNo: null));
+
+        var record = await WithUnitOfWorkAsync(() => _weighingRecordRepository.GetAsync(recordId));
+        record.GetUnitPrice().ShouldBeNull();
+        record.GetSaleContractNo().ShouldBeNull();
+    }
+
+    private async Task<long> CreateWeighingRecordAsync(long id)
+    {
+        return await WithUnitOfWorkAsync(async () =>
+        {
+            var record = new WeighingRecord(id, 12m)
+            {
+                WeighingMode = WeighingMode.Recycle,
+                PlateNumber = $"P{id}",
+                AddDate = DateTime.Now
+            };
+            await _weighingRecordRepository.InsertAsync(record);
+            return id;
+        });
     }
 
     private async Task<long> CreateWaybillAsync(long id)

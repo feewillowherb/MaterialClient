@@ -87,7 +87,7 @@ public class WeighingListItemDto
     public string? Operator { get; set; }
 
     /// <summary>
-    ///     备注（仅运单有值）
+    ///     备注
     /// </summary>
     public string? Remark { get; set; }
 
@@ -198,6 +198,7 @@ public class WeighingListItemDto
             WaybillQuantity = firstMaterial?.WaybillQuantity,
             Operator = record.Creator,
             WeighingMode = record.WeighingMode,
+            Remark = record.Remark,
             Materials = materials.Select(m =>
             {
                 var dto = new WeighingListItemMaterialDto

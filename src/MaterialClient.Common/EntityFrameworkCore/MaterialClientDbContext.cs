@@ -128,6 +128,7 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
             entity.Property(e => e.TotalWeight).IsRequired();
             entity.Property(e => e.WeighingMode).HasDefaultValue(WeighingMode.Standard);
+            entity.Property(e => e.Remark).HasMaxLength(500);
 
             // MaterialsJson stores the list of materials as JSON
             entity.Property(e => e.MaterialsJson);
