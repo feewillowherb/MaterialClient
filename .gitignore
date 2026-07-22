@@ -90,7 +90,8 @@ ScaffoldingReadMe.txt
 *.http
 
 # ---- Installer output ----
-Installer/
+/Installer/
+scripts/installer/Installer/
 
 # ---- Claude / MCP Temporary Directories ----
 tempclaude-*
