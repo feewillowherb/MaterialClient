@@ -85,7 +85,7 @@ public class Provider : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
     ///     收货地址（本地专用字段）。
     ///     作为 §2.2 productTransportRecord/v1/addBatch 接口 <c>consigneeAddress</c> 的本地数据源。
     ///     本字段不进入远端 <c>CreateProviderInput</c>/<c>UpdateProviderInput</c>/<c>MaterialProviderListResultDto</c> 契约，
-    ///     数据库列可空；Recycle 内联新建供应商表单层校验必填。
+    ///     数据库列可空；为本地专用、可选可空字段，内联新建供应商表单可选录入，缺失时落库为 null。
     /// </summary>
     public string? Address { get; set; }
 

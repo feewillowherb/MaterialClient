@@ -40,6 +40,10 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
 
     public sealed record ConfirmTextRequest(string Title, string Message, string InitialValue);
 
+    public sealed record CreateProviderRequest(string Title, string Message, string InitialName);
+
+    public sealed record CreateProviderResult(string Name, string? Address);
+
     private protected WeighingListItemDto _listItem = null!;
     private protected readonly IServiceProvider _serviceProvider;
     private protected readonly IMaterialService _materialService;
@@ -55,6 +59,13 @@ public abstract partial class AttendedWeighingDetailViewModelBase : ViewModelBas
     ///     Returns null if cancelled; returns a non-null string for confirmed input.
     /// </summary>
     public Interaction<ConfirmTextRequest, string?> ConfirmTextInteraction { get; } = new();
+
+    /// <summary>
+    ///     Interaction for inline create-provider dialogs (name + optional address).
+    ///     The View layer registers a handler to show a <see cref="MaterialClient.Views.Dialogs.CreateProviderDialog"/>.
+    ///     Returns null if cancelled; returns a non-null <see cref="CreateProviderResult"/> on confirm.
+    /// </summary>
+    public Interaction<CreateProviderRequest, CreateProviderResult?> CreateProviderInteraction { get; } = new();
 
     protected AttendedWeighingDetailViewModelBase(
         IServiceProvider serviceProvider,
