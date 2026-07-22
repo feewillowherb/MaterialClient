@@ -69,7 +69,7 @@
           </Grid>
         </Grid>
 
-        <!-- 表格：仅展示列，无操作列 -->
+        <!-- 表格：展示列 + 操作列（编辑按钮） -->
         <DataGrid Grid.Row="1"
                   RowHeight="30"
                   VerticalScrollBarVisibility="Auto"
@@ -86,6 +86,17 @@
             <DataGridTextColumn Binding="{Binding ContactName}" Header="联系人姓名" MinWidth="120" />
             <DataGridTextColumn Binding="{Binding ContactPhone}" Header="联系人电话" MinWidth="140" />
             <DataGridTextColumn Binding="{Binding Address}" Header="收货地址" MinWidth="160" />
+            <DataGridTemplateColumn Header="操作" MinWidth="100">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="dto:ProviderDto">
+                  <Button Content="编辑"
+                          Classes="primary-button"
+                          Command="{Binding DataContext.EditCommand, ElementName=Root}"
+                          CommandParameter="{Binding}"
+                          HorizontalAlignment="Center" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
       </Grid>
