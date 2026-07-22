@@ -62,6 +62,21 @@ public partial class AttendedWeighingDetailView : UserControl
             var result = await dialog.ShowDialog<string?>(owner);
             ctx.SetOutput(result);
         }).DisposeWith(_interactionDisposables);
+
+        viewModel.CreateProviderInteraction.RegisterHandler(async ctx =>
+        {
+            var owner = TopLevel.GetTopLevel(this) as Window;
+            if (owner == null)
+            {
+                ctx.SetOutput(null);
+                return;
+            }
+
+            var req = ctx.Input;
+            var dialog = new CreateProviderDialog(req.Title, req.Message, req.InitialName);
+            var result = await dialog.ShowDialog<AttendedWeighingDetailViewModelBase.CreateProviderResult?>(owner);
+            ctx.SetOutput(result);
+        }).DisposeWith(_interactionDisposables);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)

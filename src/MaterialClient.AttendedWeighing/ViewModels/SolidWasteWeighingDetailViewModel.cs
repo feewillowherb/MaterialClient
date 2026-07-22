@@ -511,21 +511,22 @@ public partial class SolidWasteWeighingDetailViewModel : AttendedWeighingDetailV
 
     private async Task<SelectionItem?> CreateNewProviderAsync(string name)
     {
-        var confirmed = await ConfirmTextInteraction.Handle(new ConfirmTextRequest(
+        var result = await CreateProviderInteraction.Handle(new CreateProviderRequest(
             Title: "确认新增供应商",
-            Message: "将新增一条供应商，请确认名称：",
-            InitialValue: name));
-        if (confirmed == null) return null;
+            Message: "将新增一条供应商，请确认信息：",
+            InitialName: name));
+        if (result == null) return null;
 
         var deliveryType = _listItem?.DeliveryType ?? DeliveryType.Receiving;
-        var created = await _providerService.CreateProviderAsync(confirmed, deliveryType);
+        var created = await _providerService.CreateProviderAsync(result.Name, deliveryType, result.Address);
         var dto = new ProviderDto
         {
             Id = created.Id,
             ProviderType = created.ProviderType ?? (int)deliveryType,
             ProviderName = created.ProviderName,
             ContactName = created.ContectName,
-            ContactPhone = created.ContectPhone
+            ContactPhone = created.ContectPhone,
+            Address = created.Address
         };
         return SelectionItem.FromProvider(dto);
     }
