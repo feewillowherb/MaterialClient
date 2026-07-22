@@ -2,7 +2,7 @@
 ; 资源化利用厂变体 Windows 安装包
 
 #define MyAppName "凡东资源化利用厂系统"
-#define MyAppVersion "1.0.3"
+#define MyAppVersion "1.0.5"
 #define MyAppPublisher "FindongSoft"
 #define MyAppURL "http://www.example.com/"
 #define MyAppExeName "MaterialClient.Recycle.exe"
