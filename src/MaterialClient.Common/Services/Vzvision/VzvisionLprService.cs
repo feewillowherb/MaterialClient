@@ -487,31 +487,46 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
     }
 
     /// <summary>
-    ///     映射车身颜色枚举值为可读字符串
+    ///     映射车身颜色枚举值为可读字符串。
+    ///     SDK 字段为 byte，枚举底层为 int，须先转型再调用 Enum.IsDefined；未定义值兜底为「未知」。
     /// </summary>
     /// <param name="nCarColor">车身颜色枚举值</param>
-    /// <returns>可读字符串，未知值返回 null</returns>
+    /// <returns>可读字符串；未定义或异常时返回「未知」</returns>
     private static string? MapVehicleColor(byte nCarColor)
     {
-        if (!Enum.IsDefined(typeof(VzvisionVehicleColorType), nCarColor))
-            return null;
+        try
+        {
+            // Enum.IsDefined 要求 value 类型与枚举底层类型一致，不能直接传 byte
+            var value = (int)nCarColor;
+            if (!Enum.IsDefined(typeof(VzvisionVehicleColorType), value))
+                return VzvisionVehicleColorType.Unknown.GetDescription();
 
-        var vehicleColorType = (VzvisionVehicleColorType)nCarColor;
-        return vehicleColorType.GetDescription();
+            return ((VzvisionVehicleColorType)value).GetDescription();
+        }
+        catch
+        {
+            return VzvisionVehicleColorType.Unknown.GetDescription();
+        }
     }
 
     /// <summary>
-    ///     映射车型枚举值为可读字符串
+    ///     映射车型枚举值为可读字符串；未定义或异常时兜底为「未知」。
     /// </summary>
     /// <param name="nType">车型枚举值</param>
-    /// <returns>可读字符串，未知值返回 null</returns>
+    /// <returns>可读字符串；未定义或异常时返回「未知」</returns>
     private static string? MapVehicleType(int nType)
     {
-        if (!Enum.IsDefined(typeof(VzvisionVehicleType), nType))
-            return null;
+        try
+        {
+            if (!Enum.IsDefined(typeof(VzvisionVehicleType), nType))
+                return VzvisionVehicleType.Unknown.GetDescription();
 
-        var vehicleType = (VzvisionVehicleType)nType;
-        return vehicleType.GetDescription();
+            return ((VzvisionVehicleType)nType).GetDescription();
+        }
+        catch
+        {
+            return VzvisionVehicleType.Unknown.GetDescription();
+        }
     }
 
     private static string DecodeLicense(byte[]? license)
