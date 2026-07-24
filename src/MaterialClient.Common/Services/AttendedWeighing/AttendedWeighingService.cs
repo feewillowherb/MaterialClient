@@ -41,6 +41,7 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
     private int _stabilityCheckIntervalMs;
     private bool _enableLatestPlateNumber;
     private bool _enablePlateRewrite;
+    private bool _enableMatchOnStable;
 
     // Subscription management
     private IDisposable? _stateSubscription;
@@ -177,6 +178,7 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
         _stabilityCheckIntervalMs = config.StabilityCheckIntervalMs;
         _enableLatestPlateNumber = config.EnableLatestPlateNumber;
         _enablePlateRewrite = config.EnablePlateRewrite;
+        _enableMatchOnStable = config.EnableMatchOnStable;
 
         // Initialize plate color filter (once)
         var lowPriorityColors = _configuration.GetSection("LowPriorityPlateColors").Get<VzvisionColorType[]>();
@@ -449,6 +451,7 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             var photoPaths = await _captureService.CaptureAllCamerasAsync("WeightStabilized");
             await _recordService.CreateWeighingRecordAsync(currentWeight, photoPaths, _stateManager);
             await _captureService.CaptureOnWeightStabilized();
+            await _recordService.TryPublishMatchOnStableAsync(_stateManager);
         }
         catch (Exception ex)
         {
@@ -642,8 +645,11 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             var config = await GetConfigurationAsync();
             _enableLatestPlateNumber = config.EnableLatestPlateNumber;
             _enablePlateRewrite = config.EnablePlateRewrite;
+            _enableMatchOnStable = config.EnableMatchOnStable;
             _plateNumberService.UpdateConfiguration(_enableLatestPlateNumber, _enablePlateRewrite);
-            _logger.LogInformation("已刷新启用最新车牌开关: {Enabled}", _enableLatestPlateNumber);
+            _logger.LogInformation(
+                "已刷新称重运行时开关: EnableLatestPlateNumber={LatestPlate}, EnablePlateRewrite={PlateRewrite}, EnableMatchOnStable={MatchOnStable}",
+                _enableLatestPlateNumber, _enablePlateRewrite, _enableMatchOnStable);
         }
         catch (Exception ex)
         {

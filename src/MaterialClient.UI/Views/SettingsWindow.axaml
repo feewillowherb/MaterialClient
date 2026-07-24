@@ -610,7 +610,7 @@
                                        Margin="0,6,0,0"
                                        TextWrapping="Wrap" />
 
-                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
                                   ColumnSpacing="12" Margin="0,12,0,0">
                                 <TextBlock Text="接收车牌识别地址:"
                                            Grid.Row="0"
@@ -681,6 +681,18 @@
                                            MinWidth="120" />
                                 <ToggleSwitch IsChecked="{Binding EnableLatestPlateNumber}"
                                               Grid.Row="5"
+                                              Grid.Column="1"
+                                              OnContent="启用"
+                                              OffContent="关闭" />
+
+                                <TextBlock Text="稳定后立即匹配:"
+                                           Grid.Row="6"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <ToggleSwitch IsChecked="{Binding EnableMatchOnStable}"
+                                              Grid.Row="6"
                                               Grid.Column="1"
                                               OnContent="启用"
                                               OffContent="关闭" />

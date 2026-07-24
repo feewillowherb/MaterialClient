@@ -157,6 +157,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private decimal _minWeightDiff = 1m;
     [Reactive] private bool _enablePlateRewrite = true;
     [Reactive] private bool _enableLatestPlateNumber = false;
+    [Reactive] private bool _enableMatchOnStable = false;
     [Reactive] private string _gateIoValidationErrorMessage = string.Empty;
     [Reactive] private bool _hasGateIoValidationError;
 
@@ -302,7 +303,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     MaxIntervalMinutes = MaxIntervalMinutes,
                     MinWeightDiff = MinWeightDiff,
                     EnablePlateRewrite = EnablePlateRewrite,
-                    EnableLatestPlateNumber = EnableLatestPlateNumber
+                    EnableLatestPlateNumber = EnableLatestPlateNumber,
+                    EnableMatchOnStable = EnableMatchOnStable
                 },
                 new SoundDeviceSettings
                 {
@@ -798,6 +800,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             MinWeightDiff = settings.WeighingConfiguration.MinWeightDiff;
             EnablePlateRewrite = settings.WeighingConfiguration.EnablePlateRewrite;
             EnableLatestPlateNumber = settings.WeighingConfiguration.EnableLatestPlateNumber;
+            EnableMatchOnStable = settings.WeighingConfiguration.EnableMatchOnStable;
 
             // Load camera configs
             CameraConfigs.Clear();
