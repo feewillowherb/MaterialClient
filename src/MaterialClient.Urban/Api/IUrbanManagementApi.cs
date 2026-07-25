@@ -29,6 +29,7 @@ public interface IUrbanManagementApi
     /// <summary>
     ///     Preferred multipart binary upload (UrbanAttachmentController.upload-multipart).
     /// </summary>
+    [Multipart]
     [Post("/api/urban-attachment/upload-multipart")]
     Task<UrbanAttachmentUploadResponseDto> UploadAttachmentsMultipartAsync(
         [AliasAs("buildLicenseNo")] string buildLicenseNo,
