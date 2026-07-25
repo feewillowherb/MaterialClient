@@ -723,6 +723,21 @@
 
                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
                                   ColumnSpacing="12">
+                                <TextBlock Text="启用附件分片上传(tus，弱网可选):"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="140" />
+                                <ToggleSwitch IsChecked="{Binding EnableChunkedAttachmentUpload}"
+                                              Grid.Row="0"
+                                              Grid.Column="1"
+                                              OnContent="启用"
+                                              OffContent="关闭" />
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
+                                  ColumnSpacing="12">
                                 <TextBlock Text="启用自动填充上一次保存的供应商和材料:"
                                            Grid.Row="0"
                                            Grid.Column="0"

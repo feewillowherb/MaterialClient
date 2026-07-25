@@ -26,3 +26,12 @@ public class UrbanAttachmentUploadResponseDto
     [JsonPropertyName("attachmentIds")]
     public List<Guid> AttachmentIds { get; set; } = [];
 }
+
+/// <summary>
+///     Commit completed tus file ids to obtain AttachmentFile Guids.
+/// </summary>
+public class TusAttachmentCommitRequestDto
+{
+    [JsonPropertyName("fileIds")]
+    public List<string> FileIds { get; set; } = [];
+}

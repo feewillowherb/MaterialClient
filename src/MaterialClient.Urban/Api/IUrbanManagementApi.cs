@@ -36,6 +36,14 @@ public interface IUrbanManagementApi
         [AliasAs("attachType")] short attachType,
         [AliasAs("files")] IEnumerable<StreamPart> files);
 
+    /// <summary>
+    ///     Resolve AttachmentFile Guids after tusdotnet uploads complete.
+    /// </summary>
+    [Headers("Content-Type: application/json")]
+    [Post("/api/urban-attachment/tus/commit")]
+    Task<UrbanAttachmentUploadResponseDto> CommitTusAttachmentsAsync(
+        [Body] TusAttachmentCommitRequestDto dto);
+
     [Headers("Content-Type: application/json")]
     [Post("/api/app/urban-weighing-record/ack-approval-sync")]
     Task AckApprovalSyncAsync([Body] AckApprovalSyncDto dto);

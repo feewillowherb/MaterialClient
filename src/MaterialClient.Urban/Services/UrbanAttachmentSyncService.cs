@@ -34,9 +34,24 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 
     private readonly IAttachmentService _attachmentService;
     private readonly IUrbanManagementApi _urbanManagementApi;
+    private readonly IUrbanTusAttachmentClient _tusAttachmentClient;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<UrbanAttachmentSyncService> _logger;
 
     public async Task<IReadOnlyList<Guid>> UploadAttachmentsAsync(long weighingRecordId, string buildLicenseNo)
+    {
+        var settings = await _settingsService.GetSettingsAsync();
+        if (settings.SystemSettings.EnableChunkedAttachmentUpload)
+        {
+            return await UploadAttachmentsTusAsync(weighingRecordId, buildLicenseNo);
+        }
+
+        return await UploadAttachmentsMultipartInternalAsync(weighingRecordId, buildLicenseNo);
+    }
+
+    private async Task<IReadOnlyList<Guid>> UploadAttachmentsMultipartInternalAsync(
+        long weighingRecordId,
+        string buildLicenseNo)
     {
         var licenseNo = string.IsNullOrWhiteSpace(buildLicenseNo) ? UnknownAccessCode : buildLicenseNo.Trim();
         if (licenseNo == UnknownAccessCode)
@@ -46,12 +61,154 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
                 weighingRecordId);
         }
 
+        var prepared = await PrepareUrbanAttachmentFilesAsync(weighingRecordId);
+        if (prepared.Groups.Count == 0)
+        {
+            if (prepared.ExpectedCount > 0 && prepared.ReadSuccessCount == 0)
+            {
+                throw new InvalidOperationException(
+                    $"All local attachment files missing for weighing record {weighingRecordId}");
+            }
+
+            return [];
+        }
+
+        var serverIds = new List<Guid>();
+        foreach (var group in prepared.Groups)
+        {
+            _logger.LogInformation(
+                "Uploading attachments (multipart) for record {RecordId}: AttachType={AttachType}, ImageCount={ImageCount}, FileSizesBytes=[{FileSizesBytes}], TotalFileBytes={TotalFileBytes}",
+                weighingRecordId,
+                group.AttachType,
+                group.FilePaths.Count,
+                string.Join(", ", group.FileSizesBytes),
+                group.FileSizesBytes.Sum());
+
+            var streams = new List<FileStream>();
+            try
+            {
+                var parts = new List<StreamPart>(group.FilePaths.Count);
+                for (var i = 0; i < group.FilePaths.Count; i++)
+                {
+                    var stream = new FileStream(
+                        group.FilePaths[i],
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize: 4096,
+                        options: FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    streams.Add(stream);
+                    parts.Add(new StreamPart(stream, Path.GetFileName(group.FilePaths[i]), "image/jpeg", "files"));
+                }
+
+                var response = await _urbanManagementApi.UploadAttachmentsMultipartAsync(
+                    licenseNo,
+                    (short)group.AttachType,
+                    parts);
+
+                if (response.AttachmentIds is { Count: > 0 })
+                {
+                    serverIds.AddRange(response.AttachmentIds);
+                }
+            }
+            finally
+            {
+                foreach (var stream in streams)
+                {
+                    await stream.DisposeAsync();
+                }
+            }
+        }
+
+        return serverIds;
+    }
+
+    private async Task<IReadOnlyList<Guid>> UploadAttachmentsTusAsync(long weighingRecordId, string buildLicenseNo)
+    {
+        var licenseNo = string.IsNullOrWhiteSpace(buildLicenseNo) ? UnknownAccessCode : buildLicenseNo.Trim();
+        if (licenseNo == UnknownAccessCode)
+        {
+            _logger.LogWarning(
+                "AccessCode missing for record {RecordId}; using placeholder for tus attachment upload path",
+                weighingRecordId);
+        }
+
+        var prepared = await PrepareUrbanAttachmentFilesAsync(weighingRecordId);
+        if (prepared.Groups.Count == 0)
+        {
+            if (prepared.ExpectedCount > 0 && prepared.ReadSuccessCount == 0)
+            {
+                throw new InvalidOperationException(
+                    $"All local attachment files missing for weighing record {weighingRecordId}");
+            }
+
+            return [];
+        }
+
+        var serverIds = new List<Guid>();
+        foreach (var group in prepared.Groups)
+        {
+            _logger.LogInformation(
+                "Uploading attachments (tus) for record {RecordId}: AttachType={AttachType}, ImageCount={ImageCount}, FileSizesBytes=[{FileSizesBytes}], TotalFileBytes={TotalFileBytes}",
+                weighingRecordId,
+                group.AttachType,
+                group.FilePaths.Count,
+                string.Join(", ", group.FileSizesBytes),
+                group.FileSizesBytes.Sum());
+
+            var tusFileIds = new List<string>(group.FilePaths.Count);
+            foreach (var path in group.FilePaths)
+            {
+                var tusFileId = await _tusAttachmentClient.UploadFileAsync(
+                    path,
+                    licenseNo,
+                    group.AttachType);
+                tusFileIds.Add(tusFileId);
+            }
+
+            // Brief wait for OnFileComplete to persist mapping if it races with commit.
+            Exception? lastCommitError = null;
+            var committed = false;
+            for (var attempt = 0; attempt < 5; attempt++)
+            {
+                try
+                {
+                    var response = await _urbanManagementApi.CommitTusAttachmentsAsync(
+                        new TusAttachmentCommitRequestDto { FileIds = tusFileIds });
+                    if (response.AttachmentIds is { Count: > 0 })
+                    {
+                        serverIds.AddRange(response.AttachmentIds);
+                    }
+
+                    committed = true;
+                    break;
+                }
+                catch (Exception ex) when (ex is ApiException or HttpRequestException)
+                {
+                    lastCommitError = ex;
+                    await Task.Delay(200 * (attempt + 1));
+                }
+            }
+
+            if (!committed)
+            {
+                throw new InvalidOperationException(
+                    $"Tus commit failed for record {weighingRecordId} after retries",
+                    lastCommitError);
+            }
+        }
+
+        return serverIds;
+    }
+
+    private async Task<PreparedUrbanAttachments> PrepareUrbanAttachmentFilesAsync(long weighingRecordId)
+    {
         var attachmentsByRecord =
             await _attachmentService.GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId]);
 
         if (!attachmentsByRecord.TryGetValue(weighingRecordId, out var attachments) || attachments.Count == 0)
         {
-            return [];
+            return new PreparedUrbanAttachments(0, 0, []);
         }
 
         var urbanAttachments = attachments
@@ -60,12 +217,12 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 
         if (urbanAttachments.Count == 0)
         {
-            return [];
+            return new PreparedUrbanAttachments(0, 0, []);
         }
 
-        var serverIds = new List<Guid>();
         var expectedCount = 0;
         var readSuccessCount = 0;
+        var groups = new List<PreparedAttachmentGroup>();
 
         foreach (var group in urbanAttachments.GroupBy(a => a.AttachType))
         {
@@ -91,63 +248,13 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
                 readSuccessCount++;
             }
 
-            if (filePaths.Count == 0)
+            if (filePaths.Count > 0)
             {
-                continue;
-            }
-
-            var totalFileBytes = fileSizesBytes.Sum();
-            _logger.LogInformation(
-                "Uploading attachments (multipart) for record {RecordId}: AttachType={AttachType}, ImageCount={ImageCount}, FileSizesBytes=[{FileSizesBytes}], TotalFileBytes={TotalFileBytes}",
-                weighingRecordId,
-                group.Key,
-                filePaths.Count,
-                string.Join(", ", fileSizesBytes),
-                totalFileBytes);
-
-            var streams = new List<FileStream>();
-            try
-            {
-                var parts = new List<StreamPart>(filePaths.Count);
-                for (var i = 0; i < filePaths.Count; i++)
-                {
-                    var stream = new FileStream(
-                        filePaths[i],
-                        FileMode.Open,
-                        FileAccess.Read,
-                        FileShare.Read,
-                        bufferSize: 4096,
-                        options: FileOptions.Asynchronous | FileOptions.SequentialScan);
-                    streams.Add(stream);
-                    parts.Add(new StreamPart(stream, Path.GetFileName(filePaths[i]), "image/jpeg", "files"));
-                }
-
-                var response = await _urbanManagementApi.UploadAttachmentsMultipartAsync(
-                    licenseNo,
-                    (short)group.Key,
-                    parts);
-
-                if (response.AttachmentIds is { Count: > 0 })
-                {
-                    serverIds.AddRange(response.AttachmentIds);
-                }
-            }
-            finally
-            {
-                foreach (var stream in streams)
-                {
-                    await stream.DisposeAsync();
-                }
+                groups.Add(new PreparedAttachmentGroup(group.Key, filePaths, fileSizesBytes));
             }
         }
 
-        if (expectedCount > 0 && readSuccessCount == 0)
-        {
-            throw new InvalidOperationException(
-                $"All local attachment files missing for weighing record {weighingRecordId}");
-        }
-
-        return serverIds;
+        return new PreparedUrbanAttachments(expectedCount, readSuccessCount, groups);
     }
 
     /// <summary>
@@ -247,4 +354,14 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
 
         return serverIds;
     }
+
+    private sealed record PreparedAttachmentGroup(
+        AttachType AttachType,
+        List<string> FilePaths,
+        List<long> FileSizesBytes);
+
+    private sealed record PreparedUrbanAttachments(
+        int ExpectedCount,
+        int ReadSuccessCount,
+        List<PreparedAttachmentGroup> Groups);
 }

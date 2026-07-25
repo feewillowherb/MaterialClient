@@ -12,6 +12,22 @@ namespace MaterialClient.Urban.Tests;
 public class UrbanAttachmentUploadApiContractTests
 {
     [Fact]
+    public void Commit_tus_method_uses_json_and_path()
+    {
+        var method = typeof(IUrbanManagementApi).GetMethod(nameof(IUrbanManagementApi.CommitTusAttachmentsAsync));
+        method.ShouldNotBeNull();
+
+        var headers = method!.GetCustomAttributes<HeadersAttribute>().ToList();
+        headers.ShouldContain(h =>
+            h.Headers.Any(header =>
+                header.Contains("application/json", StringComparison.OrdinalIgnoreCase)));
+
+        var post = method.GetCustomAttribute<PostAttribute>();
+        post.ShouldNotBeNull();
+        post!.Path.ShouldBe("/api/urban-attachment/tus/commit");
+    }
+
+    [Fact]
     public void Multipart_method_has_no_forced_json_content_type()
     {
         var method = typeof(IUrbanManagementApi).GetMethod(nameof(IUrbanManagementApi.UploadAttachmentsMultipartAsync));
