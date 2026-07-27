@@ -10,7 +10,7 @@ public enum WeighingMode
     /// <summary>
     ///     标准模式
     /// </summary>
-    [Description("物料验收系统客户端软件")] Standard = 0,
+    [Description("凡东智能物料验收系统V2.0")] Standard = 0,
 
     /// <summary>
     ///     固废模式
