@@ -133,56 +133,35 @@
 
                     <!-- 列定义 (宽度 = 字符宽度 + 16px SortIconMinWidth) -->
                     <DataGrid.Columns>
-                        <!-- 材料名称 (4字) -->
-                        <DataGridTemplateColumn Header="材料名称" Width="72">
+                        <!-- 材料名称 (4字)：IsReadOnly + CellTemplate 内单击，避免 DataGrid 二次点击 -->
+                        <DataGridTemplateColumn Header="材料名称" Width="72" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Background="Transparent"
-                                            BorderThickness="0"
-                                            Padding="4,0"
+                                    <Border Background="Transparent"
                                             Cursor="Hand"
                                             HorizontalAlignment="Stretch"
-                                            HorizontalContentAlignment="Left"
-                                            FontWeight="Normal"
-                                            Name="MaterialSelectionButton"
-                                            Click="MaterialSelectionButton_Click">
-                                        <Button.Styles>
-                                            <Style Selector="Button:pointerover">
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                            <Style Selector="Button:pressed">
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                        </Button.Styles>
+                                            VerticalAlignment="Stretch"
+                                            Padding="4,0"
+                                            Tapped="MaterialSelectionCell_Tapped">
                                         <TextBlock Text="{Binding SelectedMaterial.Name}"
                                                    HorizontalAlignment="Left"
                                                    VerticalAlignment="Center"
                                                    FontSize="12"
                                                    Foreground="#333333"
                                                    TextTrimming="CharacterEllipsis" />
-                                    </Button>
+                                    </Border>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- 单位 (2字) -->
-                        <DataGridTemplateColumn Header="单位" Width="62">
+                        <!-- 单位 (2字)：inline ComboBox，与运单数量列模式一致 -->
+                        <DataGridTemplateColumn Header="单位" Width="62" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding SelectedMaterialUnit.DisplayName}"
-                                               HorizontalAlignment="Left"
-                                               VerticalAlignment="Center"
-                                               FontSize="12"
-                                               Foreground="#333333"
-                                               TextTrimming="CharacterEllipsis"
-                                               Padding="4,0" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                            <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
                                     <ComboBox ItemsSource="{Binding MaterialUnits}"
                                               SelectedItem="{Binding SelectedMaterialUnit, Mode=TwoWay}"
                                               DisplayMemberBinding="{Binding DisplayName}"
+                                              IsEnabled="{Binding SelectedMaterial, Converter={x:Static ObjectConverters.IsNotNull}}"
                                               HorizontalAlignment="Stretch"
                                               VerticalAlignment="Stretch"
                                               HorizontalContentAlignment="Left"
@@ -192,7 +171,7 @@
                                               Padding="4,2"
                                               FontSize="12" />
                                 </DataTemplate>
-                            </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
                         <!-- 换算率 (3字) -->

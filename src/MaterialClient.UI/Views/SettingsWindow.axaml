@@ -610,7 +610,7 @@
                                        Margin="0,6,0,0"
                                        TextWrapping="Wrap" />
 
-                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
                                   ColumnSpacing="12" Margin="0,12,0,0">
                                 <TextBlock Text="接收车牌识别地址:"
                                            Grid.Row="0"
@@ -684,6 +684,18 @@
                                               Grid.Column="1"
                                               OnContent="启用"
                                               OffContent="关闭" />
+
+                                <TextBlock Text="稳定后立即匹配:"
+                                           Grid.Row="6"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="120" />
+                                <ToggleSwitch IsChecked="{Binding EnableMatchOnStable}"
+                                              Grid.Row="6"
+                                              Grid.Column="1"
+                                              OnContent="启用"
+                                              OffContent="关闭" />
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -708,6 +720,21 @@
 
                             <CheckBox Content="开机自动启动"
                                       IsChecked="{Binding EnableAutoStart}" />
+
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
+                                  ColumnSpacing="12">
+                                <TextBlock Text="启用附件分片上传(tus，弱网可选):"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           MinWidth="140" />
+                                <ToggleSwitch IsChecked="{Binding EnableChunkedAttachmentUpload}"
+                                              Grid.Row="0"
+                                              Grid.Column="1"
+                                              OnContent="启用"
+                                              OffContent="关闭" />
+                            </Grid>
 
                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" RowSpacing="12"
                                   ColumnSpacing="12">

@@ -46,6 +46,11 @@ public class WeighingConfiguration
     public bool EnableLatestPlateNumber { get; set; } = false;
 
     /// <summary>
+    ///     是否在重量稳定且已有车牌时立即尝试运单匹配（默认仍在下磅后匹配）
+    /// </summary>
+    public bool EnableMatchOnStable { get; set; } = false;
+
+    /// <summary>
     ///     判断配置是否有效
     ///     验证所有数值参数是否在合理范围内
     /// </summary>

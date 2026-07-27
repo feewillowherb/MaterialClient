@@ -313,8 +313,7 @@ public partial class StandardWeighingDetailViewModel : AttendedWeighingDetailVie
         if (material == null || CurrentMaterialRow == null) return Task.CompletedTask;
 
         CurrentMaterialRow.SelectedMaterial = material;
-        IsMaterialPopupOpen = false;
-        CurrentMaterialRow = null;
+        CloseMaterialPopup();
 
         if (MaterialsSelectionPopupViewModel != null)
         {
@@ -322,5 +321,15 @@ public partial class StandardWeighingDetailViewModel : AttendedWeighingDetailVie
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Closes the material selection popup and clears the current row without selecting a material.
+    ///     Idempotent: safe to call when the popup is already closed.
+    /// </summary>
+    public void CloseMaterialPopup()
+    {
+        IsMaterialPopupOpen = false;
+        CurrentMaterialRow = null;
     }
 }

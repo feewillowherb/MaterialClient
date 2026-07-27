@@ -109,4 +109,10 @@ public class SystemSettings
     ///     用于系统级别的默认收发料模式设置
     /// </summary>
     public DeliveryType DefaultDeliveryType { get; set; } = DeliveryType.Receiving;
+
+    /// <summary>
+    ///     When true, Urban attachment sync uses tusdotnet resumable upload instead of multipart.
+    ///     Default false keeps multipart for most sites.
+    /// </summary>
+    public bool EnableChunkedAttachmentUpload { get; set; } = false;
 }

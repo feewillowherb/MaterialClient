@@ -14,7 +14,7 @@
 - **服务端地址**：`appsettings.json` → `UrbanManagement:BaseUrl`（指向 UrbanManagement 站点，例如 `http://localhost:5000`）。
 - **称重上云**：`PollingBackgroundService` → `IUrbanServerUploadService.SubmitRecordAsync`。
 - **重量单位**：本地 `WeighingRecord.TotalWeight` 为**吨**；上云 `Receive` 的 `totalWeight` 为**千克**（`MaterialMath.ConvertTonToKg`）。UrbanManagement 存库与政府同步均按 kg。
-- **附件上云**：同一次 `SubmitRecordAsync` 内先调用 `POST /api/app/urban-attachment/upload`（按 `Lrp` / `UrbanPhoto` 分组 Base64），再将返回的 `attachmentIds` 填入 `Receive` 请求。
+- **附件上云**：同一次 `SubmitRecordAsync` 内先调用 `POST /api/urban-attachment/upload-multipart`（按 `Lrp` / `UrbanPhoto` 分组 multipart 二进制；legacy `POST /api/app/urban-attachment/upload` Base64 仍保留），再将返回的 `attachmentIds` 填入 `Receive` 请求。
 - **本地路径**：读取 `AttachmentFile.LocalPath` 前使用 `PathManager.ToAbsolutePath`（与主程序附件规范一致）。
 
 ## 项目约定（构建验证）

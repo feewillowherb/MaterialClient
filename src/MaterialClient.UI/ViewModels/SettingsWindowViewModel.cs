@@ -58,6 +58,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
     // System settings
     [Reactive] private bool _enableAutoStart;
+    [Reactive] private bool _enableChunkedAttachmentUpload;
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
     [Reactive] private string _urls = "http://localhost:9960";
     [Reactive] private LprDeviceType _lprDeviceType = LprDeviceType.Hikvision;
@@ -157,6 +158,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private decimal _minWeightDiff = 1m;
     [Reactive] private bool _enablePlateRewrite = true;
     [Reactive] private bool _enableLatestPlateNumber = false;
+    [Reactive] private bool _enableMatchOnStable = false;
     [Reactive] private string _gateIoValidationErrorMessage = string.Empty;
     [Reactive] private bool _hasGateIoValidationError;
 
@@ -232,6 +234,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             var existingSettings = await _settingsService.GetSettingsAsync();
             var systemSettings = existingSettings.SystemSettings;
             systemSettings.EnableAutoStart = EnableAutoStart;
+            systemSettings.EnableChunkedAttachmentUpload = EnableChunkedAttachmentUpload;
             systemSettings.CaptureStreamType = CaptureStreamType;
             systemSettings.Urls = Urls;
             systemSettings.LprDeviceType = LprDeviceType;
@@ -302,7 +305,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     MaxIntervalMinutes = MaxIntervalMinutes,
                     MinWeightDiff = MinWeightDiff,
                     EnablePlateRewrite = EnablePlateRewrite,
-                    EnableLatestPlateNumber = EnableLatestPlateNumber
+                    EnableLatestPlateNumber = EnableLatestPlateNumber,
+                    EnableMatchOnStable = EnableMatchOnStable
                 },
                 new SoundDeviceSettings
                 {
@@ -765,6 +769,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             // Load system settings
             EnableAutoStart = settings.SystemSettings.EnableAutoStart;
+            EnableChunkedAttachmentUpload = settings.SystemSettings.EnableChunkedAttachmentUpload;
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
             Urls = settings.SystemSettings.Urls;
             LprDeviceType = settings.SystemSettings.LprDeviceType;
@@ -798,6 +803,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             MinWeightDiff = settings.WeighingConfiguration.MinWeightDiff;
             EnablePlateRewrite = settings.WeighingConfiguration.EnablePlateRewrite;
             EnableLatestPlateNumber = settings.WeighingConfiguration.EnableLatestPlateNumber;
+            EnableMatchOnStable = settings.WeighingConfiguration.EnableMatchOnStable;
 
             // Load camera configs
             CameraConfigs.Clear();

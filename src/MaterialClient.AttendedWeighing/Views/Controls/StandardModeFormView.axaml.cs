@@ -1,7 +1,7 @@
 using System;
 using System.Reactive.Disposables;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
+using Avalonia.Input;
 using MaterialClient.ViewModels;
 using ReactiveUI;
 
@@ -14,6 +14,11 @@ public partial class StandardModeFormView : UserControl
     public StandardModeFormView()
     {
         InitializeComponent();
+
+        if (MaterialSelectionPopup != null)
+        {
+            MaterialSelectionPopup.Closed += OnMaterialSelectionPopupClosed;
+        }
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -32,35 +37,43 @@ public partial class StandardModeFormView : UserControl
             .Subscribe(isOpen => MaterialSelectionPopup.IsOpen = isOpen);
     }
 
-    private void MaterialSelectionButton_Click(object? sender, RoutedEventArgs e)
+    private void OnMaterialSelectionPopupClosed(object? sender, EventArgs e)
     {
-        if (sender is Button button && MaterialSelectionPopup != null && MaterialsSelectionPopupControl != null)
+        if (DataContext is StandardWeighingDetailViewModel vm)
         {
-            MaterialSelectionPopup.PlacementTarget = button;
+            vm.CloseMaterialPopup();
+        }
+    }
 
-            // Placement="Bottom" 默认将 Popup 中心对齐到 Button 中心
-            // 要让左边缘对齐，需要向右偏移：(PopupWidth / 2) - (ButtonWidth / 2)
-            var popupWidth = MaterialsSelectionPopupControl.Width > 0
-                ? MaterialsSelectionPopupControl.Width
-                : 400; // MaterialsSelectionPopup 的默认宽度
+    private void MaterialSelectionCell_Tapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Control control || MaterialSelectionPopup == null || MaterialsSelectionPopupControl == null)
+        {
+            return;
+        }
 
-            var buttonWidth = button.Bounds.Width > 0
-                ? button.Bounds.Width
-                : button.DesiredSize.Width;
+        e.Handled = true;
+        MaterialSelectionPopup.PlacementTarget = control;
 
-            if (buttonWidth <= 0)
-            {
-                // 如果 Button 宽度还未测量，使用列宽 80
-                buttonWidth = 80;
-            }
+        // Placement="Bottom" centers the popup on the target; offset so left edges align.
+        var popupWidth = MaterialsSelectionPopupControl.Width > 0
+            ? MaterialsSelectionPopupControl.Width
+            : 400;
 
-            MaterialSelectionPopup.HorizontalOffset = (popupWidth / 2) - (buttonWidth / 2);
+        var targetWidth = control.Bounds.Width > 0
+            ? control.Bounds.Width
+            : control.DesiredSize.Width;
 
-            if (DataContext is StandardWeighingDetailViewModel vm && button.DataContext is MaterialItemRow row)
-            {
-                vm.OpenMaterialSelectionCommand.Execute(row).Subscribe();
-            }
+        if (targetWidth <= 0)
+        {
+            targetWidth = 72;
+        }
+
+        MaterialSelectionPopup.HorizontalOffset = (popupWidth / 2) - (targetWidth / 2);
+
+        if (DataContext is StandardWeighingDetailViewModel vm && control.DataContext is MaterialItemRow row)
+        {
+            vm.OpenMaterialSelectionCommand.Execute(row).Subscribe();
         }
     }
 }
-

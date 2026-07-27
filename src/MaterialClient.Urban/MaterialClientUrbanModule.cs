@@ -92,8 +92,14 @@ public class MaterialClientUrbanModule : AbpModule
             .ConfigureHttpClient(c =>
             {
                 c.BaseAddress = new Uri(urbanManagementUrl);
-                c.Timeout = TimeSpan.FromSeconds(30);
+                c.Timeout = TimeSpan.FromSeconds(240);
             });
+
+        services.AddHttpClient(UrbanTusAttachmentClient.HttpClientName, c =>
+        {
+            c.BaseAddress = new Uri(urbanManagementUrl.TrimEnd('/') + "/");
+            c.Timeout = TimeSpan.FromSeconds(240);
+        });
 
         services.AddRefitClient<IUrbanAuthApi>()
             .ConfigureHttpClient(c =>

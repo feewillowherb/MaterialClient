@@ -45,6 +45,11 @@ public interface IWeighingRecordService
     Task RewriteAndResetCycleAsync(WeighingStateManager stateManager, IPlateNumberService plateNumberService);
 
     /// <summary>
+    ///     重量稳定后按配置尝试发布运单匹配（有车牌且 EnableMatchOnStable 时）
+    /// </summary>
+    Task TryPublishMatchOnStableAsync(WeighingStateManager stateManager);
+
+    /// <summary>
     ///     更新称重记录的车牌号和重量，并重置关联的 UrbanWeighingExtension 同步状态为 Pending
     ///     同时更新异常标志以反映编辑后的记录状态
     /// </summary>
@@ -426,36 +431,84 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
             {
                 await _weighingRecordRepository.UpdateAsync(weighingRecord);
                 await uow.CompleteAsync();
-
-                if (!_pipelineStrategy.ShouldSkipWaybillMatching())
-                {
-                    await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
-                }
-                else
-                {
-                    _logger.LogDebug("UrbanMode: 跳过 TryMatchEvent 发布 for record {Id}", weighingRecord.Id);
-                }
             }
             else
             {
                 await uow.CompleteAsync();
                 _logger.LogDebug("Plate number and delivery type unchanged for weighing record {Id}",
                     recordId.Value);
-
-                if (!_pipelineStrategy.ShouldSkipWaybillMatching())
-                {
-                    await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
-                }
-                else
-                {
-                    _logger.LogDebug("UrbanMode: 跳过 TryMatchEvent 发布 for record {Id}", weighingRecord.Id);
-                }
             }
+
+            await PublishTryMatchOnDepartureAsync(weighingRecord, config);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while rewriting plate number");
         }
+    }
+
+    /// <inheritdoc />
+    public async Task TryPublishMatchOnStableAsync(WeighingStateManager stateManager)
+    {
+        try
+        {
+            var config = await GetConfigurationAsync();
+            if (!config.EnableMatchOnStable)
+            {
+                _logger.LogDebug("EnableMatchOnStable is disabled, skip stable-phase TryMatch");
+                return;
+            }
+
+            var recordId = stateManager.GetLastCreatedWeighingRecordId();
+            if (recordId is not > 0)
+            {
+                _logger.LogDebug("No weighing record for stable-phase TryMatch");
+                return;
+            }
+
+            var plateNumber = _plateNumberService.GetMostFrequentPlateNumber();
+            if (string.IsNullOrWhiteSpace(plateNumber))
+            {
+                _logger.LogInformation(
+                    "Stable-phase TryMatch skipped for record {Id}: plate number is empty",
+                    recordId.Value);
+                return;
+            }
+
+            if (_pipelineStrategy.ShouldSkipWaybillMatching())
+            {
+                _logger.LogDebug("UrbanMode: skip stable-phase TryMatchEvent for record {Id}", recordId.Value);
+                return;
+            }
+
+            await _localEventBus.PublishAsync(new TryMatchEvent(recordId.Value));
+            _logger.LogInformation(
+                "Published TryMatchEvent on stable for record {Id}, plate {Plate}",
+                recordId.Value, plateNumber);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while publishing stable-phase TryMatch");
+        }
+    }
+
+    private async Task PublishTryMatchOnDepartureAsync(WeighingRecord weighingRecord, WeighingConfiguration config)
+    {
+        if (_pipelineStrategy.ShouldSkipWaybillMatching())
+        {
+            _logger.LogDebug("UrbanMode: 跳过 TryMatchEvent 发布 for record {Id}", weighingRecord.Id);
+            return;
+        }
+
+        if (config.EnableMatchOnStable && weighingRecord.MatchedId != null)
+        {
+            _logger.LogInformation(
+                "Skip OffScale TryMatch for record {Id}: already matched on stable (MatchedId={MatchedId})",
+                weighingRecord.Id, weighingRecord.MatchedId);
+            return;
+        }
+
+        await _localEventBus.PublishAsync(new TryMatchEvent(weighingRecord.Id));
     }
 
     /// <inheritdoc />
