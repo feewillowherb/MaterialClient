@@ -77,6 +77,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
     private const int PortableXpsyFrameLength = 9;
     private const int PortableXpsyPayloadLength = 8;
+    private const int DingSongAddr4FrameLength = 17;
 
     // Rx Subject for weight updates
     private readonly Subject<decimal> _weightSubject = new();
@@ -92,6 +93,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
     private readonly byte[] _portableXpsyBuffer = new byte[4096];
     private int _portableXpsyBufferIndex;
+
+    private readonly byte[] _dingSongAddr4Buffer = new byte[4096];
+    private int _dingSongAddr4BufferIndex;
 
     private ISerialPort? _serialPort;
 
@@ -156,6 +160,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
                 _currentSettings = settings;
                 _portableXpsyBufferIndex = 0;
+                _dingSongAddr4BufferIndex = 0;
 
                 // Portable XP-SY always uses ASCII '='-delimited frames, even if CommunicationMethod is TF0.
                 if (settings.ScaleType == ScaleType.PortableXPSY)
@@ -167,7 +172,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 else if (settings.CommunicationMethod == "TF0")
                 {
                     _receType = ReceType.Hex;
-                    _byteCount = 12;
+                    _byteCount = settings.ScaleType == ScaleType.DingSongAddr4
+                        ? DingSongAddr4FrameLength
+                        : 12;
                 }
                 else
                 {
@@ -328,7 +335,11 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 switch (_receType)
                 {
                     case ReceType.Hex:
-                        if (scaleType == ScaleType.DingSong)
+                        if (scaleType == ScaleType.DingSongAddr4)
+                        {
+                            ReceiveHexDingSongAddr4();
+                        }
+                        else if (scaleType == ScaleType.DingSong)
                         {
                             ReceiveHexDingSong(); // Internal lock management
                         }
@@ -586,6 +597,111 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         {
             _logger?.LogWarning(ex, "Error receiving HEX data from truck scale");
         }
+    }
+
+    /// <summary>
+    ///     Receive HEX frames for DingSong Addr4: fixed 17-byte <c>02 2A … 0D</c>, sticky-buffer scan.
+    /// </summary>
+    private void ReceiveHexDingSongAddr4()
+    {
+        try
+        {
+            ISerialPort? port;
+            using (_rwLock.ReadLock())
+            {
+                port = _serialPort;
+                if (port == null) return;
+            }
+
+            var availableBytes = port.BytesToRead;
+            if (availableBytes <= 0) return;
+
+            if (_dingSongAddr4BufferIndex + availableBytes > _dingSongAddr4Buffer.Length)
+            {
+                _logger?.LogWarning("DingSong Addr4 receive buffer overflow, resetting");
+                _dingSongAddr4BufferIndex = 0;
+            }
+
+            var bytesRead = port.Read(_dingSongAddr4Buffer, _dingSongAddr4BufferIndex, availableBytes);
+            if (bytesRead <= 0) return;
+
+            _dingSongAddr4BufferIndex += bytesRead;
+
+            while (_dingSongAddr4BufferIndex >= DingSongAddr4FrameLength)
+            {
+                var startIndex = FindDingSongAddr4FrameStart();
+                if (startIndex < 0)
+                {
+                    // Keep last FrameLength-1 bytes in case STX straddles the next read.
+                    if (_dingSongAddr4BufferIndex > DingSongAddr4FrameLength - 1)
+                    {
+                        Array.Copy(
+                            _dingSongAddr4Buffer,
+                            _dingSongAddr4BufferIndex - (DingSongAddr4FrameLength - 1),
+                            _dingSongAddr4Buffer,
+                            0,
+                            DingSongAddr4FrameLength - 1);
+                        _dingSongAddr4BufferIndex = DingSongAddr4FrameLength - 1;
+                    }
+
+                    return;
+                }
+
+                if (startIndex > 0)
+                {
+                    Array.Copy(
+                        _dingSongAddr4Buffer,
+                        startIndex,
+                        _dingSongAddr4Buffer,
+                        0,
+                        _dingSongAddr4BufferIndex - startIndex);
+                    _dingSongAddr4BufferIndex -= startIndex;
+                }
+
+                if (_dingSongAddr4BufferIndex < DingSongAddr4FrameLength) return;
+
+                var message = new byte[DingSongAddr4FrameLength];
+                Array.Copy(_dingSongAddr4Buffer, 0, message, 0, DingSongAddr4FrameLength);
+
+                var parsedWeight = ParseHexWeightDingSongAddr4(message);
+                if (parsedWeight.HasValue)
+                {
+                    var convertedWeight = ConvertWeight(parsedWeight.Value);
+                    using var _ = _rwLock.WriteLock();
+                    _currentWeight = convertedWeight;
+                    _weightSubject.OnNext(convertedWeight);
+                }
+
+                Array.Copy(
+                    _dingSongAddr4Buffer,
+                    DingSongAddr4FrameLength,
+                    _dingSongAddr4Buffer,
+                    0,
+                    _dingSongAddr4BufferIndex - DingSongAddr4FrameLength);
+                _dingSongAddr4BufferIndex -= DingSongAddr4FrameLength;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error receiving DingSong Addr4 HEX data from truck scale");
+            _dingSongAddr4BufferIndex = 0;
+        }
+    }
+
+    /// <summary>
+    ///     Find start of a complete DingSong Addr4 frame (<c>02 2A</c> … <c>0D</c>) in the sticky buffer.
+    /// </summary>
+    private int FindDingSongAddr4FrameStart()
+    {
+        for (var i = 0; i <= _dingSongAddr4BufferIndex - DingSongAddr4FrameLength; i++)
+        {
+            if (_dingSongAddr4Buffer[i] != 0x02) continue;
+            if (_dingSongAddr4Buffer[i + 1] != 0x2A) continue;
+            if (_dingSongAddr4Buffer[i + DingSongAddr4FrameLength - 1] != 0x0D) continue;
+            return i;
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -978,6 +1094,64 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     }
 
     /// <summary>
+    ///     Parse weight from DingSong Addr4 HEX frame (17 bytes).
+    ///     Format: 0x02 0x2A 0x30 0x20 [12 ASCII digits] 0x0D
+    ///     Weight = first 6 payload digits as integer kg.
+    /// </summary>
+    private decimal? ParseHexWeightDingSongAddr4(byte[] buffer)
+    {
+        try
+        {
+            if (buffer.Length < DingSongAddr4FrameLength) return null;
+
+            if (buffer[0] != 0x02 ||
+                buffer[1] != 0x2A ||
+                buffer[DingSongAddr4FrameLength - 1] != 0x0D)
+            {
+                return null;
+            }
+
+            // Payload: bytes 4–15 (12 ASCII digits); weight from first 6 digits.
+            var weightString = string.Empty;
+            for (var i = 4; i < 10; i++)
+            {
+                var c = (char)buffer[i];
+                if (!char.IsDigit(c))
+                {
+                    _logger?.LogWarning($"DingSong Addr4 non-digit at position {i}: 0x{buffer[i]:X2}");
+                    return null;
+                }
+
+                weightString += c;
+            }
+
+            // Remaining payload digits (bytes 10–15) must also be ASCII digits.
+            for (var i = 10; i < 16; i++)
+            {
+                if (!char.IsDigit((char)buffer[i]))
+                {
+                    _logger?.LogWarning($"DingSong Addr4 non-digit at position {i}: 0x{buffer[i]:X2}");
+                    return null;
+                }
+            }
+
+            if (decimal.TryParse(weightString, out var weightKg))
+            {
+                _logger?.LogDebug($"Parsed DingSong Addr4 HEX weight: {weightKg} kg (raw: {weightString})");
+                return weightKg;
+            }
+
+            _logger?.LogWarning($"Failed to parse DingSong Addr4 weight string: {weightString}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error parsing DingSong Addr4 HEX weight data");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     ///     Validate weight data format
     ///     Format: +/- + 8 digits + 1 letter (A-F, case insensitive)
     ///     Example: +001570018, +00154001B, -00000001A
@@ -1117,6 +1291,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         finally
         {
             _portableXpsyBufferIndex = 0;
+            _dingSongAddr4BufferIndex = 0;
             _isClosing = false;
         }
     }
