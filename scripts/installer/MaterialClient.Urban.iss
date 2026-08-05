@@ -2,7 +2,7 @@
 ; 城管变体 Windows 安装包
 
 #define MyAppName "凡东城管地磅系统"
-#define MyAppVersion "1.0.16"
+#define MyAppVersion "1.0.17"
 #define MyAppPublisher "FindongSoft"
 #define MyAppURL "http://www.example.com/"
 #define MyAppExeName "MaterialClient.Urban.exe"
