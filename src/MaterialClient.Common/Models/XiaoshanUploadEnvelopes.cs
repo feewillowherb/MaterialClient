@@ -12,6 +12,11 @@ public static class XiaoshanUploadModeNames
     public static readonly IReadOnlyList<string> All = [Weighbridge, Gate, Product];
 }
 
+public static class XiaoshanUploadDefaults
+{
+    public const string WeighbridgeDataSource = "WEIGHBRIDGE_XIAOSHAN";
+}
+
 public record XiaoshanUploadModeSettings
 {
     public string? DeviceId { get; init; }
@@ -40,7 +45,10 @@ public record XiaoshanUploadModesEnvelope
         EnabledModes = [XiaoshanUploadModeNames.Weighbridge],
         ModeSettings = new Dictionary<string, XiaoshanUploadModeSettings>(StringComparer.OrdinalIgnoreCase)
         {
-            [XiaoshanUploadModeNames.Weighbridge] = new() { DataSource = "WEIGHBRIDGE_XIAOSHAN" },
+            [XiaoshanUploadModeNames.Weighbridge] = new()
+            {
+                DataSource = XiaoshanUploadDefaults.WeighbridgeDataSource
+            },
             [XiaoshanUploadModeNames.Gate] = new(),
             [XiaoshanUploadModeNames.Product] = new()
         }

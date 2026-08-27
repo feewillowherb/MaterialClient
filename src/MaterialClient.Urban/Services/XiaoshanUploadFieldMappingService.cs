@@ -40,7 +40,7 @@ public class XiaoshanUploadFieldMappingService : IXiaoshanUploadFieldMappingServ
         if (string.Equals(mode, XiaoshanUploadModeNames.Weighbridge, StringComparison.OrdinalIgnoreCase))
         {
             TryResolveStatic(resolved, skipped, mode, "dataSource",
-                modeSettings.DataSource ?? "WEIGHBRIDGE_XIAOSHAN", required: true);
+                XiaoshanUploadDefaults.WeighbridgeDataSource, required: true);
             TryResolveStatic(resolved, skipped, mode, "inOutType", modeSettings.InOutType, required: true);
         }
         else

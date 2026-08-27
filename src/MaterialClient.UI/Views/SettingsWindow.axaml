@@ -1165,11 +1165,9 @@
                                                             BorderThickness="1"
                                                             Padding="10">
                                                         <StackPanel Spacing="6">
-                                                            <TextBlock Text="地磅 Weighbridge" FontWeight="SemiBold" />
-                                                            <TextBlock Text="inOutType (0=进 1=出)" />
+                                                            <TextBlock Text="地磅配置" FontWeight="SemiBold" />
+                                                            <TextBlock Text="进出场" />
                                                             <TextBox Text="{Binding UrbanConfigWbInOutType}" />
-                                                            <TextBlock Text="dataSource" />
-                                                            <TextBox Text="{Binding UrbanConfigWbDataSource}" />
                                                         </StackPanel>
                                                     </Border>
 
@@ -1178,10 +1176,10 @@
                                                             BorderThickness="1"
                                                             Padding="10">
                                                         <StackPanel Spacing="6">
-                                                            <TextBlock Text="卡口 Gate" FontWeight="SemiBold" />
-                                                            <TextBlock Text="deviceID (01=进 02=出)" />
+                                                            <TextBlock Text="卡口配置" FontWeight="SemiBold" />
+                                                            <TextBlock Text="进出场" />
                                                             <TextBox Text="{Binding UrbanConfigGateDeviceId}" />
-                                                            <TextBlock Text="siteType (1=工地 2=消纳场)" />
+                                                            <TextBlock Text="场地" />
                                                             <TextBox Text="{Binding UrbanConfigGateSiteType}" />
                                                         </StackPanel>
                                                     </Border>
@@ -1191,10 +1189,10 @@
                                                             BorderThickness="1"
                                                             Padding="10">
                                                         <StackPanel Spacing="6">
-                                                            <TextBlock Text="成品 Product" FontWeight="SemiBold" />
-                                                            <TextBlock Text="deviceID (01=进 02=出)" />
+                                                            <TextBlock Text="成品配置" FontWeight="SemiBold" />
+                                                            <TextBlock Text="进出场" />
                                                             <TextBox Text="{Binding UrbanConfigProductDeviceId}" />
-                                                            <TextBlock Text="siteType (1=工地 2=消纳场)" />
+                                                            <TextBlock Text="场地" />
                                                             <TextBox Text="{Binding UrbanConfigProductSiteType}" />
                                                         </StackPanel>
                                                     </Border>

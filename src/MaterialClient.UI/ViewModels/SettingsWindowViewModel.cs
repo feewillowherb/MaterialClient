@@ -88,7 +88,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _urbanConfigGateEnabled;
     [Reactive] private bool _urbanConfigProductEnabled;
     [Reactive] private string? _urbanConfigWbInOutType;
-    [Reactive] private string? _urbanConfigWbDataSource = "WEIGHBRIDGE_XIAOSHAN";
     [Reactive] private string? _urbanConfigGateDeviceId;
     [Reactive] private string? _urbanConfigGateSiteType;
     [Reactive] private string? _urbanConfigProductDeviceId;
@@ -256,7 +255,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             .Subscribe(_ => MarkUrbanConfigDirty());
         this.WhenAnyValue(
                 x => x.UrbanConfigWbInOutType,
-                x => x.UrbanConfigWbDataSource,
                 x => x.UrbanConfigGateDeviceId,
                 x => x.UrbanConfigGateSiteType,
                 x => x.UrbanConfigProductDeviceId,
@@ -537,7 +535,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             var wb = modes.GetSettings(XiaoshanUploadModeNames.Weighbridge);
             UrbanConfigWbInOutType = wb.InOutType;
-            UrbanConfigWbDataSource = wb.DataSource ?? "WEIGHBRIDGE_XIAOSHAN";
 
             var gate = modes.GetSettings(XiaoshanUploadModeNames.Gate);
             UrbanConfigGateDeviceId = gate.DeviceId;
@@ -575,7 +572,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 [XiaoshanUploadModeNames.Weighbridge] = new()
                 {
                     InOutType = UrbanConfigWbInOutType,
-                    DataSource = UrbanConfigWbDataSource
+                    DataSource = XiaoshanUploadDefaults.WeighbridgeDataSource
                 },
                 [XiaoshanUploadModeNames.Gate] = new()
                 {
