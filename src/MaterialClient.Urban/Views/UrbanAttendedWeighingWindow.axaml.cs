@@ -136,22 +136,4 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
             System.Diagnostics.Debug.WriteLine(ex);
         }
     }
-
-    private async void OnXiaoshanUploadConfigClick(object? sender, RoutedEventArgs e)
-    {
-        if (_serviceProvider == null) return;
-
-        try
-        {
-            var window = _serviceProvider.GetRequiredService<XiaoshanUploadConfigWindow>();
-            if (window.ViewModel is not null)
-                await window.ViewModel.InitializeAsync();
-
-            await window.ShowDialog(this);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(ex);
-        }
-    }
 }

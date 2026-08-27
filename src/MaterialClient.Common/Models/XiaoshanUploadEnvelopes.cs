@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace MaterialClient.Urban.Models;
+namespace MaterialClient.Common.Models;
 
 public static class XiaoshanUploadModeNames
 {

@@ -158,6 +158,9 @@
                  SelectionChanged="OnNavigationSelectionChanged"
                  BorderThickness="1,0,1,1"
                  BorderBrush="LightGray">
+            <ListBoxItem Tag="UrbanConfig"
+                         x:Name="UrbanConfigNavItem"
+                         IsVisible="{Binding ShowUrbanConfigSettings}">城管配置</ListBoxItem>
             <ListBoxItem Tag="ScaleSettings" x:Name="ScaleSettingsNavItem">地磅设置</ListBoxItem>
             <ListBoxItem Tag="WeighingSettings" x:Name="WeighingSettingsNavItem">称重设置</ListBoxItem>
             <ListBoxItem Tag="CameraSettings" x:Name="CameraSettingsNavItem">摄像头设置</ListBoxItem>
@@ -180,6 +183,103 @@
                           HorizontalScrollBarVisibility="Hidden"
                           AllowAutoHide="True">
                 <StackPanel Spacing="0" Margin="0">
+                    <!-- Urban config (Xiaoshan upload) — first section -->
+                    <Border x:Name="UrbanConfig"
+                            Classes="section-header"
+                            Padding="0,0,0,0"
+                            IsVisible="{Binding ShowUrbanConfigSettings}">
+                        <Canvas>
+                            <TextBlock Text="城管配置"
+                                       FontSize="14"
+                                       Background="White"
+                                       Foreground="Black"
+                                       Canvas.Left="20"
+                                       Canvas.Top="-7"
+                                       Width="64"
+                                       TextAlignment="Center" />
+                        </Canvas>
+                    </Border>
+                    <Border Padding="20" Margin="0,0,0,0"
+                            IsVisible="{Binding ShowUrbanConfigSettings}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="{Binding UrbanConfigStatusMessage}"
+                                       TextWrapping="Wrap"
+                                       Foreground="#666666" />
+                            <TextBlock Text="{Binding UrbanConfigSkipHints}"
+                                       Foreground="#E65100"
+                                       TextWrapping="Wrap" />
+
+                            <TextBlock Text="显示名称" />
+                            <TextBox Text="{Binding UrbanConfigDisplayName}" />
+
+                            <TextBlock Text="备注" />
+                            <TextBox Text="{Binding UrbanConfigRemark}"
+                                     AcceptsReturn="True"
+                                     Height="50"
+                                     TextWrapping="Wrap" />
+
+                            <TextBlock Text="上报模式" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <CheckBox Content="地磅" IsChecked="{Binding UrbanConfigWeighbridgeEnabled}" />
+                                <CheckBox Content="卡口" IsChecked="{Binding UrbanConfigGateEnabled}" />
+                                <CheckBox Content="成品" IsChecked="{Binding UrbanConfigProductEnabled}" />
+                            </StackPanel>
+
+                            <Border IsVisible="{Binding UrbanConfigWeighbridgeEnabled}"
+                                    BorderBrush="#EEEEEE"
+                                    BorderThickness="1"
+                                    Padding="10">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="地磅 Weighbridge" FontWeight="SemiBold" />
+                                    <TextBlock Text="inOutType (0=进 1=出)" />
+                                    <TextBox Text="{Binding UrbanConfigWbInOutType}" />
+                                    <TextBlock Text="dataSource" />
+                                    <TextBox Text="{Binding UrbanConfigWbDataSource}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border IsVisible="{Binding UrbanConfigGateEnabled}"
+                                    BorderBrush="#EEEEEE"
+                                    BorderThickness="1"
+                                    Padding="10">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="卡口 Gate" FontWeight="SemiBold" />
+                                    <TextBlock Text="deviceID (01=进 02=出)" />
+                                    <TextBox Text="{Binding UrbanConfigGateDeviceId}" />
+                                    <TextBlock Text="siteType (1=工地 2=消纳场)" />
+                                    <TextBox Text="{Binding UrbanConfigGateSiteType}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border IsVisible="{Binding UrbanConfigProductEnabled}"
+                                    BorderBrush="#EEEEEE"
+                                    BorderThickness="1"
+                                    Padding="10">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="成品 Product" FontWeight="SemiBold" />
+                                    <TextBlock Text="deviceID (01=进 02=出)" />
+                                    <TextBox Text="{Binding UrbanConfigProductDeviceId}" />
+                                    <TextBlock Text="siteType (1=工地 2=消纳场)" />
+                                    <TextBox Text="{Binding UrbanConfigProductSiteType}" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="静态字段" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            <TextBlock Text="buildLicenseNo" />
+                            <TextBox Text="{Binding UrbanConfigStaticBuildLicenseNo}" />
+                            <TextBlock Text="areaCode" />
+                            <TextBox Text="{Binding UrbanConfigStaticAreaCode}" />
+                            <TextBlock Text="spaceName（可选）" />
+                            <TextBox Text="{Binding UrbanConfigStaticSpaceName}" />
+
+                            <Button Content="从服务器刷新"
+                                    HorizontalAlignment="Left"
+                                    Classes="brand-primary-button"
+                                    Command="{Binding RefreshUrbanConfigCommand}"
+                                    IsEnabled="{Binding !IsUrbanConfigBusy}" />
+                        </StackPanel>
+                    </Border>
+
                     <!-- Scale Settings Group -->
                     <Border x:Name="ScaleSettings"
                             Classes="section-header"

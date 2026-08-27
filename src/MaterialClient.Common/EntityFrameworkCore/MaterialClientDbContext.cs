@@ -45,7 +45,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
 
     // Urban extension DbSet
     public DbSet<UrbanWeighingExtension> UrbanWeighingExtensions { get; set; }
-    public DbSet<XiaoshanUploadConfigCache> XiaoshanUploadConfigCaches { get; set; }
 
     // Recycle Waybill extension DbSet
     public DbSet<RecycleWaybillExtension> RecycleWaybillExtensions { get; set; }
@@ -269,18 +268,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.UnitPrice).HasPrecision(18, 4);
             entity.Property(e => e.SaleContractNo).HasMaxLength(100);
             entity.HasIndex(e => e.WaybillId).IsUnique();
-        });
-
-        modelBuilder.Entity<XiaoshanUploadConfigCache>(entity =>
-        {
-            entity.ConfigureByConvention();
-            entity.ToTable("XiaoshanUploadConfigCaches");
-            entity.Property(e => e.ProjectId).IsRequired();
-            entity.Property(e => e.DisplayName).HasMaxLength(200);
-            entity.Property(e => e.Remark).HasMaxLength(1000);
-            entity.Property(e => e.ModesJson).IsRequired().HasMaxLength(8000);
-            entity.Property(e => e.SettingsJson).IsRequired().HasMaxLength(8000);
-            entity.HasIndex(e => e.ProjectId).IsUnique();
         });
     }
 

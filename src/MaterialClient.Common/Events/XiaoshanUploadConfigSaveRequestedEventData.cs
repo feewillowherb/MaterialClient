@@ -1,0 +1,29 @@
+namespace MaterialClient.Common.Events;
+
+/// <summary>
+///     Request to push Xiaoshan upload config to the server (Urban LocalEvent handler).
+/// </summary>
+public sealed class XiaoshanUploadConfigSaveRequestedEventData
+{
+    public required string? DisplayName { get; init; }
+
+    public required string? Remark { get; init; }
+
+    public required string ModesJson { get; init; }
+
+    public required string SettingsJson { get; init; }
+
+    public TaskCompletionSource<XiaoshanUploadConfigSyncResult> Completion { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+}
+
+/// <summary>
+///     Outcome of a Xiaoshan upload config push (server is authority).
+/// </summary>
+public record XiaoshanUploadConfigSyncResult(
+    bool Success,
+    string? Message,
+    string? DisplayName,
+    string? Remark,
+    string ModesJson,
+    string SettingsJson);

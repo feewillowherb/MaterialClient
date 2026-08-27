@@ -11,7 +11,7 @@ using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Utils;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Dtos;
-using MaterialClient.Urban.Models;
+using MaterialClient.Common.Models;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -42,7 +42,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
-    private readonly IXiaoshanUploadConfigClientService _uploadConfigService;
+    private readonly IXiaoshanUploadConfigClientFacade _uploadConfigService;
     private readonly IXiaoshanUploadFieldMappingService _fieldMappingService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
@@ -54,7 +54,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
         IMachineCodeService machineCodeService,
-        IXiaoshanUploadConfigClientService uploadConfigService,
+        IXiaoshanUploadConfigClientFacade uploadConfigService,
         IXiaoshanUploadFieldMappingService fieldMappingService,
         ILogger<UrbanServerUploadService> logger)
     {
@@ -213,9 +213,14 @@ public class UrbanServerUploadService : IUrbanServerUploadService
 
     private async Task LogXiaoshanFieldMappingSkipsAsync(WeighingRecord record)
     {
-        var config = await _uploadConfigService.GetLocalAlignedAsync();
-        if (config is null)
+        XiaoshanUploadConfigSnapshot config;
+        try
         {
+            config = await _uploadConfigService.GetFromServerAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Skip Xiaoshan field-mapping log; config unavailable");
             return;
         }
 

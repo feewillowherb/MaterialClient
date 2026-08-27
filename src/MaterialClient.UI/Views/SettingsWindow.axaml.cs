@@ -70,6 +70,8 @@ public partial class SettingsWindow : Window, ITransientDependency
     private void InitializeSectionTracking()
     {
         // Map navigation items to sections
+        if (this.FindControl<ListBoxItem>("UrbanConfigNavItem") is { } urbanConfigNav)
+            _navigationItems["UrbanConfig"] = urbanConfigNav;
         if (this.FindControl<ListBoxItem>("ScaleSettingsNavItem") is { } scaleNav)
             _navigationItems["ScaleSettings"] = scaleNav;
         if (this.FindControl<ListBoxItem>("WeighingSettingsNavItem") is { } weighingNav)
@@ -90,6 +92,8 @@ public partial class SettingsWindow : Window, ITransientDependency
             _navigationItems["AnomalySettings"] = anomalyNav;
 
         // Map section borders
+        if (this.FindControl<Border>("UrbanConfig") is { } urbanConfigBorder)
+            _sectionElements["UrbanConfig"] = urbanConfigBorder;
         if (this.FindControl<Border>("ScaleSettings") is { } scaleBorder)
             _sectionElements["ScaleSettings"] = scaleBorder;
         if (this.FindControl<Border>("WeighingSettings") is { } weighingBorder)
@@ -118,10 +122,19 @@ public partial class SettingsWindow : Window, ITransientDependency
                 .Subscribe(_ => OnContentScrollChanged());
         }
 
-        // Set initial selection
-        if (NavigationList != null && _navigationItems.TryGetValue("ScaleSettings", out var firstNav))
+        // Set initial selection: Urban config first when visible
+        if (NavigationList != null)
         {
-            NavigationList.SelectedItem = firstNav;
+            if (DataContext is SettingsWindowViewModel { ShowUrbanConfigSettings: true }
+                && _navigationItems.TryGetValue("UrbanConfig", out var urbanNav)
+                && urbanNav.IsVisible)
+            {
+                NavigationList.SelectedItem = urbanNav;
+            }
+            else if (_navigationItems.TryGetValue("ScaleSettings", out var firstNav))
+            {
+                NavigationList.SelectedItem = firstNav;
+            }
         }
     }
 

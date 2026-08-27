@@ -1,4 +1,4 @@
-using MaterialClient.Urban.Models;
+using MaterialClient.Common.Models;
 using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Urban.Services;
