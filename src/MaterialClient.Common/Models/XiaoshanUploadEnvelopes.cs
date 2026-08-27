@@ -15,6 +15,15 @@ public static class XiaoshanUploadModeNames
 public static class XiaoshanUploadDefaults
 {
     public const string WeighbridgeDataSource = "WEIGHBRIDGE_XIAOSHAN";
+
+    public const string WbInOutEnter = "0";
+    public const string WbInOutExit = "1";
+
+    public const string DeviceIdEnter = "01";
+    public const string DeviceIdExit = "02";
+
+    public const string SiteTypeConstruction = "1";
+    public const string SiteTypeDisposal = "2";
 }
 
 public record XiaoshanUploadModeSettings

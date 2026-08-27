@@ -1145,29 +1145,54 @@
                                                 </Canvas>
                                             </Border>
                                             <Border Padding="20" Margin="0,0,0,60">
-                                                <StackPanel Spacing="10">
-                                                    <TextBlock Text="{Binding UrbanConfigStatusMessage}"
-                                                               TextWrapping="Wrap"
-                                                               Foreground="#666666" />
+                                                <StackPanel Spacing="12">
+                                                    <Grid ColumnDefinitions="Auto,*"
+                                                          ColumnSpacing="12">
+                                                        <TextBlock Text="场地标识码"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="Black"
+                                                                   MinWidth="80" />
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding UrbanConfigSiteAccessCode}"
+                                                                   VerticalAlignment="Center"
+                                                                   TextWrapping="Wrap"
+                                                                   Foreground="#333333" />
+                                                    </Grid>
 
-                                                    <TextBlock Text="显示名称" />
-                                                    <TextBox Text="{Binding UrbanConfigDisplayName}" />
-
-                                                    <TextBlock Text="上报模式" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                                        <CheckBox Content="地磅" IsChecked="{Binding UrbanConfigWeighbridgeEnabled}" />
-                                                        <CheckBox Content="卡口" IsChecked="{Binding UrbanConfigGateEnabled}" />
-                                                        <CheckBox Content="成品" IsChecked="{Binding UrbanConfigProductEnabled}" />
-                                                    </StackPanel>
+                                                    <Grid ColumnDefinitions="Auto,*"
+                                                          ColumnSpacing="12">
+                                                        <TextBlock Text="上报模式"
+                                                                   VerticalAlignment="Center"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="Black"
+                                                                   MinWidth="80" />
+                                                        <StackPanel Grid.Column="1"
+                                                                    Orientation="Horizontal"
+                                                                    Spacing="12"
+                                                                    VerticalAlignment="Center">
+                                                            <CheckBox Content="地磅" IsChecked="{Binding UrbanConfigWeighbridgeEnabled}" />
+                                                            <CheckBox Content="卡口" IsChecked="{Binding UrbanConfigGateEnabled}" />
+                                                            <CheckBox Content="成品" IsChecked="{Binding UrbanConfigProductEnabled}" />
+                                                        </StackPanel>
+                                                    </Grid>
 
                                                     <Border IsVisible="{Binding UrbanConfigWeighbridgeEnabled}"
                                                             BorderBrush="#EEEEEE"
                                                             BorderThickness="1"
                                                             Padding="10">
-                                                        <StackPanel Spacing="6">
+                                                        <StackPanel Spacing="8">
                                                             <TextBlock Text="地磅配置" FontWeight="SemiBold" />
-                                                            <TextBlock Text="进出场" />
-                                                            <TextBox Text="{Binding UrbanConfigWbInOutType}" />
+                                                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                                                <TextBlock Text="进出场"
+                                                                           VerticalAlignment="Center"
+                                                                           Width="48" />
+                                                                <ComboBox SelectedIndex="{Binding UrbanConfigWbInOutIndex}"
+                                                                          Width="120"
+                                                                          HorizontalAlignment="Left">
+                                                                    <ComboBoxItem Content="进场" />
+                                                                    <ComboBoxItem Content="出场" />
+                                                                </ComboBox>
+                                                            </StackPanel>
                                                         </StackPanel>
                                                     </Border>
 
@@ -1175,12 +1200,32 @@
                                                             BorderBrush="#EEEEEE"
                                                             BorderThickness="1"
                                                             Padding="10">
-                                                        <StackPanel Spacing="6">
+                                                        <StackPanel Spacing="8">
                                                             <TextBlock Text="卡口配置" FontWeight="SemiBold" />
-                                                            <TextBlock Text="进出场" />
-                                                            <TextBox Text="{Binding UrbanConfigGateDeviceId}" />
-                                                            <TextBlock Text="场地" />
-                                                            <TextBox Text="{Binding UrbanConfigGateSiteType}" />
+                                                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                                    <TextBlock Text="进出场"
+                                                                               VerticalAlignment="Center"
+                                                                               Width="48" />
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigGateDeviceIndex}"
+                                                                              Width="120"
+                                                                              HorizontalAlignment="Left">
+                                                                        <ComboBoxItem Content="进场" />
+                                                                        <ComboBoxItem Content="出场" />
+                                                                    </ComboBox>
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                                    <TextBlock Text="场地"
+                                                                               VerticalAlignment="Center"
+                                                                               Width="36" />
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigGateSiteIndex}"
+                                                                              Width="120"
+                                                                              HorizontalAlignment="Left">
+                                                                        <ComboBoxItem Content="工地" />
+                                                                        <ComboBoxItem Content="消纳场" />
+                                                                    </ComboBox>
+                                                                </StackPanel>
+                                                            </StackPanel>
                                                         </StackPanel>
                                                     </Border>
 
@@ -1188,12 +1233,32 @@
                                                             BorderBrush="#EEEEEE"
                                                             BorderThickness="1"
                                                             Padding="10">
-                                                        <StackPanel Spacing="6">
+                                                        <StackPanel Spacing="8">
                                                             <TextBlock Text="成品配置" FontWeight="SemiBold" />
-                                                            <TextBlock Text="进出场" />
-                                                            <TextBox Text="{Binding UrbanConfigProductDeviceId}" />
-                                                            <TextBlock Text="场地" />
-                                                            <TextBox Text="{Binding UrbanConfigProductSiteType}" />
+                                                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                                    <TextBlock Text="进出场"
+                                                                               VerticalAlignment="Center"
+                                                                               Width="48" />
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigProductDeviceIndex}"
+                                                                              Width="120"
+                                                                              HorizontalAlignment="Left">
+                                                                        <ComboBoxItem Content="进场" />
+                                                                        <ComboBoxItem Content="出场" />
+                                                                    </ComboBox>
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                                    <TextBlock Text="场地"
+                                                                               VerticalAlignment="Center"
+                                                                               Width="36" />
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigProductSiteIndex}"
+                                                                              Width="120"
+                                                                              HorizontalAlignment="Left">
+                                                                        <ComboBoxItem Content="工地" />
+                                                                        <ComboBoxItem Content="消纳场" />
+                                                                    </ComboBox>
+                                                                </StackPanel>
+                                                            </StackPanel>
                                                         </StackPanel>
                                                     </Border>
                                                 </StackPanel>
