@@ -11,6 +11,7 @@ using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Utils;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Dtos;
+using MaterialClient.Urban.Models;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -41,6 +42,8 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
+    private readonly IXiaoshanUploadConfigClientService _uploadConfigService;
+    private readonly IXiaoshanUploadFieldMappingService _fieldMappingService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
@@ -51,6 +54,8 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
         IMachineCodeService machineCodeService,
+        IXiaoshanUploadConfigClientService uploadConfigService,
+        IXiaoshanUploadFieldMappingService fieldMappingService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
@@ -60,6 +65,8 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _extensionService = extensionService;
         _licenseService = licenseService;
         _machineCodeService = machineCodeService;
+        _uploadConfigService = uploadConfigService;
+        _fieldMappingService = fieldMappingService;
         _logger = logger;
     }
 
@@ -129,6 +136,8 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             }
 
             var isAnomaly = extension.IsAnomaly;
+
+            await LogXiaoshanFieldMappingSkipsAsync(record);
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
@@ -200,5 +209,44 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         }
 
         return files.Exists(f => f.AttachType is AttachType.Lpr or AttachType.UrbanPhoto);
+    }
+
+    private async Task LogXiaoshanFieldMappingSkipsAsync(WeighingRecord record)
+    {
+        var config = await _uploadConfigService.GetLocalAlignedAsync();
+        if (config is null)
+        {
+            return;
+        }
+
+        var modes = XiaoshanUploadEnvelopeJson.ParseModes(config.ModesJson);
+        var settings = XiaoshanUploadEnvelopeJson.ParseSettings(config.SettingsJson);
+        var context = new XiaoshanWeighingContext(
+            CarNo: record.PlateNumber,
+            CarNoColor: null,
+            CarType: null,
+            GoodsWeight: MaterialMath.ConvertTonToKg(record.TotalWeight).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            SnapTime: record.AddDate,
+            SnapImages: null);
+
+        foreach (var mode in modes.EnabledModes)
+        {
+            var result = _fieldMappingService.MapForMode(
+                mode,
+                settings,
+                modes.GetSettings(mode),
+                context);
+
+            foreach (var skip in result.SkippedFields)
+            {
+                _logger.LogInformation(
+                    "Xiaoshan upload field skipped: RecordId={RecordId} Mode={Mode} Field={Field} Reason={Reason} Source={Source}",
+                    record.Id,
+                    skip.Mode,
+                    skip.Field,
+                    skip.Reason,
+                    skip.SourceAttempted);
+            }
+        }
     }
 }

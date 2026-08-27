@@ -1,75 +1,123 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="clr-namespace:MaterialClient.Urban.ViewModels"
-        x:Class="MaterialClient.Urban.Views.XiaoshanUploadConfigWindow"
-        x:DataType="vm:XiaoshanUploadConfigWindowViewModel"
-        Title="Xiaoshan Upload Config"
-        Width="560"
-        Height="520"
-        CanResize="False"
-        WindowStartupLocation="CenterOwner"
-        SystemDecorations="None"
-        Background="White">
-
-    <Grid>
-        <Border BorderBrush="#CCCCCC" BorderThickness="1" />
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="50" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <Grid Grid.Row="0" Background="#6498FE">
-                <TextBlock Text="萧山上报配置"
-                           FontSize="14"
-                           Foreground="White"
-                           VerticalAlignment="Center"
-                           Margin="20,0,0,0" />
-                <Button Content="✕"
-                        FontSize="18"
-                        HorizontalAlignment="Right"
-                        Width="40"
-                        Height="40"
-                        Cursor="Hand"
-                        Click="OnCloseButtonClick"
-                        Classes="titlebar-close-button" />
-            </Grid>
-
-            <ScrollViewer Grid.Row="1" Margin="24">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="{Binding AlignmentStatus}" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#666666" />
-                    <TextBlock>
-                        <Run Text="Config version: " />
-                        <Run Text="{Binding ConfigVersion}" FontWeight="SemiBold" />
-                    </TextBlock>
-
-                    <TextBlock Text="显示名称" />
-                    <TextBox Text="{Binding DisplayName}" />
-
-                    <TextBlock Text="备注" />
-                    <TextBox Text="{Binding Remark}" AcceptsReturn="True" Height="60" TextWrapping="Wrap" />
-
-                    <TextBlock Text="ModesJson（预留三模式）" />
-                    <TextBox Text="{Binding ModesJson}" AcceptsReturn="True" Height="80" TextWrapping="Wrap"
-                             FontFamily="Consolas, monospace" />
-
-                    <TextBlock Text="SettingsJson（预留字段映射）" />
-                    <TextBox Text="{Binding SettingsJson}" AcceptsReturn="True" Height="80" TextWrapping="Wrap"
-                             FontFamily="Consolas, monospace" />
-                </StackPanel>
-            </ScrollViewer>
-
-            <StackPanel Grid.Row="2"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Margin="16"
-                        Spacing="8">
-                <Button Content="从服务端刷新" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}" />
-                <Button Content="保存到服务端" Command="{Binding SaveCommand}" IsEnabled="{Binding !IsBusy}" />
-                <Button Content="关闭" Click="OnCloseButtonClick" />
-            </StackPanel>
-        </Grid>
-    </Grid>
-</Window>
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MaterialClient.Urban.ViewModels"
+        x:Class="MaterialClient.Urban.Views.XiaoshanUploadConfigWindow"
+        x:DataType="vm:XiaoshanUploadConfigWindowViewModel"
+        Title="Xiaoshan Upload Config"
+        Width="580"
+        Height="640"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White">
+
+    <Grid>
+        <Border BorderBrush="#CCCCCC" BorderThickness="1" />
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Background="#6498FE">
+                <TextBlock Text="萧山上报配置"
+                           FontSize="14"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="20,0,0,0" />
+                <Button Content="✕"
+                        FontSize="18"
+                        HorizontalAlignment="Right"
+                        Width="40"
+                        Height="40"
+                        Cursor="Hand"
+                        Click="OnCloseButtonClick"
+                        Classes="titlebar-close-button" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" Margin="24">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding AlignmentStatus}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#666666" />
+                    <TextBlock>
+                        <Run Text="Config version: " />
+                        <Run Text="{Binding ConfigVersion}" FontWeight="SemiBold" />
+                    </TextBlock>
+                    <TextBlock Text="{Binding SkipHints}" Foreground="#E65100" TextWrapping="Wrap" />
+
+                    <TextBlock Text="显示名称" />
+                    <TextBox Text="{Binding DisplayName}" />
+
+                    <TextBlock Text="备注" />
+                    <TextBox Text="{Binding Remark}" AcceptsReturn="True" Height="50" TextWrapping="Wrap" />
+
+                    <TextBlock Text="上报模式" FontWeight="SemiBold" Margin="0,8,0,0" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <CheckBox Content="地磅" IsChecked="{Binding WeighbridgeEnabled}" />
+                        <CheckBox Content="卡口" IsChecked="{Binding GateEnabled}" />
+                        <CheckBox Content="成品" IsChecked="{Binding ProductEnabled}" />
+                    </StackPanel>
+
+                    <Border IsVisible="{Binding WeighbridgeEnabled}" BorderBrush="#EEEEEE" BorderThickness="1" Padding="10">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="地磅 Weighbridge" FontWeight="SemiBold" />
+                            <TextBlock Text="inOutType (0=进 1=出)" />
+                            <TextBox Text="{Binding WbInOutType}" />
+                            <TextBlock Text="dataSource" />
+                            <TextBox Text="{Binding WbDataSource}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border IsVisible="{Binding GateEnabled}" BorderBrush="#EEEEEE" BorderThickness="1" Padding="10">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="卡口 Gate" FontWeight="SemiBold" />
+                            <TextBlock Text="deviceID (01=进 02=出)" />
+                            <TextBox Text="{Binding GateDeviceId}" />
+                            <TextBlock Text="siteType (1=工地 2=消纳场)" />
+                            <TextBox Text="{Binding GateSiteType}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border IsVisible="{Binding ProductEnabled}" BorderBrush="#EEEEEE" BorderThickness="1" Padding="10">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="成品 Product" FontWeight="SemiBold" />
+                            <TextBlock Text="deviceID (01=进 02=出)" />
+                            <TextBox Text="{Binding ProductDeviceId}" />
+                            <TextBlock Text="siteType (1=工地 2=消纳场)" />
+                            <TextBox Text="{Binding ProductSiteType}" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="静态字段" FontWeight="SemiBold" Margin="0,8,0,0" />
+                    <TextBlock Text="buildLicenseNo" />
+                    <TextBox Text="{Binding StaticBuildLicenseNo}" />
+                    <TextBlock Text="areaCode" />
+                    <TextBox Text="{Binding StaticAreaCode}" />
+                    <TextBlock Text="spaceName（可选）" />
+                    <TextBox Text="{Binding StaticSpaceName}" />
+
+                    <CheckBox Content="显示高级 JSON" IsChecked="{Binding ShowAdvancedJson}" />
+                    <StackPanel IsVisible="{Binding ShowAdvancedJson}" Spacing="6">
+                        <TextBlock Text="ModesJson" />
+                        <TextBox Text="{Binding ModesJson}" IsReadOnly="True" AcceptsReturn="True" Height="60"
+                                 FontFamily="Consolas, monospace" />
+                        <TextBlock Text="SettingsJson" />
+                        <TextBox Text="{Binding SettingsJson}" IsReadOnly="True" AcceptsReturn="True" Height="60"
+                                 FontFamily="Consolas, monospace" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="16"
+                        Spacing="8">
+                <Button Content="从服务端刷新" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}" />
+                <Button Content="保存到服务端" Command="{Binding SaveCommand}" IsEnabled="{Binding !IsBusy}" />
+                <Button Content="关闭" Click="OnCloseButtonClick" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
