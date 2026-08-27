@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MaterialClient.Urban.ViewModels"
+        x:Class="MaterialClient.Urban.Views.XiaoshanUploadConfigWindow"
+        x:DataType="vm:XiaoshanUploadConfigWindowViewModel"
+        Title="Xiaoshan Upload Config"
+        Width="560"
+        Height="520"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="White">
+
+    <Grid>
+        <Border BorderBrush="#CCCCCC" BorderThickness="1" />
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Background="#6498FE">
+                <TextBlock Text="萧山上报配置"
+                           FontSize="14"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="20,0,0,0" />
+                <Button Content="✕"
+                        FontSize="18"
+                        HorizontalAlignment="Right"
+                        Width="40"
+                        Height="40"
+                        Cursor="Hand"
+                        Click="OnCloseButtonClick"
+                        Classes="titlebar-close-button" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" Margin="24">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="{Binding AlignmentStatus}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#666666" />
+
+                    <TextBlock Text="显示名称" />
+                    <TextBox Text="{Binding DisplayName}" />
+
+                    <TextBlock Text="备注" />
+                    <TextBox Text="{Binding Remark}" AcceptsReturn="True" Height="60" TextWrapping="Wrap" />
+
+                    <TextBlock Text="ModesJson（预留三模式）" />
+                    <TextBox Text="{Binding ModesJson}" AcceptsReturn="True" Height="80" TextWrapping="Wrap"
+                             FontFamily="Consolas, monospace" />
+
+                    <TextBlock Text="SettingsJson（预留字段映射）" />
+                    <TextBox Text="{Binding SettingsJson}" AcceptsReturn="True" Height="80" TextWrapping="Wrap"
+                             FontFamily="Consolas, monospace" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="16"
+                        Spacing="8">
+                <Button Content="从服务端刷新" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}" />
+                <Button Content="保存到服务端" Command="{Binding SaveCommand}" IsEnabled="{Binding !IsBusy}" />
+                <Button Content="关闭" Click="OnCloseButtonClick" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

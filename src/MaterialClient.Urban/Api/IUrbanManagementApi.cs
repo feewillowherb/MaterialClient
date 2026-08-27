@@ -51,6 +51,13 @@ public interface IUrbanManagementApi
     [Get("/api/app/urban-weighing-record/pending-server-approval-sync")]
     Task<List<MaterialClient.Common.Models.WeighingRecordApprovedPushDto>> GetPendingServerApprovalSyncAsync(
         [Query] PendingServerApprovalSyncQueryDto input);
+
+    [Get("/api/app/xiaoshan-upload-config/by-project-id")]
+    Task<XiaoshanUploadConfigDto> GetXiaoshanUploadConfigAsync([Query] Guid projectId);
+
+    [Headers("Content-Type: application/json")]
+    [Post("/api/app/xiaoshan-upload-config/write")]
+    Task<XiaoshanUploadConfigDto> WriteXiaoshanUploadConfigAsync([Body] XiaoshanUploadConfigWriteDto dto);
 }
 
 /// <summary>

@@ -47,6 +47,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="4"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Button Classes="popup-menu-item-button" Content="项目信息" Click="OnProjectInfoClick" />
+                    <Button Classes="popup-menu-item-button" Content="上报配置" Click="OnXiaoshanUploadConfigClick" />
                     <Button Classes="popup-menu-item-button" Content="系统设置" Click="OnSystemSettingsClick" />
                 </StackPanel>
             </ui:WeighingWindowBase.MenuItems>
