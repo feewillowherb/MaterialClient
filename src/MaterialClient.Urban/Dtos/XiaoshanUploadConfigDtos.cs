@@ -21,6 +21,9 @@ public class XiaoshanUploadConfigDto
 
     [JsonPropertyName("settingsJson")]
     public string SettingsJson { get; set; } = "{}";
+
+    [JsonPropertyName("configVersion")]
+    public long ConfigVersion { get; set; }
 }
 
 public class XiaoshanUploadConfigWriteDto
@@ -39,13 +42,38 @@ public class XiaoshanUploadConfigWriteDto
 
     [JsonPropertyName("settingsJson")]
     public string? SettingsJson { get; set; }
+
+    [JsonPropertyName("expectedConfigVersion")]
+    public long ExpectedConfigVersion { get; set; }
+
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
+
+    [JsonPropertyName("actor")]
+    public string? Actor { get; set; }
+}
+
+public class XiaoshanUploadConfigWriteResultDto
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("isConflict")]
+    public bool IsConflict { get; set; }
+
+    [JsonPropertyName("config")]
+    public XiaoshanUploadConfigDto? Config { get; set; }
+
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
 }
 
 /// <summary>
-///     Result of a client save attempt (aligned vs draft retained).
+///     Result of a client save attempt (aligned vs draft retained vs version conflict).
 /// </summary>
 public record XiaoshanUploadConfigSaveResult(
     bool Success,
     bool IsAlignedWithServer,
+    bool IsConflict,
     string? Message,
     XiaoshanUploadConfigDto? Config);

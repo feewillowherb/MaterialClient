@@ -16,6 +16,7 @@ public partial class XiaoshanUploadConfigWindowViewModel : ReactiveObject, ITran
     [Reactive] private string? _remark;
     [Reactive] private string _modesJson = "{}";
     [Reactive] private string _settingsJson = "{}";
+    [Reactive] private long _configVersion;
     [Reactive] private string _alignmentStatus = "Unknown";
     [Reactive] private string? _statusMessage;
     [Reactive] private bool _isBusy;
@@ -36,7 +37,7 @@ public partial class XiaoshanUploadConfigWindowViewModel : ReactiveObject, ITran
         if (local is not null)
         {
             ApplyDto(local);
-            AlignmentStatus = "Local cache (may be stale)";
+            AlignmentStatus = $"Local cache v{local.ConfigVersion} (may be stale)";
         }
 
         try
@@ -58,7 +59,7 @@ public partial class XiaoshanUploadConfigWindowViewModel : ReactiveObject, ITran
         {
             var remote = await _configService.RefreshFromServerAsync();
             ApplyDto(remote);
-            AlignmentStatus = "Aligned with server";
+            AlignmentStatus = $"Aligned with server (v{remote.ConfigVersion})";
             StatusMessage = "Refreshed from server.";
         }
         finally
@@ -78,15 +79,22 @@ public partial class XiaoshanUploadConfigWindowViewModel : ReactiveObject, ITran
                 DisplayName = DisplayName,
                 Remark = Remark,
                 ModesJson = ModesJson,
-                SettingsJson = SettingsJson
+                SettingsJson = SettingsJson,
+                ExpectedConfigVersion = ConfigVersion
             };
 
             var result = await _configService.SaveDraftToServerAsync(draft);
             if (result.Success && result.Config is not null)
             {
                 ApplyDto(result.Config);
-                AlignmentStatus = "Aligned with server";
+                AlignmentStatus = $"Aligned with server (v{result.Config.ConfigVersion})";
                 StatusMessage = "Saved. Server accepted and local cache aligned.";
+            }
+            else if (result.IsConflict && result.Config is not null)
+            {
+                ApplyDto(result.Config);
+                AlignmentStatus = $"Conflict — server v{result.Config.ConfigVersion} applied";
+                StatusMessage = $"Version conflict. Your changes were not saved. {result.Message}";
             }
             else
             {
@@ -106,5 +114,6 @@ public partial class XiaoshanUploadConfigWindowViewModel : ReactiveObject, ITran
         Remark = dto.Remark;
         ModesJson = string.IsNullOrWhiteSpace(dto.ModesJson) ? "{}" : dto.ModesJson;
         SettingsJson = string.IsNullOrWhiteSpace(dto.SettingsJson) ? "{}" : dto.SettingsJson;
+        ConfigVersion = dto.ConfigVersion;
     }
 }

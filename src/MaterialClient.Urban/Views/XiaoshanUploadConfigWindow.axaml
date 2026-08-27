@@ -40,6 +40,10 @@
                 <StackPanel Spacing="12">
                     <TextBlock Text="{Binding AlignmentStatus}" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#666666" />
+                    <TextBlock>
+                        <Run Text="Config version: " />
+                        <Run Text="{Binding ConfigVersion}" FontWeight="SemiBold" />
+                    </TextBlock>
 
                     <TextBlock Text="显示名称" />
                     <TextBox Text="{Binding DisplayName}" />

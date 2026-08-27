@@ -45,4 +45,9 @@ public class XiaoshanUploadConfigCache : AuditedEntity<Guid>
     ///     True when local cache matches last successful server get/write response.
     /// </summary>
     public bool IsAlignedWithServer { get; set; }
+
+    /// <summary>
+    ///     Mirror of server ConfigVersion when aligned; draft may carry stale value when not aligned.
+    /// </summary>
+    public long ConfigVersion { get; set; }
 }

@@ -57,7 +57,7 @@ public interface IUrbanManagementApi
 
     [Headers("Content-Type: application/json")]
     [Post("/api/app/xiaoshan-upload-config/write")]
-    Task<XiaoshanUploadConfigDto> WriteXiaoshanUploadConfigAsync([Body] XiaoshanUploadConfigWriteDto dto);
+    Task<XiaoshanUploadConfigWriteResultDto> WriteXiaoshanUploadConfigAsync([Body] XiaoshanUploadConfigWriteDto dto);
 }
 
 /// <summary>
