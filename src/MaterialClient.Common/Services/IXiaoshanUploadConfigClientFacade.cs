@@ -16,7 +16,12 @@ public record XiaoshanUploadConfigSnapshot(
     string? DisplayName,
     string? Remark,
     string ModesJson,
-    string SettingsJson);
+    string SettingsJson,
+    long ConfigVersion = 0)
+{
+    /// <summary>True when UrbanManagement has a persisted authoritative row.</summary>
+    public bool HasServerRow => ConfigVersion > 0;
+}
 
 public record XiaoshanUploadConfigDraft(
     string? DisplayName,

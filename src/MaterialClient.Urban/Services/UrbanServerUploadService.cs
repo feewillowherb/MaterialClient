@@ -244,13 +244,28 @@ public class UrbanServerUploadService : IUrbanServerUploadService
 
             foreach (var skip in result.SkippedFields)
             {
-                _logger.LogInformation(
-                    "Xiaoshan upload field skipped: RecordId={RecordId} Mode={Mode} Field={Field} Reason={Reason} Source={Source}",
-                    record.Id,
-                    skip.Mode,
-                    skip.Field,
-                    skip.Reason,
-                    skip.SourceAttempted);
+                // Optional empties (e.g. spaceName) are expected; keep noise out of Information.
+                var isOptionalSkip = skip.Reason.Contains("No data source", StringComparison.OrdinalIgnoreCase);
+                if (isOptionalSkip)
+                {
+                    _logger.LogDebug(
+                        "Xiaoshan upload field skipped: RecordId={RecordId} Mode={Mode} Field={Field} Reason={Reason} Source={Source}",
+                        record.Id,
+                        skip.Mode,
+                        skip.Field,
+                        skip.Reason,
+                        skip.SourceAttempted);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Xiaoshan upload field skipped: RecordId={RecordId} Mode={Mode} Field={Field} Reason={Reason} Source={Source}",
+                        record.Id,
+                        skip.Mode,
+                        skip.Field,
+                        skip.Reason,
+                        skip.SourceAttempted);
+                }
             }
         }
     }

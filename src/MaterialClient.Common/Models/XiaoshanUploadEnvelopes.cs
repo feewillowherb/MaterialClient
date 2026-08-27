@@ -144,9 +144,14 @@ public static class XiaoshanUploadEnvelopeJson
         }
 
         var settings = new Dictionary<string, XiaoshanUploadModeSettings>(StringComparer.OrdinalIgnoreCase);
+        // STJ deserializes Dictionary without OrdinalIgnoreCase; normalize keys first.
+        var incoming = new Dictionary<string, XiaoshanUploadModeSettings>(
+            envelope.ModeSettings,
+            StringComparer.OrdinalIgnoreCase);
+
         foreach (var mode in XiaoshanUploadModeNames.All)
         {
-            if (envelope.ModeSettings.TryGetValue(mode, out var configured))
+            if (incoming.TryGetValue(mode, out var configured))
             {
                 settings[mode] = configured;
             }

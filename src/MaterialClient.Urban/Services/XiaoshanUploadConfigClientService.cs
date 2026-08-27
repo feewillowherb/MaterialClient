@@ -14,6 +14,11 @@ namespace MaterialClient.Urban.Services;
 /// <summary>
 ///     Server-authoritative Xiaoshan upload config client (no local cache table).
 /// </summary>
+/// <remarks>
+///     Interface name ends with Facade (not Service), so ABP conventional registration
+///     would not expose it; ExposeServices is required for DI consumers.
+/// </remarks>
+[ExposeServices(typeof(IXiaoshanUploadConfigClientFacade))]
 public class XiaoshanUploadConfigClientService : IXiaoshanUploadConfigClientFacade, ITransientDependency
 {
     private const string ClientSource = "Client";
@@ -35,7 +40,9 @@ public class XiaoshanUploadConfigClientService : IXiaoshanUploadConfigClientFaca
         _logger = logger;
     }
 
-    public async Task<XiaoshanUploadConfigSnapshot> GetFromServerAsync(CancellationToken cancellationToken = default)
+    [UnitOfWork]
+    public virtual async Task<XiaoshanUploadConfigSnapshot> GetFromServerAsync(
+        CancellationToken cancellationToken = default)
     {
         var projectId = await RequireProjectIdAsync(cancellationToken);
         var remote = await _api.GetXiaoshanUploadConfigAsync(projectId);
@@ -130,7 +137,8 @@ public class XiaoshanUploadConfigClientService : IXiaoshanUploadConfigClientFaca
             dto.DisplayName,
             dto.Remark,
             string.IsNullOrWhiteSpace(dto.ModesJson) ? "{}" : dto.ModesJson,
-            string.IsNullOrWhiteSpace(dto.SettingsJson) ? "{}" : dto.SettingsJson);
+            string.IsNullOrWhiteSpace(dto.SettingsJson) ? "{}" : dto.SettingsJson,
+            dto.ConfigVersion);
 
     private async Task<Guid> RequireProjectIdAsync(CancellationToken cancellationToken)
     {

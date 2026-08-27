@@ -23,6 +23,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.UI.Views.Dialogs;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -75,14 +76,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private int _jpegQuality = 75;
     [Reactive] private bool _showUrbanAnomalyDetectionSettings;
     [Reactive] private bool _showUrbanConfigSettings;
+    [Reactive] private string _selectedSettingsSection = "ScaleSettings";
     [Reactive] private DeliveryType _defaultDeliveryType = DeliveryType.Receiving;
     [Reactive] private decimal _urbanAnomalyUpperLimit = 30.0m;
     [Reactive] private decimal _urbanAnomalyLowerLimit = 2.0m;
     [Reactive] private decimal _urbanAnomalyDeviationPercentage = 10.0m;
 
-    // Urban / Xiaoshan upload config (server authority; no local cache table)
+    // Urban / Xiaoshan upload config (modes only in UI; remark/static fields preserved for push)
     [Reactive] private string? _urbanConfigDisplayName;
-    [Reactive] private string? _urbanConfigRemark;
     [Reactive] private bool _urbanConfigWeighbridgeEnabled = true;
     [Reactive] private bool _urbanConfigGateEnabled;
     [Reactive] private bool _urbanConfigProductEnabled;
@@ -92,12 +93,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private string? _urbanConfigGateSiteType;
     [Reactive] private string? _urbanConfigProductDeviceId;
     [Reactive] private string? _urbanConfigProductSiteType;
-    [Reactive] private string? _urbanConfigStaticBuildLicenseNo;
-    [Reactive] private string? _urbanConfigStaticAreaCode;
-    [Reactive] private string? _urbanConfigStaticSpaceName;
-    [Reactive] private string _urbanConfigSkipHints = string.Empty;
     [Reactive] private string? _urbanConfigStatusMessage;
     [Reactive] private bool _isUrbanConfigBusy;
+
+    /// <summary>Preserved for server push; not edited in settings UI.</summary>
+    private string? _preservedUrbanRemark;
+    private string? _preservedBuildLicenseNo;
+    private string? _preservedAreaCode;
+    private string? _preservedSpaceName;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -210,8 +213,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ISoundDeviceService soundDeviceService,
         ILprDeviceResolver lprDeviceResolver,
         ILocalEventBus localEventBus,
-        IUsbCameraService? usbCameraService = null,
-        IXiaoshanUploadConfigClientFacade? xiaoshanUploadConfigFacade = null)
+        IServiceProvider serviceProvider,
+        IUsbCameraService? usbCameraService = null)
     {
         _settingsService = settingsService;
         _truckScaleWeightService = truckScaleWeightService;
@@ -221,8 +224,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _soundDeviceService = soundDeviceService;
         _lprDeviceResolver = lprDeviceResolver;
         _localEventBus = localEventBus;
-        _usbCameraService = usbCameraService;
-        _xiaoshanUploadConfigFacade = xiaoshanUploadConfigFacade;
+        // Resolve optional Urban-only services from the host container (optional ctor params
+        // with defaults are unreliable under Autofac and may stay null on MaterialClient.Urban).
+        _usbCameraService = usbCameraService ?? serviceProvider.GetService<IUsbCameraService>();
+        _xiaoshanUploadConfigFacade = serviceProvider.GetService<IXiaoshanUploadConfigClientFacade>();
 
         // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
         _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
@@ -245,7 +250,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         this.WhenAnyValue(
                 x => x.UrbanConfigDisplayName,
-                x => x.UrbanConfigRemark,
                 x => x.UrbanConfigWeighbridgeEnabled,
                 x => x.UrbanConfigGateEnabled,
                 x => x.UrbanConfigProductEnabled)
@@ -258,15 +262,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 x => x.UrbanConfigProductDeviceId,
                 x => x.UrbanConfigProductSiteType)
             .Subscribe(_ => MarkUrbanConfigDirty());
-        this.WhenAnyValue(
-                x => x.UrbanConfigStaticBuildLicenseNo,
-                x => x.UrbanConfigStaticAreaCode,
-                x => x.UrbanConfigStaticSpaceName)
-            .Subscribe(_ =>
-            {
-                MarkUrbanConfigDirty();
-                UpdateUrbanConfigSkipHints();
-            });
 
         // Load available serial ports
         RefreshAvailableSerialPorts();
@@ -379,7 +374,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     SoundSN = SoundDeviceSoundSN,
                     SoundVolume = SoundDeviceSoundVolume
                 },
-                BuildUrbanSettingsFromForm(existingSettings.UrbanSettings)
+                BuildUrbanSettingsForSave(existingSettings.UrbanSettings)
             );
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -407,58 +402,62 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
-    [ReactiveCommand]
-    private async Task RefreshUrbanConfigAsync()
-    {
-        if (_xiaoshanUploadConfigFacade is null)
-        {
-            return;
-        }
-
-        await LoadUrbanConfigFromServerAsync();
-    }
-
     private async Task<bool> PushUrbanConfigViaLocalEventAsync()
     {
         IsUrbanConfigBusy = true;
         try
         {
-            var (modesJson, settingsJson) = BuildUrbanConfigJson();
+            var payload = BuildUrbanConfigJson();
             var evt = new XiaoshanUploadConfigSaveRequestedEventData
             {
                 DisplayName = UrbanConfigDisplayName,
-                Remark = UrbanConfigRemark,
-                ModesJson = modesJson,
-                SettingsJson = settingsJson
+                Remark = _preservedUrbanRemark,
+                ModesJson = payload.ModesJson,
+                SettingsJson = payload.SettingsJson
             };
 
             await _localEventBus.PublishAsync(evt);
             var result = await evt.Completion.Task.WaitAsync(TimeSpan.FromSeconds(60));
 
-            ApplyUrbanConfigSnapshot(
-                result.DisplayName,
-                result.Remark,
-                result.ModesJson,
-                result.SettingsJson);
-            await PersistUrbanSettingsMirrorAsync();
-
             if (result.Success)
             {
+                ApplyUrbanConfigSnapshot(
+                    result.DisplayName,
+                    result.Remark,
+                    result.ModesJson,
+                    result.SettingsJson);
+                await PersistUrbanSettingsMirrorAsync();
                 UrbanConfigStatusMessage = "已推送到服务器";
                 _urbanConfigDirty = false;
                 return true;
             }
 
-            UrbanConfigStatusMessage =
-                $"推送失败，已舍弃本地修改并恢复服务器配置。{result.Message}";
-            _urbanConfigDirty = false;
+            // Only discard local draft when server has an authoritative row to restore.
+            if (result.HasServerRow)
+            {
+                ApplyUrbanConfigSnapshot(
+                    result.DisplayName,
+                    result.Remark,
+                    result.ModesJson,
+                    result.SettingsJson);
+                await PersistUrbanSettingsMirrorAsync();
+                UrbanConfigStatusMessage =
+                    $"推送失败，已舍弃本地修改并恢复服务器配置。{result.Message}";
+                _urbanConfigDirty = false;
+            }
+            else
+            {
+                UrbanConfigStatusMessage =
+                    $"推送失败，服务器尚无权威配置，已保留本地编辑。{result.Message}";
+                _urbanConfigDirty = true;
+            }
+
             return false;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Urban config LocalEvent push failed");
             UrbanConfigStatusMessage = $"推送失败: {ex.Message}";
-            await LoadUrbanConfigFromServerAsync();
             return false;
         }
         finally
@@ -467,35 +466,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
-    private async Task LoadUrbanConfigFromServerAsync()
+    private UrbanSettings BuildUrbanSettingsForSave(UrbanSettings? existing)
     {
-        if (_xiaoshanUploadConfigFacade is null)
+        if (!ShowUrbanConfigSettings)
         {
-            return;
+            return existing ?? new UrbanSettings();
         }
 
-        IsUrbanConfigBusy = true;
-        try
-        {
-            var snapshot = await _xiaoshanUploadConfigFacade.GetFromServerAsync();
-            ApplyUrbanConfigSnapshot(
-                snapshot.DisplayName,
-                snapshot.Remark,
-                snapshot.ModesJson,
-                snapshot.SettingsJson);
-            await PersistUrbanSettingsMirrorAsync();
-            UrbanConfigStatusMessage = "已从服务器加载";
-            _urbanConfigDirty = false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load Xiaoshan upload config from server");
-            UrbanConfigStatusMessage = $"从服务器加载失败: {ex.Message}";
-        }
-        finally
-        {
-            IsUrbanConfigBusy = false;
-        }
+        return BuildUrbanSettingsFromForm(existing);
     }
 
     private void ApplyUrbanConfigFromLocalSettings(UrbanSettings urbanSettings)
@@ -513,13 +491,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private UrbanSettings BuildUrbanSettingsFromForm(UrbanSettings? existing)
     {
         var urban = existing ?? new UrbanSettings();
-        var (modesJson, settingsJson) = BuildUrbanConfigJson();
+        var payload = BuildUrbanConfigJson();
         urban.XiaoshanUpload = new XiaoshanUploadLocalConfig
         {
             DisplayName = UrbanConfigDisplayName,
-            Remark = UrbanConfigRemark,
-            ModesJson = modesJson,
-            SettingsJson = settingsJson
+            Remark = _preservedUrbanRemark,
+            ModesJson = payload.ModesJson,
+            SettingsJson = payload.SettingsJson
         };
         return urban;
     }
@@ -548,7 +526,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         try
         {
             UrbanConfigDisplayName = displayName;
-            UrbanConfigRemark = remark;
+            _preservedUrbanRemark = remark;
 
             var modes = XiaoshanUploadEnvelopeJson.ParseModes(modesJson);
             var settings = XiaoshanUploadEnvelopeJson.ParseSettings(settingsJson);
@@ -569,10 +547,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UrbanConfigProductDeviceId = product.DeviceId;
             UrbanConfigProductSiteType = product.SiteType;
 
-            UrbanConfigStaticBuildLicenseNo = settings.BuildLicenseNo;
-            UrbanConfigStaticAreaCode = settings.AreaCode;
-            UrbanConfigStaticSpaceName = settings.SpaceName;
-            UpdateUrbanConfigSkipHints();
+            // Static fields are not edited in UI; keep last known values for push payloads.
+            _preservedBuildLicenseNo = settings.BuildLicenseNo;
+            _preservedAreaCode = settings.AreaCode;
+            _preservedSpaceName = settings.SpaceName;
         }
         finally
         {
@@ -580,7 +558,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
-    private (string ModesJson, string SettingsJson) BuildUrbanConfigJson()
+    private sealed record UrbanConfigJsonPayload(string ModesJson, string SettingsJson);
+
+    private UrbanConfigJsonPayload BuildUrbanConfigJson()
     {
         var enabled = new List<string>();
         if (UrbanConfigWeighbridgeEnabled) enabled.Add(XiaoshanUploadModeNames.Weighbridge);
@@ -612,26 +592,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         var settings = new XiaoshanUploadSettingsEnvelope
         {
-            BuildLicenseNo = UrbanConfigStaticBuildLicenseNo,
-            AreaCode = UrbanConfigStaticAreaCode,
-            SpaceName = UrbanConfigStaticSpaceName
+            BuildLicenseNo = _preservedBuildLicenseNo,
+            AreaCode = _preservedAreaCode,
+            SpaceName = _preservedSpaceName
         };
 
-        return (
+        return new UrbanConfigJsonPayload(
             XiaoshanUploadEnvelopeJson.SerializeModes(modes),
             XiaoshanUploadEnvelopeJson.SerializeSettings(settings));
-    }
-
-    private void UpdateUrbanConfigSkipHints()
-    {
-        if (string.IsNullOrWhiteSpace(UrbanConfigStaticSpaceName))
-        {
-            UrbanConfigSkipHints = "spaceName: no data source, skip";
-        }
-        else
-        {
-            UrbanConfigSkipHints = string.Empty;
-        }
     }
 
     [ReactiveCommand]
@@ -1084,16 +1052,22 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UrbanAnomalyUpperLimit = urbanAnomalyConfig.UpperLimit;
             UrbanAnomalyLowerLimit = urbanAnomalyConfig.LowerLimit;
             UrbanAnomalyDeviationPercentage = urbanAnomalyConfig.DeviationPercentage;
-            ShowUrbanAnomalyDetectionSettings =
-                await _settingsService.GetWeighingModeAsync() == WeighingMode.UrbanMode;
-            ShowUrbanConfigSettings =
-                ShowUrbanAnomalyDetectionSettings && _xiaoshanUploadConfigFacade is not null;
+            var weighingMode = await _settingsService.GetWeighingModeAsync();
+            var isUrbanHost =
+                weighingMode == WeighingMode.UrbanMode || settings.SystemSettings.IsUrbanMode;
+            ShowUrbanAnomalyDetectionSettings = isUrbanHost;
+            ShowUrbanConfigSettings = isUrbanHost && _xiaoshanUploadConfigFacade is not null;
+            if (isUrbanHost && _xiaoshanUploadConfigFacade is null)
+            {
+                _logger.LogWarning(
+                    "Urban host detected but IXiaoshanUploadConfigClientFacade is not registered; 城管配置 will be hidden");
+            }
             DefaultDeliveryType = settings.SystemSettings.DefaultDeliveryType;
 
             if (ShowUrbanConfigSettings)
             {
                 ApplyUrbanConfigFromLocalSettings(settings.UrbanSettings);
-                await LoadUrbanConfigFromServerAsync();
+                // Server sync is push-on-save only; no pull/refresh in settings UI.
             }
 
             // Ensure the loaded printer is in the available list (might be disconnected)

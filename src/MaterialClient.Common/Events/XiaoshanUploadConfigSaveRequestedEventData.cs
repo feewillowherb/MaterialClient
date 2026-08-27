@@ -26,4 +26,8 @@ public record XiaoshanUploadConfigSyncResult(
     string? DisplayName,
     string? Remark,
     string ModesJson,
-    string SettingsJson);
+    string SettingsJson,
+    long ConfigVersion = 0)
+{
+    public bool HasServerRow => ConfigVersion > 0;
+}

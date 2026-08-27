@@ -38,7 +38,8 @@ public class XiaoshanUploadConfigSaveRequestedEventHandler
                     push.Config.DisplayName,
                     push.Config.Remark,
                     push.Config.ModesJson,
-                    push.Config.SettingsJson));
+                    push.Config.SettingsJson,
+                    push.Config.ConfigVersion));
                 return;
             }
 
@@ -61,7 +62,8 @@ public class XiaoshanUploadConfigSaveRequestedEventHandler
                 server?.DisplayName,
                 server?.Remark,
                 server?.ModesJson ?? "{}",
-                server?.SettingsJson ?? "{}"));
+                server?.SettingsJson ?? "{}",
+                server?.ConfigVersion ?? 0));
         }
         catch (Exception ex)
         {
@@ -72,7 +74,8 @@ public class XiaoshanUploadConfigSaveRequestedEventHandler
                 null,
                 null,
                 "{}",
-                "{}"));
+                "{}",
+                0));
         }
     }
 }
