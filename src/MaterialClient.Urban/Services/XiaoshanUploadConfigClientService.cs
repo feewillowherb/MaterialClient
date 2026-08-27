@@ -77,6 +77,7 @@ public class XiaoshanUploadConfigClientService : IXiaoshanUploadConfigClientServ
         draft.ProjectId = projectId;
         draft.Source = ClientSource;
         draft.Actor = _machineCodeService.GetMachineCode();
+        draft.ClientProtocolVersion = XiaoshanUploadClientProtocolVersions.Structured;
 
         var query = await _cacheRepository.GetQueryableAsync();
         var cache = await query.FirstOrDefaultAsync(c => c.ProjectId == projectId, cancellationToken);

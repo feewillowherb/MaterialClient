@@ -2,6 +2,14 @@ using System.Text.Json.Serialization;
 
 namespace MaterialClient.Urban.Dtos;
 
+/// <summary>
+///     Client write protocol tiers (must match UrbanManagement INT-004).
+/// </summary>
+public static class XiaoshanUploadClientProtocolVersions
+{
+    public const int Structured = 3;
+}
+
 public class XiaoshanUploadConfigDto
 {
     [JsonPropertyName("id")]
@@ -51,6 +59,9 @@ public class XiaoshanUploadConfigWriteDto
 
     [JsonPropertyName("actor")]
     public string? Actor { get; set; }
+
+    [JsonPropertyName("clientProtocolVersion")]
+    public int ClientProtocolVersion { get; set; }
 }
 
 public class XiaoshanUploadConfigWriteResultDto

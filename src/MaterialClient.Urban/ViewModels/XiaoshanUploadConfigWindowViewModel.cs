@@ -97,7 +97,8 @@ public partial class XiaoshanUploadConfigWindowViewModel : ReactiveObject, ITran
                 Remark = Remark,
                 ModesJson = ModesJson,
                 SettingsJson = SettingsJson,
-                ExpectedConfigVersion = ConfigVersion
+                ExpectedConfigVersion = ConfigVersion,
+                ClientProtocolVersion = XiaoshanUploadClientProtocolVersions.Structured
             };
 
             var result = await _configService.SaveDraftToServerAsync(draft);
