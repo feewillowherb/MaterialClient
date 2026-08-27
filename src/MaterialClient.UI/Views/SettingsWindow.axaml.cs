@@ -18,7 +18,7 @@ namespace MaterialClient.UI.Views;
 
 public partial class SettingsWindow : Window, ITransientDependency
 {
-    private readonly Dictionary<string, Border> _sectionElements = new();
+    private readonly Dictionary<string, Control> _sectionElements = new();
     private readonly Dictionary<string, ListBoxItem> _navigationItems = new();
     private bool _isNavigationClick = false; // Prevent recursive updates
     private readonly CompositeDisposable _disposables = new();
@@ -46,7 +46,8 @@ public partial class SettingsWindow : Window, ITransientDependency
         if (viewModel != null)
         {
             viewModel.WhenAnyValue(x => x.LprDeviceType)
-                .Subscribe(_ => UpdateLprColumnVisibility(viewModel.ShowLprUserPortColumns));
+                .Subscribe(_ => UpdateLprColumnVisibility(viewModel.ShowLprUserPortColumns))
+                .DisposeWith(_disposables);
         }
     }
 
@@ -91,9 +92,9 @@ public partial class SettingsWindow : Window, ITransientDependency
         if (this.FindControl<ListBoxItem>("AnomalySettingsNavItem") is { } anomalyNav)
             _navigationItems["AnomalySettings"] = anomalyNav;
 
-        // Map section borders
-        if (this.FindControl<Border>("UrbanConfig") is { } urbanConfigBorder)
-            _sectionElements["UrbanConfig"] = urbanConfigBorder;
+        // Map section anchors (UrbanConfig is a StackPanel wrapping header + body)
+        if (this.FindControl<Control>("UrbanConfig") is { } urbanConfigSection)
+            _sectionElements["UrbanConfig"] = urbanConfigSection;
         if (this.FindControl<Border>("ScaleSettings") is { } scaleBorder)
             _sectionElements["ScaleSettings"] = scaleBorder;
         if (this.FindControl<Border>("WeighingSettings") is { } weighingBorder)
@@ -122,19 +123,17 @@ public partial class SettingsWindow : Window, ITransientDependency
                 .Subscribe(_ => OnContentScrollChanged());
         }
 
-        // Set initial selection: Urban config first when visible
-        if (NavigationList != null)
+        SelectDefaultNavigation();
+    }
+
+    private void SelectDefaultNavigation()
+    {
+        if (NavigationList == null)
+            return;
+
+        if (_navigationItems.TryGetValue("ScaleSettings", out var firstNav))
         {
-            if (DataContext is SettingsWindowViewModel { ShowUrbanConfigSettings: true }
-                && _navigationItems.TryGetValue("UrbanConfig", out var urbanNav)
-                && urbanNav.IsVisible)
-            {
-                NavigationList.SelectedItem = urbanNav;
-            }
-            else if (_navigationItems.TryGetValue("ScaleSettings", out var firstNav))
-            {
-                NavigationList.SelectedItem = firstNav;
-            }
+            NavigationList.SelectedItem = firstNav;
         }
     }
 

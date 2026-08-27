@@ -115,6 +115,7 @@ public class SettingsService : DomainService, ISettingsService
             existing.LicensePlateRecognitionConfigs = settings.LicensePlateRecognitionConfigs;
             existing.WeighingConfiguration = settings.WeighingConfiguration;
             existing.SoundDeviceSettings = settings.SoundDeviceSettings;
+            existing.UrbanSettings = settings.UrbanSettings;
 
             await _settingsRepository.UpdateAsync(existing);
         }

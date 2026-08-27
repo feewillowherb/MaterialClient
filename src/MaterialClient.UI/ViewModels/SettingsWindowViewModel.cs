@@ -378,7 +378,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     SoundIP = SoundDeviceSoundIP,
                     SoundSN = SoundDeviceSoundSN,
                     SoundVolume = SoundDeviceSoundVolume
-                }
+                },
+                BuildUrbanSettingsFromForm(existingSettings.UrbanSettings)
             );
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -439,6 +440,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 result.Remark,
                 result.ModesJson,
                 result.SettingsJson);
+            await PersistUrbanSettingsMirrorAsync();
 
             if (result.Success)
             {
@@ -481,6 +483,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 snapshot.Remark,
                 snapshot.ModesJson,
                 snapshot.SettingsJson);
+            await PersistUrbanSettingsMirrorAsync();
             UrbanConfigStatusMessage = "已从服务器加载";
             _urbanConfigDirty = false;
         }
@@ -492,6 +495,46 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         finally
         {
             IsUrbanConfigBusy = false;
+        }
+    }
+
+    private void ApplyUrbanConfigFromLocalSettings(UrbanSettings urbanSettings)
+    {
+        var local = urbanSettings.XiaoshanUpload ?? new XiaoshanUploadLocalConfig();
+        ApplyUrbanConfigSnapshot(
+            local.DisplayName,
+            local.Remark,
+            local.ModesJson,
+            local.SettingsJson);
+        UrbanConfigStatusMessage = "已加载本地 UrbanSettings";
+        _urbanConfigDirty = false;
+    }
+
+    private UrbanSettings BuildUrbanSettingsFromForm(UrbanSettings? existing)
+    {
+        var urban = existing ?? new UrbanSettings();
+        var (modesJson, settingsJson) = BuildUrbanConfigJson();
+        urban.XiaoshanUpload = new XiaoshanUploadLocalConfig
+        {
+            DisplayName = UrbanConfigDisplayName,
+            Remark = UrbanConfigRemark,
+            ModesJson = modesJson,
+            SettingsJson = settingsJson
+        };
+        return urban;
+    }
+
+    private async Task PersistUrbanSettingsMirrorAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            settings.UrbanSettings = BuildUrbanSettingsFromForm(settings.UrbanSettings);
+            await _settingsService.SaveSettingsAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist UrbanSettingsJson mirror");
         }
     }
 
@@ -1049,6 +1092,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             if (ShowUrbanConfigSettings)
             {
+                ApplyUrbanConfigFromLocalSettings(settings.UrbanSettings);
                 await LoadUrbanConfigFromServerAsync();
             }
 
