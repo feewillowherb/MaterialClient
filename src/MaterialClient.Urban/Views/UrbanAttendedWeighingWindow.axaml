@@ -148,6 +148,8 @@
                                     <Button Classes="tab-button active" Name="TabAll" Content="全部记录" Click="OnTabClick" />
                                     <Button Classes="tab-button" Name="TabNormal" Content="正常" Click="OnTabClick" />
                                     <Button Classes="tab-button" Name="TabAbnormal" Content="异常" Click="OnTabClick" />
+                                    <Button Classes="tab-button" Name="TabCheckpoint" Content="卡口" Click="OnTabClick" />
+                                    <Button Classes="tab-button" Name="TabFinishedProduct" Content="成品" Click="OnTabClick" />
                                 </StackPanel>
                             </Border>
 
@@ -187,29 +189,53 @@
 
                             <!-- DataGrid Table Header Label -->
                             <Border Grid.Row="2" Background="{DynamicResource PrimaryBlue}" Padding="12,0">
-                                <Grid ColumnDefinitions="96,126,126,74,88,90,*">
-                                    <TextBlock Text="车牌" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                <Panel>
+                                <Grid ColumnDefinitions="72,96,74,56,126,88,*"
+                                      IsVisible="{Binding IsMixedOrWeighingTab}">
+                                    <TextBlock Text="类型" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="1" Text="称重时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="1" Text="车牌" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="2" Text="上传时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="2" Text="重量" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="3" Text="重量" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="3" Text="进出" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="4" Text="状态" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="4" Text="时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="5" Text="异常原因" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="5" Text="状态" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                     <TextBlock Grid.Column="6" Text="操作" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                 </Grid>
+                                <Grid ColumnDefinitions="96,72,72,56,72,126"
+                                      IsVisible="{Binding IsPassageDedicatedTab}">
+                                    <TextBlock Text="车牌" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="1" Text="车牌颜色" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="2" Text="车型" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="3" Text="进出" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="4" Text="场地" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="5" Text="抓拍时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                </Grid>
+                                </Panel>
                             </Border>
 
                             <!-- Vehicle Records List (DTO binding) -->
@@ -237,64 +263,62 @@
                                     </Style>
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="dtos:UrbanWeighingListItemDto">
-                                        <Grid ColumnDefinitions="96,126,126,74,88,90,*" ClipToBounds="True">
-                                            <!-- PlateNumber -->
-                                            <TextBlock Text="{Binding PlateNumber}" FontSize="12" FontWeight="Medium"
+                                    <DataTemplate x:DataType="dtos:UrbanAttendedListRow">
+                                        <Panel>
+                                        <Grid ColumnDefinitions="72,96,74,56,126,88,*"
+                                              IsVisible="{Binding IsWeighingKind}">
+                                            <TextBlock Text="{Binding KindLabel}" FontSize="12" FontWeight="Medium"
                                                        Foreground="#333333" VerticalAlignment="Center"
                                                        HorizontalAlignment="Center"
                                                        FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                            <!-- AddDate -->
-                                            <TextBlock Grid.Column="1" Text="{Binding AddDate, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
-                                                       Foreground="#666666" VerticalAlignment="Center"
-                                                       HorizontalAlignment="Center" />
-                                            <!-- UploadTime -->
-                                            <TextBlock Grid.Column="2"
-                                                       Text="{Binding UploadTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}', TargetNullValue=--}"
-                                                       FontSize="12"
-                                                       Foreground="#666666"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Center" />
-                                            <!-- TotalWeight -->
-                                            <TextBlock Grid.Column="3" Text="{Binding TotalWeight, StringFormat='{}{0:F2} 吨'}" FontSize="12"
+                                            <TextBlock Grid.Column="1" Text="{Binding DisplayPlate}" FontSize="12" FontWeight="Medium"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WeightText}" FontSize="12"
                                                        VerticalAlignment="Center" HorizontalAlignment="Center"
                                                        Foreground="#333333" />
-                                            <!-- Primary badge: data quality (IsAnomaly) -->
-                                            <StackPanel Grid.Column="4" VerticalAlignment="Center"
+                                            <TextBlock Grid.Column="3" Text="{Binding InOutText}" FontSize="12"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                       Foreground="#333333" />
+                                            <TextBlock Grid.Column="4" Text="{Binding SortTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
+                                                       Foreground="#666666" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                            <StackPanel Grid.Column="5" VerticalAlignment="Center"
                                                         HorizontalAlignment="Center" Spacing="2">
-                                                <Border Background="#DCFCE7" CornerRadius="3" Padding="6,2"
-                                                        IsVisible="{Binding IsAnomaly, Converter={StaticResource BoolInvertConverter}}">
-                                                    <TextBlock Text="正常" FontSize="11" Foreground="#15803D"
-                                                               FontWeight="Medium"
-                                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                                </Border>
-                                                <Border Background="#FEE2E2" CornerRadius="3" Padding="6,2"
-                                                        IsVisible="{Binding IsAnomaly}">
-                                                    <TextBlock Text="异常" FontSize="11" Foreground="#DC2626"
-                                                               FontWeight="Medium"
-                                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                                </Border>
-                                                <TextBlock Text="同步失败" FontSize="10" Foreground="#B45309"
-                                                           IsVisible="{Binding SyncStatus, Converter={StaticResource SyncFailedConverter}}"
-                                                           HorizontalAlignment="Center"
+                                                <TextBlock Text="{Binding StatusText}" FontSize="11"
+                                                           Foreground="#334155"
                                                            FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                             </StackPanel>
-                                            <TextBlock Grid.Column="5"
-                                                       Text="{Binding AnomalyReason, Converter={StaticResource AnomalyReasonConverter}, TargetNullValue=--}"
-                                                       FontSize="12"
-                                                       Foreground="#334155"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <!-- Action Button -->
                                             <Button Grid.Column="6" Classes="primary-button" Content="审批"
                                                     Height="28" Padding="12,4" FontSize="12"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     Command="{Binding #UrbanAttendedWeighingWindowRoot.DataContext.ApproveRecordCommand}"
                                                     CommandParameter="{Binding}"
-                                                    IsVisible="{Binding IsAnomaly}"
+                                                    IsVisible="{Binding ShowApprove}"
                                                     FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         </Grid>
+                                        <Grid ColumnDefinitions="72,96,74,56,126,88,*"
+                                              IsVisible="{Binding IsPassageKind}">
+                                            <TextBlock Text="{Binding KindLabel}" FontSize="12" FontWeight="Medium"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="1" Text="{Binding DisplayPlate}" FontSize="12" FontWeight="Medium"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WeightText}" FontSize="12"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="3" Text="{Binding InOutText}" FontSize="12"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="4" Text="{Binding SortTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
+                                                       Foreground="#666666" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="5" Text="{Binding StatusText}" FontSize="12"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                        </Grid>
+                                        </Panel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -373,25 +397,7 @@
                                         </Button>
                                     </StackPanel>
 
-                                    <!-- Photo 2: Camera Capture -->
-                                    <StackPanel Spacing="4">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Text="枪机抓拍" FontSize="11" Foreground="#666666"
-                                                       FontWeight="Medium" VerticalAlignment="Center"
-                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                            <TextBlock Grid.Column="1" Text="{Binding CameraPhotoTime}" FontSize="11" Foreground="#94A3B8"
-                                                       VerticalAlignment="Center" />
-                                        </Grid>
-                                        <Button Background="Transparent" BorderThickness="0" Padding="0"
-                                                Command="{Binding OpenCameraImageViewerCommand}"
-                                                CommandParameter="{Binding CameraPhotoPath}">
-                                            <Border Height="120" Background="#E5E7EB" CornerRadius="4"
-                                                    BorderBrush="#CBD5E1" BorderThickness="1" ClipToBounds="True">
-                                                <Image Source="{Binding CameraPhotoPath, Converter={StaticResource CarNullOrEmptyImageConverter}}"
-                                                       Stretch="UniformToFill" />
-                                            </Border>
-                                        </Button>
-                                    </StackPanel>
+                                    <!-- Photo 2: Camera Capture omitted; large LPR image only -->
                                 </StackPanel>
                             </ScrollViewer>
                         </Grid>

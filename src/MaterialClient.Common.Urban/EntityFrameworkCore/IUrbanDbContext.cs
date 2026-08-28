@@ -8,6 +8,7 @@ public interface IUrbanDbContext
 {
     DbSet<Entities.Urban.UrbanWeighingExtension> UrbanWeighingExtensions { get; }
     DbSet<UrbanSettingsRow> UrbanSettingsRows { get; }
+    DbSet<Entities.Urban.UrbanPassageRecord> UrbanPassageRecords { get; }
 }
 
 public class UrbanSettingsRow : Volo.Abp.Domain.Entities.Entity<int>

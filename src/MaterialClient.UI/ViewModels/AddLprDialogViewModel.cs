@@ -15,6 +15,7 @@ public partial class AddLprDialogViewModel : ViewModelBase
 {
     [Reactive] private LprDeviceType _deviceType = LprDeviceType.Hikvision;
     [Reactive] private LprSiteType _siteType = LprSiteType.Scale;
+    [Reactive] private UrbanSiteType _urbanSiteType = UrbanSiteType.Construction;
     [Reactive] private string _name = string.Empty;
     [Reactive] private string _ip = string.Empty;
     [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.A;
@@ -30,6 +31,12 @@ public partial class AddLprDialogViewModel : ViewModelBase
         LprSiteType.Scale,
         LprSiteType.Checkpoint,
         LprSiteType.FinishedProduct
+    ];
+
+    public ObservableCollection<UrbanSiteType> UrbanSiteTypeOptions { get; } =
+    [
+        UrbanSiteType.Construction,
+        UrbanSiteType.Disposal
     ];
 
     public bool CanEditSiteType { get; }
@@ -123,6 +130,7 @@ public partial class AddLprDialogViewModel : ViewModelBase
         IoChannel = row.IoChannel;
         DeviceType = row.DeviceType;
         SiteType = CanEditSiteType ? row.SiteType : LprSiteType.Scale;
+        UrbanSiteType = CanEditSiteType ? row.UrbanSiteType : UrbanSiteType.Construction;
     }
 
     private void ApplyEmptyVendorDefaults(LprDeviceType deviceType)
@@ -165,7 +173,9 @@ public partial class AddLprDialogViewModel : ViewModelBase
             EnableGateIo && DeviceType == LprDeviceType.Vzvision,
             ioChannel,
             DeviceType,
-            CanEditSiteType ? SiteType : LprSiteType.Scale);
+            CanEditSiteType ? SiteType : LprSiteType.Scale,
+            Direction == LicensePlateDirection.B ? UrbanInOutType.Exit : UrbanInOutType.Enter,
+            CanEditSiteType ? UrbanSiteType : UrbanSiteType.Construction);
 
         Result = LicensePlateRecognitionConfigViewModel.FromConfig(config);
     }

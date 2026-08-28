@@ -49,8 +49,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly IUsbCameraService? _usbCameraService;
     private readonly IDisposable _lprMessageSubscription;
 
-    private bool _urbanConfigLoading;
-
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -84,14 +82,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     // Urban / Xiaoshan upload config (modes only in UI; remark/displayName preserved for push)
     /// <summary>Read-only site id from <c>LicenseInfo.AccessCode</c>.</summary>
     [Reactive] private string? _urbanConfigSiteAccessCode;
-    [Reactive] private bool _urbanConfigWeighbridgeEnabled = true;
-    [Reactive] private bool _urbanConfigGateEnabled;
-    [Reactive] private bool _urbanConfigProductEnabled;
-    [Reactive] private UrbanInOutType _urbanConfigWbInOut = UrbanInOutType.Enter;
-    [Reactive] private UrbanInOutType _urbanConfigGateInOut = UrbanInOutType.Enter;
-    [Reactive] private UrbanSiteType _urbanConfigGateSiteType = UrbanSiteType.Construction;
-    [Reactive] private UrbanInOutType _urbanConfigProductInOut = UrbanInOutType.Enter;
-    [Reactive] private UrbanSiteType _urbanConfigProductSiteType = UrbanSiteType.Construction;
     [Reactive] private string? _settingsSaveErrorMessage;
 
     // License plate recognition configs
@@ -243,19 +233,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     item.LastCapturePlateNumber = msg.PlateNumber ?? string.Empty;
             });
 
-        this.WhenAnyValue(
-                x => x.UrbanConfigWeighbridgeEnabled,
-                x => x.UrbanConfigGateEnabled,
-                x => x.UrbanConfigProductEnabled)
-            .Subscribe(_ => MarkUrbanConfigDirty());
-        this.WhenAnyValue(
-                x => x.UrbanConfigWbInOut,
-                x => x.UrbanConfigGateInOut,
-                x => x.UrbanConfigGateSiteType,
-                x => x.UrbanConfigProductInOut,
-                x => x.UrbanConfigProductSiteType)
-            .Subscribe(_ => MarkUrbanConfigDirty());
-
         this.WhenAnyValue(x => x.SelectedSettingsSection)
             .Subscribe(_ => RaiseSectionVisibilityChanged());
 
@@ -405,45 +382,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private UrbanSettings BuildUrbanSettingsFromForm(UrbanSettings? existing)
     {
         var urban = existing ?? new UrbanSettings();
-        urban.XiaoshanUpload = CaptureUrbanConfigForm().ToLocalConfig();
+        urban.XiaoshanUpload = existing?.XiaoshanUpload ?? new XiaoshanUploadLocalConfig();
 
         return urban;
     }
 
     private void ApplyUrbanConfigSnapshot(XiaoshanUploadLocalConfig local)
     {
-        _urbanConfigLoading = true;
-        try
-        {
-            ApplyUrbanForm(XiaoshanUploadSettingsFormState.FromLocalConfig(local));
-        }
-        finally
-        {
-            _urbanConfigLoading = false;
-        }
-    }
-
-    private XiaoshanUploadSettingsFormState CaptureUrbanConfigForm() =>
-        new(
-            UrbanConfigWeighbridgeEnabled,
-            UrbanConfigGateEnabled,
-            UrbanConfigProductEnabled,
-            UrbanConfigWbInOut,
-            UrbanConfigGateInOut,
-            UrbanConfigGateSiteType,
-            UrbanConfigProductInOut,
-            UrbanConfigProductSiteType);
-
-    private void ApplyUrbanForm(XiaoshanUploadSettingsFormState form)
-    {
-        UrbanConfigWeighbridgeEnabled = form.WeighbridgeEnabled;
-        UrbanConfigGateEnabled = form.GateEnabled;
-        UrbanConfigProductEnabled = form.ProductEnabled;
-        UrbanConfigWbInOut = form.WeighbridgeInOut;
-        UrbanConfigGateInOut = form.GateInOut;
-        UrbanConfigGateSiteType = form.GateSiteType;
-        UrbanConfigProductInOut = form.ProductInOut;
-        UrbanConfigProductSiteType = form.ProductSiteType;
+        _ = local;
     }
 
     private void RaiseSectionVisibilityChanged()
@@ -1056,6 +1002,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 
     [Reactive] private LprSiteType _siteType = LprSiteType.Scale;
 
+    [Reactive] private UrbanSiteType _urbanSiteType = UrbanSiteType.Construction;
+
     [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.A;
 
     [Reactive] private string _ip = string.Empty;
@@ -1130,6 +1078,7 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
         IoChannel = string.IsNullOrWhiteSpace(config.IoChannel) ? "1" : config.IoChannel;
         DeviceType = config.ResolvedDeviceType;
         SiteType = config.SiteType;
+        UrbanSiteType = config.UrbanSiteType;
     }
 
     public LicensePlateRecognitionConfig ToConfig() =>
@@ -1144,7 +1093,9 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
             EnableGateIo,
             IoChannel,
             DeviceType,
-            SiteType);
+            SiteType,
+            Direction == LicensePlateDirection.B ? UrbanInOutType.Exit : UrbanInOutType.Enter,
+            UrbanSiteType);
 
     /// <summary>
     ///     Direction as int for ComboBox binding

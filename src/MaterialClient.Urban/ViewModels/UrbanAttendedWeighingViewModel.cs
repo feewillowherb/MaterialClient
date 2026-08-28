@@ -40,6 +40,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 {
     private readonly ILocalEventBus _localEventBus;
     private readonly IUrbanWeighingExtensionService _urbanWeighingExtensionService;
+    private readonly IUrbanPassageRecordService _urbanPassageRecordService;
     private readonly IAttendedWeighingService _attendedWeighingService;
     private readonly ITruckScaleWeightService _truckScaleWeightService;
     private readonly IAttachmentService _attachmentService;
@@ -53,10 +54,13 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     private const string TabAll = "全部";
     private const string TabNormal = "正常";
     private const string TabAbnormal = "异常";
+    private const string TabCheckpoint = "卡口";
+    private const string TabFinishedProduct = "成品";
 
     public UrbanAttendedWeighingViewModel(
         ILocalEventBus localEventBus,
         IUrbanWeighingExtensionService urbanWeighingExtensionService,
+        IUrbanPassageRecordService urbanPassageRecordService,
         IAttendedWeighingService attendedWeighingService,
         ITruckScaleWeightService truckScaleWeightService,
         IAttachmentService attachmentService,
@@ -66,6 +70,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     {
         _localEventBus = localEventBus;
         _urbanWeighingExtensionService = urbanWeighingExtensionService;
+        _urbanPassageRecordService = urbanPassageRecordService;
         _attendedWeighingService = attendedWeighingService;
         _truckScaleWeightService = truckScaleWeightService;
         _attachmentService = attachmentService;
@@ -83,6 +88,19 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         CurrentWeighingStatus = _attendedWeighingService.GetCurrentStatus();
         this.RaisePropertyChanged(nameof(CurrentWeighingStatusText));
         this.RaisePropertyChanged(nameof(IsWeighingActive));
+
+        _subscriptions.Add(
+            _localEventBus.Subscribe<UrbanPassageRecordCreatedEventData>(async _ =>
+            {
+                try
+                {
+                    await ReloadRecordsAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to handle UrbanPassageRecordCreatedEventData");
+                }
+            }));
 
         _subscriptions.Add(
             MessageBus.Current.Listen<PlateNumberChangedMessage>()
@@ -182,7 +200,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
         _subscriptions.Add(
             this.WhenAnyValue(x => x.SelectedListItem)
-                .Subscribe(item => _ = UpdatePhotoPathsAsync(item?.WeighingRecordId)));
+                .Subscribe(item => _ = UpdatePhotoPathsAsync(item)));
 
         _subscriptions.Add(
             _truckScaleWeightService.WeightUpdates
@@ -202,7 +220,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     ///     Select a list row and load its photo paths for the sidebar.
     /// </summary>
     [ReactiveCommand]
-    private void SelectListItem(UrbanWeighingListItemDto item)
+    private void SelectListItem(UrbanAttendedListRow item)
     {
         SelectedListItem = item;
     }
@@ -211,9 +229,9 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     ///     审批称重记录：编辑车牌/重量并更新记录，重置同步状态为 Pending
     /// </summary>
     [ReactiveCommand]
-    private async Task ApproveRecordAsync(UrbanWeighingListItemDto? item)
+    private async Task ApproveRecordAsync(UrbanAttendedListRow? item)
     {
-        if (item == null)
+        if (item == null || !item.ShowApprove || item.WeighingRecordId is not long weighingId)
         {
             return;
         }
@@ -230,13 +248,13 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 _serviceProvider,
                 _serviceProvider.GetRequiredService<ILogger<WeighingRecordEditDialogViewModel>>())
             {
-                PlateNumber = item.PlateNumber ?? string.Empty,
+                PlateNumber = item.DisplayPlate,
                 TotalWeight = item.TotalWeight.ToString("F2"),
                 WeighingDate = item.AddDate.ToString("yyyy-MM-dd HH:mm:ss"),
                 AnomalyReason = item.AnomalyReason
             };
 
-            await dialogViewModel.LoadPhotosAsync(item.WeighingRecordId);
+            await dialogViewModel.LoadPhotosAsync(weighingId);
 
             var dialog = new WeighingRecordEditDialog(dialogViewModel);
             var window = GetWindow();
@@ -280,14 +298,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 }
 
                 // Capture old values before update for edit history tracking
-                var oldPlateNumber = item.PlateNumber ?? string.Empty;
+                var oldPlateNumber = item.DisplayPlate;
                 var oldTotalWeight = item.TotalWeight;
                 var oldAnomalyReason = item.AnomalyReason?.GetDescription();
 
                 var imagesModified = result.IsLprImageModified;
                 if (result.PendingAdoptUrbanPhotoAsLpr)
                 {
-                    var lprPath = await _attachmentService.CreateLprFromUrbanPhotoAsync(item.WeighingRecordId);
+                    var lprPath = await _attachmentService.CreateLprFromUrbanPhotoAsync(weighingId);
                     if (string.IsNullOrEmpty(lprPath))
                     {
                         await MessageBox.ShowAsync(window, "采纳枪机图为车牌识别图失败，请重试。", "错误",
@@ -298,14 +316,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 else if (!string.IsNullOrWhiteSpace(result.PendingLprReplacementSourcePath))
                 {
                     await _attachmentService.ReplaceWeighingAttachmentFromSourceFileAsync(
-                        item.WeighingRecordId, result.PendingLprReplacementSourcePath, AttachType.Lpr);
+                        weighingId, result.PendingLprReplacementSourcePath, AttachType.Lpr);
                 }
 
                 var weighingRecordService = _serviceProvider.GetRequiredService<IWeighingRecordService>();
                 await weighingRecordService.UpdateWeighingRecordAsync(
-                    item.WeighingRecordId, result.PlateNumber, result.TotalWeight);
+                    weighingId, result.PlateNumber, result.TotalWeight);
 
-                var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(item.WeighingRecordId);
+                var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(weighingId);
                 if (extension != null)
                 {
                     var dataChanged = oldPlateNumber != result.PlateNumber
@@ -331,14 +349,14 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                     }
                 }
 
-                RequestBackgroundUpload(item.WeighingRecordId);
+                RequestBackgroundUpload(weighingId);
 
                 await ReloadRecordsAsync();
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to approve weighing record {Id}", item.WeighingRecordId);
+            _logger.LogError(ex, "Failed to approve weighing record {Id}", weighingId);
         }
     }
 
@@ -384,12 +402,12 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
 
     #region Properties
 
-    [Reactive] private ObservableCollection<UrbanWeighingListItemDto> _listItems = [];
+    [Reactive] private ObservableCollection<UrbanAttendedListRow> _listItems = [];
 
     [Reactive] private ObservableCollection<DeviceStatusItem> _deviceStatuses =
         new(DeviceStatusCatalog.BuildItems(DeviceStatusBarOptions.CoreOnly, false, false, false, false, false));
 
-    [Reactive] private UrbanWeighingListItemDto? _selectedListItem;
+    [Reactive] private UrbanAttendedListRow? _selectedListItem;
 
     [Reactive] private decimal _currentWeight;
 
@@ -398,6 +416,11 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     [Reactive] private string? _mostFrequentPlateNumber;
 
     [Reactive] private string _activeTab = TabAll;
+
+    public bool IsPassageDedicatedTab =>
+        ActiveTab is TabCheckpoint or TabFinishedProduct;
+
+    public bool IsMixedOrWeighingTab => !IsPassageDedicatedTab;
 
     public string CurrentWeighingStatusText =>
         AttendedWeighingStatusDisplay.GetStatusText(CurrentWeighingStatus);
@@ -431,6 +454,8 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
     public void SetFilterTab(string tab)
     {
         ActiveTab = NormalizeTabName(tab);
+        this.RaisePropertyChanged(nameof(IsPassageDedicatedTab));
+        this.RaisePropertyChanged(nameof(IsMixedOrWeighingTab));
         CurrentPage = 1;
         _ = ReloadRecordsAsync();
     }
@@ -588,17 +613,19 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         {
             TabNormal => TabNormal,
             TabAbnormal => TabAbnormal,
+            TabCheckpoint => TabCheckpoint,
+            TabFinishedProduct => TabFinishedProduct,
+            "全部记录" => TabAll,
             _ => TabAll
         };
 
-    /// <summary>
-    ///     将 UI 标签页映射为查询过滤（全部/全部记录 → null，不过滤 IsAnomaly）
-    /// </summary>
     private static string? ToQueryTabFilter(string activeTab) =>
         activeTab switch
         {
             TabNormal => TabNormal,
             TabAbnormal => TabAbnormal,
+            TabCheckpoint => TabCheckpoint,
+            TabFinishedProduct => TabFinishedProduct,
             _ => null
         };
 
@@ -616,7 +643,7 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                 EndTime = EndTime
             };
 
-            var result = await _urbanWeighingExtensionService.GetPagedListItemsAsync(input);
+            var result = await _urbanPassageRecordService.GetPagedListAsync(input);
 
             var totalCount = (int)result.TotalCount;
             var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / PageSize) : 1;
@@ -637,9 +664,9 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
         }
     }
 
-    private async Task UpdatePhotoPathsAsync(long? weighingRecordId)
+    private async Task UpdatePhotoPathsAsync(UrbanAttendedListRow? item)
     {
-        if (!weighingRecordId.HasValue)
+        if (item is null)
         {
             RxApp.MainThreadScheduler.Schedule(() =>
             {
@@ -651,17 +678,34 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
             return;
         }
 
+        if (item.IsPassageKind)
+        {
+            var path = item.LargePhotoPath;
+            RxApp.MainThreadScheduler.Schedule(() =>
+            {
+                LprPhotoPath = path;
+                CameraPhotoPath = null;
+                LprPhotoTime = item.SortTime.ToString("HH:mm:ss");
+                CameraPhotoTime = "";
+            });
+            return;
+        }
+
+        if (item.WeighingRecordId is not long weighingRecordId)
+        {
+            await UpdatePhotoPathsAsync(null);
+            return;
+        }
+
         try
         {
             var attachmentsByRecord =
-                await _attachmentService.GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId.Value]);
+                await _attachmentService.GetAttachmentsByWeighingRecordIdsAsync([weighingRecordId]);
 
             string? lprPath = null;
-            string? cameraPath = null;
             DateTime? lprTime = null;
-            DateTime? cameraTime = null;
 
-            if (attachmentsByRecord.TryGetValue(weighingRecordId.Value, out var files))
+            if (attachmentsByRecord.TryGetValue(weighingRecordId, out var files))
             {
                 foreach (var file in files)
                 {
@@ -673,20 +717,15 @@ public partial class UrbanAttendedWeighingViewModel : ReactiveObject, IDisposabl
                         lprPath = file.LocalPath;
                         lprTime = file.AddDate;
                     }
-                    else if (file.AttachType == AttachType.UrbanPhoto && cameraPath == null)
-                    {
-                        cameraPath = file.LocalPath;
-                        cameraTime = file.AddDate;
-                    }
                 }
             }
 
             RxApp.MainThreadScheduler.Schedule(() =>
             {
                 LprPhotoPath = lprPath;
-                CameraPhotoPath = cameraPath;
+                CameraPhotoPath = null;
                 LprPhotoTime = lprTime.HasValue ? lprTime.Value.ToString("HH:mm:ss") : "";
-                CameraPhotoTime = cameraTime.HasValue ? cameraTime.Value.ToString("HH:mm:ss") : "";
+                CameraPhotoTime = "";
             });
         }
         catch (Exception ex)
