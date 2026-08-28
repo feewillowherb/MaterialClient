@@ -60,7 +60,21 @@ public class LicensePlateRecognitionConfig
 
     public LprSiteType SiteType { get; set; } = LprSiteType.Scale;
 
+    public UrbanInOutType UrbanInOutType { get; set; } = UrbanInOutType.Enter;
+
+    public UrbanSiteType UrbanSiteType { get; set; } = UrbanSiteType.Construction;
+
     public void CoerceToScale() => SiteType = LprSiteType.Scale;
+
+    public static LicensePlateRecognitionConfig? FindByDeviceName(
+        IReadOnlyList<LicensePlateRecognitionConfig>? configs,
+        string? deviceName)
+    {
+        if (configs is null || string.IsNullOrWhiteSpace(deviceName))
+            return null;
+        return configs.FirstOrDefault(c =>
+            string.Equals(c.Name, deviceName, StringComparison.OrdinalIgnoreCase));
+    }
 
     /// <summary>
     ///     运行时使用的厂商（回填后的权威值）
@@ -98,11 +112,14 @@ public class LicensePlateRecognitionConfig
         bool enableGateIo,
         string? ioChannel,
         LprDeviceType deviceType,
-        LprSiteType siteType = LprSiteType.Scale)
+        LprSiteType siteType = LprSiteType.Scale,
+        UrbanInOutType urbanInOutType = UrbanInOutType.Enter,
+        UrbanSiteType urbanSiteType = UrbanSiteType.Construction)
     {
         var config = new LicensePlateRecognitionConfig();
         config.ReplaceFromUi(
-            name, ip, direction, userName, password, port, channel, enableGateIo, ioChannel, deviceType, siteType);
+            name, ip, direction, userName, password, port, channel, enableGateIo, ioChannel, deviceType,
+            siteType, urbanInOutType, urbanSiteType);
         return config;
     }
 
@@ -117,7 +134,9 @@ public class LicensePlateRecognitionConfig
         bool enableGateIo,
         string? ioChannel,
         LprDeviceType deviceType,
-        LprSiteType siteType = LprSiteType.Scale)
+        LprSiteType siteType = LprSiteType.Scale,
+        UrbanInOutType urbanInOutType = UrbanInOutType.Enter,
+        UrbanSiteType urbanSiteType = UrbanSiteType.Construction)
     {
         Name = name;
         Ip = ip;
@@ -132,6 +151,8 @@ public class LicensePlateRecognitionConfig
         IoChannel = string.IsNullOrWhiteSpace(ioChannel) ? "1" : ioChannel;
         DeviceType = deviceType;
         SiteType = siteType;
+        UrbanInOutType = urbanInOutType;
+        UrbanSiteType = urbanSiteType;
         ApplyVendorDefaults();
     }
 

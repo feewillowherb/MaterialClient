@@ -105,6 +105,19 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
                         "收到 LPR 事件: {Plate} 来自 {Device} (类型: {DeviceType})",
                         eventData.PlateNumber, eventData.DeviceName, eventData.DeviceType);
 
+                    var settings = await _settingsService.GetSettingsAsync();
+                    var lprRow = LicensePlateRecognitionConfig.FindByDeviceName(
+                        settings.LicensePlateRecognitionConfigs,
+                        eventData.DeviceName);
+                    if (lprRow is { SiteType: not LprSiteType.Scale })
+                    {
+                        _logger.LogInformation(
+                            "Skip weighing LPR handling for site type {SiteType} device {Device}",
+                            lprRow.SiteType,
+                            eventData.DeviceName);
+                        return;
+                    }
+
                     _plateNumberService.OnPlateNumberRecognized(eventData.PlateNumber, eventData.ColorType);
 
                     if (!string.IsNullOrWhiteSpace(eventData.LprImagePath))

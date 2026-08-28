@@ -56,5 +56,23 @@ partial class UrbanDbContextModelSnapshot : ModelSnapshot
             b.HasKey("Id");
             b.ToTable("UrbanSettingsRows");
         });
+
+        modelBuilder.Entity("MaterialClient.Common.Entities.Urban.UrbanPassageRecord", b =>
+        {
+            b.Property<Guid>("Id").HasColumnType("TEXT");
+            b.Property<DateTime>("CapturedAt").HasColumnType("TEXT");
+            b.Property<int?>("LargeImageAttachmentId").HasColumnType("INTEGER");
+            b.Property<int>("PassageSource").HasColumnType("INTEGER");
+            b.Property<string>("PlateColor").HasMaxLength(32).HasColumnType("TEXT");
+            b.Property<string>("PlateNumber").HasMaxLength(32).HasColumnType("TEXT");
+            b.Property<int?>("SmallImageAttachmentId").HasColumnType("INTEGER");
+            b.Property<int>("UrbanInOutType").HasColumnType("INTEGER");
+            b.Property<int>("UrbanSiteType").HasColumnType("INTEGER");
+            b.Property<string>("VehicleType").HasMaxLength(32).HasColumnType("TEXT");
+            b.HasKey("Id");
+            b.HasIndex("CapturedAt");
+            b.HasIndex("PassageSource");
+            b.ToTable("UrbanPassageRecords");
+        });
     }
 }

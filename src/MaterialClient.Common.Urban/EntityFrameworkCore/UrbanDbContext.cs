@@ -14,6 +14,7 @@ public class UrbanDbContext : AbpDbContext<UrbanDbContext>, IUrbanDbContext
 
     public DbSet<UrbanWeighingExtension> UrbanWeighingExtensions { get; set; } = null!;
     public DbSet<UrbanSettingsRow> UrbanSettingsRows { get; set; } = null!;
+    public DbSet<UrbanPassageRecord> UrbanPassageRecords { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +35,17 @@ public class UrbanDbContext : AbpDbContext<UrbanDbContext>, IUrbanDbContext
         {
             entity.ToTable("UrbanSettingsRows");
             entity.Property(e => e.SettingsJson).IsRequired();
+        });
+
+        modelBuilder.Entity<UrbanPassageRecord>(entity =>
+        {
+            entity.ConfigureByConvention();
+            entity.ToTable("UrbanPassageRecords");
+            entity.Property(e => e.PlateNumber).HasMaxLength(32);
+            entity.Property(e => e.PlateColor).HasMaxLength(32);
+            entity.Property(e => e.VehicleType).HasMaxLength(32);
+            entity.HasIndex(e => e.CapturedAt);
+            entity.HasIndex(e => e.PassageSource);
         });
     }
 }

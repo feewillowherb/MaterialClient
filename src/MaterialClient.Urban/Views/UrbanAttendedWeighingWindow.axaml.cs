@@ -89,6 +89,8 @@ public partial class UrbanAttendedWeighingWindow : Window, ITransientDependency
         TabAll.Classes.Remove("active");
         TabNormal.Classes.Remove("active");
         TabAbnormal.Classes.Remove("active");
+        TabCheckpoint.Classes.Remove("active");
+        TabFinishedProduct.Classes.Remove("active");
 
         clickedTab.Classes.Add("active");
 
