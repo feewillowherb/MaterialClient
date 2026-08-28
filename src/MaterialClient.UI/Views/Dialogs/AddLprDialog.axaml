@@ -1,11 +1,16 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:MaterialClient.UI.ViewModels"
+        xmlns:converters="using:MaterialClient.UI.Converters"
         x:Class="MaterialClient.UI.Views.Dialogs.AddLprDialog"
         x:DataType="vm:AddLprDialogViewModel"
-        Title="添加车牌识别设备"
-        Width="450" Height="450"
+        Title="{Binding DialogTitle}"
+        Width="450" Height="520"
         WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
+    </Window.Resources>
 
     <Grid RowDefinitions="*,Auto" Margin="20">
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
@@ -40,6 +45,24 @@
                              Watermark="192.168.3.245" />
                 </Grid>
 
+                <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                    <TextBlock Text="设备类型:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="100" />
+                    <ComboBox ItemsSource="{Binding LprDeviceTypeOptions}"
+                              SelectedItem="{Binding DeviceType}"
+                              Grid.Column="1"
+                              HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ., Converter={StaticResource LprDeviceTypeConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
                 <!-- Direction -->
                 <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
                     <TextBlock Text="进出方向:"
@@ -55,7 +78,7 @@
                 </Grid>
 
                 <!-- Gate I/O -->
-                <StackPanel Spacing="12" Margin="0,8,0,0">
+                <StackPanel Spacing="12" Margin="0,8,0,0" IsVisible="{Binding ShowGateIoFields}">
                     <Separator Margin="0,8" />
                     <TextBlock Text="道闸 I/O 联动"
                                FontSize="16"

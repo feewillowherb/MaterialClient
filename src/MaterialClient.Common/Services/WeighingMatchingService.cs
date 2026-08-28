@@ -148,7 +148,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
     private readonly IRepository<Waybill, long> _waybillRepository;
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
-    private readonly IRepository<RecycleWaybillExtension, Guid> _recycleWaybillExtensionRepository;
+    private readonly IRecycleWaybillExtensionStore _recycleWaybillExtensionStore;
     private readonly ISettingsService _settingsService;
     private readonly RecommendPlateNumberService _recommendPlateNumberService;
     private readonly IRecommendationService _recommendationService;
@@ -1048,27 +1048,7 @@ public partial class WeighingMatchingService : DomainService, IWeighingMatchingS
             return;
         }
 
-        var existing = await _recycleWaybillExtensionRepository
-            .FirstOrDefaultAsync(e => e.WaybillId == waybill.Id);
-
-        if (existing == null)
-        {
-            await _recycleWaybillExtensionRepository.InsertAsync(new RecycleWaybillExtension(waybill.Id)
-            {
-                UnitPrice = values.UnitPrice,
-                SaleContractNo = string.IsNullOrWhiteSpace(values.SaleContractNo)
-                    ? null
-                    : values.SaleContractNo,
-                ReceivingTime = null
-            });
-            return;
-        }
-
-        existing.UnitPrice = values.UnitPrice;
-        existing.SaleContractNo = string.IsNullOrWhiteSpace(values.SaleContractNo)
-            ? null
-            : values.SaleContractNo;
-        await _recycleWaybillExtensionRepository.UpdateAsync(existing);
+        await _recycleWaybillExtensionStore.CopyFromWeighingRecordsAsync(waybill.Id, values);
     }
 
     /// <summary>

@@ -3,6 +3,9 @@ using System.Text;
 using System.Threading.Tasks;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
+using MaterialClient.Common.EntityFrameworkCore;
+using MaterialClient.Common.Urban;
+using MaterialClient.Common.Urban.EntityFrameworkCore;
 using MaterialClient.UI;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
@@ -37,6 +40,8 @@ namespace MaterialClient.Urban
 {
 [DependsOn(
     typeof(MaterialClientCommonModule),
+    typeof(MaterialClientEntityFrameworkCoreModule),
+    typeof(MaterialClientCommonUrbanModule),
     typeof(MaterialClientUiModule),
     typeof(AbpAutofacModule),
     typeof(AbpBackgroundWorkersModule)
@@ -397,13 +402,13 @@ public class MaterialClientUrbanModule : AbpModule
         try
         {
             var unitOfWorkManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
-            var dbContextProvider =
-                serviceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
+            await KernelDatabaseMigrator.MigrateAsync(serviceProvider);
 
             using (var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
             {
-                var dbContext = await dbContextProvider.GetDbContextAsync();
-                await dbContext.Database.MigrateAsync();
+                var urbanDb = await serviceProvider.GetRequiredService<IDbContextProvider<UrbanDbContext>>()
+                    .GetDbContextAsync();
+                await urbanDb.Database.MigrateAsync();
                 await uow.CompleteAsync();
             }
 

@@ -46,7 +46,7 @@ public interface IRecycleReceivingService
 public partial class RecycleReceivingService : DomainService, IRecycleReceivingService, ITransientDependency
 {
     private readonly IRepository<Waybill, long> _waybillRepository;
-    private readonly IRepository<RecycleWaybillExtension, Guid> _recycleWaybillExtensionRepository;
+    private readonly IRecycleWaybillExtensionStore _recycleWaybillExtensionStore;
     private readonly IAttachmentService _attachmentService;
     private readonly ILogger<RecycleReceivingService>? _logger;
 
@@ -95,8 +95,7 @@ public partial class RecycleReceivingService : DomainService, IRecycleReceivingS
     [UnitOfWork]
     public virtual async Task<RecycleReceivingDetail> GetDetailAsync(long waybillId)
     {
-        var extension = await _recycleWaybillExtensionRepository
-            .FirstOrDefaultAsync(e => e.WaybillId == waybillId);
+        var extension = await _recycleWaybillExtensionStore.FindByWaybillIdAsync(waybillId);
 
         string? imagePath = null;
         var attachments = await _attachmentService.GetAttachmentsByWaybillIdsAsync([waybillId]);
@@ -124,20 +123,6 @@ public partial class RecycleReceivingService : DomainService, IRecycleReceivingS
     /// </summary>
     private async Task UpsertReceivingAsync(long waybillId, DateTime receivingTime)
     {
-        var existing = await _recycleWaybillExtensionRepository
-            .FirstOrDefaultAsync(e => e.WaybillId == waybillId);
-
-        if (existing == null)
-        {
-            var extension = new RecycleWaybillExtension(waybillId)
-            {
-                ReceivingTime = receivingTime
-            };
-            await _recycleWaybillExtensionRepository.InsertAsync(extension);
-            return;
-        }
-
-        existing.ReceivingTime = receivingTime;
-        await _recycleWaybillExtensionRepository.UpdateAsync(existing);
+        await _recycleWaybillExtensionStore.UpsertReceivingTimeAsync(waybillId, receivingTime);
     }
 }

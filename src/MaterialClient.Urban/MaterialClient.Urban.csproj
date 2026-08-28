@@ -53,6 +53,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+    <ProjectReference Include="..\MaterialClient.Common.EntityFrameworkCore\MaterialClient.Common.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\MaterialClient.Common.Urban\MaterialClient.Common.Urban.csproj" />
     <ProjectReference Include="..\MaterialClient.UI\MaterialClient.UI.csproj" />
   </ItemGroup>
 

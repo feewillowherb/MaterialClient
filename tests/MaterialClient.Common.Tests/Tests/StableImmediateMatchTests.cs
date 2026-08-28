@@ -199,7 +199,7 @@ public class StableImmediateMatchTests
 
         var service = new WeighingRecordService(
             repo,
-            Substitute.For<IUrbanWeighingExtensionService>(),
+            Substitute.For<IUrbanWeighingRecordSideEffects>(),
             Substitute.For<IRepository<AttachmentFile, int>>(),
             Substitute.For<IRepository<WeighingRecordAttachment, int>>(),
             uowManager,
@@ -207,7 +207,6 @@ public class StableImmediateMatchTests
             plateService,
             _eventBus,
             Substitute.For<ILogger<WeighingRecordService>>(),
-            Substitute.For<IUrbanAnomalyDetector>(),
             configuration,
             pipeline);
 

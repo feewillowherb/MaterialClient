@@ -1,3 +1,5 @@
+using System.Linq;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
@@ -64,19 +66,16 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
             else
                 _logger?.LogWarning("Failed to start truck scale service");
 
+            var lprConfigs = settings.LicensePlateRecognitionConfigs ?? [];
+
             // Start Hikvision camera services
             await StartHikvisionCamerasAsync(settings);
 
-            // Start Hikvision LPR service if device type is Hikvision
-            if (settings.SystemSettings.LprDeviceType == LprDeviceType.Hikvision)
-            {
-                await StartHikvisionLprServiceAsync();
-            }
+            if (LicensePlateRecognitionConfig.AnyValidOfType(lprConfigs, LprDeviceType.Hikvision))
+                await StartHikvisionLprServiceAsync(lprConfigs);
 
-            if (settings.SystemSettings.LprDeviceType == LprDeviceType.Vzvision)
-            {
-                await StartVzvisionLprServiceAsync();
-            }
+            if (LicensePlateRecognitionConfig.AnyValidOfType(lprConfigs, LprDeviceType.Vzvision))
+                await StartVzvisionLprServiceAsync(lprConfigs);
 
             await StartGateIoControlServiceAsync();
 
@@ -266,37 +265,28 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
     /// <summary>
     ///     Start Hikvision LPR service
     /// </summary>
-    private async Task StartHikvisionLprServiceAsync()
+    private async Task StartHikvisionLprServiceAsync(IReadOnlyList<LicensePlateRecognitionConfig> lprConfigs)
     {
         try
         {
             var hikvisionLprService = GetHikvisionLprService();
-            
-            // 添加配置的 LPR 设备
-            var settings = await _settingsService.GetSettingsAsync();
-            var lprConfigs = settings.LicensePlateRecognitionConfigs;
-            
-            if (lprConfigs == null || lprConfigs.Count == 0)
+
+            var hikConfigs = lprConfigs.Where(c =>
+                c.IsValid() && c.ResolvedDeviceType == LprDeviceType.Hikvision).ToList();
+
+            if (hikConfigs.Count == 0)
             {
                 _logger?.LogInformation("No Hikvision LPR devices configured");
             }
             else
             {
-                foreach (var lprConfig in lprConfigs)
+                foreach (var lprConfig in hikConfigs)
                 {
-                    if (lprConfig.IsValid())
-                    {
-                        hikvisionLprService.AddOrUpdateDevice(lprConfig);
-                        _logger?.LogInformation("Hikvision LPR device added: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
-                    }
-                    else
-                    {
-                        _logger?.LogWarning("Hikvision LPR device configuration invalid: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
-                    }
+                    hikvisionLprService.AddOrUpdateDevice(lprConfig);
+                    _logger?.LogInformation("Hikvision LPR device added: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
                 }
             }
 
-            // 启动监听服务
             var started = await hikvisionLprService.StartAsync();
             if (started)
             {
@@ -332,30 +322,23 @@ public partial class DeviceManagerService : DomainService, IDeviceManagerService
         }
     }
 
-    private async Task StartVzvisionLprServiceAsync()
+    private async Task StartVzvisionLprServiceAsync(IReadOnlyList<LicensePlateRecognitionConfig> lprConfigs)
     {
         try
         {
             var vz = GetVzvisionLprService();
-            var settings = await _settingsService.GetSettingsAsync();
-            var lprConfigs = settings.LicensePlateRecognitionConfigs;
-            if (lprConfigs == null || lprConfigs.Count == 0)
+            var vzConfigs = lprConfigs.Where(c =>
+                c.IsValid() && c.ResolvedDeviceType == LprDeviceType.Vzvision).ToList();
+            if (vzConfigs.Count == 0)
             {
                 _logger?.LogInformation("未配置 Vzvision 车牌设备");
                 return;
             }
 
-            foreach (var lprConfig in lprConfigs)
+            foreach (var lprConfig in vzConfigs)
             {
-                if (lprConfig.IsValid())
-                {
-                    vz.AddOrUpdateDevice(lprConfig);
-                    _logger?.LogInformation("Vzvision 设备已登记: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
-                }
-                else
-                {
-                    _logger?.LogWarning("Vzvision 车牌配置无效: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
-                }
+                vz.AddOrUpdateDevice(lprConfig);
+                _logger?.LogInformation("Vzvision 设备已登记: {Name} ({Ip})", lprConfig.Name, lprConfig.Ip);
             }
 
             var started = await vz.StartAsync();

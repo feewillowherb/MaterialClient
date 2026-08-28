@@ -67,7 +67,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _enableChunkedAttachmentUpload;
     [Reactive] private StreamType _captureStreamType = StreamType.Substream;
     [Reactive] private string _urls = "http://localhost:9960";
-    [Reactive] private LprDeviceType _lprDeviceType = LprDeviceType.Hikvision;
     [Reactive] private bool _enablePrinter;
     [Reactive] private string _selectedPrinterName = string.Empty;
     [Reactive] private bool _enableLatestRecommendation;
@@ -141,35 +140,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         StreamType.Mainstream
     };
 
-    /// <summary>
-    ///     车牌识别设备类型选项（用于下拉框）
-    /// </summary>
-    public ObservableCollection<LprDeviceType> LprDeviceTypeOptions { get; } = new()
-    {
-        LprDeviceType.Hikvision,
-        LprDeviceType.Vzvision,
-        LprDeviceType.Huaxiazhixin
-    };
-
-    /// <summary>
-    ///     收发料类型选项（单一数据源）
-    /// </summary>
     public ObservableCollection<DeliveryType> DeliveryTypeOptions { get; } = new()
     {
         DeliveryType.Receiving,
         DeliveryType.Sending
     };
-
-    /// <summary>
-    ///     是否显示海康威视专用配置字段
-    /// </summary>
-    public bool ShowHikvisionLprFields => LprDeviceType == LprDeviceType.Hikvision;
-
-    /// <summary>
-    ///     列表中是否显示用户名、端口列（海康与臻识 Vzvision）
-    /// </summary>
-    public bool ShowLprUserPortColumns =>
-        LprDeviceType is LprDeviceType.Hikvision or LprDeviceType.Vzvision;
 
     public bool IsScaleSettingsVisible =>
         IsSelectedSection(SettingsSectionKeys.Scale);
@@ -258,7 +233,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         // with defaults are unreliable under Autofac and may stay null on MaterialClient.Urban).
         _usbCameraService = usbCameraService ?? serviceProvider.GetService<IUsbCameraService>();
 
-        // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
         _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(msg =>
@@ -267,14 +241,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     string.Equals(c.Name, msg.DeviceName, StringComparison.Ordinal));
                 if (item != null)
                     item.LastCapturePlateNumber = msg.PlateNumber ?? string.Empty;
-            });
-
-        // Subscribe to LprDeviceType changes to notify LPR-related visibility properties
-        this.WhenAnyValue(x => x.LprDeviceType)
-            .Subscribe(_ =>
-            {
-                this.RaisePropertyChanged(nameof(ShowHikvisionLprFields));
-                this.RaisePropertyChanged(nameof(ShowLprUserPortColumns));
             });
 
         this.WhenAnyValue(
@@ -296,11 +262,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         this.WhenAnyValue(x => x.SettingsSaveErrorMessage)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSettingsSaveError)));
 
-        // Load available serial ports
         RefreshAvailableSerialPorts();
         RefreshAvailablePrinters();
 
-        // Load settings
         _ = LoadSettingsAsync();
     }
 
@@ -323,7 +287,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             systemSettings.EnableChunkedAttachmentUpload = EnableChunkedAttachmentUpload;
             systemSettings.CaptureStreamType = CaptureStreamType;
             systemSettings.Urls = Urls;
-            systemSettings.LprDeviceType = LprDeviceType;
             systemSettings.DocumentCameraEnabled = DocumentCameraEnabled;
             systemSettings.EnablePrinter = EnablePrinter;
             systemSettings.SelectedPrinterName = SelectedPrinterName;
@@ -338,6 +301,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 LowerLimit = UrbanAnomalyLowerLimit,
                 DeviationPercentage = UrbanAnomalyDeviationPercentage
             };
+
+            var lprConfigs = LicensePlateRecognitionConfigs.Select(l => l.ToConfig()).ToList();
+            systemSettings.EchoLegacyLprDeviceType(lprConfigs);
 
             var settings = new SettingsEntity(
                 new ScaleSettings
@@ -362,26 +328,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     UserName = c.UserName,
                     Password = c.Password
                 }).ToList(),
-                LicensePlateRecognitionConfigs.Select(l =>
-                {
-                    var config = new LicensePlateRecognitionConfig
-                    {
-                        Name = l.Name,
-                        Ip = l.Ip,
-                        Direction = l.Direction,
-                        UserName = l.UserName,
-                        Password = l.Password,
-                        Port = l.Port,
-                        Channel = l.Channel,
-                        EnableGateIo = l.EnableGateIo,
-                        IoChannel = l.IoChannel
-                    };
-                    if (HikvisionLprDefaults.ShouldApply(LprDeviceType))
-                        HikvisionLprDefaults.ApplyDefaults(config);
-                    else if (VzvisionLprDefaults.ShouldApply(LprDeviceType))
-                        VzvisionLprDefaults.ApplyDefaults(config);
-                    return config;
-                }).ToList(),
+                lprConfigs,
                 new WeighingConfiguration
                 {
                     MinWeightThreshold = MinWeightThreshold,
@@ -416,7 +363,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save settings");
-            SettingsSaveErrorMessage = "Failed to save settings. See logs for details.";
+            SettingsSaveErrorMessage = $"保存失败：{ex.Message}";
         }
     }
 
@@ -615,7 +562,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [ReactiveCommand]
     private async Task AddLicensePlateRecognitionAsync()
     {
-        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType)
+        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType.Hikvision)
         {
             Name = $"camera_{LicensePlateRecognitionConfigs.Count + 1}",
             Direction = LicensePlateDirection.A
@@ -667,18 +614,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         if (config == null) return;
 
-        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType)
-        {
-            Name = config.Name,
-            Ip = config.Ip,
-            Direction = config.Direction,
-            UserName = config.UserName,
-            Password = config.Password,
-            Port = config.Port,
-            Channel = config.Channel,
-            EnableGateIo = config.EnableGateIo,
-            IoChannel = config.IoChannel
-        };
+        var dialogViewModel = new AddLprDialogViewModel(config.DeviceType, isEditMode: true);
+        dialogViewModel.ApplyRow(config);
 
         var dialog = new AddLprDialog(dialogViewModel);
         var window = GetWindow();
@@ -711,23 +648,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         if (row == null) return;
 
-        var config = new LicensePlateRecognitionConfig
-        {
-            Name = row.Name,
-            Ip = row.Ip,
-            Direction = row.Direction,
-            UserName = row.UserName,
-            Password = row.Password,
-            Port = row.Port,
-            Channel = row.Channel,
-            EnableGateIo = row.EnableGateIo,
-            IoChannel = row.IoChannel
-        };
+        var config = row.ToConfig();
 
-        var device = _lprDeviceResolver.GetDevice(LprDeviceType);
+        var device = _lprDeviceResolver.GetDevice(row.DeviceType);
         if (!device.SupportsActiveCapture)
         {
-            _logger.LogWarning("当前设备类型不支持主动抓拍: {Type}", LprDeviceType);
+            _logger.LogWarning("当前设备类型不支持主动抓拍: {Type}", row.DeviceType);
             return;
         }
 
@@ -947,7 +873,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             EnableChunkedAttachmentUpload = settings.SystemSettings.EnableChunkedAttachmentUpload;
             CaptureStreamType = settings.SystemSettings.CaptureStreamType;
             Urls = settings.SystemSettings.Urls;
-            LprDeviceType = settings.SystemSettings.LprDeviceType;
             EnablePrinter = settings.SystemSettings.EnablePrinter;
             SelectedPrinterName = settings.SystemSettings.SelectedPrinterName;
             EnableLatestRecommendation = settings.SystemSettings.EnableLatestRecommendation;
@@ -1006,18 +931,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Load license plate recognition configs
             LicensePlateRecognitionConfigs.Clear();
             foreach (var config in settings.LicensePlateRecognitionConfigs)
-                LicensePlateRecognitionConfigs.Add(new LicensePlateRecognitionConfigViewModel
-                {
-                    Name = config.Name,
-                    Ip = config.Ip,
-                    Direction = config.Direction,
-                    UserName = config.UserName,
-                    Password = config.Password,
-                    Port = config.Port,
-                    Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel,
-                    EnableGateIo = config.EnableGateIo,
-                    IoChannel = string.IsNullOrWhiteSpace(config.IoChannel) ? "1" : config.IoChannel
-                });
+                LicensePlateRecognitionConfigs.Add(LicensePlateRecognitionConfigViewModel.FromConfig(config));
 
             foreach (var item in LicensePlateRecognitionConfigs)
                 SubscribeToLprItemChanges(item);
@@ -1051,12 +965,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private void RefreshGateIoValidationHints()
     {
         var validation = GateConfigurationValidation.Validate(
-            LicensePlateRecognitionConfigs.Select(item => new LicensePlateRecognitionConfig
-            {
-                Name = item.Name,
-                Direction = item.Direction,
-                EnableGateIo = item.EnableGateIo
-            }));
+            LicensePlateRecognitionConfigs.Select(item => item.ToConfig()));
 
         foreach (var item in LicensePlateRecognitionConfigs)
         {
@@ -1128,6 +1037,8 @@ public partial class CameraConfigViewModel : ReactiveObject
 /// </summary>
 public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 {
+    [Reactive] private LprDeviceType _deviceType = LprDeviceType.Hikvision;
+
     [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.A;
 
     [Reactive] private string _ip = string.Empty;
@@ -1181,6 +1092,40 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
         this.WhenAnyValue(x => x.EnableGateIo)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(GateIoStatusText)));
     }
+
+    public static LicensePlateRecognitionConfigViewModel FromConfig(LicensePlateRecognitionConfig config)
+    {
+        var vm = new LicensePlateRecognitionConfigViewModel();
+        vm.ApplyFromConfig(config);
+        return vm;
+    }
+
+    public void ApplyFromConfig(LicensePlateRecognitionConfig config)
+    {
+        Name = config.Name;
+        Ip = config.Ip;
+        Direction = config.Direction;
+        UserName = config.UserName;
+        Password = config.Password;
+        Port = config.Port;
+        Channel = config.Channel ?? HikvisionLprDefaults.DefaultChannel;
+        EnableGateIo = config.EnableGateIo;
+        IoChannel = string.IsNullOrWhiteSpace(config.IoChannel) ? "1" : config.IoChannel;
+        DeviceType = config.ResolvedDeviceType;
+    }
+
+    public LicensePlateRecognitionConfig ToConfig() =>
+        LicensePlateRecognitionConfig.FromUi(
+            Name,
+            Ip,
+            Direction,
+            UserName,
+            Password,
+            Port,
+            Channel,
+            EnableGateIo,
+            IoChannel,
+            DeviceType);
 
     /// <summary>
     ///     Direction as int for ComboBox binding

@@ -49,6 +49,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+        <ProjectReference Include="..\MaterialClient.Common.EntityFrameworkCore\MaterialClient.Common.EntityFrameworkCore.csproj" />
         <ProjectReference Include="..\MaterialClient.UI\MaterialClient.UI.csproj" />
         <ProjectReference Include="..\MaterialClient.AttendedWeighing\MaterialClient.AttendedWeighing.csproj" />
     </ItemGroup>

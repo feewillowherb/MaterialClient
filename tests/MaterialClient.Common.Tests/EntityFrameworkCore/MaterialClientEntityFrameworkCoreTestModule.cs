@@ -1,4 +1,6 @@
+using MaterialClient.Common;
 using MaterialClient.Common.Api;
+using MaterialClient.Common.EntityFrameworkCore;
 using MaterialClient.Common.Api.Dtos;
 using MaterialClient.Common.Tests.Services;
 using Microsoft.Data.Sqlite;
@@ -15,6 +17,10 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
 using Volo.Abp.Modularity;
 using Volo.Abp.Uow;
+using MaterialClient.Common.Recycle;
+using MaterialClient.Common.Recycle.EntityFrameworkCore;
+using MaterialClient.Common.Urban;
+using MaterialClient.Common.Urban.EntityFrameworkCore;
 using MaterialClient.EFCore;
 
 namespace MaterialClient.Common.EntityFrameworkCore;
@@ -22,6 +28,9 @@ namespace MaterialClient.Common.EntityFrameworkCore;
 [DependsOn(
     typeof(MaterialClientTestBaseModule),
     typeof(MaterialClientCommonModule),
+    typeof(MaterialClientEntityFrameworkCoreModule),
+    typeof(MaterialClientCommonUrbanModule),
+    typeof(MaterialClientCommonRecycleModule),
     typeof(AbpEntityFrameworkCoreSqliteModule)
 )]
 public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
@@ -108,11 +117,23 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
 
         services.Configure<AbpDbContextOptions>(options =>
         {
-            options.Configure(context =>
+            options.Configure<MaterialClientDbContext>(context =>
             {
                 context.DbContextOptions.UseSqlite(_sqliteConnection)
-                    .EnableDetailedErrors() // 启用详细的错误信息
-                    .EnableSensitiveDataLogging(); // 启用敏感数据日志记录（包含参数值）
+                    .EnableDetailedErrors()
+                    .EnableSensitiveDataLogging();
+            });
+            options.Configure<UrbanDbContext>(context =>
+            {
+                context.DbContextOptions.UseSqlite(_sqliteConnection)
+                    .EnableDetailedErrors()
+                    .EnableSensitiveDataLogging();
+            });
+            options.Configure<RecycleDbContext>(context =>
+            {
+                context.DbContextOptions.UseSqlite(_sqliteConnection)
+                    .EnableDetailedErrors()
+                    .EnableSensitiveDataLogging();
             });
         });
     }
@@ -136,6 +157,18 @@ public class MaterialClientEntityFrameworkCoreTestModule : AbpModule
         using (var context = new MaterialClientDbContext(options))
         {
             context.GetService<IRelationalDatabaseCreator>().CreateTables();
+        }
+
+        using (var urban = new UrbanDbContext(
+                   new DbContextOptionsBuilder<UrbanDbContext>().UseSqlite(connection).Options))
+        {
+            urban.GetService<IRelationalDatabaseCreator>().CreateTables();
+        }
+
+        using (var recycle = new RecycleDbContext(
+                   new DbContextOptionsBuilder<RecycleDbContext>().UseSqlite(connection).Options))
+        {
+            recycle.GetService<IRelationalDatabaseCreator>().CreateTables();
         }
 
         return connection;

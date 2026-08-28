@@ -238,9 +238,8 @@ public class WeightScaleRxTests
         var lprDeviceResolver = Substitute.For<ILprDeviceResolver>();
         var captureService = new WeighingCaptureService(hikvisionService, lprDeviceResolver, settingsService, captureLogger);
         var recordService = new WeighingRecordService(
-            weighingRecordRepo, Substitute.For<IUrbanWeighingExtensionService>(), fileRepo, attachmentRepo, uowManager, settingsService,
-            plateNumberService, eventBus, recordLogger,
-            Substitute.For<IUrbanAnomalyDetector>(), configuration);
+            weighingRecordRepo, Substitute.For<IUrbanWeighingRecordSideEffects>(), fileRepo, attachmentRepo, uowManager, settingsService,
+            plateNumberService, eventBus, recordLogger, configuration);
 
         return new AttendedWeighingService(
             stateManager,

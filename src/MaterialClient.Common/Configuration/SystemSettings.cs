@@ -24,11 +24,25 @@ public class SystemSettings
     public string Urls { get; set; } = "http://localhost:9960";
 
     /// <summary>
-    ///     车牌识别设备类型 (Hikvision / Vzvision / Huaxiazhixin)
-    ///     默认值: Hikvision
+    ///     车牌识别设备类型。运行时权威在各 <see cref="LicensePlateRecognitionConfig.DeviceType"/>；
+    ///     本字段仅为旧客户端兼容镜像。
     /// </summary>
     [JsonConverter(typeof(LprDeviceTypeJsonConverter))]
     public LprDeviceType LprDeviceType { get; set; } = LprDeviceType.Hikvision;
+
+    /// <summary>
+    ///     将首条有效 LPR 配置的厂商写入遗留全局字段，供旧客户端读取。
+    /// </summary>
+    public void EchoLegacyLprDeviceType(IReadOnlyList<LicensePlateRecognitionConfig> configs)
+    {
+        foreach (var config in configs)
+        {
+            if (!config.IsValid())
+                continue;
+            LprDeviceType = config.ResolvedDeviceType;
+            return;
+        }
+    }
 
     /// <summary>
     ///     最小字符差异数（0-2），用于车牌号推荐匹配

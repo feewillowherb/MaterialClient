@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.Common.Entities.Urban;
 using MaterialClient.Common.Providers;
 using Volo.Abp.Auditing;
 using Volo.Abp.Data;
@@ -123,12 +122,6 @@ public class WeighingRecord : Entity<long>, IHasExtraProperties, IMaterialClient
     ///     备注（可选）
     /// </summary>
     public string? Remark { get; set; }
-
-    /// <summary>
-    ///     Urban extension loaded in memory for UI/query (not mapped; association via Domain Service / join).
-    /// </summary>
-    [NotMapped]
-    public UrbanWeighingExtension? UrbanExtension { get; set; }
 
     /// <summary>
     ///     物料集合（从 JSON 反序列化）

@@ -194,8 +194,12 @@ public class SettingsEntity : Entity<int>
 
             try
             {
-                return JsonSerializer.Deserialize<List<LicensePlateRecognitionConfig>>(
+                var list = JsonSerializer.Deserialize<List<LicensePlateRecognitionConfig>>(
                     LicensePlateRecognitionConfigsJson) ?? new List<LicensePlateRecognitionConfig>();
+                var legacy = SystemSettings.LprDeviceType;
+                foreach (var config in list)
+                    config.ApplyLegacyDeviceType(legacy);
+                return list;
             }
             catch
             {

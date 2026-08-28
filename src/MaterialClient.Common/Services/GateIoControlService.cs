@@ -228,11 +228,12 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             if (config == null || !config.EnableGateIo)
                 return;
 
-            if (message.DeviceType != LprDeviceType.Vzvision)
+            var vendor = config.ResolvedDeviceType;
+            if (vendor != LprDeviceType.Vzvision)
             {
                 _logger?.LogInformation(
                     "当前设备类型暂未支持道闸 I/O 功能: DeviceType={DeviceType}, Device={Device}",
-                    message.DeviceType, message.DeviceName);
+                    vendor, message.DeviceName);
                 return;
             }
 
@@ -529,8 +530,7 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     /// </summary>
     private async Task OpenGateViaLprSdkAsync(LicensePlateRecognitionConfig config, uint ioChannel)
     {
-        // 注意：当前实现仅支持 Vzvision 设备
-        // LprDeviceType 从全局配置获取，而非从单个设备配置获取
+        // 注意：当前实现仅支持 Vzvision 设备（由调用方按行 DeviceType 门控）
         await _vzvisionLprService.SetIoOutputAutoRespAsync(config, ioChannel, 500);
     }
 
