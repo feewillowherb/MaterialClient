@@ -22,6 +22,7 @@ public class SettingsEntity : Entity<int>
         LicensePlateRecognitionConfigsJson = string.Empty;
         WeighingConfigurationJson = string.Empty;
         SoundDeviceSettingsJson = string.Empty;
+        UrbanSettingsJson = string.Empty;
     }
 
     /// <summary>
@@ -34,7 +35,8 @@ public class SettingsEntity : Entity<int>
         List<CameraConfig> cameraConfigs,
         List<LicensePlateRecognitionConfig> licensePlateRecognitionConfigs,
         WeighingConfiguration weighingConfiguration,
-        SoundDeviceSettings soundDeviceSettings)
+        SoundDeviceSettings soundDeviceSettings,
+        UrbanSettings? urbanSettings = null)
     {
         ScaleSettings = scaleSettings;
         DocumentScannerConfig = documentScannerConfig;
@@ -43,6 +45,7 @@ public class SettingsEntity : Entity<int>
         LicensePlateRecognitionConfigs = licensePlateRecognitionConfigs;
         WeighingConfiguration = weighingConfiguration;
         SoundDeviceSettings = soundDeviceSettings;
+        UrbanSettings = urbanSettings ?? new UrbanSettings();
     }
 
     /// <summary>
@@ -79,6 +82,11 @@ public class SettingsEntity : Entity<int>
     ///     Sound device settings JSON (serialized)
     /// </summary>
     public string SoundDeviceSettingsJson { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     Urban aggregated settings JSON (serialized)
+    /// </summary>
+    public string UrbanSettingsJson { get; set; } = string.Empty;
 
     /// <summary>
     ///     Scale settings (deserialized)
@@ -243,5 +251,28 @@ public class SettingsEntity : Entity<int>
             }
         }
         set => SoundDeviceSettingsJson = JsonSerializer.Serialize(value);
+    }
+
+    /// <summary>
+    ///     Urban aggregated settings (deserialized)
+    /// </summary>
+    [JsonIgnore]
+    public UrbanSettings UrbanSettings
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(UrbanSettingsJson))
+                return new UrbanSettings();
+
+            try
+            {
+                return JsonSerializer.Deserialize<UrbanSettings>(UrbanSettingsJson) ?? new UrbanSettings();
+            }
+            catch
+            {
+                return new UrbanSettings();
+            }
+        }
+        set => UrbanSettingsJson = JsonSerializer.Serialize(value);
     }
 }

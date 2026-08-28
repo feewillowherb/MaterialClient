@@ -19,9 +19,11 @@ using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.UI.Views.Dialogs;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -43,8 +45,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ISoundDeviceService _soundDeviceService;
     private readonly ILprDeviceResolver _lprDeviceResolver;
     private readonly ILocalEventBus _localEventBus;
+    private readonly ILicenseService _licenseService;
     private readonly IUsbCameraService? _usbCameraService;
     private readonly IDisposable _lprMessageSubscription;
+
+    private bool _urbanConfigLoading;
+
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -69,10 +75,25 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private int _triggerLprCaptureDelayMs;
     [Reactive] private int _jpegQuality = 75;
     [Reactive] private bool _showUrbanAnomalyDetectionSettings;
+    [Reactive] private bool _showUrbanConfigSettings;
+    [Reactive] private string _selectedSettingsSection = "ScaleSettings";
     [Reactive] private DeliveryType _defaultDeliveryType = DeliveryType.Receiving;
     [Reactive] private decimal _urbanAnomalyUpperLimit = 30.0m;
     [Reactive] private decimal _urbanAnomalyLowerLimit = 2.0m;
     [Reactive] private decimal _urbanAnomalyDeviationPercentage = 10.0m;
+
+    // Urban / Xiaoshan upload config (modes only in UI; remark/displayName preserved for push)
+    /// <summary>Read-only site id from <c>LicenseInfo.AccessCode</c>.</summary>
+    [Reactive] private string? _urbanConfigSiteAccessCode;
+    [Reactive] private bool _urbanConfigWeighbridgeEnabled = true;
+    [Reactive] private bool _urbanConfigGateEnabled;
+    [Reactive] private bool _urbanConfigProductEnabled;
+    [Reactive] private UrbanInOutType _urbanConfigWbInOut = UrbanInOutType.Enter;
+    [Reactive] private UrbanInOutType _urbanConfigGateInOut = UrbanInOutType.Enter;
+    [Reactive] private UrbanSiteType _urbanConfigGateSiteType = UrbanSiteType.Construction;
+    [Reactive] private UrbanInOutType _urbanConfigProductInOut = UrbanInOutType.Enter;
+    [Reactive] private UrbanSiteType _urbanConfigProductSiteType = UrbanSiteType.Construction;
+    [Reactive] private string? _settingsSaveErrorMessage;
 
     // License plate recognition configs
     [Reactive] private ObservableCollection<LicensePlateRecognitionConfigViewModel> _licensePlateRecognitionConfigs =
@@ -150,6 +171,41 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     public bool ShowLprUserPortColumns =>
         LprDeviceType is LprDeviceType.Hikvision or LprDeviceType.Vzvision;
 
+    public bool IsScaleSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.Scale);
+
+    public bool IsWeighingSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.Weighing);
+
+    public bool IsCameraSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.Camera);
+
+    public bool IsLprSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.Lpr);
+
+    public bool IsSystemSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.System);
+
+    public bool IsSoundSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.Sound);
+
+    public bool IsPrinterSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.Printer);
+
+    public bool IsDocumentCameraSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.DocumentCamera);
+
+    public bool IsAnomalySettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.Anomaly);
+
+    public bool IsUrbanConfigSettingsVisible =>
+        IsSelectedSection(SettingsSectionKeys.UrbanConfig);
+
+    public bool HasSettingsSaveError => !string.IsNullOrWhiteSpace(SettingsSaveErrorMessage);
+
+    private bool IsSelectedSection(string key) =>
+        string.Equals(SelectedSettingsSection, key, StringComparison.Ordinal);
+
     // Weighing configuration
     [Reactive] private decimal _minWeightThreshold = 0.5m;
     [Reactive] private decimal _weightStabilityThreshold = 0.05m;
@@ -185,6 +241,8 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ISoundDeviceService soundDeviceService,
         ILprDeviceResolver lprDeviceResolver,
         ILocalEventBus localEventBus,
+        ILicenseService licenseService,
+        IServiceProvider serviceProvider,
         IUsbCameraService? usbCameraService = null)
     {
         _settingsService = settingsService;
@@ -195,7 +253,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _soundDeviceService = soundDeviceService;
         _lprDeviceResolver = lprDeviceResolver;
         _localEventBus = localEventBus;
-        _usbCameraService = usbCameraService;
+        _licenseService = licenseService;
+        // Resolve optional Urban-only services from the host container (optional ctor params
+        // with defaults are unreliable under Autofac and may stay null on MaterialClient.Urban).
+        _usbCameraService = usbCameraService ?? serviceProvider.GetService<IUsbCameraService>();
 
         // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
         _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
@@ -216,6 +277,25 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 this.RaisePropertyChanged(nameof(ShowLprUserPortColumns));
             });
 
+        this.WhenAnyValue(
+                x => x.UrbanConfigWeighbridgeEnabled,
+                x => x.UrbanConfigGateEnabled,
+                x => x.UrbanConfigProductEnabled)
+            .Subscribe(_ => MarkUrbanConfigDirty());
+        this.WhenAnyValue(
+                x => x.UrbanConfigWbInOut,
+                x => x.UrbanConfigGateInOut,
+                x => x.UrbanConfigGateSiteType,
+                x => x.UrbanConfigProductInOut,
+                x => x.UrbanConfigProductSiteType)
+            .Subscribe(_ => MarkUrbanConfigDirty());
+
+        this.WhenAnyValue(x => x.SelectedSettingsSection)
+            .Subscribe(_ => RaiseSectionVisibilityChanged());
+
+        this.WhenAnyValue(x => x.SettingsSaveErrorMessage)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSettingsSaveError)));
+
         // Load available serial ports
         RefreshAvailableSerialPorts();
         RefreshAvailablePrinters();
@@ -224,14 +304,19 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _ = LoadSettingsAsync();
     }
 
+    private void MarkUrbanConfigDirty()
+    {
+        // Form edits persist on SaveAsync; no extra dirty flag.
+    }
+
     #region Commands
 
     [ReactiveCommand]
     private async Task SaveAsync()
     {
+        SettingsSaveErrorMessage = null;
         try
         {
-            // Preserve non-UI SystemSettings fields (e.g. DefaultWeighingMode) to avoid losing state.
             var existingSettings = await _settingsService.GetSettingsAsync();
             var systemSettings = existingSettings.SystemSettings;
             systemSettings.EnableAutoStart = EnableAutoStart;
@@ -316,22 +401,111 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     SoundIP = SoundDeviceSoundIP,
                     SoundSN = SoundDeviceSoundSN,
                     SoundVolume = SoundDeviceSoundVolume
-                }
+                },
+                BuildUrbanSettingsForSave(existingSettings.UrbanSettings)
             );
 
             await _settingsService.SaveSettingsAsync(settings);
 
-            // Restart truck scale service with new settings
             await _truckScaleWeightService.RestartAsync();
 
-            // Common + UI both consume via EventData → bridge → SettingsSavedMessage
             await _localEventBus.PublishAsync(new SettingsSavedEventData());
+
             MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
         }
-        catch
+        catch (Exception ex)
         {
-            // Handle error
+            _logger.LogError(ex, "Failed to save settings");
+            SettingsSaveErrorMessage = "Failed to save settings. See logs for details.";
         }
+    }
+
+    private UrbanSettings BuildUrbanSettingsForSave(UrbanSettings? existing)
+    {
+        if (!ShowUrbanConfigSettings)
+        {
+            return existing ?? new UrbanSettings();
+        }
+
+        return BuildUrbanSettingsFromForm(existing);
+    }
+
+    private void ApplyUrbanConfigFromLocalSettings(UrbanSettings urbanSettings)
+    {
+        var local = urbanSettings.XiaoshanUpload ?? new XiaoshanUploadLocalConfig();
+        ApplyUrbanConfigSnapshot(local);
+    }
+
+    private async Task LoadUrbanConfigSiteAccessCodeAsync()
+    {
+        try
+        {
+            var license = await _licenseService.GetCurrentLicenseAsync();
+            UrbanConfigSiteAccessCode = license?.AccessCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load LicenseInfo.AccessCode for urban settings");
+            UrbanConfigSiteAccessCode = null;
+        }
+    }
+
+    private UrbanSettings BuildUrbanSettingsFromForm(UrbanSettings? existing)
+    {
+        var urban = existing ?? new UrbanSettings();
+        urban.XiaoshanUpload = CaptureUrbanConfigForm().ToLocalConfig();
+
+        return urban;
+    }
+
+    private void ApplyUrbanConfigSnapshot(XiaoshanUploadLocalConfig local)
+    {
+        _urbanConfigLoading = true;
+        try
+        {
+            ApplyUrbanForm(XiaoshanUploadSettingsFormState.FromLocalConfig(local));
+        }
+        finally
+        {
+            _urbanConfigLoading = false;
+        }
+    }
+
+    private XiaoshanUploadSettingsFormState CaptureUrbanConfigForm() =>
+        new(
+            UrbanConfigWeighbridgeEnabled,
+            UrbanConfigGateEnabled,
+            UrbanConfigProductEnabled,
+            UrbanConfigWbInOut,
+            UrbanConfigGateInOut,
+            UrbanConfigGateSiteType,
+            UrbanConfigProductInOut,
+            UrbanConfigProductSiteType);
+
+    private void ApplyUrbanForm(XiaoshanUploadSettingsFormState form)
+    {
+        UrbanConfigWeighbridgeEnabled = form.WeighbridgeEnabled;
+        UrbanConfigGateEnabled = form.GateEnabled;
+        UrbanConfigProductEnabled = form.ProductEnabled;
+        UrbanConfigWbInOut = form.WeighbridgeInOut;
+        UrbanConfigGateInOut = form.GateInOut;
+        UrbanConfigGateSiteType = form.GateSiteType;
+        UrbanConfigProductInOut = form.ProductInOut;
+        UrbanConfigProductSiteType = form.ProductSiteType;
+    }
+
+    private void RaiseSectionVisibilityChanged()
+    {
+        this.RaisePropertyChanged(nameof(IsScaleSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsWeighingSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsCameraSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsLprSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsSystemSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsSoundSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsPrinterSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsDocumentCameraSettingsVisible));
+        this.RaisePropertyChanged(nameof(IsAnomalySettingsVisible));
+        this.RaisePropertyChanged(nameof(IsUrbanConfigSettingsVisible));
     }
 
     [ReactiveCommand]
@@ -784,9 +958,19 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UrbanAnomalyUpperLimit = urbanAnomalyConfig.UpperLimit;
             UrbanAnomalyLowerLimit = urbanAnomalyConfig.LowerLimit;
             UrbanAnomalyDeviationPercentage = urbanAnomalyConfig.DeviationPercentage;
-            ShowUrbanAnomalyDetectionSettings =
-                await _settingsService.GetWeighingModeAsync() == WeighingMode.UrbanMode;
+            var weighingMode = await _settingsService.GetWeighingModeAsync();
+            var isUrbanHost =
+                weighingMode == WeighingMode.UrbanMode || settings.SystemSettings.IsUrbanMode;
+            ShowUrbanAnomalyDetectionSettings = isUrbanHost;
+            ShowUrbanConfigSettings = isUrbanHost;
             DefaultDeliveryType = settings.SystemSettings.DefaultDeliveryType;
+
+            if (ShowUrbanConfigSettings)
+            {
+                ApplyUrbanConfigFromLocalSettings(settings.UrbanSettings);
+                await LoadUrbanConfigSiteAccessCodeAsync();
+                // Server sync is push-on-save only; no pull/refresh in settings UI.
+            }
 
             // Ensure the loaded printer is in the available list (might be disconnected)
             if (!string.IsNullOrWhiteSpace(SelectedPrinterName) &&
