@@ -70,28 +70,6 @@ public record XiaoshanUploadModesEnvelope
         EnabledModes.Exists(m => string.Equals(m, mode, StringComparison.OrdinalIgnoreCase));
 }
 
-public record XiaoshanUploadSettingsEnvelope
-{
-    public const int CurrentSchemaVersion = 1;
-
-    [JsonPropertyName("schemaVersion")]
-    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
-
-    [JsonPropertyName("buildLicenseNo")]
-    public string? BuildLicenseNo { get; init; }
-
-    [JsonPropertyName("areaCode")]
-    public string? AreaCode { get; init; }
-
-    [JsonPropertyName("spaceName")]
-    public string? SpaceName { get; init; }
-
-    public static XiaoshanUploadSettingsEnvelope CreateDefault() => new()
-    {
-        SchemaVersion = CurrentSchemaVersion
-    };
-}
-
 public static class XiaoshanUploadEnvelopeJson
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -120,30 +98,8 @@ public static class XiaoshanUploadEnvelopeJson
         }
     }
 
-    public static XiaoshanUploadSettingsEnvelope ParseSettings(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json) || json.Trim() is "{}" or "null")
-        {
-            return XiaoshanUploadSettingsEnvelope.CreateDefault();
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<XiaoshanUploadSettingsEnvelope>(json, SerializerOptions)
-                   ?? XiaoshanUploadSettingsEnvelope.CreateDefault();
-        }
-        catch (JsonException)
-        {
-            return XiaoshanUploadSettingsEnvelope.CreateDefault();
-        }
-    }
-
     public static string SerializeModes(XiaoshanUploadModesEnvelope envelope) =>
         JsonSerializer.Serialize(MaterializeModes(envelope), SerializerOptions);
-
-    public static string SerializeSettings(XiaoshanUploadSettingsEnvelope envelope) =>
-        JsonSerializer.Serialize(envelope with { SchemaVersion = XiaoshanUploadSettingsEnvelope.CurrentSchemaVersion },
-            SerializerOptions);
 
     public static XiaoshanUploadModesEnvelope MaterializeModes(XiaoshanUploadModesEnvelope envelope)
     {
@@ -190,37 +146,3 @@ public static class XiaoshanUploadEnvelopeJson
         };
     }
 }
-
-public static class XiaoshanBuildLicenseNo
-{
-    public const string ProductSuffix = "-02";
-
-    public static string ForMode(string mode, string licenseNo) =>
-        mode switch
-        {
-            XiaoshanUploadModeNames.Product => licenseNo.EndsWith(ProductSuffix, StringComparison.Ordinal)
-                ? licenseNo
-                : licenseNo + ProductSuffix,
-            XiaoshanUploadModeNames.Gate => licenseNo,
-            _ => licenseNo
-        };
-}
-
-public record XiaoshanWeighingContext(
-    string? CarNo,
-    string? CarNoColor,
-    string? CarType,
-    string? GoodsWeight,
-    DateTime? SnapTime,
-    IReadOnlyList<string>? SnapImages);
-
-public record XiaoshanSkippedField(
-    string Field,
-    string Mode,
-    string Reason,
-    string? SourceAttempted);
-
-public record XiaoshanFieldMappingResult(
-    string Mode,
-    IReadOnlyDictionary<string, string> ResolvedFields,
-    IReadOnlyList<XiaoshanSkippedField> SkippedFields);

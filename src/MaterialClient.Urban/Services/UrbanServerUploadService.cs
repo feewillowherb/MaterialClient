@@ -11,7 +11,6 @@ using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Utils;
 using MaterialClient.Urban.Api;
 using MaterialClient.Urban.Dtos;
-using MaterialClient.Common.Models;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -42,8 +41,6 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
-    private readonly ISettingsService _settingsService;
-    private readonly IXiaoshanUploadFieldMappingService _fieldMappingService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
@@ -54,8 +51,6 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
         IMachineCodeService machineCodeService,
-        ISettingsService settingsService,
-        IXiaoshanUploadFieldMappingService fieldMappingService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
@@ -65,8 +60,6 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _extensionService = extensionService;
         _licenseService = licenseService;
         _machineCodeService = machineCodeService;
-        _settingsService = settingsService;
-        _fieldMappingService = fieldMappingService;
         _logger = logger;
     }
 
@@ -136,8 +129,6 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             }
 
             var isAnomaly = extension.IsAnomaly;
-
-            await LogXiaoshanFieldMappingSkipsAsync(record);
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
@@ -209,65 +200,5 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         }
 
         return files.Exists(f => f.AttachType is AttachType.Lpr or AttachType.UrbanPhoto);
-    }
-
-    private async Task LogXiaoshanFieldMappingSkipsAsync(WeighingRecord record)
-    {
-        string modesJson;
-        try
-        {
-            var settingsEntity = await _settingsService.GetSettingsAsync();
-            modesJson = settingsEntity.UrbanSettings?.XiaoshanUpload?.ModesJson ?? "{}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Skip Xiaoshan field-mapping log; local UrbanSettings unavailable");
-            return;
-        }
-
-        var modes = XiaoshanUploadEnvelopeJson.ParseModes(modesJson);
-        var settings = XiaoshanUploadSettingsEnvelope.CreateDefault();
-        var context = new XiaoshanWeighingContext(
-            CarNo: record.PlateNumber,
-            CarNoColor: null,
-            CarType: null,
-            GoodsWeight: MaterialMath.ConvertTonToKg(record.TotalWeight).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            SnapTime: record.AddDate,
-            SnapImages: null);
-
-        foreach (var mode in modes.EnabledModes)
-        {
-            var result = _fieldMappingService.MapForMode(
-                mode,
-                settings,
-                modes.GetSettings(mode),
-                context);
-
-            foreach (var skip in result.SkippedFields)
-            {
-                // Optional empties (e.g. spaceName) are expected; keep noise out of Information.
-                var isOptionalSkip = skip.Reason.Contains("No data source", StringComparison.OrdinalIgnoreCase);
-                if (isOptionalSkip)
-                {
-                    _logger.LogDebug(
-                        "Xiaoshan upload field skipped: RecordId={RecordId} Mode={Mode} Field={Field} Reason={Reason} Source={Source}",
-                        record.Id,
-                        skip.Mode,
-                        skip.Field,
-                        skip.Reason,
-                        skip.SourceAttempted);
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "Xiaoshan upload field skipped: RecordId={RecordId} Mode={Mode} Field={Field} Reason={Reason} Source={Source}",
-                        record.Id,
-                        skip.Mode,
-                        skip.Field,
-                        skip.Reason,
-                        skip.SourceAttempted);
-                }
-            }
-        }
     }
 }
