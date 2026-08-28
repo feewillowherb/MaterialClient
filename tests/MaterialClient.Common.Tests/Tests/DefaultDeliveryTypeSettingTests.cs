@@ -102,7 +102,7 @@ public class DefaultDeliveryTypeSettingTests
         var mockUowManager = Substitute.For<IUnitOfWorkManager>();
         mockUowManager.Begin(Arg.Any<AbpUnitOfWorkOptions>(), Arg.Any<bool>()).Returns(mockUow);
 
-        return new SettingsService(mockRepo, mockUowManager);
+        return new SettingsService(mockRepo, mockUowManager, Substitute.For<IUrbanSettingsJsonStore>());
     }
 
     private static SettingsEntity CreateSettingsEntity(DeliveryType defaultDeliveryType) =>

@@ -24,7 +24,7 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IRepository<Waybill, long> _waybillRepository;
-    private readonly IRepository<RecycleWaybillExtension, Guid> _recycleWaybillExtensionRepository;
+    private readonly IRecycleWaybillExtensionStore _recycleWaybillExtensionStore;
     private readonly ILogger<RecycleWeighingService>? _logger;
 
     [UnitOfWork]
@@ -130,8 +130,7 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
                 return null;
             }
 
-            var extension = await _recycleWaybillExtensionRepository
-                .FirstOrDefaultAsync(e => e.WaybillId == waybill.Id);
+            var extension = await _recycleWaybillExtensionStore.FindByWaybillIdAsync(waybill.Id);
 
             return new RecycleDetailLoadResult(
                 waybill.ProviderId,
@@ -156,28 +155,10 @@ public partial class RecycleWeighingService : DomainService, IRecycleWeighingSer
         string? saleContractNo,
         DateTime? receivingTime)
     {
-        var existing = await _recycleWaybillExtensionRepository
-            .FirstOrDefaultAsync(e => e.WaybillId == waybillId);
-
-        if (existing == null)
-        {
-            var extension = new RecycleWaybillExtension(waybillId)
-            {
-                UnitPrice = unitPrice,
-                SaleContractNo = string.IsNullOrWhiteSpace(saleContractNo) ? null : saleContractNo,
-                ReceivingTime = receivingTime
-            };
-            await _recycleWaybillExtensionRepository.InsertAsync(extension);
-            return;
-        }
-
-        existing.UnitPrice = unitPrice;
-        existing.SaleContractNo = string.IsNullOrWhiteSpace(saleContractNo) ? null : saleContractNo;
         if (receivingTime.HasValue)
-        {
-            existing.ReceivingTime = receivingTime;
-        }
-        await _recycleWaybillExtensionRepository.UpdateAsync(existing);
+            await _recycleWaybillExtensionStore.UpsertReceivingTimeAsync(waybillId, receivingTime.Value);
+
+        await _recycleWaybillExtensionStore.UpsertPricingAsync(waybillId, unitPrice, saleContractNo);
     }
 }
 

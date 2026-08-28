@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MaterialClient.AttendedWeighing;
 using MaterialClient.Backgrounds;
 using MaterialClient.Common;
+using MaterialClient.Common.EntityFrameworkCore;
 using MaterialClient.UI;
 using MaterialClient.Common.Api;
 using MaterialClient.Common.Configuration;
@@ -33,6 +34,7 @@ namespace MaterialClient
 {
 [DependsOn(
     typeof(MaterialClientCommonModule),
+    typeof(MaterialClientEntityFrameworkCoreModule),
     typeof(MaterialClientUiModule),
     typeof(MaterialClientAttendedWeighingModule),
     typeof(AbpAutofacModule),
@@ -115,14 +117,7 @@ public class MaterialClientModule : AbpModule
         // 尝试自动更新数据库迁移
         try
         {
-            var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-            var dbContextProvider =
-                context.ServiceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
-
-            using var uow = unitOfWorkManager.Begin(true, false);
-            await using var dbContext = await dbContextProvider.GetDbContextAsync();
-            await dbContext.Database.MigrateAsync();
-            await uow.CompleteAsync();
+            await KernelDatabaseMigrator.MigrateAsync(context.ServiceProvider);
         }
         catch (Exception ex)
         {

@@ -128,44 +128,45 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         var recordQueryable = await _weighingRecordRepository.GetQueryableAsync();
         var extensionQueryable = await _extensionRepository.GetQueryableAsync();
 
-        var joined = from r in recordQueryable
-            where r.WeighingMode == WeighingMode.UrbanMode
-            join e in extensionQueryable on r.Id equals e.WeighingRecordId into extGroup
-            from e in extGroup.DefaultIfEmpty()
-            select new { Record = r, Extension = e };
-
-        joined = input.TabFilter switch
-        {
-            // 与列表 DTO 一致：无扩展行时 IsAnomaly 视为 false，归入「正常」
-            "正常" => joined.Where(x =>
-                x.Extension == null || !x.Extension.IsAnomaly),
-            "异常" => joined.Where(x =>
-                x.Extension != null && x.Extension.IsAnomaly),
-            _ => joined
-        };
-
+        var recordQuery = recordQueryable.Where(r => r.WeighingMode == WeighingMode.UrbanMode);
         if (!string.IsNullOrWhiteSpace(input.SearchText))
         {
-            joined = joined.Where(x =>
-                x.Record.PlateNumber != null && x.Record.PlateNumber.Contains(input.SearchText));
+            recordQuery = recordQuery.Where(x =>
+                x.PlateNumber != null && x.PlateNumber.Contains(input.SearchText));
         }
 
         if (input.StartTime.HasValue)
-        {
-            joined = joined.Where(x => x.Record.AddDate >= input.StartTime.Value);
-        }
+            recordQuery = recordQuery.Where(x => x.AddDate >= input.StartTime.Value);
 
         if (input.EndTime.HasValue)
-        {
-            joined = joined.Where(x => x.Record.AddDate <= input.EndTime.Value);
-        }
+            recordQuery = recordQuery.Where(x => x.AddDate <= input.EndTime.Value);
 
-        var totalCount = await joined.CountAsync();
-        var rows = await joined
-            .OrderByDescending(x => x.Record.AddDate)
+        var records = await recordQuery.OrderByDescending(x => x.AddDate).ToListAsync();
+        var ids = records.Select(r => r.Id).ToList();
+        var extensions = ids.Count == 0
+            ? new List<UrbanWeighingExtension>()
+            : await extensionQueryable.Where(e => ids.Contains(e.WeighingRecordId)).ToListAsync();
+        var extensionByRecordId = extensions.ToDictionary(e => e.WeighingRecordId);
+
+        var joined = records.Select(r =>
+        {
+            extensionByRecordId.TryGetValue(r.Id, out var ext);
+            return new { Record = r, Extension = ext };
+        });
+
+        joined = input.TabFilter switch
+        {
+            "正常" => joined.Where(x => x.Extension == null || !x.Extension.IsAnomaly),
+            "异常" => joined.Where(x => x.Extension != null && x.Extension.IsAnomaly),
+            _ => joined
+        };
+
+        var joinedList = joined.ToList();
+        var totalCount = joinedList.Count;
+        var rows = joinedList
             .Skip((pageIndex - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToList();
 
         var items = rows.Select(x => new UrbanWeighingListItemDto
         {

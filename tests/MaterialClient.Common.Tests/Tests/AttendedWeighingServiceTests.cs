@@ -1783,9 +1783,8 @@ public class AttendedWeighingServiceTests : IDisposable
         var captureService = new WeighingCaptureService(
             hikvisionService, lprDeviceResolver, settingsService, captureLogger);
         var recordService = new WeighingRecordService(
-            weighingRecordRepo, Substitute.For<IUrbanWeighingExtensionService>(), fileRepo, attachmentRepo, uowManager, settingsService,
-            plateNumberService, _testEventBus, recordLogger,
-            Substitute.For<IUrbanAnomalyDetector>(), configuration);
+            weighingRecordRepo, Substitute.For<IUrbanWeighingRecordSideEffects>(), fileRepo, attachmentRepo, uowManager, settingsService,
+            plateNumberService, _testEventBus, recordLogger, configuration);
 
         return new AttendedWeighingService(
             stateManager,

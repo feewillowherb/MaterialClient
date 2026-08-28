@@ -3,6 +3,9 @@ using System.IO;
 using MaterialClient.AttendedWeighing;
 using MaterialClient.Common;
 using MaterialClient.Common.Api;
+using MaterialClient.Common.EntityFrameworkCore;
+using MaterialClient.Common.Recycle;
+using MaterialClient.Common.Recycle.EntityFrameworkCore;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Logging;
@@ -34,6 +37,8 @@ namespace MaterialClient.Recycle;
 
 [DependsOn(
     typeof(MaterialClientCommonModule),
+    typeof(MaterialClientEntityFrameworkCoreModule),
+    typeof(MaterialClientCommonRecycleModule),
     typeof(MaterialClientUiModule),
     typeof(MaterialClientAttendedWeighingModule),
     typeof(AbpAutofacModule),
@@ -146,12 +151,12 @@ public class MaterialClientRecycleModule : AbpModule
         try
         {
             var unitOfWorkManager = serviceProvider.GetRequiredService<IUnitOfWorkManager>();
-            var dbContextProvider =
-                serviceProvider.GetRequiredService<IDbContextProvider<MaterialClientDbContext>>();
+            await KernelDatabaseMigrator.MigrateAsync(serviceProvider);
 
             using var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: false);
-            var dbContext = await dbContextProvider.GetDbContextAsync();
-            await dbContext.Database.MigrateAsync();
+            var recycleDb = await serviceProvider.GetRequiredService<IDbContextProvider<RecycleDbContext>>()
+                .GetDbContextAsync();
+            await recycleDb.Database.MigrateAsync();
             await uow.CompleteAsync();
 
             logger?.LogInformation("Recycle 数据库迁移完成。");

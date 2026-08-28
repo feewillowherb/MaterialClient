@@ -63,7 +63,7 @@ public interface IWeighingRecordService
 public class WeighingRecordService : IWeighingRecordService, ISingletonDependency
 {
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
-    private readonly IUrbanWeighingExtensionService _urbanWeighingExtensionService;
+    private readonly IUrbanWeighingRecordSideEffects _urbanWeighingRecordSideEffects;
     private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IRepository<WeighingRecordAttachment, int> _weighingRecordAttachmentRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
@@ -72,12 +72,11 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<WeighingRecordService> _logger;
     private readonly IWeighingPipelineStrategy _pipelineStrategy;
-    private readonly IUrbanAnomalyDetector _anomalyDetector;
     private readonly IConfiguration _configuration;
 
     public WeighingRecordService(
         IRepository<WeighingRecord, long> weighingRecordRepository,
-        IUrbanWeighingExtensionService urbanWeighingExtensionService,
+        IUrbanWeighingRecordSideEffects urbanWeighingRecordSideEffects,
         IRepository<AttachmentFile, int> attachmentFileRepository,
         IRepository<WeighingRecordAttachment, int> weighingRecordAttachmentRepository,
         IUnitOfWorkManager unitOfWorkManager,
@@ -85,12 +84,11 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         IPlateNumberService plateNumberService,
         ILocalEventBus localEventBus,
         ILogger<WeighingRecordService> logger,
-        IUrbanAnomalyDetector anomalyDetector,
         IConfiguration configuration,
         IWeighingPipelineStrategy? pipelineStrategy = null)
     {
         _weighingRecordRepository = weighingRecordRepository;
-        _urbanWeighingExtensionService = urbanWeighingExtensionService;
+        _urbanWeighingRecordSideEffects = urbanWeighingRecordSideEffects;
         _attachmentFileRepository = attachmentFileRepository;
         _weighingRecordAttachmentRepository = weighingRecordAttachmentRepository;
         _unitOfWorkManager = unitOfWorkManager;
@@ -98,7 +96,6 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         _plateNumberService = plateNumberService;
         _localEventBus = localEventBus;
         _logger = logger;
-        _anomalyDetector = anomalyDetector;
         _configuration = configuration;
         _pipelineStrategy = pipelineStrategy ?? new DefaultWeighingPipelineStrategy(
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultWeighingPipelineStrategy>());
@@ -137,11 +134,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
             if (weighingMode == WeighingMode.UrbanMode)
             {
-                // Defer anomaly until LPR Upsert or cycle-reset recalculation (late-bind capture).
-                await _urbanWeighingExtensionService.CreateForRecordAsync(
-                    weighingRecord.Id,
-                    hasLprAttachment: true,
-                    evaluateAnomaly: false);
+                await _urbanWeighingRecordSideEffects.AfterWeighingRecordCreatedAsync(weighingRecord.Id);
             }
 
             await uow.CompleteAsync();
@@ -280,49 +273,12 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
                     candidate.RelativePath);
             }
 
-            await RecalculateUrbanAnomalyAfterLprChangeAsync(weighingRecordId);
+            await _urbanWeighingRecordSideEffects.RecalculateAnomalyAfterLprOrCycleAsync(weighingRecordId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while upserting Lrp attachment for record {Id}", weighingRecordId);
         }
-    }
-
-    private async Task RecalculateUrbanAnomalyAfterLprChangeAsync(long weighingRecordId)
-    {
-        var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(weighingRecordId);
-        if (extension is null)
-            return;
-
-        var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
-
-        // Sync plate from recognition cache before evaluating (LPR often arrives after create).
-        var plateNumber = _plateNumberService.GetMostFrequentPlateNumber();
-        if (!string.IsNullOrWhiteSpace(plateNumber) && record.PlateNumber != plateNumber)
-        {
-            using var uow = _unitOfWorkManager.Begin();
-            var oldPlate = record.PlateNumber;
-            record.PlateNumber = plateNumber;
-            await _weighingRecordRepository.UpdateAsync(record, true);
-            await uow.CompleteAsync();
-            _logger.LogInformation(
-                "Synced plate before Urban anomaly recalc for record {Id}: '{OldPlate}' -> '{NewPlate}'",
-                weighingRecordId, oldPlate ?? "None", plateNumber);
-        }
-
-        var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
-            _settingsService, _configuration, _logger);
-        var hasLpr = await HasLprAttachmentAsync(weighingRecordId);
-        var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLpr);
-        var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLpr) : null;
-        await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, isAnomaly, reason);
-
-        _logger.LogInformation(
-            "Recalculated Urban anomaly after Lpr change for record {Id}: IsAnomaly={IsAnomaly}, HasLpr={HasLpr}, Reason={Reason}",
-            weighingRecordId, isAnomaly, hasLpr, reason);
-
-        // Notify Urban UI to refresh list tabs after anomaly/plate change.
-        _ = _localEventBus.PublishAsync(new UpdatePlateNumberEventData(weighingRecordId, record.PlateNumber));
     }
 
     private async Task SaveLprAttachmentAsync(long weighingRecordId, string? lrpRelativePath)
@@ -520,7 +476,7 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
         // Finalize Urban anomaly after plate rewrite (CaptureFailure if LPR never arrived).
         if (recordId is > 0)
-            await RecalculateUrbanAnomalyAfterLprChangeAsync(recordId.Value);
+            await _urbanWeighingRecordSideEffects.RecalculateAnomalyAfterLprOrCycleAsync(recordId.Value);
 
         plateNumberService.ClearCache();
         stateManager.ResetCycle();
@@ -537,30 +493,12 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
 
         await _weighingRecordRepository.UpdateAsync(record);
 
-        var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(weighingRecordId);
-        if (extension != null)
-        {
-            await _urbanWeighingExtensionService.UpdateSyncStatusAsync(extension.Id, Entities.Enums.SyncStatus.Pending);
+        await _urbanWeighingRecordSideEffects.AfterWeighingRecordEditedAsync(
+            weighingRecordId, plateNumber, totalWeight);
 
-            // Anomaly detection integration: recalculate anomaly flag after record edit
-            // This ensures the anomaly status stays in sync with the edited record data
-            var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
-                _settingsService, _configuration, _logger);
-            var hasLpr = await HasLprAttachmentAsync(weighingRecordId);
-            var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLpr);
-            var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLpr) : null;
-            await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, isAnomaly, reason);
-
-            _logger.LogInformation(
-                "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending, IsAnomaly={IsAnomaly}",
-                weighingRecordId, plateNumber, totalWeight, isAnomaly);
-        }
-        else
-        {
-            _logger.LogInformation(
-                "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}, SyncStatus reset to Pending (no extension found)",
-                weighingRecordId, plateNumber, totalWeight);
-        }
+        _logger.LogInformation(
+            "Updated weighing record {Id}: PlateNumber={PlateNumber}, TotalWeight={TotalWeight}",
+            weighingRecordId, plateNumber, totalWeight);
     }
 
     private async Task<WeighingConfiguration> GetConfigurationAsync()

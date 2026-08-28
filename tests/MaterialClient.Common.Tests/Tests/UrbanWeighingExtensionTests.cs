@@ -84,37 +84,6 @@ public class UrbanWeighingExtensionTests
 
     #endregion
 
-    #region WeighingRecord Navigation Property Tests (Task 5.2)
-
-    [Fact]
-    public void WeighingRecord_UrbanExtension_Should_Be_Null_By_Default()
-    {
-        // Arrange & Act
-        var record = new WeighingRecord(10.5m);
-
-        // Assert
-        record.UrbanExtension.ShouldBeNull();
-    }
-
-    [Fact]
-    public void WeighingRecord_UrbanExtension_Should_Be_Settable()
-    {
-        // Arrange
-        var record = new WeighingRecord(10.5m);
-        var extension = new UrbanWeighingExtension
-        {
-            WeighingRecordId = record.Id,
-            SyncStatus = SyncStatus.Pending
-        };
-
-        // Act
-        record.UrbanExtension = extension;
-
-        // Assert
-        record.UrbanExtension.ShouldNotBeNull();
-        record.UrbanExtension!.SyncStatus.ShouldBe(SyncStatus.Pending);
-    }
-
     [Fact]
     public void WeighingRecord_Should_Not_Have_SyncStatus_Property()
     {
@@ -137,7 +106,6 @@ public class UrbanWeighingExtensionTests
         };
 
         // Assert - Standard mode records should work fine without extension
-        record.UrbanExtension.ShouldBeNull();
         record.TotalWeight.ShouldBe(15.0m);
         record.PlateNumber.ShouldBe("京A12345");
         record.WeighingMode.ShouldBe(WeighingMode.Standard);
@@ -146,7 +114,6 @@ public class UrbanWeighingExtensionTests
     [Fact]
     public void WeighingRecord_UrbanMode_With_Extension_Should_Be_Consistent()
     {
-        // Arrange
         var record = new WeighingRecord(20.0m, "粤B12345");
         record.SetWeighingMode(WeighingMode.UrbanMode);
 
@@ -156,16 +123,11 @@ public class UrbanWeighingExtensionTests
             SyncStatus = SyncStatus.Pending,
             RetryCount = 0
         };
-        record.UrbanExtension = extension;
 
-        // Assert
         record.WeighingMode.ShouldBe(WeighingMode.UrbanMode);
-        record.UrbanExtension.ShouldNotBeNull();
-        record.UrbanExtension!.SyncStatus.ShouldBe(SyncStatus.Pending);
-        record.UrbanExtension.WeighingRecordId.ShouldBe(record.Id);
+        extension.SyncStatus.ShouldBe(SyncStatus.Pending);
+        extension.WeighingRecordId.ShouldBe(record.Id);
     }
-
-    #endregion
 
     #region 1:0..1 Relationship Configuration Tests (Task 5.2)
 

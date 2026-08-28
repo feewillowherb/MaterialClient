@@ -53,15 +53,18 @@ public class SettingsService : DomainService, ISettingsService
 {
     private readonly IRepository<SettingsEntity, int> _settingsRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly IUrbanSettingsJsonStore _urbanSettingsJsonStore;
     private readonly IWindowsAutoStartService? _windowsAutoStartService;
 
     public SettingsService(
         IRepository<SettingsEntity, int> settingsRepository,
         IUnitOfWorkManager unitOfWorkManager,
+        IUrbanSettingsJsonStore urbanSettingsJsonStore,
         IWindowsAutoStartService? windowsAutoStartService = null)
     {
         _settingsRepository = settingsRepository;
         _unitOfWorkManager = unitOfWorkManager;
+        _urbanSettingsJsonStore = urbanSettingsJsonStore;
         _windowsAutoStartService = windowsAutoStartService;
     }
 
@@ -90,6 +93,10 @@ public class SettingsService : DomainService, ISettingsService
             await _settingsRepository.InsertAsync(settings);
             await uow.CompleteAsync();
         }
+
+        var urbanJson = await _urbanSettingsJsonStore.GetJsonAsync();
+        if (urbanJson != null)
+            settings.UrbanSettingsJson = urbanJson;
 
         return settings;
     }
@@ -125,6 +132,7 @@ public class SettingsService : DomainService, ISettingsService
             await _settingsRepository.InsertAsync(settings);
         }
 
+        await _urbanSettingsJsonStore.SaveJsonAsync(settings.UrbanSettingsJson);
         await uow.CompleteAsync();
 
         // Synchronize Windows auto-start registry with database setting

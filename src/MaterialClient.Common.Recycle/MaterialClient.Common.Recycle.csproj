@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>MaterialClient.Common.Recycle</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Description>Recycle product Common: entities, EF, and Recycle service APIs</Description>
+    <IsPublishable>false</IsPublishable>
+    <PublishSingleFile Condition="'$(OutputType)' != 'Exe' And '$(OutputType)' != 'WinExe'">false</PublishSingleFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Volo.Abp.Ddd.Domain" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MaterialClient.Common\MaterialClient.Common.csproj" />
+    <ProjectReference Include="..\MaterialClient.Common.EntityFrameworkCore\MaterialClient.Common.EntityFrameworkCore.csproj" />
+  </ItemGroup>
+</Project>

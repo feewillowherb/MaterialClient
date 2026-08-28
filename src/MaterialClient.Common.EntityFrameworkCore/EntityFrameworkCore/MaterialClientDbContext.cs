@@ -1,10 +1,7 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
-using MaterialClient.Common.Entities.Urban;
-using MaterialClient.Common.Extensions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
@@ -42,12 +39,6 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
     // Settings DbSet
     public DbSet<SettingsEntity> Settings { get; set; }
     public DbSet<WorkSettingsEntity> WorkSettings { get; set; }
-
-    // Urban extension DbSet
-    public DbSet<UrbanWeighingExtension> UrbanWeighingExtensions { get; set; }
-
-    // Recycle Waybill extension DbSet
-    public DbSet<RecycleWaybillExtension> RecycleWaybillExtensions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -238,40 +229,11 @@ public class MaterialClientDbContext : AbpDbContext<MaterialClientDbContext>
             entity.Property(e => e.CameraConfigsJson).IsRequired();
             entity.Property(e => e.LicensePlateRecognitionConfigsJson).IsRequired();
             entity.Property(e => e.WeighingConfigurationJson).IsRequired();
-            entity.Property(e => e.UrbanSettingsJson).IsRequired();
+            entity.Ignore(e => e.UrbanSettingsJson);
         });
 
         // Configure WorkSettingsEntity
         modelBuilder.Entity<WorkSettingsEntity>(entity => { entity.ConfigureByConvention(); });
-
-        // UrbanWeighingExtension: logical WeighingRecordId only (no FK / no navigation mapping)
-        modelBuilder.Entity<UrbanWeighingExtension>(entity =>
-        {
-            entity.ConfigureByConvention();
-            entity.Property(e => e.WeighingRecordId).IsRequired();
-            entity.Property(e => e.AnomalyReason)
-                .HasConversion(
-                    new ValueConverter<AnomalyReason?, string?>(
-                        v => v.HasValue ? v.Value.GetDescription() : null,
-                        v => string.IsNullOrEmpty(v) ? null : EnumExtensions.Parse<AnomalyReason>(v)))
-                .HasMaxLength(32);
-            entity.HasIndex(e => e.WeighingRecordId).IsUnique();
-            entity.HasIndex(e => new { e.SyncStatus, e.WeighingRecordId });
-            entity.HasIndex(e => e.IsAnomaly);
-            entity.Property(e => e.SubmitMachineCode).HasMaxLength(128);
-        });
-
-        // RecycleWaybillExtension: logical WaybillId only (no FK / no navigation mapping).
-        // Table name RecycleWaybillExtensions; one extension per Waybill (unique WaybillId).
-        modelBuilder.Entity<RecycleWaybillExtension>(entity =>
-        {
-            entity.ConfigureByConvention();
-            entity.ToTable("RecycleWaybillExtensions");
-            entity.Property(e => e.WaybillId).IsRequired();
-            entity.Property(e => e.UnitPrice).HasPrecision(18, 4);
-            entity.Property(e => e.SaleContractNo).HasMaxLength(100);
-            entity.HasIndex(e => e.WaybillId).IsUnique();
-        });
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
