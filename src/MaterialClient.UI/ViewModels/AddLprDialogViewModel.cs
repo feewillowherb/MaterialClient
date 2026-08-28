@@ -14,6 +14,7 @@ namespace MaterialClient.UI.ViewModels;
 public partial class AddLprDialogViewModel : ViewModelBase
 {
     [Reactive] private LprDeviceType _deviceType = LprDeviceType.Hikvision;
+    [Reactive] private LprSiteType _siteType = LprSiteType.Scale;
     [Reactive] private string _name = string.Empty;
     [Reactive] private string _ip = string.Empty;
     [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.A;
@@ -23,6 +24,15 @@ public partial class AddLprDialogViewModel : ViewModelBase
     [Reactive] private string? _channel;
     [Reactive] private bool _enableGateIo;
     [Reactive] private string? _ioChannel;
+
+    public ObservableCollection<LprSiteType> LprSiteTypeOptions { get; } =
+    [
+        LprSiteType.Scale,
+        LprSiteType.Checkpoint,
+        LprSiteType.FinishedProduct
+    ];
+
+    public bool CanEditSiteType { get; }
 
     public ObservableCollection<LprDeviceType> LprDeviceTypeOptions { get; } =
     [
@@ -41,10 +51,16 @@ public partial class AddLprDialogViewModel : ViewModelBase
 
     public string DialogTitle => IsEditMode ? "编辑车牌识别设备" : "添加车牌识别设备";
 
-    public AddLprDialogViewModel(LprDeviceType deviceType = LprDeviceType.Hikvision, bool isEditMode = false)
+    public AddLprDialogViewModel(
+        LprDeviceType deviceType = LprDeviceType.Hikvision,
+        bool isEditMode = false,
+        bool canEditSiteType = false)
     {
         IsEditMode = isEditMode;
+        CanEditSiteType = canEditSiteType;
         _deviceType = deviceType;
+        if (!canEditSiteType)
+            _siteType = LprSiteType.Scale;
         ApplyEmptyVendorDefaults(deviceType);
         _ioChannel ??= "1";
 
@@ -106,6 +122,7 @@ public partial class AddLprDialogViewModel : ViewModelBase
         EnableGateIo = row.EnableGateIo;
         IoChannel = row.IoChannel;
         DeviceType = row.DeviceType;
+        SiteType = CanEditSiteType ? row.SiteType : LprSiteType.Scale;
     }
 
     private void ApplyEmptyVendorDefaults(LprDeviceType deviceType)
@@ -147,7 +164,8 @@ public partial class AddLprDialogViewModel : ViewModelBase
             channel,
             EnableGateIo && DeviceType == LprDeviceType.Vzvision,
             ioChannel,
-            DeviceType);
+            DeviceType,
+            CanEditSiteType ? SiteType : LprSiteType.Scale);
 
         Result = LicensePlateRecognitionConfigViewModel.FromConfig(config);
     }

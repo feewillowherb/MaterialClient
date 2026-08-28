@@ -58,6 +58,10 @@ public class LicensePlateRecognitionConfig
     /// </summary>
     public LprDeviceType? DeviceType { get; set; }
 
+    public LprSiteType SiteType { get; set; } = LprSiteType.Scale;
+
+    public void CoerceToScale() => SiteType = LprSiteType.Scale;
+
     /// <summary>
     ///     运行时使用的厂商（回填后的权威值）
     /// </summary>
@@ -93,11 +97,12 @@ public class LicensePlateRecognitionConfig
         string? channel,
         bool enableGateIo,
         string? ioChannel,
-        LprDeviceType deviceType)
+        LprDeviceType deviceType,
+        LprSiteType siteType = LprSiteType.Scale)
     {
         var config = new LicensePlateRecognitionConfig();
         config.ReplaceFromUi(
-            name, ip, direction, userName, password, port, channel, enableGateIo, ioChannel, deviceType);
+            name, ip, direction, userName, password, port, channel, enableGateIo, ioChannel, deviceType, siteType);
         return config;
     }
 
@@ -111,7 +116,8 @@ public class LicensePlateRecognitionConfig
         string? channel,
         bool enableGateIo,
         string? ioChannel,
-        LprDeviceType deviceType)
+        LprDeviceType deviceType,
+        LprSiteType siteType = LprSiteType.Scale)
     {
         Name = name;
         Ip = ip;
@@ -125,6 +131,7 @@ public class LicensePlateRecognitionConfig
         EnableGateIo = enableGateIo;
         IoChannel = string.IsNullOrWhiteSpace(ioChannel) ? "1" : ioChannel;
         DeviceType = deviceType;
+        SiteType = siteType;
         ApplyVendorDefaults();
     }
 

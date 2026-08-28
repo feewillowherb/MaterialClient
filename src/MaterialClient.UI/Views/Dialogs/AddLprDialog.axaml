@@ -5,11 +5,12 @@
         x:Class="MaterialClient.UI.Views.Dialogs.AddLprDialog"
         x:DataType="vm:AddLprDialogViewModel"
         Title="{Binding DialogTitle}"
-        Width="450" Height="520"
+        Width="450" Height="580"
         WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
         <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
+        <converters:LprSiteTypeConverter x:Key="LprSiteTypeConverter" />
     </Window.Resources>
 
     <Grid RowDefinitions="*,Auto" Margin="20">
@@ -58,6 +59,25 @@
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding ., Converter={StaticResource LprDeviceTypeConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,*" RowSpacing="8">
+                    <TextBlock Text="站点类型:"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="Black"
+                               Width="100" />
+                    <ComboBox ItemsSource="{Binding LprSiteTypeOptions}"
+                              SelectedItem="{Binding SiteType}"
+                              IsEnabled="{Binding CanEditSiteType}"
+                              Grid.Column="1"
+                              HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ., Converter={StaticResource LprSiteTypeConverter}}" />
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>

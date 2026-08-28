@@ -15,6 +15,7 @@
         <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
         <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
         <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
+        <converters:LprSiteTypeConverter x:Key="LprSiteTypeConverter" />
         <converters:DeliveryTypeConverter x:Key="DeliveryTypeConverter" />
         <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
         <converters:EnumToSelectedIndexConverter x:Key="EnumToSelectedIndexConverter" />
@@ -607,6 +608,14 @@
                                                             <DataGridTemplateColumn.CellTemplate>
                                                                 <DataTemplate x:DataType="vm:LicensePlateRecognitionConfigViewModel">
                                                                     <TextBlock Text="{Binding DeviceType, Converter={StaticResource LprDeviceTypeConverter}}"
+                                                                               VerticalAlignment="Center" />
+                                                                </DataTemplate>
+                                                            </DataGridTemplateColumn.CellTemplate>
+                                                        </DataGridTemplateColumn>
+                                                        <DataGridTemplateColumn Header="站点" Width="72">
+                                                            <DataGridTemplateColumn.CellTemplate>
+                                                                <DataTemplate x:DataType="vm:LicensePlateRecognitionConfigViewModel">
+                                                                    <TextBlock Text="{Binding SiteType, Converter={StaticResource LprSiteTypeConverter}}"
                                                                                VerticalAlignment="Center" />
                                                                 </DataTemplate>
                                                             </DataGridTemplateColumn.CellTemplate>

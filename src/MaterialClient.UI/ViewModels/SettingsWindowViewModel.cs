@@ -303,6 +303,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             };
 
             var lprConfigs = LicensePlateRecognitionConfigs.Select(l => l.ToConfig()).ToList();
+            if (!ShowUrbanConfigSettings)
+            {
+                foreach (var config in lprConfigs)
+                    config.CoerceToScale();
+            }
             systemSettings.EchoLegacyLprDeviceType(lprConfigs);
 
             var settings = new SettingsEntity(
@@ -562,7 +567,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [ReactiveCommand]
     private async Task AddLicensePlateRecognitionAsync()
     {
-        var dialogViewModel = new AddLprDialogViewModel(LprDeviceType.Hikvision)
+        var dialogViewModel = new AddLprDialogViewModel(
+            LprDeviceType.Hikvision,
+            canEditSiteType: ShowUrbanConfigSettings)
         {
             Name = $"camera_{LicensePlateRecognitionConfigs.Count + 1}",
             Direction = LicensePlateDirection.A
@@ -614,7 +621,10 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         if (config == null) return;
 
-        var dialogViewModel = new AddLprDialogViewModel(config.DeviceType, isEditMode: true);
+        var dialogViewModel = new AddLprDialogViewModel(
+            config.DeviceType,
+            isEditMode: true,
+            canEditSiteType: ShowUrbanConfigSettings);
         dialogViewModel.ApplyRow(config);
 
         var dialog = new AddLprDialog(dialogViewModel);
@@ -931,7 +941,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Load license plate recognition configs
             LicensePlateRecognitionConfigs.Clear();
             foreach (var config in settings.LicensePlateRecognitionConfigs)
-                LicensePlateRecognitionConfigs.Add(LicensePlateRecognitionConfigViewModel.FromConfig(config));
+            {
+                var row = LicensePlateRecognitionConfigViewModel.FromConfig(config);
+                if (!ShowUrbanConfigSettings)
+                    row.SiteType = LprSiteType.Scale;
+                LicensePlateRecognitionConfigs.Add(row);
+            }
 
             foreach (var item in LicensePlateRecognitionConfigs)
                 SubscribeToLprItemChanges(item);
@@ -1039,6 +1054,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
 {
     [Reactive] private LprDeviceType _deviceType = LprDeviceType.Hikvision;
 
+    [Reactive] private LprSiteType _siteType = LprSiteType.Scale;
+
     [Reactive] private LicensePlateDirection _direction = LicensePlateDirection.A;
 
     [Reactive] private string _ip = string.Empty;
@@ -1112,6 +1129,7 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
         EnableGateIo = config.EnableGateIo;
         IoChannel = string.IsNullOrWhiteSpace(config.IoChannel) ? "1" : config.IoChannel;
         DeviceType = config.ResolvedDeviceType;
+        SiteType = config.SiteType;
     }
 
     public LicensePlateRecognitionConfig ToConfig() =>
@@ -1125,7 +1143,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
             Channel,
             EnableGateIo,
             IoChannel,
-            DeviceType);
+            DeviceType,
+            SiteType);
 
     /// <summary>
     ///     Direction as int for ComboBox binding
