@@ -10,6 +10,7 @@
 
     <Window.Resources>
         <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
+        <converters:LprSiteTypeConverter x:Key="LprSiteTypeConverter" />
         <converters:UrbanSiteTypeConverter x:Key="UrbanSiteTypeConverter" />
     </Window.Resources>
 

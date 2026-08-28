@@ -36,6 +36,7 @@ public class UrbanPassageRecordService : DomainService, IUrbanPassageRecordServi
         return entity;
     }
 
+    [UnitOfWork]
     public virtual async Task<PagedResultDto<UrbanAttendedListRow>> GetPagedListAsync(GetUrbanWeighingListInput input)
     {
         var pageIndex = input.PageIndex < 1 ? 1 : input.PageIndex;
@@ -83,6 +84,7 @@ public class UrbanPassageRecordService : DomainService, IUrbanPassageRecordServi
             return new PagedResultDto<UrbanAttendedListRow>(total, rows);
         }
 
+        var passages = await passageQuery.ToListAsync();
         var weighingAll = await _weighingExtensionService.GetPagedListItemsAsync(new GetUrbanWeighingListInput
         {
             PageIndex = 1,
@@ -93,7 +95,6 @@ public class UrbanPassageRecordService : DomainService, IUrbanPassageRecordServi
             EndTime = input.EndTime
         });
 
-        var passages = await passageQuery.ToListAsync();
         var mixed = weighingAll.Items
             .Select(UrbanAttendedListRow.FromWeighing)
             .Concat(await ProjectPassageRowsAsync(passages))
