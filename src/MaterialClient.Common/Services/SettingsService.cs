@@ -73,34 +73,35 @@ public class SettingsService : DomainService, ISettingsService
     /// </summary>
     public async Task<SettingsEntity> GetSettingsAsync()
     {
-        SettingsEntity settings;
-        using (var uow = _unitOfWorkManager.Begin())
-        {
-            var loaded = await _settingsRepository.GetListAsync();
-            var existing = loaded.FirstOrDefault();
-            if (existing == null)
-            {
-                settings = new SettingsEntity(
-                    new ScaleSettings(),
-                    new DocumentScannerConfig(),
-                    new SystemSettings(),
-                    new List<CameraConfig>(),
-                    new List<LicensePlateRecognitionConfig>(),
-                    new WeighingConfiguration(),
-                    new SoundDeviceSettings());
+        using var uow = _unitOfWorkManager.Begin();
 
-                await _settingsRepository.InsertAsync(settings);
-                await uow.CompleteAsync();
-            }
-            else
-            {
-                settings = existing;
-            }
+        var loaded = await _settingsRepository.GetListAsync();
+        var existing = loaded.FirstOrDefault();
+        SettingsEntity settings;
+        if (existing == null)
+        {
+            settings = new SettingsEntity(
+                new ScaleSettings(),
+                new DocumentScannerConfig(),
+                new SystemSettings(),
+                new List<CameraConfig>(),
+                new List<LicensePlateRecognitionConfig>(),
+                new WeighingConfiguration(),
+                new SoundDeviceSettings());
+
+            await _settingsRepository.InsertAsync(settings);
+        }
+        else
+        {
+            settings = existing;
         }
 
         var urbanJson = await _urbanSettingsJsonStore.GetJsonAsync();
         if (urbanJson != null)
             settings.UrbanSettingsJson = urbanJson;
+
+        if (existing == null)
+            await uow.CompleteAsync();
 
         return settings;
     }
@@ -108,34 +109,32 @@ public class SettingsService : DomainService, ISettingsService
     /// <summary>
     ///     Save settings
     /// </summary>
+    [UnitOfWork]
     public async Task SaveSettingsAsync(SettingsEntity settings)
     {
-        using (var uow = _unitOfWorkManager.Begin())
+        using var uow = _unitOfWorkManager.Begin();
+
+        var existingSettings = await _settingsRepository.GetListAsync();
+        var existing = existingSettings.FirstOrDefault();
+
+        if (existing != null)
         {
-            var existingSettings = await _settingsRepository.GetListAsync();
-            var existing = existingSettings.FirstOrDefault();
-
-            if (existing != null)
-            {
-                existing.ScaleSettings = settings.ScaleSettings;
-                existing.DocumentScannerConfig = settings.DocumentScannerConfig;
-                existing.SystemSettings = settings.SystemSettings;
-                existing.CameraConfigs = settings.CameraConfigs;
-                existing.LicensePlateRecognitionConfigs = settings.LicensePlateRecognitionConfigs;
-                existing.WeighingConfiguration = settings.WeighingConfiguration;
-                existing.SoundDeviceSettings = settings.SoundDeviceSettings;
-                await _settingsRepository.UpdateAsync(existing);
-            }
-            else
-            {
-                await _settingsRepository.InsertAsync(settings);
-            }
-
-            await uow.CompleteAsync();
+            existing.ScaleSettings = settings.ScaleSettings;
+            existing.DocumentScannerConfig = settings.DocumentScannerConfig;
+            existing.SystemSettings = settings.SystemSettings;
+            existing.CameraConfigs = settings.CameraConfigs;
+            existing.LicensePlateRecognitionConfigs = settings.LicensePlateRecognitionConfigs;
+            existing.WeighingConfiguration = settings.WeighingConfiguration;
+            existing.SoundDeviceSettings = settings.SoundDeviceSettings;
+            await _settingsRepository.UpdateAsync(existing);
+        }
+        else
+        {
+            await _settingsRepository.InsertAsync(settings);
         }
 
-        // Urban 与内核是同一 SQLite 上的另一 DbContext；必须在内核事务结束后再写，否则 SQLITE_BUSY。
         await _urbanSettingsJsonStore.SaveJsonAsync(settings.UrbanSettingsJson);
+        await uow.CompleteAsync();
 
         // Synchronize Windows auto-start registry with database setting
         if (_windowsAutoStartService != null)
