@@ -32,8 +32,7 @@ public class SettingsWindowViewModelDefaultDeliveryTypeTests
             Substitute.For<ILprDeviceResolver>(),
             Substitute.For<ILocalEventBus>(),
             Substitute.For<ILicenseService>(),
-            Substitute.For<IServiceProvider>(),
-            Substitute.For<IXiaoshanUploadSettingsFormMapper>());
+            Substitute.For<IServiceProvider>());
     }
 
     private static SettingsEntity CreateSettingsEntity(DeliveryType deliveryType)

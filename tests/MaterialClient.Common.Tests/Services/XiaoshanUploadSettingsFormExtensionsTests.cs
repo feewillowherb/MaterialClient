@@ -1,19 +1,16 @@
 using MaterialClient.Common.Configuration;
-using MaterialClient.Common.Models;
 using MaterialClient.Common.Services;
 using Shouldly;
 using Xunit;
 
 namespace MaterialClient.Common.Tests.Services;
 
-public class XiaoshanUploadSettingsFormMapperTests
+public class XiaoshanUploadSettingsFormExtensionsTests
 {
-    private readonly XiaoshanUploadSettingsFormMapper _mapper = new();
-
     [Fact]
-    public void ApplyToForm_EmptyJson_DefaultsWeighbridgeEnabled()
+    public void ToUrbanConfigForm_EmptyJson_DefaultsWeighbridgeEnabled()
     {
-        var form = _mapper.ApplyToForm(new XiaoshanUploadLocalConfig { ModesJson = "{}" });
+        var form = new XiaoshanUploadLocalConfig { ModesJson = "{}" }.ToUrbanConfigForm();
 
         form.WeighbridgeEnabled.ShouldBeTrue();
         form.GateEnabled.ShouldBeFalse();
@@ -21,15 +18,12 @@ public class XiaoshanUploadSettingsFormMapperTests
     }
 
     [Fact]
-    public void TryCreateModesJson_RoundTripsUiModeFieldsOnly()
+    public void ToModesJson_RoundTripsUiModeFieldsOnly()
     {
         var form = new XiaoshanUploadSettingsFormState(
             true, true, false, 1, 1, 1, 0, 0);
 
-        var persist = _mapper.TryCreateModesJson(form);
-        persist.Success.ShouldBeTrue();
-
-        var applied = _mapper.ApplyToForm(persist.ModesJson);
+        var applied = form.ToModesJson().ToUrbanConfigForm();
 
         applied.WeighbridgeEnabled.ShouldBeTrue();
         applied.GateEnabled.ShouldBeTrue();

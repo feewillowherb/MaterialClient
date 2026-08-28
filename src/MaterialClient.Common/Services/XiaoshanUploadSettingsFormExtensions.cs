@@ -1,24 +1,24 @@
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Models;
-using Volo.Abp.DependencyInjection;
 
 namespace MaterialClient.Common.Services;
 
-public interface IXiaoshanUploadSettingsFormMapper : ITransientDependency
+public record XiaoshanUploadSettingsFormState(
+    bool WeighbridgeEnabled,
+    bool GateEnabled,
+    bool ProductEnabled,
+    int WbInOutIndex,
+    int GateDeviceIndex,
+    int GateSiteIndex,
+    int ProductDeviceIndex,
+    int ProductSiteIndex);
+
+public static class XiaoshanUploadSettingsFormExtensions
 {
-    XiaoshanUploadSettingsFormState ApplyToForm(XiaoshanUploadLocalConfig local);
+    public static XiaoshanUploadSettingsFormState ToUrbanConfigForm(this XiaoshanUploadLocalConfig local) =>
+        local.ModesJson.ToUrbanConfigForm();
 
-    XiaoshanUploadSettingsFormState ApplyToForm(string modesJson);
-
-    XiaoshanUploadModesPersistResult TryCreateModesJson(XiaoshanUploadSettingsFormState form);
-}
-
-public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMapper
-{
-    public XiaoshanUploadSettingsFormState ApplyToForm(XiaoshanUploadLocalConfig local) =>
-        ApplyToForm(local.ModesJson);
-
-    public XiaoshanUploadSettingsFormState ApplyToForm(string modesJson)
+    public static XiaoshanUploadSettingsFormState ToUrbanConfigForm(this string? modesJson)
     {
         var modes = XiaoshanUploadEnvelopeJson.ParseModes(modesJson);
         var wb = modes.GetSettings(XiaoshanUploadModeNames.Weighbridge);
@@ -36,7 +36,7 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
             ProductSiteIndex: IndexFromSiteType(product.SiteType));
     }
 
-    public XiaoshanUploadModesPersistResult TryCreateModesJson(XiaoshanUploadSettingsFormState form)
+    public static string ToModesJson(this XiaoshanUploadSettingsFormState form)
     {
         var enabled = new List<string>();
         if (form.WeighbridgeEnabled) enabled.Add(XiaoshanUploadModeNames.Weighbridge);
@@ -66,9 +66,7 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
             }
         };
 
-        return new XiaoshanUploadModesPersistResult(
-            true,
-            XiaoshanUploadEnvelopeJson.SerializeModes(modes));
+        return XiaoshanUploadEnvelopeJson.SerializeModes(modes);
     }
 
     private static int IndexFromWbInOut(string? value) =>

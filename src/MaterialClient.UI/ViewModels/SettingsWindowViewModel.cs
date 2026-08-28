@@ -47,7 +47,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ILocalEventBus _localEventBus;
     private readonly ILicenseService _licenseService;
     private readonly IUsbCameraService? _usbCameraService;
-    private readonly IXiaoshanUploadSettingsFormMapper _xiaoshanUploadSettingsFormMapper;
     private readonly IDisposable _lprMessageSubscription;
 
     private bool _urbanConfigLoading;
@@ -247,7 +246,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ILocalEventBus localEventBus,
         ILicenseService licenseService,
         IServiceProvider serviceProvider,
-        IXiaoshanUploadSettingsFormMapper xiaoshanUploadSettingsFormMapper,
         IUsbCameraService? usbCameraService = null)
     {
         _settingsService = settingsService;
@@ -262,7 +260,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         // Resolve optional Urban-only services from the host container (optional ctor params
         // with defaults are unreliable under Autofac and may stay null on MaterialClient.Urban).
         _usbCameraService = usbCameraService ?? serviceProvider.GetService<IUsbCameraService>();
-        _xiaoshanUploadSettingsFormMapper = xiaoshanUploadSettingsFormMapper;
 
         // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
         _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
@@ -459,10 +456,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private UrbanSettings BuildUrbanSettingsFromForm(UrbanSettings? existing)
     {
         var urban = existing ?? new UrbanSettings();
-        var persist = _xiaoshanUploadSettingsFormMapper.TryCreateModesJson(CaptureUrbanConfigForm());
         urban.XiaoshanUpload = new XiaoshanUploadLocalConfig
         {
-            ModesJson = persist.ModesJson
+            ModesJson = CaptureUrbanConfigForm().ToModesJson()
         };
 
         return urban;
@@ -473,7 +469,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         _urbanConfigLoading = true;
         try
         {
-            ApplyUrbanForm(_xiaoshanUploadSettingsFormMapper.ApplyToForm(modesJson));
+            ApplyUrbanForm(modesJson.ToUrbanConfigForm());
         }
         finally
         {
