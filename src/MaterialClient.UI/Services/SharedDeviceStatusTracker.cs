@@ -308,7 +308,6 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
     private async Task CheckLprOnlineStatusAsync()
     {
         var settings = await _settingsService.GetSettingsAsync();
-        var deviceType = settings.SystemSettings.LprDeviceType;
         var configs = settings.LicensePlateRecognitionConfigs;
 
         if (configs == null || configs.Count == 0)
@@ -317,7 +316,7 @@ public sealed class SharedDeviceStatusTracker : IDisposable, ITransientDependenc
             return;
         }
 
-        var statuses = _lprDeviceOnlineStatusService.GetOnlineStatuses(deviceType, configs);
+        var statuses = _lprDeviceOnlineStatusService.GetOnlineStatuses(configs);
         UpdateLpr(statuses.Any(s => s.IsOnline));
     }
 

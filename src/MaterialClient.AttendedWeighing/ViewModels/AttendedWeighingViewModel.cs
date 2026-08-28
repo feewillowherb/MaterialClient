@@ -552,7 +552,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
         try
         {
             var settings = await _settingsService.GetSettingsAsync();
-            var deviceType = settings.SystemSettings.LprDeviceType;
             var configs = settings.LicensePlateRecognitionConfigs;
 
             if (configs == null || configs.Count == 0)
@@ -561,7 +560,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                 return;
             }
 
-            var statuses = _lprDeviceOnlineStatusService.GetOnlineStatuses(deviceType, configs);
+            var statuses = _lprDeviceOnlineStatusService.GetOnlineStatuses(configs);
             var anyOnline = statuses.Any(s => s.IsOnline);
 
             Dispatcher.UIThread.Post(() => { IsLprOnline = anyOnline; });

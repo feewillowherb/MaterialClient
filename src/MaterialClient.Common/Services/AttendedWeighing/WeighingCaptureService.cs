@@ -134,24 +134,6 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
 
         try
         {
-            var lprDeviceType = settings.SystemSettings.LprDeviceType;
-            ILprDevice lprDevice;
-            try
-            {
-                lprDevice = _lprDeviceResolver.GetDevice(lprDeviceType);
-            }
-            catch (ArgumentOutOfRangeException ex)
-            {
-                _logger.LogWarning(ex, "未知 LPR 设备类型 {DeviceType}，跳过抓拍 ({Phase})", lprDeviceType, phase);
-                return;
-            }
-
-            if (!lprDevice.SupportsActiveCapture)
-            {
-                _logger.LogInformation("LPR 设备 {DeviceType} 不支持主动抓拍，跳过 ({Phase})", lprDeviceType, phase);
-                return;
-            }
-
             var lprConfigs = settings.LicensePlateRecognitionConfigs;
             if (lprConfigs.Count == 0)
             {
@@ -159,24 +141,41 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
                 return;
             }
 
-            _logger.LogInformation("触发 {DeviceType} LPR 抓拍 ({Phase})，设备数 {Count}",
-                lprDeviceType, phase, lprConfigs.Count);
-
             var tasks = lprConfigs
                 .Where(config => config.IsValid())
                 .Select(async config =>
                 {
+                    var deviceType = config.ResolvedDeviceType;
+                    ILprDevice lprDevice;
+                    try
+                    {
+                        lprDevice = _lprDeviceResolver.GetDevice(deviceType);
+                    }
+                    catch (ArgumentOutOfRangeException ex)
+                    {
+                        _logger.LogWarning(ex, "未知 LPR 设备类型 {DeviceType}，跳过 {Name} ({Phase})",
+                            deviceType, config.Name, phase);
+                        return false;
+                    }
+
+                    if (!lprDevice.SupportsActiveCapture)
+                    {
+                        _logger.LogInformation("LPR 设备 {DeviceType} 不支持主动抓拍，跳过 {Name} ({Phase})",
+                            deviceType, config.Name, phase);
+                        return false;
+                    }
+
                     try
                     {
                         await lprDevice.TriggerCaptureAsync(config);
                         _logger.LogInformation("{DeviceType} LPR 抓拍已发送: {Name} ({Ip}) [{Phase}]",
-                            lprDeviceType, config.Name, config.Ip, phase);
+                            deviceType, config.Name, config.Ip, phase);
                         return true;
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "{DeviceType} LPR 抓拍失败: {Name} ({Ip}) [{Phase}]",
-                            lprDeviceType, config.Name, config.Ip, phase);
+                            deviceType, config.Name, config.Ip, phase);
                         return false;
                     }
                 });
@@ -185,8 +184,8 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
             var successCount = results.Count(r => r);
             var failCount = results.Length - successCount;
 
-            _logger.LogInformation("{DeviceType} LPR 抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}",
-                lprDeviceType, phase, successCount, failCount);
+            _logger.LogInformation("LPR 抓拍完成 ({Phase}): 成功 {SuccessCount}，失败 {FailCount}",
+                phase, successCount, failCount);
         }
         catch (Exception ex)
         {

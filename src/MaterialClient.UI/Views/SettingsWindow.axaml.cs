@@ -33,13 +33,6 @@ public partial class SettingsWindow : Window, ITransientDependency
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ => Close())
             .DisposeWith(_disposables);
-
-        if (viewModel != null)
-        {
-            viewModel.WhenAnyValue(x => x.LprDeviceType)
-                .Subscribe(_ => UpdateLprColumnVisibility(viewModel.ShowLprUserPortColumns))
-                .DisposeWith(_disposables);
-        }
     }
 
     protected override void OnOpened(EventArgs e)
@@ -49,11 +42,6 @@ public partial class SettingsWindow : Window, ITransientDependency
         Dispatcher.UIThread.Post(() =>
         {
             SelectDefaultNavigation();
-
-            if (DataContext is SettingsWindowViewModel viewModel)
-            {
-                UpdateLprColumnVisibility(viewModel.ShowLprUserPortColumns);
-            }
         }, DispatcherPriority.Loaded);
     }
 
@@ -91,23 +79,6 @@ public partial class SettingsWindow : Window, ITransientDependency
     private void CloseButton_Click(object? sender, RoutedEventArgs e)
     {
         Close();
-    }
-
-    private void UpdateLprColumnVisibility(bool isVisible)
-    {
-        if (LprDataGrid?.Columns == null) return;
-
-        var hikvisionHeaders = new[] { "用户名", "端口" };
-
-        foreach (var column in LprDataGrid.Columns)
-        {
-            if (column is DataGridTextColumn textColumn &&
-                textColumn.Header?.ToString() is { } header &&
-                hikvisionHeaders.Contains(header))
-            {
-                textColumn.IsVisible = isVisible;
-            }
-        }
     }
 
     protected override void OnClosed(EventArgs e)
