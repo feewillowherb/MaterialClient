@@ -17,6 +17,7 @@
         <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
         <converters:DeliveryTypeConverter x:Key="DeliveryTypeConverter" />
         <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+        <converters:EnumToSelectedIndexConverter x:Key="EnumToSelectedIndexConverter" />
     </Window.Resources>
 
     <Window.Styles>
@@ -1186,7 +1187,7 @@
                                                                 <TextBlock Text="进出场"
                                                                            VerticalAlignment="Center"
                                                                            Width="48" />
-                                                                <ComboBox SelectedIndex="{Binding UrbanConfigWbInOutIndex}"
+                                                                <ComboBox SelectedIndex="{Binding UrbanConfigWbInOut, Converter={StaticResource EnumToSelectedIndexConverter}}"
                                                                           Width="120"
                                                                           HorizontalAlignment="Left">
                                                                     <ComboBoxItem Content="进场" />
@@ -1207,7 +1208,7 @@
                                                                     <TextBlock Text="进出场"
                                                                                VerticalAlignment="Center"
                                                                                Width="48" />
-                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigGateDeviceIndex}"
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigGateInOut, Converter={StaticResource EnumToSelectedIndexConverter}}"
                                                                               Width="120"
                                                                               HorizontalAlignment="Left">
                                                                         <ComboBoxItem Content="进场" />
@@ -1218,7 +1219,7 @@
                                                                     <TextBlock Text="场地"
                                                                                VerticalAlignment="Center"
                                                                                Width="36" />
-                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigGateSiteIndex}"
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigGateSiteType, Converter={StaticResource EnumToSelectedIndexConverter}}"
                                                                               Width="120"
                                                                               HorizontalAlignment="Left">
                                                                         <ComboBoxItem Content="工地" />
@@ -1240,7 +1241,7 @@
                                                                     <TextBlock Text="进出场"
                                                                                VerticalAlignment="Center"
                                                                                Width="48" />
-                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigProductDeviceIndex}"
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigProductInOut, Converter={StaticResource EnumToSelectedIndexConverter}}"
                                                                               Width="120"
                                                                               HorizontalAlignment="Left">
                                                                         <ComboBoxItem Content="进场" />
@@ -1251,7 +1252,7 @@
                                                                     <TextBlock Text="场地"
                                                                                VerticalAlignment="Center"
                                                                                Width="36" />
-                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigProductSiteIndex}"
+                                                                    <ComboBox SelectedIndex="{Binding UrbanConfigProductSiteType, Converter={StaticResource EnumToSelectedIndexConverter}}"
                                                                               Width="120"
                                                                               HorizontalAlignment="Left">
                                                                         <ComboBoxItem Content="工地" />

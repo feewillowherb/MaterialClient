@@ -88,14 +88,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private bool _urbanConfigWeighbridgeEnabled = true;
     [Reactive] private bool _urbanConfigGateEnabled;
     [Reactive] private bool _urbanConfigProductEnabled;
-    /// <summary>0=enter(进场), 1=exit(出场). Wire: weighbridge inOutType 0/1.</summary>
-    [Reactive] private int _urbanConfigWbInOutIndex;
-    /// <summary>0=enter(进场), 1=exit(出场). Wire: deviceID 01/02.</summary>
-    [Reactive] private int _urbanConfigGateDeviceIndex;
-    /// <summary>0=construction site(工地), 1=disposal(消纳场). Wire: siteType 1/2.</summary>
-    [Reactive] private int _urbanConfigGateSiteIndex;
-    [Reactive] private int _urbanConfigProductDeviceIndex;
-    [Reactive] private int _urbanConfigProductSiteIndex;
+    [Reactive] private UrbanInOutType _urbanConfigWbInOut = UrbanInOutType.Enter;
+    [Reactive] private UrbanInOutType _urbanConfigGateInOut = UrbanInOutType.Enter;
+    [Reactive] private UrbanSiteType _urbanConfigGateSiteType = UrbanSiteType.Construction;
+    [Reactive] private UrbanInOutType _urbanConfigProductInOut = UrbanInOutType.Enter;
+    [Reactive] private UrbanSiteType _urbanConfigProductSiteType = UrbanSiteType.Construction;
     [Reactive] private string? _settingsSaveErrorMessage;
 
     // License plate recognition configs
@@ -286,11 +283,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 x => x.UrbanConfigProductEnabled)
             .Subscribe(_ => MarkUrbanConfigDirty());
         this.WhenAnyValue(
-                x => x.UrbanConfigWbInOutIndex,
-                x => x.UrbanConfigGateDeviceIndex,
-                x => x.UrbanConfigGateSiteIndex,
-                x => x.UrbanConfigProductDeviceIndex,
-                x => x.UrbanConfigProductSiteIndex)
+                x => x.UrbanConfigWbInOut,
+                x => x.UrbanConfigGateInOut,
+                x => x.UrbanConfigGateSiteType,
+                x => x.UrbanConfigProductInOut,
+                x => x.UrbanConfigProductSiteType)
             .Subscribe(_ => MarkUrbanConfigDirty());
 
         this.WhenAnyValue(x => x.SelectedSettingsSection)
@@ -436,7 +433,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private void ApplyUrbanConfigFromLocalSettings(UrbanSettings urbanSettings)
     {
         var local = urbanSettings.XiaoshanUpload ?? new XiaoshanUploadLocalConfig();
-        ApplyUrbanConfigSnapshot(local.ModesJson);
+        ApplyUrbanConfigSnapshot(local);
     }
 
     private async Task LoadUrbanConfigSiteAccessCodeAsync()
@@ -456,20 +453,17 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private UrbanSettings BuildUrbanSettingsFromForm(UrbanSettings? existing)
     {
         var urban = existing ?? new UrbanSettings();
-        urban.XiaoshanUpload = new XiaoshanUploadLocalConfig
-        {
-            ModesJson = CaptureUrbanConfigForm().ToModesJson()
-        };
+        urban.XiaoshanUpload = CaptureUrbanConfigForm().ToLocalConfig();
 
         return urban;
     }
 
-    private void ApplyUrbanConfigSnapshot(string modesJson)
+    private void ApplyUrbanConfigSnapshot(XiaoshanUploadLocalConfig local)
     {
         _urbanConfigLoading = true;
         try
         {
-            ApplyUrbanForm(modesJson.ToUrbanConfigForm());
+            ApplyUrbanForm(XiaoshanUploadSettingsFormState.FromLocalConfig(local));
         }
         finally
         {
@@ -482,22 +476,22 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UrbanConfigWeighbridgeEnabled,
             UrbanConfigGateEnabled,
             UrbanConfigProductEnabled,
-            UrbanConfigWbInOutIndex,
-            UrbanConfigGateDeviceIndex,
-            UrbanConfigGateSiteIndex,
-            UrbanConfigProductDeviceIndex,
-            UrbanConfigProductSiteIndex);
+            UrbanConfigWbInOut,
+            UrbanConfigGateInOut,
+            UrbanConfigGateSiteType,
+            UrbanConfigProductInOut,
+            UrbanConfigProductSiteType);
 
     private void ApplyUrbanForm(XiaoshanUploadSettingsFormState form)
     {
         UrbanConfigWeighbridgeEnabled = form.WeighbridgeEnabled;
         UrbanConfigGateEnabled = form.GateEnabled;
         UrbanConfigProductEnabled = form.ProductEnabled;
-        UrbanConfigWbInOutIndex = form.WbInOutIndex;
-        UrbanConfigGateDeviceIndex = form.GateDeviceIndex;
-        UrbanConfigGateSiteIndex = form.GateSiteIndex;
-        UrbanConfigProductDeviceIndex = form.ProductDeviceIndex;
-        UrbanConfigProductSiteIndex = form.ProductSiteIndex;
+        UrbanConfigWbInOut = form.WeighbridgeInOut;
+        UrbanConfigGateInOut = form.GateInOut;
+        UrbanConfigGateSiteType = form.GateSiteType;
+        UrbanConfigProductInOut = form.ProductInOut;
+        UrbanConfigProductSiteType = form.ProductSiteType;
     }
 
     private void RaiseSectionVisibilityChanged()

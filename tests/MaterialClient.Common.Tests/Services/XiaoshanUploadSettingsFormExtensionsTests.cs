@@ -1,4 +1,6 @@
+using System.Text.Json;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using Shouldly;
 using Xunit;
@@ -8,9 +10,12 @@ namespace MaterialClient.Common.Tests.Services;
 public class XiaoshanUploadSettingsFormExtensionsTests
 {
     [Fact]
-    public void ToUrbanConfigForm_EmptyJson_DefaultsWeighbridgeEnabled()
+    public void FromLocalConfig_EmptyEnabledModes_DefaultsWeighbridgeEnabled()
     {
-        var form = new XiaoshanUploadLocalConfig { ModesJson = "{}" }.ToUrbanConfigForm();
+        var form = XiaoshanUploadSettingsFormState.FromLocalConfig(new XiaoshanUploadLocalConfig
+        {
+            EnabledModes = []
+        });
 
         form.WeighbridgeEnabled.ShouldBeTrue();
         form.GateEnabled.ShouldBeFalse();
@@ -18,18 +23,42 @@ public class XiaoshanUploadSettingsFormExtensionsTests
     }
 
     [Fact]
-    public void ToModesJson_RoundTripsUiModeFieldsOnly()
+    public void ToLocalConfig_RoundTripsUiModeFields()
     {
         var form = new XiaoshanUploadSettingsFormState(
-            true, true, false, 1, 1, 1, 0, 0);
+            true,
+            true,
+            false,
+            UrbanInOutType.Exit,
+            UrbanInOutType.Exit,
+            UrbanSiteType.Disposal,
+            UrbanInOutType.Enter,
+            UrbanSiteType.Construction);
 
-        var applied = form.ToModesJson().ToUrbanConfigForm();
+        var local = form.ToLocalConfig();
+        var applied = XiaoshanUploadSettingsFormState.FromLocalConfig(local);
 
         applied.WeighbridgeEnabled.ShouldBeTrue();
         applied.GateEnabled.ShouldBeTrue();
         applied.ProductEnabled.ShouldBeFalse();
-        applied.WbInOutIndex.ShouldBe(1);
-        applied.GateDeviceIndex.ShouldBe(1);
-        applied.GateSiteIndex.ShouldBe(1);
+        applied.WeighbridgeInOut.ShouldBe(UrbanInOutType.Exit);
+        applied.GateInOut.ShouldBe(UrbanInOutType.Exit);
+        applied.GateSiteType.ShouldBe(UrbanSiteType.Disposal);
+    }
+
+    [Fact]
+    public void LocalConfig_Json_UsesEnumMemberNames()
+    {
+        var json = JsonSerializer.Serialize(new XiaoshanUploadLocalConfig
+        {
+            EnabledModes = [XiaoshanUploadMode.Gate],
+            WeighbridgeInOut = UrbanInOutType.Exit,
+            GateInOut = UrbanInOutType.Exit,
+            GateSiteType = UrbanSiteType.Disposal
+        });
+
+        json.ShouldContain("\"Gate\"");
+        json.ShouldContain("\"Exit\"");
+        json.ShouldContain("\"Disposal\"");
     }
 }

@@ -1,5 +1,5 @@
 using MaterialClient.Common.Configuration;
-using MaterialClient.Common.Models;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Common.Services;
 
@@ -7,83 +7,46 @@ public record XiaoshanUploadSettingsFormState(
     bool WeighbridgeEnabled,
     bool GateEnabled,
     bool ProductEnabled,
-    int WbInOutIndex,
-    int GateDeviceIndex,
-    int GateSiteIndex,
-    int ProductDeviceIndex,
-    int ProductSiteIndex);
+    UrbanInOutType WeighbridgeInOut,
+    UrbanInOutType GateInOut,
+    UrbanSiteType GateSiteType,
+    UrbanInOutType ProductInOut,
+    UrbanSiteType ProductSiteType)
+{
+    public static XiaoshanUploadSettingsFormState FromLocalConfig(XiaoshanUploadLocalConfig local)
+    {
+        var enabled = local.EnabledModes ?? [];
+        var hasAny = enabled.Count > 0;
+
+        return new XiaoshanUploadSettingsFormState(
+            WeighbridgeEnabled: !hasAny || enabled.Contains(XiaoshanUploadMode.Weighbridge),
+            GateEnabled: hasAny && enabled.Contains(XiaoshanUploadMode.Gate),
+            ProductEnabled: hasAny && enabled.Contains(XiaoshanUploadMode.Product),
+            WeighbridgeInOut: local.WeighbridgeInOut,
+            GateInOut: local.GateInOut,
+            GateSiteType: local.GateSiteType,
+            ProductInOut: local.ProductInOut,
+            ProductSiteType: local.ProductSiteType);
+    }
+}
 
 public static class XiaoshanUploadSettingsFormExtensions
 {
-    public static XiaoshanUploadSettingsFormState ToUrbanConfigForm(this XiaoshanUploadLocalConfig local) =>
-        local.ModesJson.ToUrbanConfigForm();
-
-    public static XiaoshanUploadSettingsFormState ToUrbanConfigForm(this string? modesJson)
+    public static XiaoshanUploadLocalConfig ToLocalConfig(this XiaoshanUploadSettingsFormState form)
     {
-        var modes = XiaoshanUploadEnvelopeJson.ParseModes(modesJson);
-        var wb = modes.GetSettings(XiaoshanUploadModeNames.Weighbridge);
-        var gate = modes.GetSettings(XiaoshanUploadModeNames.Gate);
-        var product = modes.GetSettings(XiaoshanUploadModeNames.Product);
+        var enabled = new List<XiaoshanUploadMode>();
+        if (form.WeighbridgeEnabled) enabled.Add(XiaoshanUploadMode.Weighbridge);
+        if (form.GateEnabled) enabled.Add(XiaoshanUploadMode.Gate);
+        if (form.ProductEnabled) enabled.Add(XiaoshanUploadMode.Product);
 
-        return new XiaoshanUploadSettingsFormState(
-            WeighbridgeEnabled: modes.IsEnabled(XiaoshanUploadModeNames.Weighbridge),
-            GateEnabled: modes.IsEnabled(XiaoshanUploadModeNames.Gate),
-            ProductEnabled: modes.IsEnabled(XiaoshanUploadModeNames.Product),
-            WbInOutIndex: IndexFromWbInOut(wb.InOutType),
-            GateDeviceIndex: IndexFromDeviceId(gate.DeviceId),
-            GateSiteIndex: IndexFromSiteType(gate.SiteType),
-            ProductDeviceIndex: IndexFromDeviceId(product.DeviceId),
-            ProductSiteIndex: IndexFromSiteType(product.SiteType));
-    }
-
-    public static string ToModesJson(this XiaoshanUploadSettingsFormState form)
-    {
-        var enabled = new List<string>();
-        if (form.WeighbridgeEnabled) enabled.Add(XiaoshanUploadModeNames.Weighbridge);
-        if (form.GateEnabled) enabled.Add(XiaoshanUploadModeNames.Gate);
-        if (form.ProductEnabled) enabled.Add(XiaoshanUploadModeNames.Product);
-
-        var modes = new XiaoshanUploadModesEnvelope
+        return new XiaoshanUploadLocalConfig
         {
-            EnabledModes = enabled.Count == 0 ? [XiaoshanUploadModeNames.Weighbridge] : enabled,
-            ModeSettings = new Dictionary<string, XiaoshanUploadModeSettings>(StringComparer.OrdinalIgnoreCase)
-            {
-                [XiaoshanUploadModeNames.Weighbridge] = new()
-                {
-                    InOutType = WireFromWbInOutIndex(form.WbInOutIndex),
-                    DataSource = XiaoshanUploadDefaults.WeighbridgeDataSource
-                },
-                [XiaoshanUploadModeNames.Gate] = new()
-                {
-                    DeviceId = WireFromDeviceIndex(form.GateDeviceIndex),
-                    SiteType = WireFromSiteIndex(form.GateSiteIndex)
-                },
-                [XiaoshanUploadModeNames.Product] = new()
-                {
-                    DeviceId = WireFromDeviceIndex(form.ProductDeviceIndex),
-                    SiteType = WireFromSiteIndex(form.ProductSiteIndex)
-                }
-            }
+            EnabledModes = enabled.Count == 0 ? [XiaoshanUploadMode.Weighbridge] : enabled,
+            WeighbridgeInOut = form.WeighbridgeInOut,
+            GateInOut = form.GateInOut,
+            GateSiteType = form.GateSiteType,
+            ProductInOut = form.ProductInOut,
+            ProductSiteType = form.ProductSiteType
         };
-
-        return XiaoshanUploadEnvelopeJson.SerializeModes(modes);
     }
-
-    private static int IndexFromWbInOut(string? value) =>
-        string.Equals(value, XiaoshanUploadDefaults.WbInOutExit, StringComparison.Ordinal) ? 1 : 0;
-
-    private static int IndexFromDeviceId(string? value) =>
-        string.Equals(value, XiaoshanUploadDefaults.DeviceIdExit, StringComparison.Ordinal) ? 1 : 0;
-
-    private static int IndexFromSiteType(string? value) =>
-        string.Equals(value, XiaoshanUploadDefaults.SiteTypeDisposal, StringComparison.Ordinal) ? 1 : 0;
-
-    private static string WireFromWbInOutIndex(int index) =>
-        index == 1 ? XiaoshanUploadDefaults.WbInOutExit : XiaoshanUploadDefaults.WbInOutEnter;
-
-    private static string WireFromDeviceIndex(int index) =>
-        index == 1 ? XiaoshanUploadDefaults.DeviceIdExit : XiaoshanUploadDefaults.DeviceIdEnter;
-
-    private static string WireFromSiteIndex(int index) =>
-        index == 1 ? XiaoshanUploadDefaults.SiteTypeDisposal : XiaoshanUploadDefaults.SiteTypeConstruction;
 }
