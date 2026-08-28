@@ -13,14 +13,12 @@ public class XiaoshanUploadSettingsFormMapperTests
     [Fact]
     public void ApplyToForm_EmptyJson_DefaultsWeighbridgeEnabled()
     {
-        var local = new XiaoshanUploadLocalConfig { ModesJson = "{}", SettingsJson = "{}" };
+        var form = _mapper.ApplyToForm(new XiaoshanUploadLocalConfig { ModesJson = "{}" });
 
-        var result = _mapper.ApplyToForm(local);
-
-        result.Form.WeighbridgeEnabled.ShouldBeTrue();
-        result.Form.GateEnabled.ShouldBeFalse();
-        result.Form.ProductEnabled.ShouldBeFalse();
-        _mapper.HasAtLeastOneEnabledMode(result.Form).ShouldBeTrue();
+        form.WeighbridgeEnabled.ShouldBeTrue();
+        form.GateEnabled.ShouldBeFalse();
+        form.ProductEnabled.ShouldBeFalse();
+        _mapper.HasAtLeastOneEnabledMode(form).ShouldBeTrue();
     }
 
     [Fact]
@@ -28,9 +26,8 @@ public class XiaoshanUploadSettingsFormMapperTests
     {
         var form = new XiaoshanUploadSettingsFormState(
             false, false, false, 0, 0, 0, 0, 0);
-        var preserved = new XiaoshanUploadPreservedStatics(null, null, null, null, null, null);
 
-        var result = _mapper.TryCreateDraft(form, preserved);
+        var result = _mapper.TryCreateDraft(form);
 
         result.Success.ShouldBeFalse();
         result.ErrorCode.ShouldBe(XiaoshanUploadSettingsFormMapper.ErrorNoEnabledMode);
@@ -38,34 +35,22 @@ public class XiaoshanUploadSettingsFormMapperTests
     }
 
     [Fact]
-    public void TryCreateDraft_RoundTripsStaticFields()
+    public void TryCreateDraft_RoundTripsUiModeFieldsOnly()
     {
         var form = new XiaoshanUploadSettingsFormState(
-            true, false, false, 0, 0, 0, 0, 0);
-        var preserved = new XiaoshanUploadPreservedStatics(
-            "Site A",
-            "note",
-            "330106202212120101",
-            "330106",
-            "Yard",
-            "CUSTOM_DS");
+            true, true, false, 1, 1, 1, 0, 0);
 
-        var draftResult = _mapper.TryCreateDraft(form, preserved);
+        var draftResult = _mapper.TryCreateDraft(form);
         draftResult.Success.ShouldBeTrue();
         draftResult.Draft.ShouldNotBeNull();
 
-        var applied = _mapper.ApplyToForm(
-            draftResult.Draft!.DisplayName,
-            draftResult.Draft.Remark,
-            draftResult.Draft.ModesJson,
-            draftResult.Draft.SettingsJson);
+        var applied = _mapper.ApplyToForm(draftResult.Draft.ModesJson);
 
-        applied.Preserved.DisplayName.ShouldBe("Site A");
-        applied.Preserved.Remark.ShouldBe("note");
-        applied.Preserved.BuildLicenseNo.ShouldBe("330106202212120101");
-        applied.Preserved.AreaCode.ShouldBe("330106");
-        applied.Preserved.SpaceName.ShouldBe("Yard");
-        applied.Preserved.WeighbridgeDataSource.ShouldBe("CUSTOM_DS");
-        applied.Form.WeighbridgeEnabled.ShouldBeTrue();
+        applied.WeighbridgeEnabled.ShouldBeTrue();
+        applied.GateEnabled.ShouldBeTrue();
+        applied.ProductEnabled.ShouldBeFalse();
+        applied.WbInOutIndex.ShouldBe(1);
+        applied.GateDeviceIndex.ShouldBe(1);
+        applied.GateSiteIndex.ShouldBe(1);
     }
 }

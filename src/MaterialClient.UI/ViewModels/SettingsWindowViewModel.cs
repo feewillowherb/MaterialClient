@@ -53,7 +53,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
     private bool _urbanConfigDirty;
     private bool _urbanConfigLoading;
-    private XiaoshanUploadPreservedStatics _preservedUrbanStatics = new(null, null, null, null, null, null);
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -461,8 +460,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         try
         {
             var draftResult = _xiaoshanUploadSettingsFormMapper.TryCreateDraft(
-                CaptureUrbanConfigForm(),
-                _preservedUrbanStatics);
+                CaptureUrbanConfigForm());
             if (!draftResult.Success || draftResult.Draft is null)
             {
                 SettingsSaveErrorMessage = "Please enable at least one Xiaoshan upload mode.";
@@ -471,8 +469,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             var evt = new XiaoshanUploadConfigSaveRequestedEventData
             {
-                DisplayName = draftResult.Draft.DisplayName,
-                Remark = draftResult.Draft.Remark,
                 ModesJson = draftResult.Draft.ModesJson,
                 SettingsJson = draftResult.Draft.SettingsJson
             };
@@ -482,11 +478,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             if (result.Success)
             {
-                ApplyUrbanConfigSnapshot(
-                    result.DisplayName,
-                    result.Remark,
-                    result.ModesJson,
-                    result.SettingsJson);
+                ApplyUrbanConfigSnapshot(result.ModesJson);
                 await PersistUrbanSettingsMirrorAsync();
                 _urbanConfigDirty = false;
                 return true;
@@ -494,11 +486,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             if (result.HasServerRow)
             {
-                ApplyUrbanConfigSnapshot(
-                    result.DisplayName,
-                    result.Remark,
-                    result.ModesJson,
-                    result.SettingsJson);
+                ApplyUrbanConfigSnapshot(result.ModesJson);
                 await PersistUrbanSettingsMirrorAsync();
                 _logger.LogWarning(
                     "Urban config push failed; restored server config. {Message}",
@@ -542,11 +530,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private void ApplyUrbanConfigFromLocalSettings(UrbanSettings urbanSettings)
     {
         var local = urbanSettings.XiaoshanUpload ?? new XiaoshanUploadLocalConfig();
-        ApplyUrbanConfigSnapshot(
-            local.DisplayName,
-            local.Remark,
-            local.ModesJson,
-            local.SettingsJson);
+        ApplyUrbanConfigSnapshot(local.ModesJson);
         _urbanConfigDirty = false;
     }
 
@@ -568,16 +552,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         var urban = existing ?? new UrbanSettings();
         var draftResult = _xiaoshanUploadSettingsFormMapper.TryCreateDraft(
-            CaptureUrbanConfigForm(),
-            _preservedUrbanStatics);
+            CaptureUrbanConfigForm());
         if (draftResult.Draft is not null)
         {
             urban.XiaoshanUpload = new XiaoshanUploadLocalConfig
             {
-                DisplayName = draftResult.Draft.DisplayName,
-                Remark = draftResult.Draft.Remark,
-                ModesJson = draftResult.Draft.ModesJson,
-                SettingsJson = draftResult.Draft.SettingsJson
+                ModesJson = draftResult.Draft.ModesJson
             };
         }
 
@@ -598,21 +578,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         }
     }
 
-    private void ApplyUrbanConfigSnapshot(
-        string? displayName,
-        string? remark,
-        string modesJson,
-        string settingsJson)
+    private void ApplyUrbanConfigSnapshot(string modesJson)
     {
         _urbanConfigLoading = true;
         try
         {
-            var applied = _xiaoshanUploadSettingsFormMapper.ApplyToForm(
-                displayName,
-                remark,
-                modesJson,
-                settingsJson);
-            ApplyUrbanForm(applied);
+            ApplyUrbanForm(_xiaoshanUploadSettingsFormMapper.ApplyToForm(modesJson));
         }
         finally
         {
@@ -631,17 +602,16 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             UrbanConfigProductDeviceIndex,
             UrbanConfigProductSiteIndex);
 
-    private void ApplyUrbanForm(XiaoshanUploadFormApplyResult applied)
+    private void ApplyUrbanForm(XiaoshanUploadSettingsFormState form)
     {
-        _preservedUrbanStatics = applied.Preserved;
-        UrbanConfigWeighbridgeEnabled = applied.Form.WeighbridgeEnabled;
-        UrbanConfigGateEnabled = applied.Form.GateEnabled;
-        UrbanConfigProductEnabled = applied.Form.ProductEnabled;
-        UrbanConfigWbInOutIndex = applied.Form.WbInOutIndex;
-        UrbanConfigGateDeviceIndex = applied.Form.GateDeviceIndex;
-        UrbanConfigGateSiteIndex = applied.Form.GateSiteIndex;
-        UrbanConfigProductDeviceIndex = applied.Form.ProductDeviceIndex;
-        UrbanConfigProductSiteIndex = applied.Form.ProductSiteIndex;
+        UrbanConfigWeighbridgeEnabled = form.WeighbridgeEnabled;
+        UrbanConfigGateEnabled = form.GateEnabled;
+        UrbanConfigProductEnabled = form.ProductEnabled;
+        UrbanConfigWbInOutIndex = form.WbInOutIndex;
+        UrbanConfigGateDeviceIndex = form.GateDeviceIndex;
+        UrbanConfigGateSiteIndex = form.GateSiteIndex;
+        UrbanConfigProductDeviceIndex = form.ProductDeviceIndex;
+        UrbanConfigProductSiteIndex = form.ProductSiteIndex;
     }
 
     private void RaiseSectionVisibilityChanged()

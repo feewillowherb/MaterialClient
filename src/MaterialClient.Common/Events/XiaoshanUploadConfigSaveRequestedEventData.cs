@@ -5,10 +5,6 @@ namespace MaterialClient.Common.Events;
 /// </summary>
 public sealed class XiaoshanUploadConfigSaveRequestedEventData
 {
-    public required string? DisplayName { get; init; }
-
-    public required string? Remark { get; init; }
-
     public required string ModesJson { get; init; }
 
     public required string SettingsJson { get; init; }
@@ -23,8 +19,6 @@ public sealed class XiaoshanUploadConfigSaveRequestedEventData
 public record XiaoshanUploadConfigSyncResult(
     bool Success,
     string? Message,
-    string? DisplayName,
-    string? Remark,
     string ModesJson,
     string SettingsJson,
     long ConfigVersion = 0)

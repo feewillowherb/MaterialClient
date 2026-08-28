@@ -56,10 +56,11 @@ public class XiaoshanUploadConfigClientService : IXiaoshanUploadConfigClientFaca
     {
         var projectId = await RequireProjectIdAsync(cancellationToken);
 
+        XiaoshanUploadConfigDto? current = null;
         long expectedVersion = 0;
         try
         {
-            var current = await _api.GetXiaoshanUploadConfigAsync(projectId);
+            current = await _api.GetXiaoshanUploadConfigAsync(projectId);
             expectedVersion = current.ConfigVersion;
         }
         catch (Exception ex)
@@ -70,10 +71,12 @@ public class XiaoshanUploadConfigClientService : IXiaoshanUploadConfigClientFaca
         var writeDto = new XiaoshanUploadConfigWriteDto
         {
             ProjectId = projectId,
-            DisplayName = draft.DisplayName,
-            Remark = draft.Remark,
+            DisplayName = current?.DisplayName,
+            Remark = current?.Remark,
             ModesJson = draft.ModesJson,
-            SettingsJson = draft.SettingsJson,
+            SettingsJson = string.IsNullOrWhiteSpace(current?.SettingsJson)
+                ? draft.SettingsJson
+                : current.SettingsJson,
             ExpectedConfigVersion = expectedVersion,
             Source = ClientSource,
             Actor = _machineCodeService.GetMachineCode(),
@@ -134,8 +137,6 @@ public class XiaoshanUploadConfigClientService : IXiaoshanUploadConfigClientFaca
 
     private static XiaoshanUploadConfigSnapshot ToSnapshot(XiaoshanUploadConfigDto dto) =>
         new(
-            dto.DisplayName,
-            dto.Remark,
             string.IsNullOrWhiteSpace(dto.ModesJson) ? "{}" : dto.ModesJson,
             string.IsNullOrWhiteSpace(dto.SettingsJson) ? "{}" : dto.SettingsJson,
             dto.ConfigVersion);

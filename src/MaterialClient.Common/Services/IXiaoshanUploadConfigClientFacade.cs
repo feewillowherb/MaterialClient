@@ -13,8 +13,6 @@ public interface IXiaoshanUploadConfigClientFacade
 }
 
 public record XiaoshanUploadConfigSnapshot(
-    string? DisplayName,
-    string? Remark,
     string ModesJson,
     string SettingsJson,
     long ConfigVersion = 0)
@@ -24,8 +22,6 @@ public record XiaoshanUploadConfigSnapshot(
 }
 
 public record XiaoshanUploadConfigDraft(
-    string? DisplayName,
-    string? Remark,
     string ModesJson,
     string SettingsJson);
 

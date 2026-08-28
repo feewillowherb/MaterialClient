@@ -1,5 +1,3 @@
-using MaterialClient.Common.Models;
-
 namespace MaterialClient.Common.Services;
 
 public record XiaoshanUploadSettingsFormState(
@@ -11,18 +9,6 @@ public record XiaoshanUploadSettingsFormState(
     int GateSiteIndex,
     int ProductDeviceIndex,
     int ProductSiteIndex);
-
-public record XiaoshanUploadPreservedStatics(
-    string? DisplayName,
-    string? Remark,
-    string? BuildLicenseNo,
-    string? AreaCode,
-    string? SpaceName,
-    string? WeighbridgeDataSource);
-
-public record XiaoshanUploadFormApplyResult(
-    XiaoshanUploadSettingsFormState Form,
-    XiaoshanUploadPreservedStatics Preserved);
 
 public record XiaoshanUploadFormDraftResult(
     bool Success,

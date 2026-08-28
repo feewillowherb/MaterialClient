@@ -25,8 +25,6 @@ public class XiaoshanUploadConfigSaveRequestedEventHandler
         try
         {
             var push = await _facade.PushToServerAsync(new XiaoshanUploadConfigDraft(
-                eventData.DisplayName,
-                eventData.Remark,
                 eventData.ModesJson,
                 eventData.SettingsJson));
 
@@ -35,8 +33,6 @@ public class XiaoshanUploadConfigSaveRequestedEventHandler
                 eventData.Completion.TrySetResult(new XiaoshanUploadConfigSyncResult(
                     true,
                     null,
-                    push.Config.DisplayName,
-                    push.Config.Remark,
                     push.Config.ModesJson,
                     push.Config.SettingsJson,
                     push.Config.ConfigVersion));
@@ -59,8 +55,6 @@ public class XiaoshanUploadConfigSaveRequestedEventHandler
             eventData.Completion.TrySetResult(new XiaoshanUploadConfigSyncResult(
                 false,
                 push.Message ?? "Push failed; local edits discarded.",
-                server?.DisplayName,
-                server?.Remark,
                 server?.ModesJson ?? "{}",
                 server?.SettingsJson ?? "{}",
                 server?.ConfigVersion ?? 0));
@@ -71,8 +65,6 @@ public class XiaoshanUploadConfigSaveRequestedEventHandler
             eventData.Completion.TrySetResult(new XiaoshanUploadConfigSyncResult(
                 false,
                 ex.Message,
-                null,
-                null,
                 "{}",
                 "{}",
                 0));

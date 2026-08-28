@@ -16,10 +16,6 @@ public class UrbanSettings
 /// </summary>
 public class XiaoshanUploadLocalConfig
 {
-    public string? DisplayName { get; set; }
-
-    public string? Remark { get; set; }
-
     public string ModesJson { get; set; } = "{}";
 
     public string SettingsJson { get; set; } = "{}";

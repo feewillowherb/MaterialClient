@@ -6,41 +6,30 @@ namespace MaterialClient.Common.Services;
 
 public interface IXiaoshanUploadSettingsFormMapper : ITransientDependency
 {
-    XiaoshanUploadFormApplyResult ApplyToForm(XiaoshanUploadLocalConfig local);
+    XiaoshanUploadSettingsFormState ApplyToForm(XiaoshanUploadLocalConfig local);
 
-    XiaoshanUploadFormApplyResult ApplyToForm(
-        string? displayName,
-        string? remark,
-        string modesJson,
-        string settingsJson);
+    XiaoshanUploadSettingsFormState ApplyToForm(string modesJson);
 
     bool HasAtLeastOneEnabledMode(XiaoshanUploadSettingsFormState form);
 
-    XiaoshanUploadFormDraftResult TryCreateDraft(
-        XiaoshanUploadSettingsFormState form,
-        XiaoshanUploadPreservedStatics preserved);
+    XiaoshanUploadFormDraftResult TryCreateDraft(XiaoshanUploadSettingsFormState form);
 }
 
 public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMapper
 {
     public const string ErrorNoEnabledMode = "NoEnabledMode";
 
-    public XiaoshanUploadFormApplyResult ApplyToForm(XiaoshanUploadLocalConfig local) =>
-        ApplyToForm(local.DisplayName, local.Remark, local.ModesJson, local.SettingsJson);
+    public XiaoshanUploadSettingsFormState ApplyToForm(XiaoshanUploadLocalConfig local) =>
+        ApplyToForm(local.ModesJson);
 
-    public XiaoshanUploadFormApplyResult ApplyToForm(
-        string? displayName,
-        string? remark,
-        string modesJson,
-        string settingsJson)
+    public XiaoshanUploadSettingsFormState ApplyToForm(string modesJson)
     {
         var modes = XiaoshanUploadEnvelopeJson.ParseModes(modesJson);
-        var settings = XiaoshanUploadEnvelopeJson.ParseSettings(settingsJson);
         var wb = modes.GetSettings(XiaoshanUploadModeNames.Weighbridge);
         var gate = modes.GetSettings(XiaoshanUploadModeNames.Gate);
         var product = modes.GetSettings(XiaoshanUploadModeNames.Product);
 
-        var form = new XiaoshanUploadSettingsFormState(
+        return new XiaoshanUploadSettingsFormState(
             WeighbridgeEnabled: modes.IsEnabled(XiaoshanUploadModeNames.Weighbridge),
             GateEnabled: modes.IsEnabled(XiaoshanUploadModeNames.Gate),
             ProductEnabled: modes.IsEnabled(XiaoshanUploadModeNames.Product),
@@ -49,24 +38,12 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
             GateSiteIndex: IndexFromSiteType(gate.SiteType),
             ProductDeviceIndex: IndexFromDeviceId(product.DeviceId),
             ProductSiteIndex: IndexFromSiteType(product.SiteType));
-
-        var preserved = new XiaoshanUploadPreservedStatics(
-            displayName,
-            remark,
-            settings.BuildLicenseNo,
-            settings.AreaCode,
-            settings.SpaceName,
-            wb.DataSource);
-
-        return new XiaoshanUploadFormApplyResult(form, preserved);
     }
 
     public bool HasAtLeastOneEnabledMode(XiaoshanUploadSettingsFormState form) =>
         form.WeighbridgeEnabled || form.GateEnabled || form.ProductEnabled;
 
-    public XiaoshanUploadFormDraftResult TryCreateDraft(
-        XiaoshanUploadSettingsFormState form,
-        XiaoshanUploadPreservedStatics preserved)
+    public XiaoshanUploadFormDraftResult TryCreateDraft(XiaoshanUploadSettingsFormState form)
     {
         if (!HasAtLeastOneEnabledMode(form))
         {
@@ -78,10 +55,6 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
         if (form.GateEnabled) enabled.Add(XiaoshanUploadModeNames.Gate);
         if (form.ProductEnabled) enabled.Add(XiaoshanUploadModeNames.Product);
 
-        var dataSource = string.IsNullOrWhiteSpace(preserved.WeighbridgeDataSource)
-            ? XiaoshanUploadDefaults.WeighbridgeDataSource
-            : preserved.WeighbridgeDataSource;
-
         var modes = new XiaoshanUploadModesEnvelope
         {
             EnabledModes = enabled,
@@ -90,7 +63,7 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
                 [XiaoshanUploadModeNames.Weighbridge] = new()
                 {
                     InOutType = WireFromWbInOutIndex(form.WbInOutIndex),
-                    DataSource = dataSource
+                    DataSource = XiaoshanUploadDefaults.WeighbridgeDataSource
                 },
                 [XiaoshanUploadModeNames.Gate] = new()
                 {
@@ -105,18 +78,10 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
             }
         };
 
-        var settings = new XiaoshanUploadSettingsEnvelope
-        {
-            BuildLicenseNo = preserved.BuildLicenseNo,
-            AreaCode = preserved.AreaCode,
-            SpaceName = preserved.SpaceName
-        };
-
         var draft = new XiaoshanUploadConfigDraft(
-            preserved.DisplayName,
-            preserved.Remark,
             XiaoshanUploadEnvelopeJson.SerializeModes(modes),
-            XiaoshanUploadEnvelopeJson.SerializeSettings(settings));
+            XiaoshanUploadEnvelopeJson.SerializeSettings(
+                XiaoshanUploadSettingsEnvelope.CreateDefault()));
 
         return new XiaoshanUploadFormDraftResult(true, null, draft);
     }
