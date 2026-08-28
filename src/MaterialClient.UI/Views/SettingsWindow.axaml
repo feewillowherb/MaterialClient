@@ -200,7 +200,7 @@
                     <ScrollViewer x:Name="ScaleSettingsSection"
                                   Tag="ScaleSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsScaleSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -304,7 +304,7 @@
                     <ScrollViewer x:Name="WeighingSettingsSection"
                                   Tag="WeighingSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsWeighingSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -404,7 +404,7 @@
                     <ScrollViewer x:Name="CameraSettingsSection"
                                   Tag="CameraSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsCameraSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -563,7 +563,7 @@
                     <ScrollViewer x:Name="LprSettingsSection"
                                   Tag="LprSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsLprSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -760,7 +760,7 @@
                     <ScrollViewer x:Name="SystemSettingsSection"
                                   Tag="SystemSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsSystemSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -845,7 +845,7 @@
                     <ScrollViewer x:Name="SoundSettingsSection"
                                   Tag="SoundSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsSoundSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -940,7 +940,7 @@
                     <ScrollViewer x:Name="PrinterSettingsSection"
                                   Tag="PrinterSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsPrinterSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -991,7 +991,7 @@
                     <ScrollViewer x:Name="DocumentCameraSettingsSection"
                                   Tag="DocumentCameraSettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsDocumentCameraSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -1051,7 +1051,7 @@
                     <ScrollViewer x:Name="AnomalySettingsSection"
                                   Tag="AnomalySettings"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsAnomalySettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -1124,7 +1124,7 @@
                     <ScrollViewer x:Name="UrbanConfigSection"
                                   Tag="UrbanConfig"
                                   Classes="settings-section"
-                                  IsVisible="False"
+                                  IsVisible="{Binding IsUrbanConfigSettingsVisible}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   AllowAutoHide="True">
@@ -1271,20 +1271,29 @@
 
         </Border>
 
-        <!-- Save Button (Bottom Center) -->
-        <Button Grid.Row="1"
-                Grid.Column="1"
-                Content="确认保存"
-                Command="{Binding SaveCommand}"
-                Classes="brand-primary-button"
-                FontWeight="Bold"
-                FontSize="14"
-                Width="120"
-                Height="35"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="0,0,0,30"
-                CornerRadius="4" />
+        <StackPanel Grid.Row="1"
+                    Grid.Column="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,0,16"
+                    Spacing="8">
+            <TextBlock Text="{Binding SettingsSaveErrorMessage}"
+                       IsVisible="{Binding HasSettingsSaveError}"
+                       Foreground="#DC3545"
+                       TextWrapping="Wrap"
+                       MaxWidth="420"
+                       TextAlignment="Center"
+                       HorizontalAlignment="Center" />
+            <Button Content="确认保存"
+                    Command="{Binding SaveCommand}"
+                    Classes="brand-primary-button"
+                    FontWeight="Bold"
+                    FontSize="14"
+                    Width="120"
+                    Height="35"
+                    HorizontalAlignment="Center"
+                    CornerRadius="4" />
+        </StackPanel>
 
     </Grid>
 </Window>

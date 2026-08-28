@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -16,7 +15,6 @@ namespace MaterialClient.UI.Views;
 
 public partial class SettingsWindow : Window, ITransientDependency
 {
-    private readonly Dictionary<string, ListBoxItem> _navigationItems = new();
     private readonly CompositeDisposable _disposables = new();
 
     public SettingsWindow() : this(null)
@@ -50,7 +48,7 @@ public partial class SettingsWindow : Window, ITransientDependency
 
         Dispatcher.UIThread.Post(() =>
         {
-            InitializeNavigation();
+            SelectDefaultNavigation();
 
             if (DataContext is SettingsWindowViewModel viewModel)
             {
@@ -59,40 +57,23 @@ public partial class SettingsWindow : Window, ITransientDependency
         }, DispatcherPriority.Loaded);
     }
 
-    private void InitializeNavigation()
-    {
-        _navigationItems.Clear();
-
-        RegisterNav("ScaleSettings", "ScaleSettingsNavItem");
-        RegisterNav("WeighingSettings", "WeighingSettingsNavItem");
-        RegisterNav("CameraSettings", "CameraSettingsNavItem");
-        RegisterNav("LprSettings", "LprSettingsNavItem");
-        RegisterNav("SystemSettings", "SystemSettingsNavItem");
-        RegisterNav("SoundSettings", "SoundSettingsNavItem");
-        RegisterNav("PrinterSettings", "PrinterSettingsNavItem");
-        RegisterNav("DocumentCameraSettings", "DocumentCameraSettingsNavItem");
-        RegisterNav("AnomalySettings", "AnomalySettingsNavItem");
-        RegisterNav("UrbanConfig", "UrbanConfigNavItem");
-
-        SelectDefaultNavigation();
-    }
-
-    private void RegisterNav(string tag, string controlName)
-    {
-        if (this.FindControl<ListBoxItem>(controlName) is { } item)
-            _navigationItems[tag] = item;
-    }
-
     private void SelectDefaultNavigation()
     {
         if (NavigationList == null)
             return;
 
-        if (_navigationItems.TryGetValue("ScaleSettings", out var firstNav))
-        {
-            NavigationList.SelectedItem = firstNav;
-            ApplySelectedSection("ScaleSettings");
-        }
+        if (DataContext is SettingsWindowViewModel viewModel)
+            viewModel.SelectedSettingsSection = SettingsSectionKeys.Scale;
+
+        var defaultItem = NavigationList.Items.OfType<ListBoxItem>()
+            .FirstOrDefault(item =>
+                item.IsVisible &&
+                item.Tag is string tag &&
+                string.Equals(tag, SettingsSectionKeys.Scale, StringComparison.Ordinal));
+
+        defaultItem ??= NavigationList.Items.OfType<ListBoxItem>().FirstOrDefault(item => item.IsVisible);
+        if (defaultItem is not null)
+            NavigationList.SelectedItem = defaultItem;
     }
 
     private void OnNavigationSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -101,25 +82,10 @@ public partial class SettingsWindow : Window, ITransientDependency
             return;
         if (item.Tag is not string sectionTag)
             return;
-
-        ApplySelectedSection(sectionTag);
-    }
-
-    private void ApplySelectedSection(string sectionTag)
-    {
-        if (DataContext is SettingsWindowViewModel viewModel)
-            viewModel.SelectedSettingsSection = sectionTag;
-
-        if (SettingsSectionsHost == null)
+        if (DataContext is not SettingsWindowViewModel viewModel)
             return;
 
-        foreach (var child in SettingsSectionsHost.Children)
-        {
-            if (child is not Control section || section.Tag is not string tag)
-                continue;
-
-            section.IsVisible = tag == sectionTag;
-        }
+        viewModel.SelectedSettingsSection = sectionTag;
     }
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e)
