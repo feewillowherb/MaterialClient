@@ -6,17 +6,15 @@ namespace MaterialClient.Common.Configuration;
 public class UrbanSettings
 {
     /// <summary>
-    ///     Local mirror of Xiaoshan upload configuration (server remains authority on sync).
+    ///     Local Xiaoshan mode settings persisted with system settings (not synced to UrbanManagement).
     /// </summary>
     public XiaoshanUploadLocalConfig XiaoshanUpload { get; set; } = new();
 }
 
 /// <summary>
-///     Client-side Xiaoshan upload config snapshot stored under <see cref="UrbanSettings"/>.
+///     Client-side Xiaoshan mode envelope stored under <see cref="UrbanSettings"/>.
 /// </summary>
 public class XiaoshanUploadLocalConfig
 {
     public string ModesJson { get; set; } = "{}";
-
-    public string SettingsJson { get; set; } = "{}";
 }

@@ -42,7 +42,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
-    private readonly IXiaoshanUploadConfigClientFacade _uploadConfigService;
+    private readonly ISettingsService _settingsService;
     private readonly IXiaoshanUploadFieldMappingService _fieldMappingService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
@@ -54,7 +54,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
         IMachineCodeService machineCodeService,
-        IXiaoshanUploadConfigClientFacade uploadConfigService,
+        ISettingsService settingsService,
         IXiaoshanUploadFieldMappingService fieldMappingService,
         ILogger<UrbanServerUploadService> logger)
     {
@@ -65,7 +65,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _extensionService = extensionService;
         _licenseService = licenseService;
         _machineCodeService = machineCodeService;
-        _uploadConfigService = uploadConfigService;
+        _settingsService = settingsService;
         _fieldMappingService = fieldMappingService;
         _logger = logger;
     }
@@ -213,19 +213,20 @@ public class UrbanServerUploadService : IUrbanServerUploadService
 
     private async Task LogXiaoshanFieldMappingSkipsAsync(WeighingRecord record)
     {
-        XiaoshanUploadConfigSnapshot config;
+        string modesJson;
         try
         {
-            config = await _uploadConfigService.GetFromServerAsync();
+            var settingsEntity = await _settingsService.GetSettingsAsync();
+            modesJson = settingsEntity.UrbanSettings?.XiaoshanUpload?.ModesJson ?? "{}";
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Skip Xiaoshan field-mapping log; config unavailable");
+            _logger.LogDebug(ex, "Skip Xiaoshan field-mapping log; local UrbanSettings unavailable");
             return;
         }
 
-        var modes = XiaoshanUploadEnvelopeJson.ParseModes(config.ModesJson);
-        var settings = XiaoshanUploadEnvelopeJson.ParseSettings(config.SettingsJson);
+        var modes = XiaoshanUploadEnvelopeJson.ParseModes(modesJson);
+        var settings = XiaoshanUploadSettingsEnvelope.CreateDefault();
         var context = new XiaoshanWeighingContext(
             CarNo: record.PlateNumber,
             CarNoColor: null,

@@ -47,12 +47,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ILocalEventBus _localEventBus;
     private readonly ILicenseService _licenseService;
     private readonly IUsbCameraService? _usbCameraService;
-    private readonly IXiaoshanUploadConfigClientFacade? _xiaoshanUploadConfigFacade;
     private readonly IXiaoshanUploadSettingsFormMapper _xiaoshanUploadSettingsFormMapper;
     private readonly IDisposable _lprMessageSubscription;
 
-    private bool _urbanConfigDirty;
     private bool _urbanConfigLoading;
+
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
 
@@ -98,7 +97,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private int _urbanConfigGateSiteIndex;
     [Reactive] private int _urbanConfigProductDeviceIndex;
     [Reactive] private int _urbanConfigProductSiteIndex;
-    [Reactive] private bool _isUrbanConfigBusy;
     [Reactive] private string? _settingsSaveErrorMessage;
 
     // License plate recognition configs
@@ -264,7 +262,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         // Resolve optional Urban-only services from the host container (optional ctor params
         // with defaults are unreliable under Autofac and may stay null on MaterialClient.Urban).
         _usbCameraService = usbCameraService ?? serviceProvider.GetService<IUsbCameraService>();
-        _xiaoshanUploadConfigFacade = serviceProvider.GetService<IXiaoshanUploadConfigClientFacade>();
         _xiaoshanUploadSettingsFormMapper = xiaoshanUploadSettingsFormMapper;
 
         // Subscribe to LPR recognition messages and update the matching row's LastCapturePlateNumber
@@ -315,12 +312,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
     private void MarkUrbanConfigDirty()
     {
-        if (_urbanConfigLoading || !ShowUrbanConfigSettings)
-        {
-            return;
-        }
-
-        _urbanConfigDirty = true;
+        // Form edits persist on SaveAsync; no extra dirty flag.
     }
 
     #region Commands
@@ -352,17 +344,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 LowerLimit = UrbanAnomalyLowerLimit,
                 DeviationPercentage = UrbanAnomalyDeviationPercentage
             };
-
-            if (ShowUrbanConfigSettings && _urbanConfigDirty)
-            {
-                var form = CaptureUrbanConfigForm();
-                if (!_xiaoshanUploadSettingsFormMapper.HasAtLeastOneEnabledMode(form))
-                {
-                    SettingsSaveErrorMessage = "Please enable at least one Xiaoshan upload mode.";
-                    _logger.LogWarning("Urban config save blocked: no enabled modes");
-                    return;
-                }
-            }
 
             var settings = new SettingsEntity(
                 new ScaleSettings
@@ -436,84 +417,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
             await _localEventBus.PublishAsync(new SettingsSavedEventData());
 
-            if (ShowUrbanConfigSettings && _urbanConfigDirty && _xiaoshanUploadConfigFacade is not null)
-            {
-                var pushed = await PushUrbanConfigViaLocalEventAsync();
-                if (!pushed)
-                {
-                    return;
-                }
-            }
-
             MessageBus.Current.SendMessage(new DetailCloseRequestedMessage());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save settings");
             SettingsSaveErrorMessage = "Failed to save settings. See logs for details.";
-        }
-    }
-
-    private async Task<bool> PushUrbanConfigViaLocalEventAsync()
-    {
-        IsUrbanConfigBusy = true;
-        try
-        {
-            var draftResult = _xiaoshanUploadSettingsFormMapper.TryCreateDraft(
-                CaptureUrbanConfigForm());
-            if (!draftResult.Success || draftResult.Draft is null)
-            {
-                SettingsSaveErrorMessage = "Please enable at least one Xiaoshan upload mode.";
-                return false;
-            }
-
-            var evt = new XiaoshanUploadConfigSaveRequestedEventData
-            {
-                ModesJson = draftResult.Draft.ModesJson,
-                SettingsJson = draftResult.Draft.SettingsJson
-            };
-
-            await _localEventBus.PublishAsync(evt);
-            var result = await evt.Completion.Task.WaitAsync(TimeSpan.FromSeconds(60));
-
-            if (result.Success)
-            {
-                ApplyUrbanConfigSnapshot(result.ModesJson);
-                await PersistUrbanSettingsMirrorAsync();
-                _urbanConfigDirty = false;
-                return true;
-            }
-
-            if (result.HasServerRow)
-            {
-                ApplyUrbanConfigSnapshot(result.ModesJson);
-                await PersistUrbanSettingsMirrorAsync();
-                _logger.LogWarning(
-                    "Urban config push failed; restored server config. {Message}",
-                    result.Message);
-                SettingsSaveErrorMessage = result.Message ?? "Xiaoshan config push failed; local edits discarded.";
-                _urbanConfigDirty = false;
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "Urban config push failed; no server row, keeping local draft. {Message}",
-                    result.Message);
-                SettingsSaveErrorMessage = result.Message ?? "Xiaoshan config push failed; local draft kept.";
-                _urbanConfigDirty = true;
-            }
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Urban config LocalEvent push failed");
-            SettingsSaveErrorMessage = "Xiaoshan config push failed. See logs for details.";
-            return false;
-        }
-        finally
-        {
-            IsUrbanConfigBusy = false;
         }
     }
 
@@ -531,7 +440,6 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     {
         var local = urbanSettings.XiaoshanUpload ?? new XiaoshanUploadLocalConfig();
         ApplyUrbanConfigSnapshot(local.ModesJson);
-        _urbanConfigDirty = false;
     }
 
     private async Task LoadUrbanConfigSiteAccessCodeAsync()
@@ -551,31 +459,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private UrbanSettings BuildUrbanSettingsFromForm(UrbanSettings? existing)
     {
         var urban = existing ?? new UrbanSettings();
-        var draftResult = _xiaoshanUploadSettingsFormMapper.TryCreateDraft(
-            CaptureUrbanConfigForm());
-        if (draftResult.Draft is not null)
+        var persist = _xiaoshanUploadSettingsFormMapper.TryCreateModesJson(CaptureUrbanConfigForm());
+        urban.XiaoshanUpload = new XiaoshanUploadLocalConfig
         {
-            urban.XiaoshanUpload = new XiaoshanUploadLocalConfig
-            {
-                ModesJson = draftResult.Draft.ModesJson
-            };
-        }
+            ModesJson = persist.ModesJson
+        };
 
         return urban;
-    }
-
-    private async Task PersistUrbanSettingsMirrorAsync()
-    {
-        try
-        {
-            var settings = await _settingsService.GetSettingsAsync();
-            settings.UrbanSettings = BuildUrbanSettingsFromForm(settings.UrbanSettings);
-            await _settingsService.SaveSettingsAsync(settings);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to persist UrbanSettingsJson mirror");
-        }
     }
 
     private void ApplyUrbanConfigSnapshot(string modesJson)
@@ -1082,12 +972,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             var isUrbanHost =
                 weighingMode == WeighingMode.UrbanMode || settings.SystemSettings.IsUrbanMode;
             ShowUrbanAnomalyDetectionSettings = isUrbanHost;
-            ShowUrbanConfigSettings = isUrbanHost && _xiaoshanUploadConfigFacade is not null;
-            if (isUrbanHost && _xiaoshanUploadConfigFacade is null)
-            {
-                _logger.LogWarning(
-                    "Urban host detected but IXiaoshanUploadConfigClientFacade is not registered; 城管配置 will be hidden");
-            }
+            ShowUrbanConfigSettings = isUrbanHost;
             DefaultDeliveryType = settings.SystemSettings.DefaultDeliveryType;
 
             if (ShowUrbanConfigSettings)

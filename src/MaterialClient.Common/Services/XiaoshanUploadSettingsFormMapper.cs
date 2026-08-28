@@ -10,15 +10,11 @@ public interface IXiaoshanUploadSettingsFormMapper : ITransientDependency
 
     XiaoshanUploadSettingsFormState ApplyToForm(string modesJson);
 
-    bool HasAtLeastOneEnabledMode(XiaoshanUploadSettingsFormState form);
-
-    XiaoshanUploadFormDraftResult TryCreateDraft(XiaoshanUploadSettingsFormState form);
+    XiaoshanUploadModesPersistResult TryCreateModesJson(XiaoshanUploadSettingsFormState form);
 }
 
 public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMapper
 {
-    public const string ErrorNoEnabledMode = "NoEnabledMode";
-
     public XiaoshanUploadSettingsFormState ApplyToForm(XiaoshanUploadLocalConfig local) =>
         ApplyToForm(local.ModesJson);
 
@@ -40,16 +36,8 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
             ProductSiteIndex: IndexFromSiteType(product.SiteType));
     }
 
-    public bool HasAtLeastOneEnabledMode(XiaoshanUploadSettingsFormState form) =>
-        form.WeighbridgeEnabled || form.GateEnabled || form.ProductEnabled;
-
-    public XiaoshanUploadFormDraftResult TryCreateDraft(XiaoshanUploadSettingsFormState form)
+    public XiaoshanUploadModesPersistResult TryCreateModesJson(XiaoshanUploadSettingsFormState form)
     {
-        if (!HasAtLeastOneEnabledMode(form))
-        {
-            return new XiaoshanUploadFormDraftResult(false, ErrorNoEnabledMode, null);
-        }
-
         var enabled = new List<string>();
         if (form.WeighbridgeEnabled) enabled.Add(XiaoshanUploadModeNames.Weighbridge);
         if (form.GateEnabled) enabled.Add(XiaoshanUploadModeNames.Gate);
@@ -57,7 +45,7 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
 
         var modes = new XiaoshanUploadModesEnvelope
         {
-            EnabledModes = enabled,
+            EnabledModes = enabled.Count == 0 ? [XiaoshanUploadModeNames.Weighbridge] : enabled,
             ModeSettings = new Dictionary<string, XiaoshanUploadModeSettings>(StringComparer.OrdinalIgnoreCase)
             {
                 [XiaoshanUploadModeNames.Weighbridge] = new()
@@ -78,12 +66,9 @@ public class XiaoshanUploadSettingsFormMapper : IXiaoshanUploadSettingsFormMappe
             }
         };
 
-        var draft = new XiaoshanUploadConfigDraft(
-            XiaoshanUploadEnvelopeJson.SerializeModes(modes),
-            XiaoshanUploadEnvelopeJson.SerializeSettings(
-                XiaoshanUploadSettingsEnvelope.CreateDefault()));
-
-        return new XiaoshanUploadFormDraftResult(true, null, draft);
+        return new XiaoshanUploadModesPersistResult(
+            true,
+            XiaoshanUploadEnvelopeJson.SerializeModes(modes));
     }
 
     private static int IndexFromWbInOut(string? value) =>

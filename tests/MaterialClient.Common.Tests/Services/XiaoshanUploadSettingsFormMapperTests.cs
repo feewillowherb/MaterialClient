@@ -18,33 +18,18 @@ public class XiaoshanUploadSettingsFormMapperTests
         form.WeighbridgeEnabled.ShouldBeTrue();
         form.GateEnabled.ShouldBeFalse();
         form.ProductEnabled.ShouldBeFalse();
-        _mapper.HasAtLeastOneEnabledMode(form).ShouldBeTrue();
     }
 
     [Fact]
-    public void TryCreateDraft_AllModesDisabled_Fails()
-    {
-        var form = new XiaoshanUploadSettingsFormState(
-            false, false, false, 0, 0, 0, 0, 0);
-
-        var result = _mapper.TryCreateDraft(form);
-
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe(XiaoshanUploadSettingsFormMapper.ErrorNoEnabledMode);
-        result.Draft.ShouldBeNull();
-    }
-
-    [Fact]
-    public void TryCreateDraft_RoundTripsUiModeFieldsOnly()
+    public void TryCreateModesJson_RoundTripsUiModeFieldsOnly()
     {
         var form = new XiaoshanUploadSettingsFormState(
             true, true, false, 1, 1, 1, 0, 0);
 
-        var draftResult = _mapper.TryCreateDraft(form);
-        draftResult.Success.ShouldBeTrue();
-        draftResult.Draft.ShouldNotBeNull();
+        var persist = _mapper.TryCreateModesJson(form);
+        persist.Success.ShouldBeTrue();
 
-        var applied = _mapper.ApplyToForm(draftResult.Draft.ModesJson);
+        var applied = _mapper.ApplyToForm(persist.ModesJson);
 
         applied.WeighbridgeEnabled.ShouldBeTrue();
         applied.GateEnabled.ShouldBeTrue();

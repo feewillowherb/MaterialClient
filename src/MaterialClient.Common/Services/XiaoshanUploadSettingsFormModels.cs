@@ -10,7 +10,6 @@ public record XiaoshanUploadSettingsFormState(
     int ProductDeviceIndex,
     int ProductSiteIndex);
 
-public record XiaoshanUploadFormDraftResult(
+public record XiaoshanUploadModesPersistResult(
     bool Success,
-    string? ErrorCode,
-    XiaoshanUploadConfigDraft? Draft);
+    string ModesJson);

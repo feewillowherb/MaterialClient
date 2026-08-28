@@ -4,6 +4,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.UI.ViewModels;
@@ -30,7 +31,9 @@ public class SettingsWindowViewModelDefaultDeliveryTypeTests
             Substitute.For<ISoundDeviceService>(),
             Substitute.For<ILprDeviceResolver>(),
             Substitute.For<ILocalEventBus>(),
-            null);
+            Substitute.For<ILicenseService>(),
+            Substitute.For<IServiceProvider>(),
+            Substitute.For<IXiaoshanUploadSettingsFormMapper>());
     }
 
     private static SettingsEntity CreateSettingsEntity(DeliveryType deliveryType)
