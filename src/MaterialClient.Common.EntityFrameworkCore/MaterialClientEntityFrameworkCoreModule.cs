@@ -1,7 +1,6 @@
 using MaterialClient.Common;
 using MaterialClient.Common.Utils;
 using MaterialClient.EFCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.EntityFrameworkCore;
@@ -34,10 +33,11 @@ public class MaterialClientEntityFrameworkCoreModule : AbpModule
         {
             options.Configure<MaterialClientDbContext>(c =>
             {
-                c.DbContextOptions.UseSqlite(connectionString, sqlite =>
-                        sqlite.MigrationsHistoryTable(MaterialClientEfHistory.KernelTable))
-                    .EnableDetailedErrors()
-                    .EnableSensitiveDataLogging();
+                MaterialClientSqliteDbContextOptions.Apply(
+                    c.DbContextOptions,
+                    c.ExistingConnection,
+                    connectionString,
+                    MaterialClientEfHistory.KernelTable);
             });
         });
     }

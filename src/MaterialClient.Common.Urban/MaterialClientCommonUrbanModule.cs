@@ -2,7 +2,6 @@ using MaterialClient.Common;
 using MaterialClient.Common.EntityFrameworkCore;
 using MaterialClient.Common.Utils;
 using MaterialClient.Common.Urban.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.EntityFrameworkCore;
@@ -29,10 +28,11 @@ public class MaterialClientCommonUrbanModule : AbpModule
         {
             options.Configure<UrbanDbContext>(c =>
             {
-                c.DbContextOptions.UseSqlite(connectionString, sqlite =>
-                        sqlite.MigrationsHistoryTable(MaterialClientEfHistory.UrbanTable))
-                    .EnableDetailedErrors()
-                    .EnableSensitiveDataLogging();
+                MaterialClientSqliteDbContextOptions.Apply(
+                    c.DbContextOptions,
+                    c.ExistingConnection,
+                    connectionString,
+                    MaterialClientEfHistory.UrbanTable);
             });
         });
     }
