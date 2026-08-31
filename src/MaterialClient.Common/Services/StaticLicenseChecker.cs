@@ -180,9 +180,8 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
         }
 
         var localMachineCode = _machineCodeService.GetMachineCode();
-        if (!ShouldSkipMachineCodeCheck() &&
-            (string.IsNullOrWhiteSpace(machineCodeClaim) ||
-             !string.Equals(machineCodeClaim, localMachineCode, StringComparison.OrdinalIgnoreCase)))
+        if (string.IsNullOrWhiteSpace(machineCodeClaim) ||
+            !string.Equals(machineCodeClaim, localMachineCode, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning(
                 "JWT machineCode 与本机不一致: Claim={Claim}, Local={Local}",
@@ -190,17 +189,6 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
                 localMachineCode);
             return LicenseCheckResult.Fail("授权机器码与当前设备不匹配");
         }
-
-#if DEBUG
-        if (!string.IsNullOrWhiteSpace(machineCodeClaim) &&
-            !string.Equals(machineCodeClaim, localMachineCode, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning(
-                "DEBUG: skipping machineCode check — JWT claim={Claim}, local={Local}",
-                machineCodeClaim,
-                localMachineCode);
-        }
-#endif
 
         DateTime authEndTime = default;
         if (long.TryParse(expClaim, out var expUnix))
@@ -214,14 +202,5 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
             proId, proName, accessCode, authEndTime);
 
         return LicenseCheckResult.Success(successMessage, proId, proName, accessCode, authEndTime);
-    }
-
-    private static bool ShouldSkipMachineCodeCheck()
-    {
-#if DEBUG
-        return true;
-#else
-        return false;
-#endif
     }
 }
