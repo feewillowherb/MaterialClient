@@ -9,11 +9,14 @@ using MaterialClient.UI;
 using MaterialClient.UI.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Local;
+using Volo.Abp.Uow;
 
 namespace MaterialClient.Urban.Services;
 
@@ -44,6 +47,7 @@ public partial class MinimalWebHostService : IMinimalWebHostService
     private const string SetTestPlateApiPath = "/api/lpr/test-plate";
     private const string SetTestPassageApiPath = "/api/lpr/test-passage";
     private const string SettingsApiPath = "/api/settings";
+    private const string LicenseSeedApiPath = "/api/license/seed";
     private const string DeviceOnlineStatusApiPath = "/api/device/online-status";
 
     public bool IsRunning
@@ -149,7 +153,7 @@ public partial class MinimalWebHostService : IMinimalWebHostService
         app.MapGet("/", () => Results.Ok(new
         {
             service = "MaterialClient.Urban Diagnostic API",
-            version = "1.3",
+            version = "1.4",
             endpoints = new[]
             {
                 $"POST {SetScaleWeightApiPath}",
@@ -157,6 +161,7 @@ public partial class MinimalWebHostService : IMinimalWebHostService
                 $"POST {SetTestPassageApiPath}",
                 $"GET {SettingsApiPath}",
                 $"POST {SettingsApiPath}",
+                $"POST {LicenseSeedApiPath}",
                 $"GET {DeviceOnlineStatusApiPath}"
             }
         }));
@@ -370,6 +375,102 @@ public partial class MinimalWebHostService : IMinimalWebHostService
             }
         });
 
+        // POST /api/license/seed — replace demo license row (diagnostic only)
+        app.MapPost(LicenseSeedApiPath, async (LicenseSeedRequest? request) =>
+        {
+            if (request == null)
+            {
+                return Results.BadRequest(new { success = false, message = "Request body is empty." });
+            }
+
+            if (!TryParseLicenseSeedRequest(request, out var seed, out var parseError))
+            {
+                return Results.BadRequest(new { success = false, message = parseError });
+            }
+
+            try
+            {
+                var licenseRepository = _serviceProvider.GetRequiredService<IRepository<LicenseInfo, Guid>>();
+                var unitOfWorkManager = _serviceProvider.GetRequiredService<IUnitOfWorkManager>();
+                var startupAuthService = _serviceProvider.GetRequiredService<IUrbanStartupAuthorizationService>();
+                var licenseChecker = _serviceProvider.GetRequiredService<IStaticLicenseChecker>();
+
+                LicenseInfo persisted;
+                using (var uow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: true))
+                {
+                    var existingRows = await (await licenseRepository.GetQueryableAsync()).ToListAsync();
+                    foreach (var row in existingRows)
+                    {
+                        await licenseRepository.DeleteAsync(row);
+                    }
+
+                    persisted = new LicenseInfo(
+                        seed.Id,
+                        seed.ProjectId,
+                        seed.AuthEndTime,
+                        seed.MachineCode,
+                        seed.ProName,
+                        seed.AccessCode)
+                    {
+                        LatestJwtToken = seed.LatestJwtToken
+                    };
+                    await licenseRepository.InsertAsync(persisted);
+                    await uow.CompleteAsync();
+                }
+
+                if (!string.IsNullOrWhiteSpace(seed.LatestJwtToken))
+                {
+                    var settings = new SystemSettings();
+                    await File.WriteAllTextAsync(settings.LicenseFilePath, seed.LatestJwtToken.Trim());
+                }
+
+                var checkResult = string.IsNullOrWhiteSpace(seed.LatestJwtToken)
+                    ? LicenseCheckResult.Fail("LatestJwtToken is empty.")
+                    : await licenseChecker.CheckLicenseFromTokenAsync(seed.LatestJwtToken);
+
+                if (checkResult.IsSuccess && checkResult.ProId != Guid.Empty)
+                {
+                    startupAuthService.SetResult(new UrbanStartupAuthorizationResult(
+                        true,
+                        checkResult.Message,
+                        checkResult.ProId));
+                }
+
+                _logger.LogInformation(
+                    "Diagnostic license seed applied: Id={Id}, ProjectId={ProjectId}, JwtValid={JwtValid}",
+                    persisted.Id,
+                    persisted.ProjectId,
+                    checkResult.IsSuccess);
+
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = "Ok",
+                    license = new
+                    {
+                        id = persisted.Id,
+                        projectId = persisted.ProjectId,
+                        accessCode = persisted.AccessCode,
+                        authEndTime = persisted.AuthEndTime,
+                        proName = persisted.ProName,
+                        machineCode = persisted.MachineCode,
+                        hasLatestJwtToken = !string.IsNullOrWhiteSpace(persisted.LatestJwtToken)
+                    },
+                    jwtValidation = new
+                    {
+                        isSuccess = checkResult.IsSuccess,
+                        message = checkResult.Message
+                    },
+                    startupAuthorizationRefreshed = checkResult.IsSuccess
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to seed diagnostic license");
+                return Results.InternalServerError(new { success = false, message = ex.Message });
+            }
+        });
+
         // POST /api/settings — replace full settings (no PUT)
         app.MapPost(SettingsApiPath, async (SettingsPayload? payload) =>
         {
@@ -522,6 +623,49 @@ public partial class MinimalWebHostService : IMinimalWebHostService
         return false;
     }
 
+    private static bool TryParseLicenseSeedRequest(
+        LicenseSeedRequest request,
+        out LicenseSeedPayload seed,
+        out string? error)
+    {
+        seed = default!;
+        error = null;
+
+        if (!Guid.TryParse(request.Id, out var id))
+        {
+            error = "id must be a valid GUID.";
+            return false;
+        }
+
+        if (!Guid.TryParse(request.ProjectId, out var projectId))
+        {
+            error = "projectId must be a valid GUID.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.MachineCode))
+        {
+            error = "machineCode is required.";
+            return false;
+        }
+
+        if (!DateTime.TryParse(request.AuthEndTime, out var authEndTime))
+        {
+            error = "authEndTime must be a valid datetime.";
+            return false;
+        }
+
+        seed = new LicenseSeedPayload(
+            id,
+            projectId,
+            authEndTime,
+            request.MachineCode.Trim(),
+            string.IsNullOrWhiteSpace(request.ProName) ? null : request.ProName.Trim(),
+            string.IsNullOrWhiteSpace(request.AccessCode) ? null : request.AccessCode.Trim(),
+            string.IsNullOrWhiteSpace(request.LatestJwtToken) ? null : request.LatestJwtToken.Trim());
+        return true;
+    }
+
     private static object[] BuildDegradedDeviceStatuses() =>
     [
         new { deviceType = "Scale", isOnline = false, deviceName = DeviceStatusCatalog.ScaleName },
@@ -555,6 +699,24 @@ public partial class MinimalWebHostService : IMinimalWebHostService
         string? VehicleType,
         string? LprImagePath,
         DateTime? Timestamp);
+
+    private record LicenseSeedRequest(
+        string? Id,
+        string? ProjectId,
+        string? AccessCode,
+        string? AuthEndTime,
+        string? ProName,
+        string? MachineCode,
+        string? LatestJwtToken);
+
+    private record LicenseSeedPayload(
+        Guid Id,
+        Guid ProjectId,
+        DateTime AuthEndTime,
+        string MachineCode,
+        string? ProName,
+        string? AccessCode,
+        string? LatestJwtToken);
 
     /// <summary>
     /// Typed full-settings body for diagnostic get/save (avoids SettingsEntity *Json columns).
