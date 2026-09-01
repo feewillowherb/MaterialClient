@@ -73,5 +73,42 @@ public class LicenseInfo : AuditedEntity<Guid>
         AccessCode = accessCode;
         // LastModificationTime is auto-filled by ABP on update.
     }
+
+    /// <summary>
+    ///     Applies Debug development authorization fields without adopting JWT claims.
+    ///     Clears <see cref="LatestJwtToken" /> so an invalid token is never treated as validated.
+    /// </summary>
+    public void ApplyDebugDevelopmentAuthorization(
+        Guid projectId,
+        DateTime authEndTime,
+        string machineCode,
+        string? proName,
+        string? accessCode)
+    {
+        ProjectId = projectId;
+        AuthEndTime = authEndTime;
+        MachineCode = machineCode;
+        ProName = proName;
+        AccessCode = accessCode;
+        LatestJwtToken = null;
+    }
+
+    /// <summary>
+    ///     Creates a new <see cref="LicenseInfo" /> for Debug development authorization.
+    /// </summary>
+    public static LicenseInfo CreateDebugDevelopmentAuthorization(
+        Guid id,
+        Guid projectId,
+        DateTime authEndTime,
+        string machineCode,
+        string? proName,
+        string? accessCode)
+    {
+        var license = new LicenseInfo(id, projectId, authEndTime, machineCode, proName, accessCode)
+        {
+            LatestJwtToken = null
+        };
+        return license;
+    }
 }
 

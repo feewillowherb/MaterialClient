@@ -134,7 +134,11 @@ public class MaterialClientUrbanModule : AbpModule
         await EnsureUrbanDefaultWeighingModeAsync(context.ServiceProvider, logger);
 
         var startupAuthService = context.ServiceProvider.GetRequiredService<IUrbanStartupAuthorizationService>();
+#if DEBUG
+        var isAuthorized = await TryExecuteDebugDevelopmentAuthorizationAsync(context, logger);
+#else
         var isAuthorized = await TryExecuteStartupLicenseCheckAsync(context, logger);
+#endif
         startupAuthService.SetResult(isAuthorized);
 
         if (!startupAuthService.IsAuthorized)
@@ -203,6 +207,66 @@ public class MaterialClientUrbanModule : AbpModule
                 "Urban PollingBackgroundService is disabled by configuration (BackgroundServices:Polling=false).");
         }
     }
+
+#if DEBUG
+    private static async Task<UrbanStartupAuthorizationResult> TryExecuteDebugDevelopmentAuthorizationAsync(
+        ApplicationInitializationContext context,
+        ILogger<MaterialClientUrbanModule>? logger)
+    {
+        try
+        {
+            logger?.LogWarning(
+                "DEBUG Urban authorization bypass active: using development authorization context (ProjectId={ProjectId}).",
+                UrbanDebugDevelopmentAuthorization.ProjectId);
+
+            var licenseRepository = context.ServiceProvider
+                .GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<LicenseInfo, Guid>>();
+            var unitOfWorkManager = context.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+            var machineCode = context.ServiceProvider.GetRequiredService<IMachineCodeService>().GetMachineCode();
+
+            using (var writeUow = unitOfWorkManager.Begin(requiresNew: true, isTransactional: true))
+            {
+                var existing = await (await licenseRepository.GetQueryableAsync())
+                    .OrderBy(license => license.CreationTime)
+                    .FirstOrDefaultAsync();
+
+                if (existing == null)
+                {
+                    var licenseInfo = LicenseInfo.CreateDebugDevelopmentAuthorization(
+                        Guid.NewGuid(),
+                        UrbanDebugDevelopmentAuthorization.ProjectId,
+                        UrbanDebugDevelopmentAuthorization.AuthEndTime,
+                        machineCode,
+                        UrbanDebugDevelopmentAuthorization.ProName,
+                        UrbanDebugDevelopmentAuthorization.AccessCode);
+                    await licenseRepository.InsertAsync(licenseInfo);
+                }
+                else
+                {
+                    existing.ApplyDebugDevelopmentAuthorization(
+                        UrbanDebugDevelopmentAuthorization.ProjectId,
+                        UrbanDebugDevelopmentAuthorization.AuthEndTime,
+                        machineCode,
+                        UrbanDebugDevelopmentAuthorization.ProName,
+                        UrbanDebugDevelopmentAuthorization.AccessCode);
+                    await licenseRepository.UpdateAsync(existing);
+                }
+
+                await writeUow.CompleteAsync();
+            }
+
+            return new UrbanStartupAuthorizationResult(
+                true,
+                UrbanDebugDevelopmentAuthorization.SuccessMessage,
+                UrbanDebugDevelopmentAuthorization.ProjectId);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "DEBUG development authorization persistence failed");
+            return new UrbanStartupAuthorizationResult(false, ex.Message, null);
+        }
+    }
+#endif
 
     private static async Task<UrbanStartupAuthorizationResult> TryExecuteStartupLicenseCheckAsync(
         ApplicationInitializationContext context,

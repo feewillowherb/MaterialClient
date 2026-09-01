@@ -25,6 +25,12 @@ public partial class LicenseExpiredEventHandler
 
     public async Task HandleEventAsync(LicenseExpiredEto eventData)
     {
+#if DEBUG
+        _logger.LogWarning(
+            "DEBUG Urban authorization bypass active: ignoring LicenseExpiredEto. ProjectId={ProjectId}",
+            eventData.ProjectId);
+        await Task.CompletedTask;
+#else
         var message = string.IsNullOrWhiteSpace(eventData.Reason)
             ? DefaultExpiredMessage
             : eventData.Reason;
@@ -54,5 +60,6 @@ public partial class LicenseExpiredEventHandler
         }
 
         desktop.Shutdown();
+#endif
     }
 }

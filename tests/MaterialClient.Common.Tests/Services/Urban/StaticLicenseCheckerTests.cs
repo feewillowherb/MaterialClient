@@ -1,82 +1,301 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.Authentication;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.IdentityModel.Tokens;
+using NSubstitute;
+using Shouldly;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace MaterialClient.Common.Tests.Services.Urban;
 
 /// <summary>
-///     StaticLicenseChecker 单元测试
-///     测试 JWT 授权检查服务（TODO: 后续完善实际授权逻辑）
+///     Proves <see cref="StaticLicenseChecker" /> stays strict for missing, malformed, expired,
+///     invalid-signature, missing-claim and machineCode-mismatched tokens.
 /// </summary>
-public class StaticLicenseCheckerTests(ITestOutputHelper output)
+public sealed class StaticLicenseCheckerTests : IDisposable
 {
-    private readonly ITestOutputHelper _output = output;
+    private const string LocalMachineCode = "local-machine-code-abc";
+    private readonly RSA _rsa;
+    private readonly string _publicKeyPem;
+    private readonly string _privateKeyPem;
+    private readonly IMachineCodeService _machineCodeService;
+    private readonly StaticLicenseChecker _checker;
+    private readonly string _tempDir;
 
-    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
-    public async Task CheckLicenseAsync_Default_ReturnsSuccess()
+    public StaticLicenseCheckerTests()
     {
-        // Arrange
-        // TODO: 构造带公钥配置的 StaticLicenseChecker
-        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
+        _rsa = RSA.Create(2048);
+        _publicKeyPem = _rsa.ExportSubjectPublicKeyInfoPem();
+        _privateKeyPem = _rsa.ExportPkcs8PrivateKeyPem();
+        _tempDir = Path.Combine(Path.GetTempPath(), "StaticLicenseCheckerTests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempDir);
 
-        await Task.CompletedTask;
+        _machineCodeService = Substitute.For<IMachineCodeService>();
+        _machineCodeService.GetMachineCode().Returns(LocalMachineCode);
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:PublicKey"] = _publicKeyPem
+            })
+            .Build();
+
+        _checker = new StaticLicenseChecker(
+            configuration,
+            _machineCodeService,
+            NullLogger<StaticLicenseChecker>.Instance);
     }
 
-    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
-    public async Task CheckLicenseAsync_NonExistentFile_ReturnsFail()
+    public void Dispose()
     {
-        // Arrange
-        // TODO: 构造带公钥配置的 StaticLicenseChecker，测试文件不存在场景
-        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
-
-        await Task.CompletedTask;
+        _rsa.Dispose();
+        try
+        {
+            if (Directory.Exists(_tempDir))
+            {
+                Directory.Delete(_tempDir, recursive: true);
+            }
+        }
+        catch
+        {
+            // Best-effort temp cleanup.
+        }
     }
 
-    [Fact(Skip = "需要重新设计测试用例以适配 StaticLicenseChecker")]
-    public async Task CheckLicenseAsync_ExpiredToken_ReturnsFail()
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_ValidToken_ReturnsSuccess()
     {
-        // Arrange
-        // TODO: 构造过期的 JWT 令牌，测试过期场景
-        _output.WriteLine("需要重新设计测试用例以适配 StaticLicenseChecker");
+        var proId = Guid.Parse("08DDCF46-3744-D3E1-1999-0D645800B322");
+        var token = CreateSignedJwt(
+            proId: proId,
+            accessCode: "XNXS20260611001",
+            machineCode: LocalMachineCode,
+            expires: DateTime.UtcNow.AddDays(30));
 
-        await Task.CompletedTask;
+        var result = await _checker.CheckLicenseFromTokenAsync(token);
+
+        result.IsSuccess.ShouldBeTrue(result.Message);
+        result.ProId.ShouldBe(proId);
+        result.AccessCode.ShouldBe("XNXS20260611001");
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_MissingToken_ReturnsFail()
+    {
+        var result = await _checker.CheckLicenseFromTokenAsync("   ");
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldContain("JWT");
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_MalformedToken_ReturnsFail()
+    {
+        var result = await _checker.CheckLicenseFromTokenAsync("not-a-jwt");
+
+        result.IsSuccess.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_ExpiredToken_ReturnsFail()
+    {
+        var token = CreateSignedJwt(
+            proId: Guid.NewGuid(),
+            accessCode: "ACCESS",
+            machineCode: LocalMachineCode,
+            expires: DateTime.UtcNow.AddHours(-2));
+
+        var result = await _checker.CheckLicenseFromTokenAsync(token);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldContain("过期");
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_InvalidSignature_ReturnsFail()
+    {
+        using var otherRsa = RSA.Create(2048);
+        var token = CreateSignedJwt(
+            proId: Guid.NewGuid(),
+            accessCode: "ACCESS",
+            machineCode: LocalMachineCode,
+            expires: DateTime.UtcNow.AddDays(1),
+            signingKeyPem: otherRsa.ExportPkcs8PrivateKeyPem());
+
+        var result = await _checker.CheckLicenseFromTokenAsync(token);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldContain("签名");
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_MissingProId_ReturnsFail()
+    {
+        var token = CreateSignedJwt(
+            proId: null,
+            accessCode: "ACCESS",
+            machineCode: LocalMachineCode,
+            expires: DateTime.UtcNow.AddDays(1));
+
+        var result = await _checker.CheckLicenseFromTokenAsync(token);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldContain("项目ID");
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_MissingAccessCode_ReturnsFail()
+    {
+        var token = CreateSignedJwt(
+            proId: Guid.NewGuid(),
+            accessCode: null,
+            machineCode: LocalMachineCode,
+            expires: DateTime.UtcNow.AddDays(1));
+
+        var result = await _checker.CheckLicenseFromTokenAsync(token);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldContain("接入码");
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_MachineCodeMismatch_ReturnsFail()
+    {
+        var token = CreateSignedJwt(
+            proId: Guid.NewGuid(),
+            accessCode: "ACCESS",
+            machineCode: "other-machine",
+            expires: DateTime.UtcNow.AddDays(1));
+
+        var result = await _checker.CheckLicenseFromTokenAsync(token);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldContain("机器码");
+    }
+
+    [Fact]
+    public async Task CheckLicenseAsync_MissingFile_ReturnsFail()
+    {
+        var missingPath = Path.Combine(_tempDir, "missing.urban");
+
+        var result = await _checker.CheckLicenseAsync(missingPath);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldBe("未授权");
+    }
+
+    [Fact]
+    public async Task CheckLicenseAsync_FileWithValidToken_ReturnsSuccess()
+    {
+        var token = CreateSignedJwt(
+            proId: Guid.NewGuid(),
+            accessCode: "ACCESS",
+            machineCode: LocalMachineCode,
+            expires: DateTime.UtcNow.AddDays(1));
+        var path = Path.Combine(_tempDir, "license.urban");
+        await File.WriteAllTextAsync(path, token);
+
+        var result = await _checker.CheckLicenseAsync(path);
+
+        result.IsSuccess.ShouldBeTrue(result.Message);
+    }
+
+    [Fact]
+    public async Task CheckLicenseFromTokenAsync_PublicKeyMissing_ReturnsFail()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        var checker = new StaticLicenseChecker(
+            configuration,
+            _machineCodeService,
+            NullLogger<StaticLicenseChecker>.Instance);
+
+        var result = await checker.CheckLicenseFromTokenAsync("header.payload.sig");
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldContain("公钥");
+    }
+
+    private string CreateSignedJwt(
+        Guid? proId,
+        string? accessCode,
+        string? machineCode,
+        DateTime expires,
+        string? signingKeyPem = null)
+    {
+        using var signingRsa = RSA.Create();
+        signingRsa.ImportFromPem(signingKeyPem ?? _privateKeyPem);
+        var credentials = new SigningCredentials(
+            new RsaSecurityKey(signingRsa),
+            SecurityAlgorithms.RsaSha256);
+
+        var claims = new List<Claim>();
+        if (proId.HasValue)
+        {
+            claims.Add(new Claim("proId", proId.Value.ToString()));
+            claims.Add(new Claim("proName", "Test Project"));
+        }
+
+        if (accessCode != null)
+        {
+            claims.Add(new Claim("accessCode", accessCode));
+        }
+
+        if (machineCode != null)
+        {
+            claims.Add(new Claim("machineCode", machineCode));
+        }
+
+        var notBefore = expires.AddHours(-24);
+        if (notBefore > DateTime.UtcNow.AddHours(-1))
+        {
+            notBefore = DateTime.UtcNow.AddHours(-1);
+        }
+
+        var token = new JwtSecurityToken(
+            issuer: "BasePlatform",
+            audience: "MaterialClient.Urban",
+            claims: claims,
+            notBefore: notBefore,
+            expires: expires,
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
 
-/// <summary>
-///     LicenseCheckResult 单元测试
-/// </summary>
 public class LicenseCheckResultTests
 {
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
+    [Fact]
     public void Success_CreatesSuccessfulResult()
     {
-        var result = LicenseCheckResult.Success("测试通过");
-        Assert.True(result.IsSuccess);
-        Assert.Equal("测试通过", result.Message);
+        var result = LicenseCheckResult.Success("ok");
+        result.IsSuccess.ShouldBeTrue();
+        result.Message.ShouldBe("ok");
     }
 
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
+    [Fact]
     public void Fail_CreatesFailedResult()
     {
-        var result = LicenseCheckResult.Fail("授权失败");
-        Assert.False(result.IsSuccess);
-        Assert.Equal("授权失败", result.Message);
+        var result = LicenseCheckResult.Fail("denied");
+        result.IsSuccess.ShouldBeFalse();
+        result.Message.ShouldBe("denied");
     }
 
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
-    public void Success_DefaultMessage_IsValid()
+    [Fact]
+    public void Success_WithClaims_PopulatesFields()
     {
-        var result = LicenseCheckResult.Success();
-        Assert.True(result.IsSuccess);
-        Assert.Equal("授权检查通过", result.Message);
-    }
+        var proId = Guid.NewGuid();
+        var end = new DateTime(2029, 10, 21);
+        var result = LicenseCheckResult.Success("ok", proId, "name", "code", end);
 
-    [Fact(Skip = "实际实现已更新，需要重新设计测试用例")]
-    public void Fail_DefaultMessage_IsValid()
-    {
-        var result = LicenseCheckResult.Fail();
-        Assert.False(result.IsSuccess);
-        Assert.Equal("授权检查失败", result.Message);
+        result.IsSuccess.ShouldBeTrue();
+        result.ProId.ShouldBe(proId);
+        result.ProName.ShouldBe("name");
+        result.AccessCode.ShouldBe("code");
+        result.AuthEndTime.ShouldBe(end);
     }
 }

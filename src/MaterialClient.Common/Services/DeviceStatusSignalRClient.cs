@@ -493,6 +493,11 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
 
     private async Task SyncProjectLicenseFromServerAsync()
     {
+#if DEBUG
+        _logger.LogWarning(
+            "DEBUG Urban authorization bypass active: skipping online JWT anti-tamper sync (VerifyJwtAsync).");
+        return;
+#endif
         if (_connection?.State != HubConnectionState.Connected)
         {
             return;

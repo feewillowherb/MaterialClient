@@ -23,6 +23,12 @@ public partial class LicenseDeviceRevokedEventHandler
 
     public async Task HandleEventAsync(LicenseDeviceRevokedEto eventData)
     {
+#if DEBUG
+        _logger.LogWarning(
+            "DEBUG Urban authorization bypass active: ignoring LicenseDeviceRevokedEto. ProjectId={ProjectId}",
+            eventData.ProjectId);
+        await Task.CompletedTask;
+#else
         _logger.LogWarning(
             "License device revoked by server. ProjectId={ProjectId}, Reason={Reason}. " +
             "Forcing online re-activation.",
@@ -49,5 +55,6 @@ public partial class LicenseDeviceRevokedEventHandler
 
         // User chose to exit (did not re-activate) → shut the application down gracefully.
         desktop.Shutdown();
+#endif
     }
 }
