@@ -163,7 +163,7 @@ public sealed class StaticLicenseCheckerTests : IDisposable
     }
 
     [Fact]
-    public async Task CheckLicenseFromTokenAsync_MachineCodeMismatch_ReturnsFail()
+    public async Task CheckLicenseFromTokenAsync_MachineCodeMismatch_BehaviorDependsOnBuild()
     {
         var token = CreateSignedJwt(
             proId: Guid.NewGuid(),
@@ -173,8 +173,12 @@ public sealed class StaticLicenseCheckerTests : IDisposable
 
         var result = await _checker.CheckLicenseFromTokenAsync(token);
 
+#if DEBUG
+        result.IsSuccess.ShouldBeTrue();
+#else
         result.IsSuccess.ShouldBeFalse();
         result.Message.ShouldContain("机器码");
+#endif
     }
 
     [Fact]

@@ -180,6 +180,16 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
         }
 
         var localMachineCode = _machineCodeService.GetMachineCode();
+#if DEBUG
+        if (string.IsNullOrWhiteSpace(machineCodeClaim) ||
+            !string.Equals(machineCodeClaim, localMachineCode, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "DEBUG: JWT machineCode 与本机不一致，跳过机器码校验 (Claim={Claim}, Local={Local})",
+                machineCodeClaim,
+                localMachineCode);
+        }
+#else
         if (string.IsNullOrWhiteSpace(machineCodeClaim) ||
             !string.Equals(machineCodeClaim, localMachineCode, StringComparison.OrdinalIgnoreCase))
         {
@@ -189,6 +199,7 @@ public class StaticLicenseChecker : IStaticLicenseChecker, ISingletonDependency
                 localMachineCode);
             return LicenseCheckResult.Fail("授权机器码与当前设备不匹配");
         }
+#endif
 
         DateTime authEndTime = default;
         if (long.TryParse(expClaim, out var expUnix))

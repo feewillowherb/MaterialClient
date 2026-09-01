@@ -9,37 +9,14 @@ using Xunit;
 namespace MaterialClient.Urban.Tests;
 
 /// <summary>
-///     Debug vs Release authorization boundary tests for Urban event handlers and Debug context.
-///     Run under both <c>-c Debug</c> and <c>-c Release</c> (task 4.5).
+///     Debug vs Release authorization boundary tests for Urban runtime event handlers.
+///     Run under both <c>-c Debug</c> and <c>-c Release</c>.
 /// </summary>
 public class UrbanDebugAuthorizationTests
 {
+    private static readonly Guid DemoProjectId = Guid.Parse("08DDCF46-3744-D3E1-1999-0D645800B322");
+
 #if DEBUG
-    [Fact]
-    public void Debug_DevelopmentAuthorization_ExposesFixedDemoContext()
-    {
-        UrbanDebugDevelopmentAuthorization.ProjectId
-            .ShouldBe(Guid.Parse("08DDCF46-3744-D3E1-1999-0D645800B322"));
-        UrbanDebugDevelopmentAuthorization.AccessCode.ShouldBe("XNXS20260611001");
-        UrbanDebugDevelopmentAuthorization.ProName.ShouldBe("Hangzhou FanDong Demo Project");
-        UrbanDebugDevelopmentAuthorization.AuthEndTime
-            .ShouldBe(new DateTime(2029, 10, 21, 16, 0, 0, DateTimeKind.Local));
-        UrbanDebugDevelopmentAuthorization.SuccessMessage.ShouldContain("DEBUG");
-    }
-
-    [Fact]
-    public void Debug_AuthorizedStartupResult_DoesNotRequireRecovery()
-    {
-        var result = new UrbanStartupAuthorizationResult(
-            true,
-            UrbanDebugDevelopmentAuthorization.SuccessMessage,
-            UrbanDebugDevelopmentAuthorization.ProjectId);
-
-        result.IsAuthorized.ShouldBeTrue();
-        result.ProId.ShouldBe(UrbanDebugDevelopmentAuthorization.ProjectId);
-        result.FailureMessage.ShouldBe(UrbanDebugDevelopmentAuthorization.SuccessMessage);
-    }
-
     [Fact]
     public async Task Debug_LicenseExpiredEventHandler_DoesNotInvokeRecovery()
     {
@@ -49,7 +26,7 @@ public class UrbanDebugAuthorizationTests
             recovery);
 
         await handler.HandleEventAsync(
-            new LicenseExpiredEto(UrbanDebugDevelopmentAuthorization.ProjectId, "expired-for-test"));
+            new LicenseExpiredEto(DemoProjectId, "expired-for-test"));
 
         await recovery.DidNotReceiveWithAnyArgs().RecoverAsync(default!);
     }
@@ -63,32 +40,11 @@ public class UrbanDebugAuthorizationTests
             recovery);
 
         await handler.HandleEventAsync(
-            new LicenseDeviceRevokedEto(
-                UrbanDebugDevelopmentAuthorization.ProjectId,
-                "device-changed-for-test"));
+            new LicenseDeviceRevokedEto(DemoProjectId, "device-changed-for-test"));
 
         await recovery.DidNotReceiveWithAnyArgs().RecoverAsync(default!);
     }
-
-    [Fact]
-    public void Debug_SyncProjectLicenseFromServerAsync_EarlyReturnsWithoutHub()
-    {
-        // Compile-time bypass: SyncProjectLicenseFromServerAsync begins with #if DEBUG return.
-        // Presence of UrbanDebugDevelopmentAuthorization in this assembly proves the Debug path.
-        typeof(UrbanDebugDevelopmentAuthorization).ShouldNotBeNull();
-        typeof(MaterialClientUrbanModule).Assembly
-            .GetType("MaterialClient.Urban.Services.UrbanDebugDevelopmentAuthorization")
-            .ShouldNotBeNull();
-    }
 #else
-    [Fact]
-    public void Release_DoesNotIncludeDebugDevelopmentAuthorizationType()
-    {
-        typeof(MaterialClientUrbanModule).Assembly
-            .GetType("MaterialClient.Urban.Services.UrbanDebugDevelopmentAuthorization")
-            .ShouldBeNull();
-    }
-
     [Fact]
     public void Release_UnauthorizedStartupResult_BlocksMainFlow()
     {
