@@ -28,7 +28,28 @@ public class UrbanPassageRecordTests
         Assert.Equal(PassageSource.Checkpoint, record.PassageSource);
         Assert.Equal(UrbanInOutType.Exit, record.UrbanInOutType);
         Assert.Equal(3, record.LargeImageAttachmentId);
-        Assert.Null(record.SmallImageAttachmentId);
+        Assert.Equal(SyncStatus.Pending, record.SyncStatus);
+        Assert.Equal(0, record.RetryCount);
+        Assert.Null(record.LastErrorTime);
+    }
+
+    [Fact]
+    public void MarkSynced_UpdatesSyncStatus()
+    {
+        var record = UrbanPassageRecord.FromLprCapture(new UrbanLprCaptureContext(
+            "浙A12345",
+            "黄",
+            "大车",
+            DateTime.Now,
+            PassageSource.FinishedProduct,
+            UrbanInOutType.Enter,
+            UrbanSiteType.Disposal,
+            null,
+            null));
+        record.MarkUploadFailed();
+        record.MarkSynced();
+        Assert.Equal(SyncStatus.Synced, record.SyncStatus);
+        Assert.Null(record.LastErrorTime);
     }
 
     [Fact]

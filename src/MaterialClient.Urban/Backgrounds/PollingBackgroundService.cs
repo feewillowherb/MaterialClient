@@ -68,6 +68,8 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
 
         var extensionService = serviceProvider.GetRequiredService<IUrbanWeighingExtensionService>();
         var uploadService = serviceProvider.GetRequiredService<IUrbanServerUploadService>();
+        var passageRecordService = serviceProvider.GetRequiredService<IUrbanPassageRecordService>();
+        var passageUploadService = serviceProvider.GetRequiredService<IUrbanPassageUploadService>();
         var localEventBus = serviceProvider.GetRequiredService<ILocalEventBus>();
 
         var pending = await extensionService.GetPendingForUploadAsync(batchSize);
@@ -93,6 +95,25 @@ public sealed class PollingBackgroundService : AsyncPeriodicBackgroundWorkerBase
                     ex,
                     "Urban upload failed for record {RecordId} (will retry on next poll)",
                     extension.WeighingRecordId);
+            }
+        }
+
+        var pendingPassages = await passageRecordService.GetPendingForUploadAsync(batchSize);
+        foreach (var passage in pendingPassages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                await passageUploadService.SubmitPassageRecordAsync(passage.Id);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<PollingBackgroundService>>();
+                logger.LogWarning(
+                    ex,
+                    "Urban passage upload failed for record {PassageRecordId} (will retry on next poll)",
+                    passage.Id);
             }
         }
     }
