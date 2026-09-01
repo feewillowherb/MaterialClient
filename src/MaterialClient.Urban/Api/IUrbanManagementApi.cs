@@ -51,6 +51,16 @@ public interface IUrbanManagementApi
     [Get("/api/app/urban-weighing-record/pending-server-approval-sync")]
     Task<List<MaterialClient.Common.Models.WeighingRecordApprovedPushDto>> GetPendingServerApprovalSyncAsync(
         [Query] PendingServerApprovalSyncQueryDto input);
+
+    [Headers("Content-Type: application/json")]
+    [Post("/api/app/urban-checkpoint-passage/receive")]
+    Task<UrbanPassageReceiveResult> ReceiveCheckpointPassageAsync(
+        [Body] UrbanPassageSubmitDto dto);
+
+    [Headers("Content-Type: application/json")]
+    [Post("/api/app/urban-finished-product-passage/receive")]
+    Task<UrbanPassageReceiveResult> ReceiveFinishedProductPassageAsync(
+        [Body] UrbanPassageSubmitDto dto);
 }
 
 /// <summary>

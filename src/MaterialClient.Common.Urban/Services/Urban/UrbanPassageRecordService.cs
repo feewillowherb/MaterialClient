@@ -106,6 +106,33 @@ public class UrbanPassageRecordService : DomainService, IUrbanPassageRecordServi
         return new PagedResultDto<UrbanAttendedListRow>(mixedTotal, mixedPage);
     }
 
+    [UnitOfWork]
+    public virtual async Task<List<UrbanPassageRecord>> GetPendingForUploadAsync(int maxCount = 100)
+    {
+        var queryable = await _passageRepository.GetQueryableAsync();
+        return await queryable
+            .Where(x => x.SyncStatus == SyncStatus.Pending)
+            .OrderBy(x => x.CapturedAt)
+            .Take(maxCount)
+            .ToListAsync();
+    }
+
+    [UnitOfWork]
+    public virtual async Task MarkSyncedAsync(Guid passageRecordId)
+    {
+        var record = await _passageRepository.GetAsync(passageRecordId);
+        record.MarkSynced();
+        await _passageRepository.UpdateAsync(record, autoSave: true);
+    }
+
+    [UnitOfWork]
+    public virtual async Task MarkUploadFailedAsync(Guid passageRecordId)
+    {
+        var record = await _passageRepository.GetAsync(passageRecordId);
+        record.MarkUploadFailed();
+        await _passageRepository.UpdateAsync(record, autoSave: true);
+    }
+
     private async Task<List<UrbanAttendedListRow>> ProjectPassageRowsAsync(List<UrbanPassageRecord> records)
     {
         var ids = records

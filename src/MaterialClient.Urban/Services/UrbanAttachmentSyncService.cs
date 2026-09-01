@@ -10,6 +10,7 @@ using MaterialClient.Urban.Dtos;
 using Microsoft.Extensions.Logging;
 using Refit;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Repositories;
 
 namespace MaterialClient.Urban.Services;
 
@@ -22,6 +23,14 @@ public interface IUrbanAttachmentSyncService : ITransientDependency
     ///     Upload Lrp and UrbanPhoto files for a weighing record; returns server attachment Guids.
     /// </summary>
     Task<IReadOnlyList<Guid>> UploadAttachmentsAsync(long weighingRecordId, string buildLicenseNo);
+
+    /// <summary>
+    ///     Upload capture files linked on a passage row by local attachment id.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> UploadPassageAttachmentsAsync(
+        int? largeImageAttachmentId,
+        int? smallImageAttachmentId,
+        string buildLicenseNo);
 }
 
 /// <inheritdoc />
@@ -33,6 +42,7 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
     private static readonly AttachType[] UrbanSyncAttachTypes = [AttachType.Lpr, AttachType.UrbanPhoto];
 
     private readonly IAttachmentService _attachmentService;
+    private readonly IRepository<AttachmentFile, int> _attachmentFileRepository;
     private readonly IUrbanManagementApi _urbanManagementApi;
     private readonly IUrbanTusAttachmentClient _tusAttachmentClient;
     private readonly ISettingsService _settingsService;
@@ -47,6 +57,99 @@ public partial class UrbanAttachmentSyncService : IUrbanAttachmentSyncService
         }
 
         return await UploadAttachmentsMultipartInternalAsync(weighingRecordId, buildLicenseNo);
+    }
+
+    public async Task<IReadOnlyList<Guid>> UploadPassageAttachmentsAsync(
+        int? largeImageAttachmentId,
+        int? smallImageAttachmentId,
+        string buildLicenseNo)
+    {
+        var settings = await _settingsService.GetSettingsAsync();
+        if (settings.SystemSettings.EnableChunkedAttachmentUpload)
+        {
+            _logger.LogWarning(
+                "Passage attachment upload via tus is not implemented; falling back to multipart for passage attachments");
+        }
+
+        var licenseNo = string.IsNullOrWhiteSpace(buildLicenseNo) ? UnknownAccessCode : buildLicenseNo.Trim();
+        var attachmentIds = new[] { largeImageAttachmentId, smallImageAttachmentId }
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        if (attachmentIds.Count == 0)
+        {
+            return [];
+        }
+
+        var files = await _attachmentFileRepository.GetListAsync(f => attachmentIds.Contains(f.Id));
+        if (files.Count == 0)
+        {
+            return [];
+        }
+
+        var serverIds = new List<Guid>();
+        foreach (var group in files.GroupBy(f => f.AttachType))
+        {
+            var filePaths = new List<string>();
+            foreach (var attachment in group)
+            {
+                var absolutePath = PathManager.ToAbsolutePath(attachment.LocalPath);
+                if (!File.Exists(absolutePath))
+                {
+                    _logger.LogWarning(
+                        "Passage attachment file missing, FileId={FileId}, Path={Path}",
+                        attachment.Id,
+                        attachment.LocalPath);
+                    continue;
+                }
+
+                filePaths.Add(absolutePath);
+            }
+
+            if (filePaths.Count == 0)
+            {
+                continue;
+            }
+
+            var streams = new List<FileStream>();
+            try
+            {
+                var parts = new List<StreamPart>(filePaths.Count);
+                foreach (var path in filePaths)
+                {
+                    var stream = new FileStream(
+                        path,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize: 4096,
+                        options: FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    streams.Add(stream);
+                    parts.Add(new StreamPart(stream, Path.GetFileName(path), "image/jpeg", "files"));
+                }
+
+                var response = await _urbanManagementApi.UploadAttachmentsMultipartAsync(
+                    licenseNo,
+                    (short)group.Key,
+                    parts);
+
+                if (response.AttachmentIds is { Count: > 0 })
+                {
+                    serverIds.AddRange(response.AttachmentIds);
+                }
+            }
+            finally
+            {
+                foreach (var stream in streams)
+                {
+                    await stream.DisposeAsync();
+                }
+            }
+        }
+
+        return serverIds;
     }
 
     private async Task<IReadOnlyList<Guid>> UploadAttachmentsMultipartInternalAsync(

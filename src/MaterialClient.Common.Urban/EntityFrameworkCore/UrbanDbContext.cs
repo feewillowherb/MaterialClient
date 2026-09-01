@@ -44,8 +44,10 @@ public class UrbanDbContext : AbpDbContext<UrbanDbContext>, IUrbanDbContext
             entity.Property(e => e.PlateNumber).HasMaxLength(32);
             entity.Property(e => e.PlateColor).HasMaxLength(32);
             entity.Property(e => e.VehicleType).HasMaxLength(32);
+            entity.Property(e => e.SubmitMachineCode).HasMaxLength(128);
             entity.HasIndex(e => e.CapturedAt);
             entity.HasIndex(e => e.PassageSource);
+            entity.HasIndex(e => e.SyncStatus);
         });
     }
 }

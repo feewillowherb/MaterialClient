@@ -32,6 +32,31 @@ public class UrbanPassageRecord : Entity<Guid>
 
     public int? SmallImageAttachmentId { get; private set; }
 
+    public SyncStatus SyncStatus { get; private set; } = SyncStatus.Pending;
+
+    public int RetryCount { get; private set; }
+
+    public DateTime? LastErrorTime { get; private set; }
+
+    public string? SubmitMachineCode { get; private set; }
+
+    public void AssignSubmitMachineCode(string submitMachineCode)
+    {
+        SubmitMachineCode = submitMachineCode;
+    }
+
+    public void MarkSynced()
+    {
+        SyncStatus = SyncStatus.Synced;
+        LastErrorTime = null;
+    }
+
+    public void MarkUploadFailed()
+    {
+        RetryCount++;
+        LastErrorTime = DateTime.UtcNow;
+    }
+
     public static UrbanPassageRecord FromLprCapture(UrbanLprCaptureContext context)
     {
         var plate = string.IsNullOrWhiteSpace(context.PlateNumber)

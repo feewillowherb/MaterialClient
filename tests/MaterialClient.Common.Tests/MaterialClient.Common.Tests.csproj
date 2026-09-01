@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\src\MaterialClient.Common\MaterialClient.Common.csproj"/>
     <ProjectReference Include="..\..\src\MaterialClient.Common.EntityFrameworkCore\MaterialClient.Common.EntityFrameworkCore.csproj"/>
     <ProjectReference Include="..\..\src\MaterialClient.Common.Urban\MaterialClient.Common.Urban.csproj"/>
+    <ProjectReference Include="..\..\src\MaterialClient.Urban\MaterialClient.Urban.csproj"/>
     <ProjectReference Include="..\..\src\MaterialClient.Common.Recycle\MaterialClient.Common.Recycle.csproj"/>
     <ProjectReference Include="..\..\src\MaterialClient.Recycle\MaterialClient.Recycle.csproj"/>
   </ItemGroup>
