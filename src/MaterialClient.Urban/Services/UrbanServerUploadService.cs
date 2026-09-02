@@ -85,10 +85,20 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             if (licenseInfo == null)
             {
                 _logger.LogWarning(
-                    "LicenseInfo not available, ProId/ProName/AccessCode will be null for record {RecordId}",
+                    "LicenseInfo not available; cannot submit weighing record {RecordId}",
                     weighingRecordId);
+                return false;
             }
-            else if (licenseInfo.ProName == null || licenseInfo.AccessCode == null)
+
+            if (licenseInfo.ProjectId == Guid.Empty)
+            {
+                _logger.LogWarning(
+                    "LicenseInfo.ProjectId is empty; cannot submit weighing record {RecordId}",
+                    weighingRecordId);
+                return false;
+            }
+
+            if (licenseInfo.ProName == null || licenseInfo.AccessCode == null)
             {
                 _logger.LogDebug(
                     "LicenseInfo exists but some project fields are empty for record {RecordId}",
@@ -101,7 +111,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             // Tracked entity within the ambient UnitOfWork → persisted on save.
             extension.SubmitMachineCode = submitMachineCode;
 
-            var accessCode = licenseInfo?.AccessCode ?? string.Empty;
+            var accessCode = licenseInfo.AccessCode ?? string.Empty;
             var editHistory = extension.GetEditHistory();
             var skipAttachmentUpload = editHistory.Count > 0
                                        && !editHistory.Any(e => e.IsImagesModified);
@@ -141,10 +151,10 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 PlateColor = null,
                 VehicleType = null,
                 DeviceId = null,
-                BuildLicenseNo = licenseInfo?.AccessCode,
+                BuildLicenseNo = licenseInfo.AccessCode,
                 SiteType = null,
-                ProId = licenseInfo?.ProjectId,
-                ProName = licenseInfo?.ProName,
+                ProId = licenseInfo.ProjectId,
+                ProName = licenseInfo.ProName,
                 SubmitMachineCode = submitMachineCode,
                 IsAnomaly = isAnomaly,
                 AnomalyReason = extension.AnomalyReason?.GetDescription(),

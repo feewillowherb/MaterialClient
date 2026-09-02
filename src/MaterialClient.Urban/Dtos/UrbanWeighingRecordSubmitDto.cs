@@ -33,7 +33,7 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("siteType")] public string? SiteType { get; set; }
 
-    [JsonPropertyName("proId")] public Guid? ProId { get; set; }
+    [JsonPropertyName("proId")] public Guid ProId { get; set; }
 
     [JsonPropertyName("proName")] public string? ProName { get; set; }
 
