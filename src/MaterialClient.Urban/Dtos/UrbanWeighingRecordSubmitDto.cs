@@ -31,8 +31,6 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("buildLicenseNo")] public string? BuildLicenseNo { get; set; }
 
-    [JsonPropertyName("fdBuildLicenseNo")] public string? FdBuildLicenseNo { get; set; }
-
     [JsonPropertyName("siteType")] public string? SiteType { get; set; }
 
     [JsonPropertyName("proId")] public Guid? ProId { get; set; }
