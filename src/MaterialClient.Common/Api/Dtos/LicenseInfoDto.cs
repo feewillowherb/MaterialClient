@@ -34,9 +34,4 @@ public class LicenseInfoDto
     ///     施工许可证号（接入码）
     /// </summary>
     public string? BuildLicenseNo { get; set; }
-
-    /// <summary>
-    ///     对接码
-    /// </summary>
-    public string? FdBuildLicenseNo { get; set; }
 }
