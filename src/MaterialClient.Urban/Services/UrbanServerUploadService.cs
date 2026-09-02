@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.Json;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
@@ -41,6 +42,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
@@ -51,6 +53,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
         IMachineCodeService machineCodeService,
+        ISettingsService settingsService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
@@ -60,6 +63,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _extensionService = extensionService;
         _licenseService = licenseService;
         _machineCodeService = machineCodeService;
+        _settingsService = settingsService;
         _logger = logger;
     }
 
@@ -139,6 +143,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             }
 
             var isAnomaly = extension.IsAnomaly;
+            var siteType = await ResolveScaleUrbanSiteTypeAsync();
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
@@ -152,7 +157,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 VehicleType = null,
                 DeviceId = null,
                 BuildLicenseNo = licenseInfo.AccessCode,
-                SiteType = null,
+                SiteType = siteType,
                 ProId = licenseInfo.ProjectId,
                 ProName = licenseInfo.ProName,
                 SubmitMachineCode = submitMachineCode,
@@ -198,6 +203,22 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         {
             _logger.LogError(ex, "Failed to submit record {RecordId} to server", weighingRecordId);
             return false;
+        }
+    }
+
+    private async Task<UrbanSiteType> ResolveScaleUrbanSiteTypeAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var scale = settings.LicensePlateRecognitionConfigs?
+                .FirstOrDefault(c => c.SiteType == LprSiteType.Scale);
+            return scale?.UrbanSiteType ?? UrbanSiteType.Construction;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to resolve Scale LPR UrbanSiteType; defaulting to Construction");
+            return UrbanSiteType.Construction;
         }
     }
 
