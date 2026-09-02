@@ -49,6 +49,15 @@ public partial class UrbanPassageUploadService : IUrbanPassageUploadService
                 return false;
             }
 
+            if (licenseInfo.ProjectId == Guid.Empty)
+            {
+                _logger.LogWarning(
+                    "LicenseInfo.ProjectId is empty; cannot upload passage record {PassageRecordId}",
+                    passageRecordId);
+                await _passageRecordService.MarkUploadFailedAsync(passageRecordId);
+                return false;
+            }
+
             var submitMachineCode = _machineCodeService.GetMachineCode();
             record.AssignSubmitMachineCode(submitMachineCode);
             await _passageRepository.UpdateAsync(record, autoSave: true);

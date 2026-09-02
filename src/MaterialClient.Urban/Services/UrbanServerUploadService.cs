@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.Json;
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Entities.Urban;
@@ -41,6 +42,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IUrbanWeighingExtensionService _extensionService;
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<UrbanServerUploadService> _logger;
 
     public UrbanServerUploadService(
@@ -51,6 +53,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IUrbanWeighingExtensionService extensionService,
         ILicenseService licenseService,
         IMachineCodeService machineCodeService,
+        ISettingsService settingsService,
         ILogger<UrbanServerUploadService> logger)
     {
         _urbanManagementApi = urbanManagementApi;
@@ -60,6 +63,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _extensionService = extensionService;
         _licenseService = licenseService;
         _machineCodeService = machineCodeService;
+        _settingsService = settingsService;
         _logger = logger;
     }
 
@@ -85,10 +89,20 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             if (licenseInfo == null)
             {
                 _logger.LogWarning(
-                    "LicenseInfo not available, ProId/ProName/AccessCode will be null for record {RecordId}",
+                    "LicenseInfo not available; cannot submit weighing record {RecordId}",
                     weighingRecordId);
+                return false;
             }
-            else if (licenseInfo.ProName == null || licenseInfo.AccessCode == null)
+
+            if (licenseInfo.ProjectId == Guid.Empty)
+            {
+                _logger.LogWarning(
+                    "LicenseInfo.ProjectId is empty; cannot submit weighing record {RecordId}",
+                    weighingRecordId);
+                return false;
+            }
+
+            if (licenseInfo.ProName == null || licenseInfo.AccessCode == null)
             {
                 _logger.LogDebug(
                     "LicenseInfo exists but some project fields are empty for record {RecordId}",
@@ -101,7 +115,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             // Tracked entity within the ambient UnitOfWork → persisted on save.
             extension.SubmitMachineCode = submitMachineCode;
 
-            var accessCode = licenseInfo?.AccessCode ?? string.Empty;
+            var accessCode = licenseInfo.AccessCode ?? string.Empty;
             var editHistory = extension.GetEditHistory();
             var skipAttachmentUpload = editHistory.Count > 0
                                        && !editHistory.Any(e => e.IsImagesModified);
@@ -129,6 +143,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
             }
 
             var isAnomaly = extension.IsAnomaly;
+            var siteType = await ResolveScaleUrbanSiteTypeAsync();
 
             var dto = new UrbanWeighingRecordSubmitDto
             {
@@ -141,10 +156,10 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                 PlateColor = null,
                 VehicleType = null,
                 DeviceId = null,
-                BuildLicenseNo = licenseInfo?.AccessCode,
-                SiteType = null,
-                ProId = licenseInfo?.ProjectId,
-                ProName = licenseInfo?.ProName,
+                BuildLicenseNo = licenseInfo.AccessCode,
+                SiteType = siteType,
+                ProId = licenseInfo.ProjectId,
+                ProName = licenseInfo.ProName,
                 SubmitMachineCode = submitMachineCode,
                 IsAnomaly = isAnomaly,
                 AnomalyReason = extension.AnomalyReason?.GetDescription(),
@@ -188,6 +203,22 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         {
             _logger.LogError(ex, "Failed to submit record {RecordId} to server", weighingRecordId);
             return false;
+        }
+    }
+
+    private async Task<UrbanSiteType> ResolveScaleUrbanSiteTypeAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var scale = settings.LicensePlateRecognitionConfigs?
+                .FirstOrDefault(c => c.SiteType == LprSiteType.Scale);
+            return scale?.UrbanSiteType ?? UrbanSiteType.Construction;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to resolve Scale LPR UrbanSiteType; defaulting to Construction");
+            return UrbanSiteType.Construction;
         }
     }
 

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MaterialClient.Common.Entities.Enums;
 
 namespace MaterialClient.Urban.Dtos;
 
@@ -31,9 +32,9 @@ public class UrbanWeighingRecordSubmitDto
 
     [JsonPropertyName("buildLicenseNo")] public string? BuildLicenseNo { get; set; }
 
-    [JsonPropertyName("siteType")] public string? SiteType { get; set; }
+    [JsonPropertyName("siteType")] public UrbanSiteType SiteType { get; set; } = UrbanSiteType.Construction;
 
-    [JsonPropertyName("proId")] public Guid? ProId { get; set; }
+    [JsonPropertyName("proId")] public Guid ProId { get; set; }
 
     [JsonPropertyName("proName")] public string? ProName { get; set; }
 

@@ -35,7 +35,7 @@ public sealed record UrbanPassageSubmitDto
     public string? BuildLicenseNo { get; init; }
 
     [JsonPropertyName("proId")]
-    public Guid? ProId { get; init; }
+    public Guid ProId { get; init; }
 
     [JsonPropertyName("proName")]
     public string? ProName { get; init; }
@@ -62,7 +62,7 @@ public sealed record UrbanPassageSubmitDto
             UrbanInOutType = record.UrbanInOutType,
             UrbanSiteType = record.UrbanSiteType,
             BuildLicenseNo = license?.AccessCode,
-            ProId = license?.ProjectId,
+            ProId = license?.ProjectId ?? Guid.Empty,
             ProName = license?.ProName,
             SubmitMachineCode = submitMachineCode,
             AttachmentIds = attachmentIds.Count > 0 ? attachmentIds.ToList() : null
