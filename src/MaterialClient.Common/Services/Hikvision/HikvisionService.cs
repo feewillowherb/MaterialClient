@@ -48,11 +48,22 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
     private readonly ISettingsService? _settingsService;
     private readonly ILogger<HikvisionService>? _logger;
+    private readonly SemaphoreSlim _softResetLock = new(1, 1);
+    private DateTimeOffset? _lastSoftResetSucceededAt;
 
     public HikvisionService(ISettingsService? settingsService = null, ILogger<HikvisionService>? logger = null)
     {
         _settingsService = settingsService;
         _logger = logger;
+    }
+
+    /// <summary>
+    ///     Test hook: last successful soft-reset timestamp (UTC).
+    /// </summary>
+    internal DateTimeOffset? LastSoftResetSucceededAt
+    {
+        get => _lastSoftResetSucceededAt;
+        set => _lastSoftResetSucceededAt = value;
     }
 
     public void AddOrUpdateDevice(HikvisionDeviceConfig config)
@@ -190,15 +201,61 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     {
         if (requests == null || requests.Count == 0) return new List<BatchCaptureResult>();
 
+        var results = await CaptureJpegFromStreamBatchOnceAsync(requests);
+        var successCount = results.Count(r => r.Success);
+        var failCount = results.Count - successCount;
+
+        if (successCount != 0 || failCount <= 0)
+            return results;
+
+        var reset = await TrySoftResetSdkAsync();
+        if (reset.Performed)
+        {
+            _logger?.LogWarning(
+                "HCNetSDK soft reset completed in {DurationMs}ms; retrying batch capture once (prior failCount={FailCount})",
+                reset.DurationMs, failCount);
+            results = await CaptureJpegFromStreamBatchOnceAsync(requests);
+            var recovered = results.Count(r => r.Success);
+            if (recovered > 0)
+            {
+                _logger?.LogWarning(
+                    "Batch capture recovered via soft reset retry: successCount={SuccessCount}",
+                    recovered);
+            }
+            else
+            {
+                _logger?.LogWarning("Batch capture still failed after soft reset retry");
+            }
+        }
+        else if (reset.SkippedDueToCooldown)
+        {
+            _logger?.LogWarning(
+                "HCNetSDK soft reset skipped due to cooldown: {Message}",
+                reset.Message);
+        }
+        else if (!string.IsNullOrEmpty(reset.Message))
+        {
+            _logger?.LogWarning(
+                "HCNetSDK soft reset not performed: {Message}",
+                reset.Message);
+        }
+
+        return results;
+    }
+
+    private async Task<List<BatchCaptureResult>> CaptureJpegFromStreamBatchOnceAsync(List<BatchCaptureRequest> requests)
+    {
         // Get settings to determine which capture method to use
         // Default to Substream if settings service is not available
         var streamType = StreamType.Substream;
         var jpegQuality = 100; // default: no compression
+        var decoderTimeoutMs = SystemSettings.DefaultStreamCaptureDecoderTimeoutMs;
         if (_settingsService != null)
         {
             var settings = await _settingsService.GetSettingsAsync();
             streamType = settings.SystemSettings.CaptureStreamType;
             jpegQuality = settings.SystemSettings.JpegQuality;
+            decoderTimeoutMs = settings.SystemSettings.ResolveStreamCaptureDecoderTimeoutMs();
         }
 
         // Route to appropriate method based on stream type
@@ -227,7 +284,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 // 同步调用主码流拍照方法
                 var playM4Error = 0;
                 result.Success = CaptureJpegFromStream(request.Config, request.Channel, request.SaveFullPath,
-                    out playM4Error);
+                    out playM4Error, jpegQuality, decoderTimeoutMs);
                 result.PlayM4Error = playM4Error;
 
                 if (!result.Success)
@@ -235,7 +292,7 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                     result.HcNetSdkError = GetLastErrorCode();
                     var mainstreamError = $"HCNetSDK错误: {result.HcNetSdkError}, PlayM4错误: {result.PlayM4Error}";
 
-                    // 降级到设备侧JPEG抓拍
+                    // 降级到设备侧JPEG抓拍（含 decoder init timeout / no_syshead）
                     _logger?.LogWarning(
                         "主码流抓拍失败，尝试降级: IP={Ip}, Channel={Channel}, HcNetSdkError={HcNetSdkError}, PlayM4Error={PlayM4Error}",
                         request.Config.Ip, request.Channel, result.HcNetSdkError, result.PlayM4Error);
@@ -514,12 +571,15 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     }
 
     public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
-        out int playM4Error, int jpegQuality = 100)
+        out int playM4Error, int jpegQuality = 100,
+        int decoderTimeoutMs = SystemSettings.DefaultStreamCaptureDecoderTimeoutMs)
     {
         playM4Error = 0;
         ArgumentNullException.ThrowIfNull(config);
         if (string.IsNullOrWhiteSpace(saveFullPath))
             throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
+        if (decoderTimeoutMs <= 0)
+            decoderTimeoutMs = SystemSettings.DefaultStreamCaptureDecoderTimeoutMs;
         EnsureInitialized();
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);
@@ -675,14 +735,16 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 
             // Wait for decoder initialization using event-based waiting instead of polling
             // This is more efficient and reliable than Thread.Sleep polling
-            if (!decoder.WaitForPlaying(5000))
+            if (!decoder.WaitForPlaying(decoderTimeoutMs))
             {
-                // Decoder initialization failed
-                playM4Error = decoder.GetLastError();
+                var timeoutInfo = StreamCaptureTimeoutDiagnostics.Classify(
+                    decoder.Port, decoder.IsInitialized, decoder.GetLastError());
+                playM4Error = timeoutInfo.ReportPlayM4Error;
 
                 _logger?.LogWarning(
-                    "Stream capture failed (decoder init timeout): IP={Ip}, Port={Port}, Channel={Channel}, PlayM4Error={PlayM4Error}",
-                    config.Ip, config.Port, channel, playM4Error);
+                    "Stream capture failed (decoder init timeout): IP={Ip}, Port={Port}, Channel={Channel}, Reason={Reason}, PlayM4Error={PlayM4Error}, DecoderPort={DecoderPort}, IsInitialized={IsInitialized}",
+                    config.Ip, config.Port, channel, timeoutInfo.Reason, playM4Error, decoder.Port,
+                    decoder.IsInitialized);
                 return false;
             }
 
@@ -749,6 +811,79 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             }
 
             _logger?.LogDebug("Resources cleaned: Handle={Handle}", lRealHandle);
+        }
+    }
+
+    /// <summary>
+    ///     Soft-reset HCNetSDK: logout cached sessions, Cleanup, clear process init flag, re-Init.
+    ///     Serialized and cooled down (default 30s) to avoid repeated Cleanup under load.
+    /// </summary>
+    internal async Task<SdkSoftResetResult> TrySoftResetSdkAsync(CancellationToken cancellationToken = default)
+    {
+        await _softResetLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            if (!SdkSoftResetPolicy.CanAttempt(now, _lastSoftResetSucceededAt))
+            {
+                var remaining = SdkSoftResetPolicy.DefaultCooldown -
+                                (now - _lastSoftResetSucceededAt!.Value);
+                return SdkSoftResetResult.CooldownSkipped(
+                    $"last soft reset within {SdkSoftResetPolicy.DefaultCooldown.TotalSeconds:0}s (remaining ~{Math.Max(0, remaining.TotalSeconds):0}s)");
+            }
+
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                // 1. Logout and evacuate all cached sessions before Cleanup
+                foreach (var key in deviceKeyToUserId.Keys.ToList())
+                {
+                    if (deviceKeyToUserId.TryRemove(key, out var userId) && userId >= 0)
+                    {
+                        try
+                        {
+                            NET_DVR.NET_DVR_Logout(userId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogDebug(ex, "Logout during soft reset failed: Key={Key}, UserId={UserId}", key,
+                                userId);
+                        }
+                    }
+                }
+
+                deviceKeyToUserId.Clear();
+
+                // 2. Cleanup + clear process init flag (shared with HikvisionLprService via NET_DVR._initialized)
+                NET_DVR.NET_DVR_Cleanup();
+                NET_DVR._initialized = false;
+
+                // 3. Brief settle before re-Init
+                await Task.Delay(300, cancellationToken).ConfigureAwait(false);
+
+                // 4. Re-Init
+                if (!NET_DVR.NET_DVR_Init())
+                {
+                    sw.Stop();
+                    return SdkSoftResetResult.Failed("NET_DVR_Init failed after Cleanup", sw.ElapsedMilliseconds);
+                }
+
+                NET_DVR._initialized = true;
+                _lastSoftResetSucceededAt = DateTimeOffset.UtcNow;
+                sw.Stop();
+                _logger?.LogWarning("HCNetSDK soft reset succeeded in {DurationMs}ms", sw.ElapsedMilliseconds);
+                return SdkSoftResetResult.Succeeded(sw.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _logger?.LogError(ex, "HCNetSDK soft reset failed");
+                return SdkSoftResetResult.Failed(ex.Message, sw.ElapsedMilliseconds);
+            }
+        }
+        finally
+        {
+            _softResetLock.Release();
         }
     }
 
