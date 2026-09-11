@@ -19,10 +19,12 @@ public interface IUrbanWeighingExtensionService : ITransientDependency
     /// <param name="evaluateAnomaly">
     ///     是否立即计算并持久化异常。晚到 LPR 补绑场景应传 false，待 LPR Upsert 或周期重置后再算。
     /// </param>
+    /// <param name="urbanInOutType">Scale LPR in/out when known at create time.</param>
     Task<UrbanWeighingExtension> CreateForRecordAsync(
         long weighingRecordId,
         bool hasLprAttachment = true,
-        bool evaluateAnomaly = true);
+        bool evaluateAnomaly = true,
+        UrbanInOutType? urbanInOutType = null);
 
     /// <summary>
     ///     按扩展 Id 查询。

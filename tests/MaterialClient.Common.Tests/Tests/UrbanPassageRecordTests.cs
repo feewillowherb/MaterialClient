@@ -50,6 +50,7 @@ public class UrbanPassageRecordTests
         record.MarkSynced();
         Assert.Equal(SyncStatus.Synced, record.SyncStatus);
         Assert.Null(record.LastErrorTime);
+        Assert.NotNull(record.UploadedAt);
     }
 
     [Fact]

@@ -34,4 +34,34 @@ public class UrbanWeighingListItemDto
     ///     Record upload time (when available), null means not uploaded yet.
     /// </summary>
     public DateTime? UploadTime { get; init; }
+
+    /// <summary>
+    ///     Scale LPR in/out when stored on the extension; null when unknown.
+    /// </summary>
+    public UrbanInOutType? UrbanInOutType { get; init; }
+
+    public static UrbanWeighingListItemDto FromWeighingFields(
+        long weighingRecordId,
+        string? plateNumber,
+        DateTime addDate,
+        decimal totalWeight,
+        bool isAnomaly,
+        SyncStatus? syncStatus,
+        AnomalyReason? anomalyReason,
+        DateTime? uploadTime,
+        UrbanInOutType? urbanInOutType)
+    {
+        return new UrbanWeighingListItemDto
+        {
+            WeighingRecordId = weighingRecordId,
+            PlateNumber = plateNumber,
+            AddDate = addDate,
+            TotalWeight = totalWeight,
+            IsAnomaly = isAnomaly,
+            SyncStatus = syncStatus,
+            AnomalyReason = anomalyReason,
+            UploadTime = uploadTime,
+            UrbanInOutType = urbanInOutType
+        };
+    }
 }

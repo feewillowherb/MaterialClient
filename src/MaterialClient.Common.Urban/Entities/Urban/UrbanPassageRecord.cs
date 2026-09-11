@@ -40,6 +40,11 @@ public class UrbanPassageRecord : Entity<Guid>
 
     public string? SubmitMachineCode { get; private set; }
 
+    /// <summary>
+    ///     Local time when the passage was successfully uploaded (synced).
+    /// </summary>
+    public DateTime? UploadedAt { get; private set; }
+
     public void AssignSubmitMachineCode(string submitMachineCode)
     {
         SubmitMachineCode = submitMachineCode;
@@ -49,6 +54,7 @@ public class UrbanPassageRecord : Entity<Guid>
     {
         SyncStatus = SyncStatus.Synced;
         LastErrorTime = null;
+        UploadedAt = DateTime.Now;
     }
 
     public void MarkUploadFailed()

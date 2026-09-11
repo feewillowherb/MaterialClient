@@ -57,10 +57,26 @@ public class UrbanWeighingRecordSideEffects : IUrbanWeighingRecordSideEffects, I
 
     public async Task AfterWeighingRecordCreatedAsync(long weighingRecordId)
     {
+        var urbanInOut = await TryResolveScaleUrbanInOutAsync();
         await _urbanWeighingExtensionService.CreateForRecordAsync(
             weighingRecordId,
             hasLprAttachment: true,
-            evaluateAnomaly: false);
+            evaluateAnomaly: false,
+            urbanInOutType: urbanInOut);
+    }
+
+    private async Task<UrbanInOutType?> TryResolveScaleUrbanInOutAsync()
+    {
+        var settings = await _settingsService.GetSettingsAsync();
+        var scaleConfigs = settings.LicensePlateRecognitionConfigs?
+            .Where(c => c.SiteType == LprSiteType.Scale)
+            .ToList() ?? [];
+
+        if (scaleConfigs.Count == 0)
+            return null;
+
+        // Prefer a single Scale device; if multiple, take the first configured row.
+        return scaleConfigs[0].UrbanInOutType;
     }
 
     public async Task RecalculateAnomalyAfterLprOrCycleAsync(long weighingRecordId)

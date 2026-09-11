@@ -169,7 +169,8 @@ public class UrbanPassageRecordService : DomainService, IUrbanPassageRecordServi
                 r.UrbanSiteType,
                 r.CapturedAt,
                 r.LargeImageAttachmentId,
-                path);
+                path,
+                r.UploadedAt);
         }).ToList();
     }
 }
