@@ -19,9 +19,22 @@ public class SystemSettings
     public StreamType CaptureStreamType { get; set; } = StreamType.Substream;
 
     /// <summary>
-    ///     Mainstream PlayM4 WaitForPlaying timeout in milliseconds (default 5000).
+    ///     Default mainstream PlayM4 WaitForPlaying timeout (ms). Single source for property default and call-site fallbacks.
     /// </summary>
-    public int StreamCaptureDecoderTimeoutMs { get; set; } = 5000;
+    public const int DefaultStreamCaptureDecoderTimeoutMs = 5000;
+
+    /// <summary>
+    ///     Mainstream PlayM4 WaitForPlaying timeout in milliseconds.
+    /// </summary>
+    public int StreamCaptureDecoderTimeoutMs { get; set; } = DefaultStreamCaptureDecoderTimeoutMs;
+
+    /// <summary>
+    ///     Effective decoder timeout: configured value when positive, otherwise <see cref="DefaultStreamCaptureDecoderTimeoutMs"/>.
+    /// </summary>
+    public int ResolveStreamCaptureDecoderTimeoutMs() =>
+        StreamCaptureDecoderTimeoutMs > 0
+            ? StreamCaptureDecoderTimeoutMs
+            : DefaultStreamCaptureDecoderTimeoutMs;
 
     /// <summary>
     ///     Web service URLs

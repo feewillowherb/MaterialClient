@@ -249,15 +249,13 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
         // Default to Substream if settings service is not available
         var streamType = StreamType.Substream;
         var jpegQuality = 100; // default: no compression
-        var decoderTimeoutMs = 5000;
+        var decoderTimeoutMs = SystemSettings.DefaultStreamCaptureDecoderTimeoutMs;
         if (_settingsService != null)
         {
             var settings = await _settingsService.GetSettingsAsync();
             streamType = settings.SystemSettings.CaptureStreamType;
             jpegQuality = settings.SystemSettings.JpegQuality;
-            decoderTimeoutMs = settings.SystemSettings.StreamCaptureDecoderTimeoutMs > 0
-                ? settings.SystemSettings.StreamCaptureDecoderTimeoutMs
-                : 5000;
+            decoderTimeoutMs = settings.SystemSettings.ResolveStreamCaptureDecoderTimeoutMs();
         }
 
         // Route to appropriate method based on stream type
@@ -573,14 +571,15 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     }
 
     public bool CaptureJpegFromStream(HikvisionDeviceConfig config, int channel, string saveFullPath,
-        out int playM4Error, int jpegQuality = 100, int decoderTimeoutMs = 5000)
+        out int playM4Error, int jpegQuality = 100,
+        int decoderTimeoutMs = SystemSettings.DefaultStreamCaptureDecoderTimeoutMs)
     {
         playM4Error = 0;
         ArgumentNullException.ThrowIfNull(config);
         if (string.IsNullOrWhiteSpace(saveFullPath))
             throw new ArgumentException("saveFullPath is required", nameof(saveFullPath));
         if (decoderTimeoutMs <= 0)
-            decoderTimeoutMs = 5000;
+            decoderTimeoutMs = SystemSettings.DefaultStreamCaptureDecoderTimeoutMs;
         EnsureInitialized();
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(saveFullPath))!);

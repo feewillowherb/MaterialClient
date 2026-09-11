@@ -45,10 +45,17 @@ public class HikvisionSoftResetAndTimeoutDiagnosticsTests
     }
 
     [Fact]
-    public void SystemSettings_StreamCaptureDecoderTimeoutMs_DefaultsTo5000()
+    public void SystemSettings_StreamCaptureDecoderTimeoutMs_DefaultsFromSingleSource()
     {
         var settings = new SystemSettings();
-        Assert.Equal(5000, settings.StreamCaptureDecoderTimeoutMs);
+        Assert.Equal(SystemSettings.DefaultStreamCaptureDecoderTimeoutMs, settings.StreamCaptureDecoderTimeoutMs);
+        Assert.Equal(SystemSettings.DefaultStreamCaptureDecoderTimeoutMs, settings.ResolveStreamCaptureDecoderTimeoutMs());
+
+        settings.StreamCaptureDecoderTimeoutMs = 0;
+        Assert.Equal(SystemSettings.DefaultStreamCaptureDecoderTimeoutMs, settings.ResolveStreamCaptureDecoderTimeoutMs());
+
+        settings.StreamCaptureDecoderTimeoutMs = 8000;
+        Assert.Equal(8000, settings.ResolveStreamCaptureDecoderTimeoutMs());
     }
 
     [Fact]
