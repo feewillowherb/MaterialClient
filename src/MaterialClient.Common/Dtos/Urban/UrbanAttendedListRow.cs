@@ -39,6 +39,9 @@ public class UrbanAttendedListRow
 
     public DateTime? UploadTime { get; init; }
 
+    public string UploadTimeText =>
+        UploadTime is { } t ? t.ToString("yyyy-MM-dd HH:mm") : EmDash;
+
     public decimal TotalWeight { get; init; }
 
     public DateTime AddDate { get; init; }
@@ -62,7 +65,7 @@ public class UrbanAttendedListRow
             DisplayPlate = dto.PlateNumber ?? string.Empty,
             KindLabel = "地磅",
             WeightText = $"{dto.TotalWeight:F2} 吨",
-            InOutText = EmDash,
+            InOutText = FormatInOutText(dto.UrbanInOutType),
             SortTime = dto.AddDate,
             StatusText = dto.IsAnomaly ? "异常" : "正常",
             IsAnomaly = dto.IsAnomaly,
@@ -85,7 +88,8 @@ public class UrbanAttendedListRow
         UrbanSiteType siteType,
         DateTime capturedAt,
         int? largeImageAttachmentId,
-        string? largePhotoPath)
+        string? largePhotoPath,
+        DateTime? uploadedAt = null)
     {
         var kind = source == PassageSource.FinishedProduct
             ? UrbanAttendedListKind.FinishedProduct
@@ -100,10 +104,11 @@ public class UrbanAttendedListRow
             VehicleType = vehicleType,
             KindLabel = kind == UrbanAttendedListKind.FinishedProduct ? "成品" : "卡口",
             WeightText = EmDash,
-            InOutText = inOutType == UrbanInOutType.Exit ? "出" : "进",
+            InOutText = FormatInOutText(inOutType),
             SiteTypeText = siteType == UrbanSiteType.Disposal ? "消纳" : "工地",
             SortTime = capturedAt,
             StatusText = EmDash,
+            UploadTime = uploadedAt,
             ShowApprove = false,
             LargeImageAttachmentId = largeImageAttachmentId,
             LargePhotoPath = largePhotoPath
@@ -112,4 +117,12 @@ public class UrbanAttendedListRow
 
     public static string FormatStoredPlate(string? stored) =>
         stored == "无" ? UnrecognizedPlateDisplay : stored ?? UnrecognizedPlateDisplay;
+
+    public static string FormatInOutText(UrbanInOutType? inOutType) =>
+        inOutType switch
+        {
+            UrbanInOutType.Exit => "出",
+            UrbanInOutType.Enter => "进",
+            _ => EmDash
+        };
 }

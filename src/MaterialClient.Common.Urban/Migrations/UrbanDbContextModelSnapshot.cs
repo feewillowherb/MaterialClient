@@ -41,6 +41,7 @@ partial class UrbanDbContextModelSnapshot : ModelSnapshot
             b.Property<int>("RetryCount").HasColumnType("INTEGER");
             b.Property<string>("SubmitMachineCode").HasMaxLength(128).HasColumnType("TEXT");
             b.Property<int>("SyncStatus").HasColumnType("INTEGER");
+            b.Property<int?>("UrbanInOutType").HasColumnType("INTEGER");
             b.Property<long>("WeighingRecordId").HasColumnType("INTEGER");
             b.HasKey("Id");
             b.HasIndex("IsAnomaly");
@@ -62,16 +63,22 @@ partial class UrbanDbContextModelSnapshot : ModelSnapshot
             b.Property<Guid>("Id").HasColumnType("TEXT");
             b.Property<DateTime>("CapturedAt").HasColumnType("TEXT");
             b.Property<int?>("LargeImageAttachmentId").HasColumnType("INTEGER");
+            b.Property<DateTime?>("LastErrorTime").HasColumnType("TEXT");
             b.Property<int>("PassageSource").HasColumnType("INTEGER");
             b.Property<string>("PlateColor").HasMaxLength(32).HasColumnType("TEXT");
             b.Property<string>("PlateNumber").HasMaxLength(32).HasColumnType("TEXT");
+            b.Property<int>("RetryCount").HasColumnType("INTEGER");
             b.Property<int?>("SmallImageAttachmentId").HasColumnType("INTEGER");
+            b.Property<string>("SubmitMachineCode").HasMaxLength(128).HasColumnType("TEXT");
+            b.Property<int>("SyncStatus").HasColumnType("INTEGER");
             b.Property<int>("UrbanInOutType").HasColumnType("INTEGER");
             b.Property<int>("UrbanSiteType").HasColumnType("INTEGER");
+            b.Property<DateTime?>("UploadedAt").HasColumnType("TEXT");
             b.Property<string>("VehicleType").HasMaxLength(32).HasColumnType("TEXT");
             b.HasKey("Id");
             b.HasIndex("CapturedAt");
             b.HasIndex("PassageSource");
+            b.HasIndex("SyncStatus");
             b.ToTable("UrbanPassageRecords");
         });
     }

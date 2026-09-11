@@ -46,7 +46,8 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
     public virtual async Task<UrbanWeighingExtension> CreateForRecordAsync(
         long weighingRecordId,
         bool hasLprAttachment = true,
-        bool evaluateAnomaly = true)
+        bool evaluateAnomaly = true,
+        UrbanInOutType? urbanInOutType = null)
     {
         if (weighingRecordId <= 0)
         {
@@ -60,29 +61,23 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
                 $"UrbanWeighingExtension already exists for WeighingRecordId {weighingRecordId}.");
         }
 
-        var extension = new UrbanWeighingExtension
-        {
-            WeighingRecordId = weighingRecordId,
-            SyncStatus = SyncStatus.Pending,
-            RetryCount = 0,
-            LastErrorTime = null
-        };
+        var extension = UrbanWeighingExtension.CreatePending(weighingRecordId);
+        extension.AssignUrbanInOutType(urbanInOutType);
 
         if (evaluateAnomaly)
         {
             var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
             var anomalyConfig = await UrbanAnomalyDetectionConfigLoader.LoadAsync(
                 _settingsService, _configuration, _logger);
-            extension.IsAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLprAttachment);
-            extension.AnomalyReason = extension.IsAnomaly
+            var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLprAttachment);
+            var reason = isAnomaly
                 ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLprAttachment)
                 : null;
+            extension.ApplyAnomalyEvaluation(isAnomaly, reason);
         }
         else
         {
-            // Defer until LPR late-bind Upsert or cycle reset recalculation.
-            extension.IsAnomaly = false;
-            extension.AnomalyReason = null;
+            extension.ApplyDeferredAnomalyPlaceholder();
         }
 
         await _extensionRepository.InsertAsync(extension, autoSave: true);
@@ -168,17 +163,19 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
             .Take(pageSize)
             .ToList();
 
-        var items = rows.Select(x => new UrbanWeighingListItemDto
-        {
-            WeighingRecordId = x.Record.Id,
-            PlateNumber = x.Record.PlateNumber,
-            AddDate = x.Record.AddDate,
-            TotalWeight = x.Record.TotalWeight,
-            IsAnomaly = x.Extension?.IsAnomaly ?? false,
-            SyncStatus = x.Extension?.SyncStatus,
-            AnomalyReason = x.Extension?.AnomalyReason,
-            UploadTime = x.Extension?.SyncStatus == SyncStatus.Synced ? x.Record.UpdateDate ?? x.Record.AddDate : null
-        }).ToList();
+        var items = rows.Select(x =>
+            UrbanWeighingListItemDto.FromWeighingFields(
+                x.Record.Id,
+                x.Record.PlateNumber,
+                x.Record.AddDate,
+                x.Record.TotalWeight,
+                x.Extension?.IsAnomaly ?? false,
+                x.Extension?.SyncStatus,
+                x.Extension?.AnomalyReason,
+                x.Extension?.SyncStatus == SyncStatus.Synced
+                    ? x.Record.UpdateDate ?? x.Record.AddDate
+                    : null,
+                x.Extension?.UrbanInOutType)).ToList();
 
         return new PagedResultDto<UrbanWeighingListItemDto>(totalCount, items);
     }
@@ -202,18 +199,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         DateTime? lastErrorTime = null)
     {
         var extension = await _extensionRepository.GetAsync(extensionId);
-        extension.SyncStatus = syncStatus;
-
-        if (syncStatus == SyncStatus.Failed)
-        {
-            extension.RetryCount++;
-            extension.LastErrorTime = lastErrorTime ?? DateTime.UtcNow;
-        }
-        else if (syncStatus == SyncStatus.Synced)
-        {
-            extension.LastErrorTime = null;
-        }
-
+        extension.ApplySyncStatus(syncStatus, lastErrorTime);
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 
@@ -225,8 +211,7 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
         AnomalyReason? anomalyReason)
     {
         var extension = await _extensionRepository.GetAsync(extensionId);
-        extension.IsAnomaly = isAnomaly;
-        extension.AnomalyReason = anomalyReason;
+        extension.ApplyAnomalyEvaluation(isAnomaly, anomalyReason);
         await _extensionRepository.UpdateAsync(extension, autoSave: true);
     }
 

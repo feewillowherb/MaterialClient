@@ -190,7 +190,7 @@
                             <!-- DataGrid Table Header Label -->
                             <Border Grid.Row="2" Background="{DynamicResource PrimaryBlue}" Padding="12,0">
                                 <Panel>
-                                <Grid ColumnDefinitions="72,96,74,56,126,88,*"
+                                <Grid ColumnDefinitions="72,96,74,56,126,126,88,*"
                                       IsVisible="{Binding IsMixedOrWeighingTab}">
                                     <TextBlock Text="类型" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
@@ -204,17 +204,20 @@
                                     <TextBlock Grid.Column="3" Text="进出" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="4" Text="时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="4" Text="抓拍时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="5" Text="状态" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="5" Text="上传时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
-                                    <TextBlock Grid.Column="6" Text="操作" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="6" Text="状态" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="7" Text="操作" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                 </Grid>
-                                <Grid ColumnDefinitions="96,72,72,56,72,126"
+                                <Grid ColumnDefinitions="96,72,72,56,72,126,126"
                                       IsVisible="{Binding IsPassageDedicatedTab}">
                                     <TextBlock Text="车牌" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
@@ -232,6 +235,9 @@
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                     <TextBlock Grid.Column="5" Text="抓拍时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                    <TextBlock Grid.Column="6" Text="上传时间" Foreground="White" FontSize="12" FontWeight="SemiBold"
                                                VerticalAlignment="Center" HorizontalAlignment="Center"
                                                FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                 </Grid>
@@ -265,7 +271,8 @@
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="dtos:UrbanAttendedListRow">
                                         <Panel>
-                                        <Grid ColumnDefinitions="72,96,74,56,126,88,*"
+                                        <Panel IsVisible="{Binding #UrbanAttendedWeighingWindowRoot.DataContext.IsMixedOrWeighingTab}">
+                                        <Grid ColumnDefinitions="72,96,74,56,126,126,88,*"
                                               IsVisible="{Binding IsWeighingKind}">
                                             <TextBlock Text="{Binding KindLabel}" FontSize="12" FontWeight="Medium"
                                                        Foreground="#333333" VerticalAlignment="Center"
@@ -284,13 +291,18 @@
                                             <TextBlock Grid.Column="4" Text="{Binding SortTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
                                                        Foreground="#666666" VerticalAlignment="Center"
                                                        HorizontalAlignment="Center" />
-                                            <StackPanel Grid.Column="5" VerticalAlignment="Center"
+                                            <TextBlock Grid.Column="5"
+                                                       Text="{Binding UploadTimeText}"
+                                                       FontSize="12"
+                                                       Foreground="#666666" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                            <StackPanel Grid.Column="6" VerticalAlignment="Center"
                                                         HorizontalAlignment="Center" Spacing="2">
                                                 <TextBlock Text="{Binding StatusText}" FontSize="11"
                                                            Foreground="#334155"
                                                            FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                             </StackPanel>
-                                            <Button Grid.Column="6" Classes="primary-button" Content="审批"
+                                            <Button Grid.Column="7" Classes="primary-button" Content="审批"
                                                     Height="28" Padding="12,4" FontSize="12"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     Command="{Binding #UrbanAttendedWeighingWindowRoot.DataContext.ApproveRecordCommand}"
@@ -298,7 +310,7 @@
                                                     IsVisible="{Binding ShowApprove}"
                                                     FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="72,96,74,56,126,88,*"
+                                        <Grid ColumnDefinitions="72,96,74,56,126,126,88,*"
                                               IsVisible="{Binding IsPassageKind}">
                                             <TextBlock Text="{Binding KindLabel}" FontSize="12" FontWeight="Medium"
                                                        Foreground="#333333" VerticalAlignment="Center"
@@ -315,8 +327,43 @@
                                             <TextBlock Grid.Column="4" Text="{Binding SortTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
                                                        Foreground="#666666" VerticalAlignment="Center"
                                                        HorizontalAlignment="Center" />
-                                            <TextBlock Grid.Column="5" Text="{Binding StatusText}" FontSize="12"
+                                            <TextBlock Grid.Column="5"
+                                                       Text="{Binding UploadTimeText}"
+                                                       FontSize="12"
+                                                       Foreground="#666666" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="6" Text="{Binding StatusText}" FontSize="12"
                                                        VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                        </Grid>
+                                        </Panel>
+                                        <Grid ColumnDefinitions="96,72,72,56,72,126,126"
+                                              IsVisible="{Binding #UrbanAttendedWeighingWindowRoot.DataContext.IsPassageDedicatedTab}">
+                                            <TextBlock Text="{Binding DisplayPlate}" FontSize="12" FontWeight="Medium"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="1" Text="{Binding PlateColor}" FontSize="12"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="2" Text="{Binding VehicleType}" FontSize="12"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="3" Text="{Binding InOutText}" FontSize="12"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="4" Text="{Binding SiteTypeText}" FontSize="12"
+                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="'Microsoft YaHei UI', 'SimHei', 'Noto Sans CJK SC', Inter" />
+                                            <TextBlock Grid.Column="5" Text="{Binding SortTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" FontSize="12"
+                                                       Foreground="#666666" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="6"
+                                                       Text="{Binding UploadTimeText}"
+                                                       FontSize="12"
+                                                       Foreground="#666666" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
                                         </Grid>
                                         </Panel>
                                     </DataTemplate>

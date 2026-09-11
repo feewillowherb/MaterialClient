@@ -62,4 +62,50 @@ public class UrbanWeighingExtension : Entity<Guid>, IHasExtraProperties
     ///     仅供溯源记录，MUST NOT 用于授权比对（鉴权由 F4 负责）。
     /// </summary>
     public string? SubmitMachineCode { get; set; }
+
+    /// <summary>
+    ///     In/out direction from the Scale LPR device when known; null when unknown.
+    /// </summary>
+    public UrbanInOutType? UrbanInOutType { get; set; }
+
+    public static UrbanWeighingExtension CreatePending(long weighingRecordId) =>
+        new()
+        {
+            WeighingRecordId = weighingRecordId,
+            SyncStatus = SyncStatus.Pending,
+            RetryCount = 0,
+            LastErrorTime = null,
+            IsAnomaly = false,
+            AnomalyReason = null
+        };
+
+    public void AssignUrbanInOutType(UrbanInOutType? urbanInOutType) =>
+        UrbanInOutType = urbanInOutType;
+
+    public void ApplyDeferredAnomalyPlaceholder()
+    {
+        IsAnomaly = false;
+        AnomalyReason = null;
+    }
+
+    public void ApplyAnomalyEvaluation(bool isAnomaly, AnomalyReason? anomalyReason)
+    {
+        IsAnomaly = isAnomaly;
+        AnomalyReason = anomalyReason;
+    }
+
+    public void ApplySyncStatus(SyncStatus syncStatus, DateTime? lastErrorTime = null)
+    {
+        SyncStatus = syncStatus;
+
+        if (syncStatus == SyncStatus.Failed)
+        {
+            RetryCount++;
+            LastErrorTime = lastErrorTime ?? DateTime.UtcNow;
+        }
+        else if (syncStatus == SyncStatus.Synced)
+        {
+            LastErrorTime = null;
+        }
+    }
 }

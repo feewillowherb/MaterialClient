@@ -82,6 +82,31 @@ public class UrbanWeighingExtensionTests
         extension.WeighingRecordId.ShouldBe(0);
     }
 
+    [Fact]
+    public void ApplySyncStatus_Failed_IncrementsRetryAndSetsErrorTime()
+    {
+        var extension = UrbanWeighingExtension.CreatePending(1);
+        var errorAt = DateTime.UtcNow.AddMinutes(-1);
+
+        extension.ApplySyncStatus(SyncStatus.Failed, errorAt);
+
+        extension.SyncStatus.ShouldBe(SyncStatus.Failed);
+        extension.RetryCount.ShouldBe(1);
+        extension.LastErrorTime.ShouldBe(errorAt);
+    }
+
+    [Fact]
+    public void ApplySyncStatus_Synced_ClearsLastErrorTime()
+    {
+        var extension = UrbanWeighingExtension.CreatePending(1);
+        extension.ApplySyncStatus(SyncStatus.Failed);
+        extension.ApplySyncStatus(SyncStatus.Synced);
+
+        extension.SyncStatus.ShouldBe(SyncStatus.Synced);
+        extension.LastErrorTime.ShouldBeNull();
+        extension.RetryCount.ShouldBe(1);
+    }
+
     #endregion
 
     [Fact]
