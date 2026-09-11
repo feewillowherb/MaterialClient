@@ -135,6 +135,10 @@ public sealed class PlayM4Decoder : IDisposable
     /// <returns>Error code</returns>
     public int GetLastError()
     {
+        // Port -1 never received SYSHEAD / GetPort; PlayM4_GetLastError(-1) often returns 32 and misleads logs.
+        if (_port < 0)
+            return 0;
+
         return PlayM4.PlayM4_GetLastError(_port);
     }
 

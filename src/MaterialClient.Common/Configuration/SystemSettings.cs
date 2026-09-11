@@ -19,6 +19,11 @@ public class SystemSettings
     public StreamType CaptureStreamType { get; set; } = StreamType.Substream;
 
     /// <summary>
+    ///     Mainstream PlayM4 WaitForPlaying timeout in milliseconds (default 5000).
+    /// </summary>
+    public int StreamCaptureDecoderTimeoutMs { get; set; } = 5000;
+
+    /// <summary>
     ///     Web service URLs
     /// </summary>
     public string Urls { get; set; } = "http://localhost:9960";

@@ -666,19 +666,29 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 #endif
 
     /// <summary>
-    ///     确保 SDK 已初始化
+    ///     确保 SDK 已初始化。
+    ///     Process-wide init flag is <see cref="NET_DVR._initialized"/> (shared with HikvisionService soft reset).
     /// </summary>
     private void EnsureInitialized()
     {
-        if (_isInitialized)
-        {
-            return;
-        }
-
         lock (this)
         {
+            // Soft reset in HikvisionService clears NET_DVR._initialized; re-sync local flag.
+            if (_isInitialized && !NET_DVR._initialized)
+            {
+                _isInitialized = false;
+                _logger?.LogWarning("Detected HCNetSDK soft reset; HikvisionLprService will re-initialize");
+            }
+
             if (_isInitialized)
             {
+                return;
+            }
+
+            // Capture service may already have initialized the same DLL.
+            if (NET_DVR._initialized)
+            {
+                _isInitialized = true;
                 return;
             }
 
@@ -689,6 +699,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                     $"SDK 初始化失败: ErrorCode={errorCode}, ErrorDesc={GetErrorDescription(errorCode)}");
             }
 
+            NET_DVR._initialized = true;
             _isInitialized = true;
             _logger?.LogInformation("海康威视 SDK 初始化成功");
 
@@ -717,6 +728,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             try
             {
                 HikvisionSdk.NET_DVR_Cleanup();
+                NET_DVR._initialized = false;
                 _isInitialized = false;
                 _logger?.LogInformation("海康威视 SDK 资源已清理");
             }
