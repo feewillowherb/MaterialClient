@@ -18,17 +18,24 @@ public class SignalRClientOptions
     public int[] ReconnectDelays { get; set; } = [0, 2, 10, 30];
 
     /// <summary>
-    ///     Maximum reconnect attempts before giving up.
-    ///     Default: 10. Ignored when <see cref="PersistentReconnect"/> is true.
+    ///     Maximum reconnect attempts in one retry window.
+    ///     Default: 10.
     /// </summary>
     public int MaxReconnectAttempts { get; set; } = 10;
 
     /// <summary>
-    ///     When true, keep reconnecting after <see cref="MaxReconnectAttempts"/> is exhausted
-    ///     (e.g. server was offline longer than the retry window). When false, stop after max attempts.
+    ///     When true, after a retry window is exhausted wait <see cref="ReconnectResetHours"/>
+    ///     then reset the attempt counter and try again (covers long server outages).
+    ///     When false, stop after <see cref="MaxReconnectAttempts"/>.
     ///     Default: false.
     /// </summary>
     public bool PersistentReconnect { get; set; }
+
+    /// <summary>
+    ///     Hours to wait before resetting the reconnect attempt window when
+    ///     <see cref="PersistentReconnect"/> is true. Default: 12.
+    /// </summary>
+    public int ReconnectResetHours { get; set; } = 12;
 
     /// <summary>
     ///     Maximum number of messages to queue when disconnected.

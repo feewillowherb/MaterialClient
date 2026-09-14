@@ -360,43 +360,82 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
     }
 
     /// <summary>
-    ///     Reconnection loop with configurable delays and max attempts.
+    ///     Reconnection loop with backoff windows; optional 12h reset when persistent.
     /// </summary>
     private async Task ReconnectLoopAsync(CancellationToken cancellationToken)
     {
-        _reconnectAttempts = 0;
         var delays = _options.ReconnectDelays;
         if (delays.Length == 0)
         {
             delays = [0, 2, 10, 30];
         }
 
-        var maxAttempts = _options.MaxReconnectAttempts;
+        var maxAttempts = Math.Max(1, _options.MaxReconnectAttempts);
         var persistentReconnect = _options.PersistentReconnect;
+        var resetHours = Math.Max(1, _options.ReconnectResetHours);
+        var resetPeriod = TimeSpan.FromHours(resetHours);
 
-        while (!cancellationToken.IsCancellationRequested &&
-               (persistentReconnect || _reconnectAttempts < maxAttempts))
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            _reconnectAttempts = 0;
+            var reconnected = await TryReconnectWindowAsync(delays, maxAttempts, cancellationToken);
+            if (reconnected || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (!persistentReconnect)
+            {
+                _logger.LogError(
+                    "DeviceStatusSignalRClient: Max reconnect attempts ({Max}) reached. Giving up. " +
+                    "Set SignalR:PersistentReconnect to true to keep retrying after a reset window.",
+                    maxAttempts);
+                return;
+            }
+
+            _logger.LogWarning(
+                "DeviceStatusSignalRClient: Max reconnect attempts ({Max}) reached. " +
+                "Waiting {Hours}h before resetting the retry window.",
+                maxAttempts,
+                resetHours);
+
+            try
+            {
+                await Task.Delay(resetPeriod, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            _logger.LogInformation(
+                "DeviceStatusSignalRClient: Reconnect window reset after {Hours}h; starting a new attempt cycle.",
+                resetHours);
+        }
+    }
+
+    /// <summary>
+    ///     Runs one retry window of up to <paramref name="maxAttempts"/> StartAsync calls.
+    /// </summary>
+    /// <returns>true when reconnected; false when the window was exhausted or cancelled.</returns>
+    private async Task<bool> TryReconnectWindowAsync(
+        int[] delays,
+        int maxAttempts,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested && _reconnectAttempts < maxAttempts)
         {
             _reconnectAttempts++;
 
-            var delaySeconds = persistentReconnect
-                ? delays[(_reconnectAttempts - 1) % delays.Length]
-                : _reconnectAttempts <= delays.Length
-                    ? delays[_reconnectAttempts - 1]
-                    : Math.Min((int)Math.Pow(2, _reconnectAttempts), 60);
+            var delaySeconds = _reconnectAttempts <= delays.Length
+                ? delays[_reconnectAttempts - 1]
+                : Math.Min((int)Math.Pow(2, _reconnectAttempts), 60);
 
-            if (persistentReconnect)
-            {
-                _logger.LogDebug(
-                    "DeviceStatusSignalRClient: Reconnect attempt {Attempt} in {Delay}s (persistent)",
-                    _reconnectAttempts, delaySeconds);
-            }
-            else
-            {
-                _logger.LogDebug(
-                    "DeviceStatusSignalRClient: Reconnect attempt {Attempt}/{Max} in {Delay}s",
-                    _reconnectAttempts, maxAttempts, delaySeconds);
-            }
+            _logger.LogDebug(
+                "DeviceStatusSignalRClient: Reconnect attempt {Attempt}/{Max} in {Delay}s",
+                _reconnectAttempts,
+                maxAttempts,
+                delaySeconds);
 
             if (delaySeconds > 0)
             {
@@ -406,25 +445,29 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
                 }
                 catch (OperationCanceledException)
                 {
-                    break;
+                    return false;
                 }
             }
 
-            if (cancellationToken.IsCancellationRequested) break;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
             try
             {
-                if (_connection != null)
+                if (_connection == null)
                 {
-                    await _connection.StartAsync(cancellationToken);
-                    _logger.LogInformation(
-                        "DeviceStatusSignalRClient: Reconnected successfully on attempt {Attempt}.",
-                        _reconnectAttempts);
-                    _reconnectAttempts = 0;
-
-                    await OnConnectionRestoredAsync();
-                    return;
+                    return false;
                 }
+
+                await _connection.StartAsync(cancellationToken);
+                _logger.LogInformation(
+                    "DeviceStatusSignalRClient: Reconnected successfully on attempt {Attempt}.",
+                    _reconnectAttempts);
+                _reconnectAttempts = 0;
+                await OnConnectionRestoredAsync();
+                return true;
             }
             catch (Exception ex)
             {
@@ -434,13 +477,7 @@ public class DeviceStatusSignalRClient : IDeviceStatusSignalRClient, IAsyncDispo
             }
         }
 
-        if (!persistentReconnect && _reconnectAttempts >= maxAttempts)
-        {
-            _logger.LogError(
-                "DeviceStatusSignalRClient: Max reconnect attempts ({Max}) reached. Giving up. " +
-                "Set SignalR:PersistentReconnect to true to keep retrying.",
-                maxAttempts);
-        }
+        return false;
     }
 
     private Task OnConnectionClosed(Exception? exception)
