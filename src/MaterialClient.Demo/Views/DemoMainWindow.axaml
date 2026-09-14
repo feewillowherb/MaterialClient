@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="MaterialClient.Demo.Views.DemoMainWindow"
         Title="DataGrid Selection Scheme Demo"
-        Width="500" Height="450"
+        Width="500" Height="580"
         WindowStartupLocation="CenterScreen">
 
     <Window.Styles>
@@ -61,6 +61,18 @@
                     Content="称重系统布局 (material-weighing-system)"
                     Click="OnWeighingSystemClick" />
             <TextBlock Text="全屏深色主题工业地磅系统布局还原"
+                       FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
+
+            <Button Classes="scheme-btn"
+                    Content="耀华 tF=0 重量对照"
+                    Click="OnYaohuaTf0Click" />
+            <TextBlock Text="实时 / 毛重 / 皮重 / 净重，hex 回放，仅 Demo"
+                       FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
+
+            <Button Classes="scheme-btn"
+                    Content="耀华 tF=1 指令查询"
+                    Click="OnYaohuaTf1Click" />
+            <TextBlock Text="独立窗口。握手 / 读毛重 / 读皮重 / 读净重，仅 Demo"
                        FontSize="11" Foreground="Gray" Margin="32,0,0,0" />
         </StackPanel>
 

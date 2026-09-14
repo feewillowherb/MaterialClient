@@ -43,4 +43,14 @@ public partial class DemoMainWindow : Window
     {
         new WeighingSystemWindow().ShowDialog(this);
     }
+
+    private void OnYaohuaTf0Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        new YaohuaTf0WeightWindow().ShowDialog(this);
+    }
+
+    private void OnYaohuaTf1Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        new YaohuaTf1WeightWindow().Show(this);
+    }
 }
