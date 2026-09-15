@@ -112,6 +112,11 @@ public interface ISerialPort : IDisposable
     void DiscardInBuffer();
 
     /// <summary>
+    ///     Writes a specified number of bytes to the serial port using data from a buffer
+    /// </summary>
+    void Write(byte[] buffer, int offset, int count);
+
+    /// <summary>
     ///     Represents the method that handles the data received event of a SerialPort object
     /// </summary>
     event SerialDataReceivedEventHandler DataReceived;
@@ -261,6 +266,12 @@ public class SerialPortWrapper : ISerialPort
     public void DiscardInBuffer()
     {
         _serialPort.DiscardInBuffer();
+    }
+
+    /// <inheritdoc />
+    public void Write(byte[] buffer, int offset, int count)
+    {
+        _serialPort.Write(buffer, offset, count);
     }
 
     /// <inheritdoc />

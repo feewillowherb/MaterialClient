@@ -67,70 +67,100 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         {
             try
             {
-                using var _ = _rwLock.WriteLock();
+                IScaleTransmissionProtocol? protocolToStop = null;
+                ScaleSettings? startSettings = null;
+                IScaleTransmissionProtocol? startProtocol = null;
+                var earlyExitSameSettings = false;
 
-                var protocol = _protocolRouter.Resolve(settings.ScaleType, settings.TransmissionFormatType);
-                protocol.EnsureSupported(settings.ScaleType, settings.TransmissionFormatType);
-
-                if (settings.ScaleType == ScaleType.TestMode)
+                using (_rwLock.WriteLock())
                 {
-                    _activeProtocol?.OnStop();
-                    _currentSettings = settings;
-                    _activeProtocol = protocol;
-                    _latestComponentWeights = ScaleComponentWeights.Invalid;
-                    _componentWeightSubject.OnNext(_latestComponentWeights);
-                    _isClosing = true;
-                    _activeProtocol.OnStart(CreateProtocolContext(settings));
+                    var protocol = _protocolRouter.Resolve(settings.ScaleType, settings.TransmissionFormatType);
+                    protocol.EnsureSupported(settings.ScaleType, settings.TransmissionFormatType);
+
+                    if (settings.ScaleType == ScaleType.TestMode)
+                    {
+                        protocolToStop = DetachActiveProtocolUnderWriteLock();
+                        _currentSettings = settings;
+                        _activeProtocol = protocol;
+                        _latestComponentWeights = ScaleComponentWeights.Invalid;
+                        _componentWeightSubject.OnNext(_latestComponentWeights);
+                        _isClosing = true;
+                        startSettings = settings;
+                        startProtocol = protocol;
+                    }
+                    else if (_serialPort != null &&
+                             _serialPort.IsOpen &&
+                             _currentSettings != null &&
+                             _currentSettings.SerialPort == settings.SerialPort &&
+                             _currentSettings.BaudRate == settings.BaudRate &&
+                             _currentSettings.TransmissionFormatType == settings.TransmissionFormatType &&
+                             _currentSettings.ScaleType == settings.ScaleType &&
+                             string.Equals(
+                                 _currentSettings.CommunicationParameter,
+                                 settings.CommunicationParameter,
+                                 StringComparison.Ordinal))
+                    {
+                        earlyExitSameSettings = true;
+                    }
+                    else
+                    {
+                        protocolToStop = DetachActiveProtocolUnderWriteLock();
+                    }
+                }
+
+                SafeStopProtocol(protocolToStop);
+
+                if (earlyExitSameSettings)
                     return true;
-                }
 
-                if (_serialPort != null && _serialPort.IsOpen)
+                if (settings.ScaleType != ScaleType.TestMode)
                 {
-                    if (_currentSettings != null &&
-                        _currentSettings.SerialPort == settings.SerialPort &&
-                        _currentSettings.BaudRate == settings.BaudRate &&
-                        _currentSettings.TransmissionFormatType == settings.TransmissionFormatType &&
-                        _currentSettings.ScaleType == settings.ScaleType &&
-                        string.Equals(
-                            _currentSettings.CommunicationParameter,
-                            settings.CommunicationParameter,
-                            StringComparison.Ordinal))
-                        return true;
+                    using (_rwLock.WriteLock())
+                    {
+                        CloseSerialPortUnderWriteLock();
+                        _isClosing = false;
 
-                    CloseSerialAndProtocol();
+                        var protocol = _protocolRouter.Resolve(settings.ScaleType, settings.TransmissionFormatType);
+                        protocol.EnsureSupported(settings.ScaleType, settings.TransmissionFormatType);
+
+                        _currentSettings = settings;
+                        _activeProtocol = protocol;
+                        _latestComponentWeights = ScaleComponentWeights.Invalid;
+                        _componentWeightSubject.OnNext(_latestComponentWeights);
+
+                        _serialPort = _serialPortFactory.Create();
+                        _serialPort.PortName = settings.SerialPort;
+                        _serialPort.BaudRate = int.Parse(settings.BaudRate);
+                        _serialPort.DataBits = 8;
+                        _serialPort.StopBits = StopBits.One;
+                        _serialPort.Parity = Parity.None;
+                        _serialPort.WriteBufferSize = 1048576;
+                        _serialPort.ReadBufferSize = 2097152;
+                        _serialPort.Encoding = Encoding.GetEncoding("UTF-8");
+                        _serialPort.Handshake = Handshake.None;
+                        _serialPort.RtsEnable = true;
+                        _serialPort.ReadTimeout = 200;
+
+                        _serialPort.DataReceived += SerialPort_DataReceived;
+                        _serialPort.Open();
+                        _isClosing = false;
+                        _logger?.LogInformation(
+                            "Truck scale serial port opened: {Port} at {BaudRate} baud; protocol={Protocol} ScaleType={ScaleType} TransmissionFormatType={Format} CommunicationParameter={Parameter}",
+                            settings.SerialPort,
+                            settings.BaudRate,
+                            protocol.GetType().Name,
+                            settings.ScaleType,
+                            settings.TransmissionFormatType,
+                            settings.CommunicationParameter);
+
+                        startSettings = settings;
+                        startProtocol = protocol;
+                    }
                 }
 
-                _currentSettings = settings;
-                _activeProtocol?.OnStop();
-                _activeProtocol = protocol;
-                _latestComponentWeights = ScaleComponentWeights.Invalid;
-                _componentWeightSubject.OnNext(_latestComponentWeights);
-                _activeProtocol.OnStart(CreateProtocolContext(settings));
-
-                _serialPort = _serialPortFactory.Create();
-                _serialPort.PortName = settings.SerialPort;
-                _serialPort.BaudRate = int.Parse(settings.BaudRate);
-                _serialPort.DataBits = 8;
-                _serialPort.StopBits = StopBits.One;
-                _serialPort.Parity = Parity.None;
-                _serialPort.WriteBufferSize = 1048576;
-                _serialPort.ReadBufferSize = 2097152;
-                _serialPort.Encoding = Encoding.GetEncoding("UTF-8");
-                _serialPort.Handshake = Handshake.None;
-                _serialPort.RtsEnable = true;
-                _serialPort.ReadTimeout = 200;
-
-                _serialPort.DataReceived += SerialPort_DataReceived;
-                _serialPort.Open();
-                _isClosing = false;
-                _logger?.LogInformation(
-                    "Truck scale serial port opened: {Port} at {BaudRate} baud; protocol={Protocol} ScaleType={ScaleType} TransmissionFormatType={Format} CommunicationParameter={Parameter}",
-                    settings.SerialPort,
-                    settings.BaudRate,
-                    protocol.GetType().Name,
-                    settings.ScaleType,
-                    settings.TransmissionFormatType,
-                    settings.CommunicationParameter);
+                // OnStart outside WriteLock: Type1 Exchange uses GetSerialPort (ReadLock) + PublishWeight (WriteLock).
+                if (startProtocol != null && startSettings != null)
+                    startProtocol.OnStart(CreateProtocolContext(startSettings));
 
                 return true;
             }
@@ -310,16 +340,46 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             waitCount++;
         }
 
-        using var _ = _rwLock.WriteLock();
-        CloseSerialAndProtocol();
+        // Stop protocol outside WriteLock so Type1 timer can finish PublishWeight without deadlock.
+        IScaleTransmissionProtocol? protocolToStop;
+        using (_rwLock.WriteLock())
+        {
+            protocolToStop = DetachActiveProtocolUnderWriteLock();
+        }
+
+        SafeStopProtocol(protocolToStop);
+
+        using (_rwLock.WriteLock())
+        {
+            CloseSerialPortUnderWriteLock();
+            _isClosing = false;
+        }
     }
 
-    private void CloseSerialAndProtocol()
+    private IScaleTransmissionProtocol? DetachActiveProtocolUnderWriteLock()
+    {
+        var protocol = _activeProtocol;
+        _activeProtocol = null;
+        return protocol;
+    }
+
+    private void SafeStopProtocol(IScaleTransmissionProtocol? protocol)
+    {
+        if (protocol == null) return;
+        try
+        {
+            protocol.OnStop();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error stopping truck scale protocol: {Message}", ex.Message);
+        }
+    }
+
+    private void CloseSerialPortUnderWriteLock()
     {
         try
         {
-            _activeProtocol?.OnStop();
-
             if (_serialPort != null && _serialPort.IsOpen)
             {
                 _serialPort.DataReceived -= SerialPort_DataReceived;
@@ -329,14 +389,15 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
                 _logger?.LogInformation("Truck scale serial port closed");
             }
+            else if (_serialPort != null)
+            {
+                _serialPort.Dispose();
+                _serialPort = null;
+            }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error closing serial port: {Message}", ex.Message);
-        }
-        finally
-        {
-            _isClosing = false;
         }
     }
 }
