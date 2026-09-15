@@ -8,6 +8,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.AttendedWeighing.Records;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.TruckScale.Facade;
+using MaterialClient.Common.Services.TruckScale.Protocols;
 using MaterialClient.Common.Services.Vzvision;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -433,7 +434,7 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
                 newStatus == AttendedWeighingStatus.WeightStabilized &&
                 _stateManager.GetLastCreatedWeighingRecordId() == null)
             {
-                var weightToUse = stability.StableWeight ?? weight;
+                var weightToUse = ResolveWeighingWeight(weight, stability);
                 _logger.LogInformation(
                     "Weight stabilized (status transition), creating record with weight: {Weight:F3}t",
                     weightToUse);
@@ -451,11 +452,30 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             stability.IsStable &&
             _stateManager.GetLastCreatedWeighingRecordId() == null)
         {
-            var weightToUse = stability.StableWeight ?? weight;
+            var weightToUse = ResolveWeighingWeight(weight, stability);
             _logger.LogInformation("Weight stabilized (backup check), stable weight: {Weight}t", weightToUse);
 
             EnqueueAsyncOperation(async () => await OnWeightStabilizedAsync(weightToUse));
         }
+    }
+
+    /// <summary>
+    ///     Prefer instrument tare/gross/net when all three are valid; otherwise stable-window weight.
+    /// </summary>
+    private decimal ResolveWeighingWeight(decimal liveWeight, WeightStabilityInfo stability)
+    {
+        var components = _truckScaleWeightService.LatestComponentWeights;
+        if (components.AllValid && components.NetTon.HasValue)
+        {
+            _logger.LogInformation(
+                "Preferring continuous-query components Gross={Gross:F3}t Tare={Tare:F3}t Net={Net:F3}t",
+                components.GrossTon,
+                components.TareTon,
+                components.NetTon);
+            return components.NetTon.Value;
+        }
+
+        return stability.StableWeight ?? liveWeight;
     }
 
     private async Task OnWeightStabilizedAsync(decimal currentWeight)

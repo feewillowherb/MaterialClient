@@ -27,15 +27,29 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     private readonly ITruckScaleProtocolRouter _protocolRouter;
 
     private readonly Subject<decimal> _weightSubject = new();
+    private readonly Subject<ScaleComponentWeights> _componentWeightSubject = new();
 
     private ScaleSettings? _currentSettings;
     private decimal _currentWeight;
+    private ScaleComponentWeights _latestComponentWeights = ScaleComponentWeights.Invalid;
     private bool _isClosing;
     private bool _isListening;
     private ISerialPort? _serialPort;
     private IScaleTransmissionProtocol? _activeProtocol;
 
     public IObservable<decimal> WeightUpdates => _weightSubject.AsObservable();
+
+    public IObservable<ScaleComponentWeights> ComponentWeightUpdates =>
+        _componentWeightSubject.AsObservable();
+
+    public ScaleComponentWeights LatestComponentWeights
+    {
+        get
+        {
+            using var _ = _rwLock.ReadLock();
+            return _latestComponentWeights;
+        }
+    }
 
     public bool IsOnline
     {
@@ -63,6 +77,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     _activeProtocol?.OnStop();
                     _currentSettings = settings;
                     _activeProtocol = protocol;
+                    _latestComponentWeights = ScaleComponentWeights.Invalid;
+                    _componentWeightSubject.OnNext(_latestComponentWeights);
                     _isClosing = true;
                     _activeProtocol.OnStart(CreateProtocolContext(settings));
                     return true;
@@ -83,6 +99,8 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 _currentSettings = settings;
                 _activeProtocol?.OnStop();
                 _activeProtocol = protocol;
+                _latestComponentWeights = ScaleComponentWeights.Invalid;
+                _componentWeightSubject.OnNext(_latestComponentWeights);
                 _activeProtocol.OnStart(CreateProtocolContext(settings));
 
                 _serialPort = _serialPortFactory.Create();
@@ -161,7 +179,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     {
         using var _ = _rwLock.WriteLock();
         _currentWeight = weight;
+        _latestComponentWeights = ScaleComponentWeights.Invalid;
         _weightSubject.OnNext(weight);
+        _componentWeightSubject.OnNext(_latestComponentWeights);
     }
 
     public decimal GetCurrentWeight()
@@ -174,6 +194,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     {
         Close();
         _weightSubject.Dispose();
+        _componentWeightSubject.Dispose();
         _rwLock.Dispose();
         await Task.CompletedTask;
     }
@@ -226,6 +247,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 return _serialPort;
             },
             PublishWeight,
+            PublishComponentWeights,
             ConvertWeight,
             _logger);
 
@@ -234,6 +256,13 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
         using var _ = _rwLock.WriteLock();
         _currentWeight = convertedWeight;
         _weightSubject.OnNext(convertedWeight);
+    }
+
+    private void PublishComponentWeights(ScaleComponentWeights components)
+    {
+        using var _ = _rwLock.WriteLock();
+        _latestComponentWeights = components;
+        _componentWeightSubject.OnNext(components);
     }
 
     private decimal ConvertWeight(decimal weightFromDevice)

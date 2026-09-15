@@ -11,7 +11,9 @@ public enum TransmissionFormatType
     [Description("(tF0)")]
     TransmissionFormatType0 = 0,
 
-    /// <summary>Command-response (tF=1).</summary>
+    /// <summary>
+    ///     Continuous query / listen (product tF1). Yaohua: no host query command writes.
+    /// </summary>
     [Description("(tF1)")]
     TransmissionFormatType1 = 1,
 }

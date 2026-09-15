@@ -1,5 +1,4 @@
 using MaterialClient.Common.Configuration;
-using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
 using Microsoft.Extensions.Logging;
 
@@ -12,5 +11,6 @@ public sealed record ScaleProtocolContext(
     ScaleSettings Settings,
     Func<ISerialPort?> GetSerialPort,
     Action<decimal> PublishWeight,
+    Action<ScaleComponentWeights> PublishComponentWeights,
     Func<decimal, decimal> ConvertWeight,
     ILogger? Logger);

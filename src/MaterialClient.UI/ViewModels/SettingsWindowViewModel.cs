@@ -97,6 +97,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     [Reactive] private ScaleType _scaleType = ScaleType.Yaohua;
     [Reactive] private TransmissionFormatType _scaleTransmissionFormatType =
         TransmissionFormatType.TransmissionFormatType0;
+    [Reactive] private string? _scaleCommunicationParameter = "A";
 
     /// <summary>
     ///     Scale unit options for ComboBox
@@ -123,7 +124,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     };
 
     /// <summary>
-    ///     Transmission format options (Phase 1: Type0 only).
+    ///     Transmission format options (Yaohua: tF0+tF1; others: tF0 only).
     /// </summary>
     public ObservableCollection<TransmissionFormatType> TransmissionFormatTypeOptions { get; } = new()
     {
@@ -248,10 +249,38 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         this.WhenAnyValue(x => x.SettingsSaveErrorMessage)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSettingsSaveError)));
 
+        this.WhenAnyValue(x => x.ScaleType)
+            .Subscribe(_ => RefreshTransmissionFormatTypeOptions());
+
+        this.WhenAnyValue(x => x.ScaleTransmissionFormatType)
+            .Skip(1)
+            .Subscribe(_ =>
+            {
+                ScaleCommunicationParameter = ScaleSettings.DefaultCommunicationParameter(
+                    ScaleType,
+                    ScaleTransmissionFormatType);
+            });
+
         RefreshAvailableSerialPorts();
         RefreshAvailablePrinters();
 
         _ = LoadSettingsAsync();
+    }
+
+    private void RefreshTransmissionFormatTypeOptions()
+    {
+        var previous = ScaleTransmissionFormatType;
+        TransmissionFormatTypeOptions.Clear();
+        TransmissionFormatTypeOptions.Add(TransmissionFormatType.TransmissionFormatType0);
+        if (ScaleType == ScaleType.Yaohua)
+            TransmissionFormatTypeOptions.Add(TransmissionFormatType.TransmissionFormatType1);
+
+        if (!TransmissionFormatTypeOptions.Contains(previous))
+            ScaleTransmissionFormatType = TransmissionFormatType.TransmissionFormatType0;
+
+        ScaleCommunicationParameter = ScaleSettings.DefaultCommunicationParameter(
+            ScaleType,
+            ScaleTransmissionFormatType);
     }
 
     private void MarkUrbanConfigDirty()
@@ -302,6 +331,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                     SerialPort = ScaleSerialPort,
                     BaudRate = ScaleBaudRate,
                     TransmissionFormatType = ScaleTransmissionFormatType,
+                    CommunicationParameter = ScaleCommunicationParameter,
                     ScaleUnit = ScaleUnit,
                     ScaleType = ScaleType
                 },
@@ -821,11 +851,20 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Load scale settings
             ScaleSerialPort = settings.ScaleSettings.SerialPort;
             ScaleBaudRate = settings.ScaleSettings.BaudRate;
-            ScaleTransmissionFormatType = settings.ScaleSettings.TransmissionFormatType;
-            if (ScaleTransmissionFormatType != TransmissionFormatType.TransmissionFormatType0)
-                ScaleTransmissionFormatType = TransmissionFormatType.TransmissionFormatType0;
-            ScaleUnit = settings.ScaleSettings.ScaleUnit;
             ScaleType = settings.ScaleSettings.ScaleType;
+            RefreshTransmissionFormatTypeOptions();
+            ScaleTransmissionFormatType = settings.ScaleSettings.TransmissionFormatType;
+            if (ScaleType != ScaleType.Yaohua &&
+                ScaleTransmissionFormatType != TransmissionFormatType.TransmissionFormatType0)
+            {
+                ScaleTransmissionFormatType = TransmissionFormatType.TransmissionFormatType0;
+            }
+
+            ScaleCommunicationParameter = settings.ScaleSettings.CommunicationParameter;
+            if (ScaleType == ScaleType.Yaohua && string.IsNullOrWhiteSpace(ScaleCommunicationParameter))
+                ScaleCommunicationParameter = "A";
+
+            ScaleUnit = settings.ScaleSettings.ScaleUnit;
 
             // Ensure the loaded serial port is in the available list
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
