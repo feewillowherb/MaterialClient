@@ -44,7 +44,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 Source: "{#SourceDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceDir}\appsettings.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
+Source: "{#SourceDir}\appsettings.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\appsettings.secret.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 
 [Icons]
