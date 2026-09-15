@@ -224,7 +224,7 @@
                                         </Border>
                                         <Border Padding="20" Margin="0,0,0,0">
                                             <StackPanel Spacing="12">
-                                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
+                                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12"
                                                       ColumnSpacing="12">
                                                     <TextBlock Text="串口:"
                                                                Grid.Row="0"
@@ -268,15 +268,29 @@
                                                         </ComboBox.ItemTemplate>
                                                     </ComboBox>
 
-                                                    <TextBlock Text="地磅单位:"
+                                                    <TextBlock Text="通讯地址:"
                                                                Grid.Row="3"
+                                                               Grid.Column="0"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               Width="120"
+                                                               IsVisible="{Binding IsYaohuaCommunicationParameterVisible}" />
+                                                    <ComboBox ItemsSource="{Binding YaohuaAddressOptions}"
+                                                              SelectedItem="{Binding ScaleCommunicationParameter}"
+                                                              Grid.Row="3"
+                                                              Grid.Column="1"
+                                                              HorizontalAlignment="Stretch"
+                                                              IsVisible="{Binding IsYaohuaCommunicationParameterVisible}" />
+
+                                                    <TextBlock Text="地磅单位:"
+                                                               Grid.Row="4"
                                                                Grid.Column="0"
                                                                VerticalAlignment="Center"
                                                                Foreground="Black"
                                                                Width="120" />
                                                     <ComboBox ItemsSource="{Binding ScaleUnitOptions}"
                                                               SelectedItem="{Binding ScaleUnit}"
-                                                              Grid.Row="3"
+                                                              Grid.Row="4"
                                                               Grid.Column="1"
                                                               HorizontalAlignment="Stretch">
                                                         <ComboBox.ItemTemplate>
@@ -288,14 +302,14 @@
                                                     </ComboBox>
 
                                                     <TextBlock Text="地磅类型:"
-                                                               Grid.Row="4"
+                                                               Grid.Row="5"
                                                                Grid.Column="0"
                                                                VerticalAlignment="Center"
                                                                Foreground="Black"
                                                                Width="120" />
                                                     <ComboBox ItemsSource="{Binding ScaleTypeOptions}"
                                                               SelectedItem="{Binding ScaleType}"
-                                                              Grid.Row="4"
+                                                              Grid.Row="5"
                                                               Grid.Column="1"
                                                               HorizontalAlignment="Stretch">
                                                         <ComboBox.ItemTemplate>

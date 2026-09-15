@@ -132,6 +132,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     };
 
     /// <summary>
+    ///     Yaohua communication address options (A–Z). Bound to opaque CommunicationParameter.
+    /// </summary>
+    public ObservableCollection<string> YaohuaAddressOptions { get; } = new(
+        Enumerable.Range(0, 26).Select(i => ((char)('A' + i)).ToString()));
+
+    public bool IsYaohuaCommunicationParameterVisible => ScaleType == ScaleType.Yaohua;
+
+    /// <summary>
     ///     Stream type options for ComboBox
     /// </summary>
     public ObservableCollection<StreamType> StreamTypeOptions { get; } = new()
@@ -250,7 +258,11 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSettingsSaveError)));
 
         this.WhenAnyValue(x => x.ScaleType)
-            .Subscribe(_ => RefreshTransmissionFormatTypeOptions());
+            .Subscribe(_ =>
+            {
+                RefreshTransmissionFormatTypeOptions();
+                this.RaisePropertyChanged(nameof(IsYaohuaCommunicationParameterVisible));
+            });
 
         this.WhenAnyValue(x => x.ScaleTransmissionFormatType)
             .Skip(1)
@@ -269,14 +281,13 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
     private void RefreshTransmissionFormatTypeOptions()
     {
-        var previous = ScaleTransmissionFormatType;
         TransmissionFormatTypeOptions.Clear();
         TransmissionFormatTypeOptions.Add(TransmissionFormatType.TransmissionFormatType0);
         if (ScaleType == ScaleType.Yaohua)
             TransmissionFormatTypeOptions.Add(TransmissionFormatType.TransmissionFormatType1);
 
-        if (!TransmissionFormatTypeOptions.Contains(previous))
-            ScaleTransmissionFormatType = TransmissionFormatType.TransmissionFormatType0;
+        // Switching ScaleType always resets TF to default Type0.
+        ScaleTransmissionFormatType = TransmissionFormatType.TransmissionFormatType0;
 
         ScaleCommunicationParameter = ScaleSettings.DefaultCommunicationParameter(
             ScaleType,
@@ -861,10 +872,19 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             }
 
             ScaleCommunicationParameter = settings.ScaleSettings.CommunicationParameter;
-            if (ScaleType == ScaleType.Yaohua && string.IsNullOrWhiteSpace(ScaleCommunicationParameter))
-                ScaleCommunicationParameter = "A";
+            if (ScaleType == ScaleType.Yaohua)
+            {
+                if (string.IsNullOrWhiteSpace(ScaleCommunicationParameter))
+                    ScaleCommunicationParameter = "A";
+                else
+                    ScaleCommunicationParameter = ScaleCommunicationParameter.Trim().ToUpperInvariant();
+
+                if (!YaohuaAddressOptions.Contains(ScaleCommunicationParameter))
+                    ScaleCommunicationParameter = "A";
+            }
 
             ScaleUnit = settings.ScaleSettings.ScaleUnit;
+            this.RaisePropertyChanged(nameof(IsYaohuaCommunicationParameterVisible));
 
             // Ensure the loaded serial port is in the available list
             if (!string.IsNullOrEmpty(ScaleSerialPort) && !AvailableSerialPorts.Contains(ScaleSerialPort))
