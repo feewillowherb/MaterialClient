@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using MaterialClient.Common.Services;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 

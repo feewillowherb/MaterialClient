@@ -3,6 +3,7 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Vzvision;
 using Microsoft.Extensions.DependencyInjection;

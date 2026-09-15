@@ -1,8 +1,13 @@
+using System.Collections.Concurrent;
+using System.IO.Ports;
 using System.Reflection;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
+using MaterialClient.Common.Services.TruckScale.Protocols.DingSongAddr4;
+using MaterialClient.Common.Services.TruckScale.Routing;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -11,18 +16,14 @@ using Xunit;
 namespace MaterialClient.Common.Tests.Tests;
 
 /// <summary>
-///     ScaleType.DingSongAddr4 parses 17-byte <c>02 2A … 0D</c> frames (H610 / H1320 style).
+///     ScaleType.DingSongAddr4 parses 17-byte 02 2A … 0D frames.
 /// </summary>
 public class DingSongAddr4ScaleTests
 {
     private readonly ISettingsService _mockSettingsService = Substitute.For<ISettingsService>();
     private readonly ILogger<TruckScaleWeightService> _mockLogger =
         Substitute.For<ILogger<TruckScaleWeightService>>();
-    private readonly ISerialPortFactory _mockSerialPortFactory = Substitute.For<ISerialPortFactory>();
 
-    /// <summary>
-    ///     Golden frame from H610.txt — first 6 payload digits = 000610 → 610 kg.
-    /// </summary>
     private static readonly byte[] H610Frame =
     [
         0x02, 0x2A, 0x30, 0x20,
@@ -31,9 +32,6 @@ public class DingSongAddr4ScaleTests
         0x0D
     ];
 
-    /// <summary>
-    ///     Golden frame for 1320 kg (contract). Not the on-disk H1320.txt bytes (001330).
-    /// </summary>
     private static readonly byte[] H1320GoldenFrame =
     [
         0x02, 0x2A, 0x30, 0x20,
@@ -46,14 +44,14 @@ public class DingSongAddr4ScaleTests
     public void ParseHexWeightDingSongAddr4_H610_ShouldReturn610Kg()
     {
         H610Frame.Length.ShouldBe(17);
-        InvokeParseHexWeightDingSongAddr4(H610Frame).ShouldBe(610m);
+        DingSongAddr4Tf0Protocol.ParseHexWeight(H610Frame, logger: null).ShouldBe(610m);
     }
 
     [Fact]
     public void ParseHexWeightDingSongAddr4_H1320Golden_ShouldReturn1320Kg()
     {
         H1320GoldenFrame.Length.ShouldBe(17);
-        InvokeParseHexWeightDingSongAddr4(H1320GoldenFrame).ShouldBe(1320m);
+        DingSongAddr4Tf0Protocol.ParseHexWeight(H1320GoldenFrame, logger: null).ShouldBe(1320m);
     }
 
     [Fact]
@@ -61,7 +59,7 @@ public class DingSongAddr4ScaleTests
     {
         var bad = (byte[])H610Frame.Clone();
         bad[^1] = 0x03;
-        InvokeParseHexWeightDingSongAddr4(bad).ShouldBeNull();
+        DingSongAddr4Tf0Protocol.ParseHexWeight(bad, logger: null).ShouldBeNull();
     }
 
     [Fact]
@@ -71,17 +69,21 @@ public class DingSongAddr4ScaleTests
         var mockFactory = Substitute.For<ISerialPortFactory>();
         mockFactory.Create().Returns(mockSerialPort);
 
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var service = new TruckScaleWeightService(
+            _mockLogger,
+            _mockSettingsService,
+            mockFactory,
+            new TruckScaleProtocolRouter());
         var settings = new ScaleSettings
         {
             SerialPort = "COM3",
             BaudRate = "9600",
-            CommunicationMethod = "TF0",
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
             ScaleType = ScaleType.DingSongAddr4,
             ScaleUnit = ScaleUnit.Kg
         };
 
-        var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
+        var receivedWeights = new ConcurrentBag<decimal>();
         using var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
 
         mockSerialPort.IsOpen.Returns(true);
@@ -104,26 +106,26 @@ public class DingSongAddr4ScaleTests
                 return toCopy;
             });
 
-        var receiveMethod = typeof(TruckScaleWeightService).GetMethod(
-            "ReceiveHexDingSongAddr4",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        receiveMethod.ShouldNotBeNull();
-        receiveMethod!.Invoke(service, null);
+        RaiseSerialDataReceived(mockSerialPort);
 
-        receivedWeights.ShouldContain(0.61m);  // 610 kg → ton via ConvertWeight
-        receivedWeights.ShouldContain(1.32m); // 1320 kg → ton
+        receivedWeights.ShouldContain(0.61m);
+        receivedWeights.ShouldContain(1.32m);
         receivedWeights.Count.ShouldBe(2);
 
         await service.DisposeAsync();
     }
 
-    private decimal? InvokeParseHexWeightDingSongAddr4(byte[] buffer)
+    private static void RaiseSerialDataReceived(ISerialPort mockSerialPort)
     {
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
-        var method = typeof(TruckScaleWeightService).GetMethod(
-            "ParseHexWeightDingSongAddr4",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        method.ShouldNotBeNull();
-        return (decimal?)method!.Invoke(service, [buffer]);
+        var eventArgs = (SerialDataReceivedEventArgs)Activator.CreateInstance(
+            typeof(SerialDataReceivedEventArgs),
+            BindingFlags.NonPublic | BindingFlags.Instance,
+            null,
+            [SerialData.Chars],
+            null)!;
+
+        mockSerialPort.DataReceived += Raise.Event<SerialDataReceivedEventHandler>(
+            mockSerialPort,
+            eventArgs);
     }
 }

@@ -18,12 +18,13 @@ public class ScaleSettings
     public string BaudRate { get; set; } = "9600";
 
     /// <summary>
-    ///     Communication method (e.g., TF0)
+    ///     Transmission format type (default: continuous tF0).
     /// </summary>
-    public string CommunicationMethod { get; set; } = "TF0";
+    public TransmissionFormatType TransmissionFormatType { get; set; } =
+        TransmissionFormatType.TransmissionFormatType0;
 
     /// <summary>
-    ///     Scale unit (default: Ton)
+    ///     Scale unit (default: Kg)
     /// </summary>
     public ScaleUnit ScaleUnit { get; set; } = ScaleUnit.Kg;
 
@@ -33,14 +34,9 @@ public class ScaleSettings
     public ScaleType ScaleType { get; set; } = ScaleType.Yaohua;
 
     /// <summary>
-    ///     判断配置是否有效
-    ///     需要SerialPort、BaudRate和CommunicationMethod都不为空
+    ///     Returns true when serial port and baud rate are configured.
     /// </summary>
-    /// <returns>如果配置有效返回true，否则返回false</returns>
-    public bool IsValid()
-    {
-        return !string.IsNullOrWhiteSpace(SerialPort) &&
-               !string.IsNullOrWhiteSpace(BaudRate) &&
-               !string.IsNullOrWhiteSpace(CommunicationMethod);
-    }
+    public bool IsValid() =>
+        !string.IsNullOrWhiteSpace(SerialPort) &&
+        !string.IsNullOrWhiteSpace(BaudRate);
 }

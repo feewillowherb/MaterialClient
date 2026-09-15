@@ -8,6 +8,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using MaterialClient.Common.Services.Hikvision;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;

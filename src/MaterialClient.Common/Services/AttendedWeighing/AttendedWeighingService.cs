@@ -7,6 +7,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Services.AttendedWeighing.Records;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using MaterialClient.Common.Services.Vzvision;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
