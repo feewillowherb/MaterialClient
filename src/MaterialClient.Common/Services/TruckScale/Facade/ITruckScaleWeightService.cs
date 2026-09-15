@@ -1,4 +1,5 @@
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Services.TruckScale.Protocols;
 
 namespace MaterialClient.Common.Services.TruckScale.Facade;
 
@@ -11,6 +12,17 @@ public interface ITruckScaleWeightService : IAsyncDisposable
     ///     Observable stream of weight updates from truck scale
     /// </summary>
     IObservable<decimal> WeightUpdates { get; }
+
+    /// <summary>
+    ///     Observable stream of instrument component weights (tare/gross/net).
+    ///     Invalid / incomplete components publish <see cref="ScaleComponentWeights.Invalid"/>.
+    /// </summary>
+    IObservable<ScaleComponentWeights> ComponentWeightUpdates { get; }
+
+    /// <summary>
+    ///     Latest component weights (may be invalid when not all of tare/gross/net are present).
+    /// </summary>
+    ScaleComponentWeights LatestComponentWeights { get; }
 
     /// <summary>
     ///     Check if truck scale is online (serial port is open and connected)

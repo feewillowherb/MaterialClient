@@ -26,13 +26,21 @@ public class TruckScaleProtocolRouterTests
         protocol.ShouldBeOfType(expectedType);
     }
 
+    [Fact]
+    public void Resolve_YaohuaType1_ReturnsContinuousQueryProtocol()
+    {
+        var protocol = _router.Resolve(ScaleType.Yaohua, TransmissionFormatType.TransmissionFormatType1);
+        protocol.ShouldBeOfType<YaohuaTf1Protocol>();
+        Should.NotThrow(() =>
+            protocol.EnsureSupported(ScaleType.Yaohua, TransmissionFormatType.TransmissionFormatType1));
+    }
+
     [Theory]
-    [InlineData(ScaleType.Yaohua)]
     [InlineData(ScaleType.DingSong)]
     [InlineData(ScaleType.TestMode)]
     [InlineData(ScaleType.PortableXPSY)]
     [InlineData(ScaleType.DingSongAddr4)]
-    public void Resolve_Type1_ReturnsUnsupported(ScaleType scaleType)
+    public void Resolve_NonYaohuaType1_ReturnsUnsupported(ScaleType scaleType)
     {
         var protocol = _router.Resolve(scaleType, TransmissionFormatType.TransmissionFormatType1);
         protocol.ShouldBeOfType<UnsupportedTransmissionFormatProtocol>();
@@ -50,5 +58,29 @@ public class TruckScaleProtocolRouterTests
         var settings = JsonSerializer.Deserialize<ScaleSettings>(json);
         settings.ShouldNotBeNull();
         settings!.TransmissionFormatType.ShouldBe(TransmissionFormatType.TransmissionFormatType0);
+    }
+
+    [Fact]
+    public void ScaleSettings_ApplyTransmissionFormatChange_ResetsYaohuaParameterToA()
+    {
+        var settings = new ScaleSettings
+        {
+            ScaleType = ScaleType.Yaohua,
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
+            CommunicationParameter = "Z"
+        };
+
+        settings.ApplyTransmissionFormatChange(TransmissionFormatType.TransmissionFormatType1);
+        settings.TransmissionFormatType.ShouldBe(TransmissionFormatType.TransmissionFormatType1);
+        settings.CommunicationParameter.ShouldBe("A");
+    }
+
+    [Fact]
+    public void ScaleComponentWeights_AnyMissing_IsNotAllValid()
+    {
+        new ScaleComponentWeights(1m, 2m, null).AllValid.ShouldBeFalse();
+        new ScaleComponentWeights(1m, null, 3m).AllValid.ShouldBeFalse();
+        ScaleComponentWeights.FromGrossTareTons(10m, 3m).AllValid.ShouldBeTrue();
+        ScaleComponentWeights.FromGrossTareTons(10m, 3m).NetTon.ShouldBe(7m);
     }
 }

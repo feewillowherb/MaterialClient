@@ -17,7 +17,12 @@ public sealed class TruckScaleProtocolRouter : ITruckScaleProtocolRouter, ISingl
     public IScaleTransmissionProtocol Resolve(ScaleType scaleType, TransmissionFormatType format)
     {
         if (format == TransmissionFormatType.TransmissionFormatType1)
+        {
+            if (scaleType == ScaleType.Yaohua)
+                return new YaohuaTf1Protocol();
+
             return Unsupported;
+        }
 
         return scaleType switch
         {
