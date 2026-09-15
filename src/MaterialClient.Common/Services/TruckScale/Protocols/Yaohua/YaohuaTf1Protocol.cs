@@ -12,6 +12,7 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
 {
     private const int StandardFrameLength = 12;
     private const int ExtendedMinLength = 16;
+    private const int MaxReadLength = 64;
 
     public bool Supports(ScaleType scaleType, TransmissionFormatType format) =>
         scaleType == ScaleType.Yaohua &&
@@ -26,7 +27,11 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
     public void OnStart(ScaleProtocolContext context)
     {
         // Validate address parameter early; production Type1 never uses it to write queries.
-        YaohuaCommunicationParameter.ResolveAddressOrThrow(context.Settings.CommunicationParameter);
+        var address = YaohuaCommunicationParameter.ResolveAddressOrThrow(
+            context.Settings.CommunicationParameter);
+        context.Logger?.LogInformation(
+            "Yaohua Type1 continuous-query listen started (no host query writes). Address={Address}",
+            address);
     }
 
     public void OnDataReceived(ScaleProtocolContext context)
@@ -36,29 +41,61 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
             var port = context.GetSerialPort();
             if (port == null || !port.IsOpen) return;
 
-            int available = port.BytesToRead;
-            if (available <= 0) return;
+            var buffer = new byte[MaxReadLength];
+            int count;
 
-            var buffer = new byte[Math.Min(available, 256)];
-            int read = port.Read(buffer, 0, buffer.Length);
-            if (read <= 0) return;
+            try
+            {
+                // Match Tf0: DataReceived may fire before BytesToRead is non-zero.
+                int available = port.BytesToRead;
+                if (available == 0)
+                {
+                    buffer[0] = (byte)port.ReadByte();
+                    count = 1;
+                    while (count < MaxReadLength && port.BytesToRead > 0)
+                    {
+                        int n = port.Read(buffer, count, Math.Min(port.BytesToRead, MaxReadLength - count));
+                        if (n <= 0) break;
+                        count += n;
+                    }
+                }
+                else
+                {
+                    count = port.Read(buffer, 0, Math.Min(available, MaxReadLength));
+                }
+            }
+            catch (TimeoutException)
+            {
+                context.Logger?.LogWarning("Timeout reading Yaohua Type1 continuous-query data");
+                port.DiscardInBuffer();
+                return;
+            }
 
-            if (TryParseExtendedFrame(buffer.AsSpan(0, read), out var grossRaw, out var tareRaw))
+            if (count <= 0) return;
+
+            var span = buffer.AsSpan(0, count);
+            if (TryParseExtendedFrame(span, out var grossRaw, out var tareRaw))
             {
                 var grossTon = context.ConvertWeight(grossRaw);
                 var tareTon = context.ConvertWeight(tareRaw);
                 var components = ScaleComponentWeights.FromGrossTareTons(grossTon, tareTon);
                 context.PublishWeight(grossTon);
                 context.PublishComponentWeights(components);
+                port.DiscardInBuffer();
                 return;
             }
 
-            if (TryParseStandardFrame(buffer.AsSpan(0, read), context.Logger, out var displayRaw))
+            if (TryParseStandardFrame(span, context.Logger, out var displayRaw))
             {
                 var displayTon = context.ConvertWeight(displayRaw);
                 context.PublishWeight(displayTon);
+                // Standard frame has no complete G/T/N trio → fall back to stable path.
                 context.PublishComponentWeights(ScaleComponentWeights.Invalid);
+                port.DiscardInBuffer();
+                return;
             }
+
+            port.DiscardInBuffer();
         }
         catch (Exception ex)
         {
@@ -94,19 +131,18 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
 
         if (stx < 0 || stx + 1 + 12 > data.Length) return false;
 
-        var payload = data.Slice(stx + 1);
-        if (payload.Length < 12) return false;
-
         // Reject classic 12-byte HEX frames that end with ETX (handled as standard).
         if (stx + StandardFrameLength <= data.Length && data[stx + StandardFrameLength - 1] == 0x03)
             return false;
+
+        var payload = data.Slice(stx + 1);
+        if (payload.Length < 12) return false;
 
         var grossSpan = payload.Slice(0, 6);
         var tareSpan = payload.Slice(6, 6);
         if (!TryParseSixDigitField(grossSpan, out gross)) return false;
         if (!TryParseSixDigitField(tareSpan, out tare)) return false;
 
-        // Prefer frames that look ASCII-digit based (not HEX weight with 'E' terminator mid-field).
         return true;
     }
 

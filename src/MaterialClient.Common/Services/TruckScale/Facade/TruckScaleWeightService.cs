@@ -90,7 +90,11 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                         _currentSettings.SerialPort == settings.SerialPort &&
                         _currentSettings.BaudRate == settings.BaudRate &&
                         _currentSettings.TransmissionFormatType == settings.TransmissionFormatType &&
-                        _currentSettings.ScaleType == settings.ScaleType)
+                        _currentSettings.ScaleType == settings.ScaleType &&
+                        string.Equals(
+                            _currentSettings.CommunicationParameter,
+                            settings.CommunicationParameter,
+                            StringComparison.Ordinal))
                         return true;
 
                     CloseSerialAndProtocol();
@@ -120,9 +124,13 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 _serialPort.Open();
                 _isClosing = false;
                 _logger?.LogInformation(
-                    "Truck scale serial port opened: {Port} at {BaudRate} baud",
+                    "Truck scale serial port opened: {Port} at {BaudRate} baud; protocol={Protocol} ScaleType={ScaleType} TransmissionFormatType={Format} CommunicationParameter={Parameter}",
                     settings.SerialPort,
-                    settings.BaudRate);
+                    settings.BaudRate,
+                    protocol.GetType().Name,
+                    settings.ScaleType,
+                    settings.TransmissionFormatType,
+                    settings.CommunicationParameter);
 
                 return true;
             }
