@@ -8,10 +8,10 @@ namespace MaterialClient.Common.Entities.Enums;
 public enum TransmissionFormatType
 {
     /// <summary>Continuous send (tF=0).</summary>
-    [Description("(tF0)")]
+    [Description("tF0")]
     TransmissionFormatType0 = 0,
 
     /// <summary>Command-response (tF=1).</summary>
-    [Description("(tF1)")]
+    [Description("tF1")]
     TransmissionFormatType1 = 1,
 }
