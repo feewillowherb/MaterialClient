@@ -11,6 +11,7 @@ using MaterialClient.Common.Services.AttendedWeighing.Records;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.Common.Providers;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.Common.Services.Vzvision;
 using Microsoft.Extensions.Caching.Memory;

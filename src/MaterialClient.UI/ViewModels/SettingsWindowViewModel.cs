@@ -21,6 +21,7 @@ using MaterialClient.Common.Events;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.UI.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
@@ -90,12 +91,12 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
     [Reactive] private string _scaleBaudRate = "9600";
 
-    [Reactive] private string _scaleCommunicationMethod = "TF0";
-
     // Scale settings
     [Reactive] private string _scaleSerialPort = "COM3";
     [Reactive] private ScaleUnit _scaleUnit = ScaleUnit.Ton;
     [Reactive] private ScaleType _scaleType = ScaleType.Yaohua;
+    [Reactive] private TransmissionFormatType _scaleTransmissionFormatType =
+        TransmissionFormatType.TransmissionFormatType0;
 
     /// <summary>
     ///     Scale unit options for ComboBox
@@ -119,6 +120,14 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
         ScaleType.TestMode,
         ScaleType.PortableXPSY,
         ScaleType.DingSongAddr4
+    };
+
+    /// <summary>
+    ///     Transmission format options (Phase 1: Type0 only).
+    /// </summary>
+    public ObservableCollection<TransmissionFormatType> TransmissionFormatTypeOptions { get; } = new()
+    {
+        TransmissionFormatType.TransmissionFormatType0
     };
 
     /// <summary>
@@ -292,7 +301,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
                 {
                     SerialPort = ScaleSerialPort,
                     BaudRate = ScaleBaudRate,
-                    CommunicationMethod = ScaleCommunicationMethod,
+                    TransmissionFormatType = ScaleTransmissionFormatType,
                     ScaleUnit = ScaleUnit,
                     ScaleType = ScaleType
                 },
@@ -812,7 +821,9 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
             // Load scale settings
             ScaleSerialPort = settings.ScaleSettings.SerialPort;
             ScaleBaudRate = settings.ScaleSettings.BaudRate;
-            ScaleCommunicationMethod = settings.ScaleSettings.CommunicationMethod;
+            ScaleTransmissionFormatType = settings.ScaleSettings.TransmissionFormatType;
+            if (ScaleTransmissionFormatType != TransmissionFormatType.TransmissionFormatType0)
+                ScaleTransmissionFormatType = TransmissionFormatType.TransmissionFormatType0;
             ScaleUnit = settings.ScaleSettings.ScaleUnit;
             ScaleType = settings.ScaleSettings.ScaleType;
 

@@ -6,6 +6,7 @@ using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using MaterialClient.Common.Services.Hikvision;
 using MaterialClient.UI.ViewModels;
 using Microsoft.Extensions.Logging;

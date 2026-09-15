@@ -15,6 +15,7 @@ using MaterialClient.Common.Services.AttendedWeighing;
 using MaterialClient.Common.Extensions;
 using MaterialClient.Common.Utils;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using MaterialClient.Common.Services.Urban;
 using MaterialClient.UI;
 using MaterialClient.UI.Models;

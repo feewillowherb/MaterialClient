@@ -13,6 +13,7 @@
     <Window.Resources>
         <converters:ScaleUnitConverter x:Key="ScaleUnitConverter" />
         <converters:ScaleTypeConverter x:Key="ScaleTypeConverter" />
+        <converters:TransmissionFormatTypeConverter x:Key="TransmissionFormatTypeConverter" />
         <converters:StreamTypeConverter x:Key="StreamTypeConverter" />
         <converters:LprDeviceTypeConverter x:Key="LprDeviceTypeConverter" />
         <converters:LprSiteTypeConverter x:Key="LprSiteTypeConverter" />
@@ -254,10 +255,18 @@
                                                                VerticalAlignment="Center"
                                                                Foreground="Black"
                                                                Width="120" />
-                                                    <TextBox Text="{Binding ScaleCommunicationMethod}"
-                                                             Grid.Row="2"
-                                                             Grid.Column="1"
-                                                             Watermark="TF0" />
+                                                    <ComboBox ItemsSource="{Binding TransmissionFormatTypeOptions}"
+                                                              SelectedItem="{Binding ScaleTransmissionFormatType}"
+                                                              Grid.Row="2"
+                                                              Grid.Column="1"
+                                                              HorizontalAlignment="Stretch">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock
+                                                                    Text="{Binding ., Converter={StaticResource TransmissionFormatTypeConverter}}" />
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
 
                                                     <TextBlock Text="地磅单位:"
                                                                Grid.Row="3"

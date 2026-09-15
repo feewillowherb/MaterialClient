@@ -7,6 +7,8 @@ using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
+using MaterialClient.Common.Services.TruckScale.Routing;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -41,7 +43,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task SetWeight_Should_UpdateWeight_And_TriggerObservable()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
         decimal? receivedWeight = null;
         var subscription = service.WeightUpdates.Subscribe(w => receivedWeight = w);
 
@@ -66,7 +68,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task IsOnline_Should_AllowConcurrentReads()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
         const int threadCount = 50;
         const int iterationsPerThread = 1000;
         var errors = 0;
@@ -121,7 +123,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task ConcurrentReadWrite_Should_NotBlockReaders()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
         const int readerCount = 30;
         const int writerCount = 5;
         const int iterations = 100;
@@ -209,7 +211,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task GetCurrentWeight_Should_ReturnQuickly()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
         service.SetWeight(100.5m);
         const int iterations = 10000;
         var latencies = new long[iterations];
@@ -256,7 +258,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task SetWeight_ConcurrentCalls_Should_NotDeadlock()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
         const int threadCount = 10;
         const int iterationsPerThread = 100;
         var errors = 0;
@@ -299,7 +301,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task WeightUpdates_Should_EmitAllUpdates()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
         var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
         var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
 
@@ -332,7 +334,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task IsOnline_Should_ReturnFalse_WhenNotInitialized()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
 
         // Act
         var isOnline = service.IsOnline;
@@ -352,7 +354,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     public async Task DisposeAsync_Should_CleanupResources()
     {
         // Arrange
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, _mockSerialPortFactory, new TruckScaleProtocolRouter());
         var receivedWeights = new System.Collections.Concurrent.ConcurrentBag<decimal>();
         var subscription = service.WeightUpdates.Subscribe(w => receivedWeights.Add(w));
 
@@ -411,14 +413,14 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
             var mockFactory = Substitute.For<ISerialPortFactory>();
             mockFactory.Create().Returns(mockSerialPort);
             
-            var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+            var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory, new TruckScaleProtocolRouter());
             
             // Configure scale settings for Default type with HEX communication
             var settings = new ScaleSettings
             {
                 SerialPort = "COM3",
                 BaudRate = "9600",
-                CommunicationMethod = "TF0",
+                TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
                 ScaleType = ScaleType.Yaohua,
                 ScaleUnit = ScaleUnit.Kg
             };
@@ -476,14 +478,14 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         var mockFactory = Substitute.For<ISerialPortFactory>();
         mockFactory.Create().Returns(mockSerialPort);
         
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory, new TruckScaleProtocolRouter());
         
         // Configure scale settings for Default type with HEX communication
         var settings = new ScaleSettings
         {
             SerialPort = "COM3",
             BaudRate = "9600",
-            CommunicationMethod = "TF0",
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
             ScaleType = ScaleType.Yaohua,
             ScaleUnit = ScaleUnit.Kg
         };
@@ -618,14 +620,14 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         var mockFactory = Substitute.For<ISerialPortFactory>();
         mockFactory.Create().Returns(mockSerialPort);
         
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory, new TruckScaleProtocolRouter());
         
         // Configure scale settings for DingSong type with HEX communication
         var settings = new ScaleSettings
         {
             SerialPort = "COM3",
             BaudRate = "9600",
-            CommunicationMethod = "TF0",
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
             ScaleType = ScaleType.DingSong,
             ScaleUnit = ScaleUnit.Kg
         };
@@ -723,14 +725,14 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         var mockFactory = Substitute.For<ISerialPortFactory>();
         mockFactory.Create().Returns(mockSerialPort);
         
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory, new TruckScaleProtocolRouter());
         
         // Configure scale settings for DingSong type with HEX communication
         var settings = new ScaleSettings
         {
             SerialPort = "COM3",
             BaudRate = "9600",
-            CommunicationMethod = "TF0",
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
             ScaleType = ScaleType.DingSong,
             ScaleUnit = ScaleUnit.Kg
         };
@@ -801,14 +803,14 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         var mockFactory = Substitute.For<ISerialPortFactory>();
         mockFactory.Create().Returns(mockSerialPort);
         
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory, new TruckScaleProtocolRouter());
         
         // Configure scale settings for DingSong type with HEX communication
         var settings = new ScaleSettings
         {
             SerialPort = "COM3",
             BaudRate = "9600",
-            CommunicationMethod = "TF0",
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
             ScaleType = ScaleType.DingSong,
             ScaleUnit = ScaleUnit.Kg
         };
@@ -933,14 +935,14 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
         var mockFactory = Substitute.For<ISerialPortFactory>();
         mockFactory.Create().Returns(mockSerialPort);
         
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory, new TruckScaleProtocolRouter());
         
         // Configure scale settings for DingSong type with HEX communication
         var settings = new ScaleSettings
         {
             SerialPort = "COM3",
             BaudRate = "9600",
-            CommunicationMethod = "TF0",
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
             ScaleType = ScaleType.DingSong,
             ScaleUnit = ScaleUnit.Kg
         };
@@ -1010,7 +1012,7 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     [Fact(Timeout = 5000)]
     public async Task ParsePortableXpsy_PositiveFrame_Should_Parse70_15()
     {
-        var weights = await RunPortableXpsyCaseAsync("51.07000=", ScaleUnit.Ton, communicationMethod: "TF0");
+        var weights = await RunPortableXpsyCaseAsync("51.07000=", ScaleUnit.Ton);
         weights.ShouldContain(70.15m);
     }
 
@@ -1038,30 +1040,29 @@ public class TruckScaleWeightServiceTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// Portable XP-SY must use ASCII path even when CommunicationMethod is TF0
+    /// Portable XP-SY must use ASCII path under TransmissionFormatType0
     /// </summary>
     [Fact(Timeout = 5000)]
     public async Task ParsePortableXpsy_WithTf0_Should_StillUseAsciiPath()
     {
-        var weights = await RunPortableXpsyCaseAsync("51.07000=", ScaleUnit.Ton, communicationMethod: "TF0");
+        var weights = await RunPortableXpsyCaseAsync("51.07000=", ScaleUnit.Ton);
         weights.ShouldContain(70.15m);
     }
 
     private async Task<List<decimal>> RunPortableXpsyCaseAsync(
         string asciiFrames,
-        ScaleUnit scaleUnit,
-        string communicationMethod = "TF0")
+        ScaleUnit scaleUnit)
     {
         var mockSerialPort = Substitute.For<ISerialPort>();
         var mockFactory = Substitute.For<ISerialPortFactory>();
         mockFactory.Create().Returns(mockSerialPort);
 
-        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory);
+        var service = new TruckScaleWeightService(_mockLogger, _mockSettingsService, mockFactory, new TruckScaleProtocolRouter());
         var settings = new ScaleSettings
         {
             SerialPort = "COM3",
             BaudRate = "9600",
-            CommunicationMethod = communicationMethod,
+            TransmissionFormatType = TransmissionFormatType.TransmissionFormatType0,
             ScaleType = ScaleType.PortableXPSY,
             ScaleUnit = scaleUnit
         };

@@ -2,7 +2,7 @@ using System.Reactive.Linq;
 using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services.AttendedWeighing.Records;
-using MaterialClient.Common.Services.Hardware;
+using MaterialClient.Common.Services.TruckScale.Facade;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
