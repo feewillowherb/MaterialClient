@@ -65,9 +65,9 @@ public class YaohuaTf1ProtocolTests
     }
 
     [Fact]
-    public void QueryInterval_IsTenSeconds()
+    public void CommandInterval_IsTwoHundredMilliseconds()
     {
-        YaohuaTf1Protocol.QueryInterval.ShouldBe(TimeSpan.FromSeconds(10));
+        YaohuaTf1Protocol.CommandInterval.ShouldBe(TimeSpan.FromMilliseconds(200));
     }
 
     [Fact]

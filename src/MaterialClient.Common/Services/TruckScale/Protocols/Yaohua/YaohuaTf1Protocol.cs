@@ -6,25 +6,31 @@ using Microsoft.Extensions.Logging;
 namespace MaterialClient.Common.Services.TruckScale.Protocols.Yaohua;
 
 /// <summary>
-///     Production Yaohua Type1: Demo-aligned command/response exchange on a fixed interval.
-///     Discard → Write → sync-read until ETX (same as Demo <c>Exchange</c>), not DataReceived listen.
+///     Production Yaohua Type1: Demo-aligned B→C→D exchange poll (200ms between commands).
+///     Discard → Write → sync-read until ETX; stores gross/tare/net from B/C/D replies.
 /// </summary>
 public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
 {
-    public static readonly TimeSpan QueryInterval = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan CommandInterval = TimeSpan.FromMilliseconds(200);
     public const int ReplyTimeoutMs = 700;
+
+    private static readonly char[] PollCommands = ['B', 'C', 'D'];
 
     private const int StandardFrameLength = 12;
     private const int ExtendedMinLength = 16;
     private const int MaxReplyBytes = 32;
-    private const char QueryCommand = 'B';
 
     private readonly object _sync = new();
     private readonly SemaphoreSlim _io = new(1, 1);
-    private Timer? _queryTimer;
+    private CancellationTokenSource? _pollCts;
+    private Task? _pollTask;
     private ScaleProtocolContext? _context;
     private char _address = 'A';
     private volatile bool _stopped = true;
+
+    private decimal? _grossTon;
+    private decimal? _tareTon;
+    private decimal? _netTon;
 
     public bool Supports(ScaleType scaleType, TransmissionFormatType format) =>
         scaleType == ScaleType.Yaohua &&
@@ -47,25 +53,25 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
         {
             _context = context;
             _stopped = false;
+            _grossTon = null;
+            _tareTon = null;
+            _netTon = null;
         }
 
         context.Logger?.LogInformation(
-            "Yaohua Type1 Demo-style exchange started. Address={Address} Command={Command} IntervalSeconds={Interval} ReplyTimeoutMs={Timeout}",
+            "Yaohua Type1 Demo-style B-C-D poll started. Address={Address} CommandIntervalMs={Interval} ReplyTimeoutMs={Timeout}",
             _address,
-            QueryCommand,
-            QueryInterval.TotalSeconds,
+            CommandInterval.TotalMilliseconds,
             ReplyTimeoutMs);
 
-        // dueTime=0: first exchange after OnStart returns (caller must not hold facade WriteLock).
-        _queryTimer = new Timer(
-            _ => RunExchangeTick(),
-            null,
-            TimeSpan.Zero,
-            QueryInterval);
+        _pollCts = new CancellationTokenSource();
+        var token = _pollCts.Token;
+        // Caller must not hold facade WriteLock (Exchange uses GetSerialPort / PublishWeight).
+        _pollTask = Task.Run(() => PollLoopAsync(token), token);
     }
 
     /// <summary>
-    ///     Type1 owns I/O via <see cref="Exchange"/>; ignore DataReceived to avoid races with the timer.
+    ///     Type1 owns I/O via <see cref="Exchange"/>; ignore DataReceived to avoid races with the poll loop.
     /// </summary>
     public void OnDataReceived(ScaleProtocolContext context)
     {
@@ -73,27 +79,38 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
 
     public void OnStop()
     {
-        Timer? timer;
         lock (_sync)
         {
             _stopped = true;
-            timer = _queryTimer;
-            _queryTimer = null;
             _context = null;
         }
 
-        if (timer != null)
+        var cts = Interlocked.Exchange(ref _pollCts, null);
+        if (cts != null)
         {
             try
             {
-                timer.Change(Timeout.Infinite, Timeout.Infinite);
+                cts.Cancel();
             }
             catch (ObjectDisposedException)
             {
                 // already disposed
             }
 
-            timer.Dispose();
+            cts.Dispose();
+        }
+
+        var task = Interlocked.Exchange(ref _pollTask, null);
+        if (task != null)
+        {
+            try
+            {
+                task.Wait(TimeSpan.FromSeconds(3));
+            }
+            catch (AggregateException)
+            {
+                // cancelled / faulted during stop
+            }
         }
     }
 
@@ -276,7 +293,38 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
         return true;
     }
 
-    private void RunExchangeTick()
+    private async Task PollLoopAsync(CancellationToken token)
+    {
+        var index = 0;
+        while (!token.IsCancellationRequested && !_stopped)
+        {
+            var command = PollCommands[index % PollCommands.Length];
+            index++;
+
+            try
+            {
+                RunSingleExchange(command);
+            }
+            catch (Exception ex)
+            {
+                ScaleProtocolContext? ctx;
+                lock (_sync)
+                    ctx = _context;
+                ctx?.Logger?.LogWarning(ex, "Yaohua Type1 poll exchange failed for Command={Command}", command);
+            }
+
+            try
+            {
+                await Task.Delay(CommandInterval, token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+    }
+
+    private void RunSingleExchange(char command)
     {
         if (_stopped) return;
 
@@ -287,7 +335,7 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
 
         if (!_io.Wait(0))
         {
-            context.Logger?.LogDebug("Yaohua Type1 exchange skipped: previous tick still running");
+            context.Logger?.LogDebug("Yaohua Type1 exchange skipped: previous still running");
             return;
         }
 
@@ -302,35 +350,33 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
                 return;
             }
 
-            var request = BuildQuery(_address, QueryCommand);
+            var request = BuildQuery(_address, command);
             context.Logger?.LogInformation(
                 "Yaohua Type1 exchange TX. Address={Address} Command={Command} Hex={Hex}",
                 _address,
-                QueryCommand,
+                command,
                 Convert.ToHexString(request));
 
             var raw = Exchange(port, request, ReplyTimeoutMs);
 
             if (raw.Length == 0)
             {
-                context.Logger?.LogWarning("Yaohua Type1 exchange timeout (no reply within {Timeout}ms)", ReplyTimeoutMs);
+                context.Logger?.LogWarning(
+                    "Yaohua Type1 exchange timeout Command={Command} (no reply within {Timeout}ms)",
+                    command,
+                    ReplyTimeoutMs);
                 return;
             }
 
             context.Logger?.LogInformation(
-                "Yaohua Type1 exchange RX. Hex={Hex} Length={Length}",
+                "Yaohua Type1 exchange RX. Command={Command} Hex={Hex} Length={Length}",
+                command,
                 Convert.ToHexString(raw),
                 raw.Length);
 
-            if (TryParseCommandReply(raw, context.Logger, out var replyRaw, out var command))
+            if (TryParseCommandReply(raw, context.Logger, out var replyRaw, out var replyCommand))
             {
-                var tons = context.ConvertWeight(replyRaw);
-                context.PublishWeight(tons);
-                context.PublishComponentWeights(ScaleComponentWeights.Invalid);
-                context.Logger?.LogDebug(
-                    "Yaohua Type1 exchange applied command reply {Command} weight={Weight}",
-                    command,
-                    tons);
+                ApplyCommandReply(context, replyCommand, context.ConvertWeight(replyRaw));
                 return;
             }
 
@@ -338,8 +384,15 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
             {
                 var grossTon = context.ConvertWeight(grossRaw);
                 var tareTon = context.ConvertWeight(tareRaw);
+                lock (_sync)
+                {
+                    _grossTon = grossTon;
+                    _tareTon = tareTon;
+                    _netTon = grossTon - tareTon;
+                }
+
                 context.PublishWeight(grossTon);
-                context.PublishComponentWeights(ScaleComponentWeights.FromGrossTareTons(grossTon, tareTon));
+                PublishStoredComponents(context);
                 return;
             }
 
@@ -347,23 +400,77 @@ public sealed class YaohuaTf1Protocol : IScaleTransmissionProtocol
             {
                 var displayTon = context.ConvertWeight(displayRaw);
                 context.PublishWeight(displayTon);
-                context.PublishComponentWeights(ScaleComponentWeights.Invalid);
                 return;
             }
 
             context.Logger?.LogWarning(
-                "Yaohua Type1 exchange unparsed reply len={Length} Hex={Hex}",
+                "Yaohua Type1 exchange unparsed reply Command={Command} len={Length} Hex={Hex}",
+                command,
                 raw.Length,
                 Convert.ToHexString(raw));
-        }
-        catch (Exception ex)
-        {
-            context.Logger?.LogWarning(ex, "Yaohua Type1 exchange failed");
         }
         finally
         {
             _io.Release();
         }
+    }
+
+    private void ApplyCommandReply(ScaleProtocolContext context, char command, decimal tons)
+    {
+        lock (_sync)
+        {
+            switch (command)
+            {
+                case 'B':
+                    _grossTon = tons;
+                    break;
+                case 'C':
+                    _tareTon = tons;
+                    break;
+                case 'D':
+                    _netTon = tons;
+                    break;
+            }
+        }
+
+        // Realtime stream follows gross (B); C/D are stored for component weighing.
+        if (command == 'B')
+            context.PublishWeight(tons);
+
+        PublishStoredComponents(context);
+
+        decimal? gross;
+        decimal? tare;
+        decimal? net;
+        lock (_sync)
+        {
+            gross = _grossTon;
+            tare = _tareTon;
+            net = _netTon;
+        }
+
+        context.Logger?.LogDebug(
+            "Yaohua Type1 stored Command={Command} Weight={Weight} Gross={Gross} Tare={Tare} Net={Net}",
+            command,
+            tons,
+            gross,
+            tare,
+            net);
+    }
+
+    private void PublishStoredComponents(ScaleProtocolContext context)
+    {
+        decimal? gross;
+        decimal? tare;
+        decimal? net;
+        lock (_sync)
+        {
+            gross = _grossTon;
+            tare = _tareTon;
+            net = _netTon;
+        }
+
+        context.PublishComponentWeights(new ScaleComponentWeights(gross, tare, net));
     }
 
     private static bool TryParseSixDigitField(ReadOnlySpan<byte> field, out decimal value)

@@ -26,7 +26,7 @@
                    FontSize="22" FontWeight="Bold"
                    Margin="0,0,0,8" />
         <TextBlock Grid.Row="1"
-                   Text="仪表必须设为 tF=1，否则不接收命令。串口固定 9600、8 数据位、无校验、1 停止位。地址 01 对应 A。"
+                   Text="仪表必须设为 tF=1，否则不接收命令。串口固定 9600、8 数据位、无校验、1 停止位。地址 01 对应 A。有效命令为 A/B/C/D（XOR 帧）；手册 R/T/Z 无效，勿用。"
                    FontSize="13" Foreground="Gray"
                    TextWrapping="Wrap"
                    Margin="0,0,0,12" />
