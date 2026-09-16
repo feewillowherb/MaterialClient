@@ -70,9 +70,27 @@ public class UrbanWeighingExtensionServiceTests
 
         extension.IsAnomaly.ShouldBeFalse();
         extension.AnomalyReason.ShouldBeNull();
+        extension.SyncStatus.ShouldBe(SyncStatus.WeighingInProgress);
         anomalyDetector.DidNotReceiveWithAnyArgs().IsAnomaly(default!, default!, default);
         inserted.ShouldNotBeNull();
         inserted!.IsAnomaly.ShouldBeFalse();
+        inserted.SyncStatus.ShouldBe(SyncStatus.WeighingInProgress);
+    }
+
+    [Fact]
+    public void CreateWeighingInProgress_Should_Set_WeighingInProgress_Status()
+    {
+        var extension = UrbanWeighingExtension.CreateWeighingInProgress(42);
+        extension.WeighingRecordId.ShouldBe(42);
+        extension.SyncStatus.ShouldBe(SyncStatus.WeighingInProgress);
+        extension.IsAnomaly.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void GetPendingForUpload_Filter_Excludes_WeighingInProgress()
+    {
+        // Documented contract: only Pending is upload-eligible.
+        SyncStatus.Pending.ShouldNotBe(SyncStatus.WeighingInProgress);
     }
 
     [Fact]

@@ -75,15 +75,26 @@ public class UrbanWeighingRecordSideEffects : IUrbanWeighingRecordSideEffects, I
         if (scaleConfigs.Count == 0)
             return null;
 
-        // Prefer a single Scale device; if multiple, take the first configured row.
         return scaleConfigs[0].UrbanInOutType;
     }
 
-    public async Task RecalculateAnomalyAfterLprOrCycleAsync(long weighingRecordId)
+    public async Task RecalculateAnomalyAfterLprOrCycleAsync(long weighingRecordId) =>
+        await RecalculateAnomalyCoreAsync(weighingRecordId, promoteWeighingInProgress: false);
+
+    public async Task FinalizeWeighingCycleAsync(long weighingRecordId) =>
+        await RecalculateAnomalyCoreAsync(weighingRecordId, promoteWeighingInProgress: true);
+
+    public async Task EnsureReadyForUploadAsync(long weighingRecordId) =>
+        await RecalculateAnomalyCoreAsync(weighingRecordId, promoteWeighingInProgress: true);
+
+    private async Task RecalculateAnomalyCoreAsync(long weighingRecordId, bool promoteWeighingInProgress)
     {
         var extension = await _urbanWeighingExtensionService.GetByWeighingRecordIdAsync(weighingRecordId);
         if (extension is null)
             return;
+
+        var previousIsAnomaly = extension.IsAnomaly;
+        var previousStatus = extension.SyncStatus;
 
         var record = await _weighingRecordRepository.GetAsync(weighingRecordId);
 
@@ -106,6 +117,22 @@ public class UrbanWeighingRecordSideEffects : IUrbanWeighingRecordSideEffects, I
         var isAnomaly = _anomalyDetector.IsAnomaly(record, anomalyConfig, hasLpr);
         var reason = isAnomaly ? _anomalyDetector.GetAnomalyReason(record, anomalyConfig, hasLpr) : null;
         await _urbanWeighingExtensionService.UpdateAnomalyStateAsync(extension.Id, isAnomaly, reason);
+
+        if (promoteWeighingInProgress && previousStatus == SyncStatus.WeighingInProgress)
+        {
+            await _urbanWeighingExtensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Pending);
+            _logger.LogInformation(
+                "Promoted Urban extension for record {Id} from WeighingInProgress to Pending",
+                weighingRecordId);
+        }
+        else if (previousStatus is SyncStatus.Synced or SyncStatus.Failed &&
+                 previousIsAnomaly != isAnomaly)
+        {
+            await _urbanWeighingExtensionService.UpdateSyncStatusAsync(extension.Id, SyncStatus.Pending);
+            _logger.LogInformation(
+                "Re-queued Urban extension for record {Id} to Pending after anomaly change ({Old} -> {New})",
+                weighingRecordId, previousIsAnomaly, isAnomaly);
+        }
 
         _ = _localEventBus.PublishAsync(new UpdatePlateNumberEventData(weighingRecordId, record.PlateNumber));
     }

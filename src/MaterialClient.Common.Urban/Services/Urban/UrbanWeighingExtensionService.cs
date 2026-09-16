@@ -61,7 +61,9 @@ public class UrbanWeighingExtensionService : DomainService, IUrbanWeighingExtens
                 $"UrbanWeighingExtension already exists for WeighingRecordId {weighingRecordId}.");
         }
 
-        var extension = UrbanWeighingExtension.CreatePending(weighingRecordId);
+        var extension = evaluateAnomaly
+            ? UrbanWeighingExtension.CreatePending(weighingRecordId)
+            : UrbanWeighingExtension.CreateWeighingInProgress(weighingRecordId);
         extension.AssignUrbanInOutType(urbanInOutType);
 
         if (evaluateAnomaly)

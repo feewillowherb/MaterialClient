@@ -53,6 +53,7 @@ public class UrbanWeighingExtensionTests
     [InlineData(SyncStatus.Pending)]
     [InlineData(SyncStatus.Synced)]
     [InlineData(SyncStatus.Failed)]
+    [InlineData(SyncStatus.WeighingInProgress)]
     public void UrbanWeighingExtension_Should_Accept_All_SyncStatus_Values(SyncStatus status)
     {
         // Arrange & Act

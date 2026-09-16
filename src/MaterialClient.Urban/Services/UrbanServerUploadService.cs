@@ -40,6 +40,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
     private readonly IAttachmentService _attachmentService;
     private readonly IRepository<WeighingRecord, long> _weighingRecordRepository;
     private readonly IUrbanWeighingExtensionService _extensionService;
+    private readonly IUrbanWeighingRecordSideEffects _weighingRecordSideEffects;
     private readonly ILicenseService _licenseService;
     private readonly IMachineCodeService _machineCodeService;
     private readonly ISettingsService _settingsService;
@@ -51,6 +52,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         IAttachmentService attachmentService,
         IRepository<WeighingRecord, long> weighingRecordRepository,
         IUrbanWeighingExtensionService extensionService,
+        IUrbanWeighingRecordSideEffects weighingRecordSideEffects,
         ILicenseService licenseService,
         IMachineCodeService machineCodeService,
         ISettingsService settingsService,
@@ -61,6 +63,7 @@ public class UrbanServerUploadService : IUrbanServerUploadService
         _attachmentService = attachmentService;
         _weighingRecordRepository = weighingRecordRepository;
         _extensionService = extensionService;
+        _weighingRecordSideEffects = weighingRecordSideEffects;
         _licenseService = licenseService;
         _machineCodeService = machineCodeService;
         _settingsService = settingsService;
@@ -82,6 +85,20 @@ public class UrbanServerUploadService : IUrbanServerUploadService
                     "No UrbanWeighingExtension for record {RecordId}; cannot submit without extension Id",
                     weighingRecordId);
                 return false;
+            }
+
+            if (extension.SyncStatus == SyncStatus.WeighingInProgress)
+            {
+                await _weighingRecordSideEffects.EnsureReadyForUploadAsync(weighingRecordId);
+                record = await _weighingRecordRepository.GetAsync(weighingRecordId);
+                extension = await _extensionService.GetByWeighingRecordIdAsync(weighingRecordId);
+                if (extension == null || extension.SyncStatus == SyncStatus.WeighingInProgress)
+                {
+                    _logger.LogWarning(
+                        "Record {RecordId} still WeighingInProgress after EnsureReadyForUpload; skip submit",
+                        weighingRecordId);
+                    return false;
+                }
             }
 
             var licenseInfo = await _licenseService.GetCurrentLicenseAsync();
