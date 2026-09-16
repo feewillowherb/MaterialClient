@@ -23,7 +23,8 @@ public class LicensePlateRecognizedEventToMessageBusBridge
             PlateColor = eventData.PlateColor,
             DeviceType = eventData.DeviceType,
             DeviceName = eventData.DeviceName,
-            Timestamp = eventData.Timestamp
+            Timestamp = eventData.Timestamp,
+            LprImagePath = eventData.LprImagePath
         });
         return Task.CompletedTask;
     }

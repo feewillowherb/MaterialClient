@@ -435,23 +435,34 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             var imageLen = 0;
             var hasImage = false;
             var picCount = Math.Min((int)itsResult.dwPicNum, itsResult.struPicInfo.Length);
+            // Prefer scene picture; fall back to first non-empty buffer so no-plate captures still keep a photo.
             for (var i = 0; i < picCount; i++)
             {
                 var picInfo = itsResult.struPicInfo[i];
-                if (picInfo.dwDataLen == 0 || picInfo.byType != HikvisionSdk.HikItsPictureTypeScene)
+                if (picInfo.dwDataLen == 0 || picInfo.pBuffer == IntPtr.Zero)
                 {
                     continue;
                 }
 
-                hasImage = true;
-                imagePtr = picInfo.pBuffer;
-                imageLen = (int)picInfo.dwDataLen;
-                break;
+                if (picInfo.byType == HikvisionSdk.HikItsPictureTypeScene)
+                {
+                    hasImage = true;
+                    imagePtr = picInfo.pBuffer;
+                    imageLen = (int)picInfo.dwDataLen;
+                    break;
+                }
+
+                if (!hasImage)
+                {
+                    hasImage = true;
+                    imagePtr = picInfo.pBuffer;
+                    imageLen = (int)picInfo.dwDataLen;
+                }
             }
 
-            _logger?.LogDebug(
-                "COMM_ITS_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}",
-                license.PlateNumber, vehicleColor, vehicleType, license.PlateColor, hasImage);
+            _logger?.LogInformation(
+                "COMM_ITS_PLATE_RESULT: Plate={Plate}, VehicleColor={VehicleColor}, VehicleType={VehicleType}, PlateColor={PlateColor}, HasImage={HasImage}, ImageLen={ImageLen}",
+                license.PlateNumber, vehicleColor, vehicleType, license.PlateColor, hasImage, imageLen);
 
             ProcessRecognizedPlate(license.PlateNumber, deviceIp, config, vehicleColor, vehicleType, license.PlateColor,
                 imagePtr, imageLen, "its", "收到 ITS 车牌识别结果", "无效车牌，仅保留 Lpr 图片");
@@ -495,17 +506,20 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     {
         var isValidPlate = TryValidatePlateNumber(plateNumber);
         var lrpPath = TrySaveLprAttachment(imagePtr, imageLen, plateNumber);
+        var hasPhoto = !string.IsNullOrWhiteSpace(lrpPath) || (imagePtr != IntPtr.Zero && imageLen > 0);
 
         if (!isValidPlate)
         {
             _logger?.LogWarning(
-                "无效车牌，已尝试保留 Lpr 图片: Plate={Plate}, LprPath={LprPath}, DeviceIp={DeviceIp}",
-                plateNumber, lrpPath ?? "(无图)", deviceIp);
+                "无效车牌，已尝试保留 Lpr 图片: Plate={Plate}, LprPath={LprPath}, DeviceIp={DeviceIp}, HasPhoto={HasPhoto}",
+                plateNumber, lrpPath ?? "(无图)", deviceIp, hasPhoto);
 
 #if DEBUG
             TrySaveInvalidPlateDebugImage(imagePtr, imageLen, plateNumber, debugImageSource, deviceIp);
 #endif
-            if (!string.IsNullOrWhiteSpace(lrpPath))
+            // Always publish when a photo exists so settings test UI can show "no plate + photo".
+            // PlateNumber stays empty so weighing will not treat device placeholders as a real plate.
+            if (hasPhoto)
             {
                 PublishPlateRecognizedEvent(string.Empty, deviceIp, config, vehicleColor, vehicleType, plateColor,
                     lrpPath, invalidPlateLogMessage);

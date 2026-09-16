@@ -17,4 +17,9 @@ public class LicensePlateRecognizedMessage
     public LprDeviceType DeviceType { get; set; }
     public string? DeviceName { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.Now;
+
+    /// <summary>
+    ///     Optional local LPR image path (relative or absolute) when a photo was saved.
+    /// </summary>
+    public string? LprImagePath { get; set; }
 }

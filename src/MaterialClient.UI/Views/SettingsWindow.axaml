@@ -633,7 +633,25 @@
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
                                                     <DataGridTextColumn Header="端口" Width="60" Binding="{Binding Port}" />
-                                                        <DataGridTextColumn Header="抓拍结果" Width="100" Binding="{Binding LastCapturePlateNumber}" />
+                                                        <DataGridTemplateColumn Header="抓拍结果" Width="160">
+                                                            <DataGridTemplateColumn.CellTemplate>
+                                                                <DataTemplate x:DataType="vm:LicensePlateRecognitionConfigViewModel">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                                        <TextBlock Text="{Binding LastCapturePlateNumber}"
+                                                                                   VerticalAlignment="Center" />
+                                                                        <Button Content="查看图片"
+                                                                                Command="{Binding $parent[Window].((vm:SettingsWindowViewModel)DataContext).OpenLastLprCaptureCommand}"
+                                                                                CommandParameter="{Binding}"
+                                                                                IsVisible="{Binding HasLastCaptureImage}"
+                                                                                Background="Transparent"
+                                                                                Foreground="#4A85F9"
+                                                                                BorderThickness="0"
+                                                                                Padding="0"
+                                                                                Height="28" />
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </DataGridTemplateColumn.CellTemplate>
+                                                        </DataGridTemplateColumn>
                                                         <DataGridTemplateColumn Header="操作" Width="260">
                                                             <DataGridTemplateColumn.CellTemplate>
                                                                 <DataTemplate>

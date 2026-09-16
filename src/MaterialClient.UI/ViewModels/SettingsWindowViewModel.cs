@@ -22,6 +22,7 @@ using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Authentication;
 using MaterialClient.Common.Services.Hardware;
 using MaterialClient.Common.Services.Hikvision;
+using MaterialClient.Common.Utils;
 using MaterialClient.UI.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -48,6 +49,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
     private readonly ILicenseService _licenseService;
     private readonly IUsbCameraService? _usbCameraService;
     private readonly IDisposable _lprMessageSubscription;
+    private string? _pendingLprTestDeviceName;
 
 
     [Reactive] private ObservableCollection<string> _availableSerialPorts = new();
@@ -225,13 +227,7 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         _lprMessageSubscription = MessageBus.Current.Listen<LicensePlateRecognizedMessage>()
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(msg =>
-            {
-                var item = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
-                    string.Equals(c.Name, msg.DeviceName, StringComparison.Ordinal));
-                if (item != null)
-                    item.LastCapturePlateNumber = msg.PlateNumber ?? string.Empty;
-            });
+            .Subscribe(ApplyLprTestCaptureResult);
 
         this.WhenAnyValue(x => x.SelectedSettingsSection)
             .Subscribe(_ => RaiseSectionVisibilityChanged());
@@ -615,16 +611,104 @@ public partial class SettingsWindowViewModel : ViewModelBase, ITransientDependen
 
         try
         {
+            _pendingLprTestDeviceName = config.Name;
+            row.LastCapturePlateNumber = string.Empty;
+            row.LastCaptureImagePath = null;
             await device.TriggerCaptureAsync(config);
             _logger.LogInformation("已触发测试抓拍: Device={Device}", config.Name);
         }
         catch (NotSupportedException ex)
         {
+            _pendingLprTestDeviceName = null;
             _logger.LogWarning(ex, "设备不支持主动抓拍: {Device}", config.Name);
         }
         catch (Exception ex)
         {
+            _pendingLprTestDeviceName = null;
             _logger.LogError(ex, "测试抓拍失败: Device={Device}", config.Name);
+        }
+    }
+
+    private void ApplyLprTestCaptureResult(LicensePlateRecognizedMessage msg)
+    {
+        var item = ResolveLprRowForCaptureMessage(msg);
+        if (item is null)
+        {
+            return;
+        }
+
+        var plate = msg.PlateNumber?.Trim() ?? string.Empty;
+        var hasPhoto = !string.IsNullOrWhiteSpace(msg.LprImagePath);
+        item.LastCaptureImagePath = string.IsNullOrWhiteSpace(msg.LprImagePath)
+            ? null
+            : PathManager.ToAbsolutePath(msg.LprImagePath);
+        // Show a visible result when photo exists but plate is empty/invalid placeholder.
+        item.LastCapturePlateNumber = !string.IsNullOrWhiteSpace(plate)
+            ? plate
+            : hasPhoto ? "No plate" : string.Empty;
+
+        if (string.Equals(_pendingLprTestDeviceName, item.Name, StringComparison.Ordinal))
+        {
+            _pendingLprTestDeviceName = null;
+        }
+    }
+
+    private LicensePlateRecognitionConfigViewModel? ResolveLprRowForCaptureMessage(LicensePlateRecognizedMessage msg)
+    {
+        if (!string.IsNullOrWhiteSpace(msg.DeviceName))
+        {
+            var byName = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
+                string.Equals(c.Name, msg.DeviceName, StringComparison.Ordinal));
+            if (byName != null)
+            {
+                return byName;
+            }
+
+            // Fallback: DeviceName may be "Unknown (192.168.x.x)" when alarmer IP is not in cache.
+            if (msg.DeviceName.StartsWith("Unknown (", StringComparison.Ordinal) &&
+                msg.DeviceName.EndsWith(')'))
+            {
+                var ip = msg.DeviceName["Unknown (".Length..^1];
+                var byIp = LicensePlateRecognitionConfigs.FirstOrDefault(c =>
+                    string.Equals(c.Ip, ip, StringComparison.OrdinalIgnoreCase));
+                if (byIp != null)
+                {
+                    return byIp;
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(_pendingLprTestDeviceName))
+        {
+            return LicensePlateRecognitionConfigs.FirstOrDefault(c =>
+                string.Equals(c.Name, _pendingLprTestDeviceName, StringComparison.Ordinal));
+        }
+
+        return null;
+    }
+
+    [ReactiveCommand]
+    private void OpenLastLprCapture(LicensePlateRecognitionConfigViewModel? row)
+    {
+        if (row == null || string.IsNullOrWhiteSpace(row.LastCaptureImagePath))
+        {
+            return;
+        }
+
+        var path = row.LastCaptureImagePath;
+        if (!File.Exists(path))
+        {
+            _logger.LogWarning("LPR test capture file not found: {Path}", path);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open LPR test capture: {Path}", path);
         }
     }
 
@@ -1034,6 +1118,13 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
     /// </summary>
     [Reactive] private string _lastCapturePlateNumber = string.Empty;
 
+    /// <summary>
+    ///     Absolute path of the last LPR test capture photo (if any).
+    /// </summary>
+    [Reactive] private string? _lastCaptureImagePath;
+
+    public bool HasLastCaptureImage => !string.IsNullOrWhiteSpace(LastCaptureImagePath);
+
         /// <summary>
         ///     在线状态显示文本
         /// </summary>
@@ -1056,6 +1147,8 @@ public partial class LicensePlateRecognitionConfigViewModel : ReactiveObject
             .Subscribe(_ => this.RaisePropertyChanged(nameof(OnlineStatusText)));
         this.WhenAnyValue(x => x.EnableGateIo)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(GateIoStatusText)));
+        this.WhenAnyValue(x => x.LastCaptureImagePath)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(HasLastCaptureImage)));
     }
 
     public static LicensePlateRecognitionConfigViewModel FromConfig(LicensePlateRecognitionConfig config)
