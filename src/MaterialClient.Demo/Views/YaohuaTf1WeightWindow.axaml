@@ -26,7 +26,7 @@
                    FontSize="22" FontWeight="Bold"
                    Margin="0,0,0,8" />
         <TextBlock Grid.Row="1"
-                   Text="仪表必须设为 tF=1，否则不接收命令。串口固定 9600、8 数据位、无校验、1 停止位。地址 01 对应 A。有效命令为 A/B/C/D（XOR 帧）；手册 R/T/Z 无效，勿用。"
+                   Text="仪表必须设为 tF=1，否则不接收命令。串口固定 9600、8 数据位、无校验、1 停止位。地址 01 对应 A。有效命令为 A/B/C/D/E/F（XOR 帧）；手册 R/T/Z 无效，勿用。"
                    FontSize="13" Foreground="Gray"
                    TextWrapping="Wrap"
                    Margin="0,0,0,12" />
@@ -41,13 +41,19 @@
             <Button Content="断开" Click="OnDisconnectClick" />
         </StackPanel>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-            <Button Content="握手" Click="OnHandshakeClick" />
-            <Button Content="读毛重" Click="OnReadGrossClick" />
-            <Button Content="读皮重" Click="OnReadTareClick" />
-            <Button Content="读净重" Click="OnReadNetClick" />
-            <Button Content="连续查询" Click="OnPollClick" />
-            <Button Content="停止" Click="OnStopPollClick" />
+        <StackPanel Grid.Row="3" Spacing="8" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="握手" Click="OnHandshakeClick" />
+                <Button Content="读毛重" Click="OnReadGrossClick" />
+                <Button Content="读皮重" Click="OnReadTareClick" />
+                <Button Content="读净重" Click="OnReadNetClick" />
+                <Button Content="连续查询" Click="OnPollClick" />
+                <Button Content="停止" Click="OnStopPollClick" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="读车号" Click="OnReadVehicleNoClick" />
+                <Button Content="读货号" Click="OnReadGoodsNoClick" />
+            </StackPanel>
         </StackPanel>
 
         <TextBlock Grid.Row="4"
@@ -58,20 +64,28 @@
                    TextWrapping="Wrap"
                    Margin="0,0,0,8" />
 
-        <UniformGrid Grid.Row="5" Columns="3" Margin="0,8,0,8">
-            <StackPanel>
+        <Grid Grid.Row="5" Margin="0,8,0,8" RowDefinitions="Auto,Auto" ColumnDefinitions="*,*,*">
+            <StackPanel Grid.Row="0" Grid.Column="0">
                 <TextBlock Classes="weight-label" Text="毛重" />
                 <TextBlock x:Name="GrossValueText" Classes="weight-value" Text="-" />
             </StackPanel>
-            <StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="1">
                 <TextBlock Classes="weight-label" Text="皮重" />
                 <TextBlock x:Name="TareValueText" Classes="weight-value" Text="-" />
             </StackPanel>
-            <StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="2">
                 <TextBlock Classes="weight-label" Text="净重" />
                 <TextBlock x:Name="NetValueText" Classes="weight-value" Text="-" />
             </StackPanel>
-        </UniformGrid>
+            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,12,0,0">
+                <TextBlock Classes="weight-label" Text="车号" />
+                <TextBlock x:Name="VehicleNoText" Classes="weight-value" FontSize="28" Text="-" />
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,12,0,0">
+                <TextBlock Classes="weight-label" Text="货号" />
+                <TextBlock x:Name="GoodsNoText" Classes="weight-value" FontSize="28" Text="-" />
+            </StackPanel>
+        </Grid>
 
         <TextBox Grid.Row="6"
                  x:Name="HexLog"

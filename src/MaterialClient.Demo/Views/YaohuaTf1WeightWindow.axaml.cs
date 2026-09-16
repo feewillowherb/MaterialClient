@@ -75,6 +75,10 @@ public partial class YaohuaTf1WeightWindow : Window
 
     private void OnReadNetClick(object? sender, RoutedEventArgs e) => _ = QueryAsync('D');
 
+    private void OnReadVehicleNoClick(object? sender, RoutedEventArgs e) => _ = QueryAsync('E');
+
+    private void OnReadGoodsNoClick(object? sender, RoutedEventArgs e) => _ = QueryAsync('F');
+
     private void OnPollClick(object? sender, RoutedEventArgs e)
     {
         if (_port is not { IsOpen: true } || _pollCts is not null) return;
@@ -193,18 +197,22 @@ public partial class YaohuaTf1WeightWindow : Window
         StatusText.Text =
             $"cmd {reply.Command} addr {reply.Address} {(reply.ChecksumMatch ? "xor match" : "xor MISMATCH")}";
 
-        if (reply.Weight is null) return;
-        var text = reply.Weight.FormatDisplayedWeight();
         switch (reply.Command)
         {
-            case 'B':
-                GrossValueText.Text = text;
+            case 'B' when reply.Weight is not null:
+                GrossValueText.Text = reply.Weight.FormatDisplayedWeight();
                 break;
-            case 'C':
-                TareValueText.Text = text;
+            case 'C' when reply.Weight is not null:
+                TareValueText.Text = reply.Weight.FormatDisplayedWeight();
                 break;
-            case 'D':
-                NetValueText.Text = text;
+            case 'D' when reply.Weight is not null:
+                NetValueText.Text = reply.Weight.FormatDisplayedWeight();
+                break;
+            case 'E' when !string.IsNullOrEmpty(reply.TextPayload):
+                VehicleNoText.Text = reply.TextPayload;
+                break;
+            case 'F' when !string.IsNullOrEmpty(reply.TextPayload):
+                GoodsNoText.Text = reply.TextPayload;
                 break;
         }
     }
