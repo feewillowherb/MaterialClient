@@ -28,7 +28,7 @@ public class UrbanWeighingExtension : Entity<Guid>, IHasExtraProperties
 
     /// <summary>
     ///     Sync status for the Urban upload pipeline.
-    ///     Initialized to <see cref="SyncStatus.Pending" /> on creation.
+    ///     Deferred create uses <see cref="SyncStatus.WeighingInProgress" />; upload queue uses <see cref="SyncStatus.Pending" />.
     /// </summary>
     public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
 
@@ -73,6 +73,20 @@ public class UrbanWeighingExtension : Entity<Guid>, IHasExtraProperties
         {
             WeighingRecordId = weighingRecordId,
             SyncStatus = SyncStatus.Pending,
+            RetryCount = 0,
+            LastErrorTime = null,
+            IsAnomaly = false,
+            AnomalyReason = null
+        };
+
+    /// <summary>
+    ///     Stable-weight create with deferred anomaly: not eligible for upload until promoted to Pending.
+    /// </summary>
+    public static UrbanWeighingExtension CreateWeighingInProgress(long weighingRecordId) =>
+        new()
+        {
+            WeighingRecordId = weighingRecordId,
+            SyncStatus = SyncStatus.WeighingInProgress,
             RetryCount = 0,
             LastErrorTime = null,
             IsAnomaly = false,

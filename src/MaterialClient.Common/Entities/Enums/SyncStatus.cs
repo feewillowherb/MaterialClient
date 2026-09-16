@@ -20,5 +20,10 @@ public enum SyncStatus
     /// <summary>
     ///     上传失败
     /// </summary>
-    [Description("上传失败")] Failed = 2
+    [Description("上传失败")] Failed = 2,
+
+    /// <summary>
+    ///     称重中（周期未结束，不得上云）
+    /// </summary>
+    [Description("称重中")] WeighingInProgress = 3
 }

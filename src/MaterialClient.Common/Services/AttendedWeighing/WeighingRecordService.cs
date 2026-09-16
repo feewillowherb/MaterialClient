@@ -474,9 +474,10 @@ public class WeighingRecordService : IWeighingRecordService, ISingletonDependenc
         var recordId = stateManager.GetLastCreatedWeighingRecordId();
         await TryReWritePlateNumberAsync(stateManager);
 
-        // Finalize Urban anomaly after plate rewrite (CaptureFailure if LPR never arrived).
+        // Finalize Urban anomaly after plate rewrite (CaptureFailure if LPR never arrived),
+        // and promote WeighingInProgress → Pending for upload.
         if (recordId is > 0)
-            await _urbanWeighingRecordSideEffects.RecalculateAnomalyAfterLprOrCycleAsync(recordId.Value);
+            await _urbanWeighingRecordSideEffects.FinalizeWeighingCycleAsync(recordId.Value);
 
         plateNumberService.ClearCache();
         stateManager.ResetCycle();
