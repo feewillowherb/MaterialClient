@@ -859,7 +859,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 return null;
             }
 
-            _logger?.LogDebug(
+            _logger?.LogTrace(
                 "Parsed Portable XP-SY weight: {Weight} (payload: {Payload}, reversed: {WeightText})",
                 weight,
                 payload,
@@ -981,7 +981,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                     // Apply sign
                     if (isNegative) weightInt = -weightInt;
 
-                    _logger?.LogDebug(
+                    _logger?.LogTrace(
                         $"Parsed HEX weight: {weightInt} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
 
                     return weightInt;
@@ -1077,7 +1077,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 // Apply sign
                 if (isNegative) weight = -weight;
 
-                _logger?.LogDebug(
+                _logger?.LogTrace(
                     $"Parsed DingSong HEX weight: {weight} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
 
                 return weight;
@@ -1137,7 +1137,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
 
             if (decimal.TryParse(weightString, out var weightKg))
             {
-                _logger?.LogDebug($"Parsed DingSong Addr4 HEX weight: {weightKg} kg (raw: {weightString})");
+                _logger?.LogTrace($"Parsed DingSong Addr4 HEX weight: {weightKg} kg (raw: {weightString})");
                 return weightKg;
             }
 
@@ -1185,7 +1185,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
             // Try to parse as decimal (weight in kg)
             if (decimal.TryParse(weightString, out var weight))
             {
-                _logger?.LogDebug($"Parsed String weight: {weight}");
+                _logger?.LogTrace($"Parsed String weight: {weight}");
                 return weight;
             }
 
