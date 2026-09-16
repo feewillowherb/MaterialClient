@@ -84,6 +84,17 @@ internal static partial class HikvisionSdk
     [DllImport("HCNetSDK.dll")]
     public static extern uint NET_DVR_GetLastError();
 
+    /// <summary>
+    ///     Remote control / status commands (HCNetSDK.h NET_DVR_RemoteControl).
+    /// </summary>
+    [DllImport("HCNetSDK.dll")]
+    public static extern bool NET_DVR_RemoteControl(int lUserID, uint dwCommand, IntPtr lpInBuffer, uint dwInBufferSize);
+
+    /// <summary>
+    ///     Detect whether the logged-in user session is still online (HCNetSDK.h).
+    /// </summary>
+    public const uint NET_DVR_CHECK_USER_STATUS = 20005;
+
     #endregion
 
     #region 回调委托

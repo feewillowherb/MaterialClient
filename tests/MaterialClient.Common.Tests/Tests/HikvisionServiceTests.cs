@@ -612,8 +612,7 @@ public class HikvisionServiceTests
     }
 
     /// <summary>
-    /// Test 4.4: LogoutAndClearCache removes cache entry.
-    /// Uses userId=-1 to avoid calling NET_DVR_Logout (no SDK needed).
+    /// Test 4.4: LogoutAndClearCache removes held session key.
     /// </summary>
     [Fact]
     public void LogoutAndClearCache_InvalidUserId_RemovesCacheEntry()
@@ -627,23 +626,18 @@ public class HikvisionServiceTests
             Password = "pass"
         };
 
-        // Access internal cache via reflection
-        var cache = GetDeviceKeyCache(service);
+        var held = GetHeldSessionKeys(service);
         var key = $"{config.Ip}:{config.Port}:{config.Username}";
+        held[key] = 0;
+        Assert.True(held.ContainsKey(key));
 
-        // Pre-populate with invalid userId (-1) — won't trigger NET_DVR_Logout
-        cache[key] = -1;
-        Assert.True(cache.ContainsKey(key));
-
-        // Invoke LogoutAndClearCache
         InvokeLogoutAndClearCache(service, config);
 
-        // Cache entry should be removed
-        Assert.False(cache.ContainsKey(key));
+        Assert.False(held.ContainsKey(key));
     }
 
     /// <summary>
-    /// Test 4.4 (SDK variant): LogoutAndClearCache calls NET_DVR_Logout and removes cache entry.
+    /// Test 4.4 (SDK variant): LogoutAndClearCache invalidates store session and removes held key.
     /// </summary>
     [Fact(Skip = "Requires Hikvision SDK runtime")]
     public void LogoutAndClearCache_ValidUserId_CallsLogoutAndRemovesCache()
@@ -657,25 +651,20 @@ public class HikvisionServiceTests
             Password = "pass"
         };
 
-        var cache = GetDeviceKeyCache(service);
+        var held = GetHeldSessionKeys(service);
         var key = $"{config.Ip}:{config.Port}:{config.Username}";
+        held[key] = 0;
 
-        // Pre-populate with a valid userId — will call NET_DVR_Logout
-        cache[key] = 42;
-        Assert.True(cache.ContainsKey(key));
-
-        // Invoke LogoutAndClearCache
         InvokeLogoutAndClearCache(service, config);
 
-        // Cache entry should be removed even if Logout returns false (invalid session)
-        Assert.False(cache.ContainsKey(key));
+        Assert.False(held.ContainsKey(key));
     }
 
     /// <summary>
-    /// Test 4.5: EnsureLogin logs out cached valid userId before re-login.
+    /// Test 4.5: EnsureLogin reuses/acquires via shared session store (no pre-login Logout churn).
     /// </summary>
     [Fact(Skip = "Requires Hikvision SDK runtime")]
-    public void EnsureLogin_CachedValidUserId_LogoutsBeforeReLogin()
+    public void EnsureLogin_CachedValidUserId_ReusesViaSessionStore()
     {
         var service = new HikvisionService();
         var config = new HikvisionDeviceConfig
@@ -686,25 +675,17 @@ public class HikvisionServiceTests
             Password = "pass"
         };
 
-        var cache = GetDeviceKeyCache(service);
-        var key = $"{config.Ip}:{config.Port}:{config.Username}";
-
-        // Pre-populate cache with a valid userId
-        cache[key] = 42;
-
-        // Call EnsureLogin via reflection
         var method = typeof(HikvisionService).GetMethod("EnsureLogin",
             BindingFlags.NonPublic | BindingFlags.Instance);
         var parameters = new object[] { config, 0 };
         var result = (bool)method!.Invoke(service, parameters)!;
 
-        // After EnsureLogin, the old userId (42) should have been logged out
-        // and a new login attempted. The cache should contain the new userId.
-        // If login fails (no device), cache won't have the key (login returns -1, not stored).
+        var held = GetHeldSessionKeys(service);
+        var key = $"{config.Ip}:{config.Port}:{config.Username}";
         if (result)
         {
-            Assert.True(cache.ContainsKey(key));
-            Assert.NotEqual(42, cache[key]); // Should be a different userId
+            Assert.True(held.ContainsKey(key));
+            Assert.True((int)parameters[1] >= 0);
         }
 
         _output.WriteLine($"EnsureLogin result: {result}, New userId: {parameters[1]}");
@@ -727,12 +708,9 @@ public class HikvisionServiceTests
             Password = "pass"
         };
 
-        var cache = GetDeviceKeyCache(service);
+        var held = GetHeldSessionKeys(service);
         var key = $"{config.Ip}:{config.Port}:{config.Username}";
-
-        // Pre-populate cache with invalid userId (-1)
-        // This ensures LogoutAndClearCache will try to remove it in finally
-        cache[key] = -1;
+        held[key] = 0;
 
         var request = new BatchCaptureRequest
         {
@@ -742,18 +720,12 @@ public class HikvisionServiceTests
             DeviceKey = $"{config.Ip}:{config.Port}"
         };
 
-        // This will fail (no device), but the finally block should still clean up
         var results = await service.CaptureJpegFromStreamBatchAsync([request]);
         var result = Assert.Single(results);
 
-        // Capture should fail (no device available)
         Assert.False(result.Success);
-
-        // Cache should have been cleaned by LogoutAndClearCache in finally block
-        // Note: The capture methods call EnsureLogin which may modify the cache,
-        // but LogoutAndClearCache in finally should always clean it up.
-        Assert.False(cache.ContainsKey(key),
-            "Cache entry should be removed by LogoutAndClearCache even when capture fails");
+        Assert.False(held.ContainsKey(key),
+            "Held session key should be removed by LogoutAndClearCache even when capture fails");
     }
 
     /// <summary>
@@ -766,12 +738,12 @@ public class HikvisionServiceTests
         Assert.False(result.FallbackUsed);
     }
 
-    private static ConcurrentDictionary<string, int> GetDeviceKeyCache(HikvisionService service)
+    private static ConcurrentDictionary<string, byte> GetHeldSessionKeys(HikvisionService service)
     {
-        var field = typeof(HikvisionService).GetField("deviceKeyToUserId",
+        var field = typeof(HikvisionService).GetField("_heldSessionKeys",
             BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(field);
-        return (ConcurrentDictionary<string, int>)field!.GetValue(service)!;
+        return (ConcurrentDictionary<string, byte>)field!.GetValue(service)!;
     }
 
     private static void InvokeLogoutAndClearCache(HikvisionService service, HikvisionDeviceConfig config)

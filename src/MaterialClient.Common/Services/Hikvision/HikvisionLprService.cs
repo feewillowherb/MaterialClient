@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using MaterialClient.Common.Configuration;
+using MaterialClient.Common.Entities;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Events;
 using MaterialClient.Common.Extensions;
@@ -55,8 +57,12 @@ public interface IHikvisionLprService : ILprDevice
 /// </summary>
 public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonDependency, IAsyncDisposable
 {
+    private static readonly TimeSpan ShootCallbackWarningTimeout = TimeSpan.FromSeconds(5);
+
     private readonly ConcurrentDictionary<string, LicensePlateRecognitionConfig> _deviceConfigs = new();
-    private readonly ConcurrentDictionary<string, int> _deviceKeyToUserId = new(); // 登录会话缓存
+    private readonly ConcurrentDictionary<string, byte> _heldSessionKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _pendingShootByDeviceIp = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IHikvisionLoginSessionStore _sessionStore;
     private readonly ILogger<HikvisionLprService>? _logger;
     private readonly ISettingsService _settingsService;
     private readonly ILocalEventBus _localEventBus;
@@ -65,12 +71,21 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     private int _listenHandle = -1;
     private WeighingMode _cachedWeighingMode = WeighingMode.Standard;
     private bool _cachedHasCameraConfigs = true;
+    private string? _listenLocalIp;
+    private int _listenLocalPort;
 
-    public HikvisionLprService(ISettingsService settingsService, ILocalEventBus localEventBus, ILogger<HikvisionLprService>? logger = null)
+    public HikvisionLprService(
+        ISettingsService settingsService,
+        ILocalEventBus localEventBus,
+        IHikvisionLoginSessionStore? sessionStore = null,
+        ILogger<HikvisionLprService>? logger = null)
     {
         _settingsService = settingsService;
         _localEventBus = localEventBus;
+        _sessionStore = sessionStore ?? new HikvisionLoginSessionStore(logger: null);
         _logger = logger;
+        _sessionStore.SessionsClearedForSdkReset += OnSessionsClearedForSdkReset;
+        _sessionStore.SdkReinitialized += OnSdkReinitialized;
     }
 
     /// <summary>
@@ -96,7 +111,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     }
 
     /// <summary>
-    ///     检查设备是否在线
+    ///     检查设备是否在线（缓存会话上 CHECK_USER_STATUS；无会话时 Acquire，禁止 Login→Logout）
     /// </summary>
     public bool IsOnline(LicensePlateRecognitionConfig config)
     {
@@ -104,20 +119,36 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
         EnsureInitialized();
 
-        var success = TryLogin(config, out var userId);
+        if (!TryParsePort(config, out var port))
+            return false;
 
-        if (success)
+        var key = _sessionStore.BuildKey(config.Ip, port, config.UserName ?? string.Empty);
+        if (_sessionStore.TryGetUserId(key, out _))
         {
-            // 登录成功后登出，释放资源
-            HikvisionSdk.NET_DVR_Logout(userId);
-            _logger?.LogDebug("设备在线检查成功: IP={Ip}", config.Ip);
-        }
-        else
-        {
-            _logger?.LogWarning("设备离线: IP={Ip}", config.Ip);
+            var probe = _sessionStore.Probe(key);
+            if (probe.Valid)
+            {
+                _logger?.LogDebug("设备在线检查成功(探活): IP={Ip}, Key={Key}", config.Ip, key);
+                return true;
+            }
+
+            _logger?.LogWarning(
+                "设备探活失败，将 Invalidate 后重登: IP={Ip}, Key={Key}, ErrorCode={ErrorCode}, Message={Message}",
+                config.Ip, key, probe.ErrorCode, probe.Message);
+            _sessionStore.Invalidate(key);
+            _heldSessionKeys.TryRemove(key, out _);
         }
 
-        return success;
+        var acquire = _sessionStore.Acquire(config.Ip, port, config.UserName ?? string.Empty, config.Password ?? string.Empty);
+        if (!acquire.Success)
+        {
+            _logger?.LogWarning("设备离线: IP={Ip}, Message={Message}", config.Ip, acquire.Message);
+            return false;
+        }
+
+        _heldSessionKeys[key] = 0;
+        _logger?.LogDebug("设备在线检查成功(Acquire): IP={Ip}, UserId={UserId}", config.Ip, acquire.UserId);
+        return true;
     }
 
     /// <summary>
@@ -196,8 +227,12 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
                 return false;
             }
 
+            _listenLocalIp = listenLocalIp;
+            _listenLocalPort = listenLocalPort;
             _logger?.LogInformation("监听服务启动成功: IP={Ip}, Port={Port}, ListenHandle={Handle}",
                 listenLocalIp, listenLocalPort, _listenHandle);
+
+            await AcquireConfiguredLprSessionsAsync(settings).ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)
@@ -257,26 +292,26 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     {
         await Task.CompletedTask; // 保持方法签名为异步
 
-        if (_listenHandle < 0)
-        {
-            _logger?.LogWarning("监听服务未启动，无需停止");
-            return;
-        }
-
         try
         {
-            // 停止监听
-            var success = HikvisionSdk.NET_DVR_StopListen_V30(_listenHandle);
-
-            if (!success)
+            if (_listenHandle >= 0)
             {
-                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
-                _logger?.LogWarning("停止监听失败: ListenHandle={Handle}, ErrorCode={ErrorCode}, ErrorDesc={ErrorDesc}",
-                    _listenHandle, errorCode, GetErrorDescription(errorCode));
+                var success = HikvisionSdk.NET_DVR_StopListen_V30(_listenHandle);
+
+                if (!success)
+                {
+                    var errorCode = HikvisionSdk.NET_DVR_GetLastError();
+                    _logger?.LogWarning("停止监听失败: ListenHandle={Handle}, ErrorCode={ErrorCode}, ErrorDesc={ErrorDesc}",
+                        _listenHandle, errorCode, GetErrorDescription(errorCode));
+                }
+                else
+                {
+                    _logger?.LogInformation("监听服务已停止: ListenHandle={Handle}", _listenHandle);
+                }
             }
             else
             {
-                _logger?.LogInformation("监听服务已停止: ListenHandle={Handle}", _listenHandle);
+                _logger?.LogDebug("监听服务未启动，跳过 StopListen");
             }
         }
         catch (Exception ex)
@@ -285,8 +320,6 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         }
         finally
         {
-            // CRITICAL: 释放 GCHandle，允许委托被垃圾回收
-            // 必须在 SDK 停止调用回调之后才能释放
             if (_callbackHandle.HasValue)
             {
                 _callbackHandle.Value.Free();
@@ -294,11 +327,14 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
             }
 
             _listenHandle = -1;
+            ReleaseHeldSessions();
         }
     }
 
     public async ValueTask DisposeAsync()
     {
+        _sessionStore.SessionsClearedForSdkReset -= OnSessionsClearedForSdkReset;
+        _sessionStore.SdkReinitialized -= OnSdkReinitialized;
         await StopAsync();
     }
 
@@ -366,6 +402,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         {
             var alarmer = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_ALARMER>(pAlarmer);
             var deviceIp = ResolveDeviceIp(alarmer);
+            MarkShootCallbackReceived(deviceIp);
             _deviceConfigs.TryGetValue(deviceIp, out var config);
 
             var plateResult = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_PLATE_RESULT>(pAlarmInfo);
@@ -417,6 +454,7 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         {
             var alarmer = Marshal.PtrToStructure<HikvisionSdk.NET_DVR_ALARMER>(pAlarmer);
             var deviceIp = ResolveDeviceIp(alarmer);
+            MarkShootCallbackReceived(deviceIp);
             _deviceConfigs.TryGetValue(deviceIp, out var config);
 
             var itsResult = Marshal.PtrToStructure<HikvisionSdk.NET_ITS_PLATE_RESULT>(pAlarmInfo);
@@ -740,53 +778,23 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
     }
 
     /// <summary>
-    ///     尝试登录设备
+    ///     尝试登录设备（已废弃直连 Login；保留空实现避免外部反射依赖）
     /// </summary>
     private bool TryLogin(LicensePlateRecognitionConfig config, out int userId)
     {
         userId = -1;
-
-        try
-        {
-            // 验证配置
-            if (!int.TryParse(config.Port, out var port) || port <= 0)
-            {
-                _logger?.LogWarning("设备端口无效: IP={Ip}, Port={Port}", config.Ip, config.Port);
-                return false;
-            }
-
-            // 构建设备登录信息
-            var loginInfo = new HikvisionSdk.NET_DVR_USER_LOGIN_INFO
-            {
-                sDeviceAddress = ToFixedBytes(config.Ip, 129),
-                sUserName = ToFixedBytes(config.UserName ?? string.Empty, 64),
-                sPassword = ToFixedBytes(config.Password ?? string.Empty, 64),
-                wPort = (ushort)port,
-                bUseAsynLogin = 0
-            };
-
-            var devInfo = new HikvisionSdk.NET_DVR_DEVICEINFO_V40();
-
-            // 调用登录 API
-            userId = HikvisionSdk.NET_DVR_Login_V40(ref loginInfo, ref devInfo);
-
-            if (userId < 0)
-            {
-                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
-                _logger?.LogWarning(
-                    "设备登录失败: IP={Ip}, Port={Port}, Username={Username}, ErrorCode={ErrorCode}, ErrorDesc={ErrorDesc}",
-                    config.Ip, config.Port, config.UserName, errorCode, GetErrorDescription(errorCode));
-                return false;
-            }
-
-            _logger?.LogDebug("设备登录成功: IP={Ip}, UserId={UserId}", config.Ip, userId);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "设备登录异常: IP={Ip}", config.Ip);
+        if (!TryParsePort(config, out var port))
             return false;
-        }
+
+        var acquire = _sessionStore.Acquire(
+            config.Ip, port, config.UserName ?? string.Empty, config.Password ?? string.Empty);
+        if (!acquire.Success)
+            return false;
+
+        var key = _sessionStore.BuildKey(config.Ip, port, config.UserName ?? string.Empty);
+        _heldSessionKeys[key] = 0;
+        userId = acquire.UserId;
+        return true;
     }
 
     /// <summary>
@@ -866,44 +874,66 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
 
         await RefreshCachedWeighingModeAsync();
 
-        // 1. 确保登录(使用会话缓存,避免重复登录)
-        var key = BuildDeviceKey(config);
-        var userId = _deviceKeyToUserId.AddOrUpdate(
-            key,
-            _ => LoginDevice(config),
-            (_, existingUserId) => existingUserId >= 0 ? existingUserId : LoginDevice(config));
-
-        if (userId < 0)
+        if (!TryParsePort(config, out var port))
         {
-            _logger?.LogError("登录海康威视设备失败: {Device}", config.Name);
+            throw new InvalidOperationException($"设备端口无效: {config.Name}");
+        }
+
+        var key = _sessionStore.BuildKey(config.Ip, port, config.UserName ?? string.Empty);
+        var acquire = _sessionStore.Acquire(config.Ip, port, config.UserName ?? string.Empty, config.Password ?? string.Empty);
+        if (!acquire.Success)
+        {
+            _logger?.LogError("登录海康威视设备失败: {Device}, Message={Message}", config.Name, acquire.Message);
             throw new InvalidOperationException($"设备登录失败: {config.Name}");
         }
 
-        // 2. 触发抓拍；结果由设备回调发布到 ILocalEventBus
+        _heldSessionKeys[key] = 0;
+        var userId = acquire.UserId;
+
         var snapCfg = new HikvisionSdk.NET_DVR_SNAPCFG
         {
             dwSize = (uint)Marshal.SizeOf<HikvisionSdk.NET_DVR_SNAPCFG>(),
             byRelatedDriveWay = 0,
-            bySnapTimes = 1, // 0 = 单次抓拍
+            bySnapTimes = 1,
             wSnapWaitTime = 1,
-            wIntervalTime =  [200,0,0,0],
+            wIntervalTime = [200, 0, 0, 0],
             dwSnapVehicleNum = 1,
             struJpegPara = new HikvisionSdk.NET_DVR_JPEGPARA { wPicSize = 0xff, wPicQuality = 1 },
             byRes2 = new byte[16]
         };
 
         var result = HikvisionSdk.NET_DVR_ContinuousShoot(userId, ref snapCfg);
-
         if (!result)
         {
             var errorCode = HikvisionSdk.NET_DVR_GetLastError();
-            var error = GetErrorDescription(errorCode);
-            _logger?.LogError("触发抓拍失败: {Error}", error);
-            throw new InvalidOperationException($"触发抓拍失败: {error}");
+            _logger?.LogWarning(
+                "ContinuousShoot 失败，Invalidate 后重试一次: Device={Device}, UserId={UserId}, ErrorCode={ErrorCode}",
+                config.Name, userId, errorCode);
+            _sessionStore.Invalidate(key);
+            _heldSessionKeys.TryRemove(key, out _);
+
+            acquire = _sessionStore.Acquire(config.Ip, port, config.UserName ?? string.Empty, config.Password ?? string.Empty);
+            if (!acquire.Success)
+            {
+                var error = GetErrorDescription(errorCode);
+                _logger?.LogError("触发抓拍失败(重登亦失败): {Error}", error);
+                throw new InvalidOperationException($"触发抓拍失败: {error}");
+            }
+
+            _heldSessionKeys[key] = 0;
+            userId = acquire.UserId;
+            result = HikvisionSdk.NET_DVR_ContinuousShoot(userId, ref snapCfg);
+            if (!result)
+            {
+                errorCode = HikvisionSdk.NET_DVR_GetLastError();
+                var error = GetErrorDescription(errorCode);
+                _logger?.LogError("触发抓拍失败: {Error}", error);
+                throw new InvalidOperationException($"触发抓拍失败: {error}");
+            }
         }
 
-        _logger?.LogInformation("已触发海康威视设备抓拍: Device={Device}", config.Name);
-
+        _logger?.LogInformation("已触发海康威视设备抓拍: Device={Device}, UserId={UserId}", config.Name, userId);
+        ScheduleShootCallbackWarning(config.Ip);
         await Task.CompletedTask;
     }
 
@@ -921,59 +951,149 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         }
     }
 
-    /// <summary>
-    ///     登录设备
-    /// </summary>
-    private int LoginDevice(LicensePlateRecognitionConfig config)
+    private async Task AcquireConfiguredLprSessionsAsync(SettingsEntity? settings = null)
     {
-        try
+        settings ??= await _settingsService.GetSettingsAsync().ConfigureAwait(false);
+        var configs = (settings.LicensePlateRecognitionConfigs ?? [])
+            .Where(c => c.IsValid())
+            .ToList();
+
+        foreach (var config in configs)
         {
-            // 验证配置
-            if (!int.TryParse(config.Port, out var port) || port <= 0)
+            _deviceConfigs.AddOrUpdate(config.Ip, config, (_, __) => config);
+            if (!TryParsePort(config, out var port))
+                continue;
+
+            var acquire = _sessionStore.Acquire(
+                config.Ip,
+                port,
+                config.UserName ?? string.Empty,
+                config.Password ?? string.Empty);
+            if (!acquire.Success)
             {
-                _logger?.LogWarning("设备端口无效: IP={Ip}, Port={Port}", config.Ip, config.Port);
-                return -1;
+                _logger?.LogWarning(
+                    "LPR 启动后 Acquire 会话失败: Device={Device}, IP={Ip}, Message={Message}",
+                    config.Name, config.Ip, acquire.Message);
+                continue;
             }
 
-            // 构建设备登录信息
-            var loginInfo = new HikvisionSdk.NET_DVR_USER_LOGIN_INFO
-            {
-                sDeviceAddress = ToFixedBytes(config.Ip, 129),
-                sUserName = ToFixedBytes(config.UserName ?? string.Empty, 64),
-                sPassword = ToFixedBytes(config.Password ?? string.Empty, 64),
-                wPort = (ushort)port,
-                bUseAsynLogin = 0 // 0-同步登录, 1-异步登录
-            };
-
-            var deviceInfo = new HikvisionSdk.NET_DVR_DEVICEINFO_V40();
-            var userId = HikvisionSdk.NET_DVR_Login_V40(ref loginInfo, ref deviceInfo);
-
-            if (userId < 0)
-            {
-                var errorCode = HikvisionSdk.NET_DVR_GetLastError();
-                _logger?.LogWarning("设备登录失败: IP={Ip}, Port={Port}, ErrorCode={ErrorCode}",
-                    config.Ip, port, errorCode);
-            }
-            else
-            {
-                _logger?.LogDebug("设备登录成功: IP={Ip}, UserId={UserId}", config.Ip, userId);
-            }
-
-            return userId;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "登录设备时发生异常: IP={Ip}", config.Ip);
-            return -1;
+            var key = _sessionStore.BuildKey(config.Ip, port, config.UserName ?? string.Empty);
+            _heldSessionKeys[key] = 0;
+            _logger?.LogInformation(
+                "LPR 长会话已 Acquire: Device={Device}, Key={Key}, UserId={UserId}",
+                config.Name, key, acquire.UserId);
         }
     }
 
-    /// <summary>
-    ///     构建设备唯一键
-    /// </summary>
-    private static string BuildDeviceKey(LicensePlateRecognitionConfig config)
+    private void ReleaseHeldSessions()
     {
-        return $"{config.Ip}:{config.Port}";
+        foreach (var key in _heldSessionKeys.Keys.ToArray())
+        {
+            _sessionStore.Release(key);
+            _heldSessionKeys.TryRemove(key, out _);
+        }
+    }
+
+    private void OnSessionsClearedForSdkReset()
+    {
+        _logger?.LogWarning(
+            "SDK soft-reset: clearing LPR listen handle (was {Handle})", _listenHandle);
+        try
+        {
+            if (_listenHandle >= 0)
+            {
+                HikvisionSdk.NET_DVR_StopListen_V30(_listenHandle);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "StopListen during soft-reset clear failed");
+        }
+        finally
+        {
+            if (_callbackHandle.HasValue && _callbackHandle.Value.IsAllocated)
+            {
+                _callbackHandle.Value.Free();
+                _callbackHandle = null;
+            }
+
+            _listenHandle = -1;
+            _heldSessionKeys.Clear();
+        }
+    }
+
+    private void OnSdkReinitialized()
+    {
+        _ = RebuildListenAfterSoftResetAsync();
+    }
+
+    private async Task RebuildListenAfterSoftResetAsync()
+    {
+        try
+        {
+            _logger?.LogWarning("SDK soft-reset: rebuilding LPR StartListen and sessions");
+            var ok = await StartAsync().ConfigureAwait(false);
+            if (!ok)
+            {
+                _logger?.LogError(
+                    "SDK soft-reset: LPR StartListen rebuild failed (ListenHandle={Handle}, Ip={Ip}, Port={Port})",
+                    _listenHandle, _listenLocalIp, _listenLocalPort);
+            }
+            else
+            {
+                _logger?.LogInformation(
+                    "SDK soft-reset: LPR Listen rebuilt ListenHandle={Handle}, Ip={Ip}, Port={Port}",
+                    _listenHandle, _listenLocalIp, _listenLocalPort);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "SDK soft-reset: LPR rebuild threw");
+        }
+    }
+
+    private void ScheduleShootCallbackWarning(string deviceIp)
+    {
+        var dueAt = DateTimeOffset.UtcNow.Add(ShootCallbackWarningTimeout);
+        _pendingShootByDeviceIp[deviceIp] = dueAt;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(ShootCallbackWarningTimeout).ConfigureAwait(false);
+                if (_pendingShootByDeviceIp.TryGetValue(deviceIp, out var pending) &&
+                    pending == dueAt)
+                {
+                    _pendingShootByDeviceIp.TryRemove(deviceIp, out _);
+                    _logger?.LogWarning(
+                        "ContinuousShoot accepted but no plate/ITS callback within {TimeoutSec}s: DeviceIp={DeviceIp}",
+                        ShootCallbackWarningTimeout.TotalSeconds, deviceIp);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Shoot callback warning timer failed: DeviceIp={DeviceIp}", deviceIp);
+            }
+        });
+    }
+
+    private void MarkShootCallbackReceived(string? deviceIp)
+    {
+        if (string.IsNullOrWhiteSpace(deviceIp))
+            return;
+        _pendingShootByDeviceIp.TryRemove(deviceIp, out _);
+    }
+
+    private bool TryParsePort(LicensePlateRecognitionConfig config, out int port)
+    {
+        if (!int.TryParse(config.Port, out port) || port <= 0)
+        {
+            _logger?.LogWarning("设备端口无效: IP={Ip}, Port={Port}", config.Ip, config.Port);
+            port = 0;
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
