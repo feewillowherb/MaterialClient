@@ -45,14 +45,19 @@ public interface IHikvisionService
 /// </summary>
 public sealed class HikvisionService : IHikvisionService, ISingletonDependency
 {
-    private readonly ConcurrentDictionary<string, int> deviceKeyToUserId = new();
+    private readonly IHikvisionLoginSessionStore _sessionStore;
+    private readonly ConcurrentDictionary<string, byte> _heldSessionKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly ISettingsService? _settingsService;
     private readonly ILogger<HikvisionService>? _logger;
     private readonly SemaphoreSlim _softResetLock = new(1, 1);
     private DateTimeOffset? _lastSoftResetSucceededAt;
 
-    public HikvisionService(ISettingsService? settingsService = null, ILogger<HikvisionService>? logger = null)
+    public HikvisionService(
+        IHikvisionLoginSessionStore? sessionStore = null,
+        ISettingsService? settingsService = null,
+        ILogger<HikvisionService>? logger = null)
     {
+        _sessionStore = sessionStore ?? new HikvisionLoginSessionStore(logger: null);
         _settingsService = settingsService;
         _logger = logger;
     }
@@ -69,14 +74,24 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     public void AddOrUpdateDevice(HikvisionDeviceConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        var key = BuildDeviceKey(config);
-        deviceKeyToUserId.AddOrUpdate(key, _ => -1, (_, __) => -1);
+        // Config registration only; login sessions live in IHikvisionLoginSessionStore.
+        _ = BuildDeviceKey(config);
     }
 
     public bool IsOnline(HikvisionDeviceConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
         EnsureInitialized();
+        var key = BuildDeviceKey(config);
+        if (_sessionStore.TryGetUserId(key, out _))
+        {
+            var probe = _sessionStore.Probe(key);
+            if (probe.Valid)
+                return true;
+            _sessionStore.Invalidate(key);
+            _heldSessionKeys.TryRemove(key, out _);
+        }
+
         return EnsureLogin(config, out _);
     }
 
@@ -835,24 +850,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
             var sw = Stopwatch.StartNew();
             try
             {
-                // 1. Logout and evacuate all cached sessions before Cleanup
-                foreach (var key in deviceKeyToUserId.Keys.ToList())
-                {
-                    if (deviceKeyToUserId.TryRemove(key, out var userId) && userId >= 0)
-                    {
-                        try
-                        {
-                            NET_DVR.NET_DVR_Logout(userId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogDebug(ex, "Logout during soft reset failed: Key={Key}, UserId={UserId}", key,
-                                userId);
-                        }
-                    }
-                }
-
-                deviceKeyToUserId.Clear();
+                // 1. Invalidate shared sessions (LPR listen cleared via SessionsClearedForSdkReset)
+                _sessionStore.InvalidateAll();
+                _heldSessionKeys.Clear();
 
                 // 2. Cleanup + clear process init flag (shared with HikvisionLprService via NET_DVR._initialized)
                 NET_DVR.NET_DVR_Cleanup();
@@ -872,6 +872,9 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
                 _lastSoftResetSucceededAt = DateTimeOffset.UtcNow;
                 sw.Stop();
                 _logger?.LogWarning("HCNetSDK soft reset succeeded in {DurationMs}ms", sw.ElapsedMilliseconds);
+
+                // 5. Notify LPR to rebuild StartListen + Acquire
+                _sessionStore.NotifySdkReinitialized();
                 return SdkSoftResetResult.Succeeded(sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
@@ -965,55 +968,39 @@ public sealed class HikvisionService : IHikvisionService, ISingletonDependency
     private bool EnsureLogin(HikvisionDeviceConfig config, out int userId)
     {
         var key = BuildDeviceKey(config);
-
-        // Pre-login logout: if cached userId is valid, logout before fresh login
-        if (deviceKeyToUserId.TryRemove(key, out var cachedUserId) && cachedUserId >= 0)
+        var acquire = _sessionStore.Acquire(config.Ip, config.Port, config.Username, config.Password);
+        if (!acquire.Success)
         {
-            NET_DVR.NET_DVR_Logout(cachedUserId);
-            _logger?.LogDebug("登录前登出旧会话: Key={Key}, UserId={UserId}", key, cachedUserId);
+            userId = -1;
+            return false;
         }
 
-        userId = Login(config);
-        if (userId >= 0)
-        {
-            deviceKeyToUserId[key] = userId;
-        }
-
-        return userId >= 0;
+        _heldSessionKeys[key] = 0;
+        userId = acquire.UserId;
+        return true;
     }
 
     private void LogoutAndClearCache(HikvisionDeviceConfig config)
     {
         var key = BuildDeviceKey(config);
-        if (deviceKeyToUserId.TryRemove(key, out var userId) && userId >= 0)
-        {
-            NET_DVR.NET_DVR_Logout(userId);
-            _logger?.LogDebug("已登出并清除缓存: Key={Key}, UserId={UserId}", key, userId);
-        }
+        _sessionStore.Invalidate(key);
+        _heldSessionKeys.TryRemove(key, out _);
+        _logger?.LogDebug("已 Invalidate 会话: Key={Key}", key);
     }
 
     private int Login(HikvisionDeviceConfig config)
     {
-        var devInfo = new NET_DVR.NET_DVR_DEVICEINFO_V40();
-        var loginInfo = new NET_DVR.NET_DVR_USER_LOGIN_INFO
+        var acquire = _sessionStore.Acquire(config.Ip, config.Port, config.Username, config.Password);
+        if (!acquire.Success)
         {
-            sDeviceAddress = ToFixedBytes(config.Ip, 129),
-            sUserName = ToFixedBytes(config.Username, 64),
-            sPassword = ToFixedBytes(config.Password, 64),
-            wPort = (ushort)config.Port,
-            bUseAsynLogin = 0
-        };
-        var userId = NET_DVR.NET_DVR_Login_V40(ref loginInfo, ref devInfo);
-        
-        if (userId < 0)
-        {
-            var errorCode = NET_DVR.NET_DVR_GetLastError();
-            _logger?.LogWarning(
-                "海康威视设备登录失败: IP={Ip}, Port={Port}, Username={Username}, ErrorCode={ErrorCode}",
-                config.Ip, config.Port, config.Username, errorCode);
+            _logger?.LogWarning("设备登录失败: IP={Ip}, Port={Port}, Message={Message}",
+                config.Ip, config.Port, acquire.Message);
+            return -1;
         }
-        
-        return userId >= 0 ? userId : -1;
+
+        var key = BuildDeviceKey(config);
+        _heldSessionKeys[key] = 0;
+        return acquire.UserId;
     }
 
     private static byte[] ToFixedBytes(string text, int fixedLen)
