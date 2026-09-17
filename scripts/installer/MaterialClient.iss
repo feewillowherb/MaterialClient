@@ -85,11 +85,54 @@ begin
     MsgBox('此应用程序需要 Windows 10 或更高版本。', mbError, MB_OK);
 end;
 
+{ Remove all firewall rules for this app (clears prior Block from Windows prompt). }
+procedure RemoveFirewallRulesForApp;
+var
+  ResultCode: Integer;
+  ExePath: String;
+begin
+  ExePath := ExpandConstant('{app}\{#MyAppExeName}');
+  Exec('netsh.exe',
+    'advfirewall firewall delete rule name=all program="' + ExePath + '"',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+{ Allow inbound/outbound for Private+Public+Domain — LPR Listen needs inbound. }
+procedure AddFirewallAllowRules;
+var
+  ResultCode: Integer;
+  ExePath: String;
+begin
+  ExePath := ExpandConstant('{app}\{#MyAppExeName}');
+  if not FileExists(ExePath) then
+    Exit;
+
+  RemoveFirewallRulesForApp;
+
+  Exec('netsh.exe',
+    'advfirewall firewall add rule name="{#MyAppExeName} Allow Inbound" dir=in action=allow program="' +
+    ExePath + '" enable=yes profile=any',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+  Exec('netsh.exe',
+    'advfirewall firewall add rule name="{#MyAppExeName} Allow Outbound" dir=out action=allow program="' +
+    ExePath + '" enable=yes profile=any',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
     if not FileExists(ExpandConstant('{app}\{#MyAppExeName}')) then
-      MsgBox('警告: 主程序文件未找到！', mbError, MB_OK);
+      MsgBox('警告: 主程序文件未找到！', mbError, MB_OK)
+    else
+      AddFirewallAllowRules;
   end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    RemoveFirewallRulesForApp;
 end;
