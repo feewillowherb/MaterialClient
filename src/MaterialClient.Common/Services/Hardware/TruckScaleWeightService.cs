@@ -97,6 +97,9 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     private readonly byte[] _dingSongAddr4Buffer = new byte[4096];
     private int _dingSongAddr4BufferIndex;
 
+    private readonly byte[] _dingSongDs822Buffer = new byte[4096];
+    private int _dingSongDs822BufferIndex;
+
     private ISerialPort? _serialPort;
 
     /// <summary>
@@ -161,6 +164,7 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 _currentSettings = settings;
                 _portableXpsyBufferIndex = 0;
                 _dingSongAddr4BufferIndex = 0;
+                _dingSongDs822BufferIndex = 0;
 
                 // Portable XP-SY always uses ASCII '='-delimited frames, even if CommunicationMethod is TF0.
                 if (settings.ScaleType == ScaleType.PortableXPSY)
@@ -541,13 +545,12 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     }
 
     /// <summary>
-    ///     Receive HEX format data for DingSong scale type
+    ///     Receive DS822-X HEX frames for DingSong: sticky scan of <c>02 … 03</c> A/C frames.
     /// </summary>
     private void ReceiveHexDingSong()
     {
         try
         {
-            // Use read lock to get serial port reference (allows concurrent access)
             ISerialPort? port;
             using (_rwLock.ReadLock())
             {
@@ -555,48 +558,115 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
                 if (port == null) return;
             }
 
-            // I/O operation outside of lock (non-blocking for other threads)
-            var receivedCount = 0;
-            var readBuffer = new byte[_byteCount];
+            var availableBytes = port.BytesToRead;
+            if (availableBytes <= 0) return;
 
-            while (receivedCount < _byteCount)
+            if (_dingSongDs822BufferIndex + availableBytes > _dingSongDs822Buffer.Length)
             {
-                var bytesRead = port.Read(readBuffer, receivedCount, _byteCount - receivedCount);
-                receivedCount += bytesRead;
+                _logger?.LogWarning("DingSong DS822 receive buffer overflow, resetting");
+                _dingSongDs822BufferIndex = 0;
             }
 
-            // Check frame format: 0x02 at start, 0x03 at end
-            if (readBuffer[0] == 0x02 && readBuffer[_byteCount - 1] == 0x03)
-            {
-                // Parse data outside of lock
-                var parsedWeight = ParseHexWeightDingSong(readBuffer);
+            var bytesRead = port.Read(_dingSongDs822Buffer, _dingSongDs822BufferIndex, availableBytes);
+            if (bytesRead <= 0) return;
+            _dingSongDs822BufferIndex += bytesRead;
 
-                // Only use write lock to update state (hold time < 50ns)
+            while (_dingSongDs822BufferIndex >= DingSongDs822Frame.FrameLengthC)
+            {
+                var startIndex = FindDingSongDs822FrameStart();
+                if (startIndex < 0)
+                {
+                    if (_dingSongDs822BufferIndex > DingSongDs822Frame.FrameLengthA - 1)
+                    {
+                        Array.Copy(
+                            _dingSongDs822Buffer,
+                            _dingSongDs822BufferIndex - (DingSongDs822Frame.FrameLengthA - 1),
+                            _dingSongDs822Buffer,
+                            0,
+                            DingSongDs822Frame.FrameLengthA - 1);
+                        _dingSongDs822BufferIndex = DingSongDs822Frame.FrameLengthA - 1;
+                    }
+
+                    return;
+                }
+
+                if (startIndex > 0)
+                {
+                    Array.Copy(
+                        _dingSongDs822Buffer,
+                        startIndex,
+                        _dingSongDs822Buffer,
+                        0,
+                        _dingSongDs822BufferIndex - startIndex);
+                    _dingSongDs822BufferIndex -= startIndex;
+                }
+
+                var expectedLength = DingSongDs822Frame.TryGetExpectedLength(
+                    _dingSongDs822Buffer.AsSpan(0, Math.Min(3, _dingSongDs822BufferIndex)));
+                if (expectedLength is null)
+                {
+                    ShiftDingSongDs822BufferLeft(1);
+                    continue;
+                }
+
+                if (_dingSongDs822BufferIndex < expectedLength.Value) return;
+
+                var message = new byte[expectedLength.Value];
+                Array.Copy(_dingSongDs822Buffer, 0, message, 0, expectedLength.Value);
+
+                var parsedWeight = ParseHexWeightDingSong(message);
                 if (parsedWeight.HasValue)
                 {
-                    // Convert weight based on scale unit
                     var convertedWeight = ConvertWeight(parsedWeight.Value);
-                    
                     using var _ = _rwLock.WriteLock();
                     _currentWeight = convertedWeight;
                     _weightSubject.OnNext(convertedWeight);
                 }
-                
-                // Clear buffer after successful parsing to prevent stale data accumulation
-                using var clearLock = _rwLock.ReadLock();
-                _serialPort?.DiscardInBuffer();
-            }
-            else
-            {
-                // Discard buffer also needs read lock
-                using var _ = _rwLock.ReadLock();
-                _serialPort?.DiscardInBuffer();
+
+                ShiftDingSongDs822BufferLeft(expectedLength.Value);
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Error receiving HEX data from truck scale");
+            _logger?.LogWarning(ex, "Error receiving DingSong DS822 HEX data from truck scale");
+            _dingSongDs822BufferIndex = 0;
         }
+    }
+
+    private int FindDingSongDs822FrameStart()
+    {
+        for (var i = 0; i < _dingSongDs822BufferIndex; i++)
+        {
+            if (_dingSongDs822Buffer[i] != 0x02) continue;
+            var remaining = _dingSongDs822BufferIndex - i;
+            if (remaining < 3) return i;
+            var expected = DingSongDs822Frame.TryGetExpectedLength(
+                _dingSongDs822Buffer.AsSpan(i, remaining));
+            if (expected is null) continue;
+            if (remaining < expected.Value) return i;
+            if (_dingSongDs822Buffer[i + expected.Value - 1] != 0x03) continue;
+            return i;
+        }
+
+        return -1;
+    }
+
+    private void ShiftDingSongDs822BufferLeft(int count)
+    {
+        if (count <= 0) return;
+        if (count >= _dingSongDs822BufferIndex)
+        {
+            _dingSongDs822BufferIndex = 0;
+            return;
+        }
+
+        Array.Copy(
+            _dingSongDs822Buffer,
+            count,
+            _dingSongDs822Buffer,
+            0,
+            _dingSongDs822BufferIndex - count);
+        _dingSongDs822BufferIndex -= count;
     }
 
     /// <summary>
@@ -1003,94 +1073,24 @@ public partial class TruckScaleWeightService : ITruckScaleWeightService, ISingle
     }
 
     /// <summary>
-    ///     Parse weight from HEX data for DingSong scale type
-    ///     Format: 0x02 [sign] [8 weight bytes as ASCII] [end marker] 0x03
-    ///     Example: 02 2B 30 30 30 30 30 30 30 31 42 03
-    ///     STX '+' "00000001" 'B' ETX = 0.01 (assuming 2 decimal places)
+    ///     Parse DS822-X HEX weight for DingSong (<c>A</c>/<c>C</c> continuous frames).
+    ///     Legacy 12-byte <c>02 ± … 03</c> frames return null.
     /// </summary>
-    /// <returns>Parsed weight in decimal (kg) or null if parsing failed</returns>
     private decimal? ParseHexWeightDingSong(byte[] buffer)
     {
         try
         {
-            if (buffer.Length < 12) return null;
-
-            // Check frame format: 0x02 at start, 0x03 at end
-            if (buffer[0] != 0x02 || buffer[buffer.Length - 1] != 0x03)
-            {
-                _logger?.LogWarning($"Invalid frame format: STX={buffer[0]:X2}, ETX={buffer[buffer.Length - 1]:X2}");
-                return null;
-            }
-
-            // Parse sign byte (byte 1): 0x2B = '+', 0x2D = '-'
-            var isNegative = buffer[1] == 0x2D;
-
-            // Extract ASCII weight digits (bytes 2-9, 8 digits total)
-            // Format: 8 digits (6 integer + 2 decimal)
-            // Example: "00000001" -> 0.01
-            var weightString = string.Empty;
-            var startIndex = 2; // Skip STX and sign
-            var endIndex = 10; // Before end marker and ETX
-
-            // Read 8 ASCII digits
-            for (var i = startIndex; i < endIndex; i++)
-            {
-                var b = buffer[i];
-                var c = (char)b;
-
-                // Only include digits
-                if (char.IsDigit(c))
-                {
-                    weightString += c;
-                }
-                else
-                {
-                    _logger?.LogWarning($"Non-digit character found at position {i}: 0x{b:X2}");
-                    return null;
-                }
-            }
-
-            // Verify we got exactly 8 digits
-            if (weightString.Length != 8)
-            {
-                _logger?.LogWarning($"Expected 8 digits, got {weightString.Length}: {weightString}");
-                return null;
-            }
-
-            // End marker (byte 10) is a checksum/status byte, can be any hex character (0x30-0x46)
-            // We don't validate it, just ensure it's within valid hex range
-            var endMarker = buffer[10];
-            if (endMarker < 0x30 || endMarker > 0x46)
-            {
-                _logger?.LogWarning($"Invalid end marker: 0x{endMarker:X2}, expected hex character (0x30-0x46)");
-                return null;
-            }
-
-            // Parse the weight string
-            // Format: "00000001" -> 0.01 (6 integer + 2 decimal places)
-            // Convert to decimal by inserting decimal point
-            if (decimal.TryParse(weightString, out var weightInt))
-            {
-                // Apply decimal point: divide by 100 (2 decimal places)
-                var weight = weightInt;
-
-                // Apply sign
-                if (isNegative) weight = -weight;
-
-                _logger?.LogTrace(
-                    $"Parsed DingSong HEX weight: {weight} (raw: {weightString}, sign: {(isNegative ? "-" : "+")})");
-
-                return weight;
-            }
-
-            _logger?.LogWarning($"Failed to parse weight string: {weightString}");
+            var parsed = DingSongDs822Frame.TryParse(buffer);
+            if (parsed is null) return null;
+            _logger?.LogTrace(
+                $"Parsed DingSong DS822 HEX weight: {parsed.WeightKg} (addr={parsed.Address}, cmd={parsed.Command})");
+            return parsed.WeightKg;
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Error parsing DingSong HEX weight data");
+            _logger?.LogWarning(ex, "Error parsing DingSong DS822 HEX weight data");
+            return null;
         }
-
-        return null;
     }
 
     /// <summary>

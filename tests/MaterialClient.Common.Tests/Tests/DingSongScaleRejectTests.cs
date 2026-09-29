@@ -9,10 +9,9 @@ using Xunit;
 namespace MaterialClient.Common.Tests.Tests;
 
 /// <summary>
-///     Characterizes that ScaleType.DingSong (顶松) cannot parse scale samples
+///     Characterizes that ScaleType.DingSong (顶松 / DS822-X) cannot parse Addr4 samples
 ///     from <c>_temp/H610.txt</c> and <c>_temp/H1320.txt</c>.
-///     Those frames use STX + '*' + CR (<c>02 2A ... 0D</c>), not DingSong's
-///     12-byte <c>02 2B/2D ... 03</c> format.
+///     Those frames use STX + '*' + CR (<c>02 2A ... 0D</c>), not DS822-X <c>02 ADD cmd … 03</c>.
 /// </summary>
 public class DingSongScaleRejectTests
 {
@@ -48,8 +47,8 @@ public class DingSongScaleRejectTests
     {
         H610Frame.Length.ShouldBe(17);
         H610Frame[0].ShouldBe((byte)0x02);
-        H610Frame[1].ShouldBe((byte)0x2A); // '*' — not DingSong +/-
-        H610Frame[^1].ShouldBe((byte)0x0D); // CR — not DingSong ETX 0x03
+        H610Frame[1].ShouldBe((byte)0x2A); // '*' — not DS822-X address
+        H610Frame[^1].ShouldBe((byte)0x0D); // CR — not DS822-X ETX 0x03
 
         InvokeParseHexWeightDingSong(H610Frame).ShouldBeNull();
     }
