@@ -1,3 +1,4 @@
+using MaterialClient.Common.Configuration;
 using MaterialClient.Common.Entities.Enums;
 using MaterialClient.Common.Services;
 using MaterialClient.Common.Services.Hikvision;
@@ -141,9 +142,16 @@ public class WeighingCaptureService : IWeighingCaptureService, ISingletonDepende
                 return;
             }
 
-            var tasks = lprConfigs
-                .Where(config => config.IsValid())
-                .Select(async config =>
+            // Distinct IP: shared-IP multi-row configs must ForceTrigger once; callbacks fan out per row.
+            var triggerConfigs = LicensePlateRecognitionConfig.SelectFirstValidPerIp(lprConfigs);
+            if (triggerConfigs.Count < lprConfigs.Count(c => c.IsValid()))
+            {
+                _logger.LogDebug(
+                    "LPR trigger IP-deduped from {Raw} valid rows to {Distinct} [{Phase}]",
+                    lprConfigs.Count(c => c.IsValid()), triggerConfigs.Count, phase);
+            }
+
+            var tasks = triggerConfigs.Select(async config =>
                 {
                     var deviceType = config.ResolvedDeviceType;
                     ILprDevice lprDevice;

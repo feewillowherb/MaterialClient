@@ -61,6 +61,8 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     private readonly ILocalEventBus _localEventBus;
     private readonly ILogger<GateIoControlService>? _logger;
 
+    private static readonly TimeSpan GateOpenDedupeWindow = TimeSpan.FromSeconds(2);
+
     private IDisposable? _lprSubscription;
     private IDisposable? _settingsSavedSubscription;
     private IDisposable? _statusSubscription;
@@ -69,6 +71,8 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
     private bool _started;
     private bool _gateIoEnabled = true;
     private AttendedWeighingStatus _currentWeighingStatus = AttendedWeighingStatus.OffScale;
+    private string? _lastGateOpenPlate;
+    private DateTime _lastGateOpenUtc = DateTime.MinValue;
 
     public GateIoControlService(
         ISettingsService settingsService,
@@ -228,6 +232,34 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
             if (config == null || !config.EnableGateIo)
                 return;
 
+            IEnumerable<LicensePlateRecognitionConfig> allConfigs;
+            lock (_sync)
+            {
+                allConfigs = _configByName.Values.ToList();
+            }
+
+            if (LicensePlateRecognitionConfig.HasOtherScaleGateSibling(allConfigs, config, message.DeviceIp))
+            {
+                _logger?.LogDebug(
+                    "Defer gate open to Scale sibling on shared IP: Device={Device}, Plate={Plate}, Ip={Ip}",
+                    message.DeviceName, message.PlateNumber, message.DeviceIp ?? config.Ip);
+                return;
+            }
+
+            var plateKey = message.PlateNumber?.Trim() ?? string.Empty;
+            lock (_sync)
+            {
+                if (!string.IsNullOrEmpty(plateKey)
+                    && string.Equals(_lastGateOpenPlate, plateKey, StringComparison.OrdinalIgnoreCase)
+                    && DateTime.UtcNow - _lastGateOpenUtc < GateOpenDedupeWindow)
+                {
+                    _logger?.LogDebug(
+                        "Skip duplicate gate open within {WindowSeconds}s: Plate={Plate}, Device={Device}",
+                        GateOpenDedupeWindow.TotalSeconds, plateKey, message.DeviceName);
+                    return;
+                }
+            }
+
             var vendor = config.ResolvedDeviceType;
             if (vendor != LprDeviceType.Vzvision)
             {
@@ -260,6 +292,11 @@ public sealed class GateIoControlService : IGateIoControlService, ISingletonDepe
                 _session.ExitOpened = false;
                 _session.SessionStartedAt = DateTime.UtcNow;
                 _session.PlateNumber = message.PlateNumber;
+                if (!string.IsNullOrEmpty(plateKey))
+                {
+                    _lastGateOpenPlate = plateKey;
+                    _lastGateOpenUtc = DateTime.UtcNow;
+                }
 
                 _logger?.LogInformation("创建道闸会话: Device={Device}, EntrySide={EntrySide}, Plate={Plate}",
                     message.DeviceName, config.Direction, message.PlateNumber);

@@ -372,23 +372,21 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
             var color = MapColor(plate.nColor);
             var vehicleColor = MapVehicleColor(plate.nCarColor);
             var vehicleType = MapVehicleType(plate.nType);
-            var deviceName = cfg.Name;
 
             // 提取 Lpr 图片（仅 UrbanMode），从 pImgFull 提取全场景图
             var lrpPath = TrySaveVzLprAttachment(pImgFull, license);
 
-            _ = _localEventBus.PublishAsync(new LicensePlateRecognizedEventData
-            {
-                PlateNumber = license,
-                ColorType = color,
-                VehicleColor = vehicleColor,
-                VehicleType = vehicleType,
-                PlateColor = color.GetDescription(),
-                DeviceType = LprDeviceType.Vzvision,
-                DeviceName = deviceName,
-                Timestamp = DateTime.Now,
-                LprImagePath = lrpPath
-            });
+            var payload = new LprRecognitionPayload(
+                license,
+                color,
+                vehicleColor,
+                vehicleType,
+                color.GetDescription(),
+                LprDeviceType.Vzvision,
+                DateTime.Now,
+                lrpPath);
+
+            _ = PublishFanOutFromCallbackAsync(ip, cfg, payload);
         }
         catch (Exception ex)
         {
@@ -396,6 +394,31 @@ public class VzvisionLprService : IVzvisionLprService, ISingletonDependency, IAs
         }
 
         return 0;
+    }
+
+    private async Task PublishFanOutFromCallbackAsync(
+        string deviceIp,
+        LicensePlateRecognitionConfig sdkConfig,
+        LprRecognitionPayload payload)
+    {
+        IReadOnlyList<LicensePlateRecognitionConfig>? settingsConfigs = null;
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync().ConfigureAwait(false);
+            settingsConfigs = settings.LicensePlateRecognitionConfigs;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Vzvision LPR fan-out: failed to load settings, using SDK fallback config");
+        }
+
+        await LprRecognitionEventPublisher.PublishFanOutAsync(
+            _localEventBus,
+            settingsConfigs,
+            deviceIp,
+            sdkConfig,
+            payload,
+            _logger).ConfigureAwait(false);
     }
 
     /// <summary>

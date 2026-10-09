@@ -77,6 +77,99 @@ public class LicensePlateRecognitionConfig
     }
 
     /// <summary>
+    ///     Returns distinct valid LPR rows whose IP matches <paramref name="ip"/> (trimmed, ordinal ignore-case).
+    ///     Rows with the same <see cref="Name"/> collapse to the first match.
+    /// </summary>
+    public static IReadOnlyList<LicensePlateRecognitionConfig> FindAllByIp(
+        IReadOnlyList<LicensePlateRecognitionConfig>? configs,
+        string? ip)
+    {
+        if (configs is null || string.IsNullOrWhiteSpace(ip))
+            return [];
+
+        var normalizedIp = ip.Trim();
+        List<LicensePlateRecognitionConfig>? matched = null;
+        HashSet<string>? seenNames = null;
+
+        foreach (var config in configs)
+        {
+            if (!config.IsValid())
+                continue;
+            if (!string.Equals(config.Ip.Trim(), normalizedIp, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            seenNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!seenNames.Add(config.Name.Trim()))
+                continue;
+
+            matched ??= [];
+            matched.Add(config);
+        }
+
+        return matched is null ? [] : matched;
+    }
+
+    /// <summary>
+    ///     First valid row per distinct IP (for active LPR trigger dedupe).
+    /// </summary>
+    public static IReadOnlyList<LicensePlateRecognitionConfig> SelectFirstValidPerIp(
+        IEnumerable<LicensePlateRecognitionConfig>? configs)
+    {
+        if (configs is null)
+            return [];
+
+        List<LicensePlateRecognitionConfig>? selected = null;
+        HashSet<string>? seenIps = null;
+
+        foreach (var config in configs)
+        {
+            if (!config.IsValid())
+                continue;
+
+            seenIps ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!seenIps.Add(config.Ip.Trim()))
+                continue;
+
+            selected ??= [];
+            selected.Add(config);
+        }
+
+        return selected is null ? [] : selected;
+    }
+
+    /// <summary>
+    ///     True when another Scale row on the same IP has <see cref="EnableGateIo"/> (fan-out gate preference).
+    /// </summary>
+    public static bool HasOtherScaleGateSibling(
+        IEnumerable<LicensePlateRecognitionConfig>? configs,
+        LicensePlateRecognitionConfig current,
+        string? deviceIp)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        if (current.SiteType == LprSiteType.Scale)
+            return false;
+
+        var ip = !string.IsNullOrWhiteSpace(deviceIp) ? deviceIp.Trim() : current.Ip.Trim();
+        if (string.IsNullOrWhiteSpace(ip) || configs is null)
+            return false;
+
+        foreach (var sibling in configs)
+        {
+            if (!sibling.EnableGateIo || !sibling.IsValid())
+                continue;
+            if (sibling.SiteType != LprSiteType.Scale)
+                continue;
+            if (!string.Equals(sibling.Ip.Trim(), ip, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (string.Equals(sibling.Name, current.Name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     ///     运行时使用的厂商（回填后的权威值）
     /// </summary>
     public LprDeviceType ResolvedDeviceType => DeviceType ?? LprDeviceType.Hikvision;

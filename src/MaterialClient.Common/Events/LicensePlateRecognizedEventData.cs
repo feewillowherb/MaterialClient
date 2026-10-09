@@ -44,6 +44,11 @@ public class LicensePlateRecognizedEventData
     public string DeviceName { get; set; } = string.Empty;
 
     /// <summary>
+    ///     识别设备 IP（可选；同 IP 多配置扇出时用于闸控去重与日志）
+    /// </summary>
+    public string? DeviceIp { get; set; }
+
+    /// <summary>
     ///     识别发生时的时间戳
     /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.Now;

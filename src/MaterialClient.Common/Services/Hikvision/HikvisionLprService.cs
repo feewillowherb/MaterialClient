@@ -566,24 +566,53 @@ public class HikvisionLprService : IHikvisionLprService, ILprDevice, ISingletonD
         string? lrpPath,
         string logMessageTemplate)
     {
-        var eventData = new LicensePlateRecognizedEventData
+        var payload = new LprRecognitionPayload(
+            plateNumber,
+            ColorType: null,
+            vehicleColor,
+            vehicleType,
+            plateColor,
+            LprDeviceType.Hikvision,
+            DateTime.Now,
+            lrpPath);
+
+        _ = PublishFanOutFromCallbackAsync(deviceIp, config, payload, logMessageTemplate);
+    }
+
+    private async Task PublishFanOutFromCallbackAsync(
+        string deviceIp,
+        LicensePlateRecognitionConfig? sdkConfig,
+        LprRecognitionPayload payload,
+        string logMessageTemplate)
+    {
+        IReadOnlyList<LicensePlateRecognitionConfig>? settingsConfigs = null;
+        try
         {
-            PlateNumber = plateNumber,
-            ColorType = null,
-            VehicleColor = vehicleColor,
-            VehicleType = vehicleType,
-            PlateColor = plateColor,
-            DeviceType = LprDeviceType.Hikvision,
-            DeviceName = config?.Name ?? (string.IsNullOrWhiteSpace(deviceIp) ? "Unknown" : $"Unknown ({deviceIp})"),
-            Timestamp = DateTime.Now,
-            LprImagePath = lrpPath
-        };
-        _ = _localEventBus.PublishAsync(eventData);
+            var settings = await _settingsService.GetSettingsAsync().ConfigureAwait(false);
+            settingsConfigs = settings.LicensePlateRecognitionConfigs;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Hikvision LPR fan-out: failed to load settings, using SDK fallback config");
+        }
+
+        var rows = LicensePlateRecognitionConfig.FindAllByIp(settingsConfigs, deviceIp);
+        var deviceLabel = rows.Count > 0
+            ? string.Join(", ", rows.Select(r => r.Name))
+            : sdkConfig?.Name ?? (string.IsNullOrWhiteSpace(deviceIp) ? "Unknown" : $"Unknown ({deviceIp})");
+
+        await LprRecognitionEventPublisher.PublishFanOutAsync(
+            _localEventBus,
+            settingsConfigs,
+            deviceIp,
+            sdkConfig,
+            payload,
+            _logger).ConfigureAwait(false);
 
         _logger?.LogInformation(
             "{LogMessage}: Device={Device}, Plate={Plate}, Direction={Direction}, Time={Time}",
-            logMessageTemplate, eventData.DeviceName, eventData.PlateNumber,
-            config?.Direction ?? LicensePlateDirection.A, eventData.Timestamp);
+            logMessageTemplate, deviceLabel, payload.PlateNumber,
+            sdkConfig?.Direction ?? LicensePlateDirection.A, payload.Timestamp);
     }
 
     /// <summary>
