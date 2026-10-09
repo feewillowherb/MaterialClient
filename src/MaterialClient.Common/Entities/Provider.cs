@@ -75,6 +75,14 @@ public class Provider : Entity<int>, IMaterialClientAuditedObject, IDeletionAudi
         ContectPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim();
     }
 
+    /// <summary>
+    ///     Set local-only address. Whitespace becomes null.
+    /// </summary>
+    public void SetAddress(string? address)
+    {
+        Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+    }
+
 
     public int? MaterialTypeId { get; set; }
 

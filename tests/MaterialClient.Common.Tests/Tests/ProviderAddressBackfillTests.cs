@@ -52,7 +52,9 @@ public class ProviderAddressBackfillTests
                 }
             });
 
-        var service = new ProviderService(api, providerRepo, sessionRepo);
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetWeighingModeAsync().Returns(WeighingMode.Standard);
+        var service = new ProviderService(api, providerRepo, sessionRepo, settingsService);
 
         var created = await service.CreateProviderAsync(
             "回收运输公司",
@@ -94,11 +96,45 @@ public class ProviderAddressBackfillTests
                 }
             });
 
-        var service = new ProviderService(api, providerRepo, sessionRepo);
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetWeighingModeAsync().Returns(WeighingMode.Standard);
+        var service = new ProviderService(api, providerRepo, sessionRepo, settingsService);
 
         var created = await service.CreateProviderAsync("无地址供应商", DeliveryType.Receiving);
 
         created.Address.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task UpdateProviderAsync_In_Recycle_Mode_Updates_Locally_Without_MaterialPlatform()
+    {
+        var providerRepo = Substitute.For<IRepository<Provider, int>>();
+        var sessionRepo = Substitute.For<IRepository<UserSession, Guid>>();
+        var api = Substitute.For<IMaterialPlatformApi>();
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetWeighingModeAsync().Returns(WeighingMode.Recycle);
+
+        var local = new Provider(401, 1, "旧名称") { Address = "旧地址" };
+        providerRepo.FindAsync(401, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(local);
+        providerRepo.UpdateAsync(Arg.Any<Provider>(), true, default).Returns(ci => ci.Arg<Provider>());
+
+        var service = new ProviderService(api, providerRepo, sessionRepo, settingsService);
+
+        var result = await service.UpdateProviderAsync(
+            401,
+            "新名称",
+            "联系人",
+            "13800000000",
+            "新地址");
+
+        result.ProviderName.ShouldBe("新名称");
+        result.ContactName.ShouldBe("联系人");
+        result.ContactPhone.ShouldBe("13800000000");
+        result.Address.ShouldBe("新地址");
+        local.ProviderName.ShouldBe("新名称");
+        local.Address.ShouldBe("新地址");
+        await api.DidNotReceive().UpdateProviderAsync(Arg.Any<UpdateProviderInput>(), Arg.Any<CancellationToken>());
+        await providerRepo.Received(1).UpdateAsync(local, true, default);
     }
 
     [Fact]

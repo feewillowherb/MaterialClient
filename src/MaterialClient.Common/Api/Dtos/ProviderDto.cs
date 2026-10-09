@@ -1,3 +1,5 @@
+using MaterialClient.Common.Entities;
+
 namespace MaterialClient.Common.Api.Dtos;
 
 /// <summary>
@@ -34,4 +36,14 @@ public class ProviderDto
     ///     收货地址（本地专用字段，§2.2 consigneeAddress 数据源）。远端 DTO 不携带，由本地维护。
     /// </summary>
     public string? Address { get; set; }
+
+    public static ProviderDto FromProvider(Provider provider) => new()
+    {
+        Id = provider.Id,
+        ProviderType = provider.ProviderType ?? 0,
+        ProviderName = provider.ProviderName ?? string.Empty,
+        ContactName = provider.ContectName,
+        ContactPhone = provider.ContectPhone,
+        Address = provider.Address
+    };
 }

@@ -104,7 +104,9 @@ public class CreateImmediatePersistenceTests
                 }
             });
 
-        var service = new ProviderService(api, providerRepo, sessionRepo);
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.GetWeighingModeAsync().Returns(WeighingMode.Standard);
+        var service = new ProviderService(api, providerRepo, sessionRepo, settingsService);
 
         var created = await service.CreateProviderAsync("新供应商", DeliveryType.Receiving);
 

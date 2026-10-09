@@ -69,6 +69,7 @@ public partial class ProviderService : DomainService, IProviderService
     private readonly IMaterialPlatformApi _materialPlatformApi;
     private readonly IRepository<Provider, int> _providerRepository;
     private readonly IRepository<UserSession, Guid> _userSessionRepository;
+    private readonly ISettingsService _settingsService;
 
     /// <inheritdoc />
     [UnitOfWork]
@@ -241,6 +242,13 @@ public partial class ProviderService : DomainService, IProviderService
             throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
+        // Recycle reports business data to the resource-place API only; do not push provider updates to MaterialPlatform.
+        var weighingMode = await _settingsService.GetWeighingModeAsync();
+        if (weighingMode == WeighingMode.Recycle)
+        {
+            return await UpdateProviderLocallyAsync(id, providerName, contactName, contactPhone, address);
+        }
+
         var response = await _materialPlatformApi.UpdateProviderAsync(
             new UpdateProviderInput(id, providerName.Trim(), contactName?.Trim(), contactPhone?.Trim()));
         if (!response.IsSuccess || response.Data == null)
@@ -249,14 +257,14 @@ public partial class ProviderService : DomainService, IProviderService
             throw new BusinessException("PROVIDER:REMOTE_UPDATE_FAILED", errorMessage);
         }
 
-        // Address 为本地专用字段（远端契约不携带）：远端更新成功后同步更新本地 Provider.Address。
+        // Address is local-only (not in remote contract): sync Provider.Address after remote update succeeds.
         string? localAddress = address;
         var local = await _providerRepository.FindAsync(id);
         if (local != null)
         {
             if (address != null)
             {
-                local.Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+                local.SetAddress(address);
                 localAddress = local.Address;
                 await _providerRepository.UpdateAsync(local);
             }
@@ -275,5 +283,28 @@ public partial class ProviderService : DomainService, IProviderService
             ContactPhone = response.Data.ContectPhone,
             Address = localAddress
         };
+    }
+
+    private async Task<ProviderDto> UpdateProviderLocallyAsync(
+        int id,
+        string providerName,
+        string? contactName,
+        string? contactPhone,
+        string? address)
+    {
+        var local = await _providerRepository.FindAsync(id);
+        if (local == null)
+        {
+            throw new BusinessException("PROVIDER:NOT_FOUND", $"Provider Id={id} was not found.");
+        }
+
+        local.UpdateInfo(providerName, contactName, contactPhone);
+        if (address != null)
+        {
+            local.SetAddress(address);
+        }
+
+        await _providerRepository.UpdateAsync(local, true);
+        return ProviderDto.FromProvider(local);
     }
 }
