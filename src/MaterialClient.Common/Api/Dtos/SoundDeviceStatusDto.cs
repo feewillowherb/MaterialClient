@@ -4,6 +4,7 @@ namespace MaterialClient.Common.Api.Dtos;
 
 /// <summary>
 ///     Sound column device status response DTO
+///     (ls21_mgrserver POST /api/devices/getDeviceBySN)
 /// </summary>
 public record SoundDeviceStatusDto
 {
@@ -21,7 +22,13 @@ public record SoundDeviceStatusDto
     ///     Current task list
     /// </summary>
     [JsonPropertyName("tasks")]
-    public IList<DeviceTaskInfo> Tasks { get; init; } = new List<DeviceTaskInfo>();
+    public IList<DeviceTaskInfo> Tasks { get; init; } = [];
+
+    /// <summary>
+    ///     Optional message (e.g. "device not found" when status is absent)
+    /// </summary>
+    [JsonPropertyName("msg")]
+    public string? Msg { get; init; }
 }
 
 /// <summary>

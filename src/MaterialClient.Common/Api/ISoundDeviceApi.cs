@@ -48,21 +48,18 @@ public interface ISoundDeviceApi
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Get sound column device status
+    ///     Get sound column device status from ls21 business server (mgrserver)
     /// </summary>
-    /// <param name="type">Request type, fixed value "req"</param>
-    /// <param name="app">Application identifier, fixed value "ls20"</param>
-    /// <param name="sn">Device serial number, format: "ls20://020021EA63AC"</param>
+    /// <param name="request">Status request body (type/app/sn)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Device status response DTO</returns>
     /// <remarks>
-    ///     Base URL should be set to http://{SoundIP}:8888 when creating the Refit client.
-    ///     Status codes: 0=Offline, 1=Online, 2=In Task, 3=Power Off
+    ///     Base URL should be set to http://{LocalIP}:17808 when creating the Refit client.
+    ///     Status codes: 0=Offline, 1=Online, 2=In Task, 3=Power Off.
+    ///     Play audio remains on http://{SoundIP}:8888.
     /// </remarks>
-    [Get("/api/devices/getDeviceBySN")]
+    [Post("/api/devices/getDeviceBySN")]
     Task<SoundDeviceStatusDto> GetDeviceStatusAsync(
-        [Query] string type,
-        [Query] string app,
-        [Query] string sn,
+        [Body] SoundDeviceStatusRequestDto request,
         CancellationToken cancellationToken = default);
 }

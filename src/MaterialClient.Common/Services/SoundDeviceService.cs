@@ -408,21 +408,40 @@ public partial class SoundDeviceService : ISoundDeviceService, ISingletonDepende
             // 4. Build device serial number (add prefix)
             var deviceSn = $"ls20://{soundDeviceSettings.SoundSN}";
 
-            // 5. Create HTTP client and API instance
-            var baseUrl = $"http://{soundDeviceSettings.LocalIP}:8888";
+            // 5. Create HTTP client against ls21 mgrserver (default port 17808)
+            var baseUrl = $"http://{soundDeviceSettings.LocalIP}:17808";
             var httpClient = _httpClientFactory.CreateClient();
             httpClient.BaseAddress = new Uri(baseUrl);
             httpClient.Timeout = TimeSpan.FromSeconds(5);
             var api = RestService.For<ISoundDeviceApi>(httpClient);
 
-            // 6. Call remote API
+            // 6. Call remote API (POST + JSON body per ls21_mgrserver)
             var statusResponse = await api.GetDeviceStatusAsync(
-                type: "req",
-                app: "ls20",
-                sn: deviceSn);
+                new SoundDeviceStatusRequestDto
+                {
+                    Type = "req",
+                    App = "ls20",
+                    Sn = deviceSn
+                });
 
-            // 7. Parse status code
-            var isOnline = statusResponse.Status == 1 || statusResponse.Status == 2;
+            // 7. Parse status code (missing status / "device not found" => offline)
+            if (!string.IsNullOrWhiteSpace(statusResponse.Msg) && statusResponse.Status == 0)
+            {
+                _logger?.LogDebug(
+                    "Sound device status message: DeviceSN={DeviceSN}, Msg={Msg}",
+                    soundDeviceSettings.SoundSN, statusResponse.Msg);
+            }
+
+            var isOnline = statusResponse.Status is 1 or 2;
+
+            if (statusResponse.Status == 2)
+            {
+                _logger?.LogDebug("Device is busy with tasks: DeviceSN={DeviceSN}", soundDeviceSettings.SoundSN);
+            }
+            else if (statusResponse.Status == 3)
+            {
+                _logger?.LogWarning("Device is powered off: DeviceSN={DeviceSN}", soundDeviceSettings.SoundSN);
+            }
 
             _logger?.LogDebug(
                 "Sound device status check completed: DeviceSN={DeviceSN}, Status={Status}, IsOnline={IsOnline}",
