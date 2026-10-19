@@ -19,7 +19,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
     <!-- Entity Framework Core -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" />
     <!-- HTTP Client -->
     <PackageVersion Include="Refit.HttpClientFactory" Version="9.0.2" />
     <!-- Volo ABP Framework -->
