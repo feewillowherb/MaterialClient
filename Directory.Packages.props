@@ -23,7 +23,7 @@
     <!-- HTTP Client -->
     <PackageVersion Include="Refit.HttpClientFactory" Version="9.0.2" />
     <!-- Volo ABP Framework -->
-    <PackageVersion Include="Volo.Abp.Autofac" Version="10.0.1" />
+    <PackageVersion Include="Volo.Abp.Autofac" Version="10.3.0" />
     <PackageVersion Include="Volo.Abp.Core" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.Ddd.Domain" Version="10.0.1" />
     <PackageVersion Include="Volo.Abp.Ddd.Application.Contracts" Version="10.0.1" />
