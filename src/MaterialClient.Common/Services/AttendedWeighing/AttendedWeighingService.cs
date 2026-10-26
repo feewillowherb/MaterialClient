@@ -215,39 +215,15 @@ public class AttendedWeighingService : IAttendedWeighingService, ISingletonDepen
             .Select(buffer => buffer.Last())
             .StartWith(0m);
 
-        var minDataPointsRequired =
-            Math.Max(8, (int)(config.StabilityWindowMs / config.StabilityCheckIntervalMs * 0.5));
+        var periods = WeightStabilityEvaluator.ResolvePeriods(config);
 
         var stabilityStream = sharedWeightSource
-            .Buffer(TimeSpan.FromMilliseconds(config.StabilityWindowMs),
-                TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
-            .Select(buffer =>
-            {
-                if (buffer.Count > 0)
-                {
-                    var validDataPoints = buffer.Where(w => w > config.MinWeightThreshold).ToList();
-                    if (validDataPoints.Count == 0)
-                        return new WeightStabilityInfo { IsStable = false };
-
-                    var min = validDataPoints.Min();
-                    var max = validDataPoints.Max();
-                    var range = max - min;
-                    var isStable = range <= config.WeightStabilityThreshold * 2 &&
-                                   validDataPoints.Count >= minDataPointsRequired;
-
-                    return new WeightStabilityInfo
-                    {
-                        IsStable = isStable,
-                        StableWeight = isStable ? (min + max) / 2 : null,
-                        Min = min,
-                        Max = max,
-                        Range = range
-                    };
-                }
-
-                return new WeightStabilityInfo { IsStable = false };
-            })
-            .StartWith(new WeightStabilityInfo { IsStable = false })
+            .Buffer(TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
+            .Where(buffer => buffer.Count > 0)
+            .Select(buffer => buffer.Last())
+            .Buffer(periods, 1)
+            .Select(window => WeightStabilityEvaluator.FromDownsampledWindow(window, periods, config))
+            .StartWith(WeightStabilityEvaluator.Unstable())
             .DistinctUntilChanged(info => info.IsStable)
             .Replay(1)
             .RefCount();
