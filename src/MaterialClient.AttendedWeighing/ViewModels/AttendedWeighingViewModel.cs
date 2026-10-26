@@ -304,9 +304,16 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
     /// <summary>
     ///     Sync the DeviceStatuses collection from individual device status properties.
     ///     Called via ReactiveUI subscription whenever any device status changes.
+    ///     Must run on the UI thread — concurrent Clear/Add can leave duplicate rows.
     /// </summary>
     private void SyncDeviceStatuses()
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(SyncDeviceStatuses);
+            return;
+        }
+
         var visibility = DeviceStatusCatalog.FromSettings(
             DocumentCameraEnabled,
             IsPrinterEnabled,
@@ -608,6 +615,7 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
             .Select(isOnline => isOnline ? 1 : 0) // Convert bool to status code
             .Retry(3) // Retry 3 times on failure
             .Catch(Observable.Return(-1)) // Return unknown status on exception
+            .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(
                 status =>
                 {
@@ -615,7 +623,6 @@ public partial class AttendedWeighingViewModel : ViewModelBase, IDisposable, ITr
                     this.RaisePropertyChanged(nameof(IsSoundDeviceOnline));
                     this.RaisePropertyChanged(nameof(SoundDeviceStatusColor));
                     this.RaisePropertyChanged(nameof(SoundDeviceStatusText));
-                    SyncDeviceStatuses();
                 },
                 ex => Logger?.LogError(ex, "Error in sound device status polling"));
     }
