@@ -60,82 +60,38 @@ public class WeighingStreamPipeline : IWeighingStreamPipeline, ISingletonDepende
     }
 
     /// <summary>
-    ///     创建稳定性流（较慢，用于稳定性检查）
+    ///     创建稳定性流：先按 StabilityCheckIntervalMs 降采样，再凑满 periods 个窗口期后判稳。
     /// </summary>
     internal IObservable<WeightStabilityInfo> CreateStabilityStream(IObservable<decimal> sharedWeightSource,
         WeighingConfiguration config)
     {
-        var minDataPointsRequired =
-            Math.Max(8, (int)(config.StabilityWindowMs / config.StabilityCheckIntervalMs * 0.5));
+        var periods = WeightStabilityEvaluator.ResolvePeriods(config);
 
         return sharedWeightSource
-            .Buffer(TimeSpan.FromMilliseconds(config.StabilityWindowMs),
-                TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
-            .Select(buffer =>
+            .Buffer(TimeSpan.FromMilliseconds(config.StabilityCheckIntervalMs))
+            .Where(buffer => buffer.Count > 0)
+            .Select(buffer => buffer.Last())
+            .Buffer(periods, 1)
+            .Select(window =>
             {
-                if (buffer.Count > 0)
-                {
-                    var validDataPoints = buffer.Where(w => w > config.MinWeightThreshold).ToList();
+                var info = WeightStabilityEvaluator.FromDownsampledWindow(window, periods, config);
 
-                    if (validDataPoints.Count == 0)
-                    {
-                        return new WeightStabilityInfo
-                        {
-                            Weight = 0m,
-                            IsStable = false,
-                            StableWeight = null,
-                            Min = 0,
-                            Max = 0,
-                            Range = 0
-                        };
-                    }
+                _logger.LogDebug(
+                    "Weight stability: {IsStable} (range: {Range:F3}t, min: {Min:F3}, max: {Max:F3}, " +
+                    "stableWeight: {StableWeight}, periods: {Periods}, windowCount: {WindowCount}, " +
+                    "allAboveThreshold: {AllAbove})",
+                    info.IsStable,
+                    info.Range,
+                    info.Min,
+                    info.Max,
+                    info.StableWeight,
+                    periods,
+                    window.Count,
+                    window.Count == periods && window.All(w => w > config.MinWeightThreshold));
 
-                    var min = validDataPoints.Min();
-                    var max = validDataPoints.Max();
-                    var range = max - min;
-
-                    var rangeStable = range <= config.WeightStabilityThreshold * 2;
-                    var hasEnoughDataPoints = validDataPoints.Count >= minDataPointsRequired;
-                    var isStable = rangeStable && hasEnoughDataPoints;
-                    var stableWeight = isStable ? (min + max) / 2 : (decimal?)null;
-
-                    _logger.LogDebug(
-                        "Weight stability: {IsStable} (range: {Range:F3} kg, min: {Min:F3}, max: {Max:F3}, " +
-                        "stableWeight: {StableWeight:F3}, validDataPoints: {ValidCount}/{MinRequired} (total: {Total}), " +
-                        "rangeStable: {RangeStable}, hasEnoughData: {HasEnough})",
-                        isStable, range, min, max, stableWeight, validDataPoints.Count, minDataPointsRequired,
-                        buffer.Count, rangeStable, hasEnoughDataPoints);
-
-                    return new WeightStabilityInfo
-                    {
-                        Weight = 0m,
-                        IsStable = isStable,
-                        StableWeight = stableWeight,
-                        Min = min,
-                        Max = max,
-                        Range = range
-                    };
-                }
-
-                return new WeightStabilityInfo
-                {
-                    Weight = 0m,
-                    IsStable = false,
-                    StableWeight = null,
-                    Min = 0m,
-                    Max = 0m,
-                    Range = 0m
-                };
+                return info;
             })
-            .StartWith(new WeightStabilityInfo
-            {
-                Weight = 0m,
-                IsStable = false,
-                StableWeight = null,
-                Min = 0m,
-                Max = 0m,
-                Range = 0m
-            })
+            .StartWith(WeightStabilityEvaluator.Unstable())
             .DistinctUntilChanged(info => info.IsStable)
             .Replay(1)
             .RefCount();
